@@ -17,9 +17,7 @@ use Override;
 
 /**
  * A race the user is training for. "Goal" only in the DB/model layer — the
- * user-facing name is "Race" (see the naming decision in the Slice 5 PR
- * description: `GoalResolver` already meant the unrelated accessory-unlock
- * progress catalog, now surfaced on `/accessories` — see Slice 7).
+ * user-facing name is "Race".
  *
  * At most one row per user is active ({@see self::active()}, `completed_at`
  * null) at a time; history is retained rather than overwritten, so this is

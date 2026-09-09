@@ -279,3 +279,24 @@ it('leaves the progression goal line empty when no race is active', function ():
         ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'progressionByCategory'))
         ->assertJsonPath('props.progressionByCategory.10km.goal_sec', null);
 });
+
+it('does not recompute the lifetime totals on the request that only fetches the deferred props', function (): void {
+    $user = User::factory()->create();
+
+    // Headers first: the helper resolves the asset version with a real request
+    // of its own, which the mock below would otherwise count.
+    $headers = inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'timeInZone');
+
+    // Profile's eager block is read-only, but Inertia's partial request re-runs
+    // the whole action, so it used to pay for the lifetime aggregate twice.
+    $lifetime = Mockery::mock(LifetimeStats::class);
+    $lifetime->shouldNotReceive('forUser');
+    app()->instance(LifetimeStats::class, $lifetime);
+
+    $response = $this->actingAs($user)->get('/profile', $headers)->assertSuccessful();
+
+    expect($response->json('props'))->toHaveKey('timeInZone')
+        ->and($response->json('props'))->not->toHaveKey('identity')
+        ->and($response->json('props'))->not->toHaveKey('stats')
+        ->and($response->json('props'))->not->toHaveKey('profileVoice');
+});

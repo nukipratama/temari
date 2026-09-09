@@ -7,7 +7,6 @@ namespace App\Services\AI\Agent\Tools;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
-use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\LifetimeStats;
 use Illuminate\Support\Carbon;
@@ -33,9 +32,8 @@ final class LifetimeStatsTool extends UserTool
     public function description(): string
     {
         return "The user's whole running history: name, total runs and km, longest run, how many "
-            .'months they\'ve been running, PR count, accessories unlocked out of the total, weekly '
-            ."streak, their favorite time to run, whether Strava's connected, and the latest "
-            .'form_status. Start here.';
+            .'months they\'ve been running, PR count, weekly streak, their favorite time to run, '
+            ."whether Strava's connected, and the latest form_status. Start here.";
     }
 
     /** @return array<string, mixed> */
@@ -54,8 +52,6 @@ final class LifetimeStatsTool extends UserTool
                 ? (int) Carbon::parse($firstRunAt)->diffInMonths($this->asOf)
                 : null,
             'pr_count' => PersonalRecord::query()->where('user_id', $this->user->id)->count(),
-            'unlocked_accessories' => UserUnlock::query()->where('user_id', $this->user->id)->count(),
-            'total_accessories' => count(config('temari_unlocks', [])),
             'weekly_streak' => WeeklySnapshot::consecutiveWeekStreak($this->user->id),
             'favorite_time' => $this->favoriteTimeBucket(),
             'strava_connected' => $this->user->stravaConnection !== null,

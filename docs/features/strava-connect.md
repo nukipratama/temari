@@ -3,7 +3,7 @@ title: Strava connection (OAuth, sync, webhook)
 description: Connecting Strava, the manual "Sync now" button, and the live push webhook.
 tags: [feature, strava]
 status: living
-reviewed: 2026-08-11
+reviewed: 2026-09-09
 code_refs:
   - resources/js/pages/Auth/Login.tsx
   - app/Http/Controllers/Auth/StravaAuthController.php
@@ -15,6 +15,8 @@ code_refs:
   - resources/js/components/StravaPausedBanner.tsx
   - resources/js/components/FlashNotice.tsx
   - app/Services/Inertia/StravaProps.php
+  - app/Services/Strava/StravaClient.php
+  - app/Console/Commands/Strava/RemoveAthleteCommand.php
   - routes/web.php
 ---
 
@@ -62,6 +64,15 @@ The `/devtools/pulse` Strava kill-switch (`AppConfigKey::StravaEnabled`) is enfo
 - **UI.** [StravaAction](../../resources/js/components/StravaAction.tsx) wraps each manual affordance and renders nothing while paused, so the control is *absent* rather than greyed out; [StravaPausedBanner](../../resources/js/components/StravaPausedBanner.tsx) carries the single calm explanation app-wide. Connect/reconnect links are **not** gated: OAuth still completes, and Strava is the only way to sign in.
 - **Server.** All three re-pull controllers guard at the entry point and answer `back()->with('info', …)`, never a fake `success`. The downstream guards stay as belt and braces. That refusal is only honest if the user reads it, and until [FlashNotice](../../resources/js/components/FlashNotice.tsx) existed the redirect landed on a page with no flash renderer at all. It is mounted once in [AppShell](../../resources/js/layouts/AppShell.tsx) and covers every authenticated page — see [[frontend-architecture]].
 - **Zone fetch.** `ActivityPipeline` / `SyncOrchestrator` never covered [ZoneFetcher](../../app/Services/Strava/ZoneFetcher.php), so the zone path still reached Strava with the switch off from two ungated callers: the on-connect `SyncZonesJob` dispatched by [StravaAuthController](../../app/Http/Controllers/Auth/StravaAuthController.php)`::callback`, and the monthly `strava:sync-zones` sweep. The switch is enforced inside `ZoneFetcher::fetch()` itself, returning its existing `null` "nothing to apply" result rather than at each caller. A fresh connect still connects and logs in; only the zone pull is suppressed, and since a `null` writes no `runner_profiles` row, nothing ever claims the zones synced.
+
+## Releasing the grant
+
+Marking a connection revoked is a local fact only — it stops Temari reading, and changes nothing on Strava, where the athlete goes on occupying one of the app's athlete slots. [StravaClient::deauthorize()](../../app/Services/Strava/StravaClient.php) is what actually frees it, POSTing the athlete's access token to `oauth/deauthorize`. Two callers:
+
+- **Account deletion.** [UserEraser](../../app/Services/User/UserEraser.php) releases the grant before it removes anything, so an athlete who deletes their account stops counting against the app. Best effort, and it cannot be otherwise: nobody who asked to be deleted stays undeleted because Strava was unreachable, so `deauthorize()` reports a refusal as `false` and logs it rather than throwing.
+- **`strava:remove-athlete {user}`** ([RemoveAthleteCommand](../../app/Console/Commands/Strava/RemoveAthleteCommand.php)) releases one athlete on Strava and then removes the account itself, through the same `UserEraser` the in-app delete button and `user:remove` use — the operator asked for that athlete to be gone, and a freed slot behind an account that still exists is half the job. It prints what will go before asking (`--force` skips the prompt), refuses the demo account, and removes the account even when Strava declines the deauthorize, since nobody stays half-removed because Strava was unreachable. An athlete whose grant is already revoked has nothing to release and is still removed. The command calls `UserEraser::releaseStravaGrant()` directly so the operator is told whether Strava took it; `erase()` then meets a connection that call already marked revoked and skips its own best-effort release. The demo refusal, confirm-or-abort gate and closing token-usage note are shared with `user:remove` via `App\Console\Commands\Concerns\ConfirmsPermanentRemoval`.
+
+The call sits outside `StravaClient::get()`'s gauntlet, like the webhook subscription calls: it spends none of the read budget those buckets meter, and a refused revocation says nothing about Strava's health, so it must not move the circuit breaker. Note the dated obligation in [[strava-data-compliance]] — `oauth/deauthorize` becomes `oauth/revoke` on 2027-06-01.
 
 ## Webhook (live push)
 

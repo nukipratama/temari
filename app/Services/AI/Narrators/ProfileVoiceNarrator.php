@@ -79,8 +79,8 @@ class ProfileVoiceNarrator
            get_progression_signal or get_plan_adherence that EXPLAIN the identity
            above, connected explicitly. Example connectors: "and that shows up in
            ...", "the numbers back it up: ...", "which is why ...". Total km, total
-           runs, time spent running, weekly_streak, PRs, an unlocked accessory, a
-           falling delta_sec in progression, or how they treat a prescribed
+           runs, time spent running, weekly_streak, PRs, a falling delta_sec in
+           progression, or how they treat a prescribed
            session. Pick whichever connects best to the claim, not the biggest
            number. When get_plan_adherence shows a lopsided record -- most sessions
            held, or most of them let go -- that IS the identity and it outranks a

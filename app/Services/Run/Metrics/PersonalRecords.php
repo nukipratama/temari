@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
-use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -15,11 +14,6 @@ use Illuminate\Support\Facades\DB;
 
 class PersonalRecords
 {
-    public function __construct(
-        private readonly GrantEligibleUnlocksAction $unlockEngine,
-    ) {
-    }
-
     /**
      * Rebuild the user's personal records from scratch across their remaining
      * activities, oldest-first. Used after an activity is deleted: detectAndStore
@@ -54,16 +48,10 @@ class PersonalRecords
     public function detectAndStore(Activity $activity, ActivityDetail $detail): array
     {
         $setAt = $detail->start_date_local ?? Carbon::now();
-        $broken = [
+        return [
             ...$this->checkDistancePrs($activity, $detail, $setAt),
             ...$this->checkEffortPrs($activity, $detail, $setAt),
         ];
-
-        if ($broken !== []) {
-            ($this->unlockEngine)($activity->user);
-        }
-
-        return $broken;
     }
 
     /**

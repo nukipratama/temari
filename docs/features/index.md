@@ -29,11 +29,10 @@ _Pages_
 _Collection_
 - [[cards-collection]] — the Card's reveal + full view (rarities, badges, special moves); browsing/filtering by rarity is inline on [[run-history]]
 - [[records]] — PRs, progression chart
-- [[targets-accessories]] — the accessory unlock catalog, granted at ingest and drawn nowhere since `PP2`
 
 _Systems_
 - [[recaps]] — weekly/monthly/persona narratives across the app
-- [[gamification]] — milestones, unlocks, rarities, special moves engine
+- [[gamification]] — milestones, rarities, special moves engine
 - [[vibe-and-mood]] — the daily vibe matrix + run mood that drive Temari's tone
 - [[strava-connect]] — OAuth, sync, webhook
 - [[onboarding]] — first-connect wizard and the DB-backed gate
@@ -41,4 +40,5 @@ _Systems_
 - [[notification-inbox]] — /inbox, the durable record of what Temari sent, with celebration replay
 - [[streak-reminders]] — Saturday nudges for at-risk weekly streaks, on any wired channel
 - [[temari-mascot]] — the face and the brand mark, the app's whole identity art
+- [[feedback]] — "this is wrong" on a plan day or a narration, written to a table the owner reads in tinker
 - [[installed-app-shell]] — Home-Screen install: edge-to-edge status bar, launch image, top bar with back button, touch feel, edge-swipe back

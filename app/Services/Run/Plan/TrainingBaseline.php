@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Enums\PlanPhase;
 use App\Models\RaceGoal;
+use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -29,6 +31,13 @@ use Illuminate\Support\Collection;
  * {@see SegmentGenerator::coreKmFor()} scales the whole week off that one
  * scalar. Anchoring on a trimmed weekly mean describes the athlete instead of
  * their biggest day. See docs/decisions/plan-volume-anchors-on-weekly-mean.md.
+ *
+ * That trailing mean SETS the volume once, at the start of a {@see Season},
+ * and is then frozen on the row: re-reading it every week made the ramp
+ * chase its own output and made a missed week shrink the next one. Every
+ * caller here reads the anchor of the season covering `$asOf`, so
+ * generation, render and a late compliance verdict all agree. See
+ * docs/decisions/the-arc-is-anchored-once.md.
  *
  * An explicit {@see TrainingPreference} sits above both: a set
  * `sessions_per_week` always wins over the behavioral average (this is the
@@ -116,9 +125,28 @@ final readonly class TrainingBaseline
 
     private const float MIN_LONG_RUN_KM = 3.0;
 
+    /**
+     * Below the marathon threshold the long run should reach the race
+     * distance itself at some point in the arc. The volume share alone never
+     * gets there for a low-mileage athlete — 0.35 x 26 km/week is a 9 km long
+     * run for a 10K — and going to the start line having never covered the
+     * distance is the one thing a plan with a date on it must not allow. A
+     * marathon is exempt in the other direction: 0.7-0.85x race distance is
+     * the coaching, and {@see self::LONG_RUN_CAP_BANDS} already says so.
+     */
+    private const float RACE_DISTANCE_FLOOR_THRESHOLD_M = 25_000.0;
+
+    /**
+     * The long run may never be more than half the week, whatever the floor
+     * asks for. A single day carrying more than that is not a week with a long
+     * run in it, it is a long run with some jogging attached.
+     */
+    private const float MAX_LONG_RUN_SHARE_OF_WEEK = 0.5;
+
     public function __construct(
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
+        private PhaseSchedule $phaseSchedule,
     ) {
     }
 
@@ -129,17 +157,11 @@ final readonly class TrainingBaseline
     {
         $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
         $preferredSessions = $preference?->sessions_per_week;
-        $experienceLevel = $preference?->experience_level;
 
-        $weeks = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('week_ending', '<=', $asOf->toDateString())
-            ->orderByDesc('week_ending')
-            ->limit(self::TRAILING_WEEKS)
-            ->get();
+        $weeks = self::trailingWeeks($user, $asOf);
 
         $hasHistory = ! $weeks->isEmpty();
-        $seed = (! $hasHistory && $experienceLevel !== null) ? self::EXPERIENCE_SEED[$experienceLevel->value] : null;
+        $seed = self::seedFor($preference, $weeks);
 
         if ($preferredSessions !== null) {
             $sessionsPerWeek = $preferredSessions;
@@ -149,13 +171,64 @@ final readonly class TrainingBaseline
             $sessionsPerWeek = $seed[0] ?? self::MIN_SESSIONS_PER_WEEK;
         }
 
-        $weeklyVolumeKm = $this->weeklyVolumeKm($weeks, $seed);
+        $season = self::seasonFor($user, $asOf);
+        $weeklyVolumeKm = $season->anchor_weekly_volume_km ?? $this->weeklyVolumeKm($weeks, $seed);
 
         return [
             'sessions_per_week' => $sessionsPerWeek,
             'weekly_volume_km' => $weeklyVolumeKm,
-            'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm, $asOf),
+            'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm, $asOf, $season),
         ];
+    }
+
+    /**
+     * The live trailing read, ignoring whatever the season has frozen — the
+     * value {@see SeasonService} anchors a new arc to, and the one it
+     * re-anchors against when the athlete's own volume has collapsed away
+     * from it.
+     */
+    public function trailingWeeklyVolumeKm(User $user, Carbon $asOf): float
+    {
+        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
+        $weeks = self::trailingWeeks($user, $asOf);
+
+        return $this->weeklyVolumeKm($weeks, self::seedFor($preference, $weeks));
+    }
+
+    /**
+     * The arc covering `$asOf`. The latest season *starting* on or before the
+     * date wins, so a day is always measured against the arc it was actually
+     * prescribed under, which is what keeps a late compliance verdict honest.
+     */
+    private static function seasonFor(User $user, Carbon $asOf): ?Season
+    {
+        return Season::query()
+            ->where('user_id', $user->id)
+            ->whereDate('starts_at', '<=', $asOf->toDateString())
+            ->orderByDesc('starts_at')
+            ->first();
+    }
+
+    /**
+     * @param  Collection<int, WeeklySnapshot>  $weeks
+     * @return array{int, float}|null
+     */
+    private static function seedFor(?TrainingPreference $preference, Collection $weeks): ?array
+    {
+        $experienceLevel = $preference?->experience_level;
+
+        return ($weeks->isEmpty() && $experienceLevel !== null) ? self::EXPERIENCE_SEED[$experienceLevel->value] : null;
+    }
+
+    /** @return Collection<int, WeeklySnapshot> */
+    private static function trailingWeeks(User $user, Carbon $asOf): Collection
+    {
+        return WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->where('week_ending', '<=', $asOf->toDateString())
+            ->orderByDesc('week_ending')
+            ->limit(self::TRAILING_WEEKS)
+            ->get();
     }
 
     private static function clampSessions(float $avgRuns): int
@@ -196,13 +269,54 @@ final readonly class TrainingBaseline
      * Volume decides the long run, not the other way round. Both ceilings are
      * applied and the tighter one wins: a race-distance band, and time on feet.
      */
-    private function longRunKm(User $user, float $weeklyVolumeKm, Carbon $asOf): float
+    private function longRunKm(User $user, float $weeklyVolumeKm, Carbon $asOf, ?Season $season): float
     {
-        $derived = $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm);
+        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
 
-        $capped = min($derived, $this->raceBandCapKm($user), $this->timeCapKm($user, $asOf));
+        $derived = max(
+            $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm),
+            $this->raceDistanceFloorKm($race, $season),
+        );
+
+        $capped = min(
+            $derived,
+            self::raceBandCapKm($race),
+            $this->timeCapKm($user, $asOf),
+            $weeklyVolumeKm * self::MAX_LONG_RUN_SHARE_OF_WEEK,
+        );
 
         return max(round($capped, 1), self::MIN_LONG_RUN_KM);
+    }
+
+    /**
+     * The baseline a sub-marathon arc has to start from for its long run to
+     * REACH the race distance at the arc's own peak — race km divided by the
+     * biggest volume multiplier the arc ever reaches, rounded up so the peak
+     * lands on or past the distance rather than a rounding step short.
+     *
+     * Dividing by the peak rather than flooring at the race distance outright
+     * is the whole point: the athlete arrives at race distance by running the
+     * ramp, not by being handed a 10% jump in week one. An arc too short or
+     * too flat to hold a ramp simply gets a smaller step — 0.0 when there is
+     * no race, no season, or a marathon-distance goal.
+     */
+    private function raceDistanceFloorKm(?RaceGoal $race, ?Season $season): float
+    {
+        if ($race === null || $season === null || (float) $race->distance_m >= self::RACE_DISTANCE_FLOOR_THRESHOLD_M) {
+            return 0.0;
+        }
+
+        $phases = array_map(
+            static fn (array $week): PlanPhase => $week['phase'],
+            $this->phaseSchedule->forRace($season->starts_at, $race->race_date, (float) $race->distance_m),
+        );
+
+        $multipliers = PhaseSchedule::volumeMultipliers($phases);
+        if ($multipliers === []) {
+            return 0.0;
+        }
+
+        return ceil((float) $race->distance_m / 1000.0 / max($multipliers) * 10) / 10;
     }
 
     private static function longRunShare(float $weeklyVolumeKm): float
@@ -216,10 +330,8 @@ final readonly class TrainingBaseline
         return self::LONG_RUN_SHARE_ABOVE_BANDS;
     }
 
-    private function raceBandCapKm(User $user): float
+    private static function raceBandCapKm(?RaceGoal $race): float
     {
-        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
-
         if ($race === null) {
             return self::LONG_RUN_CAP_NO_RACE_KM;
         }

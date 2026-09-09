@@ -195,6 +195,35 @@ it('drops the quality session a four-session week already carries when feedback 
     expect(qualityCount($rows))->toBe(0);
 });
 
+it('keeps a four-session race week\'s only quality session when the athlete is ahead of race pace, eased rather than dropped', function (): void {
+    // A ~58-minute 10K: the phase baseline spends the single slot on Interval,
+    // which is the VO2max work an athlete already inside their goal time no
+    // longer needs. It steps back to threshold instead of disappearing.
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], 10_000.0, false, null, -1, projectedRaceSeconds: 3469.0, keepsAQualitySession: true);
+
+    expect(qualityCount($rows))->toBe(1)
+        ->and(array_column($rows, 'session_type'))->toContain(SessionType::Tempo)
+        ->and(array_column($rows, 'session_type'))->not->toContain(SessionType::Interval);
+});
+
+it('still drops one of the two quality sessions a five-session week carries when the athlete is ahead of race pace', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 5, [], 10_000.0, false, null, -1, projectedRaceSeconds: 3469.0, keepsAQualitySession: true);
+
+    expect(qualityCount($rows))->toBe(1);
+});
+
+it('still empties a four-session race week\'s quality block when the week was run too hard', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], 10_000.0, false, null, -1, projectedRaceSeconds: 3469.0);
+
+    expect(qualityCount($rows))->toBe(0);
+});
+
+it('leaves a week with no quality block to floor alone', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Base, 3, [], 10_000.0, false, null, -1, keepsAQualitySession: true);
+
+    expect(qualityCount($rows))->toBe(0);
+});
+
 it('never asks a week for more quality days than it has room to place', function (): void {
     // Five sessions: Mon, Tue, Thu, Sat, Sun (long). Saturday and Monday flank
     // the long run, leaving only Tue and Thu to carry quality work -- so the

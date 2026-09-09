@@ -5,10 +5,12 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Notifications\StravaDisconnectedNotification;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -113,6 +115,60 @@ it('stamps revoked_at via markRevoked and is a no-op when already revoked', func
     $stampedAt = $connection->fresh()->revoked_at;
     $connection->markRevoked();
     expect($connection->fresh()->revoked_at->equalTo($stampedAt))->toBeTrue();
+});
+
+// One notification per revocation, from the one method every revoking call site
+// already goes through — eight of them, and a per-call-site notify would drift the
+// way "where can this user be reached" once did.
+it('tells the athlete once that syncing stopped', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create();
+
+    $connection->markRevoked();
+    $connection->markRevoked();
+
+    Notification::assertSentToTimes($user, StravaDisconnectedNotification::class, 1);
+});
+
+// Two failing jobs can each be holding an active copy of the row, which the
+// in-memory check cannot see: only the update that flips revoked_at notifies.
+it('tells the athlete once even when two loaded copies race to revoke', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create();
+    $racer = StravaConnection::query()->findOrFail($connection->id);
+
+    $connection->markRevoked();
+    $racer->markRevoked();
+
+    Notification::assertSentToTimes($user, StravaDisconnectedNotification::class, 1);
+});
+
+it('carries the revocation instant into the notification, so a re-revocation is its own row', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create();
+
+    $connection->markRevoked();
+
+    Notification::assertSentTo(
+        $user,
+        StravaDisconnectedNotification::class,
+        fn (StravaDisconnectedNotification $notification): bool => $notification->revokedAt->toDateTimeString() === $connection->fresh()->revoked_at?->toDateTimeString(),
+    );
+});
+
+// A deleted account is not an athlete to warn: the cascade takes the inbox row
+// with it, and the queued send would arrive after the user is gone.
+it('stays silent when the revocation is an account deletion', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $user->delete();
+
+    Notification::assertNothingSent();
 });
 
 it('excludes revoked connections from the active scope', function (): void {

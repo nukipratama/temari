@@ -72,11 +72,15 @@ describe('Inbox', () => {
     it('lists the rows it was given', () => {
         renderInbox([
             item(),
-            item({ id: 2, kind: 'unlock', title: 'Unlocked: Aura' }),
+            item({
+                id: 2,
+                kind: 'weekly_recap',
+                title: 'Your week, in one read',
+            }),
         ]);
 
         expect(screen.getByText('Your run is in')).toBeInTheDocument();
-        expect(screen.getByText('Unlocked: Aura')).toBeInTheDocument();
+        expect(screen.getByText('Your week, in one read')).toBeInTheDocument();
     });
 
     it('counts every unread row account-wide in the eyebrow, not just the window', () => {

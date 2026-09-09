@@ -90,7 +90,7 @@ describe('InboxRow', () => {
 
     it('makes the whole row tappable, reporting it read like the pill does', async () => {
         const { onOpen, container } = renderRow({
-            kind: 'unlock',
+            kind: 'streak_reminder',
             url: '/profile',
         });
 
@@ -122,25 +122,13 @@ describe('InboxRow', () => {
         ['weekly_recap', 'Weekly Recap'],
         ['monthly_recap', 'Monthly Recap'],
         ['streak_reminder', 'Streak'],
-        ['unlock', 'Unlock'],
+        ['plan_clamp', 'Plan'],
+        ['strava_disconnected', 'Strava'],
         ['test', 'Test'],
     ] as const)('labels the %s kind', (kind, label) => {
         renderRow({ kind, body: null });
 
         expect(screen.getByText(label)).toBeInTheDocument();
-    });
-
-    it('shows the rarity badge instead of the kind label for a rated unlock', () => {
-        renderRow({ kind: 'unlock', rarity: 'legendary' });
-
-        expect(screen.getByText('Legendary Unlock')).toBeInTheDocument();
-        expect(screen.queryByText('Unlock')).not.toBeInTheDocument();
-    });
-
-    it('falls back to the plain kind label for an unlock with no rarity', () => {
-        renderRow({ kind: 'unlock', rarity: null });
-
-        expect(screen.getByText('Unlock')).toBeInTheDocument();
     });
 
     it('draws distance and pace chips on a post-run row', () => {

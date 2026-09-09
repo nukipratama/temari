@@ -83,16 +83,6 @@ class Temari
         return self::SIGIL_FOR_MOOD[$mood] ?? self::SIGIL_FOR_MOOD[self::MOOD_ADEM];
     }
 
-    public static function accessoryForMoodPublic(string $mood): ?string
-    {
-        return match ($mood) {
-            self::MOOD_NYALA => 'headband',
-            self::MOOD_ENTENG => null,
-            self::MOOD_ADEM => 'mata-ngantuk',
-            default => null,
-        };
-    }
-
     /**
      * Mood an activity would carry once its post-run StoryLine is persisted, for
      * surfaces (share card, reveal) that render before narration lands. Returns the

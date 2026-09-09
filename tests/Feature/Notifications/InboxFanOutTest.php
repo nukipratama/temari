@@ -81,7 +81,7 @@ it('still records the inbox row for a user with no outbound channel wired', func
 
 // A queued notification that exhausts a retry re-runs every channel. The
 // outbound channels dedupe on the delivery claim; the inbox dedupes on its own
-// unique (user, dedupe key) pair, since streak and unlock rows have no analysis.
+// unique (user, dedupe key) pair, since a streak row has no analysis behind it.
 it('does not add a second inbox row when the notification is retried', function (): void {
     expectPushSends(1);
     $user = fullyWiredUser();

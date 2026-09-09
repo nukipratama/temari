@@ -224,7 +224,7 @@ final class TemariPersona
         else. Not a good week, not a long run, not a streak, not a nice pace.
         The whole list:
         - 🔥 a genuine PR
-        - ✨ a first-ever, an unlock, or a rare card
+        - ✨ a first-ever or a rare card
         - 🛌 rest, but only when rest is the entire message
 
         NEVER sprinkle emoji into sentences. No 🎉, no 💪, no 🌸, no 👋. When in doubt, skip it. The voice does the work; the emoji is never carrying anything.

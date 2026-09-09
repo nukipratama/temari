@@ -13,6 +13,7 @@ use App\Models\Scopes\KnownAnalysisTypeScope;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Strava\StravaClient;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +39,10 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class UserEraser
 {
+    public function __construct(private StravaClient $stravaClient)
+    {
+    }
+
     /**
      * `ai_analyses.subject_type` strings keyed directly by user id (the
      * per-user / per-day / per-month narration subjects). Activity, RunCard,
@@ -64,6 +69,7 @@ final readonly class UserEraser
         // means a failed delete leaves a snapshot on a user who still exists,
         // which is invisible — the report prefers live identity over it.
         $this->snapshotIdentityOntoUsage($user);
+        $this->releaseStravaGrant($user);
 
         DB::transaction(function () use ($id, $user): void {
             // Resolved inside the transaction rather than reused from any
@@ -78,9 +84,43 @@ final readonly class UserEraser
             self::pushSubscriptionQuery($user)->delete();
 
             // Everything else (activities -> details/streams/cards/PRs, story
-            // lines, snapshots, unlocks, profiles, connections) cascades.
+            // lines, snapshots, profiles, connections) cascades.
             $user->delete();
         });
+    }
+
+    /**
+     * Hands the athlete's grant back to Strava before the local rows go, and
+     * marks the connection revoked either way. The `deleting` hook on
+     * {@see User} only marks a connection revoked, which frees nothing on
+     * Strava's side: the athlete kept counting against the app's allocation
+     * long after they had deleted their account.
+     *
+     * Best effort, and it cannot be anything else — someone who asked to be
+     * deleted is not left undeleted because Strava is unreachable, which is
+     * why {@see StravaClient::deauthorize()} reports rather than throws.
+     *
+     * Public so a caller that wants to tell the operator whether Strava took
+     * it (e.g. {@see \App\Console\Commands\Strava\RemoveAthleteCommand}) can
+     * call this directly instead of re-implementing the release: calling it
+     * again from {@see self::erase()} right after is a no-op, since the
+     * connection is already revoked by then.
+     *
+     * @return bool|null Whether Strava accepted the deauthorize, or null when
+     *                    there was no live grant to release.
+     */
+    public function releaseStravaGrant(User $user): ?bool
+    {
+        $connection = $user->stravaConnection;
+
+        if ($connection === null || $connection->isRevoked()) {
+            return null;
+        }
+
+        $released = $this->stravaClient->deauthorize($connection);
+        $connection->markRevoked(notify: false);
+
+        return $released;
     }
 
     /**

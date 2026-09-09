@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 use App\Enums\ExperienceLevel;
 use App\Models\RaceGoal;
+use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -32,7 +34,7 @@ function baselineWithEasyPace(?int $easySecPerKm): TrainingBaseline
             : ['easy' => $easySecPerKm, 'marathon' => 320, 'threshold' => 292, 'interval' => 268],
     );
 
-    return new TrainingBaseline($vdot, $paces);
+    return new TrainingBaseline($vdot, $paces, new PhaseSchedule());
 }
 
 function weeksOf(User $user, array $volumesKm, int $runs = 4): void
@@ -137,6 +139,57 @@ it('caps the long run by race distance, the ratio inverting as the race lengthen
     'half' => [21_097, 22.0],
     'marathon' => [42_195, 35.0],
 ]);
+
+it('floors the long run so the arc reaches the race distance at its own peak', function (): void {
+    $user = User::factory()->create();
+    weeksOf($user, array_fill(0, 6, 26.0));
+    RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2026-10-03']);
+    Season::factory()->for($user)->create([
+        'anchor_weekly_volume_km' => 26.0,
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2026-10-03',
+    ]);
+
+    // The share alone gives 26.0 x 0.35 = 9.1 km, and this eight-week arc
+    // only ever ramps to 1.075 — not enough to carry 9.1 km to the race
+    // distance. The floor lifts the baseline to 9.4, which the ramp then
+    // takes past 10 km, rather than handing over 10 km in week one.
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.4);
+});
+
+it('leaves a marathon goal to its own coaching rather than flooring at race distance', function (): void {
+    $user = User::factory()->create();
+    weeksOf($user, array_fill(0, 6, 26.0));
+    RaceGoal::factory()->for($user)->create(['distance_m' => 42_195, 'race_date' => '2026-10-03']);
+    Season::factory()->for($user)->create([
+        'anchor_weekly_volume_km' => 26.0,
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2026-10-03',
+    ]);
+
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.1);
+});
+
+it('never lets the floor take more than half the week', function (): void {
+    $user = User::factory()->create();
+    weeksOf($user, array_fill(0, 6, 12.0));
+    RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2026-10-05']);
+    Season::factory()->for($user)->create([
+        'anchor_weekly_volume_km' => 12.0,
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2026-10-05',
+    ]);
+
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(6.0);
+});
+
+it('applies no race-distance floor without a season to place the week in', function (): void {
+    $user = User::factory()->create();
+    weeksOf($user, array_fill(0, 6, 26.0));
+    RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2026-10-05']);
+
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.1);
+});
 
 it('falls back to the half-marathon cap when no race is set', function (): void {
     $user = User::factory()->create();

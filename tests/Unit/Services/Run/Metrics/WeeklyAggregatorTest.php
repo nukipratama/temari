@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
@@ -18,9 +17,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
-    $unlockEngine = Mockery::mock(GrantEligibleUnlocksAction::class);
-    $unlockEngine->shouldReceive('__invoke')->andReturn([]);
-    $this->aggregator = new WeeklyAggregator(app(TrainingLoad::class), $unlockEngine);
+    $this->aggregator = new WeeklyAggregator(app(TrainingLoad::class));
 });
 afterEach(fn () => Carbon::setTestNow());
 

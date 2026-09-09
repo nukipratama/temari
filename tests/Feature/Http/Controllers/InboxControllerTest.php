@@ -167,28 +167,6 @@ it('snaps a hand-typed window size up to the page step and caps it', function ()
         ->assertJsonPath('props.shown', 500);
 });
 
-it('reads an unlock rarity out of the catalog rather than the payload', function (): void {
-    config()->set('temari_unlocks.accessory.medal_gold', ['name' => 'Gold Medal', 'rarity' => 'rare']);
-
-    $user = User::factory()->create();
-    InboxNotification::factory()->for($user)->create([
-        'kind' => NotificationKind::Unlock,
-        'payload' => ['unlock_key' => 'accessory.medal_gold', 'name' => 'Gold Medal'],
-    ]);
-
-    expect(inboxRows($this->actingAs($user))[0]['rarity'])->toBe('rare');
-});
-
-it('leaves an unlock with no catalog entry unrated', function (): void {
-    $user = User::factory()->create();
-    InboxNotification::factory()->for($user)->create([
-        'kind' => NotificationKind::Unlock,
-        'payload' => ['unlock_key' => 'season.9.track_3'],
-    ]);
-
-    expect(inboxRows($this->actingAs($user))[0]['rarity'])->toBeNull();
-});
-
 it('carries distance and moving time for a post-run row', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();

@@ -7,6 +7,7 @@ import type {
 import {
     formatMonthDayId,
     formatPace,
+    isoDateLocal,
     mondayOf,
     parseNaiveLocalDate,
     sundayOf,
@@ -174,6 +175,28 @@ export function weekRangeLabel(weekStartIso: string): string {
 }
 
 /**
+ * Whether the goal race falls inside the week starting `weekStartIso`. Read off
+ * the race date the page already holds rather than a per-week flag: the season
+ * summary covers weeks far past the periodizer's day-row horizon, which is
+ * exactly where a race sits.
+ */
+export function isRaceWeek(
+    weekStartIso: string,
+    raceDateIso: string | null,
+): boolean {
+    if (raceDateIso === null) {
+        return false;
+    }
+
+    const monday = mondayOf(weekStartIso);
+
+    return (
+        raceDateIso >= isoDateLocal(monday) &&
+        raceDateIso <= isoDateLocal(sundayOf(monday))
+    );
+}
+
+/**
  * The eased session on one line. The distance is dropped when the clamp left
  * it alone — an intensity-only step-down (Tempo/Interval to Easy keeps the
  * same core km) otherwise prints the identical figure twice, which reads as a
@@ -190,6 +213,30 @@ export function clampSummary(clamp: PlanDayClamp, plannedKm: number): string {
         parts.push(`${formatPace(clamp.pace_sec_per_km)}/km`);
     }
     return parts.join(' · ');
+}
+
+/**
+ * A day the plan has already judged states both facts it recorded: what it
+ * asked for, and what was run. Every other day shows the ask alone, sized
+ * against the athlete's fitness today.
+ */
+export function kmLabel(day: PlanDay): string {
+    if (day.prescribed_km == null) {
+        return `${day.distance_km} km`;
+    }
+
+    return `${day.prescribed_km} km asked · ${day.actual_km ?? 0} km run`;
+}
+
+/** The core set's pace target, which is the one pace a day is read at. */
+export function paceLabel(day: PlanDay): string | null {
+    const core = day.segments.find(
+        (s) => s.key === 'main' || s.key === 'interval',
+    );
+
+    return core?.pace_sec_per_km == null
+        ? null
+        : `${formatPace(core.pace_sec_per_km)}/km`;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

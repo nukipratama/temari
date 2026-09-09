@@ -49,7 +49,7 @@ A fixed vocabulary — keys are internal, the labels + emoji are the display sur
 
 ## Run-level moods
 
-A finished run gets a single **mood** instead — six values on [Temari](../../app/Services/Run/Story/Temari.php): `blazing` (PR / hard win), `easy` (easy / negative split), `wobbly` (heat strain), `gassed` (decoupling drift), `overloaded` (hard-zone heavy / overreaching), `chill` (rest / default). The selection cascade is `moodForActivity` ([`moodForActivity()`](../../app/Services/Run/Story/Temari.php#L116)); it reads the run's [[stream-analysis|stream summary]] and weather. This mood is what [[gamification]] writes onto the run's `StoryLine`, and each mood also carries a 4-char "sigil" and an optional accessory hint for the SVG renderer ([`SIGIL_FOR_MOOD`](../../app/Services/Run/Story/Temari.php#L32)).
+A finished run gets a single **mood** instead — six values on [Temari](../../app/Services/Run/Story/Temari.php): `blazing` (PR / hard win), `easy` (easy / negative split), `wobbly` (heat strain), `gassed` (decoupling drift), `overloaded` (hard-zone heavy / overreaching), `chill` (rest / default). The selection cascade is `moodForActivity` ([`moodForActivity()`](../../app/Services/Run/Story/Temari.php#L116)); it reads the run's [[stream-analysis|stream summary]] and weather. This mood is what [[gamification]] writes onto the run's `StoryLine`, and each mood also carries a 4-char "sigil" for the SVG renderer ([`SIGIL_FOR_MOOD`](../../app/Services/Run/Story/Temari.php#L32)).
 
 The bridge between the two systems is `moodForVibe` ([`moodForVibe()`](../../app/Services/Run/Story/Temari.php#L148)): when there's no run to react to, the daily greeting still needs a mood, so each vibe collapses onto the nearest run-mood.
 

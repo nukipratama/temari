@@ -8,6 +8,7 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
@@ -139,6 +140,16 @@ it('drops a quality session when the projection is already inside the goal time'
 
     expect($decision['reason'])->toBe(AdaptationReason::AheadOfRacePace)
         ->and($decision['quality_delta'])->toBe(-1);
+});
+
+it('relaxes rather than removes the last quality session when the athlete is ahead of race pace', function (): void {
+    $ahead = decide(raceGapRatio: 0.9)['reason'];
+
+    expect($ahead->keepsAQualitySession())->toBeTrue()
+        ->and(AdaptationReason::RanTooHard->keepsAQualitySession())->toBeFalse()
+        ->and(AdaptationReason::BehindRacePace->keepsAQualitySession())->toBeFalse()
+        ->and($ahead->headline())->toBe('one quality session')
+        ->and($ahead->detail(100))->toContain('eased toward goal pace rather than dropped');
 });
 
 it('holds steady inside the race-gap margin', function (): void {
@@ -457,6 +468,43 @@ it('still lets one easy day far above Z2 speak for the week', function (): void 
 
     expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
         ->and($decision['quality_delta'])->toBe(-1);
+
+    Carbon::setTestNow();
+});
+
+it('drops the behind-pace verdict once the athlete\'s finished block leaves the projection window', function (): void {
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create([
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3_540,
+        'race_date' => '2026-11-01',
+    ]);
+    foreach ([
+        ['1km', 309.0, '2026-08-22'],
+        ['5km', 1_675.0, '2026-08-28'],
+        ['10km', 3_939.0, '2026-05-09'],
+        ['15km', 6_177.0, '2026-05-16'],
+        ['half_marathon', 8_844.0, '2026-05-16'],
+    ] as [$category, $valueSec, $setAt]) {
+        PersonalRecord::factory()->for($user)->create([
+            'category' => $category,
+            'value_sec' => $valueSec,
+            'set_at' => $setAt,
+        ]);
+    }
+
+    // Early September: the spring block is still inside the window, its fade
+    // pulls the fitted exponent to 1.1075, and the 10 km projection lands at
+    // 64:21 against a 59:00 goal.
+    Carbon::setTestNow('2026-09-01 08:00:00');
+    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-09-01'), Carbon::parse('2026-09-01'), $race)['reason'])
+        ->toBe(AdaptationReason::BehindRacePace);
+
+    // Three weeks later the same records are out of the window and only the
+    // current block is fitted, so the athlete is no longer told to add work.
+    Carbon::setTestNow('2026-09-21 08:00:00');
+    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-09-21'), Carbon::parse('2026-09-21'), $race)['reason'])
+        ->not->toBe(AdaptationReason::BehindRacePace);
 
     Carbon::setTestNow();
 });

@@ -20,9 +20,7 @@ use Inertia\Response;
 
 /**
  * "Race", not "Goal": the user-facing name for training-toward-a-race. The
- * DB layer still says `RaceGoal`/`race_goals` (implementation detail);
- * `GoalResolver` already means the unrelated accessory-unlock progress
- * catalog (surfaced on `/accessories`), so this stays namespaced apart from it.
+ * DB layer still says `RaceGoal`/`race_goals` (implementation detail).
  */
 class RaceController extends Controller
 {

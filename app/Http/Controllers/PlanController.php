@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Actions\Gamification\GrantSeasonUnlocksAction;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
@@ -12,9 +11,9 @@ use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\Season;
 use App\Models\User;
 use App\Services\AI\PlanNarrationRequester;
-use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\ReadinessCeiling;
@@ -64,7 +63,6 @@ class PlanController extends Controller
         SeasonService $seasonService,
         SeasonStreakSummaryBuilder $seasonStreakBuilder,
         SeasonSummaryBuilder $seasonSummaryBuilder,
-        GrantSeasonUnlocksAction $grantSeasonUnlocks,
         SessionMatcher $sessionMatcher,
         PlanNarrationRequester $narrationRequester,
     ): Response {
@@ -73,19 +71,27 @@ class PlanController extends Controller
         $today = Carbon::today();
         $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
 
-        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        // Two requests serve this page: the initial render, then Inertia's
+        // partial for the deferred props — and the whole action runs again on
+        // the second one. Every prop is a closure so the partial resolves only
+        // what it asked for; the season is memoized because three props want it
+        // and `ensureCurrent()` writes.
+        $season = null;
+        $loadSeason = function () use (&$season, $user, $today, $seasonService): Season {
+            if ($season === null) {
+                $season = $seasonService->ensureCurrent($user, $today);
+            }
 
-        $season = $seasonService->ensureCurrent($user, $today);
-        $seasonCtx = SeasonGamificationContext::forSeason($user, $season, $today, $trainingLoad);
-        $grantSeasonUnlocks($user, $season, $seasonCtx);
+            return $season;
+        };
 
         return Inertia::render('Plan', [
-            'race' => $this->racePayload($race),
-            'sessionsPerWeek' => $baseline->forUser($user, $today)['sessions_per_week'],
+            'race' => fn (): ?array => $this->racePayload($this->activeRace($user)),
+            'sessionsPerWeek' => fn (): int => $baseline->forUser($user, $today)['sessions_per_week'],
             'weeks' => Inertia::defer(fn (): array => $this->weeksPayload(
                 $user,
                 $today,
-                $race,
+                $this->activeRace($user),
                 $baseline,
                 $trainingLoad,
                 $vdotEstimator,
@@ -93,9 +99,9 @@ class PlanController extends Controller
                 $sessionMatcher,
                 $narrationRequester,
             )),
-            'season' => $seasonStreakBuilder->seasonPayload($user, $season, $today, $seasonCtx),
-            'seasonSummary' => Inertia::defer(fn (): array => $seasonSummaryBuilder->build($user, $season, $today)),
-            'seasonAdherencePct' => Inertia::defer(fn (): ?int => $seasonSummaryBuilder->adherencePct($user, $season)),
+            'season' => fn (): ?array => $seasonStreakBuilder->seasonPayload($user, $loadSeason(), $today),
+            'seasonSummary' => Inertia::defer(fn (): array => $seasonSummaryBuilder->build($user, $loadSeason(), $today)),
+            'seasonAdherencePct' => Inertia::defer(fn (): ?int => $seasonSummaryBuilder->adherencePct($user, $loadSeason())),
             'adaptation' => Inertia::defer(fn (): ?array => $this->adaptationPayload($user, $currentWeekStart)),
             'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
             'disclaimer' => TrainingDisclaimer::TEXT,
@@ -110,8 +116,13 @@ class PlanController extends Controller
 
                 return $narrationRequester->payloadsForCurrentWeek($user, $today);
             }),
-            'regenerateCooldownSeconds' => $narrationRequester->regenerateCooldownRemaining($user),
+            'regenerateCooldownSeconds' => fn (): ?int => $narrationRequester->regenerateCooldownRemaining($user),
         ]);
+    }
+
+    private function activeRace(User $user): ?RaceGoal
+    {
+        return RaceGoal::query()->where('user_id', $user->id)->active()->first();
     }
 
     /**

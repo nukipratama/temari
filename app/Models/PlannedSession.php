@@ -27,6 +27,12 @@ use Override;
  * (daily), the morning after a day passes; `skipped` is written earlier,
  * whenever the athlete explicitly excuses the day via `PlanController::update()`.
  *
+ * `volume_multiplier` is the one number generation stamps rather than leaves
+ * to render: it is the week's position in its season-long arc, which a render
+ * window that reaches back only a few weeks cannot see. Fitness still enters
+ * fresh at render — {@see \App\Services\Run\Plan\TrainingBaseline} is what the
+ * multiplier scales. See `docs/decisions/the-arc-is-anchored-once.md`.
+ *
  * `race_distance_m` is set only on a {@see SessionType::Race} row, and is what
  * keeps race day self-describing: `plan:close-finished-races` retires the
  * {@see RaceGoal} at 00:02, before `plan:score-compliance` grades the day, so a
@@ -40,6 +46,7 @@ use Override;
  * @property SessionType $session_type
  * @property float|null $prescribed_km
  * @property float|null $clamped_km
+ * @property float|null $volume_multiplier
  * @property int|null $race_distance_m
  * @property bool $pinned
  * @property bool $skipped
@@ -61,6 +68,7 @@ use Override;
     'compliance_score',
     'prescribed_km',
     'clamped_km',
+    'volume_multiplier',
     'ran_anyway',
     'rest_clamped_at',
 ])]
@@ -79,9 +87,8 @@ class PlannedSession extends Model
 
     /**
      * Count PAST, SCORED `Rest` rows where nothing was logged that date
-     * (`ran_anyway = false`) — "honored" per
-     * {@see \App\Actions\Gamification\GrantSeasonUnlocksAction}'s and the
-     * badge board's shared definition. `[$from, $to]` scopes to one season;
+     * (`ran_anyway = false`) — the badge board's "honored" definition.
+     * `[$from, $to]` scopes to one season;
      * omitted, it's the lifetime count across the user's whole plan history.
      * A past row `plan:score-compliance` hasn't reached yet is excluded
      * (still `Planned`, not proven honored) rather than assumed honored —
@@ -140,6 +147,7 @@ class PlannedSession extends Model
             'compliance_score' => 'integer',
             'prescribed_km' => 'float',
             'clamped_km' => 'float',
+            'volume_multiplier' => 'float',
             'ran_anyway' => 'boolean',
             'rest_clamped_at' => 'datetime',
         ];

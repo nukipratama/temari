@@ -14,11 +14,15 @@ use Illuminate\Support\Carbon;
  *
  * Weeks are ISO (Monday-starting), keyed by their Monday date, so weekly
  * regeneration and mid-week on-demand regeneration agree on week boundaries.
- * {@see self::forRace()} always returns the FULL arc from today's week
- * through race week inclusive — callers ({@see Periodizer} for writing,
- * {@see \App\Http\Controllers\PlanController} for rendering) slice however
- * many weeks they actually need. This keeps the base/build/peak ratios
- * correct even when only a lookahead window is materialized.
+ * {@see self::forRace()} always returns the FULL arc from its start week
+ * through race week inclusive — callers slice however many weeks they
+ * actually need. This keeps the base/build/peak ratios correct even when
+ * only a lookahead window is materialized.
+ *
+ * The arc starts where the {@see \App\Models\Season} does, never at "today":
+ * counting it from the current week put every week the athlete was actually
+ * asked to train at index 0, so Build, Peak and the scheduled Deload were
+ * only ever previewed. See `docs/decisions/the-arc-is-anchored-once.md`.
  */
 final class PhaseSchedule
 {
@@ -55,11 +59,11 @@ final class PhaseSchedule
      * the ramp compounds unbroken — five Build weeks at
      * {@see self::BUILD_WEEKLY_RAMP} is +33% with nothing absorbing it — and
      * the only Deload that existed was the reactive one
-     * {@see \App\Services\Run\Plan\Periodizer::applyDeload()} applies to the
-     * current week once monotony, strain or adherence has ALREADY slipped. The
-     * self-scaled arc has had a scheduled down week all along
-     * ({@see self::SELF_SCALED_CYCLE_WEEKS}); the arc with a deadline is the one
-     * that needed it more.
+     * {@see \App\Services\Run\Plan\Periodizer::sliceFromCurrentWeek()} applies
+     * to the current week once monotony, strain or adherence has ALREADY
+     * slipped. The self-scaled arc has had a scheduled down week all along
+     * ({@see self::SELF_SCALED_CYCLE_WEEKS}); the arc with a deadline is the
+     * one that needed it more.
      */
     private const int DELOAD_EVERY_WEEKS = 4;
 
@@ -77,9 +81,9 @@ final class PhaseSchedule
     /**
      * @return list<array{week_start: Carbon, phase: PlanPhase}>
      */
-    public function forRace(Carbon $today, Carbon $raceDate, float $raceDistanceM): array
+    public function forRace(Carbon $arcStart, Carbon $raceDate, float $raceDistanceM): array
     {
-        $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $currentWeekStart = $arcStart->copy()->startOfWeek(Carbon::MONDAY);
         $raceWeekStart = $raceDate->copy()->startOfWeek(Carbon::MONDAY);
         // diffInWeeks is signed, so a race day already behind us counts down
         // past zero. Floored at one week: `plan:close-finished-races` retires a
@@ -123,14 +127,20 @@ final class PhaseSchedule
     }
 
     /**
+     * `$opensWithRecovery` puts a single recovery week at the head of the arc,
+     * before the cycle starts, for an athlete who has just raced. The cycle
+     * then runs from the week after it, so the recovery week is an extra week
+     * rather than one borrowed from the first build block.
+     *
      * @return list<array{week_start: Carbon, phase: PlanPhase}>
      */
-    public function selfScaled(Carbon $today, int $weeks): array
+    public function selfScaled(Carbon $arcStart, int $weeks, bool $opensWithRecovery = false): array
     {
-        $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $currentWeekStart = $arcStart->copy()->startOfWeek(Carbon::MONDAY);
 
-        $phases = [];
-        for ($i = 0; $i < $weeks; $i++) {
+        $phases = $opensWithRecovery ? [PlanPhase::Deload] : [];
+        $cycleWeeks = $weeks - count($phases);
+        for ($i = 0; $i < $cycleWeeks; $i++) {
             $cyclePosition = $i % self::SELF_SCALED_CYCLE_WEEKS;
             $phases[] = $cyclePosition < self::SELF_SCALED_CYCLE_WEEKS - 1 ? PlanPhase::Build : PlanPhase::Deload;
         }

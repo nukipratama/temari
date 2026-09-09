@@ -9,8 +9,6 @@ code_refs:
   - app/Notifications/Channels/InAppChannel.php
   - app/Models/InboxNotification.php
   - app/Notifications/Messages/InboxMessage.php
-  - app/Notifications/UnlockGrantedNotification.php
-  - app/Actions/Gamification/GrantEligibleUnlocksAction.php
   - app/Services/Inertia/NotificationProps.php
   - database/migrations/2026_08_13_141500_create_notifications_table.php
 ---
@@ -19,6 +17,8 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-13)
 
+> **Every mention of an unlock below is historical (noted 2026-09-09).** The whole unlock system — `user_unlocks`, both grant actions, `UnlockGrantedNotification` and the `unlock` notification kind — was removed once nothing rendered a grant; see [[gamification]]. The always-on-channel decision this note records is unaffected, and the inbox-only routing it describes now applies to `plan_clamp` alone.
+
 > **One consequence below is superseded (noted 2026-08-14) by [[demo-notifications-are-inbox-only]].** The note says the demo account still receives nothing and its inbox stays empty. [ChannelRouter::channelsFor](app/Services/Notifications/ChannelRouter.php#L50) now always leads with `InAppChannel`, and only `outboundChannelsFor()` excludes the demo — so the demo inbox does fill, it just never sends outbound. The always-on-channel decision this note records is unchanged.
 
 ## Context
@@ -26,8 +26,7 @@ code_refs:
 Everything Temari said was write-once and read-never. A post-run story reached
 Telegram or a lock screen and then existed only as an `ai_analyses` row nobody
 surfaced; a streak nudge was gone the moment it was dismissed; an unlock was a
-session flash ([GrantEligibleUnlocksAction](../../app/Actions/Gamification/GrantEligibleUnlocksAction.php)),
-which meant an unlock earned during a background ingest, with no session to flash
+session flash (`GrantEligibleUnlocksAction`, since removed), which meant an unlock earned during a background ingest, with no session to flash
 into, was celebrated to nobody at all.
 
 The obvious shape for a notification centre is a second write next to each

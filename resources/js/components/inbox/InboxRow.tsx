@@ -16,7 +16,6 @@ import {
     formatRelativeId,
     paceSecPerKm,
 } from '@/lib/pace';
-import { RARITY_INK, RARITY_LABELS } from '@/lib/runcard';
 import { ICON_TONE, type Tone } from '@/lib/tones';
 
 const KIND_LABEL: Record<NotificationKind, string> = {
@@ -24,7 +23,8 @@ const KIND_LABEL: Record<NotificationKind, string> = {
     weekly_recap: 'Weekly Recap',
     monthly_recap: 'Monthly Recap',
     streak_reminder: 'Streak',
-    unlock: 'Unlock',
+    plan_clamp: 'Plan',
+    strava_disconnected: 'Strava',
     test: 'Test',
 };
 
@@ -33,7 +33,8 @@ const KIND_ICON: Record<NotificationKind, string> = {
     weekly_recap: 'mdi:calendar-week',
     monthly_recap: 'mdi:calendar-blank-outline',
     streak_reminder: 'mdi:fire',
-    unlock: 'mdi:trophy-outline',
+    plan_clamp: 'mdi:sleep',
+    strava_disconnected: 'mdi:sync-off',
     test: 'mdi:bell-outline',
 };
 
@@ -42,7 +43,8 @@ const KIND_TONE: Record<NotificationKind, Tone> = {
     weekly_recap: 'neutral',
     monthly_recap: 'neutral',
     streak_reminder: 'accent',
-    unlock: 'pop',
+    plan_clamp: 'neutral',
+    strava_disconnected: 'neutral',
     test: 'neutral',
 };
 
@@ -115,22 +117,7 @@ export default function InboxRow({
 
                 <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-3">
-                        {item.kind === 'unlock' && item.rarity !== null ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-label-micro text-foreground">
-                                <Icon
-                                    icon="mdi:medal-outline"
-                                    width={11}
-                                    height={11}
-                                    className={RARITY_INK[item.rarity]}
-                                    aria-hidden
-                                />
-                                {RARITY_LABELS[item.rarity]} Unlock
-                            </span>
-                        ) : (
-                            <Eyebrow token="micro">
-                                {KIND_LABEL[item.kind]}
-                            </Eyebrow>
-                        )}
+                        <Eyebrow token="micro">{KIND_LABEL[item.kind]}</Eyebrow>
                         <button
                             type="button"
                             onClick={() => setShowAbsolute((prev) => !prev)}

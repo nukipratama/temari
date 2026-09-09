@@ -22,55 +22,7 @@ it('forUser scopes to cards whose activity belongs to the user', function (): vo
     expect(RunCard::query()->forUser($user->id)->pluck('id')->all())->toBe([$mine->id]);
 });
 
-it('badgeCountsForUser counts each tracked badge across the user\'s cards', function (): void {
-    $user = User::factory()->create();
-    RunCard::factory()->for(Activity::factory()->for($user))->create([
-        'badges' => [Badge::EarlyBird->value, Badge::NegativeSplit->value],
-    ]);
-    RunCard::factory()->for(Activity::factory()->for($user))->create([
-        'badges' => [Badge::EarlyBird->value],
-    ]);
-
-    $counts = RunCard::badgeCountsForUser($user->id);
-
-    expect($counts[Badge::EarlyBird->value])->toBe(2)
-        ->and($counts[Badge::NegativeSplit->value])->toBe(1)
-        ->and($counts[Badge::HeatTamer->value])->toBe(0);
-});
-
-it('badgeCountsForUser ignores untracked badge values', function (): void {
-    $user = User::factory()->create();
-    RunCard::factory()->for(Activity::factory()->for($user))->create([
-        'badges' => ['not_a_tracked_badge', Badge::EarlyBird->value],
-    ]);
-
-    $counts = RunCard::badgeCountsForUser($user->id);
-
-    expect($counts[Badge::EarlyBird->value])->toBe(1)
-        ->and($counts)->not->toHaveKey('not_a_tracked_badge');
-});
-
-it('badgeCountsForUser returns every tracked badge at zero for a user with no cards', function (): void {
-    $user = User::factory()->create();
-
-    $counts = RunCard::badgeCountsForUser($user->id);
-
-    foreach (Badge::tracked() as $badge) {
-        expect($counts[$badge->value])->toBe(0);
-    }
-});
-
-it('badgeCountsForUser scopes to the given user', function (): void {
-    $user = User::factory()->create();
-    $other = User::factory()->create();
-    RunCard::factory()->for(Activity::factory()->for($other))->create([
-        'badges' => [Badge::EarlyBird->value],
-    ]);
-
-    expect(RunCard::badgeCountsForUser($user->id)[Badge::EarlyBird->value])->toBe(0);
-});
-
-it('allBadgeCountsForUser counts every badge case, not just tracked ones', function (): void {
+it('allBadgeCountsForUser counts every badge case', function (): void {
     $user = User::factory()->create();
     RunCard::factory()->for(Activity::factory()->for($user))->create([
         'badges' => [Badge::Speedster->value, Badge::EarlyBird->value],

@@ -124,7 +124,7 @@ final class LegalDocuments
                 [
                     'heading' => 'Deleting your account',
                     'paragraphs' => [
-                        'Settings has a delete button. It removes your account and everything hanging off it, including activities, their details and streams, cards, records, weekly and monthly snapshots, unlocks, notification subscriptions and every piece of text Temari wrote about you, and it unlinks your Strava connection.',
+                        'Settings has a delete button. It removes your account and everything hanging off it, including activities, their details and streams, cards, records, weekly and monthly snapshots, notification subscriptions and every piece of text Temari wrote about you, and it unlinks your Strava connection.',
                         'One narrow exception, stated plainly because the sentence above would otherwise be untrue: the AI cost ledger is kept. Those rows are spending records rather than running data, and to stay attributable after the account is gone they keep your name and your Strava athlete id alongside the cost. They hold no activity data. If you want that removed too, ask.',
                         'Deleting here does not delete anything in Strava. Your activities are yours and stay there.',
                     ],

@@ -21,6 +21,11 @@ use LogicException;
  * phase→volume-multiplier math is relative to how far into a Peak/Taper/
  * Deload block a week sits, which only a shared computation over the same
  * trailing history can get right.
+ *
+ * That multiplier is now READ off the row rather than recomputed: it counts
+ * from the season's arc start, which a window reaching back three weeks
+ * cannot see. The recompute stays as the fallback for rows written before
+ * generation stamped it. See `docs/decisions/the-arc-is-anchored-once.md`.
  */
 final class PlanRenderer
 {
@@ -37,22 +42,53 @@ final class PlanRenderer
      */
     public static function weekPhasesAndMultipliers(Collection $sessionsByWeek): array
     {
-        $phaseByWeek = $sessionsByWeek->map(function ($weekSessions): PlanPhase {
-            $first = $weekSessions->first();
-            if ($first === null) {
-                // groupBy never produces an empty group; this only guards the type.
-                throw new LogicException('A grouped week unexpectedly had no sessions.');
+        $rowByWeek = $sessionsByWeek->map(fn ($weekSessions): PlannedSession => self::weekRow($weekSessions))->sortKeys();
+
+        $phaseByWeek = $rowByWeek->map(fn (PlannedSession $row): PlanPhase => $row->phase);
+
+        $stamped = [];
+        foreach ($rowByWeek as $weekKey => $row) {
+            if ($row->volume_multiplier !== null) {
+                $stamped[$weekKey] = $row->volume_multiplier;
             }
+        }
 
-            return $first->phase;
-        })->sortKeys();
-
-        $multiplierByWeek = array_combine(
-            $phaseByWeek->keys()->all(),
-            PhaseSchedule::volumeMultipliers(array_values($phaseByWeek->values()->all())),
-        );
+        // A row written before generation started stamping its own multiplier
+        // has none to read, and a window mixing stamped and unstamped weeks
+        // cannot be read either way — so the whole window falls back to the
+        // recompute, which is what every week used to get.
+        $multiplierByWeek = count($stamped) === $phaseByWeek->count()
+            ? $stamped
+            : array_combine(
+                $phaseByWeek->keys()->all(),
+                PhaseSchedule::volumeMultipliers(array_values($phaseByWeek->values()->all())),
+            );
 
         return [$phaseByWeek, $multiplierByWeek];
+    }
+
+    /**
+     * The row a week reads its phase AND multiplier from — one row, so the
+     * two can never disagree with each other. Regeneration never rewrites a
+     * pinned row, nor one already carrying a verdict, nor a date already
+     * behind it, so a week can hold a stale row from an older generation
+     * next to fresh ones. Every regeneration writes forward to the week's
+     * end, so the latest-dated row it could still own is the one carrying
+     * its most recent decision; only a week pinned to the last day reads a
+     * pinned row.
+     *
+     * @param  Collection<int, PlannedSession>  $weekSessions
+     */
+    private static function weekRow(Collection $weekSessions): PlannedSession
+    {
+        $byDate = $weekSessions->sortBy(fn (PlannedSession $s): string => $s->date->toDateString());
+        $row = $byDate->last(fn (PlannedSession $s): bool => ! $s->pinned) ?? $byDate->last();
+        if ($row === null) {
+            // groupBy never produces an empty group; this only guards the type.
+            throw new LogicException('A grouped week unexpectedly had no sessions.');
+        }
+
+        return $row;
     }
 
     /**
@@ -77,7 +113,8 @@ final class PlanRenderer
      * `distance_km`/`SessionMatcher`'s planned-km input. `$sessions` should
      * include enough trailing history for {@see self::weekPhasesAndMultipliers()}'s
      * ramp to be correct for the *earliest* week being scored, not just the
-     * dates the caller actually wants km for.
+     * dates the caller actually wants km for — which matters only while the
+     * range still holds a row written before the multiplier was stamped.
      *
      * A `Race` day is sized from its own stored `race_distance_m` rather than
      * the training baseline, so this keeps working once the goal behind it has

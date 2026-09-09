@@ -14,6 +14,7 @@ use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -557,4 +558,51 @@ it('floors background headroom at zero once live reads pass the reserve', functi
     }
 
     expect(new StravaClient()->backgroundHeadroom()['15min'])->toBe(0);
+});
+
+it('releases the athlete grant on Strava and reports acceptance', function (): void {
+    Http::fake(['https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'revoked-token'])]);
+
+    $connection = StravaConnection::factory()->create([
+        'access_token' => 'live-access',
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    expect(new StravaClient()->deauthorize($connection))->toBeTrue();
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
+        && $request->method() === 'POST'
+        && $request['access_token'] === 'live-access');
+});
+
+it('refreshes an expired token before deauthorizing, so the grant is actually released', function (): void {
+    Http::fake([
+        'https://www.strava.com/oauth/token' => Http::response([
+            'access_token' => 'fresh-access',
+            'refresh_token' => 'fresh-refresh',
+            'expires_at' => Carbon::now()->addHours(6)->getTimestamp(),
+        ]),
+        'https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'revoked-token']),
+    ]);
+
+    $connection = StravaConnection::factory()->create([
+        'access_token' => 'stale-access',
+        'token_expires_at' => Carbon::now()->subHour(),
+    ]);
+
+    expect(new StravaClient()->deauthorize($connection))->toBeTrue();
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
+        && $request['access_token'] === 'fresh-access');
+});
+
+it('reports a refused deauthorize rather than throwing', function (): void {
+    Http::fake(['https://www.strava.com/oauth/deauthorize' => Http::response('nope', 401)]);
+
+    $connection = StravaConnection::factory()->create([
+        'access_token' => 'live-access',
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    expect(new StravaClient()->deauthorize($connection))->toBeFalse();
 });

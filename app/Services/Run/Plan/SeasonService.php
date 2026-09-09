@@ -34,13 +34,22 @@ final readonly class SeasonService
     /** Self-scaled seasons match the periodizer's own materialization horizon. */
     public const int SELF_SCALED_WEEKS = Periodizer::HORIZON_WEEKS;
 
-    /** Rest-honored badge-board tiers, per season (see {@see \App\Actions\Gamification\GrantSeasonUnlocksAction}). */
-    public const array REST_HONORED_THRESHOLDS = [3, 7];
-
     /** Floor so a brand-new athlete (CTL ~0) still gets a meaningful, non-zero growth target. */
     private const float MIN_CTL_GROWTH_TARGET = 3.0;
 
     private const float CTL_GROWTH_FRACTION = 0.10;
+
+    /**
+     * How far the athlete's own trailing volume has to fall BELOW the stored
+     * anchor before the arc is re-anchored to it mid-season. Deliberately
+     * one-directional: a trailing mean that has RISEN is the ramp working, and
+     * re-anchoring upward would compound the ramp on top of its own output —
+     * which is the bug this whole anchor exists to fix. Only a collapse — an
+     * injury, a layoff, a month of travel — is a reason to redescribe the
+     * athlete, and a trimmed six-week mean needs a sustained one to move this
+     * far, so a single down week never trips it.
+     */
+    private const float REANCHOR_COLLAPSE_FRACTION = 0.25;
 
     public function __construct(
         private TrainingBaseline $baseline,
@@ -55,10 +64,14 @@ final readonly class SeasonService
         [$today, $race, $current] = $this->currentContext($user, $today);
 
         if ($current !== null && $this->isCurrent($current, $race, $today)) {
+            $this->reanchorIfCollapsed($current, $user, $today);
+
             return $current;
         }
 
         return DB::transaction(function () use ($user, $race, $today, $current): Season {
+            $anchorKm = $this->baseline->trailingWeeklyVolumeKm($user, $today);
+            $opensWithRecovery = $race === null && self::followsARaceAlreadyRun($current, $today);
             $endsAt = $race !== null
                 ? $race->race_date->toDateString()
                 : $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
@@ -69,7 +82,12 @@ final readonly class SeasonService
             // calendar day — which `unique(user_id, starts_at)` forbids, and
             // which would leave a nonsensical zero-day season in history.
             if ($current !== null && ! $today->isAfter($current->ends_at) && $current->starts_at->isSameDay($today)) {
-                $current->update(['race_goal_id' => $race?->id, 'ends_at' => $endsAt]);
+                $current->update([
+                    'race_goal_id' => $race?->id,
+                    'anchor_weekly_volume_km' => $anchorKm,
+                    'opens_with_recovery' => $opensWithRecovery,
+                    'ends_at' => $endsAt,
+                ]);
                 SeasonGoal::query()->where('season_id', $current->id)->delete();
                 $this->generateGoals($current, $user, $race, $today);
 
@@ -86,6 +104,8 @@ final readonly class SeasonService
             $season = Season::query()->create([
                 'user_id' => $user->id,
                 'race_goal_id' => $race?->id,
+                'anchor_weekly_volume_km' => $anchorKm,
+                'opens_with_recovery' => $opensWithRecovery,
                 'starts_at' => $today->toDateString(),
                 'ends_at' => $endsAt,
             ]);
@@ -122,6 +142,44 @@ final readonly class SeasonService
         return [$today, $race, $current];
     }
 
+    /**
+     * The anchor's only mid-season write. A season opened before the arc was
+     * anchored carries nothing to ramp off and would stay flat forever, so it
+     * is backfilled to where the athlete stands now; an anchored one moves
+     * only when the athlete has fallen {@see self::REANCHOR_COLLAPSE_FRACTION}
+     * below it. A replan, a page load or a manual regeneration reaches here
+     * every time and must leave the arc alone — only a race change (which
+     * opens a new season) resets it outright.
+     */
+    private function reanchorIfCollapsed(Season $season, User $user, Carbon $today): void
+    {
+        $anchor = $season->anchor_weekly_volume_km;
+        $trailing = $this->baseline->trailingWeeklyVolumeKm($user, $today);
+
+        if ($anchor === null || $trailing < $anchor * (1 - self::REANCHOR_COLLAPSE_FRACTION)) {
+            $season->update(['anchor_weekly_volume_km' => $trailing]);
+        }
+    }
+
+    /**
+     * Whether the arc being opened comes straight off a race the athlete
+     * actually ran. `plan:close-finished-races` retires the goal the morning
+     * after race day and the plan falls back to the self-scaled arc, which
+     * used to open at Build x1.0 — a full training week from a runner who
+     * raced on Saturday.
+     *
+     * Read off the race DATE rather than `completed_at`: a goal is also
+     * retired when the athlete calls the race off ({@see
+     * \App\Http\Controllers\RaceController::destroy()}) or supersedes it
+     * with another, and there is nothing to recover from in either case.
+     */
+    private static function followsARaceAlreadyRun(?Season $previous, Carbon $today): bool
+    {
+        $race = $previous?->raceGoal;
+
+        return $race !== null && ! $race->race_date->startOfDay()->isAfter($today);
+    }
+
     private function isCurrent(Season $season, ?RaceGoal $race, Carbon $today): bool
     {
         if ($today->isAfter($season->ends_at)) {
@@ -138,7 +196,7 @@ final readonly class SeasonService
 
         $weeks = $race !== null
             ? $this->phaseSchedule->forRace($today, $race->race_date, (float) $race->distance_m)
-            : $this->phaseSchedule->selfScaled($today, self::SELF_SCALED_WEEKS);
+            : $this->phaseSchedule->selfScaled($today, self::SELF_SCALED_WEEKS, $season->opens_with_recovery);
         $weekCount = count($weeks);
 
         $phases = array_map(fn (array $w): PlanPhase => $w['phase'], $weeks);

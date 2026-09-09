@@ -16,7 +16,8 @@ enum NotificationKind: string
     case WeeklyRecap = 'weekly_recap';
     case MonthlyRecap = 'monthly_recap';
     case StreakReminder = 'streak_reminder';
-    case Unlock = 'unlock';
+    case PlanClamp = 'plan_clamp';
+    case StravaDisconnected = 'strava_disconnected';
     case Test = 'test';
 
     /** Null for an analysis type that never notifies. */

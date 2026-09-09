@@ -29,10 +29,16 @@ code_refs:
 
 > **Fact update, 2026-09-02 (`W2`).** The decision and its reasoning stand unchanged, but the
 > character it describes is gone: `PP2` replaced the ball-bodied mascot with the prototype's
+> **Further superseded (2026-09-09) on one fact only.** The paragraph below says the accessory
+> *catalog* and its unlock rows survive. They do not: the whole unlock system — the 25-key catalog,
+> `user_unlocks`, both grant actions and the `unlock` notification kind — was removed once nothing
+> read a grant (see [[gamification]]). The rendering-vs-data-model split this note argues for is
+> now moot rather than wrong; everything else here still stands.
+>
 > `FaceIcon` under P10, and `W2` swept what was left behind it — the `EquippedAccessories` service,
 > the `equippedAccessories` shared prop, the `user_unlocks.equipped` column, and the brand
 > generators that drew the poses and the 25 accessory SVGs. The accessory *catalog* and its unlock
-> rows survive; only the wardrobe that wore them is gone. See [[targets-accessories]].
+> rows survive; only the wardrobe that wore them is gone.
 >
 > **Fact update, 2026-09-08.** The "Not done" line below claiming "no dark-mode variant (the app
 > stays light-mode only)" is stale: `F2` shipped a dark ground and `data-theme` switch, and the

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Notifications\DayClampedNotification;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingContext;
@@ -96,6 +98,7 @@ final readonly class RestClampRecorder
 
         if (ReadinessClamp::clampsToRest($session->session_type, $ceiling)) {
             $session->update(['rest_clamped_at' => Carbon::now()]);
+            $this->tell($user, $today, SessionType::Rest, $session->session_type, $ceiling);
 
             return true;
         }
@@ -132,7 +135,24 @@ final readonly class RestClampRecorder
         }
 
         $session->update(['clamped_km' => $clamp['core_km']]);
+        $this->tell($user, $today, $clamp['session_type'], $session->session_type, $ceiling);
 
         return true;
+    }
+
+    /**
+     * The athlete's copy of what was just recorded. Sent from here rather than
+     * from the two call sites because the guards above make this the one place
+     * that fires once per athlete per day; a step-down otherwise existed only
+     * while the plan page still rendered it.
+     */
+    private function tell(User $user, Carbon $today, SessionType $clampedTo, SessionType $original, ReadinessCeiling $ceiling): void
+    {
+        $note = ReadinessClamp::noteFor($original, $ceiling);
+        if ($note === null) {
+            return;
+        }
+
+        $user->notify(new DayClampedNotification($today->toDateString(), $clampedTo, $note));
     }
 }

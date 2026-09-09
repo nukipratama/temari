@@ -22,6 +22,8 @@ class SeasonFactory extends Factory
         return [
             'user_id' => User::factory(),
             'race_goal_id' => null,
+            'anchor_weekly_volume_km' => null,
+            'opens_with_recovery' => false,
             'starts_at' => Carbon::today()->toDateString(),
             'ends_at' => Carbon::today()->addWeeks(12)->toDateString(),
         ];

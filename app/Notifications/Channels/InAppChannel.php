@@ -16,8 +16,8 @@ use Illuminate\Notifications\Notification;
  * sent, and a muted record is a lost one.
  *
  * Idempotency is the row's own unique (user, dedupe key) pair rather than the
- * per-(analysis, channel) claim the outbound channels share, because streak and
- * unlock notifications have no analysis to key on. A message that supplies no
+ * per-(analysis, channel) claim the outbound channels share, because a streak
+ * nudge has no analysis to key on. A message that supplies no
  * key falls back to the notification's id, which Laravel assigns before queuing
  * and therefore survives a retry unchanged.
  */

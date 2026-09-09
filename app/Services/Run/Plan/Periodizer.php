@@ -23,6 +23,11 @@ use Illuminate\Support\Facades\DB;
  * (`routes/console.php`) and on demand ({@see \App\Http\Controllers\PlanController}).
  *
  * Invariants (see `docs/features/plan-periodizer.md`):
+ * - The arc is counted from the {@see \App\Models\Season}'s own start, not
+ *   from today, and only then sliced to the horizon — so the week being
+ *   trained carries the multiplier its position in the season earns rather
+ *   than the 1.0 that index 0 always earns. See
+ *   `docs/decisions/the-arc-is-anchored-once.md`.
  * - Past dates (before `$today`) are never touched.
  * - Pinned rows are read first and never overwritten; the rest of each week
  *   is planned around them.
@@ -65,7 +70,7 @@ final readonly class Periodizer
         // Keeps the season in lockstep with the plan's own mode: a race
         // set/cleared since the last call, or a self-scaled season's 12-week
         // expiry, both take effect here — see SeasonService's own docblock.
-        $this->seasonService->ensureCurrent($user, $today);
+        $season = $this->seasonService->ensureCurrent($user, $today);
 
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
         $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
@@ -74,11 +79,14 @@ final readonly class Periodizer
 
         $adaptation = $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race);
 
-        $weeks = $race !== null
-            ? array_slice($this->phaseSchedule->forRace($today, $race->race_date, (float) $race->distance_m), 0, self::HORIZON_WEEKS)
-            : $this->phaseSchedule->selfScaled($today, self::HORIZON_WEEKS);
+        $arcStart = $season->starts_at->copy()->startOfWeek(Carbon::MONDAY);
+        $arc = $race !== null
+            ? $this->phaseSchedule->forRace($arcStart, $race->race_date, (float) $race->distance_m)
+            // The season's own window, not a fresh horizon, so the arc
+            // SeasonSummaryBuilder draws is the one the athlete trains.
+            : $this->phaseSchedule->selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($season->ends_at) + 1), $season->opens_with_recovery);
 
-        $weeks = self::applyDeload($weeks, $adaptation['deload']);
+        $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $currentWeekStart, $adaptation['deload']);
 
         $pinnedDates = array_fill_keys(
             PlannedSession::query()
@@ -130,9 +138,10 @@ final readonly class Periodizer
                 $preference?->long_run_day,
                 $projectedRaceSeconds,
                 $race?->race_date,
+                $adaptation['reason']->keepsAQualitySession(),
             );
             foreach ($weekRows as $date => $row) {
-                $rows[$date] = $row;
+                $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier']];
             }
         }
 
@@ -158,6 +167,7 @@ final readonly class Periodizer
                     [
                         'phase' => $row['phase'],
                         'session_type' => $row['session_type'],
+                        'volume_multiplier' => $row['volume_multiplier'],
                         // Stamped on the row so race day still knows its own
                         // distance once the goal behind it has been retired.
                         'race_distance_m' => $row['session_type'] === SessionType::Race ? (int) $raceDistanceM : null,
@@ -180,21 +190,47 @@ final readonly class Periodizer
     }
 
     /**
-     * Turns the current week into a real deload. Taper weeks are left alone:
-     * they are already a planned reduction counting down to race day, and
-     * restarting the taper curve from a deload multiplier would leave the
-     * athlete under-stimulated going in.
+     * The horizon's worth of weeks starting at the current one, each carrying
+     * the multiplier its position in the WHOLE arc earns. Slicing after the
+     * multipliers are computed is the entire point: computing them over the
+     * remaining weeks alone put the week being trained at index 0 every
+     * Monday, which is 1.0 in every phase but Taper.
      *
-     * @param  list<array{week_start: Carbon, phase: PlanPhase}>  $weeks
-     * @return list<array{week_start: Carbon, phase: PlanPhase}>
+     * The reactive deload lands before the multipliers, so a week the adapter
+     * turns down is not counted as a Build week by the weeks after it. Taper
+     * weeks are left alone: they are already a planned reduction counting down
+     * to race day, and restarting the taper curve from a deload multiplier
+     * would leave the athlete under-stimulated going in.
+     *
+     * A season whose stored window outlasts its own arc — only reachable for a
+     * self-scaled row written before the two were aligned — holds on its last
+     * arc week rather than materializing nothing at all, until it rolls over.
+     *
+     * @param  list<array{week_start: Carbon, phase: PlanPhase}>  $arc
+     * @return list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>
      */
-    private static function applyDeload(array $weeks, bool $deload): array
+    private static function sliceFromCurrentWeek(array $arc, Carbon $arcStart, Carbon $currentWeekStart, bool $deload): array
     {
-        if (! $deload || $weeks === [] || $weeks[0]['phase'] === PlanPhase::Taper) {
-            return $weeks;
+        if ($arc === []) {
+            return [];
         }
 
-        $weeks[0]['phase'] = PlanPhase::Deload;
+        $offset = min(count($arc) - 1, max(0, (int) $arcStart->diffInWeeks($currentWeekStart)));
+
+        $phases = array_map(static fn (array $week): PlanPhase => $week['phase'], $arc);
+        if ($deload && $phases[$offset] !== PlanPhase::Taper) {
+            $phases[$offset] = PlanPhase::Deload;
+        }
+        $multipliers = PhaseSchedule::volumeMultipliers($phases);
+
+        $weeks = [];
+        foreach (array_slice($arc, $offset, self::HORIZON_WEEKS, preserve_keys: true) as $index => $week) {
+            $weeks[] = [
+                'week_start' => $week['week_start'],
+                'phase' => $phases[$index],
+                'multiplier' => $multipliers[$index],
+            ];
+        }
 
         return $weeks;
     }

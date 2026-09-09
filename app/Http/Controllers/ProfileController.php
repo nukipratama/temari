@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\RaceGoal;
+use App\Models\Season;
 use App\Models\User;
 use App\Actions\Run\Metrics\EstimateThresholdAction;
 use App\Services\Gamification\SeasonStreakSummaryBuilder;
@@ -54,31 +55,56 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = $request->user();
         $today = Carbon::today();
-        $lifetime = $lifetimeStats->forUser($user);
+
+        // Two requests serve this page: the initial render, then Inertia's
+        // partial for the deferred props, which runs the whole action again.
+        // Every prop is a closure so the partial resolves only what it asked
+        // for, and the two that share the lifetime totals memoize them.
+        $lifetime = null;
+        $loadLifetime = function () use (&$lifetime, $lifetimeStats, $user): array {
+            if ($lifetime === null) {
+                $lifetime = $lifetimeStats->forUser($user);
+            }
+
+            return $lifetime;
+        };
 
         // peekCurrent, never ensureCurrent: opening Profile must not create a
         // season or fire the grant side effects a Plan page load does.
-        $season = $seasonService->peekCurrent($user, $today);
+        $season = null;
+        $seasonResolved = false;
+        $loadSeason = function () use (&$season, &$seasonResolved, $seasonService, $user, $today): ?Season {
+            if (! $seasonResolved) {
+                $season = $seasonService->peekCurrent($user, $today);
+                $seasonResolved = true;
+            }
+
+            return $season;
+        };
 
         return Inertia::render('Profile', [
-            'identity' => [
+            'identity' => fn (): array => [
                 'name' => $user->name,
                 'avatar_url' => $user->avatar_url,
-                'first_run_at' => $lifetime['first_run_at'],
+                'first_run_at' => $loadLifetime()['first_run_at'],
                 'member_since' => $user->created_at?->toIso8601String(),
                 'strava_connected' => $user->stravaConnection !== null,
             ],
-            'stats' => [
-                'total_runs' => $lifetime['total_runs'],
-                'total_km' => $lifetime['total_km'],
-                'longest_run_km' => $lifetime['longest_km'],
+            'stats' => fn (): array => [
+                'total_runs' => $loadLifetime()['total_runs'],
+                'total_km' => $loadLifetime()['total_km'],
+                'longest_run_km' => $loadLifetime()['longest_km'],
             ],
-            'profileVoice' => $this->resolveProfileVoice($user),
+            'profileVoice' => fn (): array => $this->resolveProfileVoice($user),
             'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user))),
             'fitness' => Inertia::defer(fn (): ?array => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $user)),
             'timeInZone' => Inertia::defer(fn (): ?array => $timeInZoneSummary->forUser($user, $today) ?: null),
-            'season' => Inertia::defer(fn (): ?array => $seasonStreakBuilder->seasonPayload($user, $season, $today)),
-            'seasonWeeks' => Inertia::defer(fn (): ?array => $season === null ? null : $seasonSummaryBuilder->build($user, $season, $today)),
+            'season' => Inertia::defer(fn (): ?array => $seasonStreakBuilder->seasonPayload($user, $loadSeason(), $today)),
+            'seasonWeeks' => Inertia::defer(function () use ($loadSeason, $seasonSummaryBuilder, $user, $today): ?array {
+                $season = $loadSeason();
+
+                return $season === null ? null : $seasonSummaryBuilder->build($user, $season, $today);
+            }),
         ]);
     }
 

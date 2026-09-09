@@ -7,7 +7,6 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
-use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -75,22 +74,6 @@ it('creates a season and its 5 goals on a fresh user\'s first Plan view, before 
             ->where('season.is_race_oriented', false));
 
     expect(Season::query()->where('user_id', $user->id)->count())->toBe(1);
-});
-
-it('counts only an earlier season\'s track tiers as kept, never the live season\'s', function (): void {
-    $user = User::factory()->create();
-    $this->actingAs($user)->get('/plan');
-    $season = Season::query()->where('user_id', $user->id)->sole();
-
-    UserUnlock::query()->insert([
-        ['user_id' => $user->id, 'unlock_key' => 'season.999.track_1', 'unlocked_at' => now(), 'created_at' => now(), 'updated_at' => now()],
-        ['user_id' => $user->id, 'unlock_key' => 'season.999.track_2', 'unlocked_at' => now(), 'created_at' => now(), 'updated_at' => now()],
-        ['user_id' => $user->id, 'unlock_key' => 'season.999.rest_honored_3', 'unlocked_at' => now(), 'created_at' => now(), 'updated_at' => now()],
-        ['user_id' => $user->id, 'unlock_key' => "season.{$season->id}.track_1", 'unlocked_at' => now(), 'created_at' => now(), 'updated_at' => now()],
-    ]);
-
-    $this->actingAs($user)->get('/plan')
-        ->assertInertia(fn (Assert $page) => $page->where('season.tiers_kept_from_past_seasons', 2));
 });
 
 it('regenerating populates the plan and redirects with a success flash', function (): void {
@@ -335,4 +318,20 @@ it('returns an empty activities list for a day with nothing logged', function ()
 
     expect($today['activities'])->toBe([])
         ->and($today['actual_km'])->toBeNull();
+});
+
+it('leaves the eager block alone on the request that only fetches the deferred props', function (): void {
+    $user = User::factory()->create();
+
+    // Headers first: the helper resolves the asset version with a real request
+    // of its own, which the mock below would otherwise count.
+    $headers = inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'seasonSummary,seasonAdherencePct');
+
+    // The whole action runs again on Inertia's partial request, so every prop
+    // is a closure and the partial must resolve only the ones it asked for.
+    $response = $this->actingAs($user)->get('/plan', $headers)->assertSuccessful();
+
+    expect($response->json('props'))->toHaveKeys(['seasonSummary', 'seasonAdherencePct'])
+        ->and($response->json('props'))->not->toHaveKey('season')
+        ->and($response->json('props'))->not->toHaveKey('sessionsPerWeek');
 });

@@ -8,7 +8,6 @@ use App\Actions\Gamification\SettleStreakRestTokensAction;
 use App\Models\Season;
 use App\Models\StreakRestToken;
 use App\Models\User;
-use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
@@ -21,7 +20,7 @@ use Illuminate\Support\Carbon;
  * created, while {@see \App\Http\Controllers\ProfileController} passes
  * whatever {@see \App\Services\Run\Plan\SeasonService::peekCurrent()} finds
  * (possibly `null`) — a second page load must never trigger season creation
- * or badge-board grants on its own.
+ * on its own.
  */
 final readonly class SeasonStreakSummaryBuilder
 {
@@ -32,8 +31,8 @@ final readonly class SeasonStreakSummaryBuilder
     }
 
     /**
-     * @param  SeasonGamificationContext|null  $context  Pass a pre-built context (e.g. one the caller already computed for {@see \App\Actions\Gamification\GrantSeasonUnlocksAction}) to avoid resolving it twice.
-     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, is_race_oriented: bool, tiers_kept_from_past_seasons: int, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>}|null
+     * @param  SeasonGamificationContext|null  $context  Pass a pre-built context when the caller already holds one, to avoid resolving it twice.
+     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, is_race_oriented: bool, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>}|null
      */
     public function seasonPayload(User $user, ?Season $season, Carbon $today, ?SeasonGamificationContext $context = null): ?array
     {
@@ -53,7 +52,6 @@ final readonly class SeasonStreakSummaryBuilder
             'week_index' => $weekIndex,
             'total_weeks' => $totalWeeks,
             'is_race_oriented' => $season->race_goal_id !== null,
-            'tiers_kept_from_past_seasons' => $this->tiersKeptFromPastSeasons($user, $season),
             'goals' => $goals,
         ];
     }
@@ -94,19 +92,5 @@ final readonly class SeasonStreakSummaryBuilder
             'week_ends_on' => $weekEndsOn->toDateString(),
             'last_forgiven_week' => $lastForgiven?->spent_for_week_ending?->toDateString(),
         ];
-    }
-
-    /**
-     * Track tiers owned under an earlier season's key namespace. A season
-     * boundary resets the live track to zero and revokes nothing, so this is
-     * the number that proves it.
-     */
-    private function tiersKeptFromPastSeasons(User $user, Season $season): int
-    {
-        return UserUnlock::query()
-            ->where('user_id', $user->id)
-            ->where('unlock_key', 'like', 'season.%.track\_%')
-            ->where('unlock_key', 'not like', "season.{$season->id}.%")
-            ->count();
     }
 }

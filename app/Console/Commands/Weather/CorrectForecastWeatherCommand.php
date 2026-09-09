@@ -58,10 +58,10 @@ class CorrectForecastWeatherCommand extends Command
 
     /**
      * Only the weather columns are touched here. RunCard badges (RainWarrior,
-     * HeatTamer, Headwind, ...) are derived once at unlock time and are never
-     * recomputed retroactively: stripping an earned badge because the archive
-     * later disagrees with the forecast would revoke an unlocked accessory,
-     * which is worse UX than a slightly-stale badge.
+     * HeatTamer, Headwind, ...) are derived once when the card is built and are
+     * never recomputed retroactively: stripping an earned badge because the
+     * archive later disagrees with the forecast is worse UX than a
+     * slightly-stale badge.
      */
     private function correct(OpenMeteoClient $weather, ActivityDetail $detail): bool
     {

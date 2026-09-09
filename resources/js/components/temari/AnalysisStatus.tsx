@@ -18,6 +18,7 @@ import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS, formatRelativeId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 
+import FlagWrong from './FlagWrong';
 import UnavailableNote from './UnavailableNote';
 
 export type AnalysisStatusSize = 'sm' | 'md';
@@ -208,6 +209,14 @@ export default function AnalysisStatus({
                     </button>
                 )}
                 {rateLimited && <RateLimitedNote onSky={onSky} />}
+                {analysis.id !== null && (
+                    <FlagWrong
+                        subjectType="narration"
+                        subjectId={analysis.id}
+                        label="flag this read"
+                        onSky={onSky}
+                    />
+                )}
             </motion.div>
         );
     }
