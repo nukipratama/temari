@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Support\SharedPropCacheKey;
 use Database\Factories\RaceGoalFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -51,6 +52,7 @@ class RaceGoal extends Model
     {
         $bust = function (RaceGoal $race): void {
             SharedPropCacheKey::ActiveRace->forget($race->user_id);
+            app(ResolveActiveRaceAction::class)->forget($race->user_id);
         };
 
         static::saved($bust);

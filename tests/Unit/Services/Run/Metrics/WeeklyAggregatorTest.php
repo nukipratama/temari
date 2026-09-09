@@ -8,9 +8,11 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Story\PastYouTrendBuilder;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
@@ -408,3 +410,26 @@ it('still computes decoupling and sums from the narrowed projection', function (
         ->and($snapshot->moving_time_sec)->toBe(4800)
         ->and($snapshot->avg_decoupling)->toBe(4.0);
 });
+
+it('drops the caches derived from the history it just rebuilt', function (string $rebuild): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8000,
+        'moving_time' => 2400,
+        'trimp_edwards' => 60.0,
+        'start_date_local' => Carbon::today(),
+    ]);
+    $today = Carbon::today()->toDateString();
+    Cache::put(PastYouTrendBuilder::cacheKey($user->id, $today), ['verdict' => 'stale']);
+    Cache::put("training-load:{$user->id}:{$today}", ['stale']);
+
+    match ($rebuild) {
+        'rebuildFor' => $this->aggregator->rebuildFor($user),
+        'rebuildForWeekOf' => $this->aggregator->rebuildForWeekOf($user, Carbon::today()),
+        'rebuildForwardFrom' => $this->aggregator->rebuildForwardFrom($user, Carbon::today()),
+    };
+
+    expect(Cache::has(PastYouTrendBuilder::cacheKey($user->id, $today)))->toBeFalse()
+        ->and(Cache::has("training-load:{$user->id}:{$today}"))->toBeFalse();
+})->with(['rebuildFor', 'rebuildForWeekOf', 'rebuildForwardFrom']);

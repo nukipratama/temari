@@ -7,11 +7,11 @@ namespace App\Jobs\Strava;
 use Throwable;
 use App\Enums\StravaReadPriority;
 use App\Models\Activity;
-use App\Services\AI\AnalysisService;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use DateTimeInterface;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
@@ -20,15 +20,10 @@ use Illuminate\Support\Facades\Log;
 /**
  * Re-pull of a single activity: re-fetches detail + streams from Strava and
  * recomputes every derived artifact via {@see ActivityPipeline::ingest()}.
- * Shares {@see IngestActivityJob}'s rate-limit / circuit-breaker handling so a
- * resync is as resilient as the automatic ingest.
- *
- * $renarrate forces a fresh chain-head narration (an explicit, billable LLM
- * call). The manual "Resync" button opts in; the Strava update-webhook path
- * leaves it false so a trivial edit (title, gear, privacy) only refreshes data
- * and never re-bills tokens.
+ * Shares {@see IngestActivityJob}'s rate-limit / circuit-breaker and
+ * uniqueness handling so a resync is as resilient as the automatic ingest.
  */
-class ResyncActivityJob implements ShouldQueue
+class ResyncActivityJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -42,10 +37,16 @@ class ResyncActivityJob implements ShouldQueue
 
     private const int RETRY_WINDOW_HOURS = 6;
 
+    public int $uniqueFor = self::RETRY_WINDOW_HOURS * 3600;
+
     public function __construct(
         public readonly int $activityId,
-        public readonly bool $renarrate = false,
     ) {
+    }
+
+    public function uniqueId(): string
+    {
+        return (string) $this->activityId;
     }
 
     /**
@@ -67,26 +68,16 @@ class ResyncActivityJob implements ShouldQueue
         return now()->addHours(self::RETRY_WINDOW_HOURS);
     }
 
-    public function handle(ActivityPipeline $pipeline, AnalysisService $service): void
+    public function handle(ActivityPipeline $pipeline): void
     {
         $activity = Activity::query()
             ->withStubs()
-            ->with('user')
             ->find($this->activityId);
         if ($activity === null) {
             return;
         }
 
         $pipeline->ingest($activity);
-
-        // Force a fresh narration only when asked, and only for the chain head
-        // (the user's latest run). Re-narrating a mid-history run would desync the
-        // later runs that quoted its old narrative, so those keep their narration
-        // and just get the recomputed data (same rule the trigger endpoint
-        // enforces).
-        if ($this->renarrate && Activity::latestIdForUser($activity->user_id) === $activity->id) {
-            $service->requestActivityGroup($activity, invalidate: true);
-        }
     }
 
     public function failed(Throwable $exception): void

@@ -300,3 +300,70 @@ it('does not recompute the lifetime totals on the request that only fetches the 
         ->and($response->json('props'))->not->toHaveKey('stats')
         ->and($response->json('props'))->not->toHaveKey('profileVoice');
 });
+
+// A budget, not an exact count. The deferred leg is where the whole page's cost
+// sits — the progression chart, the fitness estimates and the season summary all
+// resolve there, and they reach the athlete's active race independently.
+it('resolves the deferred Profile props inside their query budget', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create([
+        'distance_m' => 10_000,
+        'completed_at' => null,
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '10km',
+        'value_sec' => 2_800,
+    ]);
+    foreach (range(1, 6) as $weeksAgo) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => Carbon::today()->subWeeks($weeksAgo),
+            'distance' => 10_000.0,
+            'elapsed_time' => 2_900,
+        ]);
+    }
+
+    app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+
+    $headers = inertiaPartialHeaders(
+        $this->actingAs($user),
+        '/profile',
+        'Profile',
+        'progressionByCategory,fitness,timeInZone,season,seasonWeeks',
+    );
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $this->actingAs($user)->get('/profile', $headers)->assertSuccessful();
+
+    expect($queries)->toBeLessThanOrEqual(15);
+});
+
+// The threshold estimator reads stream_summary and nothing else. A bare get()
+// pulled every column of every run in the 60-day window with it — 1.3 MB of JSON
+// on the seeded demo athlete — for two fields it never touched.
+it('reads only the columns it needs off activity_details', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->subDays(3),
+        'stream_summary' => ['zone_minutes' => ['Z1' => 10.0]],
+    ]);
+
+    $headers = inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness,timeInZone');
+
+    $selects = [];
+    DB::listen(function (QueryExecuted $query) use (&$selects): void {
+        if (str_contains($query->sql, 'from `activity_details`')) {
+            $selects[] = $query->sql;
+        }
+    });
+
+    $this->actingAs($user)->get('/profile', $headers)->assertSuccessful();
+
+    expect($selects)->not->toBeEmpty()
+        ->and($selects)->each->not->toStartWith('select * from `activity_details`');
+});

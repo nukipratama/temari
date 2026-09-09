@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\RaceGoal;
@@ -56,6 +57,7 @@ final readonly class SeasonService
         private PhaseSchedule $phaseSchedule,
         private WeekPlanBuilder $weekPlanBuilder,
         private TrainingLoad $trainingLoad,
+        private ResolveActiveRaceAction $activeRace,
     ) {
     }
 
@@ -136,7 +138,7 @@ final readonly class SeasonService
     private function currentContext(User $user, ?Carbon $today): array
     {
         $today = ($today ?? Carbon::today())->copy()->startOfDay();
-        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        $race = ($this->activeRace)($user->id);
         $current = Season::query()->where('user_id', $user->id)->orderByDesc('starts_at')->first();
 
         return [$today, $race, $current];

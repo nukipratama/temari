@@ -39,9 +39,9 @@ rows and does nothing else**.
 
 - **It runs the kickoffs' own creation code**, under
   [`AnalysisService::withoutDispatching()`](../../app/Services/AI/AnalysisService.php#L64). Dispatch
-  suppression short-circuits `blockingReason` [:652](../../app/Services/AI/AnalysisService.php#L652),
+  suppression short-circuits `blockingReason` [:697](../../app/Services/AI/AnalysisService.php#L697),
   which reduces `dispatchRow` to its `firstOrCreate` in `upsertRow`
-  [:367](../../app/Services/AI/AnalysisService.php#L367): a missing row is created `Pending`, an
+  [:379](../../app/Services/AI/AnalysisService.php#L379): a missing row is created `Pending`, an
   existing row of any status is untouched, and no job is queued. The eligibility rules are not
   restated — the athlete scan is the shared [RecentlyActiveUsers](../../app/Actions/AI/RecentlyActiveUsers.php)
   the two commands now also use, and the recap sweep is

@@ -14,10 +14,13 @@ them rather than re-copying, since copies drift.
 Backend logic is split by domain under `app/Services/`:
 - **AI/** — narrators + the Analysis pipeline (see *AI narration pipeline* below).
 - **Run/** — ingest (Strava activity → `ActivityDetail` + streams), metrics (`TrainingLoad`, `PersonalRecords`, VDOT/threshold estimators, `WeeklyAggregator`), and story (`Vibe`, `Temari`, `BriefingComposer`, `RunCardFactory`).
-- **Gamification/** — `GoalResolver`, `SeasonGoalResolver`, `GamificationContext`, `SeasonGamificationContext`, `SeasonStreakSummaryBuilder` (plus `DetectActivityMilestonesAction`, `GrantEligibleUnlocksAction`, `GrantSeasonUnlocksAction` and `SettleStreakRestTokensAction` under `app/Actions/Gamification/`).
+- **Gamification/** — `GoalResolver`, `SeasonGoalResolver`, `GamificationContext`, `SeasonGamificationContext`, `SeasonStreakSummaryBuilder` (plus `DetectActivityMilestonesAction` and `SettleStreakRestTokensAction` under `app/Actions/Gamification/`).
 - **Strava/** — OAuth client, activity fetch, webhook + sync orchestration.
 - **Geo/** — polyline encode/decode + Nominatim reverse-geocode (`app/Jobs/Geo/` resolves location names).
 - **Weather/** — Open-Meteo snapshot attached per activity.
+- **Telegram/** — client, link tokens, notification-eligible types, reply handling.
+- **Notifications/** — channel routing + delivery-claim idempotency.
+- **Inertia/** — per-page shared prop builders (`SharedProps`, `AiProps`, `GamificationProps`, `NotificationProps`, `StravaProps`).
 
 Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`, one per prototype screen: `Home` (the Today dashboard — the render name is `Home`, not `Today`), `Plan`, `Race`, `Trends`, `History` with `Activities/{Feed,Calendar}`, `Runs/Show`, `Inbox`, `Profile`, `Settings/Index`, plus `Auth/Login`, `Onboarding/Index`, `Legal/Document` and the operator screens `AiUsage` / `Devtools` / `Devtools/Design`. There is no `Collection/` tree — the cards, records and accessories pages were cut by the parity port.
 

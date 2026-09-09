@@ -12,6 +12,7 @@ use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
 use GuzzleHttp\Psr7\Response as Psr7Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use OpenAI\Exceptions\ErrorException;
 use OpenAI\Resources\Responses;
@@ -266,4 +267,88 @@ it('records the step for an output-filtered turn, which Azure processed and bill
     expect($budget->steps())->toBe(1)
         ->and($budget->inputTokens())->toBe(60)
         ->and($budget->outputTokens())->toBe(15);
+});
+
+// ── the wall-clock deadline ───────────────────────────────────────────
+
+/** A toolbox whose single read costs a whole Azure request timeout of wall clock. */
+function agentLoopSlowToolbox(int $secondsPerStep = 90): AgentToolbox
+{
+    return new AgentToolbox([fakeAgentTool('get_thing', function () use ($secondsPerStep): array {
+        Carbon::setTestNow(Carbon::now()->addSeconds($secondsPerStep));
+
+        return ['value' => 1];
+    })]);
+}
+
+it('runs every step it is allowed when no deadline bounds the wall clock', function (): void {
+    Carbon::setTestNow('2026-09-09 06:00:00');
+    $start = Carbon::now();
+
+    [$loop, $client] = agentLoopWith([
+        ...array_fill(0, 10, fakeAzureToolCallResponse([['name' => 'get_thing']])),
+        fakeAzureResponse('{"headline":"finally"}'),
+    ]);
+    $budget = new AgentBudget(maxSteps: 10, maxTokens: 30_000);
+
+    $loop->converse('run_insight', agentLoopPayload(), agentLoopSlowToolbox(), $budget, microtime(true));
+
+    expect($budget->steps())->toBe(11)
+        ->and((int) $start->diffInSeconds(Carbon::now()))->toBe(900);
+
+    $client->assertSent(Responses::class, 11);
+});
+
+it('gives up before starting a step once the run passes its deadline', function (): void {
+    Log::spy();
+    Carbon::setTestNow('2026-09-09 06:00:00');
+
+    [$loop, $client] = agentLoopWith(array_fill(0, 10, fakeAzureToolCallResponse([['name' => 'get_thing']])));
+    $budget = new AgentBudget(maxSteps: 10, maxTokens: 30_000, deadlineSeconds: 240);
+
+    expect(fn () => $loop->converse('run_insight', agentLoopPayload(), agentLoopSlowToolbox(), $budget, microtime(true)))
+        ->toThrow(UnavailableException::class, 'wall-clock deadline');
+
+    expect($budget->steps())->toBe(3);
+
+    $client->assertSent(Responses::class, 3);
+
+    Log::shouldHaveReceived('warning')->with('narrator.ai.agent_deadline', Mockery::on(
+        fn (array $ctx): bool => $ctx['kind'] === 'run_insight' && $ctx['steps'] === 3,
+    ));
+});
+
+it('refuses the forced answer replay once the deadline has passed', function (): void {
+    Carbon::setTestNow('2026-09-09 06:00:00');
+
+    [$loop, $client] = agentLoopWith([fakeAzureResponse('{}')]);
+    $budget = new AgentBudget(maxSteps: 10, maxTokens: 30_000, deadlineSeconds: 240);
+
+    Carbon::setTestNow(Carbon::now()->addSeconds(241));
+
+    expect(fn () => $loop->forceAnswer('run_insight', agentLoopPayload(), agentLoopPayload()['input'], 300, $budget, microtime(true)))
+        ->toThrow(UnavailableException::class, 'wall-clock deadline');
+
+    $client->assertNothingSent();
+});
+
+it('gives up when the wait for a throttle slot is what spends the deadline', function (): void {
+    Carbon::setTestNow('2026-09-09 06:00:00');
+
+    $client = new ClientFake([fakeAzureResponse('{}')]);
+    $azure = Mockery::mock(AzureOpenAIClient::class);
+    $azure->shouldReceive('client')->andReturn($client);
+    $breaker = Mockery::mock(AzureConfigCircuitBreaker::class);
+    $breaker->shouldReceive('recordSuccess')->andReturnNull();
+    $throttle = Mockery::mock(AzureCallThrottle::class);
+    $throttle->shouldReceive('block')->once()->andReturnUsing(function (): void {
+        Carbon::setTestNow(Carbon::now()->addSeconds(241));
+    });
+    $loop = new AgentLoop($azure, $breaker, $throttle);
+    $budget = new AgentBudget(maxSteps: 10, maxTokens: 30_000, deadlineSeconds: 240);
+
+    expect(fn () => $loop->converse('run_insight', agentLoopPayload(), null, $budget, microtime(true)))
+        ->toThrow(UnavailableException::class, 'wall-clock deadline');
+
+    $client->assertNothingSent();
 });

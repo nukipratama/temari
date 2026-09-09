@@ -6,14 +6,14 @@ use App\Jobs\Strava\ResyncActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
-use App\Services\AI\AnalysisService;
 use App\Services\Run\Ingest\ActivityPipeline;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 
 uses(RefreshDatabase::class);
 
-it('re-ingests and re-narrates the chain head when renarrate is requested', function (): void {
+it('re-ingests the activity', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->create([
@@ -26,62 +26,22 @@ it('re-ingests and re-narrates the chain head when renarrate is requested', func
         ->once()
         ->withArgs(fn (Activity $arg): bool => $arg->is($activity));
 
-    $service = Mockery::mock(AnalysisService::class);
-    $service->shouldReceive('requestActivityGroup')
-        ->once()
-        ->withArgs(fn (Activity $arg, bool $invalidate): bool => $arg->is($activity) && $invalidate === true);
-
-    new ResyncActivityJob($activity->id, renarrate: true)->handle($pipeline, $service);
-});
-
-it('refreshes data only (no re-narration) when renarrate is false, even for the head', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->create([
-        'activity_id' => $activity->id,
-        'start_date_local' => now(),
-    ]);
-
-    $pipeline = Mockery::mock(ActivityPipeline::class);
-    $pipeline->shouldReceive('ingest')->once();
-
-    $service = Mockery::mock(AnalysisService::class);
-    $service->shouldNotReceive('requestActivityGroup');
-
-    new ResyncActivityJob($activity->id)->handle($pipeline, $service);
-});
-
-it('never re-narrates a mid-history activity even when renarrate is requested', function (): void {
-    $user = User::factory()->create();
-
-    $old = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->create([
-        'activity_id' => $old->id,
-        'start_date_local' => now()->subDays(5),
-    ]);
-
-    $newer = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->create([
-        'activity_id' => $newer->id,
-        'start_date_local' => now(),
-    ]);
-
-    $pipeline = Mockery::mock(ActivityPipeline::class);
-    $pipeline->shouldReceive('ingest')->once();
-
-    $service = Mockery::mock(AnalysisService::class);
-    $service->shouldNotReceive('requestActivityGroup');
-
-    new ResyncActivityJob($old->id, renarrate: true)->handle($pipeline, $service);
+    new ResyncActivityJob($activity->id)->handle($pipeline);
 });
 
 it('quietly no-ops if the activity was deleted before the job runs', function (): void {
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldNotReceive('ingest');
-    $service = Mockery::mock(AnalysisService::class);
-    $service->shouldNotReceive('requestActivityGroup');
 
-    new ResyncActivityJob(999_999)->handle($pipeline, $service);
+    new ResyncActivityJob(999_999)->handle($pipeline);
+});
+
+it('is unique per activity id so a duplicate webhook is not re-dispatched as a duplicate', function (): void {
+    $job = new ResyncActivityJob(4242);
+
+    expect($job)->toBeInstanceOf(ShouldBeUnique::class)
+        ->and($job->uniqueId())->toBe('4242')
+        ->and($job->uniqueFor)->toBe(6 * 3600);
 });
 
 it('registers the same ThrottlesExceptions middleware as the ingest job', function (): void {

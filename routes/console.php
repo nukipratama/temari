@@ -74,10 +74,11 @@ $alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:03'), 'p
 //
 // The periodizer is deterministic and free, but this command is NOT LLM-free:
 // it then calls PlanNarrationRequester::requestForCurrentWeek() per non-demo
-// user, dispatching plan_day_voice x7 and plan_week_voice with invalidate:true
-// (deliberately re-billed weekly — the periodizer just rewrote what they
-// describe) plus an idempotent plan_season_voice. Up to 9 rows per user per
-// week. See docs/architecture/llm-triggers.md.
+// user, dispatching plan_day_voice x7 and plan_week_voice with invalidate
+// gated per row on whether its content fingerprint actually changed (a
+// session that regenerated into the same shape is left alone) plus an
+// idempotent plan_season_voice. Up to 9 rows per user per week. See
+// docs/architecture/llm-triggers.md.
 $alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:07'), 'plan:regenerate');
 
 // 1st of the month 00:10: HR zones change rarely, so a monthly sweep is enough
@@ -94,6 +95,8 @@ $alertOnFailure(Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45'), 'a
 // moves over a week. Scheduled + cached like every other narrator — never
 // generated live per page view. See TREND_READ_RANGES.
 $alertOnFailure(Schedule::command('ai:trend-read 30d')->dailyAt('06:00'), 'ai:trend-read 30d');
+// `*/3` on the day-of-month field, not an every-3-days interval: it resets
+// on the 1st, so the gap between runs is 1-2 days at each month boundary.
 $alertOnFailure(Schedule::command('ai:trend-read 90d')->cron('0 6 */3 * *'), 'ai:trend-read 90d');
 $alertOnFailure(Schedule::command('ai:trend-read 12mo')->weeklyOn(1, '06:00'), 'ai:trend-read 12mo');
 
@@ -118,6 +121,11 @@ $alertOnFailure(Schedule::command('ai:catch-up')->hourly()->withoutOverlapping(5
 // dupes of the same Analysis rows (which are the real source of truth), so the
 // table just bloats and reads as an alarming unexplained count during triage.
 Schedule::command('queue:prune-failed --hours=168')->dailyAt('02:20');
+
+// 02:25 daily: prune the analytics-connection metering tables (ai_token_usages,
+// strava_sync_logs), which had no retention at all before this. 90 days keeps
+// enough history for cost/rate-limit triage without unbounded growth.
+Schedule::command('analytics:prune')->dailyAt('02:25');
 
 // Fallback poll behind the Strava webhook. Hourly around the clock rather than
 // only across the two running peaks: the old window left a five-hour overnight

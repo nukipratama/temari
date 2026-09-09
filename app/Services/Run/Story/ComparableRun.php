@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Run\Story;
 
 use App\Enums\IngestState;
-use App\Models\ActivityDetail;
 use App\Services\Run\Metrics\DistanceFormatter;
+use App\Services\Run\Metrics\PaceCalculator;
 use Illuminate\Support\Carbon;
 
 /**
@@ -28,26 +28,34 @@ final readonly class ComparableRun
     ) {
     }
 
-    public static function fromDetail(ActivityDetail $detail, IngestState $ingestState): ?self
+    /**
+     * Built from a plain query record — `activity_id`, `start_date_local`,
+     * `distance`, `moving_time`, `average_heartrate`, `total_elevation_gain`
+     * and the owning activity's `ingest_state` — so a year of history can be
+     * read without hydrating a model per run.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public static function fromRow(array $row): ?self
     {
-        $pace = $detail->paceSecPerKm();
-        $startedAt = $detail->start_date_local;
-        $distance = (float) ($detail->distance ?? 0);
-        $movingTime = (int) ($detail->moving_time ?? 0);
+        $distance = (float) ($row['distance'] ?? 0);
+        $movingTime = (int) ($row['moving_time'] ?? 0);
+        $pace = PaceCalculator::secPerKm($distance, $movingTime);
+        $startedAt = $row['start_date_local'] ?? null;
 
-        if ($pace === null || $startedAt === null || $distance <= 0.0 || $movingTime <= 0) {
+        if ($pace === null || ! is_string($startedAt) || $distance <= 0.0 || $movingTime <= 0) {
             return null;
         }
 
         return new self(
-            activityId: (int) $detail->activity_id,
-            startedAt: $startedAt,
+            activityId: (int) $row['activity_id'],
+            startedAt: Carbon::parse($startedAt),
             distanceM: $distance,
             movingTimeSec: $movingTime,
             paceSecPerKm: $pace,
-            averageHeartrate: $detail->average_heartrate === null ? null : (float) $detail->average_heartrate,
-            elevationGainM: $detail->total_elevation_gain === null ? null : (float) $detail->total_elevation_gain,
-            ingestState: $ingestState,
+            averageHeartrate: isset($row['average_heartrate']) ? (float) $row['average_heartrate'] : null,
+            elevationGainM: isset($row['total_elevation_gain']) ? (float) $row['total_elevation_gain'] : null,
+            ingestState: IngestState::from((string) $row['ingest_state']),
         );
     }
 

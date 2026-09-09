@@ -11,6 +11,5 @@ namespace App\Services\AI;
  */
 enum AzureResponseStatus: string
 {
-    case Completed = 'completed';
     case Incomplete = 'incomplete';
 }

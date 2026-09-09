@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\SeasonGoal;
@@ -107,7 +108,10 @@ it('starts a new self-scaled season when the active race is cleared mid-season',
     $raceOriented = $this->service->ensureCurrent($user, Carbon::today());
 
     Carbon::setTestNow('2026-08-17 08:00:00');
+    // What RaceController::destroy() does: a mass update fires no model events,
+    // so both the shared-prop cache and the per-request memo are dropped by hand.
     RaceGoal::query()->where('user_id', $user->id)->update(['completed_at' => now()]);
+    app(ResolveActiveRaceAction::class)->forget($user->id);
 
     $selfScaled = $this->service->ensureCurrent($user, Carbon::today());
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PlanPhase;
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\TrainingPreference;
@@ -147,6 +148,7 @@ final readonly class TrainingBaseline
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
         private PhaseSchedule $phaseSchedule,
+        private ResolveActiveRaceAction $activeRace,
     ) {
     }
 
@@ -271,7 +273,7 @@ final readonly class TrainingBaseline
      */
     private function longRunKm(User $user, float $weeklyVolumeKm, Carbon $asOf, ?Season $season): float
     {
-        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        $race = ($this->activeRace)($user->id);
 
         $derived = max(
             $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm),

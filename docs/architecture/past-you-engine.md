@@ -79,6 +79,32 @@ brand set's `no-past-match` empty state renders, and
 [PastYouTrend](app/Services/Run/Story/PastYouTrend.php) still carries the single
 pair it did find so the empty state can say how close the runner is.
 
+## Built once per runner per day
+
+The verdict is the most expensive thing the home screen computes: a year of the
+runner's history matched pair-by-pair for four comparisons. Nothing in it moves
+until a run lands, so
+[PastYouTrendBuilder::payload()](app/Services/Run/Story/PastYouTrendBuilder.php)
+memoizes the rendered array under `past-you-trend:{user}:{date}` and the home
+controller reads that, never `build()` directly. The date in the key rolls the
+entry over at midnight; a run landing earlier drops it through
+[WeeklyAggregator](app/Services/Run/Metrics/WeeklyAggregator.php), which already
+clears the training-load summary for the same reason and now clears both
+together. Ingest, backfill and the deleted-activity cleanup all reach it through
+that one aggregator call.
+
+History is read as plain query records rather than `ActivityDetail` models —
+nothing past [ComparableRun](app/Services/Run/Story/ComparableRun.php) touches
+Eloquent, and hydrating a year of models cost an order of magnitude more than
+the matching it fed.
+
+The 407-day date range is what bounds that read; the row count beside it is only
+a backstop against pathological data such as a duplicated import. It was 400,
+which a busy year of running reaches, and because the query orders newest-first
+it silently dropped the *oldest* rows — eligible candidates that `bestMatch()`
+does not penalise for age, so a verdict could change with nothing saying so. It
+is now 2,000, above the 814 runs a twice-a-day runner could log in the range.
+
 ## Supporting readings degrade, they do not gate
 
 `fitness_delta_ctl` and `pace_consistency_now` / `_then` come from

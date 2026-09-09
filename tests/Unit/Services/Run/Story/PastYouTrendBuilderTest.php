@@ -10,6 +10,8 @@ use App\Services\Run\Story\PastYouTrend;
 use App\Services\Run\Story\PastYouTrendBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -55,6 +57,53 @@ function summaryOnlyRun(User $user, int $daysAgo, int $movingTimeSec, array $ove
 function buildTrend(User $user): PastYouTrend
 {
     return app(PastYouTrendBuilder::class)->build($user);
+}
+
+/** Rows that exist only to crowd the history, comparable to nothing. */
+function crowdHistory(User $user, int $count, int $fromDaysAgo, int $toDaysAgo): void
+{
+    $now = Carbon::now()->toDateTimeString();
+    $span = $fromDaysAgo - $toDaysAgo;
+
+    $activities = [];
+    for ($i = 0; $i < $count; $i++) {
+        $activities[] = [
+            'user_id' => $user->id,
+            'strava_external_id' => 900_000 + $i,
+            'fetched_at' => $now,
+            'analyzed_at' => $now,
+            'ingest_state' => 'detailed',
+            'detail_fail_count' => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+    }
+    DB::table('activities')->insert($activities);
+
+    $ids = DB::table('activities')
+        ->where('user_id', $user->id)
+        ->whereBetween('strava_external_id', [900_000, 900_000 + $count - 1])
+        ->orderBy('id')
+        ->pluck('id')
+        ->all();
+
+    $details = [];
+    foreach ($ids as $i => $id) {
+        $details[] = [
+            'activity_id' => $id,
+            'name' => 'Crowd',
+            'start_date_local' => Carbon::today()->subDays($toDaysAgo + $i % $span)->setTime(6, 0)->toDateTimeString(),
+            'distance' => 20_000.0,
+            'moving_time' => 8_700,
+            'elapsed_time' => 8_700,
+            'total_elevation_gain' => 100.0,
+            'has_heartrate' => 1,
+            'average_heartrate' => 155.0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+    }
+    DB::table('activity_details')->insert($details);
 }
 
 it('calls it improving when the recent runs are faster than their matches', function (): void {
@@ -249,6 +298,26 @@ it('never reaches into another runner\'s history', function (): void {
     expect(buildTrend($user)->verdict)->toBe(TrendVerdict::NotEnoughHistory);
 });
 
+it('still finds the oldest comparable runs when the window holds hundreds of others', function (): void {
+    $user = User::factory()->create();
+    foreach ([350, 355, 360, 365] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_400);
+    }
+    crowdHistory($user, 400, fromDaysAgo: 340, toDaysAgo: 45);
+    foreach ([3, 10, 17, 24] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_300);
+    }
+
+    $trend = buildTrend($user);
+
+    expect($trend->verdict)->toBe(TrendVerdict::Improving)
+        ->and($trend->comparisons)->toHaveCount(4)
+        ->and(array_map(
+            fn ($comparison): int => (int) $comparison->past->startedAt->diffInDays(Carbon::today()),
+            $trend->comparisons,
+        ))->each->toBeGreaterThan(340);
+});
+
 it('ignores history older than the matcher\'s ceiling', function (): void {
     $user = User::factory()->create();
     foreach ([380, 395] as $daysAgo) {
@@ -271,4 +340,46 @@ it('reports the fitness trend beside the verdict when the detail pipeline has ca
     }
 
     expect(buildTrend($user)->fitnessDeltaCtl)->toBeFloat()->toBeGreaterThan(0.0);
+});
+
+it('serves the payload from cache for the rest of the athlete\'s day', function (): void {
+    $user = User::factory()->create();
+    foreach ([200, 215, 230, 245] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_400);
+    }
+    foreach ([3, 10, 17, 24] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_300);
+    }
+    $builder = app(PastYouTrendBuilder::class);
+
+    $first = $builder->payload($user);
+    ActivityDetail::query()->delete();
+
+    expect($builder->payload($user))->toBe($first)
+        ->and($first['verdict'])->toBe(TrendVerdict::Improving->value);
+});
+
+it('keys the cache by runner and by day', function (): void {
+    $user = User::factory()->create();
+    trendRun($user, 200, 4_400);
+    trendRun($user, 3, 4_300);
+
+    app(PastYouTrendBuilder::class)->payload($user);
+
+    expect(Cache::has(PastYouTrendBuilder::cacheKey($user->id, Carbon::today()->toDateString())))->toBeTrue()
+        ->and(Cache::has(PastYouTrendBuilder::cacheKey($user->id, Carbon::tomorrow()->toDateString())))->toBeFalse()
+        ->and(Cache::has(PastYouTrendBuilder::cacheKey($user->id + 1, Carbon::today()->toDateString())))->toBeFalse();
+});
+
+it('drops only the day it is asked to drop', function (): void {
+    $user = User::factory()->create();
+    $today = PastYouTrendBuilder::cacheKey($user->id, Carbon::today()->toDateString());
+    $yesterday = PastYouTrendBuilder::cacheKey($user->id, Carbon::yesterday()->toDateString());
+    Cache::put($today, ['verdict' => 'stale']);
+    Cache::put($yesterday, ['verdict' => 'stale']);
+
+    PastYouTrendBuilder::clearCache($user);
+
+    expect(Cache::has($today))->toBeFalse()
+        ->and(Cache::has($yesterday))->toBeTrue();
 });

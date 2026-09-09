@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Agent;
 
+use Carbon\CarbonImmutable;
+
 /**
  * The per-block ceiling on an agent run, and the running total it is measured
  * against.
@@ -14,6 +16,10 @@ namespace App\Services\AI\Agent;
  *
  * Tokens accumulate across every step of the run *including* an aborted attempt
  * that is being retried: those tokens were billed, so they count.
+ *
+ * Steps and tokens bound what the block costs; the wall-clock deadline bounds
+ * how long it may hold its worker, which the worker's own timeout would
+ * otherwise settle by killing the job mid-request.
  */
 final class AgentBudget
 {
@@ -33,10 +39,17 @@ final class AgentBudget
 
     private int $reasoningTokens = 0;
 
+    private readonly ?CarbonImmutable $deadlineAt;
+
+    /**
+     * @param  int  $deadlineSeconds  Wall-clock ceiling on the whole run; 0 leaves it unbounded.
+     */
     public function __construct(
         private readonly int $maxSteps,
         private readonly int $maxTokens,
+        int $deadlineSeconds = 0,
     ) {
+        $this->deadlineAt = $deadlineSeconds > 0 ? CarbonImmutable::now()->addSeconds($deadlineSeconds) : null;
     }
 
     /**
@@ -47,7 +60,17 @@ final class AgentBudget
         return new self(
             $maxSteps ?? (int) config('ai.agent.max_steps'),
             (int) config('ai.agent.max_tokens'),
+            (int) config('ai.agent.deadline_seconds'),
         );
+    }
+
+    /**
+     * Whether the run has spent its wall clock and must not start another
+     * Azure request.
+     */
+    public function deadlinePassed(): bool
+    {
+        return $this->deadlineAt !== null && CarbonImmutable::now()->greaterThanOrEqualTo($this->deadlineAt);
     }
 
     /**

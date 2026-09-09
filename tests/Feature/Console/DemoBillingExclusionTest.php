@@ -56,6 +56,7 @@ const NON_BILLING = [
     'plan:score-compliance' => 'free local km comparison against ActivityDetail rows, no LLM and no Strava call',
     'ai:self-heal' => 'only re-kicks Pending rows; demo rows are seeded Done, and the sweeps that could bill apply notDemo() themselves',
     'queue:prune-failed' => 'deletes rows, touches no user',
+    'analytics:prune' => 'deletes rows, touches no user',
     'geo:backfill-locations' => 'free Nominatim lookup, no LLM and no Strava call',
     'weather:correct-forecast' => 'free Open-Meteo lookup, no LLM and no Strava call',
     'weather:backfill' => 'free Open-Meteo lookup, no LLM and no Strava call',
