@@ -8,6 +8,7 @@ use Carbon\CarbonInterface;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Story\PastYouTrendBuilder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Enumerable;
@@ -41,9 +42,20 @@ class WeeklyAggregator
     ) {
     }
 
-    public function rebuildForWeekOf(User $user, Carbon $when): ?WeeklySnapshot
+    /**
+     * Every per-user, per-day read derived from the history this rebuild is
+     * about to change. Both are keyed by today's date and both only move when
+     * an activity lands or leaves.
+     */
+    private function clearDerivedCaches(User $user): void
     {
         TrainingLoad::clearSummaryCache($user);
+        PastYouTrendBuilder::clearCache($user);
+    }
+
+    public function rebuildForWeekOf(User $user, Carbon $when): ?WeeklySnapshot
+    {
+        $this->clearDerivedCaches($user);
         $weekEnding = $when->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
         // Load a converged lead-in window through this week so the CTL EWMA
@@ -68,7 +80,7 @@ class WeeklyAggregator
      */
     public function rebuildForwardFrom(User $user, CarbonInterface $weekAnchor): ?WeeklySnapshot
     {
-        TrainingLoad::clearSummaryCache($user);
+        $this->clearDerivedCaches($user);
         $anchorWeekEnding = Carbon::instance($weekAnchor)->endOfWeek(Carbon::SUNDAY)->startOfDay();
         $lastWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
@@ -130,7 +142,7 @@ class WeeklyAggregator
 
     public function rebuildFor(User $user): int
     {
-        TrainingLoad::clearSummaryCache($user);
+        $this->clearDerivedCaches($user);
         $details = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $user->id)

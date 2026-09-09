@@ -10,6 +10,7 @@ use App\Services\Run\Story\PastYouTrend;
 use App\Services\Run\Story\PastYouTrendBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
@@ -271,4 +272,46 @@ it('reports the fitness trend beside the verdict when the detail pipeline has ca
     }
 
     expect(buildTrend($user)->fitnessDeltaCtl)->toBeFloat()->toBeGreaterThan(0.0);
+});
+
+it('serves the payload from cache for the rest of the athlete\'s day', function (): void {
+    $user = User::factory()->create();
+    foreach ([200, 215, 230, 245] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_400);
+    }
+    foreach ([3, 10, 17, 24] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_300);
+    }
+    $builder = app(PastYouTrendBuilder::class);
+
+    $first = $builder->payload($user);
+    ActivityDetail::query()->delete();
+
+    expect($builder->payload($user))->toBe($first)
+        ->and($first['verdict'])->toBe(TrendVerdict::Improving->value);
+});
+
+it('keys the cache by runner and by day', function (): void {
+    $user = User::factory()->create();
+    trendRun($user, 200, 4_400);
+    trendRun($user, 3, 4_300);
+
+    app(PastYouTrendBuilder::class)->payload($user);
+
+    expect(Cache::has(PastYouTrendBuilder::cacheKey($user->id, Carbon::today()->toDateString())))->toBeTrue()
+        ->and(Cache::has(PastYouTrendBuilder::cacheKey($user->id, Carbon::tomorrow()->toDateString())))->toBeFalse()
+        ->and(Cache::has(PastYouTrendBuilder::cacheKey($user->id + 1, Carbon::today()->toDateString())))->toBeFalse();
+});
+
+it('drops only the day it is asked to drop', function (): void {
+    $user = User::factory()->create();
+    $today = PastYouTrendBuilder::cacheKey($user->id, Carbon::today()->toDateString());
+    $yesterday = PastYouTrendBuilder::cacheKey($user->id, Carbon::yesterday()->toDateString());
+    Cache::put($today, ['verdict' => 'stale']);
+    Cache::put($yesterday, ['verdict' => 'stale']);
+
+    PastYouTrendBuilder::clearCache($user);
+
+    expect(Cache::has($today))->toBeFalse()
+        ->and(Cache::has($yesterday))->toBeTrue();
 });

@@ -13,6 +13,7 @@ use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Builds the home screen's Past You verdict: the runner's recent runs matched
@@ -38,12 +39,50 @@ class PastYouTrendBuilder
 
     public const int MAX_COMPARISONS = 4;
 
+    /**
+     * Rows are already bounded by the only range the matcher can reach:
+     * {@see self::WINDOW_DAYS} back for the recent side plus
+     * {@see PastYouMatcher::MAX_GAP_DAYS} for the candidates each of them may
+     * pair with. This cap is the backstop above that, and it drops the *oldest*
+     * rows — which are eligible candidates — so it is deliberately far above any
+     * plausible 407-day run count.
+     */
     private const int HISTORY_LIMIT = 400;
 
     public function __construct(
         private readonly PastYouMatcher $matcher,
         private readonly TrainingLoad $trainingLoad,
     ) {
+    }
+
+    /**
+     * The home screen's payload, memoized for the athlete's day. The verdict
+     * only moves when a run lands, so {@see clearCache} at ingest is what makes
+     * this fresh; the date in the key is what makes it roll over at midnight.
+     *
+     * @return array<string, mixed>
+     */
+    public function payload(User $user, ?Carbon $asOf = null): array
+    {
+        $day = ($asOf ?? Carbon::today())->toDateString();
+
+        /** @var array<string, mixed> */
+        return Cache::remember(
+            self::cacheKey($user->id, $day),
+            Carbon::tomorrow(),
+            fn (): array => $this->build($user, $asOf)->toArray(),
+        );
+    }
+
+    public static function cacheKey(int $userId, string $day): string
+    {
+        return "past-you-trend:{$userId}:{$day}";
+    }
+
+    /** Called wherever an activity enters or leaves a user's history. */
+    public static function clearCache(User $user): void
+    {
+        Cache::forget(self::cacheKey($user->id, Carbon::today()->toDateString()));
     }
 
     public function build(User $user, ?Carbon $asOf = null): PastYouTrend
@@ -164,31 +203,41 @@ class PastYouTrendBuilder
     }
 
     /**
+     * Rows come back as plain records rather than models: nothing downstream of
+     * {@see ComparableRun} touches Eloquent, and hydrating a year of history
+     * into models cost more than the matching it feeds. The join replaces an
+     * eager load of `activities` for the one column the runs need.
+     *
      * @return list<ComparableRun>  newest first
      */
     private function loadHistory(int $userId, Carbon $anchor): array
     {
-        /** @var Collection<int, ActivityDetail> $details */
-        $details = ActivityDetail::query()
+        $rows = ActivityDetail::query()
+            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->select([
-                'id', 'activity_id', 'start_date_local', 'distance', 'moving_time',
-                'average_heartrate', 'total_elevation_gain',
+                'activity_details.activity_id',
+                'activity_details.start_date_local',
+                'activity_details.distance',
+                'activity_details.moving_time',
+                'activity_details.average_heartrate',
+                'activity_details.total_elevation_gain',
+                'activities.ingest_state',
             ])
-            ->forUser($userId)
-            ->whereNotNull('start_date_local')
-            ->where('start_date_local', '<=', $anchor)
-            ->where('start_date_local', '>=', $anchor->copy()
+            ->where('activities.user_id', $userId)
+            ->whereNotNull('activity_details.start_date_local')
+            ->where('activity_details.start_date_local', '<=', $anchor)
+            ->where('activity_details.start_date_local', '>=', $anchor->copy()
                 ->subDays(self::WINDOW_DAYS + PastYouMatcher::MAX_GAP_DAYS)->startOfDay())
-            ->where('distance', '>', 0)
-            ->where('moving_time', '>', 0)
-            ->with('activity:id,ingest_state')
-            ->orderByDesc('start_date_local')
+            ->where('activity_details.distance', '>', 0)
+            ->where('activity_details.moving_time', '>', 0)
+            ->orderByDesc('activity_details.start_date_local')
             ->limit(self::HISTORY_LIMIT)
+            ->toBase()
             ->get();
 
         $runs = [];
-        foreach ($details as $detail) {
-            $run = ComparableRun::fromDetail($detail, $detail->activity->ingest_state);
+        foreach ($rows as $row) {
+            $run = ComparableRun::fromRow((array) $row);
             if ($run !== null) {
                 $runs[] = $run;
             }
