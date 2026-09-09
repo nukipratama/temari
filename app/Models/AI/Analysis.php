@@ -56,8 +56,10 @@ class Analysis extends Model
     /**
      * Max real LLM executions before ai:self-heal gives up on a Failed row and
      * dead-letters it for a manual retry. `attempts` bumps once per job run
-     * (markProcessing) and resets to 0 on invalidate, so a manual "Reread"
-     * re-arms the budget; capped no-op dispatches never touch it.
+     * (markProcessing) and resets to 0 only on a user-initiated invalidation, so
+     * a manual "Reread" re-arms the budget while a system re-narration (an
+     * ingest, the Monday fingerprint sweep) leaves it spent; capped no-op
+     * dispatches never touch it.
      */
     public const int MAX_SELF_HEAL_ATTEMPTS = 3;
 

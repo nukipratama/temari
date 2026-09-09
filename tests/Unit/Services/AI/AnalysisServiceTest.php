@@ -142,7 +142,9 @@ it('invalidate=true flips a done row back to queued and re-dispatches', function
     expect(Analysis::query()->first()->status)->toBe(AnalysisStatus::Queued);
 });
 
-it('resets attempts to 0 when invalidating a previously-done row (row + group paths)', function (): void {
+it('resets attempts to 0 on a user-initiated invalidation (row + group paths)', function (): void {
+    app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+
     // Row path (WeeklyRecap is non-grouped).
     $snap = WeeklySnapshot::factory()->create();
     Analysis::factory()->done('old')->create([
@@ -185,6 +187,118 @@ it('resets attempts to 0 when invalidating a previously-done row (row + group pa
         ->where('analysis_type', AnalysisType::PostRunSpeech)
         ->first();
     expect($speechRow->attempts)->toBe(0);
+});
+
+it('keeps attempts on a system invalidation, so the self-heal budget is per row (row + group paths)', function (): void {
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
+
+    $snap = WeeklySnapshot::factory()->create();
+    Analysis::factory()->done('old')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'attempts' => 3,
+    ]);
+
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+        invalidate: true,
+    );
+
+    expect(Analysis::query()->first()->attempts)->toBe(3);
+
+    $activity = Activity::factory()->create();
+    ActivityDetail::factory()->for($activity)->create();
+    Analysis::factory()->done('old speech')->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+        'attempts' => 2,
+    ]);
+
+    $this->service->request(
+        subjectOrType: Activity::class,
+        subjectId: $activity->id,
+        type: AnalysisType::PostRunSpeech,
+        invalidate: true,
+    );
+
+    $speechRow = Analysis::query()
+        ->where('subject_id', $activity->id)
+        ->where('analysis_type', AnalysisType::PostRunSpeech)
+        ->first();
+    expect($speechRow->attempts)->toBe(2)
+        ->and($speechRow->status)->toBe(AnalysisStatus::Queued);
+});
+
+it('enqueues one job when two dispatchers interleave over the same pending row', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    // Run a second, complete dispatch inside the first one's read of the row, so
+    // both dispatchers hold a row they read as Pending — the interleaving that a
+    // sequential double-call cannot reproduce, because the second call would
+    // otherwise re-read the row as Queued.
+    $interleaved = false;
+    Analysis::retrieved(function () use ($snap, &$interleaved): void {
+        if ($interleaved) {
+            return;
+        }
+        $interleaved = true;
+
+        $this->service->request(
+            subjectOrType: WeeklySnapshot::class,
+            subjectId: $snap->id,
+            type: AnalysisType::WeeklyRecap,
+        );
+    });
+
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($interleaved)->toBeTrue();
+    Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
+
+    $row = Analysis::query()->first();
+    expect($row->status)->toBe(AnalysisStatus::Queued);
+});
+
+it('claims a row for dispatch only from pending or failed', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+
+    foreach ([AnalysisStatus::Queued, AnalysisStatus::Processing, AnalysisStatus::Done] as $status) {
+        Analysis::query()->delete();
+        Analysis::factory()->create([
+            'subject_type' => WeeklySnapshot::class,
+            'subject_id' => $snap->id,
+            'analysis_type' => AnalysisType::WeeklyRecap,
+            'discriminator' => null,
+            'status' => $status,
+        ]);
+
+        $this->service->request(
+            subjectOrType: WeeklySnapshot::class,
+            subjectId: $snap->id,
+            type: AnalysisType::WeeklyRecap,
+        );
+
+        expect(Analysis::query()->first()->status)->toBe($status);
+    }
+
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
 it('re-dispatches when status is failed', function (): void {
