@@ -16,7 +16,7 @@ class EnsureOnboarded
      *
      * @var list<string>
      */
-    private const ALLOWED_ROUTE_NAMES = [
+    private const array ALLOWED_ROUTE_NAMES = [
         'push.subscribe',
         'push.unsubscribe',
     ];
