@@ -263,22 +263,25 @@ internalising:
 CI passes `--no-tia` on both Pest steps: a narrowed run would quietly shrink the 95% coverage gate.
 
 TIA works in **worktrees** too, but only because `worktree-setup.sh` writes a `compose.override.yaml`
-that mounts the shared git dir and exports `GIT_DIR` — a worktree's `.git` is a *file* pointing at a
-host path outside the bind mount, and TIA panics on an unresolvable repo rather than degrading. A
-worktree stack brought up without that override falls through to TIA off (the `tests/Pest.php` guard),
-which is degraded but not broken. Each worktree records its own graph from cold on first run.
+that bind-mounts the shared git dir **at the same absolute path it has on the host**. A worktree's
+`.git` is a *file* holding that host path, so mounting it anywhere else leaves the pointer dangling,
+and TIA panics on an unresolvable repo rather than degrading. Same path in and out means git resolves
+the repo from `/var/www/html` natively, with **no git environment variables at all** — which matters
+because Composer strips `GIT_DIR`/`GIT_WORK_TREE` from every script it runs, so anything built on
+them died under `composer gate` anyway. A worktree stack brought up without that override falls
+through to TIA off (the `tests/Pest.php` guard), which is degraded but not broken. Each worktree
+records its own graph from cold on first run.
 
-**Composer strips `GIT_DIR`/`GIT_WORK_TREE`** from the environment of every script it runs, so under
-`composer gate` a worktree has no readable repo at all — for the gate and for every tool it shells
-out to. `worktree-setup.sh` therefore also exports `TEMARI_GIT_DIR`, a copy under a name Composer
-leaves alone, and [scripts/git-env.sh](../../../scripts/git-env.sh) — sourced by
-[scripts/gate.sh](../../../scripts/gate.sh) — puts it back. Cost of not doing it: `vitest --changed`
-found no git, reported `No test files found`, and the step passed having run zero frontend tests.
-The main checkout never sets `TEMARI_GIT_DIR` and git reads its own `.git` directly, so the restore
-is a no-op there. The base itself is resolved by
+Setting `GIT_DIR` was the old mechanism and it was actively harmful: with `GIT_DIR` pointing at a
+worktree slot under a differently-mounted common dir, container-side git persisted
+`core.worktree=/var/www/html` into the **host's** shared `.git/config`, and every host `git` command
+then failed with *"this operation must be run in a work tree"*. Don't reintroduce it.
+
+`vitest --changed`'s base is resolved by
 [scripts/vitest-changed-base.sh](../../../scripts/vitest-changed-base.sh), which fails the gate
 rather than falling back — a bare `vitest --changed` diffs the working tree against HEAD, which on a
-clean checkout selects nothing and exits 0.
+clean checkout selects nothing and exits 0. Cost of getting that wrong: it found no git, reported
+`No test files found`, and the step passed having run zero frontend tests.
 
 **Dev commands:**
 - After changing a PHP enum exposed to TS: `./vendor/bin/sail artisan typescript:enums` (`--check` mirrors CI).
