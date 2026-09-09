@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Models\User;
+use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Support\Carbon;
@@ -27,9 +28,11 @@ final class TrainingPacesTool extends UserTool
 
     public function description(): string
     {
-        return "The user's training paces in seconds per km, derived from their VDOT: easy, "
-            .'marathon, threshold, interval. Call this when you want to suggest a concrete pace. '
-            .'If the paces don\'t show up at all, their PR history isn\'t enough yet to estimate VDOT.';
+        return "The user's training paces derived from their VDOT: easy, marathon, threshold, "
+            .'interval. Each comes as a _formatted mm:ss/km (the only form to quote -- matches what '
+            .'the app shows) and a _sec raw seconds-per-km twin, for judging size, never for '
+            .'quoting. Call this when you want to suggest a concrete pace. If the paces don\'t show '
+            .'up at all, their PR history isn\'t enough yet to estimate VDOT.';
     }
 
     /** @return array<string, mixed> */
@@ -37,11 +40,20 @@ final class TrainingPacesTool extends UserTool
     {
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($this->user, $this->asOf));
 
+        return array_merge(
+            ...array_map(
+                fn (string $key): array => self::pacePair($key, $paces[$key] ?? null),
+                ['easy', 'marathon', 'threshold', 'interval'],
+            ),
+        );
+    }
+
+    /** @return array<string, mixed> */
+    private static function pacePair(string $key, ?int $sec): array
+    {
         return [
-            'easy_pace_sec' => $paces['easy'] ?? null,
-            'marathon_pace_sec' => $paces['marathon'] ?? null,
-            'threshold_pace_sec' => $paces['threshold'] ?? null,
-            'interval_pace_sec' => $paces['interval'] ?? null,
+            "{$key}_pace_sec" => $sec,
+            "{$key}_pace_formatted" => $sec === null ? null : PaceFormatter::format((float) $sec),
         ];
     }
 }

@@ -45,6 +45,7 @@ use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\LifetimeStats;
+use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -617,7 +618,9 @@ it('WeekTotalsTool reads the previous week deltas when a prior snapshot exists',
 
     expect($context['prev_distance_km'])->toBe(20.0)
         ->and($context['prev_runs'])->toBe(3)
-        ->and($context['prev_pace_sec_per_km'])->not->toBeNull();
+        ->and($context['prev_pace_sec_per_km'])->not->toBeNull()
+        ->and($context['pace_formatted'])->toBe(PaceFormatter::format($context['pace_sec_per_km']))
+        ->and($context['prev_pace_formatted'])->toBe(PaceFormatter::format($context['prev_pace_sec_per_km']));
 });
 
 it('WeeklyRecapNarrator leaves previous-week deltas null on the first week', function (): void {
@@ -628,7 +631,17 @@ it('WeeklyRecapNarrator leaves previous-week deltas null on the first week', fun
 
     expect($context['prev_distance_km'])->toBeNull()
         ->and($context['prev_runs'])->toBeNull()
-        ->and($context['prev_pace_sec_per_km'])->toBeNull();
+        ->and($context['prev_pace_sec_per_km'])->toBeNull()
+        ->and($context['prev_pace_formatted'])->toBeNull();
+});
+
+it('WeekTotalsTool formats a sub-4:00 average pace the same way the app shows it', function (): void {
+    $user = User::factory()->create();
+    $current = WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-17', 'distance_km' => 10.0, 'moving_time_sec' => 2320, // 3:52/km
+    ]);
+
+    expect(new WeekTotalsTool($current)->handle([])['pace_formatted'])->toBe('3:52');
 });
 
 it('WeeklyRecapNarrator feeds prev_narrative when the prior week recap is Done', function (): void {

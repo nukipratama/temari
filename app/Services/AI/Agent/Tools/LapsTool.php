@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Services\Run\Ingest\KmSplitBuilder;
+use App\Services\Run\Metrics\DurationFormatter;
 use App\Services\Run\Metrics\IntervalDetector;
 use App\Services\Run\Metrics\PaceCalculator;
 
@@ -31,8 +32,9 @@ final class LapsTool extends ActivityTool
     {
         return "Laps as pressed/recorded by the watch, one row per lap and a lap isn't necessarily "
             .'1 km, plus the fastest and slowest lap. If the laps alternate fast-slow, rep_count '
-            .'(number of fast laps) and recovery_sec (the length of each gap between them, in '
-            ."seconds) show up too; if they don't, the laps have no pattern. If it's not an interval "
+            .'(number of fast laps) and recovery_formatted (the length of each gap between them, as '
+            .'mm:ss -- the only form to quote) show up too, alongside recovery_sec (raw seconds, for '
+            ."judging size, never for quoting); if they don't, the laps have no pattern. If it's not an interval "
             .'session but some laps are much shorter than the session\'s normal lap, pause_count and '
             .'paused_laps (their lap numbers) show up instead, that\'s a sign of a brief stop (red '
             .'light, crossing), not fatigue. Comes back empty if the laps are just auto-splits per '
@@ -62,6 +64,9 @@ final class LapsTool extends ActivityTool
             'slowest_lap' => $slowest === null ? null : self::lapNumber($laps, $slowest),
             'rep_count' => $reps === [] ? null : count($reps),
             'recovery_sec' => $recoveries === [] ? null : $recoveries,
+            'recovery_formatted' => $recoveries === []
+                ? null
+                : array_map(DurationFormatter::hms(...), $recoveries),
             'pause_count' => $pauses === [] ? null : count($pauses),
             'paused_laps' => $pauses === [] ? null : array_values(array_filter(array_map(
                 fn (int $position): ?int => self::lapNumber($laps, $position),
@@ -85,6 +90,7 @@ final class LapsTool extends ActivityTool
             'slowest_lap' => null,
             'rep_count' => null,
             'recovery_sec' => null,
+            'recovery_formatted' => null,
             'pause_count' => null,
             'paused_laps' => null,
         ];

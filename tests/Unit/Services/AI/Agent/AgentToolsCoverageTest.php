@@ -37,6 +37,7 @@ use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
+use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
@@ -110,10 +111,22 @@ it('reads the run basics, doubling the one-leg cadence Strava stores', function 
     expect(new RunSummaryTool($a, $d->fresh())->handle([]))->toMatchArray([
         'distance_km' => 5.0,
         'moving_time_sec' => 1500,
+        'moving_time_formatted' => '25:00',
+        'pace_formatted' => '5:00',
         'avg_hr' => 155.0,
         'max_hr' => 178,
         'avg_cadence_spm' => 167,
     ]);
+});
+
+it('formats a sub-4:00 pace and a past-hour duration the same way the app shows them', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['distance' => 42195.0, 'moving_time' => 9000]); // marathon, 3:33/km, 2:30:00
+
+    $reading = new RunSummaryTool($a, $d->fresh())->handle([]);
+
+    expect($reading['moving_time_formatted'])->toBe('2:30:00')
+        ->and($reading['pace_formatted'])->toBe('3:33');
 });
 
 it('rounds the run distance to the one decimal the copy rule allows', function (): void {
@@ -280,6 +293,7 @@ it('reads an interval session as a structure, counting the reps and the jogs bet
         ->and($reading['laps'])->toHaveCount(13)
         ->and($reading['rep_count'])->toBe(6)
         ->and($reading['recovery_sec'])->toBe([84, 84, 84, 84, 84])
+        ->and($reading['recovery_formatted'])->toBe(['1:24', '1:24', '1:24', '1:24', '1:24'])
         // The quickest rep, not the first one that happens to be quick.
         ->and($reading['fastest_lap'])->toBe(8)
         ->and($reading['slowest_lap'])->toBe(1);
@@ -310,6 +324,7 @@ it('reads null laps without fataling when there is no stream summary', function 
         'slowest_lap' => null,
         'rep_count' => null,
         'recovery_sec' => null,
+        'recovery_formatted' => null,
         'pause_count' => null,
         'paused_laps' => null,
     ]);
@@ -331,6 +346,7 @@ it('leaves the rep structure out when manual laps carry no fast-slow pattern', f
         ->and($reading['laps'])->toHaveCount(3)
         ->and($reading['rep_count'])->toBeNull()
         ->and($reading['recovery_sec'])->toBeNull()
+        ->and($reading['recovery_formatted'])->toBeNull()
         ->and($reading['pause_count'])->toBeNull()
         ->and($reading['paused_laps'])->toBeNull();
 });
@@ -558,7 +574,9 @@ it('reads easy and threshold paces derived from the runner VDOT', function (): v
 
     expect($reading['easy_pace_sec'])->toBeInt()
         ->and($reading['threshold_pace_sec'])->toBeInt()
-        ->and($reading['easy_pace_sec'])->toBeGreaterThan($reading['threshold_pace_sec']);
+        ->and($reading['easy_pace_sec'])->toBeGreaterThan($reading['threshold_pace_sec'])
+        ->and($reading['easy_pace_formatted'])->toBe(PaceFormatter::format((float) $reading['easy_pace_sec']))
+        ->and($reading['threshold_pace_formatted'])->toBe(PaceFormatter::format((float) $reading['threshold_pace_sec']));
 });
 
 it('reads null paces when the runner has no VDOT-eligible PR', function (): void {
@@ -567,7 +585,19 @@ it('reads null paces when the runner has no VDOT-eligible PR', function (): void
     $reading = new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($reading['easy_pace_sec'])->toBeNull()
-        ->and($reading['threshold_pace_sec'])->toBeNull();
+        ->and($reading['threshold_pace_sec'])->toBeNull()
+        ->and($reading['easy_pace_formatted'])->toBeNull()
+        ->and($reading['threshold_pace_formatted'])->toBeNull();
+});
+
+it('formats a sub-4:00 interval pace for a fast runner', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    PersonalRecord::factory()->for($a->user)->create(['category' => '5km', 'value_sec' => 780]); // 14:00 5K, elite-ish
+
+    $reading = new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
+
+    expect($reading['interval_pace_sec'])->toBeLessThan(240)
+        ->and($reading['interval_pace_formatted'])->toBe(PaceFormatter::format((float) $reading['interval_pace_sec']));
 });
 
 // ── PastYouTool ───────────────────────────────────────────────────────
@@ -610,7 +640,19 @@ it('reads the records this run broke', function (): void {
     ]);
 
     expect(new PersonalRecordsTool($a, $d)->handle([])['personal_records'])
-        ->toBe([['category' => '5km', 'value_sec' => 1500.0]]);
+        ->toBe([['category' => '5km', 'value_sec' => 1500.0, 'value_formatted' => '25:00']]);
+});
+
+it('formats a past-hour PR the same way the profile page shows it', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    PersonalRecord::factory()->for($a->user)->create([
+        'activity_id' => $a->id,
+        'category' => 'marathon',
+        'value_sec' => 9007.0,
+    ]);
+
+    expect(new PersonalRecordsTool($a, $d)->handle([])['personal_records'][0]['value_formatted'])
+        ->toBe('2:30:07');
 });
 
 it('reads an empty record list for a run that broke nothing, so no PR can be invented', function (): void {
@@ -916,15 +958,16 @@ it('targets each day at the pace its session type calls for', function (): void 
         ]);
     }
 
-    $paces = array_column(
-        planContextTool($user, $monday, $monday->copy()->addDays(2))->handle([])['days'],
-        'target_pace_sec',
-    );
+    $days = planContextTool($user, $monday, $monday->copy()->addDays(2))->handle([])['days'];
+    $paces = array_column($days, 'target_pace_sec');
 
     expect($paces[0])->toBeInt()
         ->and($paces[1])->toBeInt()
         ->and($paces[0])->toBeGreaterThan($paces[1])
-        ->and($paces[2])->toBeNull();
+        ->and($paces[2])->toBeNull()
+        ->and($days[0]['target_pace_formatted'])->toBe(PaceFormatter::format((float) $paces[0]))
+        ->and($days[1]['target_pace_formatted'])->toBe(PaceFormatter::format((float) $paces[1]))
+        ->and($days[2]['target_pace_formatted'])->toBeNull();
 });
 
 /**

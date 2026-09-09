@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Models\PersonalRecord;
+use App\Services\Run\Metrics\DurationFormatter;
 
 final class PersonalRecordsTool extends ActivityTool
 {
@@ -15,8 +16,10 @@ final class PersonalRecordsTool extends ActivityTool
 
     public function description(): string
     {
-        return 'The personal records this run broke, if any. An empty list means this session did '
-            .'NOT break any PR, so never mention a PR at all.';
+        return 'The personal records this run broke, if any, each with value_formatted (h:mm:ss or '
+            .'mm:ss, the only form to quote) and value_sec (raw seconds, for judging size, never for '
+            .'quoting). An empty list means this session did NOT break any PR, so never mention a PR '
+            .'at all.';
     }
 
     /** @return array<string, mixed> */
@@ -28,6 +31,7 @@ final class PersonalRecordsTool extends ActivityTool
             ->map(fn (PersonalRecord $record): array => [
                 'category' => $record->category->value,
                 'value_sec' => $record->value_sec,
+                'value_formatted' => DurationFormatter::hms((int) round($record->value_sec)),
             ])
             ->all();
 
