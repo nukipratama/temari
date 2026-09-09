@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Re-dispatches the earliest still-stalled block of each recovery family so a
@@ -48,6 +49,7 @@ class SelfHealer
         private readonly AnalysisService $service,
         private readonly ChainResolver $chains,
         private readonly BackfillAgeGate $ages,
+        private readonly RecapHydrationReadiness $readiness,
     ) {
     }
 
@@ -146,21 +148,37 @@ class SelfHealer
         return $stale->count();
     }
 
+    /**
+     * The hourly pickup for a week {@see RecapHydrationReadiness} held back:
+     * the recap row is already staged Pending by the ingest cascade, so it
+     * surfaces here every hour and resumes on the first sweep after its
+     * activities finish hydrating.
+     */
     private function resumeWeekly(): int
     {
         $links = $this->chains->stalledWeeklyLinkPerUser();
         $oldestReal = $this->ages->cutoffDate();
+
+        // discriminator carries week_ending here (see ChainResolver::stalledWeeklyLinkPerUser).
+        $tooOld = fn (ChainLink $link): bool => $link->discriminator !== null && $link->discriminator < $oldestReal;
+
+        $ready = $this->readyWeekIds($links->reject($tooOld));
+        $resumed = 0;
         $index = 0;
 
         foreach ($links as $link) {
-            // discriminator carries week_ending here (see ChainResolver::stalledWeeklyLinkPerUser).
-            if ($link->discriminator !== null && $link->discriminator < $oldestReal) {
+            if ($tooOld($link)) {
                 $this->service->requestRuleBased(
                     subjectOrType: WeeklySnapshot::class,
                     subjectId: $link->subjectId,
                     type: AnalysisType::WeeklyRecap,
                 );
+                $resumed++;
 
+                continue;
+            }
+
+            if (! $ready->has($link->subjectId)) {
                 continue;
             }
 
@@ -172,9 +190,23 @@ class SelfHealer
                 invalidate: false,
             );
             $index++;
+            $resumed++;
         }
 
-        return $links->count();
+        return $resumed;
+    }
+
+    /**
+     * @param  Collection<int, ChainLink>  $links
+     * @return Collection<int, int>  the snapshot ids whose week may be narrated now, keyed by id
+     */
+    private function readyWeekIds(Collection $links): Collection
+    {
+        $snapshots = WeeklySnapshot::query()
+            ->whereIn('id', $links->map(fn (ChainLink $link): int => $link->subjectId)->all())
+            ->get();
+
+        return $this->readiness->ready($snapshots)->pluck('id')->flip();
     }
 
     private function resumeMonthly(): int
