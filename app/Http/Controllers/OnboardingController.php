@@ -42,14 +42,13 @@ class OnboardingController extends Controller
      */
     private function resolveTelegramConnectUrl(User $user, TelegramLinkToken $linkToken): ?string
     {
-        $botUsername = (string) config('services.telegram.bot_username');
         $connection = $user->telegramConnection;
 
-        if ($botUsername === '' || ($connection !== null && ! $connection->isRevoked())) {
+        if ($connection !== null && ! $connection->isRevoked()) {
             return null;
         }
 
-        return "https://t.me/{$botUsername}?start=" . $linkToken->mint($user->id);
+        return $linkToken->connectUrl($user->id);
     }
 
     public function store(

@@ -492,4 +492,31 @@ describe('Onboarding/Index', () => {
 
         expect(screen.getByLabelText('race day')).toHaveValue('2026-12-25');
     });
+    it('steps back to the goal form when the server rejects a goal field', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToGoal();
+
+        fireEvent.change(screen.getByLabelText('race day'), {
+            target: { value: '2026-12-25' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'set my goal' }));
+        finishFromNudge();
+
+        const [, , options] = vi.mocked(router.post).mock.calls.at(-1) as [
+            string,
+            Record<string, unknown>,
+            { onError?: (errors: Record<string, string>) => void },
+        ];
+        act(() =>
+            options.onError?.({
+                race_date: 'Race day has to be in the future.',
+            }),
+        );
+
+        expect(screen.getByLabelText('race day')).toHaveValue('2026-12-25');
+        expect(
+            screen.getByRole('button', { name: 'set my goal' }),
+        ).toBeInTheDocument();
+    });
 });

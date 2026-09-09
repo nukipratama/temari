@@ -37,6 +37,21 @@ class TelegramLinkToken
     }
 
     /**
+     * The bot deep link carrying a fresh, single-use token for this user, or
+     * null when `services.telegram.bot_username` isn't configured.
+     */
+    public function connectUrl(int $userId): ?string
+    {
+        $botUsername = (string) config('services.telegram.bot_username');
+
+        if ($botUsername === '') {
+            return null;
+        }
+
+        return "https://t.me/{$botUsername}?start=" . $this->mint($userId);
+    }
+
+    /**
      * Resolve the user id a `/start` token points at.
      *
      * @throws TelegramLinkTokenException expired==true when the token verified

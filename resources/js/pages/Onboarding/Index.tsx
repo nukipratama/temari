@@ -308,6 +308,18 @@ export default function OnboardingIndex({
             {
                 onStart: () => setProcessing(true),
                 onFinish: () => setProcessing(false),
+                // The only server-validated fields live a step behind, and
+                // that step is the only one that renders their errors.
+                onError: (submitErrors) => {
+                    if (
+                        submitErrors.race_date ||
+                        submitErrors.distance_m ||
+                        submitErrors.goal_time_sec ||
+                        submitErrors.name
+                    ) {
+                        setStep('goal');
+                    }
+                },
             },
         );
     };
