@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Models\User;
@@ -31,6 +32,7 @@ class DashboardController extends Controller
         BriefingComposer $briefingComposer,
         PastYouTrendBuilder $pastYouTrend,
         CurrentWeekPlanBuilder $weekPlanBuilder,
+        ResolveTrailingWeeksAction $trailingWeeks,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -62,10 +64,11 @@ class DashboardController extends Controller
         return Inertia::render('Home', [
             'briefing' => fn (): BriefingResult => $briefingComposer->compose($user, $today),
             'load' => fn (): ?array => $trainingLoad->summary($user, $today),
-            'snapshot' => fn (): ?WeeklySnapshot => WeeklySnapshot::query()
-                ->where('user_id', $user->id)
-                ->orderByDesc('week_ending')
-                ->first(),
+            'snapshot' => fn (): ?WeeklySnapshot => $trailingWeeks(
+                $user->id,
+                $today->copy()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+                1,
+            )->first(),
             'recentRuns' => fn (): Collection => $loadRecentRuns(),
             'pastYouTrend' => fn (): array => $pastYouTrend->payload($user, $today),
             'weekPlan' => fn (): ?array => $weekPlanBuilder->forUser($user, $today),

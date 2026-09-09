@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -27,7 +28,7 @@ use Illuminate\Support\Carbon;
  * Loads a whole date range in one query — the per-day existence check this
  * replaced on the Plan tab was an N+1 across every rendered week.
  */
-final class SessionMatcher
+final readonly class SessionMatcher
 {
     /** Fraction of the prescribed km that counts the session as run as asked. */
     public const float DONE_FRACTION = 0.85;
@@ -37,6 +38,11 @@ final class SessionMatcher
 
     /** At or above this fraction the athlete ran significantly more than prescribed. */
     public const float OVERREACHED_FRACTION = 1.30;
+
+    public function __construct(
+        private ResolvePlannedSessionsAction $plannedSessions,
+    ) {
+    }
 
     /**
      * Render-time fallback for whatever subset of `$plannedKmByDate` is
@@ -251,16 +257,14 @@ final class SessionMatcher
      * passed in, so the three callers that build `$plannedKmByDate` cannot
      * drift out of step with it.
      *
-     * @param  list<string>  $dates
+     * @param  non-empty-list<string>  $dates
      * @return array<string, bool>
      */
     private function longRunDates(User $user, array $dates): array
     {
-        return PlannedSession::query()
-            ->where('user_id', $user->id)
-            ->where('session_type', SessionType::Long)
-            ->whereIn('date', $dates)
-            ->get(['date'])
+        return ($this->plannedSessions)($user->id, min($dates), max($dates))
+            ->filter(fn (PlannedSession $session): bool => $session->session_type === SessionType::Long
+                && in_array($session->date->toDateString(), $dates, true))
             ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => true])
             ->all();
     }

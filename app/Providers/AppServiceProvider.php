@@ -37,7 +37,9 @@ use SocialiteProviders\Manager\SocialiteWasCalled;
 use SocialiteProviders\Strava\StravaExtendSocialite;
 use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
 use App\Actions\Run\Plan\ResolveSeasonAction;
+use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Actions\Run\Story\ResolveLastRunStartAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 
@@ -82,6 +84,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(ResolveSeasonAction::class);
         $this->app->scoped(ResolveWeekAdaptationAction::class);
         $this->app->scoped(ResolveFlaggedSubjectsAction::class);
+
+        // Home's own repeats, all cross-service: the last run start is asked
+        // for by Vibe and twice by RecoveryWindow, and the four-week plan
+        // window the week builder loads is re-queried by SessionMatcher.
+        $this->app->scoped(ResolveLastRunStartAction::class);
+        $this->app->scoped(ResolvePlannedSessionsAction::class);
     }
 
     public function boot(): void

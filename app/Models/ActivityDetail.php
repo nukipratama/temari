@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Actions\Run\Story\ResolveLastRunStartAction;
 use App\Services\Run\Metrics\PaceCalculator;
 use Database\Factories\ActivityDetailFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -101,6 +102,17 @@ class ActivityDetail extends Model
 {
     /** @use HasFactory<ActivityDetailFactory> */
     use HasFactory;
+
+    #[Override]
+    protected static function booted(): void
+    {
+        $bust = static function (): void {
+            app(ResolveLastRunStartAction::class)->flush();
+        };
+
+        static::saved($bust);
+        static::deleted($bust);
+    }
 
     /**
      * Detail rows owned by the given user (i.e. whose activity belongs to them).

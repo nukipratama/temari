@@ -41,13 +41,14 @@ it('reads the window once for repeated questions with the same key', function ()
     $first = $resolve($user->id, Carbon::today()->toDateString(), 6);
     $second = $resolve($user->id, Carbon::today()->toDateString(), 6);
 
-    expect($second)->toBe($first)
+    expect($second->pluck('id')->all())->toBe($first->pluck('id')->all())
         ->and($queries)->toBe(1);
 });
 
 // Compliance scoring measures a past week against its own trailing window, so
-// the date is part of the answer, not just the athlete.
-it('keeps different dates and window sizes apart', function (): void {
+// the week is part of the answer, not just the athlete. Depth is not: a deeper
+// window behind the same week is a slice of the read already made.
+it('keeps different weeks apart and serves every depth from one read', function (): void {
     $user = User::factory()->create();
     $resolve = new ResolveTrailingWeeksAction();
     $queries = 0;
@@ -56,10 +57,24 @@ it('keeps different dates and window sizes apart', function (): void {
     });
 
     $resolve($user->id, Carbon::today()->toDateString(), 6);
-    $resolve($user->id, Carbon::today()->subWeek()->toDateString(), 6);
     $resolve($user->id, Carbon::today()->toDateString(), 12);
+    $resolve($user->id, Carbon::today()->subWeek()->toDateString(), 6);
 
-    expect($queries)->toBe(3);
+    expect($queries)->toBe(2);
+});
+
+// The read is widened to the week's end so Home's three depths share it, which
+// would leak the in-progress week into a window asked for as of a day inside it.
+it('excludes a snapshot ending later in the same week as the date', function (): void {
+    $user = User::factory()->create();
+    $wednesday = Carbon::parse('2026-09-09');
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-09-13']);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-09-06']);
+
+    $weeks = (new ResolveTrailingWeeksAction())($user->id, $wednesday->toDateString(), 6);
+
+    expect($weeks)->toHaveCount(1)
+        ->and($weeks->first()->week_ending->toDateString())->toBe('2026-09-06');
 });
 
 it('keeps athletes apart', function (): void {

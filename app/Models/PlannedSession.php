@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -76,6 +77,17 @@ class PlannedSession extends Model
 {
     /** @use HasFactory<PlannedSessionFactory> */
     use HasFactory;
+
+    #[Override]
+    protected static function booted(): void
+    {
+        $bust = static function (PlannedSession $row): void {
+            app(ResolvePlannedSessionsAction::class)->forget($row->user_id);
+        };
+
+        static::saved($bust);
+        static::deleted($bust);
+    }
 
     /**
      * @return BelongsTo<User, $this>
