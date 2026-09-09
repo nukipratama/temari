@@ -384,8 +384,9 @@ describe('WeekDayRow', () => {
         expect(screen.getByText(/8 km/)).toBeInTheDocument();
     });
 
-    it('offers one icon-only flag control without expanding the day', () => {
+    it('offers one icon-only flag control on the expanded day', () => {
         renderRow();
+        expand();
 
         const flag = screen.getByRole('button', { name: 'flag this day' });
 
@@ -393,18 +394,9 @@ describe('WeekDayRow', () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
-    it('keeps the flag out of the trigger it sits beside', () => {
-        renderRow();
-
-        const trigger = screen.getByRole('button', { name: /tempo/i });
-        const flag = screen.getByRole('button', { name: 'flag this day' });
-
-        expect(trigger).not.toContainElement(flag);
-        expect(flag.parentElement).toBe(trigger.parentElement);
-    });
-
     it('draws an inert flagged icon on a day already flagged', () => {
         renderRow({ day: day({ flagged: true }) });
+        expand();
 
         expect(screen.getByLabelText('flagged')).toBeInTheDocument();
         expect(

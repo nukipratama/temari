@@ -3,7 +3,6 @@ import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { renderNarration } from '@/components/temari/Citation';
 import FaceIcon from '@/components/temari/FaceIcon';
-import NarrationFlag from '@/components/temari/NarrationFlag';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
@@ -132,12 +131,9 @@ export default function TodaySession({
             <div className="flex items-start gap-3">
                 <FaceIcon size={42} ring="var(--color-leaf)" />
                 <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                        <Eyebrow token="micro" className="text-icon-accent">
-                            Today
-                        </Eyebrow>
-                        <NarrationFlag analysis={briefing.mascotVoice} />
-                    </div>
+                    <Eyebrow token="micro" className="mb-1 text-icon-accent">
+                        Today
+                    </Eyebrow>
                     {today !== null && <TodayPrescription day={today} />}
                     <AnalysisStatus
                         analysis={briefing.mascotVoice}

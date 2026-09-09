@@ -247,17 +247,4 @@ describe('RunLenses claim citations', () => {
         expect(target.dataset.anchorHit).toBe('true');
         target.remove();
     });
-
-    it('sits each lens flag in its own label row', () => {
-        render(<RunLenses {...defaultProps} isChainHead />);
-
-        const flags = screen.getAllByRole('button', {
-            name: 'flag this read',
-        });
-
-        expect(flags).toHaveLength(2);
-        expect(screen.getByText("This run's story").parentElement).toBe(
-            flags[0].parentElement?.firstElementChild,
-        );
-    });
 });

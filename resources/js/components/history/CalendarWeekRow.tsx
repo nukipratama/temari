@@ -4,7 +4,6 @@ import { useState } from 'react';
 import type { WeeklySnapshotWithRecap } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import NarrationFlag from '@/components/temari/NarrationFlag';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
@@ -53,9 +52,6 @@ export default function CalendarWeekRow({
                     id={disclosureId}
                     className="mt-1 mb-2 rounded-sm bg-muted px-3 py-2.5"
                 >
-                    <div className="flex justify-end">
-                        <NarrationFlag analysis={snapshot.recap_analysis} />
-                    </div>
                     <AnalysisStatus
                         analysis={snapshot.recap_analysis}
                         inertiaReloadProps={['weeklySnapshots']}

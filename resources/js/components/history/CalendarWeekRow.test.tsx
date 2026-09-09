@@ -216,18 +216,4 @@ describe('CalendarWeekRow', () => {
             screen.queryByRole('button', { name: /Reread/ }),
         ).not.toBeInTheDocument();
     });
-
-    it('draws the recap flag above the narration inside the disclosure', () => {
-        render(<CalendarWeekRow week={PLAIN_WEEK} snapshot={snapshot()} />);
-        fireEvent.click(screen.getByRole('button', { name: /WK 1/ }));
-
-        const flag = screen.getByRole('button', { name: 'flag this read' });
-        const narration = screen.getByText(/Steady week/);
-
-        expect(flag.parentElement).toHaveClass('justify-end');
-        expect(
-            flag.compareDocumentPosition(narration) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
-    });
 });

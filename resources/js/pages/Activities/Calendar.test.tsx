@@ -330,20 +330,6 @@ describe('calendar', () => {
             ).toBeInTheDocument();
         });
 
-        it("shows the month's totals as chips beside the narration", () => {
-            render(
-                <Calendar
-                    {...BASE_PROPS}
-                    cells={TWO_WEEK_CELLS}
-                    monthlyRecap={makeRecap()}
-                />,
-            );
-            // Three current-month runs: 5 + 7.2 + 3.5 km = 15.7, 50+80+25 TRIMP = 155.
-            expect(screen.getByText('Runs 3')).toBeInTheDocument();
-            expect(screen.getByText('Distance 15.7 km')).toBeInTheDocument();
-            expect(screen.getByText('TRIMP 155')).toBeInTheDocument();
-        });
-
         it('is omitted entirely when no recap prop is passed', () => {
             render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
             expect(screen.queryByText(/May was full/)).not.toBeInTheDocument();

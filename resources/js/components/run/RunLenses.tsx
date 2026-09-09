@@ -1,11 +1,10 @@
 import { router, usePage } from '@inertiajs/react';
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import FaceIcon from '@/components/temari/FaceIcon';
-import NarrationFlag from '@/components/temari/NarrationFlag';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
@@ -157,17 +156,13 @@ function ClaimList({
 function LensLabel({
     icon,
     children,
-    trailing,
-}: Readonly<{ icon: string; children: string; trailing?: ReactNode }>) {
+}: Readonly<{ icon: string; children: string }>) {
     return (
-        <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5">
-                <Icon icon={icon} width={12} height={12} aria-hidden />
-                <Eyebrow token="micro" tone="icon-accent" as="span">
-                    {children}
-                </Eyebrow>
-            </span>
-            {trailing}
+        <div className="mb-2 flex items-center gap-1.5">
+            <Icon icon={icon} width={12} height={12} aria-hidden />
+            <Eyebrow token="micro" tone="icon-accent" as="span">
+                {children}
+            </Eyebrow>
         </div>
     );
 }
@@ -222,10 +217,7 @@ export default function RunLenses({
             </header>
 
             <Card tone="narration" padding="hero">
-                <LensLabel
-                    icon="mdi:chat-outline"
-                    trailing={<NarrationFlag analysis={story} />}
-                >
+                <LensLabel icon="mdi:chat-outline">
                     This run&apos;s story
                 </LensLabel>
                 <AnalysisStatus
@@ -246,10 +238,7 @@ export default function RunLenses({
                             aria-hidden
                             className="my-3.5 h-px bg-border-strong"
                         />
-                        <LensLabel
-                            icon="mdi:lightbulb-on-outline"
-                            trailing={<NarrationFlag analysis={insight} />}
-                        >
+                        <LensLabel icon="mdi:lightbulb-on-outline">
                             What stood out
                         </LensLabel>
                         <AnalysisStatus
