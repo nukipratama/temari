@@ -268,7 +268,7 @@ describe('Runs/Show', () => {
     it('offers the per-run ask panel', () => {
         renderShow();
         expect(
-            screen.getByPlaceholderText('ask anything about this run'),
+            screen.getByPlaceholderText('ask about this run'),
         ).toBeInTheDocument();
     });
 

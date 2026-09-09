@@ -26,7 +26,7 @@ final class LegalDocuments
     {
         return [
             'slug' => 'terms',
-            'title' => 'Terms of use',
+            'title' => 'terms of use',
             'updated' => self::UPDATED,
             'intro' => 'Temari is a running companion that reads your Strava activities and writes about them. It is a personal project run by one person on their own hardware, not a company and not a product with a support desk. These terms say what that means for you.',
             'sections' => [
@@ -97,7 +97,7 @@ final class LegalDocuments
     {
         return [
             'slug' => 'privacy',
-            'title' => 'Privacy policy',
+            'title' => 'privacy policy',
             'updated' => self::UPDATED,
             'intro' => 'Temari holds your Strava data so it can show it back to you. This page says what is held, what leaves the server, and what happens when you delete your account.',
             'sections' => [
@@ -153,7 +153,7 @@ final class LegalDocuments
     {
         return [
             'slug' => 'ai-use',
-            'title' => 'How Temari uses AI',
+            'title' => 'how Temari uses AI',
             'updated' => self::UPDATED,
             'intro' => 'Most of the words in Temari are written by a language model, from your numbers, at the moment you first see them. This page says exactly what that involves.',
             'sections' => [
