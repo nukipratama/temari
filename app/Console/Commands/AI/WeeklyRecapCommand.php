@@ -20,10 +20,10 @@ class WeeklyRecapCommand extends Command
     {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
-        ['dispatched' => $dispatched, 'rule_based' => $ruleFilled] = $kickoff();
+        ['dispatched' => $dispatched, 'rule_based' => $ruleFilled, 'deferred' => $deferred] = $kickoff();
 
         $lastWeekEnding = RecapPeriod::lastClosedWeekEnding();
-        $this->info("Dispatched weekly recap for {$dispatched} snapshots ({$ruleFilled} filled rule-based) through week ending {$lastWeekEnding}.");
+        $this->info("Dispatched weekly recap for {$dispatched} snapshots ({$ruleFilled} filled rule-based, {$deferred} deferred for hydration) through week ending {$lastWeekEnding}.");
 
         return self::SUCCESS;
     }

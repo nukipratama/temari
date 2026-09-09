@@ -51,6 +51,13 @@ return [
     // history, not context. See docs/decisions/twelve-week-narration-cutoff.md.
     'backfill_max_age_days' => (int) env('AI_BACKFILL_MAX_AGE_DAYS', 84),
 
+    // How long a weekly recap waits for `strava:hydrate-backlog` to finish the
+    // week it narrates before giving up and narrating what exists. Counted from
+    // the later of the week's close and the athlete's Strava connection, so 48
+    // hours runs a week that closed on Sunday out at the end of Tuesday.
+    // See docs/decisions/recap-waits-for-hydration.md.
+    'recap_hydration_grace_hours' => (int) env('AI_RECAP_HYDRATION_GRACE_HOURS', 48),
+
     // Local ceiling on outbound Azure OpenAI calls, checked before every
     // request so concurrent workers self-throttle instead of firehosing
     // Azure and eating 429s. No documented Azure quota exists to size this

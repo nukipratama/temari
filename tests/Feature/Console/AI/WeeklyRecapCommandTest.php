@@ -38,7 +38,7 @@ it('narrates every completed week not yet Done, oldest first, with staggered del
     $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
 
     $this->artisan('ai:weekly-recap')
-        ->expectsOutputToContain('Dispatched weekly recap for 3 snapshots (0 filled rule-based) through week ending 2026-05-17')
+        ->expectsOutputToContain('Dispatched weekly recap for 3 snapshots (0 filled rule-based, 0 deferred for hydration) through week ending 2026-05-17')
         ->assertSuccessful();
 
     // Chronological order (oldest first) with index * stagger delays.
@@ -131,7 +131,7 @@ it('fills a week older than the backfill depth cap rule-based instead of a real 
     $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
 
     $this->artisan('ai:weekly-recap')
-        ->expectsOutputToContain('Dispatched weekly recap for 1 snapshots (1 filled rule-based) through week ending 2026-05-17')
+        ->expectsOutputToContain('Dispatched weekly recap for 1 snapshots (1 filled rule-based, 0 deferred for hydration) through week ending 2026-05-17')
         ->assertSuccessful();
 
     $ruleBased = collect($captured)->firstWhere('subjectId', $tooOld->id);

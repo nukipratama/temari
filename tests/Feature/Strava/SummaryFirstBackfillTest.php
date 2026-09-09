@@ -200,7 +200,7 @@ it('renders the feed and calendar for a summary-only run without inventing a zer
         ->and($runCells->first()['trimp'])->toBeNull();
 });
 
-it('lets the chained recap kickoff narrate the whole backfilled history without one extra Strava read', function (): void {
+it('holds the backfilled history back until it is hydrated, then narrates it without one extra Strava read', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
     Bus::fake();
 
@@ -234,16 +234,29 @@ it('lets the chained recap kickoff narrate the whole backfilled history without 
     // both kickoffs read, so nothing goes back to Strava.
     Http::assertSentCount(1);
 
-    $weekly = collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap);
+    // Every backfilled run is still summary-only, so the weekly recap waits for
+    // the hydration drain rather than narrating a week with no load in it.
     $monthly = collect($captured)->firstWhere('type', AnalysisType::MonthlyRecap);
 
-    expect($weekly)->not->toBeNull()
-        ->and($weekly['subjectOrType'])->toBe(WeeklySnapshot::class)
-        ->and($weekly['invalidate'])->toBeFalse()
+    expect(collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap))->toBeNull()
         ->and($monthly)->not->toBeNull()
         ->and($monthly['subjectId'])->toBe($user->id)
         ->and($monthly['discriminator'])->toBe('2026-05')
         ->and($monthly['invalidate'])->toBeFalse();
+
+    Activity::query()->withStubs()->where('user_id', $user->id)->update(['ingest_state' => IngestState::Detailed]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    app(KickoffWeeklyRecaps::class)($user->id);
+    Http::assertSentCount(1);
+
+    $weekly = collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap);
+
+    expect($weekly)->not->toBeNull()
+        ->and($weekly['subjectOrType'])->toBe(WeeklySnapshot::class)
+        ->and($weekly['invalidate'])->toBeFalse();
 
     Carbon::setTestNow();
 });
