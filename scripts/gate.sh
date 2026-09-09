@@ -6,6 +6,7 @@
 set -eu
 
 cd "$(dirname "$0")/.."
+. scripts/git-env.sh
 
 MODE=fast
 case "${1:-}" in
@@ -32,9 +33,9 @@ step() {
 
 # vitest can exit non-zero when --changed selects nothing; that is a pass here.
 vitest_changed() {
-  base=$(git merge-base HEAD origin/main 2>/dev/null || true)
+  base=$(sh scripts/vitest-changed-base.sh) || return 1
   status=0
-  output=$(npx vitest run --changed ${base:+"$base"} 2>&1) || status=$?
+  output=$(npx vitest run "--changed=$base" 2>&1) || status=$?
   echo "$output"
   if [ "$status" -ne 0 ] && echo "$output" | grep -q 'No test files found'; then
     return 0
