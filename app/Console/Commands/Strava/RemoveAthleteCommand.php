@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Strava;
 
+use App\Console\Commands\Concerns\ConfirmsPermanentRemoval;
+use App\Models\Activity;
+use App\Models\AI\TokenUsage;
 use App\Models\User;
-use App\Services\Strava\StravaClient;
+use App\Services\User\UserEraser;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('strava:remove-athlete {user : The user id whose Strava grant to release} {--force : Skip the confirmation prompt}')]
-#[Description('Release a user\'s Strava grant on Strava and revoke the local connection, keeping the account and its runs.')]
+#[Signature('strava:remove-athlete {user : The user id to release on Strava and permanently remove} {--force : Skip the confirmation prompt}')]
+#[Description('Release a user\'s Strava grant on Strava, then permanently remove the account and all owned data. Keeps ai_token_usages for cost history.')]
 class RemoveAthleteCommand extends Command
 {
-    public function __construct(private readonly StravaClient $client)
+    use ConfirmsPermanentRemoval;
+
+    public function __construct(private readonly UserEraser $eraser)
     {
         parent::__construct();
     }
@@ -30,50 +35,43 @@ class RemoveAthleteCommand extends Command
             return self::FAILURE;
         }
 
-        if ($user->is_demo) {
-            $this->error("Refusing to release the demo user's connection (id {$id}). Reset it with `demo:seed` instead.");
-
+        if ($this->refuseDemoUser($user)) {
             return self::FAILURE;
         }
 
         $connection = $user->stravaConnection;
+        $liveGrant = $connection !== null && ! $connection->isRevoked() ? $connection : null;
 
-        if ($connection === null || $connection->isRevoked()) {
-            $this->info("User {$id} holds no live Strava grant. Nothing to release.");
+        $activityCount = Activity::query()->where('user_id', $id)->count();
+        $tokenUsageCount = TokenUsage::query()->where('user_id', $id)->count();
+        $orphans = $this->eraser->orphanCounts($user);
 
-            return self::SUCCESS;
+        $this->table(['What', 'Count'], [
+            $this->accountRow($user),
+            ['Strava grant', $liveGrant === null ? 'none live, nothing to release' : 'live, will be released'],
+            ['Activities (+ details, streams, cards, PRs, story lines)', (string) $activityCount],
+            ...$this->orphanRows($orphans, $tokenUsageCount),
+        ]);
+
+        if (($exit = $this->confirmRemoval(
+            "Release {$user->name} <{$user->email}> (id {$id}) from Strava and permanently remove the account and all owned data? This cannot be undone.",
+            'Aborted, nothing released or removed.',
+        )) !== null) {
+            return $exit;
         }
 
-        if (! $this->option('force')) {
-            // Same trap as user:remove: a bare `docker exec` without -it still
-            // reports interactive=true, so confirm() would read EOF as its "no"
-            // default and exit 0 having done nothing.
-            $hasRealTerminal = $this->laravel->runningUnitTests()
-                || (defined('STDIN') && stream_isatty(STDIN));
+        // Called here rather than left to erase() alone so the operator is
+        // told whether Strava took it; erase() then meets a revoked
+        // connection and skips its own best-effort release.
+        match ($this->eraser->releaseStravaGrant($user)) {
+            null => $this->info("User {$id} holds no live Strava grant, so there was nothing to release."),
+            true => $this->info("Released user {$id} on Strava."),
+            false => $this->warn("Strava did not accept the deauthorize for user {$id}. Check the log, and free the slot from Strava's settings if it is still held."),
+        };
 
-            if (! $this->input->isInteractive() || ! $hasRealTerminal) {
-                $this->error('No interactive terminal to confirm on. Re-run with a TTY (docker exec -it ...) or pass --force to skip the prompt.');
+        $this->eraser->erase($user);
 
-                return self::FAILURE;
-            }
-
-            if (! $this->confirm("Release {$user->name} <{$user->email}> (id {$id}) from Strava? They will have to reconnect to sync again.")) {
-                $this->info('Aborted, nothing released.');
-
-                return self::SUCCESS;
-            }
-        }
-
-        $released = $this->client->deauthorize($connection);
-
-        // Revoked locally either way: the operator asked for this athlete to
-        // stop syncing, and leaving a live connection behind a refused call
-        // would keep spending reads on them.
-        $connection->markRevoked();
-
-        $released
-            ? $this->info("Released user {$id} on Strava and revoked the local connection.")
-            : $this->warn("Strava did not accept the deauthorize for user {$id}; the local connection is revoked anyway. Check the log, and free the slot from Strava's settings if it is still held.");
+        $this->info("Removed user {$id} and all owned data. ".$this->tokenUsageKeptMessage($tokenUsageCount));
 
         return self::SUCCESS;
     }
