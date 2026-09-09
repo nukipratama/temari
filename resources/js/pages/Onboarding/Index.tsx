@@ -819,6 +819,7 @@ export default function OnboardingIndex({
                                     label="Telegram"
                                     description="connect it so temari can keep you posted."
                                     externalHref={telegramConnectUrl}
+                                    openInNewTab
                                 />
                             )}
                             <PushNotificationToggle />

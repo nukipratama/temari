@@ -29,6 +29,19 @@ describe('SettingsRow', () => {
         expect(screen.getByText(defaultProps.label)).toBeInTheDocument();
         const link = screen.getByRole('link');
         expect(link).toHaveAttribute('href', 'https://example.com');
+        expect(link).not.toHaveAttribute('target');
+        expect(link).not.toHaveAttribute('rel');
+    });
+
+    it('opens an external link row in a new tab when openInNewTab is set', () => {
+        render(
+            <SettingsRow
+                {...defaultProps}
+                externalHref="https://example.com"
+                openInNewTab
+            />,
+        );
+        const link = screen.getByRole('link');
         expect(link).toHaveAttribute('target', '_blank');
         expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });
