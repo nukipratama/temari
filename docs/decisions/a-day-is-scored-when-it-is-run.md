@@ -1,6 +1,6 @@
 ---
 title: A day is scored when it is run, and only ever upward
-description: Compliance is persisted at ingest the moment a day is earned, rather than only at 00:03 the next morning — which is also what stops a late-arriving run being frozen out of its own day.
+description: Compliance is persisted at ingest the moment a day is earned, rather than only at 00:09 the next morning — which is also what stops a late-arriving run being frozen out of its own day.
 tags: [decision, run, plan]
 status: accepted
 reviewed: 2026-09-07
@@ -28,8 +28,8 @@ That reasoning is still correct, and this note does not undo it. What it did not
 is that *written once* has a second edge.
 
 [ScoreComplianceCommand](app/Console/Commands/Run/ScoreComplianceCommand.php) selects only
-rows still `Planned`, and runs at **00:03**. `strava:sync` polls **hourly**. So a run at
-23:30 whose webhook is missed is judged `missed` at 00:03, ingested at 01:00, and then
+rows still `Planned`, and runs at **00:09**. `strava:sync` polls **hourly**. So a run at
+23:30 whose webhook is missed is judged `missed` at 00:09, ingested at 01:00, and then
 **never re-judged** — the row is no longer `Planned`, so nothing in the system will look at
 it again. The wrong verdict is permanent, and
 [PlanAdapter::previousWeekAdherencePct()](app/Services/Run/Plan/PlanAdapter.php) reads it
@@ -52,7 +52,7 @@ That asymmetry is the whole design, and it is the same one the render already us
 persists what the page was already showing, rather than inventing a second rule:
 
 - **A partial day still cannot freeze low.** Short of credited, nothing is written at all.
-- **A late arrival is corrected.** A run syncing after 00:03 finds a row that is no longer
+- **A late arrival is corrected.** A run syncing after 00:09 finds a row that is no longer
   `Planned` and lifts it, which is the case nothing else could reach.
 - **The daily pass still settles the days that ended short**, exactly as before.
 

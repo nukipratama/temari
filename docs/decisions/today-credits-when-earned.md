@@ -44,7 +44,7 @@ The payload field is `sessions_this_week`, not `sessions_per_week` — the old n
 
 ## Consequences
 
-- The card corrects itself the moment a qualifying run syncs, rather than at 00:03 the next morning.
+- The card corrects itself the moment a qualifying run syncs, rather than at 00:09 the next morning.
 - A week can now read `2/2` where it previously read `2/4`. That is a smaller-looking week honestly measured, not a promotion.
 - `planned_km_this_week` is summed from the day payloads the card renders rather than recomputed alongside them, so a readiness-clamped today lowers the headline instead of leaving *15.0 km planned* above two cells adding to 11.8.
 - Home passes its own week's activity index into [PlanRenderer::dayPayload()](app/Services/Run/Plan/PlanRenderer.php), so a day cell can finally show what was run. [[dashboard]] had described that behaviour for some time; it was never true, because the argument was never passed.

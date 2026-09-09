@@ -62,17 +62,17 @@ scheduled command missing from this table is a bug in this table.
 
 | when | command | what it dispatches |
 |---|---|---|
-| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L38) | one `BriefingMascotVoice` per active non-demo user |
-| Mon 00:01 | [`ai:weekly-recap`](../../routes/console.php#L49) | `WeeklyRecap`, oldest unfinished link first |
-| Mon 00:05 | [`ai:weekly-profile`](../../routes/console.php#L55) | `ProfileVoice`, keyed by ISO week |
-| **Mon 00:07** | [**`plan:regenerate`**](../../routes/console.php#L75) | **up to 9 rows per user — see below** |
-| 1st 05:45 | [`ai:monthly-recap`](../../routes/console.php#L83) | `MonthlyRecap`, oldest first |
-| daily 06:00 | [`ai:trend-read 30d`](../../routes/console.php#L90) | `TrendRead`, discriminator `30d` |
-| every 3rd day 06:00 | [`ai:trend-read 90d`](../../routes/console.php#L91) | discriminator `90d` |
-| Mon 06:00 | [`ai:trend-read 12mo`](../../routes/console.php#L92) | discriminator `12mo` |
+| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L39) | one `BriefingMascotVoice` per active non-demo user |
+| Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php#L53) | `WeeklyRecap`, oldest unfinished link first |
+| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L60) | `ProfileVoice`, keyed by ISO week |
+| **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php#L90) | **up to 9 rows per user — see below** |
+| 1st 05:45 | [`ai:monthly-recap`](../../routes/console.php#L98) | `MonthlyRecap`, oldest first |
+| daily 06:00 | [`ai:trend-read 30d`](../../routes/console.php#L105) | `TrendRead`, discriminator `30d` |
+| every 3rd day 06:00 | [`ai:trend-read 90d`](../../routes/console.php#L109) | discriminator `90d` |
+| Mon 06:00 | [`ai:trend-read 12mo`](../../routes/console.php#L110) | discriminator `12mo` |
 | first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | all three `trend_read` ranges at once |
-| hourly | [`ai:self-heal`](../../routes/console.php#L106) | recovery only — see origin 4 |
-| hourly | [`ai:catch-up`](../../routes/console.php#L115) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
+| hourly | [`ai:self-heal`](../../routes/console.php#L118) | recovery only — see origin 4 |
+| hourly | [`ai:catch-up`](../../routes/console.php#L127) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 but the command then calls

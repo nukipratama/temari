@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Run;
 
 use App\Enums\Rarity;
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Models\StoryLine;
@@ -27,10 +28,10 @@ class BuildCalendarCellsAction
      */
     public function __invoke(User $user, Carbon $gridStart, Carbon $gridEnd, Carbon $monthStart, Carbon $monthEnd): array
     {
-        $details = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $details = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $user->id)
-            ->whereNotNull('activities.analyzed_at')
             ->whereBetween('activity_details.start_date_local', [$gridStart, $gridEnd])
             ->select([
                 'activities.id as activity_id',

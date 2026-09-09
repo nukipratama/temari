@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Trend;
 
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\TrendDailySnapshot;
 use App\Models\User;
@@ -47,8 +48,9 @@ class TrendSnapshotWriter
      */
     private function averagePaceVariabilitySec(User $user, Carbon $today): ?float
     {
-        $values = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $values = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->where('activity_details.start_date_local', '>=', $today->copy()->startOfDay())

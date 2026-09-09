@@ -252,6 +252,9 @@ class SelfHealer
      */
     private function resumeCardFlavor(): int
     {
+        // Not AnalyzedScope-guarded: a RunCard is only ever built (ActivityPipeline)
+        // once its activity is analyzed, so this join can't reach a stub — the
+        // predicate would be a no-op here, not a bug fix.
         $toResume = Analysis::query()
             ->stalled()
             ->where('ai_analyses.subject_type', RunCard::class)

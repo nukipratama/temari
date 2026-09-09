@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\PlanController;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -390,6 +391,27 @@ it('resolves the deferred Plan props inside their query budget', function (): vo
     $this->actingAs($user)->get('/plan', $headers)->assertSuccessful();
 
     expect($queries)->toBeLessThanOrEqual(14);
+});
+
+it('completedKmInRange excludes a not-yet-analyzed activity', function (): void {
+    $user = User::factory()->create();
+    $from = Carbon::today()->subDays(3);
+    $to = Carbon::today()->subDay();
+
+    $analyzed = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($analyzed)->create([
+        'start_date_local' => $from->copy()->addDay(),
+        'distance' => 8_000.0,
+    ]);
+    $stub = Activity::factory()->for($user)->stub()->create();
+    ActivityDetail::factory()->for($stub)->create([
+        'start_date_local' => $from->copy()->addDay(),
+        'distance' => 20_000.0,
+    ]);
+
+    $method = new ReflectionMethod(PlanController::class, 'completedKmInRange');
+
+    expect($method->invoke(app(PlanController::class), $user, $from, $to))->toBe(8.0);
 });
 
 function planBudgetFixture(): User

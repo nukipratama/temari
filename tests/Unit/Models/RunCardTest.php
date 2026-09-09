@@ -76,6 +76,15 @@ it('firstEarnedBadgesForUser returns the earliest date and rarity each badge was
         ->and($first[Badge::Speedster->value]['rarity'])->toBe(Rarity::Epic->value);
 });
 
+it('firstEarnedBadgesForUser ignores a card whose activity is not yet analyzed', function (): void {
+    $user = User::factory()->create();
+    $stub = Activity::factory()->for($user)->stub()->create();
+    ActivityDetail::factory()->for($stub)->create(['start_date_local' => '2026-01-05 07:00:00']);
+    RunCard::factory()->for($stub)->create(['badges' => [Badge::EarlyBird->value]]);
+
+    expect(RunCard::firstEarnedBadgesForUser($user->id))->toBe([]);
+});
+
 it('firstEarnedBadgesForUser scopes to the given user', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();

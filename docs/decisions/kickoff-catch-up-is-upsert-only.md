@@ -25,7 +25,7 @@ already exists — `resumeSingleRowType` [:291](../../app/Services/AI/SelfHealer
 query `Analysis::query()->stalled()`. There is no `firstOrCreate` anywhere in it.
 
 But a row's existence is decided by a single scheduled minute. `ai:daily-briefing` stages the day's
-`BriefingMascotVoice` at 00:01, and the Monday block at 00:00–00:07 stages the week's recap and
+`BriefingMascotVoice` at 00:01, and the Monday block at 00:00–00:26 stages the week's recap and
 profile voice. If the scheduler container is down across that minute, no row is ever created and
 self-heal has nothing to find: a resting athlete silently loses that day's briefing, and a Monday
 outage loses the week's recap and profile narration outright. The only partial mitigation was the

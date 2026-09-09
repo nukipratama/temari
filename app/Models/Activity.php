@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Actions\Run\Story\ResolveLastRunStartAction;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use App\Enums\IngestState;
 use App\Models\AI\Analysis;
@@ -57,6 +58,15 @@ class Activity extends Model
 {
     /** @use HasFactory<ActivityFactory> */
     use HasFactory;
+
+    /** Detail rows cascade on the FK without firing their own events, so the bust lives here too. */
+    #[Override]
+    protected static function booted(): void
+    {
+        static::deleted(static function (): void {
+            app(ResolveLastRunStartAction::class)->flush();
+        });
+    }
 
     /**
      * Attempts the ingest pipeline makes to fetch an activity's detail before
@@ -142,6 +152,20 @@ class Activity extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Re-applies {@see AnalyzedScope}'s predicate for a raw join that bypasses
+     * Eloquent's global scopes, so a hand-written join can't drift from the
+     * scope it duplicates.
+     *
+     * @template TModel of Model
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public static function analyzedJoinConstraint(Builder $query, string $table = 'activities'): Builder
+    {
+        return $query->whereNotNull("{$table}.analyzed_at");
     }
 
     /**

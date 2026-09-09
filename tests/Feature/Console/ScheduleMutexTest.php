@@ -110,3 +110,31 @@ it('runs the Strava drain and fallback poll on the cadences they were sized for'
     // in which a missed webhook went unnoticed.
     'sync polls hourly with no overnight gap' => ['strava:sync', '0 * * * *'],
 ]);
+
+/**
+ * Exactly one scheduler container runs in prod (compose.prod.yaml), an
+ * unstated invariant a second replica would silently break: nothing today
+ * stops two schedulers from double-running a command or racing a shared
+ * table. `withoutOverlapping()` (single-container overlap safety) and
+ * `onOneServer()` (multi-container safety, free today, load-bearing if the
+ * container ever scales past one) are cheap enough to hold on every event.
+ * `schedule:heartbeat` is the one deliberate exception to the overlap lock
+ * (see its own comment in routes/console.php) but still takes onOneServer.
+ */
+it('makes every scheduled event overlap-safe and single-host', function (): void {
+    $events = collect(app(Schedule::class)->events());
+
+    expect($events)->not->toBeEmpty();
+
+    $events->each(function (Event $event): void {
+        expect($event->onOneServer)->toBeTrue("[{$event->command}] must use onOneServer");
+
+        if (str_contains((string) $event->command, 'schedule:heartbeat')) {
+            expect($event->withoutOverlapping)->toBeFalse('schedule:heartbeat must not take the cache-backed scheduler mutex');
+
+            return;
+        }
+
+        expect($event->withoutOverlapping)->toBeTrue("[{$event->command}] must use withoutOverlapping");
+    });
+});

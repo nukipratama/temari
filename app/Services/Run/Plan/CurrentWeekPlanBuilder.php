@@ -8,6 +8,7 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Models\User;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\AI\PlanNarrationRequester;
@@ -39,6 +40,7 @@ final readonly class CurrentWeekPlanBuilder
         private SessionMatcher $sessionMatcher,
         private PlanNarrationRequester $planNarration,
         private ResolveActiveRaceAction $activeRace,
+        private ResolvePlannedSessionsAction $plannedSessions,
     ) {
     }
 
@@ -52,11 +54,7 @@ final readonly class CurrentWeekPlanBuilder
         $rangeStart = $currentWeekStart->copy()->subWeeks(self::HISTORY_WEEKS);
         $rangeEnd = $currentWeekStart->copy()->addDays(6);
 
-        $sessions = PlannedSession::query()
-            ->where('user_id', $user->id)
-            ->whereBetween('date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
-            ->orderBy('date')
-            ->get();
+        $sessions = ($this->plannedSessions)($user->id, $rangeStart->toDateString(), $rangeEnd->toDateString());
 
         $sessionsByWeek = $sessions->groupBy(
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
@@ -131,6 +129,7 @@ final readonly class CurrentWeekPlanBuilder
             : null;
 
         $activityByDate = $this->sessionMatcher->activityByDate($user, $currentWeekStart, $today);
+        $clampVoice = $clamp === null ? null : $this->planNarration->clampVoiceFor($user, $today);
 
         $days = $currentWeekSessions->map(fn (PlannedSession $s): array => PlanRenderer::dayPayload(
             $s,
@@ -144,7 +143,7 @@ final readonly class CurrentWeekPlanBuilder
             $paces,
             $resolvedStatuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
             $activityByDate[$s->date->toDateString()] ?? null,
-            $clamp === null ? null : $this->planNarration->clampVoiceFor($user, $today),
+            $clampVoice,
             $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
         ))->values()->all();
 

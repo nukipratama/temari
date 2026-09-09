@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Metrics;
 
 use Illuminate\Support\Collection;
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -110,8 +111,9 @@ class TrainingLoad
     private function loadDailyHistory(User $user, Carbon $asOf): array
     {
         /** @var Collection<int, object{dt: string, trimp_sum: float|null}> $rows */
-        $rows = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $rows = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->where('activity_details.start_date_local', '>=', $asOf->copy()->subDays(self::CONVERGED_LOOKBACK_DAYS)->startOfDay())

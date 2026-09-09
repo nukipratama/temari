@@ -18,7 +18,7 @@ code_refs:
 
 ## Context
 
-[CloseFinishedRacesCommand](app/Console/Commands/Run/CloseFinishedRacesCommand.php) retires a race the morning after it is run, at 00:02, so the plan falls back to the self-scaled arc rather than counting down to a day in the past ([[the-plan-knows-its-race-day]]). Five minutes later `plan:regenerate` runs, and [PhaseSchedule::selfScaled()](app/Services/Run/Plan/PhaseSchedule.php) opens its cycle at `Build`, multiplier `1.0`.
+[CloseFinishedRacesCommand](app/Console/Commands/Run/CloseFinishedRacesCommand.php) retires a race the morning after it is run, at 00:04, so the plan falls back to the self-scaled arc rather than counting down to a day in the past ([[the-plan-knows-its-race-day]]). Later in the same Monday window `plan:regenerate` runs at 00:26, and [PhaseSchedule::selfScaled()](app/Services/Run/Plan/PhaseSchedule.php) opens its cycle at `Build`, multiplier `1.0`.
 
 So an athlete who raced on Saturday was handed a full training week on Monday, quality sessions included. Every coaching convention says the opposite: the week after a race is the one week that is unambiguously recovery, and it is the week the athlete is least able to judge for themselves.
 

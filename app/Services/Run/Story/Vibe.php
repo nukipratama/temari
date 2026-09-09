@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Story;
 
 use Illuminate\Database\Eloquent\Collection;
+use App\Actions\Run\Story\ResolveLastRunStartAction;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
@@ -74,6 +75,7 @@ class Vibe
     public function __construct(
         private readonly TrainingLoad $trainingLoad,
         private readonly VibeMatrix $matrix,
+        private readonly ResolveLastRunStartAction $lastRunStart,
     ) {
     }
 
@@ -113,11 +115,7 @@ class Vibe
 
     private function daysSinceLastRun(User $user, Carbon $asOf): ?int
     {
-        $lastRun = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->whereNotNull('start_date_local')
-            ->orderByDesc('start_date_local')
-            ->value('start_date_local');
+        $lastRun = ($this->lastRunStart)($user->id);
 
         if ($lastRun === null) {
             return null;
@@ -127,7 +125,7 @@ class Vibe
         // dated on or after $asOf must clamp to 0 days, never a negative age,
         // matching latestRunDaysAgo() in RunController. A recent runner then
         // reads as 0 or 1 day, never the >= 10 the matrix treats as hibernating.
-        return (int) max(0, Carbon::parse($lastRun)->startOfDay()->diffInDays($asOf->copy()->startOfDay(), false));
+        return (int) max(0, $lastRun->startOfDay()->diffInDays($asOf->copy()->startOfDay(), false));
     }
 
     private function hasRecentPr(User $user, Carbon $asOf): bool

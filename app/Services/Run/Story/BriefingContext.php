@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Story;
 
 use NoDiscard;
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\Readiness;
@@ -65,12 +66,11 @@ final readonly class BriefingContext
         // (self-heal / dead-letter retry) reads fitness_trend from the state as
         // of $asOf, not from weeks that came after it.
         /** @var array<string, WeeklySnapshot> $byDate */
-        $byDate = WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('week_ending', '<=', $thisWeekEnd->toDateString())
-            ->orderByDesc('week_ending')
-            ->limit(12)
-            ->get()
+        $byDate = app(ResolveTrailingWeeksAction::class)(
+            $user->id,
+            $thisWeekEnd->toDateString(),
+            ResolveTrailingWeeksAction::MAX_WEEKS,
+        )
             ->keyBy(fn (WeeklySnapshot $row): string => $row->week_ending->toDateString())
             ->all();
 
