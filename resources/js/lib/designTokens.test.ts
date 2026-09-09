@@ -438,4 +438,22 @@ describe('auditPanels', () => {
     it('skips a panel whose fill, text or mount token is not declared', () => {
         expect(auditPanels({}, PAPER)).toEqual([]);
     });
+
+    it('scores a graphic panel (an icon tile) against 3:1, not 4.5:1', () => {
+        // citrus/0.15 + citrus-ink is ICON_TONE.pop, an icon glyph rather than
+        // text — 4.02:1 fails the 4.5:1 text floor but clears the 3:1 graphic
+        // one grounds.json's `graphic: true` opts it into.
+        const row = auditPanels(
+            {
+                '--color-citrus': '#c9971f',
+                '--color-citrus-ink': '#c9971f',
+                '--color-accent': '#26303d',
+            },
+            [{ name: 'accent', value: '#26303d' }],
+        ).find((r) => r.bg.startsWith('citrus/0.15'));
+
+        expect(row?.min).toBe(3);
+        expect(row?.ratio).toBeCloseTo(4.02, 1);
+        expect(row?.pass).toBe(true);
+    });
 });
