@@ -45,6 +45,7 @@ class PlanAdaptation extends Model
     /** @use HasFactory<PlanAdaptationFactory> */
     use HasFactory;
 
+    #[Override]
     protected static function booted(): void
     {
         $bust = function (PlanAdaptation $row): void {

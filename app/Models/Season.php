@@ -56,6 +56,7 @@ class Season extends Model
     /** @use HasFactory<SeasonFactory> */
     use HasFactory;
 
+    #[Override]
     protected static function booted(): void
     {
         $bust = function (Season $row): void {

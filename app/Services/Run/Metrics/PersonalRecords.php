@@ -16,7 +16,7 @@ use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
 class PersonalRecords
 {
     public function __construct(
-        private ResolveDistanceRecordsAction $distanceRecords,
+        private readonly ResolveDistanceRecordsAction $distanceRecords,
     ) {
     }
 

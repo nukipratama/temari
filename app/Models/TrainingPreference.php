@@ -45,6 +45,7 @@ class TrainingPreference extends Model
     /** @use HasFactory<TrainingPreferenceFactory> */
     use HasFactory;
 
+    #[Override]
     protected static function booted(): void
     {
         $bust = function (TrainingPreference $row): void {

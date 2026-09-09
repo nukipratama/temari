@@ -21,7 +21,7 @@ use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
 class VdotEstimator
 {
     public function __construct(
-        private ResolveDistanceRecordsAction $distanceRecords,
+        private readonly ResolveDistanceRecordsAction $distanceRecords,
     ) {
     }
 

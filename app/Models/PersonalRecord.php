@@ -38,6 +38,7 @@ class PersonalRecord extends Model
     /** @use HasFactory<PersonalRecordFactory> */
     use HasFactory;
 
+    #[Override]
     protected static function booted(): void
     {
         $bust = function (PersonalRecord $row): void {

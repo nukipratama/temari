@@ -52,6 +52,7 @@ class WeeklySnapshot extends Model
     /** @use HasFactory<WeeklySnapshotFactory> */
     use HasFactory;
 
+    #[Override]
     protected static function booted(): void
     {
         $bust = function (WeeklySnapshot $row): void {
