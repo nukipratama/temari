@@ -6,6 +6,7 @@ use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\PersonalRecord;
 use App\Models\RaceGoal;
 use App\Models\PlannedSession;
+use App\Services\AI\AnalysisOrigin;
 use Illuminate\Support\Carbon;
 use App\Models\User;
 use App\Support\SharedPropCacheKey;
@@ -235,6 +236,43 @@ it('does nothing when there is no race to clear', function (): void {
     $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
 
     expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('attributes a race save\'s re-narration to the athlete, so it re-arms the row\'s retry budget', function (): void {
+    Bus::fake();
+    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post('/race', racePayload())->assertSessionHasNoErrors();
+
+    Bus::assertDispatched(
+        AnalyzePlanDayVoiceJob::class,
+        fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
+    );
+
+    Carbon::setTestNow();
+});
+
+it('attributes a cleared race\'s re-narration to the athlete', function (): void {
+    Bus::fake();
+    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
+    $user = User::factory()->create();
+    RaceGoal::query()->create([
+        'user_id' => $user->id,
+        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
+        'distance_m' => 21_097,
+        'goal_time_sec' => 7_200,
+        'name' => 'A half',
+    ]);
+
+    $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
+
+    Bus::assertDispatched(
+        AnalyzePlanDayVoiceJob::class,
+        fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
+    );
+
+    Carbon::setTestNow();
 });
 
 it('never clears another athlete\'s race', function (): void {
