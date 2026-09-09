@@ -116,6 +116,12 @@ A failed deploy **tries to roll itself back first**. The `Roll back on failure` 
 
 Neither path has ever fired in prod, so treat both as untested.
 
+## Nightly dependency audit alert
+
+[.github/workflows/nightly-audit.yml](.github/workflows/nightly-audit.yml) runs `composer audit` and `npm audit` nightly on `ubuntu-latest` (no install, both read the lock files directly) and does not go through `MaintainerAlerter`/`deploy:alert` — that path only exists inside the prod app container on the homelab runner, which this workflow never touches. Instead, an `alert-on-failure` job pushes a Telegram message directly via `curl` when either audit job fails, using two repository secrets: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_MAINTAINER_CHAT_ID`.
+
+**Neither secret is currently set.** Until both exist, the alert step logs a skip and exits 0 (the audit jobs themselves still go red normally; only the push is skipped). To wire it up: add both secrets under the repo's Actions secrets, with the bot token from the same Telegram bot `MaintainerAlerter` uses and the chat id of whichever chat should receive ops pushes.
+
 **Overruns reach that failure path by design.** Timeouts are set per *step* (the image pull, both dumps, both migrates, and the two failure-path steps) rather than only on the job, because a job-level timeout is a *cancellation* and GitHub skips every `if: failure()` step when one trips — an overrun would otherwise strand a half-deployed stack with no rollback, no alert and no summary. The job cap is a last-resort backstop sitting above the sum of the step caps. Every `curl` in the deploy and rollback workflows carries `--max-time` for the same reason: a worker that accepts a connection but never answers would otherwise hang a retry loop past the backstop.
 
 ### Manual rollback
