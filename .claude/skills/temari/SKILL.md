@@ -210,13 +210,15 @@ before reaching for a new `AnalysisType` on anything user-initiated and free-for
 ./vendor/bin/sail pest --group=structure   # instant: 1:1 + aggregate structural gates. Run first.
 ./vendor/bin/sail bin pest --filter=Name    # targeted: one test/feature while iterating
 ./vendor/bin/sail bin pest --parallel       # full PHP suite (local parallel — see docker/mysql-test-init.sh)
-./vendor/bin/sail composer gate             # fast pre-push gate (~30s warm): enum/doc guards + palette + structure + tsc + changed vitest + pest --parallel under TIA
+./vendor/bin/sail composer gate             # fast pre-push gate (~30s warm): enum/doc guards + palette + structure + tsc + scoped rector on changed files + changed vitest + pest --parallel under TIA
 ./vendor/bin/sail composer check:full       # the gate's steps plus pint, format, lint, phpstan, rector, pest --no-tia, coverage, build, check:chunks. Opt-in, slow.
 ./vendor/bin/sail bin pint                  # format (also runs on pre-commit with phpstan + eslint)
 ```
 Both modes are [scripts/gate.sh](../../../scripts/gate.sh); it stops at the first failure and its
 last line is `GATE: PASS (<n>s, mode=fast|full)` or `GATE: FAIL at <step> (<n>s)`.
-Pint/phpstan/eslint run on **pre-commit**; rector runs in **CI** and in `check:full`. CI is the
+Pint/phpstan/eslint run on **pre-commit**; the fast gate runs **scoped rector on changed files**
+(`app/`+`tests/` PHP since the merge base, plus uncommitted ones — sub-second warm), and the
+full-tree `rector --dry-run` stays in **CI** and `check:full`. CI is the
 full gate and is what `main` is protected by; coverage is CI-owned and only in `check:full`.
 
 **When CI's coverage gate goes red** you can reproduce it locally — `pcov` ships in the dev image
