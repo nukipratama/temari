@@ -19,13 +19,13 @@ interface DocumentProps {
 
 const DOCUMENTS: ReadonlyArray<{ slug: string; href: string; label: string }> =
     [
-        { slug: 'terms', href: '/terms', label: 'Terms of use' },
-        { slug: 'privacy', href: '/privacy', label: 'Privacy policy' },
-        { slug: 'ai-use', href: '/ai-use', label: 'how temari uses AI' },
+        { slug: 'terms', href: '/terms', label: 'terms of use' },
+        { slug: 'privacy', href: '/privacy', label: 'privacy policy' },
+        { slug: 'ai-use', href: '/ai-use', label: 'how Temari uses AI' },
         {
             slug: 'training-disclaimer',
             href: '/training-disclaimer',
-            label: 'Training disclaimer',
+            label: 'training disclaimer',
         },
     ];
 

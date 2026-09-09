@@ -20,7 +20,7 @@ function renderDocument(overrides = {}) {
     return render(
         <LegalDocument
             slug="privacy"
-            title="Privacy policy"
+            title="privacy policy"
             updated="2026-08-13"
             intro="What is held, and what leaves the server."
             sections={SECTIONS}
@@ -34,7 +34,7 @@ describe('Legal/Document', () => {
         renderDocument();
 
         expect(
-            screen.getByRole('heading', { level: 1, name: 'Privacy policy' }),
+            screen.getByRole('heading', { level: 1, name: 'privacy policy' }),
         ).toBeInTheDocument();
         expect(
             screen.getByText(/last updated 2026-08-13/i),
@@ -66,19 +66,19 @@ describe('Legal/Document', () => {
         const nav = screen.getByRole('navigation', {
             name: 'Other documents',
         });
-        expect(nav).toHaveTextContent('Terms of use');
-        expect(nav).toHaveTextContent('how temari uses AI');
-        expect(nav).toHaveTextContent('Training disclaimer');
-        expect(nav).not.toHaveTextContent('Privacy policy');
+        expect(nav).toHaveTextContent('terms of use');
+        expect(nav).toHaveTextContent('how Temari uses AI');
+        expect(nav).toHaveTextContent('training disclaimer');
+        expect(nav).not.toHaveTextContent('privacy policy');
     });
 
     it('drops the self-link for whichever document is showing', () => {
-        renderDocument({ slug: 'terms', title: 'Terms of use' });
+        renderDocument({ slug: 'terms', title: 'terms of use' });
 
         const nav = screen.getByRole('navigation', {
             name: 'Other documents',
         });
-        expect(nav).toHaveTextContent('Privacy policy');
-        expect(nav).not.toHaveTextContent('Terms of use');
+        expect(nav).toHaveTextContent('privacy policy');
+        expect(nav).not.toHaveTextContent('terms of use');
     });
 });
