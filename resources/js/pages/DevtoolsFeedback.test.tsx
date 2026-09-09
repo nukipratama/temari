@@ -55,12 +55,12 @@ describe('DevtoolsFeedback', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('truncates a long note and keeps the full text as the title', () => {
+    it('shows the full note, wrapped, with the same text as the title', () => {
         const note = 'x'.repeat(80);
         render(<DevtoolsFeedback rows={[row({ note })]} />);
 
         const cell = screen.getByTitle(note);
-        expect(cell.textContent).toBe(`${'x'.repeat(60)}…`);
+        expect(cell.textContent).toBe(note);
     });
 
     it('shows a dash when there is no note', () => {
