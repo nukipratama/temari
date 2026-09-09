@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\PlannedSessionStatus;
-use App\Enums\NotificationKind;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
@@ -18,9 +17,7 @@ use App\Models\StravaConnection;
 use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
-use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
-use App\Notifications\Channels\InAppChannel;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RecapPeriod;
@@ -66,12 +63,9 @@ function channelsUsedBy(NotificationFake $notifications): array
 it('seeds a complete, login-ready demo dataset and stays idempotent across re-runs', function (): void {
     // Token set + queue/notifications faked: seeding must never reach *out*, so a
     // configured token cannot turn a seed run into real Telegram or push traffic.
-    // It does legitimately record: unlocks granted while materialising runs route
-    // to the in-app inbox, which is what makes the public demo's notification
-    // centre non-empty (see docs/decisions/demo-notifications-are-inbox-only.md).
-    // So the rule is per-channel rather than "nothing sent" — and asserting the
-    // exact channel set keeps both halves: an empty set would mean the seed
-    // stopped recording, any other entry would mean it reached outside the app.
+    // Since the unlock sweep went, the seed notifies nobody at all — it writes
+    // the demo's inbox rows straight to the table (asserted further down), so
+    // any channel here would mean a send path crept back in.
     config()->set('services.telegram.bot_token', 'test-token');
     Queue::fake();
     $notifications = Notification::fake();
@@ -79,7 +73,7 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     $exitCode = $this->artisan('demo:seed')->run();
     expect($exitCode)->toBe(0);
 
-    expect(channelsUsedBy($notifications))->toBe([InAppChannel::class]);
+    expect(channelsUsedBy($notifications))->toBe([]);
 
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
 
@@ -101,16 +95,6 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     $cardQuery = RunCard::query()->whereHas('activity', fn ($q) => $q->where('user_id', $user->id));
     expect((clone $cardQuery)->where('rarity', Rarity::Legendary)->count())->toBeGreaterThanOrEqual(1)
         ->and((clone $cardQuery)->where('rarity', Rarity::Epic)->count())->toBeGreaterThanOrEqual(3);
-
-    // Every defined accessory unlocks. Nothing is equipped any more: W2 swept
-    // the wardrobe with the surface that wore it.
-    $unlocked = UserUnlock::query()->where('user_id', $user->id)->pluck('unlock_key')->all();
-    expect($unlocked)->toContain(
-        'accessory.medal_first',
-        'accessory.medal_gold',
-        'accessory.headband_legendary',
-        'accessory.headband_epic',
-    );
 
     // The week-keyed profile voice is backfilled to a done analysis row.
     $profileVoice = Analysis::query()
@@ -204,11 +188,9 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         ->and($preference->long_run_day)->not->toBeNull()
         ->and($preference->sessions_per_week)->toBeGreaterThan(0);
 
-    // Inbox variety: P12's unlock rows are the surface PS9 built and could not
-    // see, and one kind alone leaves the page a single undifferentiated list.
+    // Inbox variety: one kind alone leaves the page a single undifferentiated list.
     $inbox = InboxNotification::query()->where('user_id', $user->id)->orderBy('id')->get();
-    expect($inbox->pluck('kind')->unique())->toHaveCount(4)
-        ->and($inbox->where('kind', NotificationKind::Unlock))->not->toBeEmpty();
+    expect($inbox->pluck('kind')->unique())->toHaveCount(3);
 
     // InboxController paginates on id while the page buckets on created_at, so
     // rows written out of chronological order drop whole buckets off the first

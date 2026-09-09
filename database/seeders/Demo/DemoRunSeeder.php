@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Demo;
 
-use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Enums\ExperienceLevel;
 use App\Enums\GoalType;
 use App\Enums\IngestState;
@@ -22,11 +21,9 @@ use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\TrainingPreference;
 use App\Models\User;
-use App\Models\UserUnlock;
 use App\Models\WeeklySnapshot;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\Messages\InboxMessage;
-use App\Notifications\UnlockGrantedNotification;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -49,7 +46,6 @@ use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
 use Closure;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
@@ -75,7 +71,6 @@ class DemoRunSeeder
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly AnalysisService $analysisService,
         private readonly RuleBasedNarrationFiller $filler,
-        private readonly GrantEligibleUnlocksAction $unlockEngine,
         private readonly Periodizer $periodizer,
         private readonly WeekPlanBuilder $weekPlanBuilder,
         private readonly TrainingBaseline $trainingBaseline,
@@ -156,17 +151,6 @@ class DemoRunSeeder
 
             $this->seedTrendRead($user);
 
-            // Grants everything the dataset qualifies for. Card-rarity unlocks
-            // (legendary/epic) and the weekly-streak one depend on cards and
-            // snapshots that only exist once the loop above has run, so this
-            // has to come after it. Wrapped in withSyncQueue so the queued
-            // UnlockGrantedNotification runs inline rather than sitting
-            // unprocessed in the jobs table; the inbox rows themselves are
-            // written below rather than relied on from here, because this
-            // returns nothing once every key is already granted.
-            $granted = $this->withSyncQueue(fn (): array => ($this->unlockEngine)($user));
-            $log(sprintf('  %d accessory unlocks granted (%s)', count($granted), $granted === [] ? 'all already unlocked' : implode(', ', $granted)));
-
             $log("Generating today's Temari greeting...");
             $vibeState = $this->vibe->current($user);
             $this->temari->dailyGreeting($user, $vibeState);
@@ -191,7 +175,7 @@ class DemoRunSeeder
             // seed re-runs. Every row here is derived from the seeded dataset
             // and re-written below, and this only ever touches the demo user.
             $user->inboxNotifications()->delete();
-            $pendingInbox = [...$this->pendingUnlockInboxEntries($user), ...$this->pendingNarrationInboxEntries($user)];
+            $pendingInbox = $this->pendingNarrationInboxEntries($user);
             $log(sprintf('  %d inbox rows rebuilt', $this->writeInboxEntries($user, $pendingInbox)));
             $log(sprintf('  %d answered run questions seeded', $this->seedRunQuestions($user)));
         });
@@ -229,7 +213,6 @@ class DemoRunSeeder
             // CTL is cumulative, so roll the new run forward into every later
             // week's snapshot, then refresh today's greeting + briefing narration.
             $this->weeklyAggregator->rebuildForwardFrom($user, $today);
-            $this->withSyncQueue(fn (): array => ($this->unlockEngine)($user));
             $this->temari->dailyGreeting($user, $this->vibe->current($user));
 
             // Re-stage the date-keyed surfaces (briefing set, greeting, trend,
@@ -496,9 +479,9 @@ class DemoRunSeeder
      * Analysis content, mirroring AnalysisReadyNotification::toInbox()'s own
      * shape (title/payload) without going through the queued notify() path:
      * the last closed week's recap and the last closed month's, each dated to
-     * when it would really have landed, plus today's post-run summary. With
-     * the unlock rows those fill all three of the Inbox page's buckets and
-     * four distinct kinds, rather than one undifferentiated list.
+     * when it would really have landed, plus today's post-run summary. Those
+     * fill all three of the Inbox page's buckets across three distinct kinds,
+     * rather than one undifferentiated list.
      *
      * @return list<array{at: Carbon, message: InboxMessage, key: string}>
      */
@@ -522,7 +505,7 @@ class DemoRunSeeder
         }
 
         // The last closed month, dated the 1st of the next one, so the inbox
-        // carries a third kind rather than only unlocks and a weekly. Monthly
+        // carries a third kind rather than only a weekly and a post-run. Monthly
         // recaps key on a synthetic user/month subject, so the month itself is
         // the discriminator rather than a row id.
         $pending[] = $this->pendingInboxFromAnalysis(
@@ -659,78 +642,6 @@ class DemoRunSeeder
         };
     }
 
-    /**
-     * Spreads the demo account's unlocks across its seeded run history.
-     *
-     * Every unlock is granted in one sweep at the end of seeding, so they all
-     * carry the same timestamp and the inbox would render a single "today"
-     * bucket of 21 rows, with nothing in "this week" or "earlier" and nothing
-     * for the load-older window to page in. Deterministic in each row's
-     * position, so a re-seed lands on the same dates.
-     *
-     * @param  Collection<int, UserUnlock>  $unlocks
-     */
-    private function spreadUnlockDates(User $user, Collection $unlocks): void
-    {
-        $earliest = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->min('start_date_local');
-        if ($earliest === null || $unlocks->isEmpty()) {
-            return;
-        }
-
-        $start = Carbon::parse($earliest);
-        $days = max(1, $start->diffInDays(Carbon::today()));
-        $step = $days / ($unlocks->count() + 1);
-
-        foreach ($unlocks->values() as $i => $unlock) {
-            $earnedAt = $start->copy()->addDays((int) round($step * ($i + 1)));
-            if (! $unlock->unlocked_at->isSameDay($earnedAt)) {
-                $unlock->forceFill(['unlocked_at' => $earnedAt])->save();
-            }
-        }
-    }
-
-    /**
-     * Writes the inbox row for every already-granted unlock that lacks one,
-     * backdated to when it was earned, and returns how many it added.
-     *
-     * GrantEligibleUnlocksAction short-circuits once every catalog key is
-     * granted, so the sweep above notifies nothing on a database whose unlocks
-     * predate it — which is every database seeded before unlock notifications
-     * existed. Without this, `demo:seed` never converges on the inbox's unlock
-     * rows no matter how often it is re-run, and P12's unlock surface stays
-     * invisible. Writes the message directly, as the narration entries
-     * does, rather than replaying a queued notification.
-     */
-    /** @return list<array{at: Carbon, message: InboxMessage, key: string}> */
-    private function pendingUnlockInboxEntries(User $user): array
-    {
-        $unlocks = UserUnlock::query()
-            ->where('user_id', $user->id)
-            ->orderBy('id')
-            ->get();
-
-        $this->spreadUnlockDates($user, $unlocks);
-
-        $pending = [];
-        foreach ($unlocks as $unlock) {
-            $celebration = $this->unlockEngine->celebration($unlock->unlock_key);
-            if ($celebration === null) {
-                continue;
-            }
-
-            $message = new UnlockGrantedNotification($celebration)->toInbox($user);
-            $pending[] = [
-                'at' => $unlock->unlocked_at,
-                'message' => $message,
-                'key' => $message->dedupeKey ?? 'unlock:' . $unlock->unlock_key,
-            ];
-        }
-
-        return $pending;
-    }
-
     /** @return array{at: Carbon, message: InboxMessage, key: string}|null */
     private function pendingInboxFromAnalysis(User $user, string $subjectType, int $subjectId, AnalysisType $type, ?Carbon $at = null, ?string $discriminator = null): ?array
     {
@@ -788,31 +699,6 @@ class DemoRunSeeder
         }
 
         return $written;
-    }
-
-    /**
-     * Runs $work with the queue connection forced to `sync`, so a
-     * ShouldQueue notification (e.g. UnlockGrantedNotification) fires
-     * inline instead of sitting unprocessed in the `jobs` table — nothing
-     * in the demo seed ever runs a queue worker. Safe for the demo account:
-     * ChannelRouter resolves every notification's `via()` to InAppChannel
-     * only here, so this never fires a real Telegram/web-push side effect,
-     * only the InboxNotification row itself.
-     *
-     * @template T
-     *
-     * @param  Closure(): T  $work
-     * @return T
-     */
-    private function withSyncQueue(Closure $work): mixed
-    {
-        $previous = config('queue.default');
-        config(['queue.default' => 'sync']);
-        try {
-            return $work();
-        } finally {
-            config(['queue.default' => $previous]);
-        }
     }
 
     private function ensureDemoUser(Closure $log): User

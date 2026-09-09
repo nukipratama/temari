@@ -84,7 +84,7 @@ final readonly class UserEraser
             self::pushSubscriptionQuery($user)->delete();
 
             // Everything else (activities -> details/streams/cards/PRs, story
-            // lines, snapshots, unlocks, profiles, connections) cascades.
+            // lines, snapshots, profiles, connections) cascades.
             $user->delete();
         });
     }

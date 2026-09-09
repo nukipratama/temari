@@ -21,10 +21,10 @@ class KeyedInboxNotification extends Notification
     public function toInbox(User $notifiable): InboxMessage
     {
         return new InboxMessage(
-            kind: NotificationKind::Unlock,
-            title: 'Unlocked: Legendary Shoes',
-            payload: ['unlock_key' => 'accessory.shoes_legendary'],
-            dedupeKey: 'unlock:accessory.shoes_legendary',
+            kind: NotificationKind::WeeklyRecap,
+            title: 'Your week, in one read',
+            payload: ['week_ending' => '2026-08-09'],
+            dedupeKey: 'weekly_recap:2026-08-09',
         );
     }
 }
@@ -52,9 +52,9 @@ it('writes the row a notification describes', function (): void {
 
     $row = InboxNotification::query()->firstOrFail();
 
-    expect($row->kind)->toBe(NotificationKind::Unlock)
-        ->and($row->title)->toBe('Unlocked: Legendary Shoes')
-        ->and($row->dedupe_key)->toBe('unlock:accessory.shoes_legendary');
+    expect($row->kind)->toBe(NotificationKind::WeeklyRecap)
+        ->and($row->title)->toBe('Your week, in one read')
+        ->and($row->dedupe_key)->toBe('weekly_recap:2026-08-09');
 });
 
 it('ignores a notification with no inbox message', function (): void {

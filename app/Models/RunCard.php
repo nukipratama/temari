@@ -40,40 +40,10 @@ class RunCard extends Model
     use HasFactory;
 
     /**
-     * Count how many of this user's cards carry each tracked badge.
-     * Single query, counts in PHP to avoid N per-badge round-trips.
-     *
-     * @return array<string, int>
-     */
-    public static function badgeCountsForUser(int $userId): array
-    {
-        $tracked = Badge::tracked();
-        $trackedValues = array_map(fn (Badge $b): string => $b->value, $tracked);
-        $counts = array_fill_keys($trackedValues, 0);
-
-        $rows = self::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $userId))
-            ->select('badges')
-            ->lazy();
-
-        foreach ($rows as $row) {
-            foreach ($row->badges ?? [] as $badge) {
-                if (isset($counts[$badge])) {
-                    $counts[$badge]++;
-                }
-            }
-        }
-
-        return $counts;
-    }
-
-    /**
-     * Every {@see Badge} case's count (not just {@see Badge::tracked()} —
-     * the unlock catalog's narrower subset), for the badge board. Optionally
-     * scoped to cards whose activity fell within `[$from, $to]` for the
-     * board's "this season" row. Kept alongside {@see self::badgeCountsForUser()}
-     * rather than widening it, so every existing lifetime (tracked-only)
-     * call site is untouched.
+     * Every {@see Badge} case's count, for the badge board. Optionally scoped
+     * to cards whose activity fell within `[$from, $to]` for the board's
+     * "this season" row. Single query, counts in PHP to avoid N per-badge
+     * round-trips.
      *
      * @return array<string, int>
      */

@@ -15,8 +15,8 @@ use Illuminate\Support\Carbon;
 /**
  * The whole-season facts {@see SeasonGoalResolver} needs, resolved fresh on
  * every read (never cached — season goals are cheap to recompute and must
- * stay live). Mirrors {@see GamificationContext}'s shape, scoped to one
- * {@see Season} instead of the user's whole history.
+ * stay live). Scoped to one {@see Season} rather than the user's whole
+ * history.
  *
  * Only PAST days (strictly before "today") are counted, matching
  * {@see \App\Http\Controllers\PlanController}'s own `Done`/`Missed`

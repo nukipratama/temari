@@ -9,7 +9,6 @@ use App\Models\RunCard;
 use App\Models\Season;
 use App\Models\SeasonGoal;
 use App\Models\User;
-use App\Models\UserUnlock;
 use App\Services\Run\Plan\SeasonService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -26,7 +25,6 @@ afterEach(fn () => Carbon::setTestNow());
 function ownedCollection(User $user): array
 {
     return [
-        'unlocks' => UserUnlock::query()->where('user_id', $user->id)->orderBy('unlock_key')->pluck('unlock_key')->all(),
         'records' => PersonalRecord::query()->where('user_id', $user->id)->orderBy('category')->pluck('category')->all(),
         'cards' => RunCard::query()
             ->join('activities', 'activities.id', '=', 'run_cards.activity_id')
@@ -39,8 +37,6 @@ function ownedCollection(User $user): array
 
 function seedCollection(User $user): void
 {
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.medal_first']);
-    UserUnlock::factory()->for($user)->create(['unlock_key' => 'accessory.shirt_beginner']);
     PersonalRecord::factory()->for($user)->create(['category' => PrCategory::Km5]);
     RunCard::factory()->for(Activity::factory()->for($user))->create();
 }
@@ -78,23 +74,6 @@ it('revokes nothing the user owns when a season boundary is crossed', function (
     $this->service->ensureCurrent($user, $afterBoundary);
 
     expect(ownedCollection($user))->toBe($before)
-        ->and($before['unlocks'])->toHaveCount(2)
         ->and($before['records'])->toHaveCount(1)
         ->and($before['cards'])->toHaveCount(1);
-});
-
-it('keeps a previous season\'s per-season rewards while leaving the new season re-earnable', function (): void {
-    $user = User::factory()->create();
-
-    $first = $this->service->ensureCurrent($user, Carbon::today());
-    UserUnlock::factory()->for($user)->create(['unlock_key' => "season.{$first->id}.rest_honored_3"]);
-
-    $afterBoundary = $first->ends_at->copy()->addDay();
-    Carbon::setTestNow($afterBoundary->copy()->setTime(8, 0));
-    $second = $this->service->ensureCurrent($user, $afterBoundary);
-
-    $keys = UserUnlock::query()->where('user_id', $user->id)->pluck('unlock_key')->all();
-
-    expect($keys)->toContain("season.{$first->id}.rest_honored_3")
-        ->and($keys)->not->toContain("season.{$second->id}.rest_honored_3");
 });

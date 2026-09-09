@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Run\Metrics;
 
 use Carbon\CarbonInterface;
-use App\Actions\Gamification\GrantEligibleUnlocksAction;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -39,7 +38,6 @@ class WeeklyAggregator
 
     public function __construct(
         private readonly TrainingLoad $trainingLoad,
-        private readonly GrantEligibleUnlocksAction $unlockEngine,
     ) {
     }
 
@@ -161,8 +159,6 @@ class WeeklyAggregator
             $weekEnding = $weekEnding->copy()->addWeek();
             $count++;
         }
-
-        ($this->unlockEngine)($user);
 
         return $count;
     }

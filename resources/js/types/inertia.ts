@@ -66,8 +66,7 @@ export interface InboxItem {
 
 /**
  * The race the user is currently training for, shared app-wide. "Race" is the
- * user-facing name, kept distinct from the unrelated accessory-unlock catalog
- * the backend still tracks.
+ * user-facing name; the DB layer still says "goal" (RaceGoal, race_goals).
  */
 export interface ActiveRace {
     id: number;
@@ -136,7 +135,6 @@ export interface BriefingResult {
     recoveryHours: number | null;
     streakLabel: string | null;
     sigilPattern: string;
-    accessory: string | null;
     mood: Mood;
 }
 

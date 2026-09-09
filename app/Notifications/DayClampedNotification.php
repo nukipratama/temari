@@ -22,7 +22,7 @@ use Illuminate\Support\Carbon;
  * legible to the athlete, whose only way to learn of it was to open the plan
  * while it still applied.
  *
- * Inbox-only, like an unlock. The clamp is advisory
+ * Inbox-only. The clamp is advisory
  * ({@see \App\Services\Run\Plan\ReadinessClamp}) and the briefing path records
  * it at 00:01, so a lock screen is the wrong place for it — and the master
  * switch, which enumerates what it governs, does not name it either.

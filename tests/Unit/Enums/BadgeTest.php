@@ -13,18 +13,6 @@ it('exposes a representative label', function (): void {
         ->and(Badge::Headwind->label())->toBe('🌬️ Headwind');
 });
 
-it('lists the tracked badges for unlock criteria', function (): void {
-    expect(Badge::tracked())->toBe([
-        Badge::NightOwl,
-        Badge::EarlyBird,
-        Badge::RainWarrior,
-        Badge::NegativeSplit,
-        Badge::HeatTamer,
-        Badge::Z2Master,
-        Badge::Headwind,
-    ]);
-});
-
 it('exposes an emoji-free prompt label for every case', function (Badge $badge): void {
     $label = $badge->promptLabel();
 
