@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\AI\Agent\AgentBudget;
+use Illuminate\Support\Carbon;
 
 it('allows tool steps while both ceilings are clear', function (): void {
     $budget = new AgentBudget(maxSteps: 3, maxTokens: 1000);
@@ -69,4 +70,38 @@ it('takes a per-narrator step ceiling over the config default, keeping the token
     $budget->recordStep(5, 5, 10);
 
     expect($budget->exhaustedReason())->toBe(AgentBudget::REASON_STEPS);
+});
+
+it('leaves the wall-clock deadline open when none is given', function (): void {
+    Carbon::setTestNow('2026-09-09 06:00:00');
+    $budget = new AgentBudget(maxSteps: 10, maxTokens: 100000);
+
+    Carbon::setTestNow('2026-09-09 07:00:00');
+
+    expect($budget->deadlinePassed())->toBeFalse();
+});
+
+it('passes its wall-clock deadline once the run has spent it', function (): void {
+    Carbon::setTestNow('2026-09-09 06:00:00');
+    $budget = new AgentBudget(maxSteps: 10, maxTokens: 100000, deadlineSeconds: 240);
+
+    Carbon::setTestNow(Carbon::now()->addSeconds(239));
+    expect($budget->deadlinePassed())->toBeFalse();
+
+    Carbon::setTestNow(Carbon::now()->addSecond());
+    expect($budget->deadlinePassed())->toBeTrue();
+});
+
+it('reads the deadline from config', function (): void {
+    Carbon::setTestNow('2026-09-09 06:00:00');
+    config()->set('ai.agent.max_steps', 10);
+    config()->set('ai.agent.max_tokens', 30000);
+    config()->set('ai.agent.deadline_seconds', 30);
+
+    $budget = AgentBudget::fromConfig();
+
+    Carbon::setTestNow(Carbon::now()->addSeconds(31));
+
+    expect($budget->deadlinePassed())->toBeTrue()
+        ->and($budget->exhaustedReason())->toBeNull();
 });
