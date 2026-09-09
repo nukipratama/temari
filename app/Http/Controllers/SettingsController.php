@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\RunnerProfile;
-use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Services\Telegram\TelegramLinkToken;
 use App\Support\Cooldown;
@@ -13,10 +12,11 @@ use App\Support\DataUseStatement;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 
 class SettingsController extends Controller
 {
-    public function __invoke(Request $request, TelegramLinkToken $telegramLinkToken): Response
+    public function __invoke(Request $request, TelegramLinkToken $telegramLinkToken, ResolveTrainingPreferenceAction $trainingPreference): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -35,16 +35,16 @@ class SettingsController extends Controller
                 Cooldown::TEST_WINDOW_SECONDS,
             )->remaining(),
             'hrZones' => $this->resolveHrZones($user),
-            'trainingPreferences' => $this->resolveTrainingPreferences($user),
+            'trainingPreferences' => $this->resolveTrainingPreferences($user, $trainingPreference),
         ]);
     }
 
     /**
      * @return array{experience_level: string|null, sessions_per_week: int|null, goal_type: string|null, run_days: list<int>|null, long_run_day: int|null}
      */
-    private function resolveTrainingPreferences(User $user): array
+    private function resolveTrainingPreferences(User $user, ResolveTrainingPreferenceAction $trainingPreference): array
     {
-        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
+        $preference = $trainingPreference($user->id);
 
         return [
             'experience_level' => $preference?->experience_level?->value,

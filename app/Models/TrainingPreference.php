@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\ExperienceLevel;
 use App\Enums\GoalType;
+use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use Database\Factories\TrainingPreferenceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -43,6 +44,17 @@ class TrainingPreference extends Model
 {
     /** @use HasFactory<TrainingPreferenceFactory> */
     use HasFactory;
+
+    #[Override]
+    protected static function booted(): void
+    {
+        $bust = function (TrainingPreference $row): void {
+            app(ResolveTrainingPreferenceAction::class)->forget($row->user_id);
+        };
+
+        static::saved($bust);
+        static::deleted($bust);
+    }
 
     /**
      * @return BelongsTo<User, $this>

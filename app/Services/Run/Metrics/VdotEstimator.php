@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
-use App\Enums\PrCategory;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
 
 /**
  * Daniels' VDOT formula (1998 tables):
@@ -20,6 +20,11 @@ use Illuminate\Support\Collection;
  */
 class VdotEstimator
 {
+    public function __construct(
+        private readonly ResolveDistanceRecordsAction $distanceRecords,
+    ) {
+    }
+
     // Coefficients of the VO2 = c + b·v + a·v² relationship (v in m/min),
     // shared with {@see \App\Services\Run\Metrics\TrainingPaceCalculator}, which
     // solves this same quadratic for v given a target VO2.
@@ -69,12 +74,7 @@ class VdotEstimator
      */
     public function estimate(User $user, ?Carbon $asOf = null): ?array
     {
-        $eligibleValues = array_map(static fn (PrCategory $c): string => $c->value, PrCategory::distances());
-
-        $prs = PersonalRecord::query()
-            ->where('user_id', $user->id)
-            ->whereIn('category', $eligibleValues)
-            ->get();
+        $prs = ($this->distanceRecords)($user->id);
 
         $now = $asOf ?? Carbon::now();
         $cutoff = $now->copy()->subMonths(self::RECENT_MONTHS);

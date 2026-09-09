@@ -15,6 +15,9 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
+use App\Actions\Run\Plan\ResolveSeasonAction;
 
 /**
  * The athlete's own recent behavior, read fresh every time it's asked for
@@ -149,6 +152,9 @@ final readonly class TrainingBaseline
         private TrainingPaceCalculator $paceCalculator,
         private PhaseSchedule $phaseSchedule,
         private ResolveActiveRaceAction $activeRace,
+        private ResolveTrainingPreferenceAction $trainingPreference,
+        private ResolveTrailingWeeksAction $weeklySnapshots,
+        private ResolveSeasonAction $season,
     ) {
     }
 
@@ -157,10 +163,10 @@ final readonly class TrainingBaseline
      */
     public function forUser(User $user, Carbon $asOf): array
     {
-        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
+        $preference = ($this->trainingPreference)($user->id);
         $preferredSessions = $preference?->sessions_per_week;
 
-        $weeks = self::trailingWeeks($user, $asOf);
+        $weeks = $this->trailingWeeks($user, $asOf);
 
         $hasHistory = ! $weeks->isEmpty();
         $seed = self::seedFor($preference, $weeks);
@@ -173,7 +179,7 @@ final readonly class TrainingBaseline
             $sessionsPerWeek = $seed[0] ?? self::MIN_SESSIONS_PER_WEEK;
         }
 
-        $season = self::seasonFor($user, $asOf);
+        $season = $this->seasonFor($user, $asOf);
         $weeklyVolumeKm = $season->anchor_weekly_volume_km ?? $this->weeklyVolumeKm($weeks, $seed);
 
         return [
@@ -191,8 +197,8 @@ final readonly class TrainingBaseline
      */
     public function trailingWeeklyVolumeKm(User $user, Carbon $asOf): float
     {
-        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
-        $weeks = self::trailingWeeks($user, $asOf);
+        $preference = ($this->trainingPreference)($user->id);
+        $weeks = $this->trailingWeeks($user, $asOf);
 
         return $this->weeklyVolumeKm($weeks, self::seedFor($preference, $weeks));
     }
@@ -202,13 +208,9 @@ final readonly class TrainingBaseline
      * date wins, so a day is always measured against the arc it was actually
      * prescribed under, which is what keeps a late compliance verdict honest.
      */
-    private static function seasonFor(User $user, Carbon $asOf): ?Season
+    private function seasonFor(User $user, Carbon $asOf): ?Season
     {
-        return Season::query()
-            ->where('user_id', $user->id)
-            ->whereDate('starts_at', '<=', $asOf->toDateString())
-            ->orderByDesc('starts_at')
-            ->first();
+        return $this->season->currentAsOf($user->id, $asOf);
     }
 
     /**
@@ -223,14 +225,9 @@ final readonly class TrainingBaseline
     }
 
     /** @return Collection<int, WeeklySnapshot> */
-    private static function trailingWeeks(User $user, Carbon $asOf): Collection
+    private function trailingWeeks(User $user, Carbon $asOf): Collection
     {
-        return WeeklySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('week_ending', '<=', $asOf->toDateString())
-            ->orderByDesc('week_ending')
-            ->limit(self::TRAILING_WEEKS)
-            ->get();
+        return ($this->weeklySnapshots)($user->id, $asOf->toDateString(), self::TRAILING_WEEKS);
     }
 
     private static function clampSessions(float $avgRuns): int

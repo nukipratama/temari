@@ -15,6 +15,7 @@ use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Actions\Run\Plan\ResolveSeasonAction;
 
 /**
  * Ensures a user always has a current {@see Season} and generates its 5
@@ -58,6 +59,7 @@ final readonly class SeasonService
         private WeekPlanBuilder $weekPlanBuilder,
         private TrainingLoad $trainingLoad,
         private ResolveActiveRaceAction $activeRace,
+        private ResolveSeasonAction $season,
     ) {
     }
 
@@ -139,7 +141,7 @@ final readonly class SeasonService
     {
         $today = ($today ?? Carbon::today())->copy()->startOfDay();
         $race = ($this->activeRace)($user->id);
-        $current = Season::query()->where('user_id', $user->id)->orderByDesc('starts_at')->first();
+        $current = $this->season->latest($user->id);
 
         return [$today, $race, $current];
     }
