@@ -121,7 +121,23 @@ export default function PaceTargetsCard({
         const observer = new ResizeObserver(measure);
         observer.observe(rail);
 
-        return () => observer.disconnect();
+        // A ResizeObserver on the rail doesn't fire when a webfont swap
+        // changes label widths without changing the rail's own box, so a
+        // late font load can leave the layout measured against fallback-font
+        // metrics.
+        let cancelled = false;
+        if (typeof document !== 'undefined' && document.fonts) {
+            document.fonts.ready.then(() => {
+                if (!cancelled) {
+                    measure();
+                }
+            });
+        }
+
+        return () => {
+            cancelled = true;
+            observer.disconnect();
+        };
     }, [rail]);
 
     const values = MARKERS.map((m) => paces[m.key]);
