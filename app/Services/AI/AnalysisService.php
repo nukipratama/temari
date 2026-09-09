@@ -188,15 +188,26 @@ class AnalysisService
         }
     }
 
-    public function requestBriefing(User $user, string $discriminator, bool $invalidate = false, ?int $delaySeconds = null): void
+    public function requestBriefing(User $user, string $discriminator, bool $invalidate = false, ?int $delaySeconds = null): Analysis
     {
-        $this->dispatchRow(
+        return $this->dispatchRow(
             AnalysisType::BRIEFING_SUBJECT_TYPE,
             $user->id,
             AnalysisType::BriefingMascotVoice,
             $discriminator,
             $invalidate,
             $delaySeconds,
+        );
+    }
+
+    public function requestProfileVoice(User $user, string $isoWeek, bool $invalidate = false): Analysis
+    {
+        return $this->request(
+            subjectOrType: AnalysisType::ProfileVoice->subjectType(),
+            subjectId: $user->id,
+            type: AnalysisType::ProfileVoice,
+            discriminator: $isoWeek,
+            invalidate: $invalidate,
         );
     }
 

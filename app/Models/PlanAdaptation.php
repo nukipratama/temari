@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\AdaptationReason;
 use App\Models\AI\Analysis;
+use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 use Database\Factories\PlanAdaptationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -43,6 +44,17 @@ class PlanAdaptation extends Model
 {
     /** @use HasFactory<PlanAdaptationFactory> */
     use HasFactory;
+
+    #[Override]
+    protected static function booted(): void
+    {
+        $bust = function (PlanAdaptation $row): void {
+            app(ResolveWeekAdaptationAction::class)->forget($row->user_id);
+        };
+
+        static::saved($bust);
+        static::deleted($bust);
+    }
 
     /**
      * @return BelongsTo<User, $this>

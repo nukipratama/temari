@@ -6,6 +6,7 @@ use App\Services\AI\AzureConfigCircuitBreaker;
 use Illuminate\Database\QueryException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
+use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -445,6 +446,22 @@ it('requestBriefing creates the suggestion row and dispatches one AnalyzeBriefin
     Bus::assertDispatched(
         AnalyzeBriefingMascotVoiceJob::class,
         fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $row->id,
+    );
+});
+
+it('requestProfileVoice creates the profile-voice row and dispatches one AnalyzeProfileVoiceJob', function (): void {
+    $user = User::factory()->create();
+
+    $row = $this->service->requestProfileVoice($user, '2026-W20');
+
+    expect($row->subject_type)->toBe(AnalysisType::ProfileVoice->subjectType())
+        ->and($row->subject_id)->toBe($user->id)
+        ->and($row->analysis_type)->toBe(AnalysisType::ProfileVoice)
+        ->and($row->discriminator)->toBe('2026-W20');
+
+    Bus::assertDispatched(
+        AnalyzeProfileVoiceJob::class,
+        fn (AnalyzeProfileVoiceJob $job): bool => $job->analysisId === $row->id,
     );
 });
 

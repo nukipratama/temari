@@ -13,6 +13,8 @@ use App\Services\Run\Plan\ClampNarrationContext;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Support\Cooldown;
 use Illuminate\Support\Carbon;
+use App\Actions\Run\Plan\ResolveSeasonAction;
+use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 
 /**
  * Requests fresh day/week/season plan narration for the current week, reads
@@ -41,6 +43,8 @@ final readonly class PlanNarrationRequester
         private AnalysisService $analysisService,
         private TrainingBaseline $baseline,
         private ClampNarrationContext $clampContext,
+        private ResolveSeasonAction $season,
+        private ResolveWeekAdaptationAction $weekAdaptation,
     ) {
     }
 
@@ -468,14 +472,11 @@ final readonly class PlanNarrationRequester
     {
         $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
 
-        return PlanAdaptation::query()
-            ->where('user_id', $user->id)
-            ->where('week_start', $weekStart->toDateString())
-            ->first();
+        return ($this->weekAdaptation)($user->id, $weekStart->toDateString());
     }
 
     private function currentSeason(User $user): ?Season
     {
-        return Season::query()->where('user_id', $user->id)->orderByDesc('starts_at')->first();
+        return $this->season->latest($user->id);
     }
 }

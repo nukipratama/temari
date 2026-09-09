@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\PrCategory;
+use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
 use Database\Factories\PersonalRecordFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -36,6 +37,17 @@ class PersonalRecord extends Model
 {
     /** @use HasFactory<PersonalRecordFactory> */
     use HasFactory;
+
+    #[Override]
+    protected static function booted(): void
+    {
+        $bust = function (PersonalRecord $row): void {
+            app(ResolveDistanceRecordsAction::class)->forget($row->user_id);
+        };
+
+        static::saved($bust);
+        static::deleted($bust);
+    }
 
     /**
      * Records owned by the given user.

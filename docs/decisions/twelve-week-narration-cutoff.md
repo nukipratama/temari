@@ -69,7 +69,7 @@ Gating the *age* of the material was not enough, because the discriminator was i
 
 That cap is **365 days, deliberately wider than the 84-day narration cutoff**. The two bounds answer different questions and collapsing them would make one of them dead code: the discriminator range closes the set of rows a caller can mint, while the narration cutoff decides which of those are worth an LLM call. Between 84 and 365 days a trigger is valid and answered by the filler; past 365 it is not a request the app models at all.
 
-**A blocked trigger is served, not refused.** It resolves through [AnalysisService::requestRuleBased()](app/Services/AI/AnalysisService.php#L107) with `refillDone: false`, so the click always produces content — no dead button, no empty state a retry cannot fill — while a row that already holds real, billed-for prose is never clobbered.
+**A blocked trigger is served, not refused.** It resolves through [AnalysisService::requestRuleBased()](app/Services/AI/AnalysisService.php#L114) with `refillDone: false`, so the click always produces content — no dead button, no empty state a retry cannot fill — while a row that already holds real, billed-for prose is never clobbered.
 
 ## Consequences
 
