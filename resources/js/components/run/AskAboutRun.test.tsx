@@ -100,9 +100,7 @@ describe('AskAboutRun', () => {
         render(<AskAboutRun activityId={9} />);
         await waitFor(() => expect(fetchMock).toHaveBeenCalled());
 
-        const input = screen.getByPlaceholderText(
-            'ask anything about this run',
-        );
+        const input = screen.getByPlaceholderText('ask about this run');
         fireEvent.change(input, { target: { value: 'was it the heat?' } });
         fireEvent.click(screen.getByRole('button', { name: /ask/ }));
 
@@ -140,15 +138,13 @@ describe('AskAboutRun', () => {
         const button = await screen.findByRole('button', { name: /ask/ });
 
         expect(button).toBeDisabled();
-        fireEvent.change(
-            screen.getByPlaceholderText('ask anything about this run'),
-            { target: { value: 'hi' } },
-        );
+        fireEvent.change(screen.getByPlaceholderText('ask about this run'), {
+            target: { value: 'hi' },
+        });
         expect(button).toBeDisabled();
-        fireEvent.change(
-            screen.getByPlaceholderText('ask anything about this run'),
-            { target: { value: 'was it the heat?' } },
-        );
+        fireEvent.change(screen.getByPlaceholderText('ask about this run'), {
+            target: { value: 'was it the heat?' },
+        });
         expect(button).toBeEnabled();
     });
 
@@ -160,7 +156,7 @@ describe('AskAboutRun', () => {
 
         render(<AskAboutRun activityId={9} />);
         fireEvent.change(
-            await screen.findByPlaceholderText('ask anything about this run'),
+            await screen.findByPlaceholderText('ask about this run'),
             { target: { value: 'was it the heat?' } },
         );
         fireEvent.click(screen.getByRole('button', { name: /ask/ }));
@@ -178,7 +174,7 @@ describe('AskAboutRun', () => {
 
         render(<AskAboutRun activityId={9} />);
         fireEvent.change(
-            await screen.findByPlaceholderText('ask anything about this run'),
+            await screen.findByPlaceholderText('ask about this run'),
             { target: { value: 'was it the heat?' } },
         );
         fireEvent.click(screen.getByRole('button', { name: /ask/ }));
@@ -229,9 +225,9 @@ describe('AskAboutRun', () => {
             await screen.findByRole('button', { name: 'ask it again' }),
         );
 
-        expect(
-            screen.getByPlaceholderText('ask anything about this run'),
-        ).toHaveValue('why did my heart rate drift up?');
+        expect(screen.getByPlaceholderText('ask about this run')).toHaveValue(
+            'why did my heart rate drift up?',
+        );
     });
 
     it('warns that a summary-only run has a smaller toolbox', async () => {
@@ -248,7 +244,7 @@ describe('AskAboutRun', () => {
         stubApi({ questions: [], suggestions: [] });
 
         render(<AskAboutRun activityId={9} />);
-        await screen.findByPlaceholderText('ask anything about this run');
+        await screen.findByPlaceholderText('ask about this run');
 
         expect(
             screen.queryByText(/zones or terrain yet/),
@@ -264,7 +260,7 @@ describe('AskAboutRun', () => {
         render(<AskAboutRun activityId={9} />);
 
         expect(
-            await screen.findByPlaceholderText('ask anything about this run'),
+            await screen.findByPlaceholderText('ask about this run'),
         ).toBeInTheDocument();
     });
 });
