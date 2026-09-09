@@ -49,6 +49,12 @@ describe('NarrationFlag', () => {
         expect(container).toBeEmptyDOMElement();
     });
 
+    it('draws nothing on a done block that said nothing', () => {
+        const { container } = renderFlag({ content: null });
+
+        expect(container).toBeEmptyDOMElement();
+    });
+
     it('draws nothing when there is no row to flag', () => {
         const { container } = renderFlag({ id: null });
 

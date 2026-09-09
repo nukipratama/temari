@@ -15,7 +15,11 @@ export default function NarrationFlag({
     /** Cream-on-sky styling, for a block drawn on a dark panel. */
     onSky?: boolean;
 }>) {
-    if (analysis.status !== 'done' || analysis.id === null) {
+    if (
+        analysis.status !== 'done' ||
+        analysis.content === null ||
+        analysis.id === null
+    ) {
         return null;
     }
 

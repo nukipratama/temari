@@ -100,13 +100,14 @@ describe('FlagWrong', () => {
         expect(router.post).not.toHaveBeenCalled();
     });
 
-    it('collapses its own height on an eyebrow line without shrinking the target', () => {
+    it('draws small on an eyebrow line while keeping its 44px target', () => {
         renderFlag({ compact: true });
 
         const control = screen.getByRole('button', { name: 'flag this day' });
 
-        expect(control).toHaveClass('-my-3.5');
-        expect(control).toHaveClass('size-11');
+        expect(control).toHaveClass('size-5');
+        expect(control).toHaveClass('before:-inset-3');
+        expect(control).not.toHaveClass('size-11');
     });
 
     it('renders an inert flagged icon when the server says it is already flagged', () => {
