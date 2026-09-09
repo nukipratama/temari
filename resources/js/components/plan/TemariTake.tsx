@@ -32,7 +32,6 @@ export default function TemariTake({
                     analysis={analysis}
                     inertiaReloadProps={['planNarration']}
                     size="sm"
-                    showTimestamp={false}
                     allowReanalyze={allowReanalyze}
                     renderContent={(content) => (
                         <p className="narration">{content}</p>

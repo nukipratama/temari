@@ -92,7 +92,6 @@ export default function ProfileHero({
                     <AnalysisStatus
                         analysis={voice}
                         inertiaReloadProps={['profileVoice']}
-                        showTimestamp={false}
                         renderContent={(text) => (
                             <p className="narration">
                                 {renderBold(stripEdgeQuotes(text))}

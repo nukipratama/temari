@@ -143,7 +143,6 @@ export default function TodaySession({
                     analysis={briefing.mascotVoice}
                     inertiaReloadProps={['briefing']}
                     allowReanalyze={false}
-                    showTimestamp={false}
                     renderContent={(text) => (
                         <SessionVoice text={text} drawnAnchors={drawnAnchors} />
                     )}

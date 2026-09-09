@@ -538,19 +538,51 @@ describe('AnalysisStatus', () => {
         });
     });
 
-    it('draws the flag at the right end of the reread line', () => {
+    it('draws the flag at the end of the "generated" meta line', () => {
+        vi.useFakeTimers();
+        const now = new Date('2026-07-07T12:00:00Z');
+        vi.setSystemTime(now);
         render(
             <AnalysisStatus
-                analysis={payload({ id: 7, status: 'done', content: 'Halo' })}
+                analysis={payload({
+                    id: 7,
+                    status: 'done',
+                    content: 'Halo',
+                    generated_at: new Date(
+                        now.getTime() - 5 * 60 * 1000,
+                    ).toISOString(),
+                })}
             />,
         );
 
         const flag = screen.getByRole('button', { name: 'flag this read' });
 
         expect(flag).toHaveTextContent('');
+        expect(screen.getByText(/generated 5 min ago/).parentElement).toBe(
+            flag.parentElement,
+        );
         expect(
             screen.getByRole('button', { name: /reread/ }).parentElement,
-        ).toBe(flag.parentElement);
+        ).not.toBe(flag.parentElement);
+        vi.useRealTimers();
+    });
+
+    it('right-aligns the flag on its own when the block has no timestamp', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    id: 7,
+                    status: 'done',
+                    content: 'Halo',
+                    generated_at: null,
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: 'flag this read' }).parentElement
+                ?.className,
+        ).toContain('justify-end');
     });
 
     it('draws an inert flagged icon on a read already flagged', () => {
