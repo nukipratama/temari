@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,7 @@ use Override;
  * @property int $user_id
  * @property FeedbackSubject $subject_type
  * @property int $subject_id
+ * @property FeedbackReason|null $reason
  * @property string|null $note
  * @property Carbon|null $created_at
  */
@@ -27,6 +29,7 @@ use Override;
     'user_id',
     'subject_type',
     'subject_id',
+    'reason',
     'note',
 ])]
 class Feedback extends Model
@@ -57,6 +60,7 @@ class Feedback extends Model
             'user_id' => 'integer',
             'subject_type' => FeedbackSubject::class,
             'subject_id' => 'integer',
+            'reason' => FeedbackReason::class,
             'created_at' => 'datetime',
         ];
     }
