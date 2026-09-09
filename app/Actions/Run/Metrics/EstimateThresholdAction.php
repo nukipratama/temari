@@ -43,7 +43,7 @@ class EstimateThresholdAction
             ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
             ->where('start_date_local', '>=', $cutoff)
             ->whereNotNull('stream_summary')
-            ->get();
+            ->get(['id', 'stream_summary']);
 
         $paces = $details
             ->map(fn (ActivityDetail $detail): StreamSummary => StreamSummary::fromArray($detail->streamSummary()))

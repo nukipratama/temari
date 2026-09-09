@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\RaceGoal;
@@ -51,6 +52,7 @@ class ProfileController extends Controller
         SeasonService $seasonService,
         SeasonStreakSummaryBuilder $seasonStreakBuilder,
         SeasonSummaryBuilder $seasonSummaryBuilder,
+        ResolveActiveRaceAction $activeRace,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -96,7 +98,7 @@ class ProfileController extends Controller
                 'longest_run_km' => $loadLifetime()['longest_km'],
             ],
             'profileVoice' => fn (): array => $this->resolveProfileVoice($user),
-            'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user))),
+            'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user), $activeRace($user->id))),
             'fitness' => Inertia::defer(fn (): ?array => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $user)),
             'timeInZone' => Inertia::defer(fn (): ?array => $timeInZoneSummary->forUser($user, $today) ?: null),
             'season' => Inertia::defer(fn (): ?array => $seasonStreakBuilder->seasonPayload($user, $loadSeason(), $today)),
@@ -169,7 +171,7 @@ class ProfileController extends Controller
      * @param  Collection<int, PersonalRecord>  $records
      * @return array<string, array{category:string, weeks:array<int,string>, times_sec:array<int,int>, goal_sec:int|null}>
      */
-    private function buildProgressionByCategory(ProgressionSeriesBuilder $builder, User $user, Collection $records): array
+    private function buildProgressionByCategory(ProgressionSeriesBuilder $builder, User $user, Collection $records, ?RaceGoal $race): array
     {
         $prs = [];
         foreach (self::PROGRESSION_CATEGORIES as $category) {
@@ -178,8 +180,6 @@ class ProfileController extends Controller
                 $prs[] = $pr;
             }
         }
-
-        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
 
         return $builder->buildMany($user, $prs, fn (PersonalRecord $pr): ?int => $this->raceGoalSecFor($race, $pr));
     }

@@ -60,6 +60,17 @@ class Vibe
     /** PR lookback in days for the "celebration" vibe. */
     private const int PR_WINDOW_DAYS = 14;
 
+    /**
+     * Answers already computed this request/job, keyed by user and date.
+     *
+     * The binding is `scoped()` in AppServiceProvider so DashboardController
+     * and BriefingComposer reach the same instance; without that they get
+     * separate ones and this memo never sees the second call.
+     *
+     * @var array<string, string>
+     */
+    private array $memo = [];
+
     public function __construct(
         private readonly TrainingLoad $trainingLoad,
         private readonly VibeMatrix $matrix,
@@ -70,13 +81,18 @@ class Vibe
     {
         $asOf ??= Carbon::today();
 
+        $key = $user->id.'|'.$asOf->toDateString();
+        if (isset($this->memo[$key])) {
+            return $this->memo[$key];
+        }
+
         $load = $this->trainingLoad->summary($user, $asOf);
 
         $daysSinceRun = $this->daysSinceLastRun($user, $asOf);
         $recentPr = $this->hasRecentPr($user, $asOf);
         $decoupling = $this->avgDecouplingPct($user, $asOf);
 
-        return $this->matrix->pick([
+        return $this->memo[$key] = $this->matrix->pick([
             'form' => (float) ($load['form'] ?? 0.0),
             'form_status' => (string) ($load['form_status'] ?? 'optimal'),
             'days_since_run' => $daysSinceRun,

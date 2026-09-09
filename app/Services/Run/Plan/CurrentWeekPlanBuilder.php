@@ -7,7 +7,7 @@ namespace App\Services\Run\Plan;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
-use App\Models\RaceGoal;
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Models\User;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\AI\PlanNarrationRequester;
@@ -38,6 +38,7 @@ final readonly class CurrentWeekPlanBuilder
         private VdotEstimator $vdotEstimator,
         private SessionMatcher $sessionMatcher,
         private PlanNarrationRequester $planNarration,
+        private ResolveActiveRaceAction $activeRace,
     ) {
     }
 
@@ -79,7 +80,7 @@ final readonly class CurrentWeekPlanBuilder
         $ceiling = ReadinessCeiling::from(
             BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today))->readinessCeiling,
         );
-        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        $race = ($this->activeRace)($user->id);
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
         $primaryEasyDate = PlanRenderer::primaryEasyDate($currentWeekSessions);
 
