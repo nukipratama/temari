@@ -61,10 +61,15 @@ function makeRepoWithOriginMain(): array
     return compact('dir', 'base', 'head');
 }
 
+function installBaseScript(string $dir): void
+{
+    mkdir("$dir/scripts", recursive: true);
+    copy(base_path(BASE_SCRIPT), "$dir/scripts/vitest-changed-base.sh");
+}
+
 it('prints a commit that vitest can diff against, naming the ref it came from', function (): void {
     $repo = makeRepoWithOriginMain();
-    mkdir("{$repo['dir']}/scripts", recursive: true);
-    copy(base_path(BASE_SCRIPT), "{$repo['dir']}/scripts/vitest-changed-base.sh");
+    installBaseScript($repo['dir']);
 
     try {
         $process = new Process(['sh', "{$repo['dir']}/scripts/vitest-changed-base.sh"], $repo['dir'], withoutAmbientGitDir());
@@ -89,8 +94,7 @@ it('resolves a base through a worktree-style .git pointer file, with no git envi
     $gitDir = trim(new Process(['git', 'rev-parse', '--absolute-git-dir'], $upstream['dir'], withoutAmbientGitDir())->mustRun()->getOutput());
     $checkout = sys_get_temp_dir().'/vitest-changed-base-'.uniqid();
 
-    mkdir("$checkout/scripts", recursive: true);
-    copy(base_path(BASE_SCRIPT), "$checkout/scripts/vitest-changed-base.sh");
+    installBaseScript($checkout);
     file_put_contents("$checkout/.git", "gitdir: $gitDir\n");
 
     try {
