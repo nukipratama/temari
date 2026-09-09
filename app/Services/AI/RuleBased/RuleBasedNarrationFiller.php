@@ -114,9 +114,8 @@ final readonly class RuleBasedNarrationFiller
         }
         $km = DistanceFormatter::kmString($detail->distance) ?? '?';
 
-        // Two slots, each hashed under its own salt, so the History feed's
-        // side-by-side runs vary in both halves instead of walking one pool in
-        // lockstep and repeating the identical line every N-th run.
+        // Two slots under separate salts: the History feed shows these side by
+        // side, and one pool of whole sentences repeats verbatim within a screen.
         $opener = strtr($this->select(self::POST_RUN_OPENERS, (int) crc32('post_run_speech_open_'.$activityId)), ['{km}' => $km]);
         $closer = $this->select(self::POST_RUN_CLOSERS, (int) crc32('post_run_speech_close_'.$activityId));
 
@@ -124,8 +123,7 @@ final readonly class RuleBasedNarrationFiller
     }
 
     /**
-     * The distance half of the post-run line. Each is one sentence carrying
-     * `{km}`, so any opener reads cleanly ahead of any closer.
+     * One sentence each, carrying `{km}`, so any opener reads ahead of any closer.
      *
      * @var non-empty-list<string>
      */
@@ -148,9 +146,8 @@ final readonly class RuleBasedNarrationFiller
     ];
 
     /**
-     * The second beat, salted independently of the opener. None of these claim
-     * anything about how the run went, so no combination can contradict its
-     * opener or the data-driven coda that follows it.
+     * None of these claim anything about how the run went, so no pairing can
+     * contradict its opener or the data-driven coda after it.
      *
      * @var non-empty-list<string>
      */
