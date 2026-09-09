@@ -40,14 +40,14 @@ class PastYouTrendBuilder
     public const int MAX_COMPARISONS = 4;
 
     /**
-     * Rows are already bounded by the only range the matcher can reach:
-     * {@see self::WINDOW_DAYS} back for the recent side plus
-     * {@see PastYouMatcher::MAX_GAP_DAYS} for the candidates each of them may
-     * pair with. This cap is the backstop above that, and it drops the *oldest*
-     * rows — which are eligible candidates — so it is deliberately far above any
-     * plausible 407-day run count.
+     * The date range is the real bound: {@see self::WINDOW_DAYS} back for the
+     * recent side plus {@see PastYouMatcher::MAX_GAP_DAYS} for the candidates
+     * each of them may pair with. This row count is only a backstop against
+     * pathological data such as a duplicated import, sized above the 814 runs a
+     * twice-a-day runner could log in that range; it drops the *oldest* rows,
+     * which are eligible candidates.
      */
-    private const int HISTORY_LIMIT = 400;
+    private const int HISTORY_BACKSTOP_ROWS = 2_000;
 
     public function __construct(
         private readonly PastYouMatcher $matcher,
@@ -234,7 +234,7 @@ class PastYouTrendBuilder
             ->where('activity_details.distance', '>', 0)
             ->where('activity_details.moving_time', '>', 0)
             ->orderByDesc('activity_details.start_date_local')
-            ->limit(self::HISTORY_LIMIT)
+            ->limit(self::HISTORY_BACKSTOP_ROWS)
             ->toBase()
             ->get();
 

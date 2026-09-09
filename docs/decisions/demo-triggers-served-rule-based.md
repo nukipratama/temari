@@ -43,7 +43,7 @@ We decided the demo's trigger **succeeds and is served from the deterministic
 rule-based filler** instead of dispatching an LLM job. The button behaves
 normally (200, a `done` row, fresh content); it simply never reaches Azure.
 
-The seam is [`AnalysisService::requestRuleBased()`](app/Services/AI/AnalysisService.php#L108):
+The seam is [`AnalysisService::requestRuleBased()`](app/Services/AI/AnalysisService.php#L114):
 it reuses or stages the row via `requestDeferred()`, then marks it Done with
 [RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php)
 content inside `withoutDispatching()`. Running under that flag is what makes the

@@ -14,8 +14,9 @@ return [
     'api_key' => (string) env('AZURE_OPENAI_API_KEY', ''),
     // A Guzzle timeout drops the connection but Azure still bills the completion
     // it generated, and the token meter can't record a response it never got, so
-    // this must clear the slowest narration. Bounded above by the Horizon `ai`
-    // supervisor's 300s.
+    // this must clear the slowest narration. It is also how far past its
+    // wall-clock deadline (`ai.agent.deadline_seconds`) a run can overshoot, so
+    // their sum must stay under the Horizon `ai` supervisor's timeout.
     'timeout' => (int) env('AZURE_OPENAI_TIMEOUT', 90),
     'max_completion_tokens' => (int) env('AZURE_OPENAI_MAX_COMPLETION_TOKENS', 700),
 

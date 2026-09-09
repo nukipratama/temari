@@ -7,12 +7,18 @@ namespace App\Actions\AI;
 use App\Models\AI\TokenUsage;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\Agent\AgentBudget;
+use App\Services\AI\MaintainerAlerter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class RecordTokenUsageAction
 {
+    public function __construct(
+        private readonly MaintainerAlerter $alerter,
+    ) {
+    }
+
     /**
      * Write one row for one call. `$usage` carries the whole run's totals, which
      * for an agent means every turn of the tool loop plus any retry, not just
@@ -51,6 +57,8 @@ class RecordTokenUsageAction
                 'kind' => $kind,
                 'error' => $e->getMessage(),
             ]);
+
+            $this->alerter->meteringFailed($e::class, $userId, $kind, $model);
         }
     }
 }

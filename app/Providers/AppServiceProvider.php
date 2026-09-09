@@ -34,6 +34,11 @@ use Livewire\Livewire;
 use Override;
 use SocialiteProviders\Manager\SocialiteWasCalled;
 use SocialiteProviders\Strava\StravaExtendSocialite;
+use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
+use App\Actions\Run\Plan\ResolveSeasonAction;
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
+use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -65,6 +70,16 @@ class AppServiceProvider extends ServiceProvider
         // inside BriefingComposer — both memos need a shared instance to bite.
         $this->app->scoped(ResolveActiveRaceAction::class);
         $this->app->scoped(Vibe::class);
+
+        // The rest of the Plan tab's repeated reads, same reason. One deferred
+        // Plan render enters TrainingBaseline four times and each pass re-read
+        // the preferences row, the trailing snapshot window, the season arc and
+        // the distance PRs; the week's adaptation is asked for three times.
+        $this->app->scoped(ResolveTrainingPreferenceAction::class);
+        $this->app->scoped(ResolveTrailingWeeksAction::class);
+        $this->app->scoped(ResolveDistanceRecordsAction::class);
+        $this->app->scoped(ResolveSeasonAction::class);
+        $this->app->scoped(ResolveWeekAdaptationAction::class);
     }
 
     public function boot(): void

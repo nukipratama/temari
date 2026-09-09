@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
@@ -9,7 +10,9 @@ use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisOrigin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -123,6 +126,21 @@ it('updating a session automatically pins it, so the next regeneration leaves it
     $fresh = $session->fresh();
     expect($fresh->skipped)->toBeTrue()
         ->and($fresh->pinned)->toBeTrue();
+});
+
+it('attributes an edit\'s re-narration to the athlete, so it re-arms the row\'s retry budget', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+    ]);
+
+    $this->actingAs($user)->patch("/plan/sessions/{$session->id}", ['skipped' => true]);
+
+    Bus::assertDispatched(
+        AnalyzePlanDayVoiceJob::class,
+        fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
+    );
 });
 
 it('allows an explicit unpin alongside an edit', function (): void {
@@ -352,7 +370,7 @@ it('paints the Plan shell inside its query budget', function (): void {
 
     $this->actingAs($user)->get('/plan')->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(30);
+    expect($queries)->toBeLessThanOrEqual(24);
 });
 
 it('resolves the deferred Plan props inside their query budget', function (): void {
@@ -371,7 +389,7 @@ it('resolves the deferred Plan props inside their query budget', function (): vo
 
     $this->actingAs($user)->get('/plan', $headers)->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(33);
+    expect($queries)->toBeLessThanOrEqual(14);
 });
 
 function planBudgetFixture(): User

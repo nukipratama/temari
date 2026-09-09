@@ -54,6 +54,16 @@ it('schedules the failed_jobs retention prune', function (): void {
 });
 
 /**
+ * ai_token_usages and strava_sync_logs had no retention at all before this.
+ * Guards that the sweep stays scheduled.
+ */
+it('schedules the analytics-connection retention prune', function (): void {
+    $event = scheduledEvent('analytics:prune');
+
+    expect($event)->not->toBeNull('analytics:prune is not scheduled');
+});
+
+/**
  * The scheduler container's healthcheck asserts the heartbeat is younger than
  * ScheduleHeartbeatCommand::STALE_AFTER_SECONDS, so the beat must stay on an
  * every-minute cadence and must not carry an overlap lock (the scheduler mutex

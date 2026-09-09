@@ -339,7 +339,7 @@ it('resolves the deferred Profile props inside their query budget', function ():
 
     $this->actingAs($user)->get('/profile', $headers)->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(15);
+    expect($queries)->toBeLessThanOrEqual(9);
 });
 
 // The threshold estimator reads stream_summary and nothing else. A bare get()

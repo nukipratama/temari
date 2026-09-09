@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 
 /**
  * Deletes a Strava-removed activity and heals the artifacts that don't cascade:
@@ -43,6 +44,7 @@ class CleanupDeletedActivityJob implements ShouldQueue
         WeeklyAggregator $weekly,
         PersonalRecords $personalRecords,
         StravaClient $client,
+        ResolveTrailingWeeksAction $weeklySnapshots,
     ): void {
         $user = User::query()->with('stravaConnection')->find($this->userId);
         if ($user === null) {
@@ -78,7 +80,7 @@ class CleanupDeletedActivityJob implements ShouldQueue
         // card id, no FK) does not — capture the id now to purge it below.
         $cardId = $activity->runCard?->id;
 
-        DB::transaction(function () use ($activity, $weekAnchor, $user, $weekly, $personalRecords, $localId, $cardId): void {
+        DB::transaction(function () use ($activity, $weekAnchor, $user, $weekly, $personalRecords, $localId, $cardId, $weeklySnapshots): void {
             // Cascades detail / stream / card / post-run storyline via FK.
             $activity->delete();
 
@@ -95,6 +97,7 @@ class CleanupDeletedActivityJob implements ShouldQueue
                         ->where('user_id', $user->id)
                         ->where('week_ending', '>=', $anchorWeekEnding->toDateString())
                         ->delete();
+                    $weeklySnapshots->forget($user->id);
                 }
             }
 

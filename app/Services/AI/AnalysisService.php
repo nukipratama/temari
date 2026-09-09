@@ -188,15 +188,26 @@ class AnalysisService
         }
     }
 
-    public function requestBriefing(User $user, string $discriminator, bool $invalidate = false, ?int $delaySeconds = null): void
+    public function requestBriefing(User $user, string $discriminator, bool $invalidate = false, ?int $delaySeconds = null): Analysis
     {
-        $this->dispatchRow(
+        return $this->dispatchRow(
             AnalysisType::BRIEFING_SUBJECT_TYPE,
             $user->id,
             AnalysisType::BriefingMascotVoice,
             $discriminator,
             $invalidate,
             $delaySeconds,
+        );
+    }
+
+    public function requestProfileVoice(User $user, string $isoWeek, bool $invalidate = false): Analysis
+    {
+        return $this->request(
+            subjectOrType: AnalysisType::ProfileVoice->subjectType(),
+            subjectId: $user->id,
+            type: AnalysisType::ProfileVoice,
+            discriminator: $isoWeek,
+            invalidate: $invalidate,
         );
     }
 
@@ -291,16 +302,13 @@ class AnalysisService
         }
 
         if (! $justCreated) {
-            if ($invalidate && $row->status === AnalysisStatus::Done) {
-                $row->update(['status' => AnalysisStatus::Pending, 'error' => null, 'attempts' => 0]);
-                $row->refresh();
+            if ($invalidate) {
+                $this->invalidateDoneRow($row);
             }
 
-            if (! $this->rowNeedsDispatch($row)) {
+            if (! $this->claimForDispatch($row)) {
                 return $row;
             }
-
-            $this->markQueued($row);
         }
 
         /** @var class-string<AnalyzeRowJob> $jobClass */
@@ -335,17 +343,21 @@ class AnalysisService
         }
 
         if ($invalidate) {
-            $this->invalidateDoneRows($rows);
+            foreach ($rows as $row) {
+                $this->invalidateDoneRow($row);
+            }
         }
 
-        if (! $anyJustCreated && ! $rows->contains(fn (Analysis $row): bool => $this->rowNeedsDispatch($row))) {
-            return;
-        }
+        $claimedAny = $anyJustCreated;
 
         foreach ($rows as $row) {
-            if (! $row->wasRecentlyCreated && $this->rowNeedsDispatch($row)) {
-                $this->markQueued($row);
+            if (! $row->wasRecentlyCreated && $this->claimForDispatch($row)) {
+                $claimedAny = true;
             }
+        }
+
+        if (! $claimedAny) {
+            return;
         }
 
         $this->dispatchPending($this->stamped(new $jobClass($subjectId, $discriminator)), $delaySeconds);
@@ -483,24 +495,57 @@ class AnalysisService
             });
     }
 
-    /** @param Collection<array-key, Analysis> $rows */
-    private function invalidateDoneRows(Collection $rows): void
+    /**
+     * Send a Done row back to Pending so the next dispatch re-narrates it.
+     *
+     * Only an invalidation the athlete asked for ("Reread", a plan edit, a
+     * replan) also re-arms the self-heal budget, read from the origin its entry
+     * point already declares: `attempts` counts real LLM executions per row, and
+     * a system invalidation fires on repeatable events (an ingest, the Monday
+     * fingerprint sweep), so resetting there would make MAX_SELF_HEAL_ATTEMPTS
+     * a bound per invalidation rather than per row.
+     */
+    private function invalidateDoneRow(Analysis $row): void
     {
-        foreach ($rows as $row) {
-            if ($row->status === AnalysisStatus::Done) {
-                $row->update(['status' => AnalysisStatus::Pending, 'error' => null, 'attempts' => 0]);
-                $row->refresh();
-            }
+        if ($row->status !== AnalysisStatus::Done) {
+            return;
         }
+
+        $row->update([
+            'status' => AnalysisStatus::Pending,
+            'error' => null,
+            ...($this->origin->current() === AnalysisOrigin::User ? ['attempts' => 0] : []),
+        ]);
     }
 
-    private function rowNeedsDispatch(Analysis $row): bool
+    /**
+     * Claim a row for dispatch: one conditional UPDATE that both asks whether
+     * the row may be dispatched and takes it, so two dispatchers reading the
+     * same Pending row (a UI retry racing self-heal, a resync racing a retry)
+     * cannot both enqueue and both bill Azure. Returns whether this caller won.
+     */
+    private function claimForDispatch(Analysis $row): bool
     {
-        return in_array(
-            $row->status,
-            [AnalysisStatus::Pending, AnalysisStatus::Failed],
-            strict: true,
-        );
+        $now = Carbon::now();
+
+        $claimed = Analysis::query()
+            ->whereKey($row->getKey())
+            ->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Failed])
+            ->update([
+                'status' => AnalysisStatus::Queued,
+                'queued_at' => $now,
+                'error' => null,
+            ]) === 1;
+
+        if ($claimed) {
+            $row->forceFill([
+                'status' => AnalysisStatus::Queued,
+                'queued_at' => $now,
+                'error' => null,
+            ])->syncOriginal();
+        }
+
+        return $claimed;
     }
 
     public function markQueued(Analysis $row): void

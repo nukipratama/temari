@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->estimator = new VdotEstimator();
+    $this->estimator = app(VdotEstimator::class);
 });
 
 it('returns null when user has no qualifying distance PR', function (): void {

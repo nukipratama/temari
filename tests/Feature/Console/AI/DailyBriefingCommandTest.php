@@ -29,8 +29,10 @@ it('dispatches the briefing group for each active user, and nothing else', funct
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('requestBriefing')
         ->once()
-        ->andReturnUsing(function (User $u, string $discriminator) use (&$briefingGroupCalls): void {
+        ->andReturnUsing(function (User $u, string $discriminator) use (&$briefingGroupCalls): Analysis {
             $briefingGroupCalls[] = ['user_id' => $u->id, 'discriminator' => $discriminator];
+
+            return new Analysis();
         });
     // The featured-card row was this command's only direct request() call.
     // W2 removed it with the panel it narrated, so the kickoff is the group alone.
@@ -58,7 +60,7 @@ it('skips the demo user even with recent analyzed activity', function (): void {
     Activity::factory()->for($demo)->create(['analyzed_at' => Carbon::today()->subDays(1)]);
 
     $service = Mockery::mock(AnalysisService::class);
-    $service->shouldReceive('requestBriefing')->once();
+    $service->shouldReceive('requestBriefing')->once()->andReturn(new Analysis());
     $service->shouldNotReceive('request');
     $this->app->instance(AnalysisService::class, $service);
 

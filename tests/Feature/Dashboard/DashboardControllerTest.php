@@ -296,5 +296,5 @@ it('paints Home inside its query budget', function (): void {
 
     $this->actingAs($user)->get('/')->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(25);
+    expect($queries)->toBeLessThanOrEqual(24);
 });
