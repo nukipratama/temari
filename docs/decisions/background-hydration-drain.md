@@ -30,6 +30,14 @@ code_refs:
 > `0 4-10,16-22 * * *` to hourly in the same change, closing a five-hour overnight gap
 > in the webhook fallback.
 
+> **The headroom it paces against grew 2026-09-09.** The daily background ceiling
+> is no longer a fixed 1,500; it is the pool less a flat live floor (1,600 by
+> default), so a tick at a full pool now affords ~800 runs rather than ~750, and
+> the number below moves with `strava.live_read_floor`. The drain itself — its
+> cadence, its newest-first order, its even split, and the fact that it only ever
+> takes what `backgroundHeadroom()` allows — is unchanged. See
+> [[backfill-borrows-the-live-reserve]].
+
 ## Context
 
 [[summary-first-ingest]] made a connect cost single-digit Strava reads regardless of history depth, and it is still the right call. It also named its own price: *"a run nobody opens never gets its splits, zones, TRIMP, card, PRs or narration"*, and *"load history is genuinely incomplete until runs are opened."*

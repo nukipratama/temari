@@ -45,9 +45,10 @@ class StravaClient
 
     private const int RATE_LIMIT_DAILY_DECAY = 24 * 60 * 60;
 
-    // Share of each read bucket only StravaReadPriority::Live may spend. A
+    // Share of the 15-minute bucket only StravaReadPriority::Live may spend. A
     // freshly-finished run appearing promptly is the product's core promise; a
     // user scrolling their 2019 archive can wait for the bucket to roll over.
+    // The daily bucket reserves a flat floor instead (`strava.live_read_floor`).
     private const int LIVE_RESERVE_PERCENT = 25;
 
     public function __construct(private readonly ?StravaCircuitBreaker $breaker = null)
@@ -209,9 +210,11 @@ class StravaClient
      */
     public function backgroundHeadroom(): array
     {
+        $ceilings = $this->backgroundCeilings();
+
         return [
-            '15min' => $this->remainingBelow('15min', $this->backgroundCeiling(self::RATE_LIMIT_15MIN_MAX)),
-            'daily' => $this->remainingBelow('daily', $this->backgroundCeiling(self::RATE_LIMIT_DAILY_MAX)),
+            '15min' => $this->remainingBelow('15min', $ceilings['15min']),
+            'daily' => $this->remainingBelow('daily', $ceilings['daily']),
         ];
     }
 
@@ -304,13 +307,16 @@ class StravaClient
 
     private function guardRateLimit(StravaReadPriority $priority): void
     {
+        $backgroundCeilings = $this->backgroundCeilings();
+
         $buckets = [
-            ['key' => $this->rateLimitKey('15min'), 'max' => self::RATE_LIMIT_15MIN_MAX, 'decay' => self::RATE_LIMIT_15MIN_DECAY],
-            ['key' => $this->rateLimitKey('daily'), 'max' => self::RATE_LIMIT_DAILY_MAX, 'decay' => self::RATE_LIMIT_DAILY_DECAY],
+            ['bucket' => '15min', 'max' => self::RATE_LIMIT_15MIN_MAX, 'decay' => self::RATE_LIMIT_15MIN_DECAY],
+            ['bucket' => 'daily', 'max' => self::RATE_LIMIT_DAILY_MAX, 'decay' => self::RATE_LIMIT_DAILY_DECAY],
         ];
 
-        foreach ($buckets as ['key' => $key, 'max' => $max]) {
-            $ceiling = $priority->isLive() ? $max : $this->backgroundCeiling($max);
+        foreach ($buckets as ['bucket' => $bucket, 'max' => $max]) {
+            $key = $this->rateLimitKey($bucket);
+            $ceiling = $priority->isLive() ? $max : $backgroundCeilings[$bucket];
 
             if (RateLimiter::tooManyAttempts($key, $ceiling)) {
                 Pulse::record('strava_rate_limited', $key)->count();
@@ -323,18 +329,27 @@ class StravaClient
             }
         }
 
-        foreach ($buckets as ['key' => $key, 'decay' => $decay]) {
-            RateLimiter::hit($key, $decay);
+        foreach ($buckets as ['bucket' => $bucket, 'decay' => $decay]) {
+            RateLimiter::hit($this->rateLimitKey($bucket), $decay);
         }
     }
 
     /**
-     * Highest attempt count a background read may push a bucket to, leaving
-     * LIVE_RESERVE_PERCENT of it for webhook-driven ingest.
+     * Highest attempt count a background read may push each bucket to. The
+     * 15-minute bucket holds back LIVE_RESERVE_PERCENT, since a burst is what
+     * gets the app throttled; the daily bucket holds back only a flat floor, so
+     * background reads borrow whatever live ingest leaves unspent that day.
+     *
+     * @return array{'15min': int, daily: int}
      */
-    private function backgroundCeiling(int $max): int
+    private function backgroundCeilings(): array
     {
-        return $max - intdiv($max * self::LIVE_RESERVE_PERCENT, 100);
+        $liveFloor = max(0, min(self::RATE_LIMIT_DAILY_MAX, (int) config('strava.live_read_floor')));
+
+        return [
+            '15min' => self::RATE_LIMIT_15MIN_MAX - intdiv(self::RATE_LIMIT_15MIN_MAX * self::LIVE_RESERVE_PERCENT, 100),
+            'daily' => self::RATE_LIMIT_DAILY_MAX - $liveFloor,
+        ];
     }
 
     /**

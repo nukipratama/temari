@@ -421,14 +421,14 @@ it('lets a live read spend the reserve a background read was just refused', func
     expect(RateLimiter::attempts('strava-api:15min'))->toBe(151);
 });
 
-it('holds a quarter of the daily bucket back from background reads too', function (): void {
+it('holds only the live floor back from the daily bucket, not a quarter of it', function (): void {
     Http::fake();
 
     $connection = StravaConnection::factory()->create([
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    for ($i = 0; $i < 1500; $i++) {
+    for ($i = 0; $i < 1600; $i++) {
         RateLimiter::hit('strava-api:daily', 24 * 60 * 60);
     }
 
@@ -450,14 +450,81 @@ it('lets a background read spend right up to the reserve floor', function (): vo
     for ($i = 0; $i < 149; $i++) {
         RateLimiter::hit('strava-api:15min', 15 * 60);
     }
-    for ($i = 0; $i < 1499; $i++) {
+    for ($i = 0; $i < 1599; $i++) {
         RateLimiter::hit('strava-api:daily', 24 * 60 * 60);
     }
 
     new StravaClient()->get($connection, 'athlete', priority: StravaReadPriority::Background);
 
     expect(RateLimiter::attempts('strava-api:15min'))->toBe(150)
-        ->and(RateLimiter::attempts('strava-api:daily'))->toBe(1500);
+        ->and(RateLimiter::attempts('strava-api:daily'))->toBe(1600);
+});
+
+it('lets background spend the whole pool above the floor when live traffic is zero', function (): void {
+    expect(new StravaClient()->backgroundHeadroom()['daily'])->toBe(1600);
+});
+
+it('caps background at what live traffic leaves, and live keeps the floor', function (): void {
+    Http::fake([
+        'www.strava.com/api/v3/*' => Http::response(['ok' => true]),
+    ]);
+
+    $connection = StravaConnection::factory()->create([
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    for ($i = 0; $i < 1550; $i++) {
+        RateLimiter::hit('strava-api:daily', 24 * 60 * 60);
+    }
+
+    $client = new StravaClient();
+
+    expect($client->backgroundHeadroom()['daily'])->toBe(50);
+
+    for ($i = 0; $i < 50; $i++) {
+        $client->get($connection, 'athlete', priority: StravaReadPriority::Background);
+    }
+
+    expect(fn () => $client->get($connection, 'athlete', priority: StravaReadPriority::Background))
+        ->toThrow(StravaRateLimitedException::class, 'strava-api:daily');
+
+    $client->get($connection, 'athlete', priority: StravaReadPriority::Live);
+
+    expect(RateLimiter::attempts('strava-api:daily'))->toBe(1601);
+});
+
+it('still refuses a background burst at the unchanged 15-minute ceiling', function (): void {
+    Http::fake();
+
+    $connection = StravaConnection::factory()->create([
+        'token_expires_at' => Carbon::now()->addHours(5),
+    ]);
+
+    for ($i = 0; $i < 150; $i++) {
+        RateLimiter::hit('strava-api:15min', 15 * 60);
+        RateLimiter::hit('strava-api:daily', 24 * 60 * 60);
+    }
+
+    expect(fn () => new StravaClient()->get($connection, 'athlete', priority: StravaReadPriority::Background))
+        ->toThrow(StravaRateLimitedException::class, 'strava-api:15min');
+
+    Http::assertNothingSent();
+});
+
+it('clamps an out-of-range live floor to the daily pool', function (int $floor, int $expected): void {
+    config(['strava.live_read_floor' => $floor]);
+
+    expect(new StravaClient()->backgroundHeadroom()['daily'])->toBe($expected);
+})->with([
+    'negative floor cannot lend background more than the pool' => [-100, 2000],
+    'floor above the pool leaves background nothing' => [3000, 0],
+]);
+
+it('reserves a live floor that leaves the daily pool something to lend', function (): void {
+    expect(config('strava.live_read_floor'))
+        ->toBeInt()
+        ->toBeGreaterThan(0)
+        ->toBeLessThan(2000);
 });
 
 it('defaults an unqualified read to live so no caller silently loses the reserve', function (): void {
@@ -538,7 +605,7 @@ it('resets the breaker failure streak on a successful 2xx', function (): void {
 });
 
 it('reports background headroom net of the live-ingest reserve', function (): void {
-    expect(new StravaClient()->backgroundHeadroom())->toBe(['15min' => 150, 'daily' => 1500]);
+    expect(new StravaClient()->backgroundHeadroom())->toBe(['15min' => 150, 'daily' => 1600]);
 });
 
 it('shrinks background headroom as live reads spend the shared pool', function (): void {
