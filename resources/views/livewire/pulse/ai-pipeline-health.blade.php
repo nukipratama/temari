@@ -1,7 +1,7 @@
 <x-pulse::card :cols="$cols" :rows="$rows" :class="$class">
     <x-pulse::card-header
         name="AI Pipeline"
-        details="failed last {{ $this->periodForHumans() }}: {{ number_format($trend['failures']) }}"
+        details="failed last {{ $this->periodForHumans() }}: {{ number_format($trend['failures']) }} · content-filter fallbacks: {{ number_format($trend['contentFilterFallbacks']) }}"
     >
         <x-slot:icon>
             <x-pulse::icons.sparkles />

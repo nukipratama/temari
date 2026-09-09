@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Models\AI\ContentFilterEvent;
 use App\Models\AI\TokenUsage;
 use App\Models\StravaConnection;
 use App\Models\User;
@@ -42,6 +43,7 @@ class TokenUsageReport
  *     availableKinds: list<array{value:string, label:string}>,
  *     availableOrigins: list<array{value:string, label:string}>,
      *     budget: array{todayCost:float, dailyCeiling:float|null, perUserCeiling:float|null, athletes:int, currency:string, trippedAt:string|null, degradedFills:int},
+     *     contentFilter: array{trips:int, pct:float|null},
      * }
      */
     public function build(Carbon $from, Carbon $to, ?string $kind, bool $includePrevious = true, ?string $origin = null): array
@@ -83,6 +85,27 @@ class TokenUsageReport
                 'currency' => 'USD', // Prices are quoted in USD.
                 ...$this->ceilingLedger->today(),
             ],
+            'contentFilter' => $this->contentFilter($from, $to, $aggregate['totals']['calls']),
+        ];
+    }
+
+    /**
+     * Azure output-side content-filter trips that survived the strip-retry and
+     * degraded to the rule-based filler (see AnalyzeRowJob), as a rate of the
+     * calls in the same range. Unfiltered by kind/origin: a content-filter trip
+     * is a pipeline-wide signal, not one this report's other filters narrow.
+     *
+     * @return array{trips:int, pct:float|null}
+     */
+    private function contentFilter(Carbon $from, Carbon $to, int $calls): array
+    {
+        $trips = ContentFilterEvent::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->count();
+
+        return [
+            'trips' => $trips,
+            'pct' => $calls > 0 ? round(($trips / $calls) * 100, 2) : null,
         ];
     }
 

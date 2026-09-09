@@ -1,7 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { PreviousTotals, UsageTotals } from '@/pages/AiUsage/types';
+import type {
+    ContentFilterSummary,
+    PreviousTotals,
+    UsageTotals,
+} from '@/pages/AiUsage/types';
 
 import UsageKpis from './UsageKpis';
 
@@ -25,12 +29,15 @@ const previous: PreviousTotals = {
     cost: 0.04,
 };
 
+const noContentFilterTrips: ContentFilterSummary = { trips: 0, pct: 0 };
+
 function renderKpis(overrides: Partial<Parameters<typeof UsageKpis>[0]> = {}) {
     return render(
         <UsageKpis
             totals={totals()}
             previousTotals={previous}
             currency="USD"
+            contentFilter={noContentFilterTrips}
             {...overrides}
         />,
     );
@@ -110,5 +117,19 @@ describe('UsageKpis', () => {
         renderKpis({ previousTotals: null });
 
         expect(screen.queryByText(/vs prev/)).not.toBeInTheDocument();
+    });
+
+    it('shows the content-filter trip count and its share of calls', () => {
+        renderKpis({ contentFilter: { trips: 3, pct: 1.5 } });
+
+        expect(screen.getByText('Content-Filter Trips')).toBeInTheDocument();
+        expect(screen.getByText('3')).toBeInTheDocument();
+        expect(screen.getByText('1.5% of calls')).toBeInTheDocument();
+    });
+
+    it('reads content-filter trips as "no calls in range" on an empty window', () => {
+        renderKpis({ contentFilter: { trips: 0, pct: null } });
+
+        expect(screen.getByText('no calls in range')).toBeInTheDocument();
     });
 });
