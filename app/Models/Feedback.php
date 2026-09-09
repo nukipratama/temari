@@ -36,6 +36,7 @@ class Feedback extends Model
 
     public const UPDATED_AT = null;
 
+    #[Override]
     protected $table = 'feedback';
 
     /**
