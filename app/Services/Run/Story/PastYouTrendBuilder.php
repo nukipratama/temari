@@ -206,7 +206,9 @@ class PastYouTrendBuilder
      * Rows come back as plain records rather than models: nothing downstream of
      * {@see ComparableRun} touches Eloquent, and hydrating a year of history
      * into models cost more than the matching it feeds. The join replaces an
-     * eager load of `activities` for the one column the runs need.
+     * eager load of `activities` for the one column the runs need, so it also
+     * has to re-apply {@see \App\Models\Scopes\AnalyzedScope} by hand — a plain
+     * join bypasses Eloquent's global scopes.
      *
      * @return list<ComparableRun>  newest first
      */
@@ -224,6 +226,7 @@ class PastYouTrendBuilder
                 'activities.ingest_state',
             ])
             ->where('activities.user_id', $userId)
+            ->whereNotNull('activities.analyzed_at')
             ->whereNotNull('activity_details.start_date_local')
             ->where('activity_details.start_date_local', '<=', $anchor)
             ->where('activity_details.start_date_local', '>=', $anchor->copy()
