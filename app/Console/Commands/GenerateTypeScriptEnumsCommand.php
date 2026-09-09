@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use Override;
 use App\Enums\ExperienceLevel;
+use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
 use App\Enums\GoalType;
 use App\Enums\NotificationKind;
@@ -44,6 +45,7 @@ final class GenerateTypeScriptEnumsCommand extends Command
         ExperienceLevel::class,
         GoalType::class,
         FeedbackSubject::class,
+        FeedbackReason::class,
         AnchorKind::class,
     ];
 

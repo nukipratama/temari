@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models\AI;
 
+use App\Actions\Feedback\ResolveFlaggedSubjectsAction;
+use App\Enums\FeedbackSubject;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use App\Models\Scopes\KnownAnalysisTypeScope;
 use App\Services\AI\AnalysisStatus;
@@ -280,6 +282,7 @@ class Analysis extends Model
      *     attempts: int,
      *     generated_at: string|null,
      *     retry_after_seconds: int|null,
+     *     flagged: bool,
      * }
      *
      * @param  array<string, int|null>|null  $cooldowns  Pre-resolved cooldowns keyed by {@see self::cooldownKey()}, so a list of rows costs one cache round trip instead of one per row.
@@ -304,6 +307,7 @@ class Analysis extends Model
             'attempts' => $row === null ? 0 : $row->attempts,
             'generated_at' => $row?->generated_at?->toIso8601String(),
             'retry_after_seconds' => self::resolveCooldown($row, $cooldowns),
+            'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::Narration, $row?->id),
         ];
     }
 

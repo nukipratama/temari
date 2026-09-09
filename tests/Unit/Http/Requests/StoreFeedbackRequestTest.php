@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\FeedbackReason;
 use App\Http\Requests\StoreFeedbackRequest;
 use App\Models\AI\Analysis;
 use App\Models\Feedback;
@@ -13,9 +14,9 @@ use Illuminate\Support\Facades\Validator;
 
 uses(RefreshDatabase::class);
 
-function feedbackRules(): array
+function feedbackRules(array $input = []): array
 {
-    return new StoreFeedbackRequest()->rules();
+    return feedbackRequest($input, null)->rules();
 }
 
 function feedbackRequest(array $input, ?User $user): StoreFeedbackRequest
@@ -27,9 +28,9 @@ function feedbackRequest(array $input, ?User $user): StoreFeedbackRequest
 }
 
 it('rejects a subject the enum does not name', function (mixed $subjectType): void {
-    $data = ['subject_type' => $subjectType, 'subject_id' => 1];
+    $data = ['subject_type' => $subjectType, 'subject_id' => 1, 'reason' => 'too_hard'];
 
-    expect(Validator::make($data, feedbackRules())->fails())->toBeTrue();
+    expect(Validator::make($data, feedbackRules($data))->fails())->toBeTrue();
 })->with([
     'missing' => [null],
     'unknown' => ['weather'],
@@ -40,16 +41,45 @@ it('rejects a note longer than the column', function (): void {
     $data = [
         'subject_type' => 'plan_day',
         'subject_id' => 1,
+        'reason' => 'too_hard',
         'note' => str_repeat('a', Feedback::MAX_NOTE_LENGTH + 1),
     ];
 
-    expect(Validator::make($data, feedbackRules())->fails())->toBeTrue();
+    expect(Validator::make($data, feedbackRules($data))->fails())->toBeTrue();
 });
 
 it('accepts a flag with no note at all', function (): void {
-    $data = ['subject_type' => 'narration', 'subject_id' => 3];
+    $data = ['subject_type' => 'narration', 'subject_id' => 3, 'reason' => 'tone_off'];
 
-    expect(Validator::make($data, feedbackRules())->fails())->toBeFalse();
+    expect(Validator::make($data, feedbackRules($data))->fails())->toBeFalse();
+});
+
+it('accepts only the reasons the subject owns', function (string $subjectType, string $reason, bool $fails): void {
+    $data = ['subject_type' => $subjectType, 'subject_id' => 3, 'reason' => $reason];
+
+    expect(Validator::make($data, feedbackRules($data))->fails())->toBe($fails);
+})->with([
+    'a narration reason on a narration' => ['narration', 'facts_wrong', false],
+    'a plan day reason on a narration' => ['narration', 'too_hard', true],
+    'a plan day reason on a plan day' => ['plan_day', 'wrong_pace', false],
+    'a narration reason on a plan day' => ['plan_day', 'too_long', true],
+    'a reason the enum does not name' => ['plan_day', 'too_wet', true],
+]);
+
+it('requires a reason', function (): void {
+    $data = ['subject_type' => 'plan_day', 'subject_id' => 3];
+
+    expect(Validator::make($data, feedbackRules($data))->fails())->toBeTrue();
+});
+
+it('reads the chosen reason back as its enum case', function (): void {
+    $request = feedbackRequest(
+        ['subject_type' => 'plan_day', 'subject_id' => 3, 'reason' => 'too_easy'],
+        User::factory()->create(),
+    );
+    $request->setValidator(Validator::make($request->all(), $request->rules()));
+
+    expect($request->reason())->toBe(FeedbackReason::TooEasy);
 });
 
 it('refuses a request that carries no authenticated user', function (): void {

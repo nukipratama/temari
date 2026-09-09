@@ -28,5 +28,8 @@ export const GOAL_TYPE_VALUES = ['consistent', 'race', 'base', 'return'] as cons
 export type FeedbackSubject = 'plan_day' | 'narration';
 export const FEEDBACK_SUBJECT_VALUES = ['plan_day', 'narration'] as const;
 
+export type FeedbackReason = 'facts_wrong' | 'tone_off' | 'too_long' | 'ignores_my_plan' | 'wrong_day' | 'too_hard' | 'too_easy' | 'wrong_pace';
+export const FEEDBACK_REASON_VALUES = ['facts_wrong', 'tone_off', 'too_long', 'ignores_my_plan', 'wrong_day', 'too_hard', 'too_easy', 'wrong_pace'] as const;
+
 export type AnchorKind = 'split' | 'zone' | 'metric' | 'session';
 export const ANCHOR_KIND_VALUES = ['split', 'zone', 'metric', 'session'] as const;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Actions\Feedback\ResolveFlaggedSubjectsAction;
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Events\ActivityIngested;
@@ -80,6 +81,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(ResolveDistanceRecordsAction::class);
         $this->app->scoped(ResolveSeasonAction::class);
         $this->app->scoped(ResolveWeekAdaptationAction::class);
+        $this->app->scoped(ResolveFlaggedSubjectsAction::class);
     }
 
     public function boot(): void

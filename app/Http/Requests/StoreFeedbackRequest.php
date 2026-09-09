@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
 use App\Models\Feedback;
 use Illuminate\Foundation\Http\FormRequest;
@@ -25,7 +26,7 @@ class StoreFeedbackRequest extends FormRequest
             return false;
         }
 
-        $subject = FeedbackSubject::tryFrom((string) $this->input('subject_type'));
+        $subject = $this->subjectType();
 
         return $subject === null || $subject->isOwnedBy($user, (int) $this->input('subject_id'));
     }
@@ -38,8 +39,21 @@ class StoreFeedbackRequest extends FormRequest
         return [
             'subject_type' => ['required', Rule::enum(FeedbackSubject::class)],
             'subject_id' => ['required', 'integer', 'min:1'],
+            'reason' => ['required', Rule::in(FeedbackReason::valuesFor($this->subjectType()))],
             'note' => ['nullable', 'string', 'max:'.Feedback::MAX_NOTE_LENGTH],
         ];
+    }
+
+    private function subjectType(): ?FeedbackSubject
+    {
+        $value = $this->input('subject_type');
+
+        return is_string($value) ? FeedbackSubject::tryFrom($value) : null;
+    }
+
+    public function reason(): FeedbackReason
+    {
+        return FeedbackReason::from((string) $this->validated('reason'));
     }
 
     public function subject(): FeedbackSubject

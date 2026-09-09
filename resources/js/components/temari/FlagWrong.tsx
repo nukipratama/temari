@@ -1,38 +1,42 @@
-import { router, usePage } from '@inertiajs/react';
-import { type FormEvent, useId, useState } from 'react';
+import { usePage } from '@inertiajs/react';
+import { Suspense, lazy, useState } from 'react';
 
 import type { FeedbackSubject } from '@/types/generated';
 import type { SharedProps } from '@/types/inertia';
 
 import { Icon } from '@/components/ui/Icon';
-import PillButton from '@/components/ui/PillButton';
+import { cn } from '@/lib/cn';
 
-/** Mirrors the `note` column and the max on StoreFeedbackRequest. */
-const MAX_NOTE_LENGTH = 280;
+const FlagSheet = lazy(() => import('./FlagSheet'));
+
+const ICON_BUTTON_CLASS =
+    'inline-flex size-11 flex-none items-center justify-center rounded-full';
 
 /**
- * "This is wrong" on one plan day or one narration. The note is optional — the
- * flag itself is the signal worth having, and asking for an explanation before
- * accepting one would cost most of them.
+ * "This is wrong" on one plan day or one narration, as a single icon that
+ * opens a sheet. Only the icon is on the first-paint path; the sheet and the
+ * dialog under it arrive with the first tap.
  */
 export default function FlagWrong({
     subjectType,
     subjectId,
     label,
+    flagged = false,
     onSky = false,
 }: Readonly<{
     subjectType: FeedbackSubject;
     subjectId: number;
+    /** What the icon says it flags, e.g. `flag this read`. */
     label: string;
+    /** Already flagged by this athlete, per the server. */
+    flagged?: boolean;
     /** Cream-on-sky styling, for a block drawn on a dark panel. */
     onSky?: boolean;
 }>) {
     const isDemo = usePage<SharedProps>().props.auth.user?.is_demo === true;
-    const noteId = useId();
     const [open, setOpen] = useState(false);
+    const [asked, setAsked] = useState(false);
     const [sent, setSent] = useState(false);
-    const [note, setNote] = useState('');
-    const [sending, setSending] = useState(false);
 
     // The demo is a shared sandbox: the server refuses the write, so offering
     // the control would only promise something that can't land.
@@ -40,92 +44,53 @@ export default function FlagWrong({
         return null;
     }
 
-    if (sent) {
+    const tone = onSky ? 'text-ink-on-sky' : 'text-text-3';
+
+    if (flagged || sent) {
         return (
             <span
-                className={`mt-3 block text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
+                aria-label="flagged"
+                title="flagged"
+                className={cn(ICON_BUTTON_CLASS, tone)}
             >
-                noted, thanks
+                <Icon
+                    icon="mdi:flag"
+                    className="size-5 fill-current"
+                    aria-hidden
+                />
             </span>
         );
     }
 
-    if (!open) {
-        return (
-            <PillButton
-                tone="ghost"
-                size="sm"
-                onSky={onSky}
-                className="mt-3 min-h-11"
-                onClick={() => setOpen(true)}
-            >
-                <Icon
-                    icon="mdi:flag-outline"
-                    className="size-3.5"
-                    aria-hidden
-                />
-                <span>{label}</span>
-            </PillButton>
-        );
-    }
-
-    const submit = (event: FormEvent) => {
-        event.preventDefault();
-        router.post(
-            '/feedback',
-            {
-                subject_type: subjectType,
-                subject_id: subjectId,
-                note: note.trim(),
-            },
-            {
-                preserveScroll: true,
-                preserveState: true,
-                onStart: () => setSending(true),
-                onFinish: () => setSending(false),
-                onSuccess: () => setSent(true),
-            },
-        );
-    };
-
     return (
-        <form onSubmit={submit} className="mt-3 flex flex-col gap-2">
-            <label
-                htmlFor={noteId}
-                className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
+        <>
+            <button
+                type="button"
+                aria-label={label}
+                title={label}
+                onClick={() => {
+                    setAsked(true);
+                    setOpen(true);
+                }}
+                className={cn(
+                    ICON_BUTTON_CLASS,
+                    'focus-ring pressable transition-colors hover:text-foreground',
+                    tone,
+                )}
             >
-                what&apos;s off about it?
-            </label>
-            <textarea
-                id={noteId}
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-                maxLength={MAX_NOTE_LENGTH}
-                rows={2}
-                placeholder="optional"
-                className="focus-ring w-full rounded-sm border border-border-strong bg-card px-3 py-2 text-sm text-foreground placeholder:text-text-3"
-            />
-            <div className="flex flex-wrap gap-2">
-                <PillButton
-                    type="submit"
-                    tone="sky"
-                    size="sm"
-                    onSky={onSky}
-                    className="min-h-11"
-                    disabled={sending}
-                >
-                    send
-                </PillButton>
-                <PillButton
-                    tone="ghost"
-                    size="sm"
-                    onSky={onSky}
-                    className="min-h-11"
-                    onClick={() => setOpen(false)}
-                >
-                    never mind
-                </PillButton>
-            </div>
-        </form>
+                <Icon icon="mdi:flag-outline" className="size-5" aria-hidden />
+            </button>
+            {asked && (
+                <Suspense fallback={null}>
+                    <FlagSheet
+                        subjectType={subjectType}
+                        subjectId={subjectId}
+                        open={open}
+                        onOpenChange={setOpen}
+                        onSent={() => setSent(true)}
+                    />
+                </Suspense>
+            )}
+        </>
     );
 }

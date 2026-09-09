@@ -153,7 +153,7 @@ it('responds with the flat payload shape at the top level, not a resource-wrappe
     expect(array_keys($response->json()))->toEqualCanonicalizing([
         'id', 'status', 'content', 'type', 'is_zone_dependent',
         'subject_type', 'subject_id', 'discriminator', 'attempts',
-        'generated_at', 'retry_after_seconds',
+        'generated_at', 'retry_after_seconds', 'flagged',
     ]);
 });
 

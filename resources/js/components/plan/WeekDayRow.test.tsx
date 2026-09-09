@@ -33,6 +33,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         clamp: null,
         actual_km: null,
         activities: [],
+        flagged: false,
         ...overrides,
     };
 }
@@ -381,5 +382,25 @@ describe('WeekDayRow', () => {
         renderRow({ day: day({ prescribed_km: null, distance_km: 8 }) });
 
         expect(screen.getByText(/8 km/)).toBeInTheDocument();
+    });
+
+    it('offers one icon-only flag control on the expanded day', () => {
+        renderRow();
+        expand();
+
+        const flag = screen.getByRole('button', { name: 'flag this day' });
+
+        expect(flag).toHaveTextContent('');
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('draws an inert flagged icon on a day already flagged', () => {
+        renderRow({ day: day({ flagged: true }) });
+        expand();
+
+        expect(screen.getByLabelText('flagged')).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'flag this day' }),
+        ).toBeNull();
     });
 });

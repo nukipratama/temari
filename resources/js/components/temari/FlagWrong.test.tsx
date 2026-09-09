@@ -6,7 +6,10 @@ import { makeUser, setMockPage } from '@/test/setup';
 
 import FlagWrong from './FlagWrong';
 
-function renderFlag(isDemo = false) {
+function renderFlag({
+    isDemo = false,
+    flagged = false,
+}: { isDemo?: boolean; flagged?: boolean } = {}) {
     setMockPage({ auth: { user: makeUser({ is_demo: isDemo }) } });
 
     return render(
@@ -14,8 +17,15 @@ function renderFlag(isDemo = false) {
             subjectType="plan_day"
             subjectId={12}
             label="flag this day"
+            flagged={flagged}
         />,
     );
+}
+
+async function openSheet() {
+    fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
+
+    return screen.findByRole('dialog', { name: 'something off?' });
 }
 
 function lastPostOptions() {
@@ -29,60 +39,69 @@ describe('FlagWrong', () => {
         vi.mocked(router.post).mockReset();
     });
 
-    it('starts closed, showing only the flag control', () => {
+    it('shows one icon-only control and no sheet', () => {
         renderFlag();
 
-        expect(
-            screen.getByRole('button', { name: /flag this day/ }),
-        ).toBeInTheDocument();
-        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        const control = screen.getByRole('button', { name: 'flag this day' });
+
+        expect(control).toHaveAttribute('title', 'flag this day');
+        expect(control).toHaveTextContent('');
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('renders nothing for the demo account', () => {
-        const { container } = renderFlag(true);
+        const { container } = renderFlag({ isDemo: true });
 
         expect(container).toBeEmptyDOMElement();
     });
 
-    it('opens a note field and closes again on never mind', () => {
+    it('loads the sheet only once the icon is tapped', async () => {
         renderFlag();
-        fireEvent.click(screen.getByRole('button', { name: /flag this day/ }));
 
-        expect(screen.getByRole('textbox')).toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: 'never mind' }));
-
-        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(await openSheet()).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'wrong pace' }),
+        ).toBeInTheDocument();
     });
 
-    it('posts the subject and the trimmed note, then confirms quietly', () => {
+    it('posts the chosen reason, then goes inert', async () => {
         renderFlag();
-        fireEvent.click(screen.getByRole('button', { name: /flag this day/ }));
-        fireEvent.change(screen.getByRole('textbox'), {
-            target: { value: '  too long for a tuesday  ' },
-        });
+        await openSheet();
+
+        fireEvent.click(screen.getByRole('button', { name: 'too hard' }));
         fireEvent.click(screen.getByRole('button', { name: 'send' }));
 
         expect(router.post).toHaveBeenCalledWith(
             '/feedback',
-            {
-                subject_type: 'plan_day',
-                subject_id: 12,
-                note: 'too long for a tuesday',
-            },
+            expect.objectContaining({ subject_id: 12, reason: 'too_hard' }),
             expect.objectContaining({ preserveScroll: true }),
         );
 
         act(() => lastPostOptions().onSuccess?.());
 
-        expect(screen.getByText('noted, thanks')).toBeInTheDocument();
-        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'flag this day' }),
+        ).toBeNull();
+        expect(screen.getByLabelText('flagged')).toBeInTheDocument();
     });
 
-    it('caps the note at the column length', () => {
+    it('closes the sheet on never mind without posting', async () => {
         renderFlag();
-        fireEvent.click(screen.getByRole('button', { name: /flag this day/ }));
+        await openSheet();
 
-        expect(screen.getByRole('textbox')).toHaveAttribute('maxlength', '280');
+        fireEvent.click(screen.getByText('never mind'));
+
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(router.post).not.toHaveBeenCalled();
+    });
+
+    it('renders an inert flagged icon when the server says it is already flagged', () => {
+        renderFlag({ flagged: true });
+
+        expect(screen.getByLabelText('flagged')).toBeInTheDocument();
+        expect(screen.queryByRole('button')).toBeNull();
     });
 });

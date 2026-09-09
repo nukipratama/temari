@@ -65,6 +65,10 @@ export default defineConfig({
                                 id.includes('node_modules/@base-ui') ||
                                 id.includes('node_modules/@floating-ui'),
                             priority: 10,
+                            // Without this the group merges every Base UI part
+                            // into one chunk, so a part reached only from a
+                            // `lazy()` boundary is still loaded on first paint.
+                            entriesAware: true,
                         },
                     ],
                 },

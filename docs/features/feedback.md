@@ -7,9 +7,13 @@ reviewed: 2026-09-09
 code_refs:
   - app/Models/Feedback.php
   - app/Enums/FeedbackSubject.php
+  - app/Enums/FeedbackReason.php
+  - app/Actions/Feedback/ResolveFlaggedSubjectsAction.php
+  - resources/js/components/ui/Sheet.tsx
   - app/Http/Controllers/FeedbackController.php
   - app/Http/Requests/StoreFeedbackRequest.php
   - resources/js/components/temari/FlagWrong.tsx
+  - resources/js/components/temari/FlagSheet.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
   - resources/js/components/plan/WeekDayRow.tsx
   - routes/web.php
@@ -21,11 +25,15 @@ The two things the app asserts that a runner can disagree with are a day the pla
 
 ## What a row is
 
-[Feedback](../../app/Models/Feedback.php) is deliberately thin: who, what they flagged, an optional note, and when. There is no status, no reply, and no `updated_at` — nothing reads these rows at runtime, so anything else would be a field that only ever rots.
+[Feedback](../../app/Models/Feedback.php) is deliberately thin: who, what they flagged, why, an optional note, and when. There is no status, no reply, and no `updated_at` — nothing else is read at runtime, so anything more would be a field that only ever rots.
+
+`reason` is a [FeedbackReason](../../app/Enums/FeedbackReason.php), and each case belongs to exactly one subject: `facts wrong` / `tone off` / `too long` / `ignores my plan` read a narration, `wrong day` / `too hard` / `too easy` / `wrong pace` read a prescription. The request validates the pair, not the value alone, so `tone_off` on a plan day is a 422. It is nullable because the rows written before reasons existed keep their null.
 
 `subject_type` is a [FeedbackSubject](../../app/Enums/FeedbackSubject.php) — `plan_day` (a `PlannedSession` id) or `narration` (an `Analysis` id). It is a small closed enum rather than an Eloquent morph because the repo registers no morph map and the two subjects need different ownership rules: a plan day is owned by its `user_id`, while an `Analysis` row has no `user_id` at all and its owner is resolved through [AnalysisSubjectAuthorizer](../../app/Services/AI/AnalysisSubjectAuthorizer.php), the same per-type check the trigger endpoint uses. The enum is registered with `typescript:enums`, so the frontend prop is the same closed set.
 
-The note is optional and capped at `Feedback::MAX_NOTE_LENGTH` (280). Asking for an explanation before accepting a flag would cost most of the flags; the flag itself is the signal worth having.
+The note is optional and capped at `Feedback::MAX_NOTE_LENGTH` (280). Asking for prose before accepting a flag would cost most of the flags; the reason is the signal worth having.
+
+A unique index on `(user_id, subject_type, subject_id)` makes one flag per subject per athlete the shape of the table rather than a rule the controller remembers, so [FeedbackController](../../app/Http/Controllers/FeedbackController.php) `firstOrCreate`s: a second POST from a stale tab lands on the row already there instead of a second opinion.
 
 ## The endpoint
 
@@ -35,19 +43,29 @@ Ownership lives in [StoreFeedbackRequest::authorize()](../../app/Http/Requests/S
 
 ## The control
 
-[FlagWrong](../../resources/js/components/temari/FlagWrong.tsx) is one component in three states — a ghost pill, an open note field, then a quiet `noted, thanks` — mounted twice:
+[FlagWrong](../../resources/js/components/temari/FlagWrong.tsx) is one icon-only ghost button at a 44px tap target, on every width, that opens a bottom sheet titled `something off?`: the subject's four reasons as single-select chips, an optional note, `send` (disabled until a reason is chosen) and `never mind`. There is no toast — the icon itself fills in and goes inert, which is the confirmation. It is mounted twice:
 
-- On every `done` narration block, from inside [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx), so it follows narration wherever it renders (home, run detail, trends, plan) and inherits that block's `onSky` styling. A block that has no row yet (`analysis.id === null`) has nothing to flag, so it draws none.
-- On the expanded plan day row in [WeekDayRow](../../resources/js/components/plan/WeekDayRow.tsx), labelled `flag this day` against the narration's `flag this read` — a wrong prescription and a wrong reading of it are different complaints.
+- On every `done` narration block, from inside [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx), at the right end of the same action line the `reread` trigger sits on, so it follows narration wherever it renders (home, run detail, trends, plan) and inherits that block's `onSky` styling. It is drawn whether or not that block may be reread. A block that has no row yet (`analysis.id === null`) has nothing to flag, so it draws none.
+- On the expanded plan day row in [WeekDayRow](../../resources/js/components/plan/WeekDayRow.tsx), at the right end of the `view activity` line, or alone on its own right-aligned line on a day with no run. Labelled `flag this day` against the narration's `flag this read` — a wrong prescription and a wrong reading of it are different complaints.
 
 It posts through `router.post` with `preserveState`, so the confirmation survives the redirect back.
+
+Only the icon and its state are on the first-paint path. The sheet and the form live in [FlagSheet](../../resources/js/components/temari/FlagSheet.tsx), behind a `lazy()` boundary mounted on the first tap, because FlagWrong renders from the shared app chunk and Base UI's dialog would otherwise be loaded by every route — the `base-ui` group in [vite.config.ts](../../vite.config.ts) is `entriesAware` so that split actually reaches the bundle.
+
+## The sheet
+
+[Sheet](../../resources/js/components/ui/Sheet.tsx) is a bottom sheet on Base UI's Dialog, which already owns the focus trap, the body scroll lock and the escape/outside-press dismissals. What sits on top of it is CSS and pointer events only: the slide-up is a `transition-transform` keyed off Base UI's own `data-starting-style` / `data-ending-style`, and swipe-to-dismiss is `pointerdown`/`move`/`up` on the grab bar against a `SWIPE_DISMISS_PX` threshold. No motion or gesture library — the sheet has to work from the bare layout, whose entry chunk is framer-motion-free and guarded as such in CI.
+
+## Knowing it is already flagged
+
+The flag is drawn filled and inert on a subject this athlete has already flagged, which means every narration payload and every plan-day payload carries a `flagged` boolean. [ResolveFlaggedSubjectsAction](../../app/Actions/Feedback/ResolveFlaggedSubjectsAction.php) is bound `scoped()`, so a page drawing seven plan days and a dozen narration blocks reads the athlete's flags once and answers all of them from that one set.
 
 ## Reading the rows
 
 There is no admin UI on purpose. Read them in tinker:
 
 ```bash
-./vendor/bin/sail artisan tinker --execute 'App\Models\Feedback::with("user:id,name")->latest("id")->get(["id","user_id","subject_type","subject_id","note","created_at"])->each(fn ($f) => print("{$f->created_at} {$f->user->name} {$f->subject_type->value}#{$f->subject_id} {$f->note}\n"));'
+./vendor/bin/sail artisan tinker --execute 'App\Models\Feedback::with("user:id,name")->latest("id")->get(["id","user_id","subject_type","subject_id","reason","note","created_at"])->each(fn ($f) => print("{$f->created_at} {$f->user->name} {$f->subject_type->value}#{$f->subject_id} {$f->reason?->value} {$f->note}\n"));'
 ```
 
 ## See also
