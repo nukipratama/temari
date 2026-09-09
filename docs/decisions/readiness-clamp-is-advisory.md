@@ -38,7 +38,7 @@ The obvious fix — make narration describe the clamped session — is the one t
 
 Coupling a cached, billed artifact to an input the athlete's own morning run invalidates re-bills narration on exactly the days readiness is least stable.
 
-One further constraint, and it is the hard one: **the clamp cannot be reconstructed after the fact.** It derives from `ReadinessCeiling` via `TrainingLoad::summary($user, $today)`, which includes today's own runs — so the ceiling that produced an 08:00 clamp no longer exists when `plan:score-compliance` runs at 00:03. Nothing downstream can ask what the athlete was told.
+One further constraint, and it is the hard one: **the clamp cannot be reconstructed after the fact.** It derives from `ReadinessCeiling` via `TrainingLoad::summary($user, $today)`, which includes today's own runs — so the ceiling that produced an 08:00 clamp no longer exists when `plan:score-compliance` runs at 00:09. Nothing downstream can ask what the athlete was told.
 
 ## Decision
 

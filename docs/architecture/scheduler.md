@@ -13,7 +13,8 @@ code_refs:
 # Scheduler hygiene
 
 [routes/console.php](../../routes/console.php) registers every scheduled command. This note covers
-why every event carries both `withoutOverlapping()` and `onOneServer()`.
+two things: why every event carries both `withoutOverlapping()` and `onOneServer()`, and why the
+Monday window is ordered the way it is.
 
 ## Overlap safety and single-host
 
@@ -41,12 +42,12 @@ tests because a Pest run is one process regardless of parallel workers.
 |---|---|---|---|---|
 | `schedule:heartbeat` | every minute | — (deliberate) | yes | one idempotent `SETEX`; a lock would cost more than the write itself |
 | `ai:daily-briefing` | daily 00:01 | 30 | yes | per-user dispatch loop over active (7d) users; 30 min is generous headroom before the next day's run |
-| `demo:daily-refresh` | daily 00:05 | 10 | yes | single demo user, one synthetic run + rule-based fill |
-| `plan:close-finished-races` | daily 00:02 | 10 | yes | one bulk `UPDATE ... WHERE race_date < today` |
-| `plan:score-compliance` | daily 00:03 | 20 | yes | bounded by `--limit=500` users, one scoring pass each |
-| `ai:weekly-recap` | Mon 00:01 | 30 | yes | per-user dispatch loop, same shape as `ai:daily-briefing` |
-| `ai:weekly-profile` | Mon 00:05 | 20 | yes | per-active-user dispatch loop, lighter than the recap (one row type) |
-| `plan:regenerate` | Mon 00:07 | 45 | yes | heaviest entry: `Periodizer::regenerate()` + `PlanNarrationRequester` per user |
+| `demo:daily-refresh` | daily 00:13 | 10 | yes | single demo user, one synthetic run + rule-based fill |
+| `plan:close-finished-races` | daily 00:04 | 10 | yes | one bulk `UPDATE ... WHERE race_date < today` |
+| `plan:score-compliance` | daily 00:09 | 20 | yes | bounded by `--limit=500` users, one scoring pass each |
+| `ai:weekly-recap` | Mon 00:16 | 30 | yes | per-user dispatch loop, same shape as `ai:daily-briefing` |
+| `ai:weekly-profile` | Mon 00:21 | 20 | yes | per-active-user dispatch loop, lighter than the recap (one row type) |
+| `plan:regenerate` | Mon 00:26 | 45 | yes | heaviest entry: `Periodizer::regenerate()` + `PlanNarrationRequester` per user |
 | `strava:sync-zones` | monthly 00:10 | 55 (unchanged) | yes | already guarded pre-DF-1 |
 | `ai:monthly-recap` | monthly 05:45 | 30 | yes | per-user dispatch loop, monthly cadence gives ample headroom |
 | `ai:trend-read {30d,90d,12mo}` | daily/every-3-days/weekly 06:00 | 20 | yes | one narrator pass across users per range |
@@ -61,6 +62,33 @@ Values marked "unchanged" already had `withoutOverlapping()` before this pass an
 existing TTL; only `onOneServer()` was added to those. Every other TTL is new, sized from the
 command's own query shape (a handful of DB writes vs. a per-user loop) with headroom against its
 own cadence, not measured wall-clock — there is no production load yet to measure against.
+
+## The Monday window: ordering, not just spacing
+
+The old Monday window packed 8 entries into `00:00`-`00:07` with only comment-documented "must run
+after" relationships and no enforced ordering — each `withoutOverlapping()` lock is scoped to its
+own command, so nothing stopped two *different* commands from racing each other. Re-staggered to
+`00:00`-`00:26`, with the gap sized to the dependency it protects rather than to a uniform minute
+step:
+
+| command | time | must run after | why |
+|---|---|---|---|
+| `streak:settle` | 00:00 | — | independent trigger; settles the week that just closed before anything narrates it |
+| `ai:daily-briefing` | 00:01 | — | daily cadence, unrelated to the Monday-only chain below |
+| `plan:close-finished-races` | 00:04 | — | independent trigger; must itself finish well before `plan:regenerate` (00:26) |
+| `plan:score-compliance` | 00:09 | — | independent trigger; must itself finish well before `plan:regenerate` (00:26) |
+| `demo:daily-refresh` | 00:13 | — | independent, single demo user, zero LLM cost |
+| `ai:weekly-recap` | 00:16 | `streak:settle` (00:00) | reads `consecutiveWeekStreak()` — narrating before the settle would freeze a streak `streak:settle` is about to restore or forgive |
+| `ai:weekly-profile` | 00:21 | `ai:weekly-recap` (00:16) | refreshes "just after the recap" by convention, though it reads no recap output directly — no hard code dependency, kept for narrative consistency |
+| `plan:regenerate` | 00:26 | `plan:close-finished-races` (00:04), `plan:score-compliance` (00:09) | regenerates today-forward off the newly retired races (`CloseFinishedRacesCommand`'s own docblock: an unretired race made `PhaseSchedule::forRace()` throw) and reads last week's average compliance score |
+
+This is spacing sized to each dependency, not a chained `->then()`: every command here finishes in
+well under a minute against today's user counts (see the TTL table above), so a generous buffer is
+simpler than coupling execution and carries no real ordering risk yet. If the user count grows
+enough that a command's own runtime starts to encroach on these buffers, chaining the two truly
+hard dependencies (`streak:settle` → `ai:weekly-recap`, and `plan:close-finished-races` +
+`plan:score-compliance` → `plan:regenerate`) via `Event::then()` would enforce the ordering instead
+of assuming it — revisit then, not preemptively.
 
 ## See also
 

@@ -38,40 +38,47 @@ Schedule::command('schedule:heartbeat')->everyMinute()->onOneServer();
 // withoutOverlapping/onOneServer rationale: docs/architecture/scheduler.md.
 $alertOnFailure(Schedule::command('ai:daily-briefing')->dailyAt('00:01')->withoutOverlapping(30)->onOneServer(), 'ai:daily-briefing');
 
-// 00:05: keep the seeded demo account fresh — one modest synthetic run (~5/week)
+// 00:13: keep the seeded demo account fresh — one modest synthetic run (~5/week)
 // plus a rule-based refresh of today's briefing/greeting/trend so the demo never
 // renders an empty block once the date rolls. Zero LLM tokens
 // (withoutDispatching + rule-based fill), so the demo-billing exclusion holds.
-Schedule::command('demo:daily-refresh')->dailyAt('00:05')->withoutOverlapping(10)->onOneServer();
+// Time chosen for Monday spacing — see docs/architecture/scheduler.md.
+Schedule::command('demo:daily-refresh')->dailyAt('00:13')->withoutOverlapping(10)->onOneServer();
 
-// Monday 00:01: narrate last week's recap once per user, on final data. The
+// Monday 00:16: narrate last week's recap once per user, on final data. The
 // per-ingest cascade only stages the row Pending (weekly cadence) — this is
-// the single scheduled LLM call that fills it.
-$alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:01')->withoutOverlapping(30)->onOneServer(), 'ai:weekly-recap');
+// the single scheduled LLM call that fills it. Must run after streak:settle
+// (00:00), which it reads consecutiveWeekStreak() from — see the Monday
+// ordering table in docs/architecture/scheduler.md.
+$alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer(), 'ai:weekly-recap');
 
-// Monday 00:05: refresh the Profile-page persona summary + Temari voice once a
-// week, just after the recap. These two have no per-run cadence, so this is
-// their only auto-refresh; persona self-throttles per ISO week and the voice is
-// invalidated weekly. Demo excluded. Mid-week freshness stays on "Reread".
-Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:05')->withoutOverlapping(20)->onOneServer();
+// Monday 00:21: refresh the Profile-page persona summary + Temari voice once a
+// week, just after the recap (00:16). These two have no per-run cadence, so
+// this is their only auto-refresh; persona self-throttles per ISO week and
+// the voice is invalidated weekly. Demo excluded. Mid-week freshness stays on
+// "Reread".
+Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:21')->withoutOverlapping(20)->onOneServer();
 
-// 00:02 daily, ahead of plan:regenerate: retire a race the athlete has already
-// run. `completed_at` was only ever stamped by RaceController::store()
-// superseding one goal with another, so an unreplaced race stayed active
-// forever and the periodizer kept planning against a day in the past.
-$alertOnFailure(Schedule::command('plan:close-finished-races')->dailyAt('00:02')->withoutOverlapping(10)->onOneServer(), 'plan:close-finished-races');
+// 00:04 daily, ahead of plan:regenerate (Monday 00:26): retire a race the
+// athlete has already run. `completed_at` was only ever stamped by
+// RaceController::store() superseding one goal with another, so an
+// unreplaced race stayed active forever and the periodizer kept planning
+// against a day in the past.
+$alertOnFailure(Schedule::command('plan:close-finished-races')->dailyAt('00:04')->withoutOverlapping(10)->onOneServer(), 'plan:close-finished-races');
 
-// 00:03 daily: judge every user's Planned rows that just became past —
+// 00:09 daily: judge every user's Planned rows that just became past —
 // status/compliance_score/ran_anyway written once, never re-touched.
 // Idempotent by construction (only ever selects still-Planned rows), so it's
 // also the one-time backfill mechanism for existing historical rows after
 // this feature ships — no separate backfill command needed. Must run before
-// plan:regenerate (00:07), which reads last week's average score on Mondays.
-$alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:03')->withoutOverlapping(20)->onOneServer(), 'plan:score-compliance');
+// plan:regenerate (Monday 00:26), which reads last week's average score.
+$alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:09')->withoutOverlapping(20)->onOneServer(), 'plan:score-compliance');
 
-// Monday 00:07: regenerate every user's plan today-forward against their
+// Monday 00:26: regenerate every user's plan today-forward against their
 // current fitness/race state. Past weeks and pinned rows are never touched.
-// On-demand regeneration is also available from the Plan page.
+// On-demand regeneration is also available from the Plan page. Must run
+// after plan:close-finished-races (00:04) and plan:score-compliance (00:09)
+// — see the Monday ordering table in docs/architecture/scheduler.md.
 //
 // The periodizer is deterministic and free, but this command is NOT LLM-free:
 // it then calls PlanNarrationRequester::requestForCurrentWeek() per non-demo
@@ -80,7 +87,7 @@ $alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:03')->wi
 // session that regenerated into the same shape is left alone) plus an
 // idempotent plan_season_voice. Up to 9 rows per user per week. See
 // docs/architecture/llm-triggers.md.
-$alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:07')->withoutOverlapping(45)->onOneServer(), 'plan:regenerate');
+$alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:26')->withoutOverlapping(45)->onOneServer(), 'plan:regenerate');
 
 // 1st of the month 00:10: HR zones change rarely, so a monthly sweep is enough
 // (also piggybacks the per-connect SyncZonesJob dispatch). Skips manual-source
@@ -110,8 +117,8 @@ $alertOnFailure(Schedule::command('ai:trend-read 12mo')->weeklyOn(1, '06:00')->w
 $alertOnFailure(Schedule::command('ai:self-heal')->hourly()->withoutOverlapping(55)->onOneServer(), 'ai:self-heal');
 
 // Hourly catch-up sweep, the creation-side companion to ai:self-heal: recreates
-// the kickoff rows a scheduler outage across 00:01 (or across Monday 00:01/00:05)
-// never created, since every self-heal family starts from a row that already
+// the kickoff rows a scheduler outage across 00:01 (or across the Monday
+// 00:00-00:26 window) never created, since every self-heal family starts from a row that already
 // exists. Upsert-only under AnalysisService::withoutDispatching() — an existing
 // row of any status is untouched, nothing is queued and nothing is billed, so
 // unlike ai:self-heal it deliberately keeps running while generation is paused.
@@ -189,7 +196,7 @@ Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->without
 
 // Monday 00:00: settle the week that just closed — mint a rest token every 4th
 // streak week, or spend one to forgive a runless week. Must run before
-// ai:weekly-recap (00:01), which reads consecutiveWeekStreak() and would
+// ai:weekly-recap (00:16), which reads consecutiveWeekStreak() and would
 // otherwise narrate a streak that this command is about to restore. No LLM and
 // no Strava call.
 Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer();
