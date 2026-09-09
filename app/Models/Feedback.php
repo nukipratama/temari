@@ -6,7 +6,9 @@ namespace App\Models;
 
 use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
+use Database\Factories\FeedbackFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -34,6 +36,9 @@ use Override;
 ])]
 class Feedback extends Model
 {
+    /** @use HasFactory<FeedbackFactory> */
+    use HasFactory;
+
     /** Longest note the column and the form accept. */
     public const int MAX_NOTE_LENGTH = 280;
 

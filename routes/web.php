@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\DevtoolsDesignController;
+use App\Http\Controllers\DevtoolsFeedbackController;
 use App\Http\Controllers\DevtoolsIndexController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\HistoryController;
@@ -203,6 +204,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 Route::middleware(['throttle:60,1', 'devtools'])->group(function (): void {
     Route::get('/devtools', DevtoolsIndexController::class)->name('devtools.index');
     Route::get('/devtools/design', DevtoolsDesignController::class)->name('devtools.design');
+    Route::get('/devtools/feedback', DevtoolsFeedbackController::class)->name('devtools.feedback');
     Route::get('/devtools/ai-usage', [TokenUsageController::class, 'show'])->name('devtools.ai-usage');
     Route::post('/devtools/ai-usage/recover', [TokenUsageController::class, 'recover'])->name('devtools.ai-usage.recover');
     Route::post('/devtools/ai-usage/users/{userId}/retry-failed', [TokenUsageController::class, 'retryFailed'])
