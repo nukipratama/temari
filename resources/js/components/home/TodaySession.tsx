@@ -83,7 +83,7 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
     return (
         <div
             id="anchor-session-today"
-            className="mb-3 rounded-lg bg-muted px-3 py-2.5"
+            className="mt-2 rounded-lg bg-muted px-3 py-2.5"
         >
             <p className="text-sm font-semibold text-foreground">
                 {parts.join(' · ')}
@@ -112,8 +112,9 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
 
 /**
  * The prototype's today message card, carrying the whole of today: a
- * leaf-ringed `FaceIcon` beside the "today" eyebrow, the session the plan asks
- * for with its pace and any readiness step-down, then Temari's read on it.
+ * leaf-ringed `FaceIcon` beside the "today" eyebrow and the session the plan
+ * asks for with its pace and any readiness step-down, then Temari's read on it
+ * across the card's full width.
  */
 export default function TodaySession({
     briefing,
@@ -131,23 +132,22 @@ export default function TodaySession({
             <div className="flex items-start gap-3">
                 <FaceIcon size={42} ring="var(--color-leaf)" />
                 <div className="min-w-0 flex-1">
-                    <Eyebrow token="micro" className="mb-1 text-icon-accent">
+                    <Eyebrow token="micro" className="text-icon-accent">
                         Today
                     </Eyebrow>
                     {today !== null && <TodayPrescription day={today} />}
-                    <AnalysisStatus
-                        analysis={briefing.mascotVoice}
-                        inertiaReloadProps={['briefing']}
-                        allowReanalyze={false}
-                        showTimestamp={false}
-                        renderContent={(text) => (
-                            <SessionVoice
-                                text={text}
-                                drawnAnchors={drawnAnchors}
-                            />
-                        )}
-                    />
                 </div>
+            </div>
+            <div className="mt-3">
+                <AnalysisStatus
+                    analysis={briefing.mascotVoice}
+                    inertiaReloadProps={['briefing']}
+                    allowReanalyze={false}
+                    showTimestamp={false}
+                    renderContent={(text) => (
+                        <SessionVoice text={text} drawnAnchors={drawnAnchors} />
+                    )}
+                />
             </div>
         </Card>
     );
