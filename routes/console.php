@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Console\SchedulerChain;
 use App\Services\AI\MaintainerAlerter;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Foundation\Inspiring;
@@ -47,10 +48,14 @@ Schedule::command('demo:daily-refresh')->dailyAt('00:13')->withoutOverlapping(10
 
 // Monday 00:16: narrate last week's recap once per user, on final data. The
 // per-ingest cascade only stages the row Pending (weekly cadence) — this is
-// the single scheduled LLM call that fills it. Must run after streak:settle
-// (00:00), which it reads consecutiveWeekStreak() from — see the Monday
+// the single scheduled LLM call that fills it. Chained after streak:settle
+// (00:00), which it reads consecutiveWeekStreak() from: the ->when() below
+// refuses to start until streak:settle's onSuccess callback has marked itself
+// done for today, so a slow or failed settle can never let a stale streak get
+// narrated. 00:16 is a spacing fallback, not the enforcement — see the Monday
 // ordering table in docs/architecture/scheduler.md.
-$alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer(), 'ai:weekly-recap');
+$alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer()
+    ->when(static fn (): bool => SchedulerChain::isDoneToday(SchedulerChain::STREAK_SETTLE)), 'ai:weekly-recap');
 
 // Monday 00:21: refresh the Profile-page persona summary + Temari voice once a
 // week, just after the recap (00:16). These two have no per-run cadence, so
@@ -64,7 +69,8 @@ Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:21')->withoutOverlapping
 // RaceController::store() superseding one goal with another, so an
 // unreplaced race stayed active forever and the periodizer kept planning
 // against a day in the past.
-$alertOnFailure(Schedule::command('plan:close-finished-races')->dailyAt('00:04')->withoutOverlapping(10)->onOneServer(), 'plan:close-finished-races');
+$alertOnFailure(Schedule::command('plan:close-finished-races')->dailyAt('00:04')->withoutOverlapping(10)->onOneServer(), 'plan:close-finished-races')
+    ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES));
 
 // 00:09 daily: judge every user's Planned rows that just became past —
 // status/compliance_score/ran_anyway written once, never re-touched.
@@ -72,13 +78,17 @@ $alertOnFailure(Schedule::command('plan:close-finished-races')->dailyAt('00:04')
 // also the one-time backfill mechanism for existing historical rows after
 // this feature ships — no separate backfill command needed. Must run before
 // plan:regenerate (Monday 00:26), which reads last week's average score.
-$alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:09')->withoutOverlapping(20)->onOneServer(), 'plan:score-compliance');
+$alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:09')->withoutOverlapping(20)->onOneServer(), 'plan:score-compliance')
+    ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE));
 
 // Monday 00:26: regenerate every user's plan today-forward against their
 // current fitness/race state. Past weeks and pinned rows are never touched.
-// On-demand regeneration is also available from the Plan page. Must run
-// after plan:close-finished-races (00:04) and plan:score-compliance (00:09)
-// — see the Monday ordering table in docs/architecture/scheduler.md.
+// On-demand regeneration is also available from the Plan page. Chained after
+// plan:close-finished-races (00:04) and plan:score-compliance (00:09): the
+// ->when() below refuses to start until both have marked themselves done for
+// today, so regeneration can never run against an unretired race or a stale
+// compliance score. 00:26 is a spacing fallback, not the enforcement — see
+// the Monday ordering table in docs/architecture/scheduler.md.
 //
 // The periodizer is deterministic and free, but this command is NOT LLM-free:
 // it then calls PlanNarrationRequester::requestForCurrentWeek() per non-demo
@@ -87,7 +97,9 @@ $alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:09')->wi
 // session that regenerated into the same shape is left alone) plus an
 // idempotent plan_season_voice. Up to 9 rows per user per week. See
 // docs/architecture/llm-triggers.md.
-$alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:26')->withoutOverlapping(45)->onOneServer(), 'plan:regenerate');
+$alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:26')->withoutOverlapping(45)->onOneServer()
+    ->when(static fn (): bool => SchedulerChain::isDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES)
+        && SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE)), 'plan:regenerate');
 
 // 1st of the month 00:10: HR zones change rarely, so a monthly sweep is enough
 // (also piggybacks the per-connect SyncZonesJob dispatch). Skips manual-source
@@ -199,8 +211,9 @@ Schedule::command('trend:snapshot-daily')->dailyAt('03:45')->withoutOverlapping(
 Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->withoutOverlapping(15)->onOneServer();
 
 // Monday 00:00: settle the week that just closed — mint a rest token every 4th
-// streak week, or spend one to forgive a runless week. Must run before
-// ai:weekly-recap (00:16), which reads consecutiveWeekStreak() and would
-// otherwise narrate a streak that this command is about to restore. No LLM and
-// no Strava call.
-Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer();
+// streak week, or spend one to forgive a runless week. Chained ahead of
+// ai:weekly-recap (00:16) via its onSuccess callback below marking itself done
+// for today, which ai:weekly-recap's ->when() gate requires before it narrates
+// a streak this command might be about to restore. No LLM and no Strava call.
+Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer()
+    ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE));
