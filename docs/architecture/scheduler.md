@@ -1,11 +1,12 @@
 ---
 title: Scheduler hygiene — overlap safety, single-host, ordering, cadence
-description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; the Monday window's dependency ordering; and the numeric derivation behind four previously-qualitative cadences
+description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; the Monday window's hard dependencies are now chained rather than only spaced; the numeric derivation behind four previously-qualitative cadences; and measured local runtimes next to each lock TTL
 tags: [architecture, scheduler]
 status: living
 reviewed: 2026-09-10
 code_refs:
   - routes/console.php
+  - app/Console/SchedulerChain.php
   - compose.prod.yaml
   - config/strava.php
   - config/cache.php
@@ -14,9 +15,10 @@ code_refs:
 # Scheduler hygiene
 
 [routes/console.php](../../routes/console.php) registers every scheduled command. This note covers
-three things: why every event carries both `withoutOverlapping()` and `onOneServer()`, why the
-Monday window is ordered the way it is, and the numeric basis for four cadences that were
-previously justified only qualitatively.
+four things: why every event carries both `withoutOverlapping()` and `onOneServer()`, how the two
+hard dependencies in the Monday window are chained (not just spaced), the numeric basis for four
+cadences that were previously justified only qualitatively, and a measured-locally runtime next to
+each lock TTL.
 
 ## Overlap safety and single-host
 
@@ -40,30 +42,49 @@ tests because a Pest run is one process regardless of parallel workers.
 
 ### Lock TTL and onOneServer, per command
 
-| command | cadence | withoutOverlapping | onOneServer | why this TTL |
-|---|---|---|---|---|
-| `schedule:heartbeat` | every minute | — (deliberate) | yes | one idempotent `SETEX`; a lock would cost more than the write itself |
-| `ai:daily-briefing` | daily 00:01 | 30 | yes | per-user dispatch loop over active (7d) users; 30 min is generous headroom before the next day's run |
-| `demo:daily-refresh` | daily 00:13 | 10 | yes | single demo user, one synthetic run + rule-based fill |
-| `plan:close-finished-races` | daily 00:04 | 10 | yes | one bulk `UPDATE ... WHERE race_date < today` |
-| `plan:score-compliance` | daily 00:09 | 20 | yes | bounded by `--limit=500` users, one scoring pass each |
-| `ai:weekly-recap` | Mon 00:16 | 30 | yes | per-user dispatch loop, same shape as `ai:daily-briefing` |
-| `ai:weekly-profile` | Mon 00:21 | 20 | yes | per-active-user dispatch loop, lighter than the recap (one row type) |
-| `plan:regenerate` | Mon 00:26 | 45 | yes | heaviest entry: `Periodizer::regenerate()` + `PlanNarrationRequester` per user |
-| `strava:sync-zones` | monthly 00:10 | 55 (unchanged) | yes | already guarded pre-DF-1 |
-| `ai:monthly-recap` | monthly 05:45 | 30 | yes | per-user dispatch loop, monthly cadence gives ample headroom |
-| `ai:trend-read {30d,90d,12mo}` | daily/every-3-days/weekly 06:00 | 20 | yes | one narrator pass across users per range |
-| `ai:self-heal` / `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 |
-| `queue:prune-failed` | daily 02:20 | 15 | yes | one `DELETE` on `failed_jobs` |
-| `analytics:prune` | daily 02:25 | 15 | yes | a couple of `DELETE`s on the `analytics` connection |
-| `strava:sync` / `strava:ingest` / `strava:hydrate-backlog` / `geo:backfill-locations` / `weather:correct-forecast` / `weather:backfill` / `trend:snapshot-daily` | see `routes/console.php` | 55/10/14/55/55/55/55 (unchanged) | yes | already guarded pre-DF-1 |
-| `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep |
-| `streak:settle` | Mon 00:00 | 20 | yes | per-user token settle over users with a `WeeklySnapshot` |
+The "measured locally" column is one `time ./vendor/bin/sail artisan <command>` run per command
+against this worktree's `demo:seed` data (**1 user, 127 activities**), Azure unconfigured so every
+AI command takes its dispatch-only/paused path rather than calling an LLM. Every command finished
+in ~1-2 seconds, which is dominated by `artisan`'s own PHP/framework bootstrap, not by the
+command's own query — at this user count the per-user loops these TTLs guard against are
+essentially invisible. See "Reading the local measurements" below for why the TTLs stay as-is
+despite that.
+
+| command | cadence | withoutOverlapping | onOneServer | why this TTL | measured locally on seeded data (1 user, 127 activities) |
+|---|---|---|---|---|---|
+| `schedule:heartbeat` | every minute | — (deliberate) | yes | one idempotent `SETEX`; a lock would cost more than the write itself | ~1.1s, but exits on `redis unreachable` — `.env.example` ships `REDIS_HOST=127.0.0.1`/`CACHE_STORE=database` for local dev, so the real Redis `SETEX` path cannot be exercised in this worktree at all |
+| `ai:daily-briefing` | daily 00:01 | 30 | yes | per-user dispatch loop over active (7d) users; 30 min is generous headroom before the next day's run | ~1.9s — dispatched for 0 active users (the seeded demo user is excluded from AI kickoff billing) |
+| `demo:daily-refresh` | daily 00:13 | 10 | yes | single demo user, one synthetic run + rule-based fill | ~2.2s — the one command that actually touches the seeded user (rule-based refresh, no LLM) |
+| `plan:close-finished-races` | daily 00:04 | 10 | yes | one bulk `UPDATE ... WHERE race_date < today` | ~1.5s — closed 0 races |
+| `plan:score-compliance` | daily 00:09 | 20 | yes | bounded by `--limit=500` users, one scoring pass each | ~1.3s — scored 0 planned rows |
+| `ai:weekly-recap` | Mon 00:16 | 30 | yes | per-user dispatch loop, same shape as `ai:daily-briefing` | ~1.5s — 0 snapshots (demo excluded) |
+| `ai:weekly-profile` | Mon 00:21 | 20 | yes | per-active-user dispatch loop, lighter than the recap (one row type) | ~1.4s — 0 active users (demo excluded) |
+| `plan:regenerate` | Mon 00:26 | 45 | yes | heaviest entry: `Periodizer::regenerate()` + `PlanNarrationRequester` per user | ~1.4s — regenerated for the 1 seeded user; `PlanNarrationRequester` dispatched no LLM calls (Azure unconfigured) |
+| `strava:sync-zones` | monthly 00:10 | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.7s — no eligible connection (the seeded demo `StravaConnection` carries a synthetic token, not a real Strava one, and is excluded) |
+| `ai:monthly-recap` | monthly 05:45 | 30 | yes | per-user dispatch loop, monthly cadence gives ample headroom | ~1.4s — 0 months dispatched (demo excluded) |
+| `ai:trend-read {30d,90d,12mo}` | daily/every-3-days/weekly 06:00 | 20 | yes | one narrator pass across users per range | ~1.2-1.4s each — 0 active users (demo excluded) |
+| `ai:self-heal` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s — skipped, generation paused (Azure unset) |
+| `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.5s — created 0 missing kickoff rows |
+| `queue:prune-failed` | daily 02:20 | 15 | yes | one `DELETE` on `failed_jobs` | ~1.6s — 0 entries deleted |
+| `analytics:prune` | daily 02:25 | 15 | yes | a couple of `DELETE`s on the `analytics` connection | ~1.7s — 0 rows pruned |
+| `strava:sync` / `strava:ingest` / `strava:hydrate-backlog` | see `routes/console.php` | 55/10/14 (unchanged) | yes | already guarded pre-DF-1 | ~1.3-1.4s each — no real Strava connection to poll/drain against locally (needs live Strava credentials); cannot be meaningfully measured in this worktree |
+| `geo:backfill-locations` / `weather:correct-forecast` / `weather:backfill` | see `routes/console.php` | 55/55/55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s each — 0 rows to backfill; `weather:*` additionally need a live Open-Meteo call to exercise the fetch path |
+| `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.6s — wrote 1 row, for the seeded user |
+| `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep | ~2.0s — dispatched to 0 users |
+| `streak:settle` | Mon 00:00 | 20 | yes | per-user token settle over users with a `WeeklySnapshot` | ~1.5s — minted 0, spent 0 |
 
 Values marked "unchanged" already had `withoutOverlapping()` before this pass and keep their
-existing TTL; only `onOneServer()` was added to those. Every other TTL is new, sized from the
-command's own query shape (a handful of DB writes vs. a per-user loop) with headroom against its
-own cadence, not measured wall-clock — there is no production load yet to measure against.
+existing TTL; only `onOneServer()` was added to those.
+
+**Reading the local measurements.** Every TTL stays as originally sized (a handful of DB writes vs.
+a per-user loop, with headroom against the command's own cadence) rather than being tightened to
+match these sub-2-second runs: the measurements above are essentially `artisan` bootstrap overhead
+against a single-user, single-connection dataset, not a load test. The commands whose TTL exists
+specifically to guard a *per-user* loop (`ai:daily-briefing`, `ai:weekly-recap`,
+`plan:score-compliance`, `plan:regenerate`, the `ai:trend-read` family) scale with athlete count —
+at 1 user their real cost is invisible, and the TTL's headroom is what protects against that loop
+taking materially longer once the athlete base grows. Nothing measured here contradicts an existing
+TTL; it simply confirms none of them are already too tight at today's scale.
 
 ## The Monday window: ordering, not just spacing
 
@@ -84,13 +105,41 @@ step:
 | `ai:weekly-profile` | 00:21 | `ai:weekly-recap` (00:16) | refreshes "just after the recap" by convention, though it reads no recap output directly — no hard code dependency, kept for narrative consistency |
 | `plan:regenerate` | 00:26 | `plan:close-finished-races` (00:04), `plan:score-compliance` (00:09) | regenerates today-forward off the newly retired races (`CloseFinishedRacesCommand`'s own docblock: an unretired race made `PhaseSchedule::forRace()` throw) and reads last week's average compliance score |
 
-This is spacing sized to each dependency, not a chained `->then()`: every command here finishes in
-well under a minute against today's user counts (see the TTL table above), so a generous buffer is
-simpler than coupling execution and carries no real ordering risk yet. If the user count grows
-enough that a command's own runtime starts to encroach on these buffers, chaining the two truly
-hard dependencies (`streak:settle` → `ai:weekly-recap`, and `plan:close-finished-races` +
-`plan:score-compliance` → `plan:regenerate`) via `Event::then()` would enforce the ordering instead
-of assuming it — revisit then, not preemptively.
+The two hard dependencies — `streak:settle` → `ai:weekly-recap`, and
+`plan:close-finished-races` + `plan:score-compliance` → `plan:regenerate` — are now **chained**, not
+just spaced: [SchedulerChain](../../app/Console/SchedulerChain.php) is a tiny "prerequisite done
+today" cache flag. Each prerequisite marks itself done via `->onSuccess()` when its exit code is 0;
+each dependent's `->when()` gate refuses to run until every prerequisite it needs has marked itself
+done for the current date. Concretely, in `routes/console.php`:
+
+```php
+Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer()
+    ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE));
+
+Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer()
+    ->when(static fn (): bool => SchedulerChain::isDoneToday(SchedulerChain::STREAK_SETTLE));
+```
+
+and the same shape for `plan:regenerate`'s `->when()`, which checks both
+`plan:close-finished-races` and `plan:score-compliance`. This was chosen over an
+`Event::then()`/`Artisan::call()` chain that runs the dependent immediately after its prerequisite:
+a `->when()` gate keeps every command's own cron expression the single source of truth for *when*
+it runs (`schedule:list` still shows `ai:weekly-recap` at its own `16 0 * * 1`, not folded into
+`streak:settle`'s entry), while still making the dependency load-bearing rather than assumed. The
+existing `withoutOverlapping()`/`onOneServer()` guards on every event are untouched — `->when()` is
+an additional filter Laravel checks via `Event::filtersPass()` before a due event runs, not a
+replacement for the overlap/single-host locks.
+
+The staggered times (00:00 → 00:16 → 00:21 → 00:26) stay as a **fallback**, not the enforcement: in
+practice the flag is almost always already set by the time the dependent's own cron tick fires,
+since every command in this window finishes in low single-digit seconds even before accounting for
+its own generous `withoutOverlapping` TTL (see the measured-locally column in the table above) — so
+spacing alone would still work at today's scale, but the `->when()` gate is what makes it correct
+rather than merely likely, and is what protects the ordering once a slow run, a retry, or a future
+higher user count makes "usually finishes first" no longer safe to assume. A prerequisite that
+fails (non-zero exit) never marks itself done, so a failed `streak:settle` correctly holds back
+`ai:weekly-recap` for that Monday rather than letting it narrate a streak the settle never applied
+— it picks back up automatically the following Monday once the prerequisite succeeds again.
 
 ## Cadence derivations (previously qualitative-only)
 
