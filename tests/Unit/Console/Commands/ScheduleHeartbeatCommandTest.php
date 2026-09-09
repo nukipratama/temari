@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Redis;
 use Mockery\MockInterface;
 
+beforeEach(fn () => Carbon::setTestNow('2026-07-29 10:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
 /** Redis not available in CI — a connection mock serving a stored stamp of the given age. */
