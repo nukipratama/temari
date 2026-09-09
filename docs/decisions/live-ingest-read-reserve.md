@@ -32,7 +32,7 @@ Meanwhile a run appearing promptly after it finishes is the product's core promi
 
 Reads are tagged with a [StravaReadPriority](app/Enums/StravaReadPriority.php#L13) of `Live` or `Background`, and the tag does two things.
 
-- **One pool, two ceilings.** [`guardRateLimit()`](app/Services/Strava/StravaClient.php#L258) still hits the same globally-keyed buckets, but a `Background` read is refused once a bucket reaches [`backgroundCeiling()`](app/Services/Strava/StravaClient.php#L268) — `100 - LIVE_RESERVE_PERCENT` of the max, i.e. 150 / 15 min and 1,500 / day. `Live` may spend the whole pool.
+- **One pool, two ceilings.** [`guardRateLimit()`](app/Services/Strava/StravaClient.php#L305) still hits the same globally-keyed buckets, but a `Background` read is refused once a bucket reaches [`backgroundCeiling()`](app/Services/Strava/StravaClient.php#L313) — `100 - LIVE_RESERVE_PERCENT` of the max, i.e. 150 / 15 min and 1,500 / day. `Live` may spend the whole pool.
 - **A throttle key per tier.** [`IngestActivityJob::middleware()`](app/Jobs/Strava/IngestActivityJob.php#L89) keys its `ThrottlesExceptions` circuit by [`throttleKey()`](app/Enums/StravaReadPriority.php#L27) instead of one literal `strava-ingest`.
 - **Only browsing is `Background`.** [DetailHydrator](app/Services/Run/Ingest/DetailHydrator.php#L42) dispatches at `Background`; the webhook push, the fallback poll, the ingest drain, [ResyncActivityJob](app/Jobs/Strava/ResyncActivityJob.php#L61) and the doctor command all stay `Live`. The parameter [defaults to `Live`](app/Services/Strava/StravaClient.php#L56), so a caller that never thinks about priority keeps today's behaviour rather than silently losing the reserve.
 

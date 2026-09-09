@@ -17,6 +17,7 @@ const PROJECTION = {
     high_sec: 3_300,
     sample_size: 2,
     confidence: 'medium' as const,
+    window: 'recent' as const,
 };
 
 function lastPostCall() {

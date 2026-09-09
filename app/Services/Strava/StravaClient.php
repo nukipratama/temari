@@ -16,12 +16,16 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Pulse\Facades\Pulse;
+use Throwable;
 
 class StravaClient
 {
     private const string TOKEN_URL = 'https://www.strava.com/oauth/token';
+
+    private const string DEAUTHORIZE_URL = 'https://www.strava.com/oauth/deauthorize';
 
     private const int REFRESH_BUFFER_SECONDS = 60;
 
@@ -111,6 +115,49 @@ class StravaClient
         $breaker->recordSuccess();
 
         return $response->throw();
+    }
+
+    /**
+     * Hands the athlete's grant back to Strava, which is what frees their slot
+     * against the app's athlete allocation — until this is called, an account
+     * deleted here still occupies one on Strava's side.
+     *
+     * Total by design: every caller is on a path that is going to finish
+     * (a deletion, an operator freeing a slot) whether or not Strava answers,
+     * so a failure is reported as `false` and logged rather than thrown.
+     *
+     * Deliberately outside {@see self::get()}'s gauntlet, the same way the
+     * webhook subscription calls are: it spends none of the read budget those
+     * buckets meter, and a refused revocation says nothing about whether
+     * Strava is healthy, so it must not move the circuit breaker either.
+     */
+    public function deauthorize(StravaConnection $connection): bool
+    {
+        try {
+            $connection = $this->refreshIfExpired($connection);
+
+            $response = Http::asForm()->post(self::DEAUTHORIZE_URL, [
+                'access_token' => $connection->access_token,
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('strava deauthorize could not be delivered', [
+                'user_id' => $connection->user_id,
+                'reason' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        if ($response->failed()) {
+            Log::warning('strava refused the deauthorize', [
+                'user_id' => $connection->user_id,
+                'status' => $response->status(),
+            ]);
+
+            return false;
+        }
+
+        return true;
     }
 
     public static function apiBaseUrl(): string

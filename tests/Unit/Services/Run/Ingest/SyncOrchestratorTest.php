@@ -10,6 +10,7 @@ use App\Models\Analytics\StravaSyncLog;
 use App\Models\WeeklySnapshot;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Notifications\StravaDisconnectedNotification;
 use App\Services\Run\Ingest\SummaryIngest;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -21,6 +22,7 @@ use App\Support\Config\AppConfigKey;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -196,6 +198,7 @@ it('skips a revoked connection without querying Strava', function (): void {
 });
 
 it('revokes the connection and returns 0 (no rethrow) when the API rejects the token with 401', function (): void {
+    Notification::fake();
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create();
 
@@ -208,6 +211,7 @@ it('revokes the connection and returns 0 (no rethrow) when the API rejects the t
     expect($inserted)->toBe(0)
         ->and($connection->fresh()->revoked_at)->not->toBeNull();
     Queue::assertNothingPushed();
+    Notification::assertSentTo($user, StravaDisconnectedNotification::class);
 });
 
 it('syncUser no-ops when the Strava kill-switch is off', function (): void {

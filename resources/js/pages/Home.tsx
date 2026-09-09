@@ -20,6 +20,7 @@ import EmptyRunsState from '@/components/run/EmptyRunsState';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { drawnHomeAnchors } from '@/lib/anchors';
+import { todayLocalIso } from '@/lib/pace';
 
 interface HomeProps {
     briefing: BriefingResult;
@@ -45,6 +46,9 @@ export default function Home({
 }: Readonly<HomeProps>) {
     const lastRun = recentRuns[0] ?? null;
     const hasRuns = recentRuns.length > 0;
+    const todayIso = todayLocalIso();
+    const todayPlan =
+        weekPlan?.days.find((day) => day.date === todayIso) ?? null;
     const judged =
         pastYouTrend !== null && pastYouTrend.verdict !== 'not_enough_history'
             ? pastYouTrend.verdict
@@ -60,6 +64,7 @@ export default function Home({
                     <div className="flex flex-col gap-4">
                         <TodaySession
                             briefing={briefing}
+                            today={todayPlan}
                             drawnAnchors={drawnHomeAnchors(weekPlan)}
                         />
 

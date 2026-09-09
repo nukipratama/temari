@@ -9,6 +9,7 @@ const PROJECTION = {
     high_sec: 3_300,
     sample_size: 2,
     confidence: 'medium' as const,
+    window: 'recent' as const,
 };
 
 describe('ProjectionBlock', () => {
@@ -16,7 +17,9 @@ describe('ProjectionBlock', () => {
         render(<ProjectionBlock projection={PROJECTION} />);
 
         expect(screen.getByText('Projected finish')).toBeInTheDocument();
-        expect(screen.getByText(/2 PRs/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/2 PRs in the last 4 months/),
+        ).toBeInTheDocument();
         expect(screen.getByText(/moderate range/)).toBeInTheDocument();
         // Both the gauge bounds and the predicted time tally up from 0
         // (tier-2 count-up), so wait for them to settle.
@@ -38,8 +41,18 @@ describe('ProjectionBlock', () => {
             />,
         );
 
-        expect(screen.getByText(/1 PR \(/)).toBeInTheDocument();
+        expect(screen.getByText(/from 1 PR /)).toBeInTheDocument();
         expect(screen.getByText(/thin PR sample/)).toBeInTheDocument();
+    });
+
+    it('names the whole record as the source when the recent window was too thin to fit', () => {
+        render(
+            <ProjectionBlock projection={{ ...PROJECTION, window: 'all' }} />,
+        );
+
+        expect(
+            screen.getByText(/2 PRs across your whole record/),
+        ).toBeInTheDocument();
     });
 
     it('explains the gap instead of drawing an empty gauge with no PR to anchor on', () => {

@@ -62,7 +62,8 @@ it('renders the active race and its projection when one exists', function (): vo
             ->where('race.id', $race->id)
             ->where('race.distance_m', 10_000)
             ->where('projection.sample_size', 1)
-            ->where('projection.confidence', 'low'));
+            ->where('projection.confidence', 'low')
+            ->where('projection.window', 'all'));
 });
 
 it('never surfaces another user\'s race', function (): void {

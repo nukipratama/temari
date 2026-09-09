@@ -8,17 +8,7 @@ import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
-import { formatPace, parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
-import { clampSummary } from '@/lib/plan';
-
-const SESSION_TYPE_LABEL: Record<string, string> = {
-    easy: 'easy',
-    long: 'long run',
-    tempo: 'tempo',
-    interval: 'interval',
-    rest: 'rest',
-    race: 'race day',
-};
+import { parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
 
 const PHASE_LABEL: Record<string, string> = {
     base: 'base',
@@ -203,9 +193,10 @@ function DayCell({
 }
 
 /**
- * "This week's plan" — the widget Today leads with, on the prototype's
- * `PlanCard` shape: phase badge, a credited/total ring beside two figures, a
- * seven-day grid, and a footer row for today's session. Fields are exactly
+ * "This week's plan" — the week at a glance, on the prototype's `PlanCard`
+ * shape: phase badge, a credited/total ring beside two figures, a seven-day
+ * grid, and a link into Plan. Today's own session is stated once, on
+ * `TodaySession`, beside the voice describing it. Fields are exactly
  * `CurrentWeekPlanBuilder::forUser()`'s shape, the same computation Plan's own
  * week rows use, so nothing shown here can drift from Plan.
  */
@@ -213,10 +204,6 @@ export default function WeekPlanWidget({
     weekPlan,
 }: Readonly<{ weekPlan: WeekPlan }>) {
     const todayIso = todayLocalIso();
-    const today = weekPlan.days.find((d) => d.date === todayIso) ?? null;
-    const todayCorePaceSecPerKm =
-        today?.segments.find((s) => s.key === 'main' || s.key === 'interval')
-            ?.pace_sec_per_km ?? null;
     const kmTweened = useCountUp(weekPlan.planned_km_this_week);
 
     return (
@@ -258,52 +245,19 @@ export default function WeekPlanWidget({
                 ))}
             </ul>
 
-            {today !== null && (
-                <Link
-                    id="anchor-session-today"
-                    href="/plan"
-                    className="focus-ring flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2.5 text-[0.71875rem] text-foreground transition-colors hover:bg-accent"
-                >
-                    <span>
-                        <b>today</b> ·{' '}
-                        {SESSION_TYPE_LABEL[today.session_type] ??
-                            today.session_type}
-                        {today.session_type !== 'rest' &&
-                            ` · ${today.distance_km} km`}
-                        {todayCorePaceSecPerKm !== null &&
-                            ` · ${formatPace(todayCorePaceSecPerKm)}/km`}
-                        {today.clamp !== null && (
-                            <span className="mt-1 block border-l-2 border-border pl-2">
-                                <span className="flex items-center gap-1 text-[0.625rem] uppercase tracking-[0.05em] text-text-3">
-                                    <Icon
-                                        icon="mdi:arrow-down"
-                                        width={10}
-                                        height={10}
-                                        aria-hidden
-                                    />
-                                    {today.clamp.label}
-                                </span>
-                                <span className="block font-semibold text-foreground">
-                                    {clampSummary(
-                                        today.clamp,
-                                        today.distance_km,
-                                    )}
-                                </span>
-                                <span className="mt-0.5 block italic text-text-2">
-                                    {today.clamp.note}
-                                </span>
-                            </span>
-                        )}
-                    </span>
-                    <Icon
-                        icon="mdi:chevron-right"
-                        width={16}
-                        height={16}
-                        className="flex-none text-foreground"
-                        aria-hidden
-                    />
-                </Link>
-            )}
+            <Link
+                href="/plan"
+                className="focus-ring flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2.5 text-[0.71875rem] text-foreground transition-colors hover:bg-accent"
+            >
+                <span>see the plan</span>
+                <Icon
+                    icon="mdi:chevron-right"
+                    width={16}
+                    height={16}
+                    className="flex-none text-foreground"
+                    aria-hidden
+                />
+            </Link>
         </Card>
     );
 }

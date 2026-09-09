@@ -48,10 +48,20 @@ function scrollToTop(event: MouseEvent<Element>) {
  * The pill lights the tapped tab immediately and reconciles on Inertia's
  * `finish`, so a cancelled or failed visit falls back to the page the app is
  * actually on rather than stranding the highlight on a tab it never reached.
+ *
+ * Today carries a dot while the inbox has unread rows: on mobile the bell sits
+ * in a header a runner glancing at their dashboard need never scroll up to.
+ * A dot rather than a count, and decorative rather than announced, because the
+ * bell is the labelled, actionable control and this tab does not open the
+ * inbox — it is a reason to look up, not a second way in. It borrows the
+ * unread dot's own token from `InboxRow`, which is ground-reactive where the
+ * bell's badge fill is not; the ring is what keeps it off the lime the active
+ * tab tints its own icon with.
  */
 export default function MobileBottomNav() {
-    const { component } = usePage<SharedProps>();
+    const { component, props } = usePage<SharedProps>();
     const current = navTabFor(component);
+    const hasUnread = (props.unreadNotifications ?? 0) > 0;
     const [pending, setPending] = useState<TabId | null>(null);
     // Counts visits still in flight rather than trusting any single `finish`:
     // a second tap before the first answers interrupts that first visit, which
@@ -105,21 +115,32 @@ export default function MobileBottomNav() {
                                     'grow-[1.6] bg-gradient-to-br from-horizon/34 to-horizon/14 text-icon-accent shadow-[0_2px_10px_-2px_rgba(173,224,71,.45),inset_0_1px_0_rgba(255,255,255,.25)]',
                             )}
                         >
-                            <motion.span
-                                variants={tabIconPop}
-                                animate={isActive ? 'active' : 'idle'}
-                                className="block"
-                            >
-                                {TabIcon && (
-                                    <TabIcon
-                                        className={cn(
-                                            'transition-[width,height] duration-150',
-                                            isActive ? 'size-5' : 'size-[18px]',
-                                        )}
+                            <span className="relative block">
+                                <motion.span
+                                    variants={tabIconPop}
+                                    animate={isActive ? 'active' : 'idle'}
+                                    className="block"
+                                >
+                                    {TabIcon && (
+                                        <TabIcon
+                                            className={cn(
+                                                'transition-[width,height] duration-150',
+                                                isActive
+                                                    ? 'size-5'
+                                                    : 'size-[18px]',
+                                            )}
+                                            aria-hidden
+                                        />
+                                    )}
+                                </motion.span>
+                                {item.id === 'today' && hasUnread && (
+                                    <span
+                                        data-testid="unread-dot"
                                         aria-hidden
+                                        className="absolute -right-1 -top-0.5 size-1.5 rounded-full bg-icon-accent ring-2 ring-card"
                                     />
                                 )}
-                            </motion.span>
+                            </span>
                             <span
                                 className={cn(
                                     'overflow-hidden font-mono text-[0.5625rem] font-extrabold tracking-[.05em] uppercase transition-[max-width,opacity] duration-200',

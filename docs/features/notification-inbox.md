@@ -20,6 +20,51 @@ code_refs:
 `/inbox` is the read side of the always-on in-app channel ([[inbox-is-an-always-on-channel]]).
 Every row is something Temari already sent; nothing is written here, and nothing is deleted here.
 
+## The kinds
+
+Eight, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
+Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never the kind's.
+
+| kind | what fires it | channels | opens |
+|---|---|---|---|
+| `post_run` | `post_run_speech` finishing after an ingest | inbox · Telegram · push | the run |
+| `weekly_recap` | Monday's recap, or the manual send on the Feed | inbox · Telegram · push | that week in history |
+| `monthly_recap` | the 1st's recap, or the manual send on the Calendar | inbox · Telegram · push | that month on the calendar |
+| `streak_reminder` | Saturday 18:00, one per at-risk week | inbox · Telegram · push | the dashboard |
+| `plan_clamp` | a rest day being stepped down | inbox only | the plan |
+| `strava_disconnected` | the Strava grant being revoked | inbox · Telegram · push | the profile, where the reconnect button is |
+| `unlock` | an eligible run or backfill granting one | inbox only | the accessory shelf |
+| `test` | the "send test notification" button | inbox · Telegram · push | the dashboard |
+
+**`plan_clamp` is inbox-only, like an unlock.** A step-down used to exist only while the plan page
+still rendered it: [RestClampRecorder](../../app/Services/Run/Plan/RestClampRecorder.php#L76) already
+wrote the outcome so compliance could grade the day the athlete was actually set, and that write is
+now also where they are told. Its guards make it the one place that fires once per athlete per day,
+so the row inherits that dedupe rather than adding its own, and a ceiling that recovers later does
+not delete what was already said. The clamp is advisory ([[readiness-clamp-is-advisory]]) and the
+briefing path records it at 00:01, so a lock screen is the wrong place for it — and
+`notifications_enabled`, which enumerates what it governs, does not name it either.
+
+The body is the clamp's own explanation, in whichever voice has reached it: the `plan_clamp_voice`
+row once one is `done`, and otherwise the templated note that [[the-clamp-explains-itself]] keeps as
+a permanent floor. The note is what a row usually carries, because the narration is requested moments
+before the notification is queued.
+
+**`strava_disconnected` is the one kind the master switch does not govern.** Until it notified, the
+only surface that admitted a dead grant was the empty-runs hero, a screen an athlete with runs on
+the dashboard never sees, so their history just stopped growing with no page saying why.
+`notifications_enabled` names what it covers in its own Settings description (the story, the recaps,
+the nudge), all of it content Temari initiates; this is the app reporting that something the athlete
+wired up broke. The per-channel mutes still apply, because those answer *where* rather than
+*whether*.
+
+It fires from [markRevoked](../../app/Models/StravaConnection.php#L100) itself rather than from the
+eight call sites that revoke, so it is one send per revocation rather than one per failing call.
+That count is a DB-level claim (`whereNull('revoked_at')->update(...)`), not just the in-memory
+check: no lock covers every caller, so two failing jobs can each be holding an active copy of the
+row, and only the update that flips `revoked_at` notifies. The dedupe key is the revocation instant,
+so a later reconnect-then-revoke is its own row. An account deletion revokes silently.
+
 ## The prop shape
 
 There is no listing API. The page is a normal Inertia page
@@ -102,6 +147,17 @@ which is scoped through the user's own relation. The page marks the row read opt
 reloads only `unreadNotifications`, which is what the bell in
 [MobileTopBar](../../resources/js/components/MobileTopBar.tsx) renders. There is no "mark all read": the unread count is a count of things not looked at, and a
 button that lies about that is worse than a count that stays high.
+
+The same prop puts a dot on the Today tab
+([MobileBottomNav](../../resources/js/components/MobileBottomNav.tsx#L60)). On mobile the bell sits
+in a header a runner glancing at their dashboard after a run need never scroll up to, and a four-tab
+pill has no fifth slot to give the inbox. A dot rather than a count, and decorative rather than
+announced: the bell is the labelled, actionable control, and this tab does not open the inbox — it
+is a reason to look up, not a second way in. It carries the *unread dot's* own token rather than the
+bell badge's: `ember-deep` is a fixed-identity fill built to sit under `text-cream`, and bare on the
+pill it falls under 3:1 on the dark ground, while `icon-accent` — what
+[InboxRow](../../resources/js/components/inbox/InboxRow.tsx#L195) already dots an unread row with —
+is ground-reactive. A ring keeps it off the lime the active tab tints its own icon with.
 
 `/inbox?item={id}` is the per-row deep link. The controller widens the window far enough to contain
 that row ([InboxController](../../app/Http/Controllers/InboxController.php#L150)) so the target is on

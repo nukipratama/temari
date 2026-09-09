@@ -10,13 +10,17 @@ use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
 it('deletes the account, revokes Strava, logs the user out and redirects to login', function (): void {
+    Http::fake(['https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'revoked-token'])]);
+
     $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create();
+    StravaConnection::factory()->for($user)->create(['access_token' => 'live-access']);
 
     $this->actingAs($user)->delete('/account')
         ->assertRedirect(route('login'))
@@ -26,6 +30,9 @@ it('deletes the account, revokes Strava, logs the user out and redirects to logi
     // revoke + sync-log write is the observable proof it ran (see UserTest).
     expect(User::query()->whereKey($user->id)->exists())->toBeFalse()
         ->and(StravaSyncLog::query()->where('user_id', $user->id)->where('status', 'deleted')->exists())->toBeTrue();
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
+        && $request['access_token'] === 'live-access');
 
     $this->assertGuest();
 });

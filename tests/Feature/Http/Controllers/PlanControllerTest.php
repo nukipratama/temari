@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Gamification\GrantSeasonUnlocksAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
@@ -335,4 +336,25 @@ it('returns an empty activities list for a day with nothing logged', function ()
 
     expect($today['activities'])->toBe([])
         ->and($today['actual_km'])->toBeNull();
+});
+
+it('leaves the eager block alone on the request that only fetches the deferred props', function (): void {
+    $user = User::factory()->create();
+
+    // Headers first: the helper resolves the asset version with a real request
+    // of its own, which the mock below would otherwise count.
+    $headers = inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'seasonSummary,seasonAdherencePct');
+
+    // The whole action runs again on Inertia's partial request. The unlock
+    // grant is a write, and used to fire a second time for props the response
+    // does not even carry.
+    $grant = Mockery::mock(GrantSeasonUnlocksAction::class);
+    $grant->shouldNotReceive('__invoke');
+    app()->instance(GrantSeasonUnlocksAction::class, $grant);
+
+    $response = $this->actingAs($user)->get('/plan', $headers)->assertSuccessful();
+
+    expect($response->json('props'))->toHaveKeys(['seasonSummary', 'seasonAdherencePct'])
+        ->and($response->json('props'))->not->toHaveKey('season')
+        ->and($response->json('props'))->not->toHaveKey('sessionsPerWeek');
 });
