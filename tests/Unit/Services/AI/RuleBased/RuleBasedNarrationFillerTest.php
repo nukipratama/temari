@@ -178,6 +178,76 @@ it('does not cycle the post-run speech in lockstep with consecutive activity ids
     expect(count(array_unique($lines)))->toBeGreaterThanOrEqual(8);
 });
 
+function postRunLinesOverIds(int $count, ?float $fixedDistance = null): array
+{
+    $filler = app(RuleBasedNarrationFiller::class);
+    $lines = [];
+    for ($i = 0; $i < $count; $i++) {
+        $activity = Activity::factory()->create();
+        ActivityDetail::factory()->create([
+            'activity_id' => $activity->id,
+            'distance' => $fixedDistance ?? 3000.0 + ($i * 137.0),
+            'stream_summary' => [],
+            'weather_temp_c' => 24,
+            'weather_rain_detected' => false,
+        ]);
+        $lines[] = $filler->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activity->id));
+    }
+
+    return $lines;
+}
+
+it('renders the same post-run speech every time for one activity', function (): void {
+    $activity = Activity::factory()->create();
+    ActivityDetail::factory()->create(['activity_id' => $activity->id, 'distance' => 7400.0]);
+    $filler = app(RuleBasedNarrationFiller::class);
+
+    $first = $filler->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activity->id));
+    $second = $filler->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activity->id));
+
+    expect($first)->toBe($second);
+});
+
+it('keeps the post-run speech near-fully distinct across a long feed scroll', function (): void {
+    $lines = postRunLinesOverIds(300);
+
+    expect(count(array_unique($lines)))->toBeGreaterThanOrEqual(285);
+});
+
+it('varies the post-run speech even when every run is the same distance', function (): void {
+    // The opener and closer slots are salted separately, so the only variation
+    // left when the distance is constant is the slot pairing itself.
+    $lines = postRunLinesOverIds(300, 8000.0);
+
+    expect(count(array_unique($lines)))->toBeGreaterThanOrEqual(150);
+});
+
+it('keeps every post-run slot pairing inside the narrated register', function (): void {
+    foreach (postRunLinesOverIds(40) as $line) {
+        expect($line)->not->toContain('—')
+            ->and($line)->not->toMatch('/\bAI\b/')
+            ->and($line)->not->toMatch('/\b[A-Z]{3,}\b/')
+            ->and($line)->not->toContain('!');
+    }
+});
+
+it('keeps the widened common flavor pool inside the narrated register', function (): void {
+    $filler = app(RuleBasedNarrationFiller::class);
+    $flavors = [];
+    for ($i = 0; $i < 40; $i++) {
+        $card = seededCard(Rarity::Common, "Move {$i}", [], 4000.0 + ($i * 211.0));
+        $flavors[] = $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
+    }
+
+    foreach ($flavors as $flavor) {
+        expect($flavor)->not->toContain('—')
+            ->and($flavor)->not->toMatch('/\bAI\b/')
+            ->and($flavor)->not->toMatch('/\b[A-Z]{3,}\b/');
+    }
+
+    expect(count(array_unique($flavors)))->toBeGreaterThanOrEqual(30);
+});
+
 it('falls back to a flat post-run speech when the activity detail is missing', function (): void {
     $speech = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PostRunSpeech, 999_999));
 

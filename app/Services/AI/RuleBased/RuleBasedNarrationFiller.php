@@ -114,28 +114,61 @@ final readonly class RuleBasedNarrationFiller
         }
         $km = DistanceFormatter::kmString($detail->distance) ?? '?';
 
-        // Hashed (not the bare, sequential activityId), or a run of consecutive
-        // activities — exactly what the History feed shows side by side — walks
-        // the pool in lockstep and repeats the identical line every N-th run.
-        $baseSeed = (int) crc32('post_run_speech_'.$activityId);
+        // Two slots under separate salts: the History feed shows these side by
+        // side, and one pool of whole sentences repeats verbatim within a screen.
+        $opener = strtr($this->select(self::POST_RUN_OPENERS, (int) crc32('post_run_speech_open_'.$activityId)), ['{km}' => $km]);
+        $closer = $this->select(self::POST_RUN_CLOSERS, (int) crc32('post_run_speech_close_'.$activityId));
 
-        $base = $this->select([
-            "{$km} km, logged. Pace held all the way to the end.",
-            "{$km} km. The rhythm never wobbled once.",
-            "Finished {$km} km. Breathing stayed under control the whole way through.",
-            "{$km} km in the log. Nothing dramatic, nothing sloppy.",
-            "{$km} km today. Not fast. Still on the board.",
-            "Another {$km} km on the pile.",
-            "{$km} km, and the effort read about right. Not forced, not coasting either.",
-            "{$km} km down. The week's total just moved.",
-            "{$km} km. Showed up, ran it, went home.",
-            "{$km} km, clean. Nothing in here to fix.",
-            "Today's line in the log: {$km} km.",
-            "{$km} km. How did the legs feel by the end of that one?",
-        ], $baseSeed);
-
-        return $base . $this->postRunCoda($detail, $activityId);
+        return $opener.' '.$closer.$this->postRunCoda($detail, $activityId);
     }
+
+    /**
+     * One sentence each, carrying `{km}`, so any opener reads ahead of any closer.
+     *
+     * @var non-empty-list<string>
+     */
+    private const array POST_RUN_OPENERS = [
+        '{km} km, logged.',
+        '{km} km on the board.',
+        'another {km} km on the pile.',
+        '{km} km today.',
+        "today's line in the log: {km} km.",
+        '{km} km down.',
+        '{km} km, done and filed.',
+        "that's {km} km in the book.",
+        '{km} km, start to finish.',
+        '{km} km, out the door and back.',
+        "{km} km, and the week's total just moved.",
+        'you put {km} km away.',
+        '{km} km, no more and no less.',
+        'the log reads {km} km.',
+        '{km} km on the watch.',
+    ];
+
+    /**
+     * None of these claim anything about how the run went, so no pairing can
+     * contradict its opener or the data-driven coda after it.
+     *
+     * @var non-empty-list<string>
+     */
+    private const array POST_RUN_CLOSERS = [
+        'how did the legs feel by the end of that one?',
+        "the week's shape gets built out of these.",
+        'not every run needs a story attached.',
+        'consistency is mostly this, repeated.',
+        "whatever it felt like, it's counted now.",
+        "the ones you don't remember still add up.",
+        'nothing to fix here, so nothing from me.',
+        'no notes.',
+        "that's the kind that stacks quietly.",
+        "the log doesn't care how it felt, but I do a bit.",
+        'a run like this is the base, not the highlight.',
+        'nothing here needs untangling.',
+        'on to the next one.',
+        'ordinary is doing most of the work here.',
+        'file it and move on.',
+        'you know how that one went better than I do.',
+    ];
 
     /**
      * One short data-driven coda for the post-run line, picked from whichever
@@ -257,6 +290,16 @@ final readonly class RuleBasedNarrationFiller
             'No drama in "{move}". The rhythm just held.',
             '"{move}", filed. Ordinary weeks are built out of runs like this.',
             '{km} km, clean and unremarkable. Both of those are true.',
+            '"{move}" did exactly what it said it would.',
+            'A {km} km run with nothing in it that needs explaining.',
+            '"{move}" is the shape most of your weeks are made of.',
+            "{km} km that will blend into the rest of the month. That's fine.",
+            '"{move}" came and went without much to say about it.',
+            'A quiet {km} km. The pile it lands on is the point.',
+            '"{move}" is a base run, and the log needs plenty of those.',
+            '{km} km of nothing unusual. Most of the log looks like this.',
+            '"{move}" holds the line and doesn\'t try for more.',
+            'A {km} km run you\'ll have forgotten by next week. It still counts.',
         ],
         'uncommon' => [
             '"{move}" had something in it the routine ones don\'t.',
