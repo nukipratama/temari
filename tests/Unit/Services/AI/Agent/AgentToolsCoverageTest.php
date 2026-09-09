@@ -761,6 +761,9 @@ it('names the distance the runner has improved most, from one series build', fun
 
     expect($reading['progression_signal'])->not->toBeNull()
         ->and($reading['progression_signal']['delta_sec'])->toBe(300)
+        // The formatted sibling is what the narrator quotes; without it the model
+        // wrote the raw seconds and contradicted the progression card beside it.
+        ->and($reading['progression_signal']['delta_formatted'])->toBe('5:00')
         // One read for the records, one series build for all of them -- not one
         // full ActivityDetail scan per category.
         ->and($queries)->toBeLessThanOrEqual(3);

@@ -55,6 +55,7 @@ use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use OpenAI\Resources\Responses;
 use OpenAI\Testing\ClientFake;
 
 uses(RefreshDatabase::class);
@@ -105,6 +106,15 @@ function cardFlavorNarrator(StructuredChatCaller $caller): CardFlavorNarrator
     return new CardFlavorNarrator($caller, app(RelativeEffort::class), app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
 }
 
+function profileVoiceJson(string $paragraph): string
+{
+    return json_encode([
+        'evidence_primary' => '6247.5 km',
+        'evidence_secondary' => '',
+        'profile_voice' => $paragraph,
+    ], JSON_THROW_ON_ERROR);
+}
+
 function runInsightNarrator(StructuredChatCaller $caller): RunInsightNarrator
 {
     return new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class), new RunAnchorResolver(), app(TrainingBaseline::class));
@@ -130,6 +140,21 @@ it('PostRunSpeechNarrator returns speech on valid JSON', function (): void {
     $caller = fakeCaller(json_encode(['speech' => 'Nice run today!'], JSON_THROW_ON_ERROR));
     $narrator = postRunNarrator($caller);
     expect($narrator->generate($a, $d, 'blazing'))->toBe('Nice run today!');
+});
+
+/**
+ * The home briefing leads on get_week_state's week-over-week pair, and a runner
+ * who reads home then opens today's run saw "9 runs and 51.1 km against 36 runs
+ * and 297.6 km" twice in one session. Both narrators keep the tool; only this one
+ * is told the pair is the last thing it should reach for.
+ */
+it('PostRunSpeechNarrator ranks the run-scoped reads above the shared week pair', function (): void {
+    $prompt = narratorPrompt(PostRunSpeechNarrator::class);
+
+    expect($prompt)
+        ->toContain('RUN-SCOPED first')
+        ->toContain('get_week_state IS THE LAST RESORT, NEVER THE OPENER')
+        ->toContain("the same pair the home page's daily briefing already leads with");
 });
 
 it('PostRunSpeechNarrator throws on non-JSON', function (): void {
@@ -1101,7 +1126,7 @@ it('ProfileVoiceNarrator builds a mood-mix percent breakdown from story lines', 
         ]);
     }
 
-    $caller = fakeCaller(json_encode(['profile_voice' => 'Runmu lebih sering blazing.'], JSON_THROW_ON_ERROR));
+    $caller = fakeCaller(profileVoiceJson('Runmu lebih sering blazing.'));
     $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
     $mix = $narrator->personaMix($user->fresh());
@@ -1114,7 +1139,7 @@ it('ProfileVoiceNarrator builds a mood-mix percent breakdown from story lines', 
 
 it('ProfileVoiceNarrator returns an empty mix for a user with no story lines', function (): void {
     $user = User::factory()->create();
-    $caller = fakeCaller(json_encode(['profile_voice' => 'x'], JSON_THROW_ON_ERROR));
+    $caller = fakeCaller(profileVoiceJson('x'));
     $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
     expect($narrator->personaMix($user))->toBe([]);
@@ -1122,7 +1147,7 @@ it('ProfileVoiceNarrator returns an empty mix for a user with no story lines', f
 
 it('ProfileVoiceNarrator returns profile voice on valid JSON', function (): void {
     $user = User::factory()->create();
-    $caller = fakeCaller(json_encode(['profile_voice' => 'You have run 50 km. Strong.'], JSON_THROW_ON_ERROR));
+    $caller = fakeCaller(profileVoiceJson('You have run 50 km. Strong.'));
     $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
     expect($narrator->generate($user))->toBe('You have run 50 km. Strong.');
 });
@@ -1135,7 +1160,7 @@ it('ProfileVoiceNarrator builds context from user stats', function (): void {
         'start_date_local' => Carbon::parse('2026-05-12T07:00'),
     ]);
 
-    $caller = fakeCaller(json_encode(['profile_voice' => 'x'], JSON_THROW_ON_ERROR));
+    $caller = fakeCaller(profileVoiceJson('x'));
     $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
     $context = new LifetimeStatsTool($user->fresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
@@ -1196,6 +1221,40 @@ it('ProfileVoiceNarrator throws on non-JSON', function (): void {
     $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
     $narrator->generate($user);
 })->throws(UnavailableException::class, 'non-JSON');
+
+it('ProfileVoiceNarrator throws when the model skips its evidence slots', function (): void {
+    $user = User::factory()->create();
+    $caller = fakeCaller(json_encode(['profile_voice' => 'a paragraph with no committed evidence'], JSON_THROW_ON_ERROR));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+    $narrator->generate($user);
+})->throws(UnavailableException::class, 'required fields');
+
+/**
+ * The #801 move, applied to the one narrator still off-model: the paragraph's
+ * numbers are bounded by the schema, not by a prose rule. Two slots exist, both
+ * are required, and the paragraph may quote nothing else -- so a fourth figure
+ * has no field to arrive in. Live output stacked four.
+ */
+it('ProfileVoiceNarrator bounds its quotable numbers to two schema slots', function (): void {
+    $user = User::factory()->create();
+    [$caller, $client] = capturingCaller(profileVoiceJson('x'));
+
+    new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class))->generate($user);
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $schema = $params['text']['format']['schema'];
+
+        return $method === 'create'
+            // Order is the commitment: the slots are generated before the prose.
+            && $schema['required'] === ['evidence_primary', 'evidence_secondary', 'profile_voice']
+            && array_keys($schema['properties']) === ['evidence_primary', 'evidence_secondary', 'profile_voice'];
+    });
+
+    expect(narratorPrompt(ProfileVoiceNarrator::class))
+        ->toContain('COMMIT TO IT FIRST')
+        ->toContain('delta_formatted')
+        ->not->toContain('a falling delta_sec');
+});
 
 it('ProfileVoiceNarrator feeds the four training paces derived from the runner VDOT', function (): void {
     $user = User::factory()->create();

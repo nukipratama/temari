@@ -63,6 +63,8 @@ Every narrator now reads rather than receives. What remains in any context is on
 
 **The post-run speech is the one narrator deliberately kept short of data.** It used to receive the three insight blocks as prose to synthesize. All four render side by side in the [[run-detail]] lens grid, so being handed the other three made it a fourth telling of the same run — and saying "don't repeat" did not hold, in its own prompt or by removing its splits and zone tools. It now owns a lens the others structurally cannot: the day around the run, and where the run sits against the athlete's own history. Mechanics belong to the other three.
 
+The neighbour it collides with is not on that page at all. `get_week_state` serves both this narrator and the daily briefing, and the briefing *opens* on the week-over-week pair, so a runner who read home and then opened today's run met the same two figures twice in one session. Both keep the tool — the week genuinely does explain some runs — but the post-run prompt now ranks the run-scoped reads first and demotes the pair to a last resort that has to say what the week *changed* about this run ([PostRunSpeechNarrator](app/Services/AI/Narrators/PostRunSpeechNarrator.php#L63)).
+
 ### BriefingContext (per-user-day signals)
 
 [BriefingContext](app/Services/Run/Story/BriefingContext.php) is the dashboard briefing's personalisation layer, built per user as-of a moment ([`forUser`](app/Services/Run/Story/BriefingContext.php#L59)) and serialised straight into the LLM user message ([`toArray`](app/Services/Run/Story/BriefingContext.php#L231), with short keys to keep token cost down). It collects this-week / last-week run-count + km deltas, recovery hours, and form status, plus two computed heuristics:
