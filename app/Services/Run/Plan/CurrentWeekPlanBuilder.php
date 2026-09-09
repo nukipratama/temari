@@ -131,6 +131,7 @@ final readonly class CurrentWeekPlanBuilder
             : null;
 
         $activityByDate = $this->sessionMatcher->activityByDate($user, $currentWeekStart, $today);
+        $clampVoice = $clamp === null ? null : $this->planNarration->clampVoiceFor($user, $today);
 
         $days = $currentWeekSessions->map(fn (PlannedSession $s): array => PlanRenderer::dayPayload(
             $s,
@@ -144,7 +145,7 @@ final readonly class CurrentWeekPlanBuilder
             $paces,
             $resolvedStatuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
             $activityByDate[$s->date->toDateString()] ?? null,
-            $clamp === null ? null : $this->planNarration->clampVoiceFor($user, $today),
+            $clampVoice,
             $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
         ))->values()->all();
 
