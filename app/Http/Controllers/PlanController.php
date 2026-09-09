@@ -8,7 +8,6 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\ActivityDetail;
-use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Models\RaceGoal;
@@ -44,6 +43,7 @@ use Inertia\Response;
 use LogicException;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
+use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 
 /**
  * Serves the Plan tab: the current week (plus lookahead) of a user's
@@ -67,6 +67,7 @@ class PlanController extends Controller
         SessionMatcher $sessionMatcher,
         PlanNarrationRequester $narrationRequester,
         ResolveActiveRaceAction $activeRace,
+        ResolveWeekAdaptationAction $weekAdaptation,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -104,7 +105,7 @@ class PlanController extends Controller
             'season' => fn (): ?array => $seasonStreakBuilder->seasonPayload($user, $loadSeason(), $today),
             'seasonSummary' => Inertia::defer(fn (): array => $seasonSummaryBuilder->build($user, $loadSeason(), $today)),
             'seasonAdherencePct' => Inertia::defer(fn (): ?int => $seasonSummaryBuilder->adherencePct($user, $loadSeason())),
-            'adaptation' => Inertia::defer(fn (): ?array => $this->adaptationPayload($user, $currentWeekStart)),
+            'adaptation' => Inertia::defer(fn (): ?array => $this->adaptationPayload($weekAdaptation, $user, $currentWeekStart)),
             'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
             'disclaimer' => TrainingDisclaimer::TEXT,
             'planNarration' => Inertia::defer(function () use ($narrationRequester, $user, $today): array {
@@ -424,12 +425,9 @@ class PlanController extends Controller
     /**
      * @return array{reason: string, headline: string, detail: string, deload: bool}|null
      */
-    private function adaptationPayload(User $user, Carbon $currentWeekStart): ?array
+    private function adaptationPayload(ResolveWeekAdaptationAction $weekAdaptation, User $user, Carbon $currentWeekStart): ?array
     {
-        $adaptation = PlanAdaptation::query()
-            ->where('user_id', $user->id)
-            ->where('week_start', $currentWeekStart->toDateString())
-            ->first();
+        $adaptation = $weekAdaptation($user->id, $currentWeekStart->toDateString());
 
         return $adaptation === null ? null : [
             'reason' => $adaptation->reason->value,

@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 
 /**
  * Deletes a Strava-removed activity and heals the artifacts that don't cascade:
@@ -95,6 +96,7 @@ class CleanupDeletedActivityJob implements ShouldQueue
                         ->where('user_id', $user->id)
                         ->where('week_ending', '>=', $anchorWeekEnding->toDateString())
                         ->delete();
+                    app(ResolveTrailingWeeksAction::class)->forget($user->id);
                 }
             }
 

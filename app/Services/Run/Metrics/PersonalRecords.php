@@ -11,6 +11,7 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
 
 class PersonalRecords
 {
@@ -24,6 +25,7 @@ class PersonalRecords
     public function rebuildForUser(User $user): void
     {
         PersonalRecord::query()->where('user_id', $user->id)->delete();
+        app(ResolveDistanceRecordsAction::class)->forget($user->id);
 
         $activities = Activity::query()
             ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')

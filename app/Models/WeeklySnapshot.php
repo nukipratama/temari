@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\AI\Analysis;
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use Database\Factories\WeeklySnapshotFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -50,6 +51,16 @@ class WeeklySnapshot extends Model
 {
     /** @use HasFactory<WeeklySnapshotFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        $bust = function (WeeklySnapshot $row): void {
+            app(ResolveTrailingWeeksAction::class)->forget($row->user_id);
+        };
+
+        static::saved($bust);
+        static::deleted($bust);
+    }
 
     /**
      * @return BelongsTo<User, $this>

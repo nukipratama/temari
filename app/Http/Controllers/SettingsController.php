@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\RunnerProfile;
-use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Services\Telegram\TelegramLinkToken;
 use App\Support\Cooldown;
@@ -13,6 +12,7 @@ use App\Support\DataUseStatement;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 
 class SettingsController extends Controller
 {
@@ -44,7 +44,7 @@ class SettingsController extends Controller
      */
     private function resolveTrainingPreferences(User $user): array
     {
-        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
+        $preference = app(ResolveTrainingPreferenceAction::class)($user->id);
 
         return [
             'experience_level' => $preference?->experience_level?->value,

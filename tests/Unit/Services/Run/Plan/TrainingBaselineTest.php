@@ -15,6 +15,9 @@ use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use App\Actions\Run\Plan\ResolveSeasonAction;
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 
 uses(RefreshDatabase::class);
 
@@ -35,7 +38,15 @@ function baselineWithEasyPace(?int $easySecPerKm): TrainingBaseline
             : ['easy' => $easySecPerKm, 'marathon' => 320, 'threshold' => 292, 'interval' => 268],
     );
 
-    return new TrainingBaseline($vdot, $paces, new PhaseSchedule(), new ResolveActiveRaceAction());
+    return new TrainingBaseline(
+        $vdot,
+        $paces,
+        new PhaseSchedule(),
+        new ResolveActiveRaceAction(),
+        new ResolveTrainingPreferenceAction(),
+        new ResolveTrailingWeeksAction(),
+        new ResolveSeasonAction(),
+    );
 }
 
 function weeksOf(User $user, array $volumesKm, int $runs = 4): void

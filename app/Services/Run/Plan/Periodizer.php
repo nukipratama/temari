@@ -10,11 +10,11 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
-use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Services\Run\Metrics\RiegelProjector;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 
 /**
  * Orchestrates the deterministic periodizer: reads the athlete's active race
@@ -59,6 +59,7 @@ final readonly class Periodizer
         private PlanAdapter $planAdapter,
         private RiegelProjector $riegelProjector,
         private ResolveActiveRaceAction $activeRace,
+        private ResolveTrainingPreferenceAction $trainingPreference,
     ) {
     }
 
@@ -74,7 +75,7 @@ final readonly class Periodizer
         $season = $this->seasonService->ensureCurrent($user, $today);
 
         $race = ($this->activeRace)($user->id);
-        $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
+        $preference = ($this->trainingPreference)($user->id);
         $baselineData = $this->baseline->forUser($user, $today);
         $sessionsPerWeek = $baselineData['sessions_per_week'];
 
