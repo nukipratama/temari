@@ -64,6 +64,14 @@ Two Redis instances, each addressed by DB number ([config/database.php](config/d
 
 Session cookie name and the Redis/cache key prefixes are pinned to **fixed literals** (`SESSION_COOKIE`, `REDIS_PREFIX`, `CACHE_PREFIX`) instead of being derived from `APP_NAME`, so a cosmetic name/tagline edit can't rename the cookie or shift every key prefix and log everyone out. See [[fixed-session-cookie]].
 
+### Horizon `ai` supervisor sizing
+
+`supervisor-ai`'s `maxProcesses` in production ([config/horizon.php](config/horizon.php)) comes from `horizon.ai_processes` (env `HORIZON_AI_PROCESSES`, default `2`) rather than a hardcoded number — it needs to grow with the athlete count, but the homelab's 4-core host is shared with prod, so nothing here auto-scales; a human sets the env after reading a recommendation.
+
+**Rule of thumb**: `ceil(athletes / 5)`, bounded to `[2, 6]`. `php artisan horizon:recommend-ai-processes` prints the current athlete count and this recommendation (also folded into the hourly `ai:self-heal` report), so the owner can compare it to the configured `HORIZON_AI_PROCESSES` and bump the env if they've drifted apart. The floor of 2 matches today's fixed value; the ceiling of 6 is a guess, not a measurement — revisit it once real multi-athlete Monday-burst data exists.
+
+Why this matters: `plan:regenerate` can dispatch up to 9 rows per athlete, and the weekly recap + weekly-profile + plan regen all cluster at `00:01`-`00:07` WIB on Mondays (see [[bounded-self-heal-and-dead-letter]] for the retry/deadline model and #839 for the 240s per-run wall-clock deadline). At 2 workers, a 10-athlete Monday burst queues a lot of rows behind 2 processes; nothing is lost (idempotent generation + self-heal covers stragglers), but narration for later athletes lands later. Raising `maxProcesses` shortens that queue at the cost of `horizon`'s own CPU/memory share on the 1 vCPU / 1 GB container (see the `deploy.resources` floors above) — a tradeoff for the owner to make deliberately, never something the app decides for itself.
+
 ## Where the image is built
 
 The `build` job ([.github/workflows/ci.yml:309](.github/workflows/ci.yml)) runs on `ubuntu-latest`, gated by the same `push`-to-`main` condition as `deploy` but with no `needs`, so it builds in parallel with the test jobs. It pushes `ghcr.io/<owner>/<repo>/app:<git-sha>` using the job's own `GITHUB_TOKEN` widened to `packages: write` — **no new repository secret**. Layer cache is a registry cache (`cache-from`/`cache-to` on a `:buildcache` tag in the same GHCR package), not `type=gha`: the Actions cache is one 10 GB per-repo LRU that the hot composer and `node_modules` entries would evict a ~1 GB image cache out of between deploys.
