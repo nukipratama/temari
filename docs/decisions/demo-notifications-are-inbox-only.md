@@ -7,7 +7,6 @@ reviewed: 2026-08-31
 code_refs:
   - app/Services/Notifications/ChannelRouter.php
   - app/Notifications/AnalysisReadyNotification.php
-  - app/Notifications/UnlockGrantedNotification.php
   - app/Notifications/StreakReminderNotification.php
   - app/Notifications/TestNotification.php
   - app/Http/Controllers/InboxController.php
@@ -17,6 +16,13 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-13)
 
+> **2026-09-09 — the demo inbox no longer fills from unlocks, the decision has not changed.**
+> The whole unlock system was removed (see [[gamification]]), so `UnlockGrantedNotification` and
+> the sync-queue wrapper described below are gone with it. `demo:seed` now writes only the
+> narration-derived rows — a weekly recap, a monthly recap and a post-run — directly to the table,
+> so the demo inbox is still populated and still sends nothing outbound. The routing rule this
+> note records is unaffected.
+>
 > **2026-09-04 — the last of that tree is gone, the decision has not changed.** `plan/todo.md`
 > has now been retired to git history too, so the whole `plan/` tree cited below lives only
 > there. The reasoning is unaffected.

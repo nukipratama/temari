@@ -22,7 +22,7 @@ Every row is something Temari already sent; nothing is written here, and nothing
 
 ## The kinds
 
-Eight, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
+Seven, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
 Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never the kind's.
 
 | kind | what fires it | channels | opens |
@@ -33,10 +33,9 @@ Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never
 | `streak_reminder` | Saturday 18:00, one per at-risk week | inbox · Telegram · push | the dashboard |
 | `plan_clamp` | a rest day being stepped down | inbox only | the plan |
 | `strava_disconnected` | the Strava grant being revoked | inbox · Telegram · push | the profile, where the reconnect button is |
-| `unlock` | an eligible run or backfill granting one | inbox only | the accessory shelf |
 | `test` | the "send test notification" button | inbox · Telegram · push | the dashboard |
 
-**`plan_clamp` is inbox-only, like an unlock.** A step-down used to exist only while the plan page
+**`plan_clamp` is the one inbox-only kind.** A step-down used to exist only while the plan page
 still rendered it: [RestClampRecorder](../../app/Services/Run/Plan/RestClampRecorder.php#L76) already
 wrote the outcome so compliance could grade the day the athlete was actually set, and that write is
 now also where they are told. Its guards make it the one place that fires once per athlete per day,
@@ -107,18 +106,14 @@ The overlay is pointer-only (`aria-hidden`, not focusable): the pill stays the o
 control rather than the row's target being announced twice. Both mark the row read.
 
 **Every kind carries that link.** It is whatever the producing notification put in
-`payload['url']` — the controller computes nothing — and two kinds used to put nothing there, so an
-unlock row (the kind that fills the public demo's inbox) and a test row rendered with no way in at
-all. An unlock now points at `profile`, the accessory shelf it landed on, and a test send at the
-dashboard. Rows recorded before that stay non-navigable; nothing backfills them, since the payload
-is the record of what was sent.
+`payload['url']` — the controller computes nothing — and a test send used to put nothing there, so a
+test row rendered with no way in at all. It now points at the dashboard. Rows recorded before that
+stay non-navigable; nothing backfills them, since the payload is the record of what was sent.
 
-An **unlock** row's rarity badge is resolved read-side from the unlock catalog by `unlock_key`
-([InboxController](../../app/Http/Controllers/InboxController.php#L170)) rather than read out of the
-stored payload, which never carried one — so rows recorded before the badge existed are rated too,
-and a key outside the catalog (the per-season `season.{id}.*` namespace) simply stays unrated and
-falls back to the plain kind label. A **post-run** row carries its run's distance and moving time,
-looked up over the whole window in one query
+A row's rarity badge, when it carries one, is read straight out of the stored payload
+([InboxController](../../app/Http/Controllers/InboxController.php#L104)); the read-side lookup that
+rated an unlock row against the unlock catalog went with the catalog. A **post-run** row carries its
+run's distance and moving time, looked up over the whole window in one query
 ([InboxController](../../app/Http/Controllers/InboxController.php#L122)), which is what the row's
 distance/pace stat chips render.
 
@@ -156,7 +151,7 @@ announced: the bell is the labelled, actionable control, and this tab does not o
 is a reason to look up, not a second way in. It carries the *unread dot's* own token rather than the
 bell badge's: `ember-deep` is a fixed-identity fill built to sit under `text-cream`, and bare on the
 pill it falls under 3:1 on the dark ground, while `icon-accent` — what
-[InboxRow](../../resources/js/components/inbox/InboxRow.tsx#L195) already dots an unread row with —
+[InboxRow](../../resources/js/components/inbox/InboxRow.tsx#L182) already dots an unread row with —
 is ground-reactive. A ring keeps it off the lime the active tab tints its own icon with.
 
 `/inbox?item={id}` is the per-row deep link. The controller widens the window far enough to contain
@@ -169,10 +164,11 @@ An empty inbox is a normal state, not a failure: a new account has nothing yet, 
 take a while to produce the first notifiable analysis. The empty state says the inbox fills itself
 and asks the user for nothing.
 
-The public demo is **not** one of those cases. The demo identity is routed to the inbox and to no
-outbound channel ([[demo-notifications-are-inbox-only]]), so its inbox carries the unlocks the seed
-grants. Post-run and recap rows are still absent there, because the seed's no-LLM wrapper suppresses
-the notification fan-out along with the job dispatch.
+The public demo is **not** one of those cases. Its seed's no-LLM wrapper suppresses the notification
+fan-out along with the job dispatch, so nothing there is *sent* at all — instead `demo:seed` writes
+the demo's inbox rows straight to the table, one weekly recap, one monthly and one post-run, so the
+page shows all three of its buckets and three distinct kinds. The routing rule still holds for
+anything the demo did send ([[demo-notifications-are-inbox-only]]).
 
 ## See also
 
