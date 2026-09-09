@@ -42,6 +42,24 @@ vitest_changed() {
   return "$status"
 }
 
+# rector.php's own paths are app/ and tests/, so a changed file outside them is
+# not ours to check; deleted files are excluded by --diff-filter=ACMR.
+rector_changed() {
+  base=$(sh scripts/vitest-changed-base.sh) || return 1
+  files=$(
+    {
+      git diff --name-only --diff-filter=ACMR "$base...HEAD"
+      git diff --name-only --diff-filter=ACMR
+      git ls-files --others --exclude-standard
+    } | grep -E '^(app|tests)/.+\.php$' | sort -u
+  )
+  if [ -z "$files" ]; then
+    echo "    no changed PHP files under app/ or tests/"
+    return 0
+  fi
+  echo "$files" | xargs vendor/bin/rector process --dry-run --no-progress-bar
+}
+
 step "config:clear" php artisan config:clear --ansi
 step "typescript:enums --check" php artisan typescript:enums --check
 step "doc citations" php scripts/check-doc-citations.php
@@ -50,6 +68,7 @@ step "palette" npm run check:palette
 step "pest structure" vendor/bin/pest --no-tia --group=structure
 step "vitest structure" npx vitest run resources/js/test/structure.test.ts
 step "typecheck" npm run typecheck
+step "rector changed" rector_changed
 step "vitest changed" vitest_changed
 step "pest" vendor/bin/pest --parallel --processes="${GATE_PEST_PROCESSES:-3}"
 
