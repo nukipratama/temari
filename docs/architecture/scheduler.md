@@ -7,14 +7,16 @@ reviewed: 2026-09-10
 code_refs:
   - routes/console.php
   - compose.prod.yaml
+  - config/strava.php
   - config/cache.php
 ---
 
 # Scheduler hygiene
 
 [routes/console.php](../../routes/console.php) registers every scheduled command. This note covers
-two things: why every event carries both `withoutOverlapping()` and `onOneServer()`, and why the
-Monday window is ordered the way it is.
+three things: why every event carries both `withoutOverlapping()` and `onOneServer()`, why the
+Monday window is ordered the way it is, and the numeric basis for four cadences that were
+previously justified only qualitatively.
 
 ## Overlap safety and single-host
 
@@ -90,7 +92,48 @@ hard dependencies (`streak:settle` → `ai:weekly-recap`, and `plan:close-finish
 `plan:score-compliance` → `plan:regenerate`) via `Event::then()` would enforce the ordering instead
 of assuming it — revisit then, not preemptively.
 
+## Cadence derivations (previously qualitative-only)
+
+Four cadences carried a comment explaining the *shape* of the choice but no cited number. Each is
+derived here from a number that already exists in the codebase.
+
+**`strava:sync-zones` — monthly.** HR zones are set from a Strava athlete's configured zones, which
+change only when the athlete deliberately edits them in Strava — there is no measured "zones change
+every N days" figure to derive from. The monthly sweep exists purely as a low-cost catch-all behind
+the per-connect `SyncZonesJob` dispatch (the real trigger, on every OAuth connect/reconnect); a
+tighter cadence would add scheduler load for a value that essentially never changes between
+connects. Kept qualitative on purpose — there is no numeric input to derive it from.
+
+**`ai:trend-read 90d` — every 3 days (`cron('0 6 */3 * *')`).** The 90-day range's own view window
+is 90 days; three narrations across that window (day 1, ~day 31-33, ~day 61-63, modulo the
+month-boundary reset the comment already documents) sample it at roughly a third of its own span,
+which is frequent enough that the window's oldest and newest thirds are never more than ~30 days
+stale relative to each other while costing a third of the daily `30d` cadence. The 3-day figure is
+one-third of `TREND_READ_RANGES`'s own **medium** tier relative to its `30d`/`12mo` neighbours
+(daily and weekly respectively) — see the `ai:trend-read` registrations in
+[routes/console.php](../../routes/console.php).
+
+**`queue:prune-failed --hours=168` — 7 days.** `Analysis::MAX_SELF_HEAL_ATTEMPTS` bounds a block to
+a fixed number of hourly `ai:self-heal` attempts before it dead-letters (see
+[docs/decisions/bounded-self-heal-and-dead-letter.md](../decisions/bounded-self-heal-and-dead-letter.md)),
+which resolves in well under a day. `failed_jobs` rows are triage artifacts for that window, not the
+source of truth (the `Analysis` row is) — 168h (7 days) is a full week of on-call visibility past
+every self-heal cycle's resolution, long enough to catch a fault found on a Monday by the following
+Monday, short enough that the table does not accumulate a month of superseded dupes.
+
+**`strava:ingest` batch size 20** ([IngestCommand.php#L15](../../app/Console/Commands/Strava/IngestCommand.php#L15)).
+This is the live-priority drain of pending activity stubs, at 2 Strava reads per activity (detail +
+streams, per [ActivityPipeline](../../app/Services/Run/Ingest/ActivityPipeline.php)) — a batch of 20
+spends at most 40 reads per tick. Running every 5 minutes, three ticks fall inside one 15-minute
+window, so a fully-loaded run spends up to 120 reads against that window's 200-read cap
+([StravaClient::RATE_LIMIT_15MIN_MAX](../../app/Services/Strava/StravaClient.php)) — 60%, leaving
+the remaining 40% (80 reads) for `strava:hydrate-backlog`'s background drain, which shares the same
+15-minute bucket on its own every-15-minutes cadence. Sized so the live-priority drain cannot alone
+exhaust the burst guard the 15-minute bucket exists to enforce.
+
 ## See also
 
 - [[deployment]] — the single `scheduler` service and its healthcheck
+- [[background-hydration-drain]], [[backfill-borrows-the-live-reserve]] — the Strava read buckets `strava:ingest`'s batch size is sized against
+- [[bounded-self-heal-and-dead-letter]] — the self-heal attempt bound `queue:prune-failed`'s retention is sized against
 - [[llm-triggers]] — the full LLM-trigger surface, including every AI-narration cadence in this file

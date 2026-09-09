@@ -91,7 +91,8 @@ $alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:26')->with
 
 // 1st of the month 00:10: HR zones change rarely, so a monthly sweep is enough
 // (also piggybacks the per-connect SyncZonesJob dispatch). Skips manual-source
-// profiles and connections lacking `profile:read_all`.
+// profiles and connections lacking `profile:read_all`. No numeric derivation
+// behind "rarely" — see docs/architecture/scheduler.md.
 Schedule::command('strava:sync-zones')->monthlyOn(1, '00:10')->withoutOverlapping(55)->onOneServer();
 
 // 1st of the month 05:45: same pattern for the monthly recap.
@@ -105,6 +106,7 @@ $alertOnFailure(Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45')->wi
 $alertOnFailure(Schedule::command('ai:trend-read 30d')->dailyAt('06:00')->withoutOverlapping(20)->onOneServer(), 'ai:trend-read 30d');
 // `*/3` on the day-of-month field, not an every-3-days interval: it resets
 // on the 1st, so the gap between runs is 1-2 days at each month boundary.
+// 3-day derivation: docs/architecture/scheduler.md.
 $alertOnFailure(Schedule::command('ai:trend-read 90d')->cron('0 6 */3 * *')->withoutOverlapping(20)->onOneServer(), 'ai:trend-read 90d');
 $alertOnFailure(Schedule::command('ai:trend-read 12mo')->weeklyOn(1, '06:00')->withoutOverlapping(20)->onOneServer(), 'ai:trend-read 12mo');
 
@@ -128,6 +130,7 @@ $alertOnFailure(Schedule::command('ai:catch-up')->hourly()->withoutOverlapping(5
 // 02:20 daily: prune failed_jobs older than 7 days. Most entries are superseded
 // dupes of the same Analysis rows (which are the real source of truth), so the
 // table just bloats and reads as an alarming unexplained count during triage.
+// 7-day derivation vs. MAX_SELF_HEAL_ATTEMPTS: docs/architecture/scheduler.md.
 Schedule::command('queue:prune-failed --hours=168')->dailyAt('02:20')->withoutOverlapping(15)->onOneServer();
 
 // 02:25 daily: prune the analytics-connection metering tables (ai_token_usages,
@@ -147,6 +150,7 @@ Schedule::command('strava:sync')->hourly()->withoutOverlapping(55)->onOneServer(
 // Every 5 minutes: paced drain of pending activity stubs (the Strava rate-limit
 // pacer). Its input is strava:sync stubs + detail-fetch retries (webhook activities
 // self-dispatch their own ingest); batching keeps a backlog from 429-storming Strava.
+// Batch=20 vs. the 15-minute read bucket: docs/architecture/scheduler.md.
 Schedule::command('strava:ingest')->everyFiveMinutes()->withoutOverlapping(10)->onOneServer();
 
 // Every 15 minutes: drain the summary-only backlog newest-first, so an imported
