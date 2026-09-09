@@ -46,5 +46,6 @@ _Data & runtime_
 - [[analytics-db]] — the second DB connection, why, test rebinding
 - [[frontend-architecture]] — Inertia controller → page → component, shared props, middleware
 - [[deployment]] — FrankenPHP+Octane, Cloudflare tunnel, CI/CD, rollback, Redis partitioning
+- [[toolchain-gate-and-ci]] — pre-commit vs. `composer gate` vs. CI: what each layer runs and why they differ
 
 See also: [[design-tokens]], [[voice-and-tone]].

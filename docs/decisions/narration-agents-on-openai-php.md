@@ -51,7 +51,7 @@ Three properties are deliberate:
 - Metering is now the whole run's, not the final turn's — one `ai_token_usages` row per block, summed across steps. The 13 coarse `kind` literals `/ai-usage` groups on are unchanged.
 - Azure calls remain invisible to Pulse, since `openai-php` uses Guzzle directly rather than Laravel's HTTP client. The `#/openai/deployments/#` threshold in `config/pulse.php` could never have matched anyway (the deployment travels in the request body, not the URL), and is removed as misleading config rather than fixed.
 - The same reason keeps `Http::preventStrayRequests()` unable to catch these calls in tests; the `ClientFake` binding in `tests/Pest.php` remains the net.
-- Narration moved to its own queue and Horizon supervisor with a 300 s timeout — several round trips do not fit the 60 s the rest of the queue lives by. See [[ai-pipeline]].
+- *(2026-09-09: the supervisor timeout is now 360 s, sized as the safety margin behind the run's own `ai.agent.deadline_seconds` wall-clock ceiling — see [[ai-pipeline]].)* Narration moved to its own queue and Horizon supervisor with a 300 s timeout — several round trips do not fit the 60 s the rest of the queue lives by. See [[ai-pipeline]].
 - Output varies more: the same run re-narrated may read differently, since the model chooses what to look at. That is on-brand, and the idempotency guard still prevents double-billing on retries.
 - Provider portability was the migration's real prize and we did not buy it. Revisit if `laravel/ai` starts surfacing `incomplete_details.reason` on a successful response.
 

@@ -290,6 +290,8 @@ class PlanController extends Controller
     {
         $this->authorizeOwner($request, $plannedSession);
 
+        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+
         $attributes = $request->validated();
         if (! array_key_exists('pinned', $attributes)) {
             $attributes['pinned'] = true;

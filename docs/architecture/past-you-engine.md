@@ -98,6 +98,13 @@ nothing past [ComparableRun](app/Services/Run/Story/ComparableRun.php) touches
 Eloquent, and hydrating a year of models cost an order of magnitude more than
 the matching it fed.
 
+The 407-day date range is what bounds that read; the row count beside it is only
+a backstop against pathological data such as a duplicated import. It was 400,
+which a busy year of running reaches, and because the query orders newest-first
+it silently dropped the *oldest* rows — eligible candidates that `bestMatch()`
+does not penalise for age, so a verdict could change with nothing saying so. It
+is now 2,000, above the 814 runs a twice-a-day runner could log in the range.
+
 ## Supporting readings degrade, they do not gate
 
 `fitness_delta_ctl` and `pace_consistency_now` / `_then` come from
