@@ -379,7 +379,14 @@ class ActivityPipeline
             : ['max_hr' => $observed, 'hr_zones' => HeartRateZones::derive($observed, $restingHr)]);
     }
 
-    /** The athlete's highest believable peak across their whole history. */
+    /**
+     * The athlete's highest believable peak across their whole history.
+     *
+     * Not AnalyzedScope-guarded on purpose: this runs from {@see computeAndStoreSummary},
+     * which fires before the transaction that sets the current activity's own
+     * `analyzed_at` — scoping it out would make the row being ingested right now
+     * invisible to its own max-HR reconciliation.
+     */
     private function highestPlausibleMaxHr(User $user): ?int
     {
         $max = ActivityDetail::query()
