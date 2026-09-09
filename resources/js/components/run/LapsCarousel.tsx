@@ -29,7 +29,7 @@ export default function LapsCarousel({
                 style={{
                     maskImage: rail.faded ? SCROLL_FADE_MASK : undefined,
                 }}
-                className="-mx-4 flex list-none gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="-mx-4 flex list-none gap-2.5 overflow-x-auto px-4 pb-1 scrollbar-thin-fine"
             >
                 {laps.map((lap) => {
                     const isFastest =
