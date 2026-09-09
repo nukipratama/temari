@@ -94,6 +94,17 @@ describe('Sheet', () => {
         expect(screen.getByText('sheet body')).toBeInTheDocument();
     });
 
+    it('lets go of a cancelled gesture without dismissing', () => {
+        render(<Harness />);
+        const grip = screen.getByTestId('sheet-grip');
+
+        fireEvent.pointerDown(grip, { clientY: 400, pointerId: 1 });
+        fireEvent.pointerMove(grip, { clientY: 600, pointerId: 1 });
+        fireEvent.pointerCancel(grip, { clientY: 600, pointerId: 1 });
+
+        expect(screen.getByText('sheet body')).toBeInTheDocument();
+    });
+
     it('ignores an upward drag', () => {
         render(<Harness />);
 

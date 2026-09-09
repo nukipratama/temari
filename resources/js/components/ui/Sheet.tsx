@@ -1,9 +1,5 @@
 import { Dialog } from '@base-ui/react/dialog';
-import {
-    type PointerEvent as ReactPointerEvent,
-    type ReactNode,
-    useState,
-} from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 
@@ -29,18 +25,18 @@ export default function Sheet({
     title: string;
     children: ReactNode;
 }>) {
+    const startYRef = useRef<number | null>(null);
     const [dragY, setDragY] = useState<number | null>(null);
 
-    const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-        event.currentTarget.setPointerCapture?.(event.pointerId);
-        setDragY(0);
-    };
-
-    const moveDrag = (
-        event: ReactPointerEvent<HTMLDivElement>,
-        startY: number,
-    ) => {
-        setDragY(Math.max(0, event.clientY - startY));
+    const endDrag = (dismiss: boolean) => {
+        if (startYRef.current === null) {
+            return;
+        }
+        startYRef.current = null;
+        if (dismiss && (dragY ?? 0) >= SWIPE_DISMISS_PX) {
+            onOpenChange(false);
+        }
+        setDragY(null);
     };
 
     return (
@@ -65,16 +61,34 @@ export default function Sheet({
                               }
                     }
                 >
-                    <SheetGrip
-                        onStart={startDrag}
-                        onMove={moveDrag}
-                        onEnd={() => {
-                            if ((dragY ?? 0) >= SWIPE_DISMISS_PX) {
-                                onOpenChange(false);
-                            }
-                            setDragY(null);
+                    <div
+                        data-testid="sheet-grip"
+                        className="-mx-5 flex touch-none justify-center px-5 pb-3 pt-4"
+                        onPointerDown={(event) => {
+                            event.currentTarget.setPointerCapture?.(
+                                event.pointerId,
+                            );
+                            startYRef.current = event.clientY;
+                            setDragY(0);
                         }}
-                    />
+                        onPointerMove={(event) => {
+                            if (startYRef.current !== null) {
+                                setDragY(
+                                    Math.max(
+                                        0,
+                                        event.clientY - startYRef.current,
+                                    ),
+                                );
+                            }
+                        }}
+                        onPointerUp={() => endDrag(true)}
+                        onPointerCancel={() => endDrag(false)}
+                    >
+                        <span
+                            aria-hidden
+                            className="h-1 w-10 rounded-full bg-border-strong"
+                        />
+                    </div>
                     <Dialog.Title className="font-serif text-headline-sm text-foreground">
                         {title}
                     </Dialog.Title>
@@ -91,47 +105,4 @@ export function SheetClose({
     children,
 }: Readonly<{ className?: string; children: ReactNode }>) {
     return <Dialog.Close className={className}>{children}</Dialog.Close>;
-}
-
-/**
- * The grab bar, and the only surface a downward drag is read from — dragging
- * anywhere else would fight the sheet's own scroll.
- */
-function SheetGrip({
-    onStart,
-    onMove,
-    onEnd,
-}: Readonly<{
-    onStart: (event: ReactPointerEvent<HTMLDivElement>) => void;
-    onMove: (event: ReactPointerEvent<HTMLDivElement>, startY: number) => void;
-    onEnd: () => void;
-}>) {
-    const [startY, setStartY] = useState<number | null>(null);
-
-    return (
-        <div
-            data-testid="sheet-grip"
-            className="-mx-5 flex touch-none justify-center px-5 pb-3 pt-4"
-            onPointerDown={(event) => {
-                setStartY(event.clientY);
-                onStart(event);
-            }}
-            onPointerMove={(event) => {
-                if (startY !== null) {
-                    onMove(event, startY);
-                }
-            }}
-            onPointerUp={() => {
-                if (startY !== null) {
-                    setStartY(null);
-                    onEnd();
-                }
-            }}
-        >
-            <span
-                aria-hidden
-                className="h-1 w-10 rounded-full bg-border-strong"
-            />
-        </div>
-    );
 }

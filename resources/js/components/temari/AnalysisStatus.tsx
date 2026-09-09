@@ -185,42 +185,49 @@ export default function AnalysisStatus({
                         generated {formatRelativeId(analysis.generated_at)}
                     </span>
                 )}
-                <div className="flex items-center justify-end gap-2">
-                    {canRegenerate && (
-                        <button
-                            type="button"
-                            onClick={trigger}
-                            disabled={cooling || pending}
-                            aria-label={cooldownAriaLabel(
-                                cooldownRemaining,
-                                'reread',
-                            )}
-                            className={cn(TRIGGER_CLASS, triggerTone(onSky))}
-                        >
-                            <Icon
-                                icon={
-                                    cooling ? 'mdi:clock-outline' : 'mdi:sync'
-                                }
-                                className="size-3"
-                                aria-hidden
+                {(canRegenerate || analysis.id !== null) && (
+                    <div className="flex items-center justify-end gap-2">
+                        {canRegenerate && (
+                            <button
+                                type="button"
+                                onClick={trigger}
+                                disabled={cooling || pending}
+                                aria-label={cooldownAriaLabel(
+                                    cooldownRemaining,
+                                    'reread',
+                                )}
+                                className={cn(
+                                    TRIGGER_CLASS,
+                                    triggerTone(onSky),
+                                )}
+                            >
+                                <Icon
+                                    icon={
+                                        cooling
+                                            ? 'mdi:clock-outline'
+                                            : 'mdi:sync'
+                                    }
+                                    className="size-3"
+                                    aria-hidden
+                                />
+                                <span>
+                                    {cooling
+                                        ? `next in ${formatDurationHMS(cooldownRemaining)}`
+                                        : 'reread'}
+                                </span>
+                            </button>
+                        )}
+                        {analysis.id !== null && (
+                            <FlagWrong
+                                subjectType="narration"
+                                subjectId={analysis.id}
+                                label="flag this read"
+                                flagged={analysis.flagged === true}
+                                onSky={onSky}
                             />
-                            <span>
-                                {cooling
-                                    ? `next in ${formatDurationHMS(cooldownRemaining)}`
-                                    : 'reread'}
-                            </span>
-                        </button>
-                    )}
-                    {analysis.id !== null && (
-                        <FlagWrong
-                            subjectType="narration"
-                            subjectId={analysis.id}
-                            label="flag this read"
-                            flagged={analysis.flagged === true}
-                            onSky={onSky}
-                        />
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
                 {rateLimited && <RateLimitedNote onSky={onSky} />}
             </motion.div>
         );
