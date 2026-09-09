@@ -102,10 +102,13 @@ foreach ($iterator as $file) {
             }
         }
 
-        if (preg_match_all('/\[([^\]]*)\]\(([^)]+)\)/', $line, $all, PREG_SET_ORDER) > 0) {
+        if (preg_match_all('/\[([^\]]*)\]\(([^)]+)\)/', $line, $all, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) > 0) {
             foreach ($all as $match) {
-                checkCitation($root, $path, $lineNo, $match[2], $missing);
-                checkLineDrift($root, $path, $lineNo, $match[2], $match[1], $drifted);
+                $linkStart = $match[0][1];
+                $linkText = $match[1][0];
+                $target = $match[2][0];
+                checkCitation($root, $path, $lineNo, $target, $missing);
+                checkLineDrift($root, $path, $lineNo, $target, resolveSymbolSource($line, $linkStart, $linkText), $drifted);
             }
         }
     }
@@ -167,7 +170,8 @@ function checkCitation(string $root, string $doc, int $lineNo, string $raw, arra
 }
 
 /**
- * Verify that a `#L42` citation still lands near the symbol the doc names.
+ * Verify that a `#L42` (or bare `:42` / `path:42`) citation still lands near
+ * the symbol the doc names.
  *
  * Symbol candidates come from the link text alone — `[ChainResolver::isHead()](…#L20)`
  * names what it points at. Widening to the surrounding prose sweeps up identifiers
@@ -182,12 +186,12 @@ function checkCitation(string $root, string $doc, int $lineNo, string $raw, arra
  */
 function checkLineDrift(string $root, string $doc, int $lineNo, string $target, string $linkText, array &$drifted): void
 {
-    if (preg_match('/^([^#\s]+)#L(\d+)$/', trim($target), $m) !== 1) {
+    $path = trim((string) preg_replace('/#.*$/', '', trim($target)));
+    $citedLine = citedLineNumber($target, $linkText);
+
+    if ($path === '' || $citedLine === null) {
         return;
     }
-
-    [, $path, $citedLine] = $m;
-    $citedLine = (int) $citedLine;
 
     // Same dual resolution checkCitation() uses: docs cite either root-relative
     // or doc-relative. Resolving only against the root silently skipped every
@@ -246,6 +250,49 @@ function checkLineDrift(string $root, string $doc, int $lineNo, string $target, 
     }
 
     $drifted[] = "{$docRelative}:{$lineNo} -> {$path}#L{$citedLine} (".implode('; ', $report).')';
+}
+
+/**
+ * The line number a citation names, whichever of its two shapes it uses:
+ * a `#L42` suffix on the href, or a bare `:42` / `path:42` (optionally
+ * `:42-55`, first number wins) label in the link text — e.g. `` `foo()` [:395](bar.php) ``
+ * or `[bar.php:395](bar.php)`, both used throughout docs/decisions/.
+ */
+function citedLineNumber(string $target, string $linkText): ?int
+{
+    if (preg_match('/#L(\d+)$/', trim($target), $m) === 1) {
+        return (int) $m[1];
+    }
+
+    if (preg_match('/^[\w.\/-]*:(\d+)(?:-\d+)?$/', trim($linkText), $m) === 1) {
+        return (int) $m[1];
+    }
+
+    return null;
+}
+
+/**
+ * A bare `:42` / `path:42` label carries no symbol of its own to check drift
+ * against — the identifier lives in the prose right before it instead, almost
+ * always as the backtick-quoted method name the label is annotating (e.g.
+ * `` `AnalysisService::revertToPending()` [:395](…) ``). When the link text is
+ * such a label, borrow the nearest backtick span immediately preceding the
+ * link on the same line; anything else in between (a plain word, punctuation)
+ * means the label isn't annotating that span, so it is left untouched and
+ * {@see symbolCandidates} finds nothing, same as a link with no symbol at all.
+ */
+function resolveSymbolSource(string $line, int $linkStart, string $linkText): string
+{
+    if (preg_match('/^[\w.\/-]*:\d+(?:-\d+)?$/', trim($linkText)) !== 1) {
+        return $linkText;
+    }
+
+    $before = substr($line, 0, $linkStart);
+    if (preg_match('/`([^`]+)`\s*$/', $before, $m) === 1) {
+        return $m[1];
+    }
+
+    return $linkText;
 }
 
 /**
