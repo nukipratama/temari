@@ -110,6 +110,31 @@ describe('RecapCard', () => {
         );
     });
 
+    it('lays the chips beside the narration from tablet up', () => {
+        render(
+            <RecapCard
+                mood="blazing"
+                analysis={analysis()}
+                chips={<span>fatigue moderate</span>}
+            />,
+        );
+
+        expect(screen.getByTestId('recap-secondary').className).toContain(
+            'md:w-2/5',
+        );
+    });
+
+    it('renders no secondary column when there is nothing honest to put in it', () => {
+        render(
+            <RecapCard
+                mood="blazing"
+                analysis={analysis({ type: 'monthly_recap' })}
+            />,
+        );
+
+        expect(screen.queryByTestId('recap-secondary')).not.toBeInTheDocument();
+    });
+
     it('renders no send affordance at all when notification is omitted', () => {
         render(
             <RecapCard

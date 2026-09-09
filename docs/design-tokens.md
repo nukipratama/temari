@@ -148,6 +148,12 @@ edge carries the contrast. Never darken them instead.
 | Hues | `leaf` / `leaf-deep` / `leaf-ink`, `ember` / `ember-deep` / `ember-ink`, `citrus` / `citrus-ink`, `stone` | Semantic accents; `citrus` reserved for PR / legendary celebration. `-ink` carries the label, `-deep` fills a dark CTA under `text-cream` and is never text. `citrus` has no `-deep`: it fills no CTA |
 | Strava | `strava-orange`, `strava-orange-hover` | Brand mark only — never themed or restyled |
 
+White on `strava-orange` (`#fc4c02`) is **Strava's own pair and scores 3.36:1**, under the 4.5:1 AA
+floor for normal text. Neither colour may move, so the reconnect CTA in
+[StravaZoneReconnectBanner.tsx](../resources/js/components/StravaZoneReconnectBanner.tsx) is set at
+19px bold instead: at 18.66px bold and up the applicable AA threshold is 3:1, which the pair clears. Any
+other vendor mark reusing this pair must do the same or be listed as a documented exception.
+
 Chart.js and inline SVG cannot read CSS custom properties off a canvas, so a small
 hex bridge mirrors the tokens in [chartTokens.ts](../resources/js/lib/chartTokens.ts). Import
 from there rather than pasting a hex; it is asserted against `app.css` by its own test. Bold
@@ -358,8 +364,17 @@ built with `@apply` so they compose with token utilities. Prefer these over re-t
 | `.text-stat` | `font-mono text-stat font-bold tabular-nums text-foreground` | The big tabular KPI / PR number |
 | `.text-stat-sm` | `font-mono text-2xl font-bold tabular-nums text-foreground` | Smaller stat figure (compact tiles) |
 | `.text-meta` | `font-mono text-[11px] tracking-[0.04em] text-text-3` | Date / timestamp / footnote (non-uppercase metadata) |
-| `.narration` | `font-sans text-quote-sm leading-relaxed text-foreground` | Narrator prose — the reading register for LLM and rule-based output |
-| `.narration-dense` | `font-sans text-[12px] leading-[1.45] text-foreground` | Narrator prose, compact tier (list rows, calendar cells, recap cards) |
+| `.narration` | `max-w-[65ch] font-sans text-quote-sm leading-relaxed text-foreground` | Narrator prose — the reading register for LLM and rule-based output |
+| `.narration-dense` | `max-w-[65ch] font-sans text-[12px] leading-[1.45] text-foreground` | Narrator prose, compact tier (list rows, calendar cells, recap cards) |
+
+**Both narration roles carry their own measure.** The page column caps at 760/1040px
+([app.css](../resources/css/app.css)'s `--container-column*`), which at 15px ran a narration line to
+~130 characters at laptop and desktop and ~160 at the 12px dense tier — roughly twice the 45-75
+readable range. `max-w-[65ch]` is on the role rather than the call sites so every narrator host
+inherits it; the text stays left-aligned in its card and the whitespace a short read leaves is
+intentional. One call site opts out with `max-w-none`: the single-line truncated run note in
+[RunListRow.tsx](../resources/js/components/run/RunListRow.tsx), which is metadata rather than prose
+and would otherwise clip early in a wide row.
 
 Text floor is **11px** in app chrome — no `text-[9px]` / `text-[10px]`. Prefer a role utility over a raw size.
 
