@@ -184,9 +184,7 @@ class ProfileVoiceNarrator
             ),
         );
 
-        // The evidence slots are a commitment device: never rendered, only
-        // required, and there are exactly two of them so a third number in the
-        // paragraph has nowhere to come from.
+        // The evidence slots are a commitment device: never rendered, only required.
         return (string) $decoded['profile_voice'];
     }
 
