@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\FeedbackReason;
+use App\Enums\FeedbackSubject;
 use App\Models\AI\Analysis;
+use App\Models\Feedback;
+use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -224,4 +228,34 @@ it('payloadsForSubjects resolves every cooldown in one cache round trip', functi
     );
 
     expect($payloads)->toHaveCount(5);
+});
+
+it('toPayload reports whether this athlete has flagged the read', function (): void {
+    $user = User::factory()->create();
+    $row = Analysis::factory()->create([
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'subject_type' => WeeklySnapshot::class,
+    ]);
+    $render = fn (): array => Analysis::toPayload($row, $row->analysis_type, $row->subject_type, $row->subject_id);
+
+    $this->actingAs($user);
+    expect($render()['flagged'])->toBeFalse();
+
+    Feedback::query()->create([
+        'user_id' => $user->id,
+        'subject_type' => FeedbackSubject::Narration,
+        'subject_id' => $row->id,
+        'reason' => FeedbackReason::ToneOff,
+    ]);
+    app()->forgetScopedInstances();
+
+    expect($render()['flagged'])->toBeTrue();
+});
+
+it('toPayload reports an unwritten row as unflagged', function (): void {
+    $this->actingAs(User::factory()->create());
+
+    $payload = Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, 1);
+
+    expect($payload['flagged'])->toBeFalse();
 });

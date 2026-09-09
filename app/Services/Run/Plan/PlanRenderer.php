@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Actions\Feedback\ResolveFlaggedSubjectsAction;
+use App\Enums\FeedbackSubject;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Enums\PlanPhase;
@@ -215,6 +217,7 @@ final class PlanRenderer
             'clamp' => $isToday && $clamp !== null ? self::clampPayload($clamp, $clampVoice, $status->isCredited()) : null,
             'actual_km' => $activity['km'] ?? null,
             'activities' => $activity['runs'] ?? [],
+            'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
         ];
     }
 

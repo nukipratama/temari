@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Enums\FeedbackReason;
+use App\Enums\FeedbackSubject;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Models\Feedback;
 use App\Models\PlannedSession;
+use App\Models\User;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SegmentGenerator;
@@ -443,4 +447,39 @@ it('dayPayload drops the narrated clamp voice once the day is credited', functio
 
     expect($credited['clamp']['note'])->not->toBe($voice)
         ->and($pending['clamp']['note'])->toBe($voice);
+});
+
+it('dayPayload reports whether this athlete has flagged the day', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->create([
+        'user_id' => $user->id,
+        'session_type' => SessionType::Easy,
+        'date' => Carbon::parse('2026-08-05'),
+    ]);
+    $today = Carbon::parse('2026-08-04');
+    $render = fn (): array => PlanRenderer::dayPayload(
+        $session,
+        $today,
+        null,
+        [],
+        null,
+        true,
+        20.0,
+        1.0,
+        RENDERER_PACES,
+        PlannedSessionStatus::Planned,
+    );
+
+    $this->actingAs($user);
+    expect($render()['flagged'])->toBeFalse();
+
+    Feedback::query()->create([
+        'user_id' => $user->id,
+        'subject_type' => FeedbackSubject::PlanDay,
+        'subject_id' => $session->id,
+        'reason' => FeedbackReason::TooHard,
+    ]);
+    app()->forgetScopedInstances();
+
+    expect($render()['flagged'])->toBeTrue();
 });

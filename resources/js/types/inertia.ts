@@ -121,6 +121,8 @@ export interface AnalysisPayload {
     attempts?: number;
     generated_at?: string | null;
     retry_after_seconds?: number | null;
+    /** This athlete has already flagged this narration as wrong. */
+    flagged?: boolean;
 }
 
 export interface BriefingResult {
@@ -406,6 +408,8 @@ export interface WeekPlanDay {
      *  and each gets its own line rather than being folded into a single
      *  summary whose distance and duration came from different runs. */
     activities: { id: number; km: number; seconds: number | null }[];
+    /** This athlete has already flagged this day as wrong. */
+    flagged?: boolean;
 }
 
 /** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current
