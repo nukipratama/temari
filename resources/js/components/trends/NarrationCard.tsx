@@ -1,6 +1,7 @@
 import type { AnalysisPayload } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import NarrationFlag from '@/components/temari/NarrationFlag';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
@@ -29,13 +30,20 @@ export default function NarrationCard({
 }: Readonly<NarrationCardProps>) {
     return (
         <Card as="section" tone="narration" className={className}>
-            <Eyebrow
-                token="micro"
-                className="mb-1.5 flex items-center gap-1.5 text-icon-accent"
-            >
-                <Icon icon="mdi:auto-awesome" className="size-3" aria-hidden />
-                Temari&apos;s read
-            </Eyebrow>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+                <Eyebrow
+                    token="micro"
+                    className="flex items-center gap-1.5 text-icon-accent"
+                >
+                    <Icon
+                        icon="mdi:auto-awesome"
+                        className="size-3"
+                        aria-hidden
+                    />
+                    Temari&apos;s read
+                </Eyebrow>
+                <NarrationFlag analysis={analysis} />
+            </div>
             <AnalysisStatus
                 analysis={analysis}
                 inertiaReloadProps={['narration']}

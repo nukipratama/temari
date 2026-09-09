@@ -5,6 +5,7 @@ import type { AnalysisPayload, Mood } from '@/types/inertia';
 import SendNotificationButton from '@/components/SendNotificationButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import FaceIcon, { DARK_FACE } from '@/components/temari/FaceIcon';
+import NarrationFlag from '@/components/temari/NarrationFlag';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { cn } from '@/lib/cn';
 import { renderBold } from '@/lib/richText';
@@ -74,6 +75,9 @@ export default function RecapCard({
             />
             <div className="min-w-0 flex-1 md:flex md:items-start md:gap-4">
                 <div className="min-w-0 md:flex-1">
+                    <div className="flex justify-end">
+                        <NarrationFlag analysis={analysis} />
+                    </div>
                     <AnalysisStatus
                         analysis={analysis}
                         inertiaReloadProps={inertiaReloadProps}
