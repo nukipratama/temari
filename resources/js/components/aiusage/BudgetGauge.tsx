@@ -69,6 +69,14 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
                 </p>
             )}
 
+            {overBudget && (
+                <p className="mt-2 text-xs font-semibold text-mood-gassed-ink">
+                    Past the combined figure by{' '}
+                    {formatCost(todayCost - dailyCeiling, currency)} — spend
+                    predating the current ceiling, or an athlete since removed.
+                </p>
+            )}
+
             {hasTotalCeiling && (
                 <div className="mt-4 border-t border-border-strong pt-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -90,14 +98,6 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
                         narration is served rule-based until midnight.
                     </p>
                 </div>
-            )}
-
-            {overBudget && (
-                <p className="mt-2 text-xs font-semibold text-mood-gassed-ink">
-                    Past the combined figure by{' '}
-                    {formatCost(todayCost - dailyCeiling, currency)} — spend
-                    predating the current ceiling, or an athlete since removed.
-                </p>
             )}
 
             {trippedTime !== undefined && (
