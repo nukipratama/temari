@@ -101,7 +101,7 @@ function RunListRow({
                 </span>
             </div>
             {note && (
-                <p className="narration-dense mt-1.25 truncate">
+                <p className="narration-dense mt-1.25 max-w-none truncate">
                     &quot;{renderBold(note.oneline)}&quot;
                 </p>
             )}

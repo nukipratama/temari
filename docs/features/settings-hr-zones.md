@@ -51,6 +51,21 @@ Submit posts `router.patch('/settings/zones', …)` with `max_hr`, `resting_hr` 
 - `resetToDefault()` deletes the profile row, falling back to config defaults.
 - `resyncFromStrava()` runs `SyncZonesJob::dispatchSync(..., force: true)` inline (not queued), scope-gated on `profile:read_all`.
 
+## The app-wide reconnect nudge
+
+A grant made before `profile:read_all` existed leaves zone sync unavailable, and
+[StravaProps](../../app/Services/Inertia/StravaProps.php)'s `stravaZoneScopeMissing` shared prop is
+true for exactly those athletes (live connection, no zone scope, never the demo user).
+[StravaZoneReconnectBanner](../../resources/js/components/StravaZoneReconnectBanner.tsx) renders it
+once in `AppShell`, so it shows on every app page until the scope is granted.
+
+Its copy names the missing scope and the consequence — zone-based reads fall back to estimates —
+rather than only asking for a reconnect, and it is **dismissable for the browsing session**: the
+close button writes `strava-zone-reconnect-dismissed:<user id>` to `sessionStorage`, so the nudge
+stops for this visit and returns on the next one. Session storage rather than a cookie or
+`localStorage` on purpose: a permanent dismissal would hide a real capability gap for good, and a
+banner that cannot be dismissed at all was the review finding that prompted the change.
+
 ## Profile shape & optimal cadence
 
 `User::hrProfile()` in [User.php](../../app/Models/User.php) returns `max_hr`, `resting_hr`, `hr_zones` **and** `optimal_cadence_spm`. When no custom `RunnerProfile` exists, it serves config defaults (including `config('runner.optimal_cadence_spm')`). Note: optimal cadence is part of the stored/served profile but is **not** an editable field in this disclosure — it is surfaced in run analysis, not tuned here.

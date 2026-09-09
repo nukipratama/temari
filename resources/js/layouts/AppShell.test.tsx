@@ -111,7 +111,9 @@ describe('AppShell', () => {
                 <p>child content</p>
             </AppShell>,
         );
-        expect(screen.getByText(/Reconnect Strava/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/Strava only shares your HR zones/),
+        ).toBeInTheDocument();
     });
 
     it('mounts the flash notice as shell chrome', () => {
