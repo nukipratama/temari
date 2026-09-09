@@ -138,7 +138,8 @@
             },
             "text": [
                 "citrus-ink"
-            ]
+            ],
+            "graphic": true
         },
         "cream-deep/0.3": {
             "over": {
@@ -393,7 +394,8 @@
             },
             "text": [
                 "leaf-ink"
-            ]
+            ],
+            "graphic": true
         },
         "leaf/0.18": {
             "over": {

@@ -247,6 +247,8 @@ function splitAlpha(spec: string): { name: string; alpha: number } {
 type PanelEntry = {
     over?: Record<string, ReadonlyArray<string>>;
     text: ReadonlyArray<string>;
+    /** The panel carries an icon glyph rather than text, so 3:1 is the AA floor, not 4.5:1. */
+    graphic?: boolean;
 };
 
 /**
@@ -276,6 +278,7 @@ export function auditPanels(
         if (!fill) {
             continue;
         }
+        const min = entry.graphic ? 3 : 4.5;
 
         const overs = [...new Set(Object.values(entry.over).flat())];
         // `paper` stands for the page ground, and which grounds that means
@@ -326,9 +329,9 @@ export function auditPanels(
                 use: `bg-${spec} panel`,
                 fg: `--color-${fg.name}`,
                 bg: `${spec} · on ${scored.mount.name}`,
-                min: 4.5,
+                min,
                 ratio: scored.ratio,
-                pass: scored.ratio !== null && scored.ratio >= 4.5,
+                pass: scored.ratio !== null && scored.ratio >= min,
             });
         }
     }
