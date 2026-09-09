@@ -21,7 +21,7 @@ uses(RefreshDatabase::class);
 
 const RENDERER_PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
 
-it('weekPhasesAndMultipliers reads each week\'s phase from its first session', function (): void {
+it('weekPhasesAndMultipliers reads each week\'s phase off its rows', function (): void {
     $sessionsByWeek = collect([
         '2026-08-03' => collect(PlannedSession::factory()->count(2)->make(['phase' => PlanPhase::Base])),
         '2026-08-10' => collect(PlannedSession::factory()->count(2)->make(['phase' => PlanPhase::Build])),
@@ -50,29 +50,81 @@ it('weekPhasesAndMultipliers ramps a multi-week Build block relative to its own 
 });
 
 it('weekPhasesAndMultipliers reads a week\'s phase and multiplier off the same row', function (): void {
-    // A pinned row, or one already carrying a verdict, is never overwritten
-    // by regeneration, so it can be left holding an older phase AND an older
-    // multiplier than the rest of its week. Whichever row the week reads, it
-    // must read both from it — a Deload header over Build kilometres would
-    // be worse than either row's own reading.
+    // A pinned row is never overwritten by regeneration, so it can be left
+    // holding an older phase AND an older multiplier than the rest of its
+    // week. It must not decide the week just because it sorts first, and
+    // whichever row does decide it, phase and multiplier come from that one
+    // row — a Deload header over Build kilometres would be worse than either
+    // row's own reading.
     $stalePinned = PlannedSession::factory()->make([
         'date' => '2026-08-03',
         'phase' => PlanPhase::Build,
         'pinned' => true,
         'volume_multiplier' => 1.075,
     ]);
-    $fresh = PlannedSession::factory()->count(3)->make([
-        'date' => '2026-08-05',
+    $fresh = collect(['2026-08-05', '2026-08-07', '2026-08-09'])->map(fn (string $date): PlannedSession => PlannedSession::factory()->make([
+        'date' => $date,
         'phase' => PlanPhase::Deload,
         'volume_multiplier' => 0.65,
-    ]);
+    ]));
 
     [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(
         collect(['2026-08-03' => collect([$stalePinned, ...$fresh])]),
     );
 
-    expect($phaseByWeek->get('2026-08-03'))->toBe(PlanPhase::Build)
-        ->and($multiplierByWeek['2026-08-03'])->toBe(1.075);
+    expect($phaseByWeek->get('2026-08-03'))->toBe(PlanPhase::Deload)
+        ->and($multiplierByWeek['2026-08-03'])->toBe(0.65);
+});
+
+it('weekPhasesAndMultipliers lets a mid-week regeneration decide the week even when its rows are the minority', function (): void {
+    // A Friday regeneration writes Friday to Sunday only; Monday to Thursday
+    // keep the phase they were run under. The week is what the latest
+    // generation ordered, not what most of its rows still say.
+    $stale = collect(['2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06'])->map(fn (string $date): PlannedSession => PlannedSession::factory()->scored()->make([
+        'date' => $date,
+        'phase' => PlanPhase::Build,
+        'volume_multiplier' => 1.075,
+    ]));
+    $fresh = collect(['2026-08-07', '2026-08-08', '2026-08-09'])->map(fn (string $date): PlannedSession => PlannedSession::factory()->make([
+        'date' => $date,
+        'phase' => PlanPhase::Deload,
+        'volume_multiplier' => 0.65,
+    ]));
+
+    [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(
+        collect(['2026-08-03' => collect([...$fresh, ...$stale])]),
+    );
+
+    expect($phaseByWeek->get('2026-08-03'))->toBe(PlanPhase::Deload)
+        ->and($multiplierByWeek['2026-08-03'])->toBe(0.65);
+});
+
+it('weekPhasesAndMultipliers skips a stale pinned last day and reads a fully pinned week off its last row', function (): void {
+    $stalePinnedSunday = PlannedSession::factory()->pinned()->make([
+        'date' => '2026-08-09',
+        'phase' => PlanPhase::Build,
+        'volume_multiplier' => 1.075,
+    ]);
+    $freshSaturday = PlannedSession::factory()->make([
+        'date' => '2026-08-08',
+        'phase' => PlanPhase::Deload,
+        'volume_multiplier' => 0.65,
+    ]);
+    $allPinned = collect(['2026-08-10', '2026-08-11'])->map(fn (string $date): PlannedSession => PlannedSession::factory()->pinned()->make([
+        'date' => $date,
+        'phase' => $date === '2026-08-11' ? PlanPhase::Peak : PlanPhase::Build,
+        'volume_multiplier' => $date === '2026-08-11' ? 0.92 : 1.075,
+    ]));
+
+    [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(collect([
+        '2026-08-03' => collect([$stalePinnedSunday, $freshSaturday]),
+        '2026-08-10' => $allPinned,
+    ]));
+
+    expect($phaseByWeek->get('2026-08-03'))->toBe(PlanPhase::Deload)
+        ->and($multiplierByWeek['2026-08-03'])->toBe(0.65)
+        ->and($phaseByWeek->get('2026-08-10'))->toBe(PlanPhase::Peak)
+        ->and($multiplierByWeek['2026-08-10'])->toBe(0.92);
 });
 
 it('weekPhasesAndMultipliers falls back to the phase-sequence recompute when a week is unstamped', function (): void {
