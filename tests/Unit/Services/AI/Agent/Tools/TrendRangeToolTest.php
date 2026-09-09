@@ -29,6 +29,16 @@ function seedTrendRun(User $user, int $daysAgo, float $trimp, float $distanceM =
     ]);
 }
 
+function seedUnanalyzedTrendRun(User $user, int $daysAgo, float $trimp, float $distanceM = 5000.0): void
+{
+    $activity = Activity::factory()->for($user)->stub()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'trimp_edwards' => $trimp,
+        'distance' => $distanceM,
+        'start_date_local' => Carbon::today()->subDays($daysAgo),
+    ]);
+}
+
 it('reports the requested range on its own reading', function (): void {
     $user = User::factory()->create();
 
@@ -119,4 +129,16 @@ it('returns null averages for a user with no history at all', function (): void 
         ->and($context['avg_strain'])->toBeNull()
         ->and($context['current']['runs'])->toBe(0)
         ->and($context['current']['trimp_total'])->toBeNull();
+});
+
+it('excludes a not-yet-analyzed activity from the period totals', function (): void {
+    $user = User::factory()->create();
+    seedTrendRun($user, 5, 100.0, 5000.0);
+    seedUnanalyzedTrendRun($user, 6, 999.0, 9000.0);
+
+    $context = new TrendRangeTool($user, '30d', $this->trainingLoad)->handle([]);
+
+    expect($context['current']['runs'])->toBe(1)
+        ->and($context['current']['distance_km'])->toBe(5.0)
+        ->and($context['current']['trimp_total'])->toBe(100.0);
 });

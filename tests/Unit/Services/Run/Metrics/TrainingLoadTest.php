@@ -27,6 +27,15 @@ function seedTrimpDay(User $user, ?float $trimp, int $daysAgo): void
     ]);
 }
 
+function seedUnanalyzedTrimpDay(User $user, ?float $trimp, int $daysAgo): void
+{
+    $activity = Activity::factory()->for($user)->stub()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'trimp_edwards' => $trimp,
+        'start_date_local' => Carbon::today()->subDays($daysAgo),
+    ]);
+}
+
 /**
  * @param  array<string, float>  $dailyTrimp
  * @return array<string, true>
@@ -98,6 +107,13 @@ it('returns null when the user has no TRIMP-bearing activities', function (): vo
 
 it('returns null from summaryFromDailyMap when the map is empty', function (): void {
     expect($this->load->summaryFromDailyMap([], [], Carbon::today()))->toBeNull();
+});
+
+it('ignores TRIMP from a not-yet-analyzed activity', function (): void {
+    $user = User::factory()->create();
+    seedUnanalyzedTrimpDay($user, 500.0, 1);
+
+    expect($this->load->summary($user))->toBeNull();
 });
 
 it('rolls TRIMP into ATL/CTL/form with sane magnitudes', function (): void {

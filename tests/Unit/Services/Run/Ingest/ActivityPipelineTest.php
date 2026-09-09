@@ -650,7 +650,11 @@ it('falls back to config zones when the user has no runner profile', function ()
 });
 
 it('recomputeSummary refreshes a single activity from stored streams using current zones, with NO Strava HTTP', function (): void {
+    // recomputeSummary is a post-ingest recalibration (e.g. after an HR zone
+    // change), so the subject must already be analyzed — otherwise the forward
+    // WeeklySnapshot rebuild below has nothing to write, per AnalyzedScope.
     $activity = makeActivityWithConnection();
+    $activity->update(['analyzed_at' => now()]);
 
     $time = [];
     $hr = [];

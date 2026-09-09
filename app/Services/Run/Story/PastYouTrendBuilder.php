@@ -6,6 +6,7 @@ namespace App\Services\Run\Story;
 
 use App\Enums\TrendDirection;
 use App\Enums\TrendVerdict;
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Metrics\PaceConsistency;
@@ -207,26 +208,28 @@ class PastYouTrendBuilder
      * {@see ComparableRun} touches Eloquent, and hydrating a year of history
      * into models cost more than the matching it feeds. The join replaces an
      * eager load of `activities` for the one column the runs need, so it also
-     * has to re-apply {@see \App\Models\Scopes\AnalyzedScope} by hand — a plain
-     * join bypasses Eloquent's global scopes.
+     * has to re-apply {@see \App\Models\Scopes\AnalyzedScope} via
+     * {@see Activity::analyzedJoinConstraint()} — a plain join bypasses
+     * Eloquent's global scopes.
      *
      * @return list<ComparableRun>  newest first
      */
     private function loadHistory(int $userId, Carbon $anchor): array
     {
-        $rows = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
-            ->select([
-                'activity_details.activity_id',
-                'activity_details.start_date_local',
-                'activity_details.distance',
-                'activity_details.moving_time',
-                'activity_details.average_heartrate',
-                'activity_details.total_elevation_gain',
-                'activities.ingest_state',
-            ])
+        $rows = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()
+                ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+                ->select([
+                    'activity_details.activity_id',
+                    'activity_details.start_date_local',
+                    'activity_details.distance',
+                    'activity_details.moving_time',
+                    'activity_details.average_heartrate',
+                    'activity_details.total_elevation_gain',
+                    'activities.ingest_state',
+                ]),
+        )
             ->where('activities.user_id', $userId)
-            ->whereNotNull('activities.analyzed_at')
             ->whereNotNull('activity_details.start_date_local')
             ->where('activity_details.start_date_local', '<=', $anchor)
             ->where('activity_details.start_date_local', '>=', $anchor->copy()

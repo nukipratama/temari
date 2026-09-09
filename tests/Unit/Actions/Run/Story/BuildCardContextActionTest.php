@@ -182,6 +182,20 @@ it('stops the streak at the first missing day', function (): void {
     expect(cardContextFor($activity, $detail)->consecutiveDaysBefore)->toBe(1);
 });
 
+it('does not count a not-yet-analyzed activity toward the streak', function (): void {
+    $user = User::factory()->create();
+    $day = Carbon::parse('2026-05-15 07:00:00');
+
+    $other = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($other)->create(['start_date_local' => $day->copy()->subDays(1)]);
+    $stub = Activity::factory()->for($user)->stub()->create();
+    ActivityDetail::factory()->for($stub)->create(['start_date_local' => $day->copy()->subDays(2)]);
+
+    [$activity, $detail] = cardContextSubject($user, ['start_date_local' => $day]);
+
+    expect(cardContextFor($activity, $detail)->consecutiveDaysBefore)->toBe(1);
+});
+
 it('reports a zero streak when the activity has no start date', function (): void {
     [$activity, $detail] = cardContextSubject(User::factory()->create(), ['start_date_local' => null]);
 

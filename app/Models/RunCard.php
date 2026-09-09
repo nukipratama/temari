@@ -86,9 +86,11 @@ class RunCard extends Model
     {
         $first = [];
 
-        self::query()
-            ->join('activities', 'activities.id', '=', 'run_cards.activity_id')
-            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+        Activity::analyzedJoinConstraint(
+            self::query()
+                ->join('activities', 'activities.id', '=', 'run_cards.activity_id')
+                ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id'),
+        )
             ->where('activities.user_id', $userId)
             ->orderBy('activity_details.start_date_local')
             ->select('run_cards.badges', 'run_cards.rarity', 'activity_details.start_date_local')

@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -158,8 +159,9 @@ final class SessionMatcher
             return [];
         }
 
-        $rows = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $rows = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->whereBetween('activity_details.start_date_local', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
@@ -218,8 +220,9 @@ final class SessionMatcher
     {
         $dates = array_keys($plannedKmByDate);
 
-        $rows = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $rows = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->whereBetween('activity_details.start_date_local', [

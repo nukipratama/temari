@@ -170,8 +170,9 @@ final readonly class BuildCardContextAction
 
         // Fetch the last 30 distinct run dates in one query, then count
         // consecutive days in PHP. Much cheaper than N queries for long streaks.
-        $dates = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $dates = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $activity->user_id)
             ->whereDate('start_date_local', '<', $startDate->toDateString())
             ->selectRaw('DISTINCT DATE(start_date_local) as run_date')

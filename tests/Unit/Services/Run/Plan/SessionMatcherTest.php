@@ -25,6 +25,16 @@ function logRun(User $user, string $date, float $km): void
     ]);
 }
 
+function logUnanalyzedRun(User $user, string $date, float $km): void
+{
+    $activity = Activity::factory()->for($user)->stub()->create();
+    ActivityDetail::factory()->create([
+        'activity_id' => $activity->id,
+        'start_date_local' => Carbon::parse($date.' 06:00:00'),
+        'distance' => $km * 1000,
+    ]);
+}
+
 it('leaves a date that has not happened yet as planned', function (): void {
     expect(SessionMatcher::scoreFor(10.0, 0.0, false, false))->toBe([
         'status' => PlannedSessionStatus::Planned,
@@ -140,6 +150,26 @@ it('ignores another athlete\'s runs', function (): void {
     $statuses = app(SessionMatcher::class)->statuses($user, ['2026-08-03' => 10.0], [], Carbon::parse('2026-08-10'));
 
     expect($statuses['2026-08-03'])->toBe(PlannedSessionStatus::Missed);
+});
+
+it('ignores a not-yet-analyzed activity when scoring a day', function (): void {
+    $user = User::factory()->create();
+    logUnanalyzedRun($user, '2026-08-03', 10.0);
+
+    $statuses = app(SessionMatcher::class)->statuses($user, ['2026-08-03' => 10.0], [], Carbon::parse('2026-08-10'));
+
+    expect($statuses['2026-08-03'])->toBe(PlannedSessionStatus::Missed);
+});
+
+it('activityByDate ignores a not-yet-analyzed activity', function (): void {
+    $user = User::factory()->create();
+    logRun($user, '2026-08-03', 5.0);
+    logUnanalyzedRun($user, '2026-08-04', 10.0);
+
+    $byDate = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-01'), Carbon::parse('2026-08-10'));
+
+    expect($byDate)->toHaveKey('2026-08-03')
+        ->and($byDate)->not->toHaveKey('2026-08-04');
 });
 
 it('resolves a skipped day to Skip regardless of what was logged', function (): void {

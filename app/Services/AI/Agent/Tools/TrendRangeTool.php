@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Agent\Tools;
 
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\TrendDailySnapshot;
 use App\Models\User;
@@ -83,8 +84,9 @@ final class TrendRangeTool extends NoArgumentTool
     private function periodTotals(Carbon $start, Carbon $end): array
     {
         /** @var object{runs: int, distance_m: float|null, trimp_total: float|null}|null $row */
-        $row = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $row = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $this->user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->where('activity_details.start_date_local', '>=', $start->copy()->startOfDay())

@@ -298,6 +298,26 @@ it('never reaches into another runner\'s history', function (): void {
     expect(buildTrend($user)->verdict)->toBe(TrendVerdict::NotEnoughHistory);
 });
 
+it('never matches a not-yet-analyzed activity as a candidate', function (): void {
+    $user = User::factory()->create();
+    foreach ([3, 10, 17, 24] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_300);
+    }
+    // Would-be candidates for the recent runs above, but stuck as un-ingested
+    // stubs — none of them may be picked as a match.
+    foreach ([200, 215, 230, 245] as $daysAgo) {
+        $stub = Activity::factory()->for($user)->stub()->create();
+        ActivityDetail::factory()->for($stub)->create([
+            'distance' => 10_000.0,
+            'moving_time' => 4_300,
+            'elapsed_time' => 4_300,
+            'start_date_local' => Carbon::today()->subDays($daysAgo)->setTime(6, 0),
+        ]);
+    }
+
+    expect(buildTrend($user)->verdict)->toBe(TrendVerdict::NotEnoughHistory);
+});
+
 it('still finds the oldest comparable runs when the window holds hundreds of others', function (): void {
     $user = User::factory()->create();
     foreach ([350, 355, 360, 365] as $daysAgo) {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Gamification;
 
 use App\Enums\SessionType;
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\Season;
@@ -96,8 +97,9 @@ final readonly class SeasonGamificationContext
 
     private static function hasActivityOn(int $userId, Carbon $date): bool
     {
-        return ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        return Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $userId)
             ->whereNotNull('activity_details.start_date_local')
             ->whereBetween('activity_details.start_date_local', [$date->copy()->startOfDay(), $date->copy()->endOfDay()])
@@ -106,8 +108,9 @@ final readonly class SeasonGamificationContext
 
     private static function actualKmOn(int $userId, Carbon $date): float
     {
-        $meters = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $meters = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $userId)
             ->whereNotNull('activity_details.start_date_local')
             ->whereBetween('activity_details.start_date_local', [$date->copy()->startOfDay(), $date->copy()->endOfDay()])
@@ -123,8 +126,9 @@ final readonly class SeasonGamificationContext
             return false;
         }
 
-        $detail = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $detail = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $userId)
             ->whereNotNull('activity_details.start_date_local')
             ->whereBetween('activity_details.start_date_local', [
