@@ -46,6 +46,9 @@ pipe's exit code rather than the gate's.
 Running several agents at once, each in its own `git worktree`? See the `temari` skill's
 "Parallel worktrees & stacked PRs" section before starting a second Sail stack.
 
+Merging `main` into a branch must be committed as `chore(<scope>): merge main into <branch>` —
+the commit-msg hook rejects git's default merge message and carries no exemption for merges.
+
 ## LLM Integration
 
 Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-php/laravel ([AzureOpenAIClient](app/Services/AI/AzureOpenAIClient.php), [StructuredChatCaller](app/Services/AI/StructuredChatCaller.php), narrators under [app/Services/AI/Narrators/](app/Services/AI/Narrators/)). All narrator output flows through the [Analysis](app/Models/AI/Analysis.php) row model (status: pending / queued / processing / done / failed).
