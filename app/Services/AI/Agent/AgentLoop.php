@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent;
 
 use App\Exceptions\AI\ContentFilterException;
+use App\Exceptions\AI\UnavailableException;
 use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureFailureMapper;
@@ -120,10 +121,27 @@ final readonly class AgentLoop
      * mapping any Azure failure into the caller's transient/terminal exception
      * taxonomy.
      *
+     * A run past its wall-clock deadline starts no further request: it gives up
+     * terminally here, at a step boundary, rather than being killed mid-request
+     * by the worker's own timeout with the step billed and the block empty.
+     *
      * @param  array<string, mixed>  $payload
      */
     private function createResponse(string $kind, array $payload, AgentBudget $budget, float $startedAt): CreateResponse
     {
+        if ($budget->deadlinePassed()) {
+            Log::warning('narrator.ai.agent_deadline', [
+                'kind' => $kind,
+                'steps' => $budget->steps(),
+                'total_tokens' => $budget->totalTokens(),
+                'latency_ms' => self::latencyMs($startedAt),
+            ]);
+
+            throw new UnavailableException(
+                'Azure OpenAI run gave up at its wall-clock deadline after '.$budget->steps().' steps',
+            );
+        }
+
         $this->throttle->block();
 
         try {

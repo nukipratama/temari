@@ -68,7 +68,10 @@ return [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            // Must exceed the longest supervisor timeout in config/horizon.php
+            // (`supervisor-ai`, 360 s) — a shorter value hands a still-running
+            // narration job to a second worker and bills it twice.
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 420),
             'block_for' => 5,
             'after_commit' => false,
         ],

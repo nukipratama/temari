@@ -219,6 +219,11 @@ return [
         // several Azure round trips, which does not fit the 60 s the rest of
         // the queue lives by, and holding a shared worker that long would stall
         // Strava ingest behind it.
+        //
+        // The timeout is the outer safety margin, not the real bound: a run
+        // gives up at `ai.agent.deadline_seconds` and can only overshoot it by
+        // the request already in flight (azure_openai.timeout), so this must
+        // stay above their sum for the deadline to fire first.
         'supervisor-ai' => [
             'connection' => 'redis',
             'queue' => ['ai'],
@@ -231,7 +236,7 @@ return [
             'maxJobs' => 0,
             'memory' => 128,
             'tries' => 1,
-            'timeout' => 300,
+            'timeout' => 360,
             'nice' => 0,
         ],
 

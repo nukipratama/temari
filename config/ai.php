@@ -13,6 +13,15 @@ return [
     'agent' => [
         'max_steps' => (int) env('AI_AGENT_MAX_STEPS', 10),
         'max_tokens' => (int) env('AI_AGENT_MAX_TOKENS', 30000),
+
+        // Wall-clock ceiling on one run. max_steps alone allows
+        // max_steps * azure_openai.timeout seconds, far past the `supervisor-ai`
+        // worker timeout, and a worker kill mid-request bills the step and
+        // leaves the block empty. The run stops at a step boundary instead, so
+        // the relation that must hold is
+        // deadline_seconds + azure_openai.timeout < the supervisor's timeout —
+        // asserted by tests/Unit/Architecture/AgentDeadlineFitsWorkerTest.php.
+        'deadline_seconds' => (int) env('AI_AGENT_DEADLINE_SECONDS', 240),
     ],
 
     // Per-user trigger ceiling (sliding minute). Catches the case where a user
@@ -49,8 +58,7 @@ return [
     'azure_calls_per_minute' => (int) env('AI_AZURE_CALLS_PER_MINUTE', 15),
 
     // How long a worker waits for a local throttle slot (above) before giving
-    // up and spending a retry attempt. The `ai` queue's own Horizon supervisor
-    // timeout is 300s, sized for a tool-calling narrator's several Azure round
-    // trips — this must stay safely under that with generation room to spare.
+    // up and spending a retry attempt. It comes out of the same wall clock the
+    // run's deadline above measures, so it must stay well under it.
     'azure_block_cap_seconds' => (int) env('AI_AZURE_BLOCK_CAP_SECONDS', 90),
 ];
