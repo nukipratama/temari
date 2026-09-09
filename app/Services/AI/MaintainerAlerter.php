@@ -40,6 +40,11 @@ class MaintainerAlerter
 
     private const string DEAD_LETTER_LOCK_KEY = 'ai.dead_letter.lock';
 
+    /** Cooldown so a broken ai_token_usages table alerts once per window, not once per failed insert. */
+    private const int METERING_ALERT_COOLDOWN_SECONDS = 3600;
+
+    private const string METERING_ALERT_COOLDOWN_CACHE_KEY = 'ai.metering.record_failed_alert_cooldown';
+
     public function __construct(
         private readonly TelegramClient $telegram,
         private readonly AppConfig $config,
@@ -152,6 +157,25 @@ class MaintainerAlerter
     public function deployFailed(string $reason): void
     {
         $this->broadcast("Prod deploy failed: {$reason}. Check CI and the deploy logs.");
+    }
+
+    /**
+     * A token-usage insert failed. The row is swallowed by
+     * {@see \App\Actions\AI\RecordTokenUsageAction} so the successful Azure call
+     * that produced it is never lost, but the per-athlete cost ceiling reads
+     * spend from that same table, so a broken insert silently under-counts it.
+     * `Cache::add()` gates the push to once per cooldown window.
+     */
+    public function meteringFailed(string $exceptionClass, ?int $userId, string $kind, ?string $model): void
+    {
+        if (! Cache::add(self::METERING_ALERT_COOLDOWN_CACHE_KEY, true, self::METERING_ALERT_COOLDOWN_SECONDS)) {
+            return;
+        }
+
+        $user = $userId !== null ? (string) $userId : 'unknown';
+        $modelLabel = $model ?? 'unknown';
+
+        $this->broadcast("Token usage metering failed ({$exceptionClass}) for user {$user}, kind {$kind}, model {$modelLabel}. The cost ceiling is under-counting spend until this is fixed.");
     }
 
     private function pauseMessage(?string $reason): string

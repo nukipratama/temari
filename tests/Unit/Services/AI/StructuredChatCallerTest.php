@@ -17,6 +17,7 @@ use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
@@ -321,6 +322,27 @@ it('RecordTokenUsageAction logs a warning when the DB insert throws', function (
     Log::shouldHaveReceived('warning')
         ->once()
         ->with('token_usage.record_failed', Mockery::on(fn (array $ctx) => $ctx['kind'] === 'briefing'));
+});
+
+it('RecordTokenUsageAction alerts the maintainer once when the DB insert throws, without propagating', function (): void {
+    Log::spy();
+
+    Schema::drop('ai_token_usages');
+
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    app()->instance(MaintainerAlerter::class, $alerter);
+
+    $alerter->shouldReceive('meteringFailed')
+        ->once()
+        ->with(Mockery::type('string'), 42, 'briefing', 'gpt-test');
+
+    $usage = new AgentBudget(8, 30_000);
+    $usage->recordStep(10, 5, 15);
+
+    expect(fn () => app(RecordTokenUsageAction::class)('briefing', $usage, 'gpt-test', userId: 42))
+        ->not->toThrow(Throwable::class);
+
+    Log::shouldHaveReceived('warning')->once()->with('token_usage.record_failed', Mockery::any());
 });
 
 // ── B1: transient vs terminal Azure-failure classification ────────────
