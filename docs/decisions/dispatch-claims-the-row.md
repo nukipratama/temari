@@ -48,14 +48,20 @@ Two problems, both about a bill being paid twice.
   was created or claimed by *this* call.
 - **`markQueued()` stays unguarded** for its other caller: the analyze jobs' `markRequeued`, which
   re-queues a row it already owns and is not a race with anyone.
-- **Only a user-initiated invalidation re-arms the budget.** `request()` takes a `userInitiated`
-  flag; invalidation resets `attempts` only when it is set. The two user-initiated call sites are
-  the per-block "Try again"/"Reread" trigger
-  ([AnalysisController::trigger](app/Http/Controllers/Api/AnalysisController.php)) and a plan-day
-  edit ([PlanNarrationRequester::requestDayNarration](app/Services/AI/PlanNarrationRequester.php)).
-  Everything else — the post-run listener, the fingerprint-gated week sweep — is a system
-  invalidation and leaves `attempts` where it stands. The per-user dead-letter re-arm on
-  `/devtools/ai-usage` is unchanged and still the operator's reset.
+- **Only an invalidation the athlete asked for re-arms the budget**, read from the
+  [NarrationOrigin](app/Services/AI/NarrationOrigin.php) each entry point already declares:
+  `invalidateDoneRow()` resets `attempts` when the origin is `AnalysisOrigin::User`, and leaves it
+  alone otherwise. No new parameter — origin is already "what started this", declared once per
+  entry point precisely so a dispatch concern isn't threaded through every signature, and "did a
+  person ask for this?" is that same question. So the per-block "Try again"/"Reread"
+  ([AnalysisController::trigger](app/Http/Controllers/Api/AnalysisController.php)), a plan edit and
+  a manual replan ([PlanController](app/Http/Controllers/PlanController.php)) re-arm, while the
+  post-run ingest cascade and the Monday `plan:regenerate` sweep — both `Ingest`/`Scheduled` — do
+  not. The per-user dead-letter re-arm on `/devtools/ai-usage` is unchanged and still the
+  operator's reset.
+- **The plan-day edit now declares its origin.** `PlanController::update()` set none, so an edit's
+  narration metered as `Unknown`; it declares `User` like `regenerate()` next to it, which both
+  fixes the attribution and is what puts the edit on the re-arming side.
 
 ## Consequences
 

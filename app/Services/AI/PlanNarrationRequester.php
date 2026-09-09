@@ -318,7 +318,6 @@ final readonly class PlanNarrationRequester
             AnalysisType::PlanDayVoice,
             $date->toDateString(),
             invalidate: true,
-            userInitiated: true,
         );
     }
 

@@ -97,7 +97,6 @@ class AnalysisController extends Controller
             type: $analysisType,
             discriminator: $discriminator,
             invalidate: $resume === null,
-            userInitiated: true,
         );
 
         return $this->payload($row, $analysisType, $subjectId, $discriminator);

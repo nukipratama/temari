@@ -79,21 +79,20 @@ class AnalysisService
         ?string $discriminator = null,
         ?int $delaySeconds = null,
         bool $invalidate = false,
-        bool $userInitiated = false,
     ): Analysis {
         $subjectType = $subjectOrType instanceof Model ? $subjectOrType::class : $subjectOrType;
         $groupJobClass = $type->groupJobClass();
 
         if ($groupJobClass !== null) {
             $groupDiscriminator = $groupJobClass === AnalyzeActivityJob::class ? null : $discriminator;
-            $this->dispatchGroup($groupJobClass, $subjectId, $groupDiscriminator, $invalidate, $delaySeconds, $userInitiated);
+            $this->dispatchGroup($groupJobClass, $subjectId, $groupDiscriminator, $invalidate, $delaySeconds);
 
             return Analysis::query()
                 ->forSubject($groupJobClass::subjectType(), $subjectId, $type, $groupDiscriminator)
                 ->firstOrFail();
         }
 
-        return $this->dispatchRow($subjectType, $subjectId, $type, $discriminator, $invalidate, $delaySeconds, $userInitiated);
+        return $this->dispatchRow($subjectType, $subjectId, $type, $discriminator, $invalidate, $delaySeconds);
     }
 
     /**
@@ -273,7 +272,6 @@ class AnalysisService
         ?string $discriminator,
         bool $invalidate,
         ?int $delaySeconds,
-        bool $userInitiated = false,
     ): Analysis {
         $row = $this->upsertRow($subjectType, $subjectId, $type, $discriminator);
         $justCreated = $row->wasRecentlyCreated;
@@ -294,7 +292,7 @@ class AnalysisService
 
         if (! $justCreated) {
             if ($invalidate) {
-                $this->invalidateDoneRow($row, $userInitiated);
+                $this->invalidateDoneRow($row);
             }
 
             if (! $this->claimForDispatch($row)) {
@@ -318,7 +316,6 @@ class AnalysisService
         ?string $discriminator,
         bool $invalidate,
         ?int $delaySeconds,
-        bool $userInitiated = false,
     ): void {
         $rows = $this->upsertGroupRows($jobClass::subjectType(), $subjectId, $discriminator, $jobClass::groupedTypes());
         $anyJustCreated = $rows->contains(fn (Analysis $row): bool => $row->wasRecentlyCreated);
@@ -336,7 +333,7 @@ class AnalysisService
 
         if ($invalidate) {
             foreach ($rows as $row) {
-                $this->invalidateDoneRow($row, $userInitiated);
+                $this->invalidateDoneRow($row);
             }
         }
 
@@ -490,13 +487,14 @@ class AnalysisService
     /**
      * Send a Done row back to Pending so the next dispatch re-narrates it.
      *
-     * Only a user-initiated invalidation ("Reread", a plan edit) also re-arms
-     * the self-heal budget: `attempts` counts real LLM executions per row, and a
-     * system invalidation fires on repeatable events (an ingest, the Monday
+     * Only an invalidation the athlete asked for ("Reread", a plan edit, a
+     * replan) also re-arms the self-heal budget, read from the origin its entry
+     * point already declares: `attempts` counts real LLM executions per row, and
+     * a system invalidation fires on repeatable events (an ingest, the Monday
      * fingerprint sweep), so resetting there would make MAX_SELF_HEAL_ATTEMPTS
      * a bound per invalidation rather than per row.
      */
-    private function invalidateDoneRow(Analysis $row, bool $userInitiated): void
+    private function invalidateDoneRow(Analysis $row): void
     {
         if ($row->status !== AnalysisStatus::Done) {
             return;
@@ -505,9 +503,8 @@ class AnalysisService
         $row->update([
             'status' => AnalysisStatus::Pending,
             'error' => null,
-            ...($userInitiated ? ['attempts' => 0] : []),
+            ...($this->origin->current() === AnalysisOrigin::User ? ['attempts' => 0] : []),
         ]);
-        $row->refresh();
     }
 
     /**

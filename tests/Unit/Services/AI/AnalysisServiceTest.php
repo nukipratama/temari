@@ -143,6 +143,8 @@ it('invalidate=true flips a done row back to queued and re-dispatches', function
 });
 
 it('resets attempts to 0 on a user-initiated invalidation (row + group paths)', function (): void {
+    app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+
     // Row path (WeeklyRecap is non-grouped).
     $snap = WeeklySnapshot::factory()->create();
     Analysis::factory()->done('old')->create([
@@ -158,7 +160,6 @@ it('resets attempts to 0 on a user-initiated invalidation (row + group paths)', 
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
         invalidate: true,
-        userInitiated: true,
     );
 
     expect(Analysis::query()->first()->attempts)->toBe(0);
@@ -179,7 +180,6 @@ it('resets attempts to 0 on a user-initiated invalidation (row + group paths)', 
         subjectId: $activity->id,
         type: AnalysisType::PostRunSpeech,
         invalidate: true,
-        userInitiated: true,
     );
 
     $speechRow = Analysis::query()
@@ -190,6 +190,8 @@ it('resets attempts to 0 on a user-initiated invalidation (row + group paths)', 
 });
 
 it('keeps attempts on a system invalidation, so the self-heal budget is per row (row + group paths)', function (): void {
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
+
     $snap = WeeklySnapshot::factory()->create();
     Analysis::factory()->done('old')->create([
         'subject_type' => WeeklySnapshot::class,
