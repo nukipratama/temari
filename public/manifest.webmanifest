@@ -3,6 +3,7 @@
     "short_name": "Temari",
     "description": "Temari, running alongside you every step.",
     "lang": "en",
+    "id": "/",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
