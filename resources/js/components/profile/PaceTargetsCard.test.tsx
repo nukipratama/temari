@@ -26,25 +26,27 @@ describe('PaceTargetsCard', () => {
         expect(dots[3].style.left).toBe('100%');
     });
 
-    it('anchors the end labels to the rail but centres the ones between', () => {
+    it('holds the end labels inside the rail but centres the ones between', () => {
         const { container } = render(<PaceTargetsCard paces={PACES} />);
-        const labels = container.querySelectorAll<HTMLElement>(
-            'span[style*="left"]',
-        );
-
-        const shiftOf = (label: HTMLElement): number =>
-            Number(label.style.transform.replace(/[^\d.]/g, ''));
+        const labels = [
+            ...container.querySelectorAll<HTMLElement>('span[style*="left"]'),
+        ];
+        const dots = [
+            ...container.querySelectorAll<HTMLElement>('i[style*="left"]'),
+        ];
+        const leftOf = (element: HTMLElement): number =>
+            Number.parseFloat(element.style.left);
 
         expect(labels).toHaveLength(4);
-        // Flush left at 0% and flush right at 100%, so neither overhangs.
-        expect(shiftOf(labels[0])).toBe(0);
-        expect(shiftOf(labels[3])).toBe(100);
-        // The two between sit essentially over their own dots. Anchoring each
-        // label by its own offset — the shape this replaced — would have put
-        // these at 49 and 76, drifting further off the dot the wider the rail.
-        for (const label of [labels[1], labels[2]]) {
-            expect(shiftOf(label)).toBeGreaterThan(45);
-            expect(shiftOf(label)).toBeLessThan(55);
+        // Flush with the rail's left edge, and short of its right one.
+        expect(leftOf(labels[0])).toBe(0);
+        expect(leftOf(labels[3])).toBeLessThan(100);
+        // The two between start left of their own dot by half a label.
+        for (const index of [1, 2]) {
+            expect(leftOf(labels[index])).toBeGreaterThan(
+                leftOf(dots[index]) - 15,
+            );
+            expect(leftOf(labels[index])).toBeLessThan(leftOf(dots[index]));
         }
     });
 
@@ -124,7 +126,7 @@ describe('PaceTargetsCard', () => {
         ).toBeInTheDocument();
     });
 
-    it('centres every marker when all four paces are identical', () => {
+    it('centres every dot when all four paces are identical', () => {
         const { container } = render(
             <PaceTargetsCard
                 paces={{
@@ -136,10 +138,40 @@ describe('PaceTargetsCard', () => {
             />,
         );
 
-        for (const marker of container.querySelectorAll<HTMLElement>(
-            '[style*="left"]',
+        for (const dot of container.querySelectorAll<HTMLElement>(
+            'i[style*="left"]',
         )) {
-            expect(marker.style.left).toBe('50%');
+            expect(dot.style.left).toBe('50%');
         }
+    });
+
+    it('moves the label of a pace that crowds its neighbour, not its dot', () => {
+        const { container } = render(
+            <PaceTargetsCard
+                paces={{
+                    easy: 420,
+                    marathon: 272,
+                    threshold: 268,
+                    interval: 265,
+                }}
+            />,
+        );
+
+        const leftOf = (element: HTMLElement): number =>
+            Number.parseFloat(element.style.left);
+        const labels = [
+            ...container.querySelectorAll<HTMLElement>('span[style*="left"]'),
+        ];
+        const dots = [
+            ...container.querySelectorAll<HTMLElement>('i[style*="left"]'),
+        ];
+
+        // Marathon and interval share the rail's right end, four percent apart.
+        expect(leftOf(dots[3]) - leftOf(dots[1])).toBeLessThan(6);
+        // Their labels do not, and both stay on the rail.
+        expect(leftOf(labels[3]) - leftOf(labels[1])).toBeGreaterThan(20);
+        expect(dots[3].style.left).toBe('100%');
+        expect(leftOf(labels[3])).toBeLessThan(leftOf(dots[3]));
+        expect(leftOf(labels[1])).toBeGreaterThan(0);
     });
 });
