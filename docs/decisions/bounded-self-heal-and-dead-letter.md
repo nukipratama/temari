@@ -31,6 +31,8 @@ code_refs:
 >
 > **And a second claim has since been superseded (noted 2026-08-14) by [[cost-ceiling-degrades-to-rule-based]].** "A paused single-row LLM block rests `Pending` rather than being templated" now holds for every pause *except* the daily spend ceiling: past it, a `Pending` block is filled from the rule-based filler and marked `Done` ([AnalysisService::degradeToRuleBased](app/Services/AI/AnalysisService.php#L701), and again in `AnalyzeBaseJob::haltForPausedGeneration()` for a job already queued when the ceiling tripped). Every non-budget pause — kill switch, unconfigured Azure, tripped config breaker — still rests honestly `Pending` and still self-heals for free, and a `Failed` block is still excluded either way. The bounded-retry and dead-letter halves of this decision are untouched.
 
+> **The bound got real, 2026-09-09 — see [[dispatch-claims-the-row]].** `attempts` used to reset to 0 on *every* invalidation, so a repeatable system re-narration (a run ingest, the Monday fingerprint sweep) refilled the budget and `MAX_SELF_HEAL_ATTEMPTS` bounded attempts per invalidation rather than per row. Only a user-initiated invalidation re-arms it now. The dead-letter, the per-user manual re-arm and the cap itself are unchanged.
+
 ## Context
 
 [[per-block-manual-retry]] chose "failed blocks are never auto-retried, no self-healing" to keep LLM spend predictable. Two problems surfaced under that model:
