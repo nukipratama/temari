@@ -13,7 +13,11 @@ interface SettingsRowProps {
     description?: string;
     /** Inertia route href (e.g., "/settings/zones") */
     href?: string;
-    /** External href (e.g., Telegram bot link) */
+    /**
+     * External href (e.g., Telegram bot link). Always opens in a new tab: the
+     * onboarding wizard offers this row before the wizard has been submitted,
+     * so replacing the page would strand a half-finished signup.
+     */
     externalHref?: string;
     /** Click handler for button-style row */
     onClick?: MouseEventHandler<HTMLButtonElement>;
@@ -115,7 +119,12 @@ export default function SettingsRow({
 
     if (externalHref) {
         return (
-            <a href={externalHref} className={tappableClasses}>
+            <a
+                href={externalHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={tappableClasses}
+            >
                 {content}
             </a>
         );

@@ -29,6 +29,8 @@ describe('SettingsRow', () => {
         expect(screen.getByText(defaultProps.label)).toBeInTheDocument();
         const link = screen.getByRole('link');
         expect(link).toHaveAttribute('href', 'https://example.com');
+        expect(link).toHaveAttribute('target', '_blank');
+        expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });
 
     it('renders a button row with onClick handler and children', () => {

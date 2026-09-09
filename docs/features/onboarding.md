@@ -1,9 +1,9 @@
 ---
 title: Onboarding wizard
-description: The three-step post-connect wizard and its DB-backed gate.
+description: The four-step post-connect wizard and its DB-backed gate.
 tags: [feature, onboarding]
 status: living
-reviewed: 2026-09-05
+reviewed: 2026-09-09
 code_refs:
   - app/Http/Controllers/OnboardingController.php
   - app/Http/Middleware/EnsureOnboarded.php
@@ -19,19 +19,21 @@ code_refs:
   - resources/js/components/onboarding/IconChoiceCard.tsx
   - resources/js/components/onboarding/SessionsDial.tsx
   - resources/js/components/onboarding/DayPicker.tsx
+  - resources/js/components/PushNotificationToggle.tsx
+  - resources/js/components/ui/SettingsRow.tsx
   - resources/js/lib/raceGoal.ts
   - routes/web.php
 ---
 
 # Onboarding
 
-A minimal three-step wizard shown once, right after a user's *first* Strava connect.
+A minimal four-step wizard shown once, right after a user's *first* Strava connect.
 
 ## The gate
 
 `users.onboarded_at` (nullable timestamp) is the source of truth — DB-backed, not session/client state, so an abandoned wizard resumes on a later visit or a different device. The migration backfills every pre-existing row to `now()` at deploy time, so only accounts created afterward ever see the wizard.
 
-[EnsureOnboarded](../../app/Http/Middleware/EnsureOnboarded.php) (alias `onboarded`) gates the main authenticated route group in [web.php](../../routes/web.php); the wizard routes (`onboarding.show` / `onboarding.store`) and logout sit in a plain `auth`-only group so a user stuck mid-wizard can still sign out. `OnboardingController::show` itself redirects an already-onboarded user straight to `dashboard`, so direct navigation to `/onboarding` can never re-trigger it.
+[EnsureOnboarded](../../app/Http/Middleware/EnsureOnboarded.php) (alias `onboarded`) gates the main authenticated route group in [web.php](../../routes/web.php); the wizard routes (`onboarding.show` / `onboarding.store`), logout and the two `/profile/push` routes sit in a plain `auth`-only group, so a user stuck mid-wizard can still sign out and can still subscribe a device from step 4. `OnboardingController::show` itself redirects an already-onboarded user straight to `dashboard`, so direct navigation to `/onboarding` can never re-trigger it.
 
 ## Trigger
 
@@ -39,11 +41,14 @@ A minimal three-step wizard shown once, right after a user's *first* Strava conn
 
 ## The wizard
 
-[Onboarding/Index.tsx](../../resources/js/pages/Onboarding/Index.tsx) runs inside the bare shell (`bareLayout`), not the normal authenticated `AppShell` — three steps, tracked by a persistent [StepProgress](../../resources/js/components/onboarding/StepProgress.tsx) bar (Welcome / Training / Race Goal):
+[Onboarding/Index.tsx](../../resources/js/pages/Onboarding/Index.tsx) runs inside the bare shell (`bareLayout`), not the normal authenticated `AppShell` — four steps, tracked by a persistent [StepProgress](../../resources/js/components/onboarding/StepProgress.tsx) bar (Welcome / Training / Race Goal / Nudges):
 
 1. **Strava-connect confirmation** — a `pose="glow"` Temari, and a panel naming exactly what just landed and what has not. The first sync writes every historical run in `summary` state; splits, HR zones, effort and the run's card come from a second, per-run fetch that [DetailHydrator](../../app/Services/Run/Ingest/DetailHydrator.php) only queues when the run is opened or picked as a Past You comparison (see [[run-ingest-pipeline]]). Saying so here is what stops a new account reading its empty card collection as a bug.
 2. **Optional training preferences** — one question per screen (experience level, sessions per week, goal type, then run days) instead of one flat form, each answer choosable via [IconChoiceCard](../../resources/js/components/onboarding/IconChoiceCard.tsx) / [SessionsDial](../../resources/js/components/onboarding/SessionsDial.tsx) / [DayPicker](../../resources/js/components/onboarding/DayPicker.tsx) and auto-advancing on tap; a back chevron revisits a prior question without discarding its answer, and a per-question "Skip this" link leaves that one field blank while keeping the rest. This is the same `experience_level`/`sessions_per_week`/`goal_type`/`run_days`/`long_run_day` shape [TrainingPreference](../../app/Models/TrainingPreference.php) and `/settings` already use — the wizard is just another writer of the same row (`updateOrCreate` keyed on `user_id` in `OnboardingController::store`). The days question is only reachable once a sessions target exists (nothing to pick otherwise) and is skipped straight through to the race-goal step when sessions was itself left blank. The header "Skip for now" pill discards every partial pick made across all four questions and jumps straight to step 3, matching the race-goal step's own "Skip for now".
-3. **Optional first race goal** — the same shape as `/race` (`race_date`/`distance_m`/`goal_time_sec`/`name`, validated by [CompleteOnboardingRequest](../../app/Http/Requests/CompleteOnboardingRequest.php) with `required_with` making the three core fields all-or-nothing), plus a decorative "required pace" ring computed client-side from the distance/time fields already entered (not a fitness assessment, purely a fill animation). "Skip for now" posts an empty payload regardless of unsaved input.
+3. **Optional first race goal** — the same shape as `/race` (`race_date`/`distance_m`/`goal_time_sec`/`name`, validated by [CompleteOnboardingRequest](../../app/Http/Requests/CompleteOnboardingRequest.php) with `required_with` making the three core fields all-or-nothing), plus a decorative "required pace" ring computed client-side from the distance/time fields already entered (not a fitness assessment, purely a fill animation). "Skip for now" carries an empty payload forward regardless of unsaved input.
+4. **Optional nudges** — the two channels Temari can actually reach the runner on, offered once, at the end. The Telegram row is the same `SettingsRow` `/settings` draws, fed by `telegramConnectUrl` from `OnboardingController::show` — null, and the row absent, when the bot is unconfigured or this account is already linked, so the step never shows a control that could not work. Push is the same [PushNotificationToggle](../../resources/js/components/PushNotificationToggle.tsx) `/settings` mounts, minus the mute (there is nothing to mute before a subscription exists); on a browser tab it resolves to its Home-Screen-install explainer rather than a button. A back chevron returns to the race goal with its fields intact, and both "skip for now" and "finish" submit the wizard, so nothing here can strand a signup.
+
+Two consequences of putting a step *after* the goal form. The wizard posts only from this last step, so the goal step stashes its answer in component state rather than submitting it. And `/profile/push` moved out of the `onboarded` route group in [web.php](../../routes/web.php): behind that gate the toggle's `fetch` would follow a 302 back to the wizard and read the resulting 200 as a success that stored nothing. For the same reason [SettingsRow](../../resources/js/components/ui/SettingsRow.tsx)'s external link opens in a new tab — tapping Telegram mid-wizard must not replace the page holding an unsubmitted signup.
 
 The goal form only offers submissions the server can accept. [raceGoal.ts](../../resources/js/lib/raceGoal.ts) mirrors the request's `after:today` and `between:300,259200` bounds into the date input's `min` and a disabled submit, and server-side field errors render beside the field that caused them. Before that, blanking the minutes field produced a `goal_time_sec` of 0 — a submit that could only ever 422, explained by nothing nearer than the global error banner. `/race` shares the same helper for the same reason ([[race-projection]]).
 
@@ -55,4 +60,4 @@ Onboarding and the Strava backfill race: the wizard writes a plan the moment sig
 
 ## See also
 
-[[strava-connect]] · [[landing]] — the public surface that carries the Past You promise before the wizard is ever reached
+[[strava-connect]] · [[telegram-notifications]] · [[settings]] · [[landing]] — the public surface that carries the Past You promise before the wizard is ever reached

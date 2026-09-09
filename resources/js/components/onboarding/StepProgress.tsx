@@ -1,11 +1,12 @@
 import { cn } from '@/lib/cn';
 
-export type OnboardingStep = 'connected' | 'preferences' | 'goal';
+export type OnboardingStep = 'connected' | 'preferences' | 'goal' | 'nudge';
 
 const STEPS: ReadonlyArray<{ key: OnboardingStep; label: string }> = [
     { key: 'connected', label: 'welcome' },
     { key: 'preferences', label: 'training' },
     { key: 'goal', label: 'race goal' },
+    { key: 'nudge', label: 'nudges' },
 ];
 
 /** Number of preferences sub-questions (experience, sessions, goal, days). */
@@ -22,7 +23,7 @@ function circleTone(index: number, currentIndex: number): string {
 }
 
 /**
- * The three-step overview (Welcome / Training / Race Goal) that stays
+ * The four-step overview (Welcome / Training / Race Goal / Nudges) that stays
  * mounted across the whole wizard, plus a row of sub-dots under Training
  * tracking progress through its four preference questions.
  */

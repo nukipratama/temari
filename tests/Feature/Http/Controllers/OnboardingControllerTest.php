@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\RaceGoal;
+use App\Models\TelegramConnection;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,6 +36,44 @@ it('shows the wizard to a user who has not onboarded', function (): void {
     $this->actingAs($user)->get('/onboarding')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page->component('Onboarding/Index'));
+});
+
+it('hands the nudge step a Telegram deep link for this account', function (): void {
+    config(['services.telegram.bot_username' => 'temari_bot']);
+    $user = User::factory()->needsOnboarding()->create();
+
+    $this->actingAs($user)->get('/onboarding')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('telegramConnectUrl', fn (string $url): bool => str_starts_with($url, 'https://t.me/temari_bot?start='))
+            ->etc());
+});
+
+it('offers no Telegram link when the bot is unconfigured', function (): void {
+    config(['services.telegram.bot_username' => '']);
+    $user = User::factory()->needsOnboarding()->create();
+
+    $this->actingAs($user)->get('/onboarding')
+        ->assertInertia(fn (Assert $page) => $page->where('telegramConnectUrl', null)->etc());
+});
+
+it('offers no Telegram link to an account already linked to the bot', function (): void {
+    config(['services.telegram.bot_username' => 'temari_bot']);
+    $user = User::factory()->needsOnboarding()->create();
+    TelegramConnection::factory()->for($user)->create();
+
+    $this->actingAs($user)->get('/onboarding')
+        ->assertInertia(fn (Assert $page) => $page->where('telegramConnectUrl', null)->etc());
+});
+
+it('lets an unboarded user subscribe a device to push from the nudge step', function (): void {
+    $user = User::factory()->needsOnboarding()->create();
+
+    $this->actingAs($user)
+        ->postJson(route('push.subscribe'), [
+            'endpoint' => 'https://fcm.googleapis.com/fcm/send/onboarding',
+            'keys' => ['p256dh' => 'p256dh-key', 'auth' => 'auth-token'],
+        ])
+        ->assertNoContent();
 });
 
 it('never redirects an already-onboarded user back into the wizard', function (): void {

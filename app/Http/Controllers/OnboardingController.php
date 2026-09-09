@@ -12,6 +12,7 @@ use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
+use App\Services\Telegram\TelegramLinkToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -21,7 +22,7 @@ use Inertia\Response;
 
 class OnboardingController extends Controller
 {
-    public function show(Request $request): Response|RedirectResponse
+    public function show(Request $request, TelegramLinkToken $telegramLinkToken): Response|RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -30,7 +31,25 @@ class OnboardingController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return Inertia::render('Onboarding/Index');
+        return Inertia::render('Onboarding/Index', [
+            'telegramConnectUrl' => $this->resolveTelegramConnectUrl($user, $telegramLinkToken),
+        ]);
+    }
+
+    /**
+     * The bot deep link for the nudge step, or null when there is nothing to
+     * offer: the bot is unconfigured, or this account is already linked.
+     */
+    private function resolveTelegramConnectUrl(User $user, TelegramLinkToken $linkToken): ?string
+    {
+        $botUsername = (string) config('services.telegram.bot_username');
+        $connection = $user->telegramConnection;
+
+        if ($botUsername === '' || ($connection !== null && ! $connection->isRevoked())) {
+            return null;
+        }
+
+        return "https://t.me/{$botUsername}?start=" . $linkToken->mint($user->id);
     }
 
     public function store(
