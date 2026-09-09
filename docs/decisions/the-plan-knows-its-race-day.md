@@ -59,7 +59,7 @@ it would only ever apply to a mid-week race, and only until the next regeneratio
 
 **The race distance lives on the row.** `planned_sessions.race_distance_m` is stamped when the
 row is written. Reading it back from the `RaceGoal` at render time would not work:
-`plan:close-finished-races` retires the goal at 00:02, *before* `plan:score-compliance` grades
+`plan:close-finished-races` retires the goal at 00:04, *before* `plan:score-compliance` grades
 race day at all, so the goal is already gone by the time the distance is needed. The row is
 self-describing instead, which also keeps a past race in the athlete's history rendering
 correctly long after the goal behind it was superseded.
