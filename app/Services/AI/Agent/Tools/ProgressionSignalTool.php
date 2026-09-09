@@ -7,6 +7,7 @@ namespace App\Services\AI\Agent\Tools;
 use App\Enums\PrCategory;
 use App\Models\PersonalRecord;
 use App\Models\User;
+use App\Services\Run\Metrics\DurationFormatter;
 use App\Services\Run\ProgressionSeriesBuilder;
 use Illuminate\Support\Carbon;
 
@@ -37,9 +38,11 @@ final class ProgressionSignalTool extends UserTool
 
     public function description(): string
     {
-        return "The distance they've improved the most across their history, with the difference "
-            .'in seconds (label + delta_sec). If progression_signal is missing, no distance yet has '
-            .'at least two records to compare, so don\'t make up progress.';
+        return "The distance they've improved the most across their history (label), with the "
+            .'difference as delta_formatted (mm:ss, the only form to quote -- the app\'s own '
+            .'progression card shows the same figure) and delta_sec (raw seconds, for judging '
+            .'size and direction, never for quoting). If progression_signal is missing, no '
+            .'distance yet has at least two records to compare, so don\'t make up progress.';
     }
 
     /** @return array<string, mixed> */
@@ -72,7 +75,11 @@ final class ProgressionSignalTool extends UserTool
             $delta = (int) (max($data['times_sec']) - min($data['times_sec']));
             if ($delta > $bestDelta) {
                 $bestDelta = $delta;
-                $best = ['label' => $category->label(), 'delta_sec' => $delta];
+                $best = [
+                    'label' => $category->label(),
+                    'delta_sec' => $delta,
+                    'delta_formatted' => DurationFormatter::hms($delta),
+                ];
             }
         }
 

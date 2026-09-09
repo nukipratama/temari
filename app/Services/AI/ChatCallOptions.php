@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Services\AI\Agent\AgentToolbox;
+use Closure;
 
 /**
  * Bundle of optional per-call knobs for {@see StructuredChatCaller::call()}.
@@ -30,15 +31,24 @@ use App\Services\AI\Agent\AgentToolbox;
  * retry replays that pass on the same budget, so an override must allow
  * `2 * (tools + 1)` or the retry answers with no readings at all. Only worth
  * setting where that lands *below* the default.
+ *
+ * `validator` null = the required keys are the whole contract. Supplying one
+ * lets a narrator reject a structurally valid answer on its own terms: it
+ * receives the decoded payload and returns null to accept, or the corrective
+ * sentence the model is re-asked with.
  */
 final readonly class ChatCallOptions
 {
+    /**
+     * @param  (Closure(array<string, mixed>): ?string)|null  $validator
+     */
     public function __construct(
         public ?float $temperature = 0.8,
         public ?int $userId = null,
         public ?int $maxTokens = null,
         public ?AgentToolbox $toolbox = null,
         public ?int $maxSteps = null,
+        public ?Closure $validator = null,
     ) {
     }
 }

@@ -59,9 +59,13 @@ The period is fixed at construction — a `WeeklySnapshot`, or a `Y-m` string �
 
 Profile voice completes the set, and sends an **empty context** — unlike the recaps there was not even a continuity line to keep, since it is not chained. Their arithmetic moved with them: lifetime stats and the favourite-time bucket, the persona mood mix with its recent-vs-earlier split, and the progression signal were private methods on the narrators and are tools now. The persona read was a separately billed narrator of its own until it was merged into the profile voice, which now carries [PersonaMixTool](app/Services/AI/Agent/Tools/PersonaMixTool.php) beside its own three.
 
+A narrator can also carry a contract the JSON schema cannot express. `StructuredChatCaller` takes an optional `validator` on [ChatCallOptions](app/Services/AI/ChatCallOptions.php#L45): it runs on the decoded answer, and a complaint replays the conversation once with the answer and the complaint appended and tools forbidden, then throws if the rewrite fails too ([StructuredChatCaller](app/Services/AI/StructuredChatCaller.php#L149)). The profile voice is the first user — its two evidence slots only bind the prose because a figure check enforces them.
+
 Every narrator now reads rather than receives. What remains in any context is only ever one of two things: a value the *call* carries (post-run speech's `mood`, the daily greeting's `vibe`), or the continuity line.
 
 **The post-run speech is the one narrator deliberately kept short of data.** It used to receive the three insight blocks as prose to synthesize. All four render side by side in the [[run-detail]] lens grid, so being handed the other three made it a fourth telling of the same run — and saying "don't repeat" did not hold, in its own prompt or by removing its splits and zone tools. It now owns a lens the others structurally cannot: the day around the run, and where the run sits against the athlete's own history. Mechanics belong to the other three.
+
+The neighbour it collides with is not on that page at all. `get_week_state` serves both this narrator and the daily briefing, and the briefing *opens* on the week-over-week pair, so a runner who read home and then opened today's run met the same two figures twice in one session. Both keep the tool — the week genuinely does explain some runs — but the post-run prompt now ranks the run-scoped reads first and demotes the pair to a last resort that has to say what the week *changed* about this run ([PostRunSpeechNarrator](app/Services/AI/Narrators/PostRunSpeechNarrator.php#L63)).
 
 ### BriefingContext (per-user-day signals)
 

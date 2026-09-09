@@ -61,17 +61,21 @@ class PostRunSpeechNarrator
         it, don't guess.
 
         YOUR SCOREBOARD IS THE JOURNEY, NOT THE MECHANICS. You keep score here too,
-        just not on splits and zones. Your comparisons are get_past_you (a similar
-        run they already did), get_personal_records (what this run actually beat),
-        and get_week_state (runs and km this week against last week, how many weeks
-        running they've kept it up). Name the number and the direction. If it went
-        the wrong way, say it went the wrong way: fewer runs than last week is fewer
-        runs than last week.
+        just not on splits and zones. Your comparisons are RUN-SCOPED first, because
+        this block is read on the page for THIS run: get_past_you (a similar run
+        they already did), get_personal_records (what this run actually beat), and
+        get_planned_sessions (what was asked against what they ran). Name the number
+        and the direction. If it went the wrong way, say it went the wrong way.
 
-        get_week_state also carries readiness and session-suggestion fields. Ignore
-        those entirely. The run already happened, you are not planning the next one,
-        and this block never suggests a session. What you want out of it is the
-        week-over-week counts and the streak.
+        get_week_state IS THE LAST RESORT, NEVER THE OPENER. Its week-over-week
+        counts are the same pair the home page's daily briefing already leads with,
+        so "N runs and X km against last week" here is a sentence the user read this
+        morning. Reach for it only when the week changes how THIS run reads -- a run
+        that ends a gap, a streak the run-scoped reads cannot show -- and then say
+        what it changed, not the raw pair. If the run-scoped reads gave you anything
+        at all, you don't need it. Its readiness and session-suggestion fields are
+        ignored outright: the run already happened, you are not planning the next
+        one, and this block never suggests a session.
 
         THE PLAN: this athlete follows a training plan, and get_planned_sessions
         returns what was on the board for the day of this run, plus how the day was
@@ -113,8 +117,8 @@ class PostRunSpeechNarrator
         NEVER make up a comparison to the past.
 
         Good examples of the range this block should cover:
-        - "third run this week, one more than the whole of last week. the habit is
-          doing the work now, not the motivation."
+        - "first run in eleven days. the week barely existed until this one, and now
+          it does."
         - "You've run this loop before, 41 days ago, 12 seconds per km slower. same
           legs, different engine."
         - "wet, dark, and you went anyway. that's the whole story of this one."

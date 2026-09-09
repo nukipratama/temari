@@ -32,7 +32,8 @@ class ProfileVoiceNarrator
 
     private const string SYSTEM_PROMPT_TEMPLATE = <<<'PROMPT'
         Task: ONE paragraph (3-4 sentences, max 110 words) for the profile page,
-        using "I" as the subject. Output ONE field: profile_voice.
+        using "I" as the subject. Output THREE fields, in this order:
+        evidence_primary, evidence_secondary, profile_voice.
 
         Threadwork mood vocabulary: %s.
 
@@ -52,8 +53,11 @@ class ProfileVoiceNarrator
         THE SHIFT IS THE SCOREBOARD. This page is a long view, so the comparison
         that matters is recent-them against earlier-them: persona_mix_recent (last 6
         weeks) against persona_mix_earlier (the 6 weeks before that), and
-        get_progression_signal's delta_sec, where a falling delta means the same
-        distance is costing them less time. When one of those has genuinely moved,
+        get_progression_signal, where a bigger delta means the same distance is
+        costing them less time -- read the size off delta_sec, but the figure you
+        write is always delta_formatted ("26:47"), never raw seconds, because the
+        progression card next to this paragraph prints the formatted one and the
+        two must not disagree. When one of those has genuinely moved,
         that movement IS the paragraph. When it moved the wrong way, say so: a mix
         that used to have hard days in it and now doesn't is a real observation, and
         the honest version of it is more useful to them than a compliment.
@@ -75,23 +79,37 @@ class ProfileVoiceNarrator
            direction from persona_mix_earlier (the 6 weeks before that), call out the
            SHIFT, e.g. "lately you've been on fire more than last month's quieter
            stretch". If they're similar or one is empty, don't force it.
-        2. Evidence: one, at most two numbers from get_lifetime_stats,
-           get_progression_signal or get_plan_adherence that EXPLAIN the identity
-           above, connected explicitly. Example connectors: "and that shows up in
-           ...", "the numbers back it up: ...", "which is why ...". Total km, total
-           runs, time spent running, weekly_streak, PRs, a falling delta_sec in
-           progression, or how they treat a prescribed
-           session. Pick whichever connects best to the claim, not the biggest
-           number. When get_plan_adherence shows a lopsided record -- most sessions
-           held, or most of them let go -- that IS the identity and it outranks a
-           lifetime total, because a total says what they have done and adherence
-           says how they operate.
+        2. Evidence, and you COMMIT TO IT FIRST. Before writing a word of the
+           paragraph, fill evidence_primary and evidence_secondary: the one, at
+           most two numbers from get_lifetime_stats, get_progression_signal or
+           get_plan_adherence that EXPLAIN the identity above. Each slot holds
+           the figure exactly as it will read in the paragraph, already
+           formatted, nothing else: "6247.5 km", "26:47 off the marathon",
+           "28 weeks in a row", "41 of 52 sessions held". One number is enough
+           for most readings, so leave evidence_secondary as an empty string
+           unless the second one genuinely does work the first cannot.
+           The paragraph then quotes those slots and NO other number: there is
+           no third slot, so a third figure has nowhere to go. Pick whichever
+           connects best to the claim, not the biggest number. Candidates: total
+           km, total runs, time spent running, weekly_streak, PRs,
+           get_progression_signal's delta_formatted, or how they treat a
+           prescribed session. When get_plan_adherence shows a lopsided record --
+           most sessions held, or most of them let go -- that IS the identity and
+           it outranks a lifetime total, because a total says what they have done
+           and adherence says how they operate.
+           Connect the slots to the claim explicitly. Example connectors: "and
+           that shows up in ...", "the numbers back it up: ...", "which is why
+           ...". The mood percentage from step 1 is part of the claim, not
+           evidence, so it does not take a slot. Every other number in the
+           paragraph has to BE one of the two slots, the get_training_paces
+           garnish below included -- a weekly_streak included, which is a slot
+           candidate like any other and earns no free mention. This is checked
+           after you answer: a figure the slots do not hold gets the paragraph
+           handed straight back to you for a rewrite.
         3. One gentle nudge that fits that persona, not a generic new target.
 
-        If weekly_streak >= 2, fine to use as evidence of consistency (e.g.
-        "consistent for 4 weeks straight"). If favorite_time is present, weave in
-        its character naturally (morning = morning person, night = night runner),
-        don't force it if it's missing.
+        If favorite_time is present, weave in its character naturally (morning =
+        morning person, night = night runner), don't force it if it's missing.
 
         get_training_paces (vdot, easy_pace_sec and friends) is a GARNISH, not the
         main course. At most one small mention, and only if it reinforces the
@@ -124,6 +142,8 @@ class ProfileVoiceNarrator
         - Listing numbers in a row with none of them serving as a reason (total km,
           total runs, streak, VDOT, PRs all at once). Pick the one that connects,
           drop the rest.
+        - A duration in raw seconds ("1607 seconds"). Nowhere else in this app
+          prints a time that way, so it reads as a leaked field value.
         - "Your running pattern leans easy-dominant" with no follow-through.
         - A clinical label ("You are a base builder").
         - The same formula every refresh.
@@ -150,22 +170,78 @@ class ProfileVoiceNarrator
     public function generate(User $user): string
     {
         $context = $this->context($user);
+        $claimFigures = $this->claimFigures($user);
 
         $decoded = $this->caller->call(
             kind: 'profile_voice',
             systemPrompt: $this->systemPrompt(),
             context: $context,
             schemaName: 'TemariProfileVoice',
-            requiredKeys: ['profile_voice'],
+            requiredKeys: ['evidence_primary', 'evidence_secondary', 'profile_voice'],
             options: new ChatCallOptions(
                 temperature: 0.75,
                 userId: $user->id,
                 maxTokens: 1800,
                 toolbox: $this->toolbox($user),
+                validator: fn (array $answer): ?string => self::figureComplaint($answer, $claimFigures),
             ),
         );
 
+        // The evidence slots are a commitment device: never rendered, only required.
         return (string) $decoded['profile_voice'];
+    }
+
+    /**
+     * The two slots bind the prose only if something checks them. Every figure
+     * the paragraph quotes has to be one the model committed to, or one of the
+     * mood figures the prompt exempts as part of the claim rather than evidence.
+     *
+     * @param  array<string, mixed>  $answer
+     * @param  list<string>  $claimFigures
+     */
+    private static function figureComplaint(array $answer, array $claimFigures): ?string
+    {
+        $primary = (string) $answer['evidence_primary'];
+        $secondary = (string) $answer['evidence_secondary'];
+
+        $leaked = QuotedFigures::outside(
+            (string) $answer['profile_voice'],
+            [...$claimFigures, $primary, $secondary],
+        );
+
+        if ($leaked === []) {
+            return null;
+        }
+
+        return 'The paragraph quotes '.implode(', ', $leaked).', which neither evidence slot holds. '
+            .'It may only quote the figures in evidence_primary ("'.$primary.'") and evidence_secondary ("'.$secondary.'"), '
+            .'plus the mood percentages and run counts from get_persona_mix. '
+            .'Rewrite profile_voice so every number is one of those and change nothing else.';
+    }
+
+    /**
+     * The mood figures the paragraph may quote without spending a slot: step 1
+     * of the prompt asks for the mix, and calls it the claim, not evidence.
+     *
+     * @return list<string>
+     */
+    private function claimFigures(User $user): array
+    {
+        $mix = new PersonaMixTool($user, Carbon::now())->handle([]);
+        $figures = [];
+
+        foreach (['persona_mix', 'persona_mix_recent', 'persona_mix_earlier'] as $key) {
+            /** @var list<array{mood: string, count: int, percent: float}> $rows */
+            $rows = $mix[$key];
+
+            foreach ($rows as $row) {
+                $figures[] = (string) $row['percent'];
+                $figures[] = (string) round($row['percent']);
+                $figures[] = (string) $row['count'];
+            }
+        }
+
+        return $figures;
     }
 
     /**
