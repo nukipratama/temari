@@ -90,24 +90,37 @@ final readonly class UserEraser
     }
 
     /**
-     * Hands the athlete's grant back to Strava before the local rows go. The
-     * `deleting` hook on {@see User} only marks the connection revoked here,
-     * which frees nothing on Strava's side: the athlete kept counting against
-     * the app's allocation long after they had deleted their account.
+     * Hands the athlete's grant back to Strava before the local rows go, and
+     * marks the connection revoked either way. The `deleting` hook on
+     * {@see User} only marks a connection revoked, which frees nothing on
+     * Strava's side: the athlete kept counting against the app's allocation
+     * long after they had deleted their account.
      *
      * Best effort, and it cannot be anything else — someone who asked to be
      * deleted is not left undeleted because Strava is unreachable, which is
      * why {@see StravaClient::deauthorize()} reports rather than throws.
+     *
+     * Public so a caller that wants to tell the operator whether Strava took
+     * it (e.g. {@see \App\Console\Commands\Strava\RemoveAthleteCommand}) can
+     * call this directly instead of re-implementing the release: calling it
+     * again from {@see self::erase()} right after is a no-op, since the
+     * connection is already revoked by then.
+     *
+     * @return bool|null Whether Strava accepted the deauthorize, or null when
+     *                    there was no live grant to release.
      */
-    private function releaseStravaGrant(User $user): void
+    public function releaseStravaGrant(User $user): ?bool
     {
         $connection = $user->stravaConnection;
 
         if ($connection === null || $connection->isRevoked()) {
-            return;
+            return null;
         }
 
-        $this->stravaClient->deauthorize($connection);
+        $released = $this->stravaClient->deauthorize($connection);
+        $connection->markRevoked(notify: false);
+
+        return $released;
     }
 
     /**

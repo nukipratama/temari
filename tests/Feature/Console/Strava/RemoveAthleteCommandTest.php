@@ -10,6 +10,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -29,6 +30,7 @@ function athleteWithLiveGrant(): User
 }
 
 it('releases the grant on Strava and then removes the account and everything it owns', function (): void {
+    Notification::fake();
     $user = athleteWithLiveGrant();
     Activity::factory()->for($user)->create();
 
@@ -42,6 +44,8 @@ it('releases the grant on Strava and then removes the account and everything it 
     expect(User::query()->whereKey($user->id)->exists())->toBeFalse()
         ->and(StravaConnection::query()->where('user_id', $user->id)->exists())->toBeFalse()
         ->and(Activity::query()->where('user_id', $user->id)->exists())->toBeFalse();
+
+    Notification::assertNothingSent();
 });
 
 it('removes the account anyway when Strava will not take the deauthorize', function (): void {
