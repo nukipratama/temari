@@ -46,6 +46,25 @@ it('writes null vdot when the user has no qualifying PR, and null pace-variabili
         ->and($snap->pace_variability_sec)->toBeNull();
 });
 
+it('excludes a not-yet-analyzed activity from the day\'s pace-variability average', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->setTime(6, 0),
+        'stream_summary' => ['pace_variability_sec' => 4.0],
+    ]);
+    $unanalyzed = Activity::factory()->for($user)->stub()->create();
+    ActivityDetail::factory()->for($unanalyzed)->create([
+        'start_date_local' => Carbon::today()->setTime(18, 0),
+        'stream_summary' => ['pace_variability_sec' => 900.0],
+    ]);
+
+    $this->writer->writeToday($user);
+
+    $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
+    expect($snap->pace_variability_sec)->toEqualWithDelta(4.0, 0.01);
+});
+
 it('averages pace-variability across multiple runs the same day', function (): void {
     $user = User::factory()->create();
     foreach ([4.0, 8.0] as $variability) {

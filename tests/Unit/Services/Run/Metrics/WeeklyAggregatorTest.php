@@ -30,6 +30,18 @@ it('returns 0 and creates no rows when the user has no analyzed runs', function 
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
+it('ignores a not-yet-analyzed activity entirely, including as the sole run', function (): void {
+    $user = User::factory()->create();
+    $stub = Activity::factory()->for($user)->stub()->create();
+    ActivityDetail::factory()->for($stub)->create([
+        'distance' => 8000,
+        'start_date_local' => Carbon::today(),
+    ]);
+
+    expect($this->aggregator->rebuildFor($user))->toBe(0)
+        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(0);
+});
+
 it('upserts one snapshot per ISO week from first run through today', function (): void {
     $user = User::factory()->create();
     foreach ([21, 14, 7, 0] as $daysAgo) {
@@ -231,6 +243,19 @@ it('rebuildForWeekOf rebuilds only the snapshot covering the given date', functi
 
 it('rebuildForWeekOf returns null when user has no runs', function (): void {
     $user = User::factory()->create();
+
+    $snap = $this->aggregator->rebuildForWeekOf($user, Carbon::today());
+
+    expect($snap)->toBeNull();
+});
+
+it('rebuildForWeekOf returns null when the only run that week is not yet analyzed', function (): void {
+    $user = User::factory()->create();
+    $stub = Activity::factory()->for($user)->stub()->create();
+    ActivityDetail::factory()->for($stub)->create([
+        'distance' => 8000,
+        'start_date_local' => Carbon::today(),
+    ]);
 
     $snap = $this->aggregator->rebuildForWeekOf($user, Carbon::today());
 

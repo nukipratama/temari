@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Metrics;
 
 use Carbon\CarbonInterface;
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -129,8 +130,9 @@ class WeeklyAggregator
         // Materialize once: upsertWeek enumerates this set several times per week
         // (filter + sums + decoupling), and a lazy query would re-run the whole
         // 365-day scan on each pass. A user-year of rows fits comfortably in memory.
-        return ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        return Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->where('activity_details.start_date_local', '>=', $from)
@@ -143,8 +145,9 @@ class WeeklyAggregator
     public function rebuildFor(User $user): int
     {
         $this->clearDerivedCaches($user);
-        $details = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+        $details = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
             ->orderBy('activity_details.start_date_local')
