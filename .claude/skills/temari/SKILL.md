@@ -341,6 +341,13 @@ version that checkout has on disk. A hook edited on a worktree branch is not exe
 worktree's commits — invoke the script directly to test it. (If the stored value is absolute, it
 pins every worktree to the main checkout; `composer install` re-sets it relative.)
 
+**`commit-msg` has no merge-commit exemption, on purpose.** Git's default merge message
+("Merge remote-tracking branch …") fails the Conventional Commits guard like any other message
+would. Merging `main` into a branch (e.g. after a rebase-adjacent conflict, or to pull in a
+sibling PR before opening your own) needs its own real commit message —
+`chore(<scope>): merge main into <branch>` — passed explicitly to `git merge`/`git commit`, not
+git's auto-generated one.
+
 **One fresh-worktree gotcha**, not concurrency-specific: if several worktrees cold-install at the
 same moment, one can occasionally fail mid-extraction on a transient bind-mount visibility race —
 just re-run `worktree-setup.sh`, which resumes rather than redoing. (The old `MissingAppKeyException`

@@ -7,6 +7,7 @@ use App\Enums\GoalType;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\TrainingPreference;
 use App\Models\PlannedSession;
+use App\Services\AI\AnalysisOrigin;
 use Illuminate\Support\Carbon;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -131,6 +132,23 @@ it('reshapes the plan onto the run days just saved', function (): void {
         ->all();
 
     expect($trainingDows)->toBe([1, 3, 5]);
+
+    Carbon::setTestNow();
+});
+
+it('attributes a saved preference\'s re-narration to the athlete, so it re-arms the row\'s retry budget', function (): void {
+    Bus::fake();
+    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch('/settings/training-preferences', validPreferencesPayload())
+        ->assertSessionHasNoErrors();
+
+    Bus::assertDispatched(
+        AnalyzePlanDayVoiceJob::class,
+        fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
+    );
 
     Carbon::setTestNow();
 });
