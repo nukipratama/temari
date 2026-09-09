@@ -102,13 +102,14 @@ class ProfileVoiceNarrator
            ...". The mood percentage from step 1 is part of the claim, not
            evidence, so it does not take a slot. Every other number in the
            paragraph has to BE one of the two slots, the get_training_paces
-           garnish below included.
+           garnish below included -- a weekly_streak included, which is a slot
+           candidate like any other and earns no free mention. This is checked
+           after you answer: a figure the slots do not hold gets the paragraph
+           handed straight back to you for a rewrite.
         3. One gentle nudge that fits that persona, not a generic new target.
 
-        If weekly_streak >= 2, fine to use as evidence of consistency (e.g.
-        "consistent for 4 weeks straight"). If favorite_time is present, weave in
-        its character naturally (morning = morning person, night = night runner),
-        don't force it if it's missing.
+        If favorite_time is present, weave in its character naturally (morning =
+        morning person, night = night runner), don't force it if it's missing.
 
         get_training_paces (vdot, easy_pace_sec and friends) is a GARNISH, not the
         main course. At most one small mention, and only if it reinforces the
@@ -169,6 +170,7 @@ class ProfileVoiceNarrator
     public function generate(User $user): string
     {
         $context = $this->context($user);
+        $claimFigures = $this->claimFigures($user);
 
         $decoded = $this->caller->call(
             kind: 'profile_voice',
@@ -181,11 +183,65 @@ class ProfileVoiceNarrator
                 userId: $user->id,
                 maxTokens: 1800,
                 toolbox: $this->toolbox($user),
+                validator: fn (array $answer): ?string => self::figureComplaint($answer, $claimFigures),
             ),
         );
 
         // The evidence slots are a commitment device: never rendered, only required.
         return (string) $decoded['profile_voice'];
+    }
+
+    /**
+     * The two slots bind the prose only if something checks them. Every figure
+     * the paragraph quotes has to be one the model committed to, or one of the
+     * mood figures the prompt exempts as part of the claim rather than evidence.
+     *
+     * @param  array<string, mixed>  $answer
+     * @param  list<string>  $claimFigures
+     */
+    private static function figureComplaint(array $answer, array $claimFigures): ?string
+    {
+        $primary = (string) $answer['evidence_primary'];
+        $secondary = (string) $answer['evidence_secondary'];
+
+        $leaked = QuotedFigures::outside(
+            (string) $answer['profile_voice'],
+            [...$claimFigures, $primary, $secondary],
+        );
+
+        if ($leaked === []) {
+            return null;
+        }
+
+        return 'The paragraph quotes '.implode(', ', $leaked).', which neither evidence slot holds. '
+            .'It may only quote the figures in evidence_primary ("'.$primary.'") and evidence_secondary ("'.$secondary.'"), '
+            .'plus the mood percentages and run counts from get_persona_mix. '
+            .'Rewrite profile_voice so every number is one of those and change nothing else.';
+    }
+
+    /**
+     * The mood figures the paragraph may quote without spending a slot: step 1
+     * of the prompt asks for the mix, and calls it the claim, not evidence.
+     *
+     * @return list<string>
+     */
+    private function claimFigures(User $user): array
+    {
+        $mix = new PersonaMixTool($user, Carbon::now())->handle([]);
+        $figures = [];
+
+        foreach (['persona_mix', 'persona_mix_recent', 'persona_mix_earlier'] as $key) {
+            /** @var list<array{mood: string, count: int, percent: float}> $rows */
+            $rows = $mix[$key];
+
+            foreach ($rows as $row) {
+                $figures[] = (string) $row['percent'];
+                $figures[] = (string) round($row['percent']);
+                $figures[] = (string) $row['count'];
+            }
+        }
+
+        return $figures;
     }
 
     /**

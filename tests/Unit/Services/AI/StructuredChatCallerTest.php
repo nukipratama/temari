@@ -877,3 +877,38 @@ it('sends the same cache key for two different users of one narrator', function 
 
     expect($keys)->toBe(['briefing_mascot_voice', 'briefing_mascot_voice']);
 });
+
+// A narrator contract the JSON schema cannot express (#853: the profile voice
+// may quote only the figures it committed to two slots) is checked here, and a
+// rejected answer is handed back once with the complaint attached.
+it('re-asks once with the complaint when a validator rejects the answer', function (): void {
+    $client = new ClientFake([
+        fakeAzureResponse(json_encode(['headline' => 'first'], JSON_THROW_ON_ERROR)),
+        fakeAzureResponse(json_encode(['headline' => 'second'], JSON_THROW_ON_ERROR)),
+    ]);
+
+    $decoded = fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(
+        validator: fn (array $answer): ?string => $answer['headline'] === 'first' ? 'say something else' : null,
+    ));
+
+    expect($decoded['headline'])->toBe('second');
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $turns = array_slice($params['input'], -2);
+
+        return count($params['input']) === 4
+            && $turns[0] === ['role' => 'assistant', 'content' => json_encode(['headline' => 'first'], JSON_THROW_ON_ERROR)]
+            && $turns[1] === ['role' => 'user', 'content' => 'say something else'];
+    });
+});
+
+it('throws when the answer the validator asked for is rejected too', function (): void {
+    $client = new ClientFake([
+        fakeAzureResponse(json_encode(['headline' => 'first'], JSON_THROW_ON_ERROR)),
+        fakeAzureResponse(json_encode(['headline' => 'second'], JSON_THROW_ON_ERROR)),
+    ]);
+
+    expect(fn () => fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(
+        validator: fn (array $answer): ?string => 'still wrong',
+    )))->toThrow(UnavailableException::class, 'rejected twice: still wrong');
+});

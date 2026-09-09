@@ -140,6 +140,33 @@ final readonly class StructuredChatCaller
             }
 
             $decoded = $this->decoded($response, $requiredKeys, $propertySchema);
+
+            // A narrator's own contract, checked after the schema's. The rewrite
+            // replays the conversation with tools forbidden, so it costs one turn
+            // and re-reads nothing.
+            if ($options->validator !== null) {
+                $complaint = ($options->validator)($decoded);
+
+                if ($complaint !== null) {
+                    Log::warning('narrator.ai.rejected_output', [
+                        'kind' => $kind,
+                        'complaint' => $complaint,
+                        'output' => $response->outputText,
+                    ]);
+
+                    $input[] = ['role' => 'assistant', 'content' => (string) $response->outputText];
+                    $input[] = ['role' => 'user', 'content' => $complaint];
+
+                    $response = $this->loop->forceAnswer($kind, $payload, $input, $effectiveMaxTokens, $budget, $startedAt);
+                    $decoded = $this->decoded($response, $requiredKeys, $propertySchema);
+                    $complaint = ($options->validator)($decoded);
+
+                    if ($complaint !== null) {
+                        throw new UnavailableException('Azure OpenAI structured output rejected twice: '.$complaint);
+                    }
+                }
+            }
+
             $truncated = self::isTruncated($response);
 
             if ($truncated) {

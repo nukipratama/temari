@@ -32,6 +32,7 @@ use App\Services\AI\Anchor\DayAnchorResolver;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
+use App\Services\AI\Narrators\QuotedFigures;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PlanDayVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
@@ -1147,9 +1148,9 @@ it('ProfileVoiceNarrator returns an empty mix for a user with no story lines', f
 
 it('ProfileVoiceNarrator returns profile voice on valid JSON', function (): void {
     $user = User::factory()->create();
-    $caller = fakeCaller(profileVoiceJson('You have run 50 km. Strong.'));
+    $caller = fakeCaller(profileVoiceJson('You have run 6247.5 km. Strong.'));
     $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
-    expect($narrator->generate($user))->toBe('You have run 50 km. Strong.');
+    expect($narrator->generate($user))->toBe('You have run 6247.5 km. Strong.');
 });
 
 it('ProfileVoiceNarrator builds context from user stats', function (): void {
@@ -1253,8 +1254,79 @@ it('ProfileVoiceNarrator bounds its quotable numbers to two schema slots', funct
     expect(narratorPrompt(ProfileVoiceNarrator::class))
         ->toContain('COMMIT TO IT FIRST')
         ->toContain('delta_formatted')
-        ->not->toContain('a falling delta_sec');
+        ->not->toContain('a falling delta_sec')
+        ->not->toContain('fine to use as evidence of consistency');
 });
+
+/**
+ * Live output on 2026-09-10 filled both slots correctly and then quoted a
+ * weekly_streak the slots did not hold, because the prompt carved the streak
+ * out as free to mention. The carve-out is gone -- the streak is a slot
+ * candidate like any other -- and the bound is now checked in code rather than
+ * asked for in prose.
+ */
+it('QuotedFigures reads every figure format a paragraph can carry', function (): void {
+    expect(QuotedFigures::in('26:47 off the marathon, 1:07:12 for the half'))->toBe(['26:47', '1:07:12'])
+        ->and(QuotedFigures::in('6,247.50 km across 635 runs at 52% chill'))->toBe(['6247.5', '635', '52'])
+        ->and(QuotedFigures::in('19.2% and 5.2km and 11bpm'))->toBe(['19.2', '5.2', '11'])
+        ->and(QuotedFigures::in('no numbers here'))->toBe([]);
+});
+
+it('QuotedFigures counts a figure any allowed entry accounts for as allowed', function (): void {
+    expect(QuotedFigures::outside('26:47 and 28 weeks', ['26:47 off the marathon', '28 weeks in a row']))->toBe([])
+        ->and(QuotedFigures::outside('26:47 and 28 weeks', ['26:47 off the marathon']))->toBe(['28']);
+});
+
+it('ProfileVoiceNarrator lets the paragraph quote a mood percentage without a slot', function (): void {
+    $user = User::factory()->create();
+    $cutoff = Carbon::now()->subWeeks(2);
+
+    foreach (['blazing', 'blazing', 'blazing', 'chill', 'gassed'] as $mood) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        StoryLine::factory()->for($user)->create([
+            'activity_id' => $activity->id,
+            'mood' => $mood,
+            'created_at' => $cutoff->copy()->addDay(),
+        ]);
+    }
+
+    $caller = fakeCaller(profileVoiceJson('blazing takes 60% of your runs, and 6247.5 km says why.'));
+    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+
+    expect($narrator->generate($user->fresh()))->toBe('blazing takes 60% of your runs, and 6247.5 km says why.');
+});
+
+it('ProfileVoiceNarrator re-asks once when the paragraph quotes a figure no slot holds', function (): void {
+    $user = User::factory()->create();
+    $client = new ClientFake([
+        fakeAzureResponse(profileVoiceJson('6247.5 km, and a 28 week streak behind it.')),
+        fakeAzureResponse(profileVoiceJson('6247.5 km, and the habit behind it.')),
+    ]);
+    $narrator = new ProfileVoiceNarrator(fakeStructuredCaller($client), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+
+    expect($narrator->generate($user))->toBe('6247.5 km, and the habit behind it.');
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $last = end($params['input']);
+
+        return $method === 'create'
+            && is_array($last)
+            && ($last['role'] ?? null) === 'user'
+            && str_contains((string) $last['content'], 'The paragraph quotes 28')
+            && str_contains((string) $last['content'], '6247.5 km');
+    });
+});
+
+it('ProfileVoiceNarrator throws when the rewrite leaks a figure too', function (): void {
+    $user = User::factory()->create();
+    $client = new ClientFake([
+        fakeAzureResponse(profileVoiceJson('6247.5 km, and a 28 week streak behind it.')),
+        fakeAzureResponse(profileVoiceJson('6247.5 km, and 41 sessions behind it.')),
+    ]);
+    $narrator = new ProfileVoiceNarrator(fakeStructuredCaller($client), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+
+    $narrator->generate($user);
+})->throws(UnavailableException::class, 'rejected twice');
 
 it('ProfileVoiceNarrator feeds the four training paces derived from the runner VDOT', function (): void {
     $user = User::factory()->create();
