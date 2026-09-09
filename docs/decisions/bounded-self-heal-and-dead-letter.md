@@ -17,6 +17,12 @@ code_refs:
 **Status:** Accepted (documented 2026-07-04). Supersedes the "no self-healing" stance of [[per-block-manual-retry]].
 
 
+> **Extended, 2026-09-09, by [[kickoff-catch-up-is-upsert-only]].** Everything below still holds.
+> It only ever describes the *fill* side: every sweep here starts from a row that already exists, so
+> a scheduler outage across a kickoff minute left nothing for it to find. The hourly `ai:catch-up`
+> command now recreates those missing rows, upsert-only, and hands them straight back to this
+> decision's self-heal to fill.
+
 > **Fact update, 2026-09-04.** The decision and its reasoning stand unchanged. The `pr_context`
 > narration named below no longer exists: it was billed on every ingest and rendered on no page, so
 > the surface and its self-heal sweep were cut. Read every mention of it here as historical;

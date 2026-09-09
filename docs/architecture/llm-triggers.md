@@ -71,7 +71,8 @@ scheduled command missing from this table is a bug in this table.
 | every 3rd day 06:00 | [`ai:trend-read 90d`](../../routes/console.php#L91) | discriminator `90d` |
 | Mon 06:00 | [`ai:trend-read 12mo`](../../routes/console.php#L92) | discriminator `12mo` |
 | first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | all three `trend_read` ranges at once |
-| hourly | [`ai:self-heal`](../../routes/console.php#L100) | recovery only — see origin 4 |
+| hourly | [`ai:self-heal`](../../routes/console.php#L106) | recovery only — see origin 4 |
+| hourly | [`ai:catch-up`](../../routes/console.php#L115) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 but the command then calls

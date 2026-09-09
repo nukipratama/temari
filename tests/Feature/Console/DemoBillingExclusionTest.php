@@ -32,7 +32,8 @@ uses()->group('structure');
 const BILLING = [
     'ai:daily-briefing' => 'User::notDemo() on the active-user scan',
     'ai:weekly-recap' => 'User::notDemo() in KickoffWeeklyRecaps, the action the command delegates its scan to',
-    'ai:weekly-profile' => 'User::notDemo() on the profile scan',
+    'ai:weekly-profile' => 'User::notDemo() on the profile scan, via the shared RecentlyActiveUsers action',
+    'ai:catch-up' => 'creates rows only, but off the same scans: RecentlyActiveUsers and KickoffWeeklyRecaps both apply User::notDemo()',
     'ai:monthly-recap' => 'User::notDemo() in KickoffMonthlyRecaps, the action the command delegates its user list to',
     'ai:trend-read' => 'User::notDemo() on the active-user scan',
     'strava:sync' => 'notDemo() on the connection scan',
@@ -104,9 +105,10 @@ it('reads the demo exclusion straight out of each billing command source', funct
 
     expect($source)->toMatch('/notDemo\(\)|is_demo.{0,20}false/s', "[{$command}] no longer filters the demo account out of its user selection");
 })->with([
-    'ai:daily-briefing' => ['ai:daily-briefing', 'app/Console/Commands/AI/DailyBriefingCommand.php'],
+    'ai:daily-briefing' => ['ai:daily-briefing', 'app/Console/Commands/AI/DailyBriefingCommand.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
     'ai:weekly-recap' => ['ai:weekly-recap', 'app/Console/Commands/AI/WeeklyRecapCommand.php', 'app/Actions/AI/KickoffWeeklyRecaps.php'],
-    'ai:weekly-profile' => ['ai:weekly-profile', 'app/Console/Commands/AI/WeeklyProfileCommand.php'],
+    'ai:weekly-profile' => ['ai:weekly-profile', 'app/Console/Commands/AI/WeeklyProfileCommand.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
+    'ai:catch-up' => ['ai:catch-up', 'app/Console/Commands/AI/CatchUpCommand.php', 'app/Actions/AI/KickoffCatchUp.php', 'app/Actions/AI/RecentlyActiveUsers.php', 'app/Actions/AI/KickoffWeeklyRecaps.php'],
     'ai:monthly-recap' => ['ai:monthly-recap', 'app/Console/Commands/AI/MonthlyRecapCommand.php', 'app/Actions/AI/KickoffMonthlyRecaps.php'],
     'ai:trend-read' => ['ai:trend-read', 'app/Console/Commands/AI/TrendReadCommand.php'],
     'strava:sync' => ['strava:sync', 'app/Console/Commands/Strava/SyncCommand.php'],

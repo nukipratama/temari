@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\AI;
 
-use App\Models\Activity;
-use App\Models\User;
+use App\Actions\AI\RecentlyActiveUsers;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 
@@ -20,20 +18,13 @@ use App\Services\AI\NarrationOrigin;
 class WeeklyProfileCommand extends Command
 {
     /**
-     * How recently a user must have run to get a refreshed voice, keyed off the
-     * run's own date because an on-connect backfill stamps `analyzed_at` to now
-     * across a whole imported history.
-     */
-    private const int ACTIVE_WINDOW_DAYS = 7;
-
-    /**
      * The Profile-page voice carries no per-run cadence of its own, so this weekly
      * heartbeat is its only auto-refresh: each active user's Temari-voice line
      * re-narrates once a week on the week's updated data. Demo is excluded (it
      * never auto-bills any LLM cadence); the manual "Reread" button still
      * forces an on-demand refresh between runs.
      */
-    public function handle(AnalysisService $service): int
+    public function handle(AnalysisService $service, RecentlyActiveUsers $activeUsers): int
     {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
@@ -43,24 +34,19 @@ class WeeklyProfileCommand extends Command
         // mid-week "Reread" already filled.
         $isoWeek = AnalysisType::currentIsoWeek();
 
-        $activeUserIds = Activity::query()
-            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
-            ->where('activity_details.start_date_local', '>=', Carbon::today()->subDays(self::ACTIVE_WINDOW_DAYS))
-            ->whereIn('activities.user_id', User::query()->notDemo()->select('id'))
-            ->distinct()
-            ->pluck('activities.user_id');
+        $users = $activeUsers();
 
-        foreach ($activeUserIds as $userId) {
+        foreach ($users as $user) {
             $service->request(
                 subjectOrType: AnalysisType::ProfileVoice->subjectType(),
-                subjectId: (int) $userId,
+                subjectId: $user->id,
                 type: AnalysisType::ProfileVoice,
                 discriminator: $isoWeek,
                 invalidate: false,
             );
         }
 
-        $this->info("Dispatched weekly profile refresh for {$activeUserIds->count()} active users.");
+        $this->info("Dispatched weekly profile refresh for {$users->count()} active users.");
 
         return self::SUCCESS;
     }
