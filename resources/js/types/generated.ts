@@ -25,5 +25,8 @@ export const EXPERIENCE_LEVEL_VALUES = ['new_to_running', 'returning', 'experien
 export type GoalType = 'consistent' | 'race' | 'base' | 'return';
 export const GOAL_TYPE_VALUES = ['consistent', 'race', 'base', 'return'] as const;
 
+export type FeedbackSubject = 'plan_day' | 'narration';
+export const FEEDBACK_SUBJECT_VALUES = ['plan_day', 'narration'] as const;
+
 export type AnchorKind = 'split' | 'zone' | 'metric' | 'session';
 export const ANCHOR_KIND_VALUES = ['split', 'zone', 'metric', 'session'] as const;

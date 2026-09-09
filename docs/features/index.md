@@ -41,4 +41,5 @@ _Systems_
 - [[notification-inbox]] — /inbox, the durable record of what Temari sent, with celebration replay
 - [[streak-reminders]] — Saturday nudges for at-risk weekly streaks, on any wired channel
 - [[temari-mascot]] — the face and the brand mark, the app's whole identity art
+- [[feedback]] — "this is wrong" on a plan day or a narration, written to a table the owner reads in tinker
 - [[installed-app-shell]] — Home-Screen install: edge-to-edge status bar, launch image, top bar with back button, touch feel, edge-swipe back

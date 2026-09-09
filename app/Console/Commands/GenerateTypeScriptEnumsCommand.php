@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use Override;
 use App\Enums\ExperienceLevel;
+use App\Enums\FeedbackSubject;
 use App\Enums\GoalType;
 use App\Enums\NotificationKind;
 use App\Enums\PlannedSessionStatus;
@@ -42,6 +43,7 @@ final class GenerateTypeScriptEnumsCommand extends Command
         PlannedSessionStatus::class,
         ExperienceLevel::class,
         GoalType::class,
+        FeedbackSubject::class,
         AnchorKind::class,
     ];
 
