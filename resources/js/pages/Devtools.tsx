@@ -25,6 +25,12 @@ const LINKS: ReadonlyArray<DevtoolsLink> = [
         href: '/devtools/ai-usage',
     },
     {
+        icon: 'mdi:flag-outline',
+        label: 'Feedback',
+        desc: 'The flags runners have filed as wrong, newest first.',
+        href: '/devtools/feedback',
+    },
+    {
         icon: 'mdi:sail-boat',
         label: 'Horizon',
         desc: 'Queue worker & job monitoring.',

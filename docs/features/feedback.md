@@ -17,6 +17,8 @@ code_refs:
   - resources/js/components/temari/AnalysisStatus.tsx
   - resources/js/components/plan/WeekDayRow.tsx
   - routes/web.php
+  - app/Http/Controllers/DevtoolsFeedbackController.php
+  - resources/js/pages/DevtoolsFeedback.tsx
 ---
 
 # Flag this as wrong
@@ -62,7 +64,11 @@ The flag is drawn filled and inert on a subject this athlete has already flagged
 
 ## Reading the rows
 
-There is no admin UI on purpose. Read them in tinker:
+[DevtoolsFeedbackController](../../app/Http/Controllers/DevtoolsFeedbackController.php), behind the `devtools` middleware group in [web.php](../../routes/web.php) alongside `/devtools/design` and `/devtools/ai-usage`, lists the last 200 rows newest first as [DevtoolsFeedback](../../resources/js/pages/DevtoolsFeedback.tsx): when, the runner's name, the flagged subject, the reason (lowercase), and the note (truncated, full text on hover). It is read-only — no reply, no status change, matching the row shape above.
+
+The subject link reuses [AnalysisMessagePresenter::url()](../../app/Services/Telegram/AnalysisMessagePresenter.php), the same resolver the tap-through notification already uses, rather than a second URL map: a `plan_day` subject links to `/plan`, a `narration` subject links through to the run/recap/month page when the presenter knows that analysis type, and reads as label-only text otherwise. A narration whose `Analysis` row is gone reads as "narration (deleted)".
+
+Rows can still be read directly in tinker:
 
 ```bash
 ./vendor/bin/sail artisan tinker --execute 'App\Models\Feedback::with("user:id,name")->latest("id")->get(["id","user_id","subject_type","subject_id","reason","note","created_at"])->each(fn ($f) => print("{$f->created_at} {$f->user->name} {$f->subject_type->value}#{$f->subject_id} {$f->reason?->value} {$f->note}\n"));'
