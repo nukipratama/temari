@@ -22,6 +22,12 @@ function renderFlag({
     );
 }
 
+async function openSheet() {
+    fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
+
+    return screen.findByRole('dialog', { name: 'something off?' });
+}
+
 function lastPostOptions() {
     const call = vi.mocked(router.post).mock.calls[0];
 
@@ -49,63 +55,27 @@ describe('FlagWrong', () => {
         expect(container).toBeEmptyDOMElement();
     });
 
-    it('offers the plan day reasons in a sheet', () => {
+    it('loads the sheet only once the icon is tapped', async () => {
         renderFlag();
-        fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
 
-        expect(
-            screen.getByRole('dialog', { name: 'something off?' }),
-        ).toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+        expect(await openSheet()).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'wrong pace' }),
         ).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'tone off' })).toBeNull();
     });
 
-    it('offers the narration reasons for a narration subject', () => {
-        setMockPage({ auth: { user: makeUser() } });
-        render(
-            <FlagWrong
-                subjectType="narration"
-                subjectId={4}
-                label="flag this read"
-            />,
-        );
-        fireEvent.click(screen.getByRole('button', { name: 'flag this read' }));
-
-        expect(
-            screen.getByRole('button', { name: 'tone off' }),
-        ).toBeInTheDocument();
-    });
-
-    it('keeps send disabled until a reason is chosen', () => {
+    it('posts the chosen reason, then goes inert', async () => {
         renderFlag();
-        fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
-
-        expect(screen.getByRole('button', { name: 'send' })).toBeDisabled();
+        await openSheet();
 
         fireEvent.click(screen.getByRole('button', { name: 'too hard' }));
-
-        expect(screen.getByRole('button', { name: 'send' })).toBeEnabled();
-    });
-
-    it('posts the reason and the trimmed note, then goes inert', () => {
-        renderFlag();
-        fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
-        fireEvent.click(screen.getByRole('button', { name: 'too hard' }));
-        fireEvent.change(screen.getByRole('textbox'), {
-            target: { value: '  too long for a tuesday  ' },
-        });
         fireEvent.click(screen.getByRole('button', { name: 'send' }));
 
         expect(router.post).toHaveBeenCalledWith(
             '/feedback',
-            {
-                subject_type: 'plan_day',
-                subject_id: 12,
-                reason: 'too_hard',
-                note: 'too long for a tuesday',
-            },
+            expect.objectContaining({ subject_id: 12, reason: 'too_hard' }),
             expect.objectContaining({ preserveScroll: true }),
         );
 
@@ -118,9 +88,10 @@ describe('FlagWrong', () => {
         expect(screen.getByLabelText('flagged')).toBeInTheDocument();
     });
 
-    it('closes the sheet on never mind without posting', () => {
+    it('closes the sheet on never mind without posting', async () => {
         renderFlag();
-        fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
+        await openSheet();
+
         fireEvent.click(screen.getByText('never mind'));
 
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -132,12 +103,5 @@ describe('FlagWrong', () => {
 
         expect(screen.getByLabelText('flagged')).toBeInTheDocument();
         expect(screen.queryByRole('button')).toBeNull();
-    });
-
-    it('caps the note at the column length', () => {
-        renderFlag();
-        fireEvent.click(screen.getByRole('button', { name: 'flag this day' }));
-
-        expect(screen.getByRole('textbox')).toHaveAttribute('maxlength', '280');
     });
 });

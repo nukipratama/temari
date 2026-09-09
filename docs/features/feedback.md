@@ -13,6 +13,7 @@ code_refs:
   - app/Http/Controllers/FeedbackController.php
   - app/Http/Requests/StoreFeedbackRequest.php
   - resources/js/components/temari/FlagWrong.tsx
+  - resources/js/components/temari/FlagSheet.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
   - resources/js/components/plan/WeekDayRow.tsx
   - routes/web.php
@@ -48,6 +49,8 @@ Ownership lives in [StoreFeedbackRequest::authorize()](../../app/Http/Requests/S
 - On the expanded plan day row in [WeekDayRow](../../resources/js/components/plan/WeekDayRow.tsx), at the right end of the `view activity` line, or alone on its own right-aligned line on a day with no run. Labelled `flag this day` against the narration's `flag this read` — a wrong prescription and a wrong reading of it are different complaints.
 
 It posts through `router.post` with `preserveState`, so the confirmation survives the redirect back.
+
+Only the icon and its state are on the first-paint path. The sheet and the form live in [FlagSheet](../../resources/js/components/temari/FlagSheet.tsx), behind a `lazy()` boundary mounted on the first tap, because FlagWrong renders from the shared app chunk and Base UI's dialog would otherwise be loaded by every route — the `base-ui` group in [vite.config.ts](../../vite.config.ts) is `entriesAware` so that split actually reaches the bundle.
 
 ## The sheet
 
