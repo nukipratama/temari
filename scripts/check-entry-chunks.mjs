@@ -107,8 +107,7 @@ function closure(startKeys) {
         const key = stack.pop();
         if (seen.has(key)) continue;
         seen.add(key);
-        for (const imported of manifest[key]?.imports ?? [])
-            stack.push(imported);
+        for (const imported of manifest[key]?.imports ?? []) stack.push(imported);
     }
 
     return seen;
@@ -127,12 +126,7 @@ function weigh(keys) {
         const gzipped = gzipSync(bytes, { level: 9 }).length;
         raw += bytes.length;
         gz += gzipped;
-        chunks.push({
-            name: chunk.name ?? chunk.file,
-            file: chunk.file,
-            raw: bytes.length,
-            gz: gzipped,
-        });
+        chunks.push({ name: chunk.name ?? chunk.file, file: chunk.file, raw: bytes.length, gz: gzipped });
     }
 
     chunks.sort((a, b) => b.gz - a.gz);

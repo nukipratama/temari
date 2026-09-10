@@ -326,21 +326,15 @@
        that were never meant to adopt Luma's card look. New surfaces opt in by name;
        nothing existing changes. */
     --radius-panel: 26px;
-    --shadow-panel:
-        0 4px 6px -1px rgba(23, 31, 40, 0.11),
-        0 2px 4px -2px rgba(23, 31, 40, 0.08);
+    --shadow-panel: 0 4px 6px -1px rgba(23, 31, 40, 0.11), 0 2px 4px -2px rgba(23, 31, 40, 0.08);
 
     /* ─── Elevation ────────────────────────────────────────────────────
        Warm-tinted, never neutral: a grey shadow on a cream ground reads
        dirty. e1 resting card · e2 floating UI · e3 sheet · e4 modal. */
-    --shadow-e1:
-        0 1px 2px rgba(58, 45, 20, 0.06), 0 1px 1px rgba(58, 45, 20, 0.04);
-    --shadow-e2:
-        0 4px 10px rgba(58, 45, 20, 0.08), 0 2px 4px rgba(58, 45, 20, 0.05);
-    --shadow-e3:
-        0 12px 28px rgba(58, 45, 20, 0.12), 0 4px 10px rgba(58, 45, 20, 0.07);
-    --shadow-e4:
-        0 24px 56px rgba(23, 15, 56, 0.2), 0 8px 20px rgba(23, 15, 56, 0.12);
+    --shadow-e1: 0 1px 2px rgba(58, 45, 20, 0.06), 0 1px 1px rgba(58, 45, 20, 0.04);
+    --shadow-e2: 0 4px 10px rgba(58, 45, 20, 0.08), 0 2px 4px rgba(58, 45, 20, 0.05);
+    --shadow-e3: 0 12px 28px rgba(58, 45, 20, 0.12), 0 4px 10px rgba(58, 45, 20, 0.07);
+    --shadow-e4: 0 24px 56px rgba(23, 15, 56, 0.2), 0 8px 20px rgba(23, 15, 56, 0.12);
 
     /* Page content width — the centered column cap shared by the top nav,
        PageContainer, and the devtools header (`max-w-page`). Eases up at 2xl
@@ -612,12 +606,59 @@ body {
     animation: popover-reveal 0.15s ease both;
 }
 
-/* Opening and closing share one curve, so a popover, a notice or a panel
-   leaves the way it arrived. `useExitTransition` holds `data-closing` for the
-   same window before the element unmounts. */
-[data-closing] {
-    animation-direction: reverse;
+/* Leaving the way it arrived. A separate keyframe name per exit rather than
+   `animation-direction: reverse`: reversing an animation that has already
+   finished only re-resolves its fill state, so the element would blink out
+   instead of playing. `useExitTransition` holds `data-closing` on for the
+   matching window before unmounting. */
+@keyframes reveal-up-out {
+    to {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+@keyframes reveal-fade-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes panel-reveal-out {
+    to {
+        opacity: 0;
+        transform: translateY(8px) scale(0.96);
+    }
+}
+
+@keyframes popover-reveal-out {
+    from {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, -4px) scale(0.97);
+    }
+}
+
+.reveal[data-closing] {
+    animation-name: reveal-up-out;
     animation-delay: 0s;
+}
+
+.fade-in[data-closing],
+.backdrop-reveal[data-closing] {
+    animation-name: reveal-fade-out;
+    animation-delay: 0s;
+}
+
+.panel-reveal[data-closing] {
+    animation-name: panel-reveal-out;
+}
+
+.popover-reveal[data-closing] {
+    animation-name: popover-reveal-out;
 }
 
 @keyframes pop-once {
@@ -659,6 +700,12 @@ body {
     .panel-reveal,
     .popover-reveal {
         animation-name: reveal-fade;
+    }
+
+    .reveal[data-closing],
+    .panel-reveal[data-closing],
+    .popover-reveal[data-closing] {
+        animation-name: reveal-fade-out;
     }
 
     .pop-once {
@@ -870,8 +917,7 @@ body {
     .card-glow {
         box-shadow:
             0 0 0 1px color-mix(in oklab, var(--rarity, white) 55%, transparent),
-            inset 0 0 calc(16px * var(--glow-strength, 1))
-                color-mix(in oklab, var(--rarity, white) 65%, transparent);
+            inset 0 0 calc(16px * var(--glow-strength, 1)) color-mix(in oklab, var(--rarity, white) 65%, transparent);
     }
 }
 
@@ -986,3 +1032,4 @@ body {
             0 0 0 1px rgba(241, 245, 248, 0.2), 0 24px 56px rgba(0, 0, 0, 0.55);
     }
 }
+
