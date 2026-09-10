@@ -1,5 +1,4 @@
 import { router } from '@inertiajs/react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import type { ExperienceLevel, GoalType } from '@/types/generated';
@@ -10,10 +9,11 @@ import SessionsDial from '@/components/onboarding/SessionsDial';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
-import { fadeInUp } from '@/lib/motion';
+import { useExitTransition } from '@/hooks/useExitTransition';
 import { cardVariants } from '@/lib/variants';
 
 const SAVED_FLASH_MS = 2000;
+const NOTICE_EXIT_MS = 320;
 
 const EXPERIENCE_OPTIONS: ReadonlyArray<{
     value: ExperienceLevel;
@@ -125,6 +125,7 @@ export default function TrainingPreferencesCard({
 
     const [processing, setProcessing] = useState(false);
     const [justSaved, setJustSaved] = useState(false);
+    const savedNotice = useExitTransition(justSaved, NOTICE_EXIT_MS);
     const savedFlashTimeoutRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -301,26 +302,21 @@ export default function TrainingPreferencesCard({
                 >
                     save changes
                 </PillButton>
-                <AnimatePresence>
-                    {justSaved && (
-                        <motion.span
-                            variants={fadeInUp}
-                            initial="hidden"
-                            animate="visible"
-                            exit="hidden"
-                            role="status"
-                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-ink"
-                        >
-                            <Icon
-                                icon="mdi:check-circle-outline"
-                                width={16}
-                                height={16}
-                                aria-hidden
-                            />
-                            Saved
-                        </motion.span>
-                    )}
-                </AnimatePresence>
+                {savedNotice.rendered && (
+                    <span
+                        role="status"
+                        data-closing={savedNotice.closing ? '' : undefined}
+                        className="reveal inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-ink"
+                    >
+                        <Icon
+                            icon="mdi:check-circle-outline"
+                            width={16}
+                            height={16}
+                            aria-hidden
+                        />
+                        Saved
+                    </span>
+                )}
             </div>
         </div>
     );

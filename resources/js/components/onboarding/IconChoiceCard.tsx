@@ -1,9 +1,7 @@
-import { motion } from 'framer-motion';
 import { useId } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
-import { pressShrink } from '@/lib/motion';
 
 /**
  * A single tappable option row for a preference question (experience level,
@@ -28,15 +26,14 @@ export default function IconChoiceCard({
     const descriptionId = useId();
 
     return (
-        <motion.button
+        <button
             type="button"
             onClick={onClick}
-            whileTap={pressShrink}
             aria-pressed={active}
             aria-label={label}
             aria-describedby={description ? descriptionId : undefined}
             className={cn(
-                'focus-ring flex w-full items-center gap-3 rounded-md border px-3.5 py-3 text-left transition',
+                'pressable focus-ring flex w-full items-center gap-3 rounded-md border px-3.5 py-3 text-left transition',
                 active
                     ? 'border-icon-accent bg-horizon/[0.18]'
                     : 'border-border-strong bg-card shadow-e1',
@@ -70,6 +67,6 @@ export default function IconChoiceCard({
                     </span>
                 )}
             </span>
-        </motion.button>
+        </button>
     );
 }

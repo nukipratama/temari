@@ -1,7 +1,6 @@
 import type { FormDataConvertible } from '@inertiajs/core';
 
 import { Head, router, usePage } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import { type FormEvent, type ReactNode, useState } from 'react';
 
 import type { ExperienceLevel, GoalType } from '@/types/generated';
@@ -26,9 +25,9 @@ import SettingsRow from '@/components/ui/SettingsRow';
 import { useCountUp } from '@/hooks/useCountUp';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
-import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatPace } from '@/lib/pace';
 import { earliestRaceDate, goalTimeError } from '@/lib/raceGoal';
+import { revealDelay } from '@/lib/styles';
 import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
 const DISTANCE_PRESETS = [
@@ -331,12 +330,9 @@ export default function OnboardingIndex({
                 <StepProgress step={step} subIndex={subIndex} />
 
                 {step === 'connected' ? (
-                    <motion.div
+                    <div
                         key="connected"
-                        variants={fadeInUp}
-                        initial="hidden"
-                        animate="visible"
-                        className="flex flex-col items-center gap-5 py-2 text-center"
+                        className="reveal flex flex-col items-center gap-5 py-2 text-center"
                     >
                         <div className="relative flex items-center justify-center">
                             <div
@@ -382,14 +378,9 @@ export default function OnboardingIndex({
                         >
                             continue
                         </PillButton>
-                    </motion.div>
+                    </div>
                 ) : step === 'preferences' ? (
-                    <motion.div
-                        key={`preferences-${subIndex}`}
-                        variants={fadeInUp}
-                        initial="hidden"
-                        animate="visible"
-                    >
+                    <div key={`preferences-${subIndex}`} className="reveal">
                         <div className="mb-5 flex h-11 items-center justify-between">
                             {subIndex > 0 ? (
                                 <button
@@ -423,10 +414,11 @@ export default function OnboardingIndex({
                                 }
                             >
                                 <ChoiceList>
-                                    {EXPERIENCE_OPTIONS.map((option) => (
-                                        <motion.div
+                                    {EXPERIENCE_OPTIONS.map((option, index) => (
+                                        <div
                                             key={option.value}
-                                            variants={fadeInUp}
+                                            className="reveal"
+                                            style={revealDelay(index)}
                                         >
                                             <IconChoiceCard
                                                 icon={option.icon}
@@ -442,7 +434,7 @@ export default function OnboardingIndex({
                                                     )
                                                 }
                                             />
-                                        </motion.div>
+                                        </div>
                                     ))}
                                 </ChoiceList>
                                 <SkipQuestionLink
@@ -453,17 +445,13 @@ export default function OnboardingIndex({
 
                         {subIndex === 1 && (
                             <PreferenceQuestion heading="how many days a week can you realistically show up?">
-                                <motion.div
-                                    variants={fadeInUp}
-                                    initial="hidden"
-                                    animate="visible"
-                                >
+                                <div className="reveal">
                                     <SessionsDial
                                         options={SESSIONS_OPTIONS}
                                         value={sessionsPerWeek}
                                         onChange={chooseSessions}
                                     />
-                                </motion.div>
+                                </div>
                                 <SkipQuestionLink
                                     onClick={() => setSubIndex(2)}
                                 />
@@ -473,10 +461,11 @@ export default function OnboardingIndex({
                         {subIndex === 2 && (
                             <PreferenceQuestion heading="what are you chasing right now?">
                                 <ChoiceList>
-                                    {GOAL_OPTIONS.map((option) => (
-                                        <motion.div
+                                    {GOAL_OPTIONS.map((option, index) => (
+                                        <div
                                             key={option.value}
-                                            variants={fadeInUp}
+                                            className="reveal"
+                                            style={revealDelay(index)}
                                         >
                                             <IconChoiceCard
                                                 icon={option.icon}
@@ -489,7 +478,7 @@ export default function OnboardingIndex({
                                                     chooseGoalType(option.value)
                                                 }
                                             />
-                                        </motion.div>
+                                        </div>
                                     ))}
                                 </ChoiceList>
                                 <SkipQuestionLink
@@ -561,14 +550,9 @@ export default function OnboardingIndex({
                                 <SkipQuestionLink onClick={skipDaysQuestion} />
                             </div>
                         )}
-                    </motion.div>
+                    </div>
                 ) : step === 'goal' ? (
-                    <motion.div
-                        key="goal"
-                        variants={fadeInUp}
-                        initial="hidden"
-                        animate="visible"
-                    >
+                    <div key="goal" className="reveal">
                         {prefsSummary !== '' && (
                             <p className="mb-3 narration">
                                 Got it: {prefsSummary}.
@@ -767,14 +751,9 @@ export default function OnboardingIndex({
                                 </PillButton>
                             </div>
                         </form>
-                    </motion.div>
+                    </div>
                 ) : (
-                    <motion.div
-                        key="nudge"
-                        variants={fadeInUp}
-                        initial="hidden"
-                        animate="visible"
-                    >
+                    <div key="nudge" className="reveal">
                         <div className="mb-5 flex h-11 items-center justify-between">
                             <button
                                 type="button"
@@ -837,7 +816,7 @@ export default function OnboardingIndex({
                         >
                             {processing ? 'saving…' : 'finish'}
                         </PillButton>
-                    </motion.div>
+                    </div>
                 )}
             </PageContainer>
         </>
@@ -862,18 +841,10 @@ function PreferenceQuestion({
     );
 }
 
-/** The prototype's motion-staggered option list: children land in sequence. */
+/** The prototype's staggered option list: children land in sequence, each
+ *  carrying its own `revealDelay`. */
 function ChoiceList({ children }: Readonly<{ children: ReactNode }>) {
-    return (
-        <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-            className="flex flex-col gap-2"
-        >
-            {children}
-        </motion.div>
-    );
+    return <div className="flex flex-col gap-2">{children}</div>;
 }
 
 function SkipQuestionLink({ onClick }: Readonly<{ onClick: () => void }>) {

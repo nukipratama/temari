@@ -1,7 +1,4 @@
-import { motion } from 'framer-motion';
-
 import { cn } from '@/lib/cn';
-import { pressShrink } from '@/lib/motion';
 
 /**
  * A row of ascending bars for picking a weekly session count — each bar's
@@ -23,15 +20,14 @@ export default function SessionsDial({
                 const filled = value !== null && n <= value;
                 return (
                     <div key={n} className="flex flex-col items-center gap-1.5">
-                        <motion.button
+                        <button
                             type="button"
                             onClick={() => onChange(n)}
-                            whileTap={pressShrink}
                             aria-pressed={n === value}
                             aria-label={`${n}x`}
                             style={{ height: `${26 + index * 9}px` }}
                             className={cn(
-                                'focus-ring w-7 rounded-t-md border-2',
+                                'pressable focus-ring w-7 rounded-t-md border-2',
                                 filled
                                     ? 'border-icon-accent bg-icon-accent'
                                     : 'border-border-strong bg-transparent',

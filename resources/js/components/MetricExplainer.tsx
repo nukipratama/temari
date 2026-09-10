@@ -1,7 +1,7 @@
-import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useId, useRef, useState } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
+import { useExitTransition } from '@/hooks/useExitTransition';
 import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/cn';
 import {
@@ -9,6 +9,8 @@ import {
     type MetricGlossaryEntry,
     type MetricKey,
 } from '@/lib/metricGlossary';
+
+const EXIT_MS = 150;
 
 interface MetricExplainerProps {
     metricKey: MetricKey;
@@ -37,6 +39,8 @@ export default function MetricExplainer({
 
     const close = useCallback(() => setOpen(false), []);
     usePopover(open, containerRef, close);
+
+    const { rendered, closing } = useExitTransition(open, EXIT_MS);
 
     const iconSize = size === 'xs' ? 12 : 14;
     // The box is 24px (WCAG 2.5.8) while negative margins keep the glyph's
@@ -67,43 +71,38 @@ export default function MetricExplainer({
                 />
             </button>
 
-            <AnimatePresence>
-                {open && (
-                    <motion.div
-                        id={popoverId}
-                        role="dialog"
-                        aria-label={entry.label}
-                        initial={{ opacity: 0, y: -4, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -4, scale: 0.97 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute left-1/2 top-full z-30 mt-2 w-64 max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-leaf/40 bg-popover text-left normal-case shadow-e2 ring-1 ring-leaf/15"
-                    >
-                        <div
-                            aria-hidden
-                            className="absolute inset-y-0 left-0 w-1 bg-leaf"
-                        />
-                        <div className="px-3.5 py-3 pl-4">
-                            <div className="flex items-center gap-1.5 font-mono text-[0.6875rem] font-semibold uppercase tracking-wider text-leaf-ink">
-                                <Icon
-                                    icon="mdi:lightbulb-on-outline"
-                                    width={12}
-                                    height={12}
-                                    aria-hidden
-                                />
-                                <span>
-                                    {entry.acronym
-                                        ? `${entry.label} · ${entry.acronym}`
-                                        : entry.label}
-                                </span>
-                            </div>
-                            <p className="mt-1.5 text-sm leading-relaxed text-foreground">
-                                {entry.body}
-                            </p>
+            {rendered && (
+                <div
+                    id={popoverId}
+                    role="dialog"
+                    aria-label={entry.label}
+                    data-closing={closing ? '' : undefined}
+                    className="popover-reveal absolute left-1/2 top-full z-30 mt-2 w-64 max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-leaf/40 bg-popover text-left normal-case shadow-e2 ring-1 ring-leaf/15"
+                >
+                    <div
+                        aria-hidden
+                        className="absolute inset-y-0 left-0 w-1 bg-leaf"
+                    />
+                    <div className="px-3.5 py-3 pl-4">
+                        <div className="flex items-center gap-1.5 font-mono text-[0.6875rem] font-semibold uppercase tracking-wider text-leaf-ink">
+                            <Icon
+                                icon="mdi:lightbulb-on-outline"
+                                width={12}
+                                height={12}
+                                aria-hidden
+                            />
+                            <span>
+                                {entry.acronym
+                                    ? `${entry.label} · ${entry.acronym}`
+                                    : entry.label}
+                            </span>
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        <p className="mt-1.5 text-sm leading-relaxed text-foreground">
+                            {entry.body}
+                        </p>
+                    </div>
+                </div>
+            )}
         </span>
     );
 }

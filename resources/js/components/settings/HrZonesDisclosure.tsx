@@ -1,18 +1,18 @@
 import { router, usePage } from '@inertiajs/react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import StravaAction from '@/components/StravaAction';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
+import { useExitTransition } from '@/hooks/useExitTransition';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import { HR_ZONE_LABELS } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
 import { cardVariants } from '@/lib/variants';
 
 const SAVED_FLASH_MS = 2000;
+const NOTICE_EXIT_MS = 320;
 
 const ZONE_KEYS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
 type ZoneKey = (typeof ZONE_KEYS)[number];
@@ -153,9 +153,11 @@ export default function HrZonesDisclosure({
     const errors = pageProps.errors ?? {};
     const invalidBounds = invalidBoundKeys(errors);
     const hasZoneError = invalidBounds.size > 0;
+    const zoneErrorNotice = useExitTransition(hasZoneError, NOTICE_EXIT_MS);
     const zonesErrorId = useId();
     const [processing, setProcessing] = useState(false);
     const [justSaved, setJustSaved] = useState(false);
+    const savedNotice = useExitTransition(justSaved, NOTICE_EXIT_MS);
     const savedFlashTimeoutRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -311,22 +313,19 @@ export default function HrZonesDisclosure({
                         ))}
                     </div>
 
-                    <AnimatePresence>
-                        {hasZoneError && (
-                            <motion.p
-                                id={zonesErrorId}
-                                role="alert"
-                                variants={fadeInUp}
-                                initial="hidden"
-                                animate="visible"
-                                exit="hidden"
-                                className="mb-2.5 rounded-lg border border-ember/30 bg-ember/[0.08] px-3 py-2 font-sans text-xs text-ember-ink"
-                            >
-                                Each zone has to start above the one before it,
-                                and Z1 no lower than your resting HR.
-                            </motion.p>
-                        )}
-                    </AnimatePresence>
+                    {zoneErrorNotice.rendered && (
+                        <p
+                            id={zonesErrorId}
+                            role="alert"
+                            data-closing={
+                                zoneErrorNotice.closing ? '' : undefined
+                            }
+                            className="reveal mb-2.5 rounded-lg border border-ember/30 bg-ember/[0.08] px-3 py-2 font-sans text-xs text-ember-ink"
+                        >
+                            Each zone has to start above the one before it, and
+                            Z1 no lower than your resting HR.
+                        </p>
+                    )}
 
                     <div className="mt-2.5 flex gap-2">
                         <PillButton
@@ -383,26 +382,21 @@ export default function HrZonesDisclosure({
                         </div>
                     )}
 
-                    <AnimatePresence>
-                        {justSaved && (
-                            <motion.span
-                                variants={fadeInUp}
-                                initial="hidden"
-                                animate="visible"
-                                exit="hidden"
-                                role="status"
-                                className="mt-2.5 inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-ink"
-                            >
-                                <Icon
-                                    icon="mdi:check-circle-outline"
-                                    width={16}
-                                    height={16}
-                                    aria-hidden
-                                />
-                                Saved
-                            </motion.span>
-                        )}
-                    </AnimatePresence>
+                    {savedNotice.rendered && (
+                        <span
+                            role="status"
+                            data-closing={savedNotice.closing ? '' : undefined}
+                            className="reveal mt-2.5 inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-ink"
+                        >
+                            <Icon
+                                icon="mdi:check-circle-outline"
+                                width={16}
+                                height={16}
+                                aria-hidden
+                            />
+                            Saved
+                        </span>
+                    )}
                 </div>
             )}
         </div>

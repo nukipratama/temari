@@ -305,38 +305,41 @@ carries the resting step.
 
 ## Motion
 
-Three tiers, built from `framer-motion` variants in
-[lib/motion.ts](../resources/js/lib/motion.ts) (declarative-only: `Variants` / `Transition`
-constants, no functions or branches) plus the `.pressable` CSS primitive below. Every tier sits
-inside the app-wide `<MotionConfig reducedMotion="user">`
-([AppShell.tsx](../resources/js/layouts/AppShell.tsx)): a transform property (scale, x/y, rotate)
-reduces to an instant snap under the user's OS reduced-motion setting, while `opacity` keeps
-animating — the one cue a reduced-motion user still gets.
-`MotionConfig` only reaches motion *components*, so anything animating imperatively — the
-stat count-ups ([useCountUp.ts](../resources/js/hooks/useCountUp.ts)), the SVG glyph draw-ins,
-the confetti burst — reads the same preference itself through
-[useReducedMotion](../resources/js/hooks/useReducedMotion.ts) and snaps to its end state.
+Three tiers, built from CSS keyframes in [app.css](../resources/css/app.css) plus the
+`.pressable` primitive below. There is no animation library: `framer-motion` came out entirely
+once it was measured, because the shell rendered it — a `MotionConfig` provider, the bottom nav's
+tab pop, every `PageContainer` entrance — and so every authenticated page paid ~43 KB gzipped for
+animations CSS already expresses. Reduced motion is honoured per primitive rather than by a provider: a
+`prefers-reduced-motion` block swaps each movement keyframe for its opacity-only twin, so a
+transform drops out while the fade survives — the one cue a reduced-motion user still gets.
+Anything animating imperatively — the stat count-ups
+([useCountUp.ts](../resources/js/hooks/useCountUp.ts)), the confetti burst — reads the same
+preference through [useReducedMotion](../resources/js/hooks/useReducedMotion.ts) and snaps to its
+end state.
 
 1. **Global / subtle** — press feedback and route transitions; present everywhere, never opt-in.
-   `pressShrink` (scale 0.97 + 70% opacity dip, 150ms) is the one convention
-   [MotionLink](../resources/js/components/MotionLink.tsx) (default `whileTap`), `.pressable`
-   (its CSS `active:` state) and [button](../resources/js/components/ui/button.tsx) all implement,
-   so a framer-driven link, a nav item and a plain button feel identical under the thumb. Button
-   used to press with a 1px translate instead, which is why it did not. The one exception is a
-   control with `aria-haspopup`: it keeps `touch-manipulation` and gives up the movement, since the
-   popup it opens is anchored to it.
+   `.pressable` (scale 0.97 + 70% opacity dip, 150ms) is the one convention every tappable and
+   [button](../resources/js/components/ui/button.tsx) implement, so a link, a nav item and a plain
+   button feel identical under the thumb. Button used to press with a 1px translate instead, which
+   is why it did not. The one exception is a control with `aria-haspopup`: it keeps
+   `touch-manipulation` and gives up the movement, since the popup it opens is anchored to it.
    Route transitions carry no tokens at all any more: the swap cross-fades through the
    **View Transitions API** (the browser's own animation, tuned only by a 180ms duration in
    `app.css`), and the progress bar it replaced is gone — see [[installed-app-shell]].
 2. **Data reveal** — a page's first showing of real data, not every render. Stat count-ups
-   (`useCountUp` + `countUpEase`, an ease-out curve with no overshoot — a tallying number should
-   land exactly on target), chart/route draw-ins (`drawIn`, SVG `pathLength` 0→1), and staggered
-   group reveals (`staggerContainer` wrapping `fadeInUp` children).
-3. **Celebratory** — the `idleByMood` / fidget keyframes in `lib/motion.ts`. Reserved for moments
-   that are actually earned — never layer tier 3 onto routine navigation or data loading. Nothing
-   uses this tier now: the overlays it was written for (the card reveal, the unlock toast and the
-   accessory takeover) were cut in `PP3`, and the mascot those keyframes animated in `PP2`. The
-   constants are left for `W2` to sweep.
+   (`useCountUp`, an ease-out curve with no overshoot — a tallying number should land exactly on
+   target), route draw-ins (`.draw-in`, SVG `pathLength` 1 with an animated `stroke-dashoffset`),
+   and staggered group reveals (`.reveal` children each carrying their own `--reveal-delay`, fed by
+   [`revealDelay`](../resources/js/lib/styles.ts)). `.fade-in` is the same landing without the
+   travel, for an element whose own box is smaller than the 8px `.reveal` moves through.
+   A popover, a notice or a modal panel that has to leave the way it arrived pairs its entrance
+   class with `data-closing` and
+   [useExitTransition](../resources/js/hooks/useExitTransition.ts), which holds the element mounted
+   for one exit window and reverses the same keyframe.
+3. **Celebratory** — reserved for moments that are actually earned; never layered onto routine
+   navigation or data loading. Nothing uses this tier: the overlays it was written for (the card
+   reveal, the unlock toast and the accessory takeover) were cut in `PP3`, and the mascot whose
+   fidget keyframes defined it in `PP2`.
 
 ## Gradients & atmospherics
 

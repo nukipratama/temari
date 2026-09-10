@@ -1,12 +1,9 @@
-import { motion } from 'framer-motion';
-
 import ProjectionGauge from '@/components/race/ProjectionGauge';
 import FaceIcon from '@/components/temari/FaceIcon';
 import Eyebrow from '@/components/ui/Eyebrow';
 import Card from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
 import { formatDurationHMS } from '@/lib/pace';
 
 export interface RaceProjection {
@@ -70,7 +67,7 @@ export default function ProjectionBlock({
                 className="pointer-events-none absolute -top-10 -right-10 size-[160px] rounded-full"
                 style={{ background: GLOW }}
             />
-            <motion.div initial="hidden" animate="visible" variants={fadeInUp}>
+            <div className="reveal">
                 <div className="relative flex items-center gap-1.5">
                     <Eyebrow token="micro" tone="ink-2">
                         Projected finish
@@ -92,7 +89,7 @@ export default function ProjectionBlock({
                     {WINDOW_COPY[projection.window]} (
                     {CONFIDENCE_COPY[projection.confidence]}).
                 </p>
-            </motion.div>
+            </div>
         </Card>
     );
 }

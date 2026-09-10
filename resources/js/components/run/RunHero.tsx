@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
 import MapWeatherPanel from '@/components/run/MapWeatherPanel';
@@ -8,8 +6,8 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import MoodChip from '@/components/ui/MoodChip';
 import { useCountUp } from '@/hooks/useCountUp';
-import { fadeInUp, staggerContainer } from '@/lib/motion';
 import { formatPace, formatShortDateTimeId } from '@/lib/pace';
+import { revealDelay } from '@/lib/styles';
 
 interface RunHeroProps {
     detail: ActivityDetail;
@@ -110,13 +108,9 @@ export default function RunHero({
                 )}
             </header>
 
-            <motion.div
-                variants={staggerContainer}
-                initial="hidden"
-                animate="visible"
-            >
+            <div>
                 <div className="mt-4 flex items-end justify-between gap-3">
-                    <motion.div variants={fadeInUp}>
+                    <div className="reveal" style={revealDelay(0)}>
                         <div className="flex items-baseline gap-1">
                             <b className="font-mono text-stat font-bold tabular-nums tracking-[-0.02em] text-foreground">
                                 {display(detail.distance, distanceKm, (n) =>
@@ -130,7 +124,7 @@ export default function RunHero({
                         <Eyebrow token="micro" tone="ink-3" className="mt-1">
                             DISTANCE
                         </Eyebrow>
-                    </motion.div>
+                    </div>
                     <div className="flex flex-col items-end gap-1.5 pb-0.5">
                         <SupportingStat
                             icon="mdi:timer-outline"
@@ -146,11 +140,11 @@ export default function RunHero({
                 </div>
 
                 <div className="mt-3.5 grid grid-cols-3 gap-1.5 min-[360px]:gap-2">
-                    {secondary.map((stat) => (
-                        <motion.div
+                    {secondary.map((stat, index) => (
+                        <div
                             key={stat.label}
-                            variants={fadeInUp}
-                            className="flex items-center gap-1.5 rounded-sm bg-muted px-2 py-2 min-[360px]:gap-2 min-[360px]:px-2.5"
+                            style={revealDelay(index + 1)}
+                            className="reveal flex items-center gap-1.5 rounded-sm bg-muted px-2 py-2 min-[360px]:gap-2 min-[360px]:px-2.5"
                         >
                             <Icon
                                 icon={stat.icon}
@@ -174,10 +168,10 @@ export default function RunHero({
                                     {stat.label}
                                 </span>
                             </div>
-                        </motion.div>
+                        </div>
                     ))}
                 </div>
-            </motion.div>
+            </div>
 
             <MapWeatherPanel detail={detail} className="mt-4" />
         </section>

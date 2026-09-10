@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { lazy, Suspense, useMemo, useState } from 'react';
 
 import type { Rarity } from '@/types/inertia';
@@ -12,9 +11,9 @@ import { useCountUp } from '@/hooks/useCountUp';
 import { useIsChartDark } from '@/hooks/useIsChartDark';
 import { CHART_GROUND } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
-import { fadeInUp, pressShrink, staggerContainer } from '@/lib/motion';
 import { formatNaiveIdDate } from '@/lib/pace';
 import { badgeName, BADGE_ABILITY, RARITY_INK } from '@/lib/runcard';
+import { revealDelay } from '@/lib/styles';
 
 import type { TrendRange } from '../RangeToggle';
 
@@ -240,39 +239,31 @@ export default function FitnessPanel({
                 you&apos;re absorbing the work.
             </p>
 
-            <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={staggerContainer}
-                className="mt-3.5 grid grid-cols-3 gap-2"
-            >
-                <motion.div variants={fadeInUp}>
+            <div className="mt-3.5 grid grid-cols-3 gap-2">
+                <div className="reveal" style={revealDelay(0)}>
                     <FitnessStat
                         value={Math.round(ctlCount).toString()}
                         label="fitness"
                     />
-                </motion.div>
-                <motion.div variants={fadeInUp}>
+                </div>
+                <div className="reveal" style={revealDelay(1)}>
                     <FitnessStat
                         value={Math.round(atlCount).toString()}
                         label="fatigue"
                     />
-                </motion.div>
-                <motion.div variants={fadeInUp}>
+                </div>
+                <div className="reveal" style={revealDelay(2)}>
                     <FitnessStat
                         value={form >= 0 ? `+${form}` : form.toString()}
                         label="form"
                     />
-                </motion.div>
-            </motion.div>
+                </div>
+            </div>
 
-            <motion.div
+            <div
                 role="img"
                 aria-label={`Fitness and fatigue over ${windowed.length} days. ${summarySentence}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className="mt-3.5 h-[150px]"
+                className="reveal mt-3.5 h-[150px]"
             >
                 <span className="sr-only">{summarySentence}</span>
                 <Suspense
@@ -280,7 +271,7 @@ export default function FitnessPanel({
                 >
                     <Line data={data} options={options} />
                 </Suspense>
-            </motion.div>
+            </div>
 
             <div className="mt-2.5 flex gap-3.5 text-label-micro text-text-2">
                 <span className="inline-flex items-center gap-1.5">
@@ -305,9 +296,8 @@ export default function FitnessPanel({
                 <ul className="mt-3.5 flex flex-wrap gap-1.5">
                     {chips.map((chip) => (
                         <li key={chip.key}>
-                            <motion.button
+                            <button
                                 type="button"
-                                whileTap={pressShrink}
                                 aria-pressed={chip.key === selected}
                                 onClick={() =>
                                     setSelected((cur) =>
@@ -315,7 +305,7 @@ export default function FitnessPanel({
                                     )
                                 }
                                 className={cn(
-                                    'focus-ring inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors',
+                                    'pressable focus-ring inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors',
                                     chip.key === selected
                                         ? 'bg-horizon/25 text-foreground'
                                         : 'bg-muted text-foreground',
@@ -330,7 +320,7 @@ export default function FitnessPanel({
                                     aria-hidden
                                 />
                                 {chip.label}
-                            </motion.button>
+                            </button>
                         </li>
                     ))}
                 </ul>

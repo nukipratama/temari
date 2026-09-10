@@ -47,7 +47,7 @@ The four legal links stay **plain `<a>` anchors**, not Inertia `<Link>`s: they a
 
 ## Budget
 
-This page is the only one an unauthenticated visitor loads, so [check-entry-chunks.mjs](../../scripts/check-entry-chunks.mjs) — which budgets by page source file, not by url, and therefore covers both entry points from one entry — holds its cold first paint under a gzipped budget and `bareLayout` is kept framer-motion-free. The hero's route-trace and glow animations are therefore plain CSS keyframes in [app.css](../../resources/css/app.css), and `RunCardMini` is behind `lazy()` because its rarity chrome imports framer-motion statically.
+This page is the only one an unauthenticated visitor loads, so [check-entry-chunks.mjs](../../scripts/check-entry-chunks.mjs) — which budgets by page source file, not by url, and therefore covers both entry points from one entry — holds its cold first paint under a gzipped budget. The hero's route-trace and glow animations are plain CSS keyframes in [app.css](../../resources/css/app.css) — as, since the animation library came out, is every other entrance in the app — and `RunCardMini` stays behind `lazy()` as the heaviest thing on the route.
 
 ## See also
 

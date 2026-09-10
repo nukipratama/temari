@@ -1,8 +1,6 @@
-import { motion } from 'framer-motion';
 import { type ReactNode } from 'react';
 
 import { cn } from '@/lib/cn';
-import { fadeInUp } from '@/lib/motion';
 
 interface PageContainerProps {
     children: ReactNode;
@@ -14,7 +12,7 @@ interface PageContainerProps {
  * centred 760px column above it, and a second step to 1040px at 1280px. The
  * first breakpoint is the prototype's own; the second is ours, because its
  * PhoneFrame never renders past the frame and so draws no reference for a
- * desktop width at all. Carries the shared fadeInUp entrance so pages stay a
+ * desktop width at all. Carries the shared `.reveal` entrance so pages stay a
  * one-line swap.
  */
 const CONTAINER =
@@ -24,14 +22,5 @@ export default function PageContainer({
     children,
     className,
 }: Readonly<PageContainerProps>) {
-    return (
-        <motion.div
-            variants={fadeInUp}
-            initial="hidden"
-            animate="visible"
-            className={cn(CONTAINER, className)}
-        >
-            {children}
-        </motion.div>
-    );
+    return <div className={cn('reveal', CONTAINER, className)}>{children}</div>;
 }

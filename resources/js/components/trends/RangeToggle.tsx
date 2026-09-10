@@ -1,7 +1,4 @@
-import { motion } from 'framer-motion';
-
 import { cn } from '@/lib/cn';
-import { pressShrink } from '@/lib/motion';
 
 export type TrendRange = '30d' | '90d' | '12mo';
 
@@ -39,21 +36,20 @@ export default function RangeToggle({
             {TREND_RANGES.map((range) => {
                 const selected = range.key === value;
                 return (
-                    <motion.button
+                    <button
                         key={range.key}
                         type="button"
-                        whileTap={pressShrink}
                         aria-pressed={selected}
                         onClick={() => onChange(range.key)}
                         className={cn(
-                            'flex-1 rounded-full py-2 text-center text-xs font-bold whitespace-nowrap transition-colors',
+                            'pressable flex-1 rounded-full py-2 text-center text-xs font-bold whitespace-nowrap transition-colors',
                             selected
                                 ? 'bg-card text-foreground shadow-e1'
                                 : 'text-foreground hover:text-text-2',
                         )}
                     >
                         {range.label}
-                    </motion.button>
+                    </button>
                 );
             })}
         </div>

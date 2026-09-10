@@ -1,23 +1,18 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { MotionGlobalConfig } from 'framer-motion';
 import { createElement, type ReactNode } from 'react';
 import { afterEach, beforeEach, vi } from 'vitest';
-
-// Make framer-motion animations resolve instantly in tests. Without this its
-// animation frameloop runs over real time and a frame can fire after a test
-// file's jsdom env is torn down, throwing an unhandled "window is not defined"
-// that fails CI even when every test passes. Instant animations also make
-// AnimatePresence exits deterministic (children removed synchronously).
-MotionGlobalConfig.skipAnimations = true;
 
 // jsdom ships no matchMedia. Anything asking the environment about itself
 // (display-mode for the installed-app checks, pointer coarseness, reduced
 // motion) needs it to exist, so default every query to "no match" — a plain
-// desktop browser tab. Tests that care override it per-file.
+// desktop browser tab. Reduced motion is the exception: under it the count-up
+// tween snaps to its target instead of running over ~900ms of real time, which
+// keeps time-based assertions deterministic and stops a frame firing after a
+// test file's jsdom env is torn down. Tests that care override it per-file.
 if (typeof window !== 'undefined' && !window.matchMedia) {
     window.matchMedia = ((query: string) => ({
-        matches: false,
+        matches: query.includes('prefers-reduced-motion'),
         media: query,
         onchange: null,
         addListener: vi.fn(),

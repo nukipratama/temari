@@ -1,9 +1,7 @@
-import { motion } from 'framer-motion';
 import { Fragment, type ReactElement, type ReactNode } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
-import { pressShrink } from '@/lib/motion';
 
 /**
  * Lays out a row of `DayCell`s connected by a stepper-style line. Each item
@@ -79,12 +77,11 @@ export function DayCell({
     }
 
     return (
-        <motion.button
+        <button
             type="button"
             disabled={disabled}
             onClick={onClick}
-            whileTap={pressShrink}
-            className="focus-ring flex flex-none flex-col items-center gap-1 rounded-xl"
+            className="pressable focus-ring flex flex-none flex-col items-center gap-1 rounded-xl"
         >
             <span className="flex h-11 items-center justify-center">
                 <span
@@ -107,6 +104,6 @@ export function DayCell({
             >
                 {label}
             </span>
-        </motion.button>
+        </button>
     );
 }

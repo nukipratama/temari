@@ -47,39 +47,45 @@ const ENTRY_ALLOWED = ['rolldown-runtime', 'app', 'react-vendor'];
 
 /*
  * Gzipped ceiling for a cold visit to a route: the entry closure plus that
- * page's own. Login is the only page an unauthenticated visitor sees and it
- * renders nothing animated, so it must stay clear of framer-motion (~41KB
- * gzipped on its own).
- *
- * The authenticated routes carry framer-motion legitimately -- AppShell
- * renders it on all of them -- so their budgets sit above that, sized to
- * catch a lazy-only engine turning into a static import: `charts` is ~59KB
- * gzipped and `maps` ~45KB, either of which blows the headroom here. Slow
- * creep below that is deliberately not caught; a budget tight enough to
- * catch it would fire on ordinary feature growth and get raised on sight.
+ * page's own. Sized to catch a lazy-only engine turning into a static import:
+ * `charts` is ~59KB gzipped and `maps` ~45KB, either of which blows the
+ * headroom here. Slow creep below that is deliberately not caught; a budget
+ * tight enough to catch it would fire on ordinary feature growth and get
+ * raised on sight.
  */
 /*
  * One entry per screen the prototype draws, which is also every screen a user
- * can land on cold. It used to be four, chosen before the port; measured
- * afterwards, History (200.4), Settings (199.6) and Plan (196.0) were all
- * heavier than Profile (185.8), which *was* budgeted -- three of the app's
- * heaviest routes were unguarded entirely. Budgets are the measured weight
- * plus ~10%, rounded up to 5, which is tighter than the numbers they replace.
+ * can land on cold. Budgets are the measured weight plus ~10%, rounded up to
+ * 5. Re-baselined after the animation engine came out of the shell: the
+ * authenticated routes each dropped ~43KB gzipped, and leaving the old
+ * ceilings in place would have left room for it to come back unnoticed.
  * Operator pages (Devtools, Devtools/Design, AiUsage) and the legal documents
  * stay out, per P20.
  */
 const ROUTE_BUDGETS_KB = [
-    { name: 'Login', src: 'resources/js/pages/Auth/Login.tsx', budgetKb: 155 },
-    { name: 'Onboarding', src: 'resources/js/pages/Onboarding/Index.tsx', budgetKb: 200 },
-    { name: 'Today', src: 'resources/js/pages/Home.tsx', budgetKb: 225 },
-    { name: 'Plan', src: 'resources/js/pages/Plan.tsx', budgetKb: 220 },
-    { name: 'Race', src: 'resources/js/pages/Race.tsx', budgetKb: 205 },
-    { name: 'Trends', src: 'resources/js/pages/Trends.tsx', budgetKb: 205 },
-    { name: 'History', src: 'resources/js/pages/History.tsx', budgetKb: 225 },
-    { name: 'Activity', src: 'resources/js/pages/Runs/Show.tsx', budgetKb: 230 },
-    { name: 'Inbox', src: 'resources/js/pages/Inbox.tsx', budgetKb: 200 },
-    { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 205 },
-    { name: 'Settings', src: 'resources/js/pages/Settings/Index.tsx', budgetKb: 220 },
+    { name: 'Login', src: 'resources/js/pages/Auth/Login.tsx', budgetKb: 150 },
+    {
+        name: 'Onboarding',
+        src: 'resources/js/pages/Onboarding/Index.tsx',
+        budgetKb: 165,
+    },
+    { name: 'Today', src: 'resources/js/pages/Home.tsx', budgetKb: 180 },
+    { name: 'Plan', src: 'resources/js/pages/Plan.tsx', budgetKb: 170 },
+    { name: 'Race', src: 'resources/js/pages/Race.tsx', budgetKb: 155 },
+    { name: 'Trends', src: 'resources/js/pages/Trends.tsx', budgetKb: 160 },
+    { name: 'History', src: 'resources/js/pages/History.tsx', budgetKb: 175 },
+    {
+        name: 'Activity',
+        src: 'resources/js/pages/Runs/Show.tsx',
+        budgetKb: 175,
+    },
+    { name: 'Inbox', src: 'resources/js/pages/Inbox.tsx', budgetKb: 150 },
+    { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 165 },
+    {
+        name: 'Settings',
+        src: 'resources/js/pages/Settings/Index.tsx',
+        budgetKb: 175,
+    },
 ];
 
 if (!existsSync(manifestPath)) {
@@ -101,7 +107,8 @@ function closure(startKeys) {
         const key = stack.pop();
         if (seen.has(key)) continue;
         seen.add(key);
-        for (const imported of manifest[key]?.imports ?? []) stack.push(imported);
+        for (const imported of manifest[key]?.imports ?? [])
+            stack.push(imported);
     }
 
     return seen;
@@ -120,7 +127,12 @@ function weigh(keys) {
         const gzipped = gzipSync(bytes, { level: 9 }).length;
         raw += bytes.length;
         gz += gzipped;
-        chunks.push({ name: chunk.name ?? chunk.file, file: chunk.file, raw: bytes.length, gz: gzipped });
+        chunks.push({
+            name: chunk.name ?? chunk.file,
+            file: chunk.file,
+            raw: bytes.length,
+            gz: gzipped,
+        });
     }
 
     chunks.sort((a, b) => b.gz - a.gz);
@@ -138,7 +150,9 @@ function fail(lines) {
 }
 
 if (!manifest[ENTRY]) {
-    fail([`The manifest has no entry for ${ENTRY}. Did the Vite input list change?`]);
+    fail([
+        `The manifest has no entry for ${ENTRY}. Did the Vite input list change?`,
+    ]);
 }
 
 const problems = [];
@@ -146,12 +160,17 @@ const problems = [];
 // Rule 1 — the entry's static closure may contain nothing but the allowlist.
 const entryClosure = closure([ENTRY]);
 const entryWeight = weigh(entryClosure);
-const strays = entryWeight.chunks.filter((c) => !ENTRY_ALLOWED.includes(c.name));
+const strays = entryWeight.chunks.filter(
+    (c) => !ENTRY_ALLOWED.includes(c.name),
+);
 
 if (strays.length > 0) {
     problems.push(
         `The entry chunk statically imports ${strays.length} chunk(s) it should not:`,
-        ...strays.map((c) => `    • ${c.name}  (${c.file}, ${kb(c.raw)} kB raw / ${kb(c.gz)} kB gzipped)`),
+        ...strays.map(
+            (c) =>
+                `    • ${c.name}  (${c.file}, ${kb(c.raw)} kB raw / ${kb(c.gz)} kB gzipped)`,
+        ),
         '',
         '  Every route pays for these on first paint, including Login.',
         '  Allowed in the entry closure: ' + ENTRY_ALLOWED.join(', '),
@@ -167,7 +186,9 @@ if (strays.length > 0) {
 // Rule 2 — a cold visit to these routes must stay under budget.
 for (const route of ROUTE_BUDGETS_KB) {
     if (!manifest[route.src]) {
-        problems.push(`Route ${route.name} (${route.src}) is missing from the manifest.`);
+        problems.push(
+            `Route ${route.name} (${route.src}) is missing from the manifest.`,
+        );
         continue;
     }
 
@@ -178,7 +199,9 @@ for (const route of ROUTE_BUDGETS_KB) {
     problems.push(
         `${route.name} first paint is ${kb(weight.gz)} kB gzipped, over its ${route.budgetKb} kB budget by ${kb(weight.gz - budget)} kB.`,
         '  Heaviest chunks in its static closure:',
-        ...weight.chunks.slice(0, 5).map((c) => `    • ${c.name}  (${c.file}, ${kb(c.gz)} kB gzipped)`),
+        ...weight.chunks
+            .slice(0, 5)
+            .map((c) => `    • ${c.name}  (${c.file}, ${kb(c.gz)} kB gzipped)`),
         '',
         '  Move whatever is new behind `lazy()`, or split the module that pulls',
         '  it in. Raise the budget only with a measurement that justifies it.',
@@ -190,8 +213,12 @@ if (problems.length > 0) {
 }
 
 console.log('Entry chunk guard: first-paint closures within budget ✓');
-console.log(`  entry  ${kb(entryWeight.raw)} kB raw / ${kb(entryWeight.gz)} kB gzipped  [${entryWeight.chunks.map((c) => c.name).join(', ')}]`);
+console.log(
+    `  entry  ${kb(entryWeight.raw)} kB raw / ${kb(entryWeight.gz)} kB gzipped  [${entryWeight.chunks.map((c) => c.name).join(', ')}]`,
+);
 for (const route of ROUTE_BUDGETS_KB) {
     const weight = weigh(closure([ENTRY, route.src]));
-    console.log(`  ${route.name.padEnd(9)} ${kb(weight.raw)} kB raw / ${kb(weight.gz)} kB gzipped  (budget ${route.budgetKb} kB)`);
+    console.log(
+        `  ${route.name.padEnd(9)} ${kb(weight.raw)} kB raw / ${kb(weight.gz)} kB gzipped  (budget ${route.budgetKb} kB)`,
+    );
 }

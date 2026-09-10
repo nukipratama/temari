@@ -1,7 +1,6 @@
 import type { ComponentType, MouseEvent, SVGProps } from 'react';
 
 import { Link, router, usePage } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import { CalendarCheck, History, LineChart, Sunrise } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -9,7 +8,6 @@ import type { TabId } from '@/lib/nav';
 import type { SharedProps } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
-import { tabIconPop } from '@/lib/motion';
 import { ITEMS, navTabFor } from '@/lib/nav';
 
 // Keyed by NavItem.icon (a lucide component name, not an iconify string — see
@@ -115,10 +113,12 @@ export default function MobileBottomNav() {
                             )}
                         >
                             <span className="relative block">
-                                <motion.span
-                                    variants={tabIconPop}
-                                    animate={isActive ? 'active' : 'idle'}
-                                    className="block"
+                                <span
+                                    key={isActive ? 'active' : 'idle'}
+                                    className={cn(
+                                        'block',
+                                        isActive && 'pop-once',
+                                    )}
                                 >
                                     {TabIcon && (
                                         <TabIcon
@@ -131,7 +131,7 @@ export default function MobileBottomNav() {
                                             aria-hidden
                                         />
                                     )}
-                                </motion.span>
+                                </span>
                                 {item.id === 'today' && hasUnread && (
                                     <span
                                         data-testid="unread-dot"
