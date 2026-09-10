@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 function runDevtoolsMiddleware(?string $password): Response
 {
-    $request = Request::create('/devtools/ai-usage', 'GET');
+    $request = Request::create('/devtools/narration', 'GET');
     if ($password !== null) {
         $request->headers->set('PHP_AUTH_PW', $password);
     }

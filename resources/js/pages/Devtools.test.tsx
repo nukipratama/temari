@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import Devtools from './Devtools';
 
 describe('Devtools', () => {
-    it('links to Design, AI Usage, Feedback, Horizon and Pulse', () => {
+    it('links to Design, Narration, Feedback, Horizon and Pulse', () => {
         render(<Devtools />);
 
         expect(screen.getByRole('link', { name: /Design/ })).toHaveAttribute(
@@ -12,9 +12,9 @@ describe('Devtools', () => {
             '/devtools/design',
         );
 
-        expect(screen.getByRole('link', { name: /AI Usage/ })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: /Narration/ })).toHaveAttribute(
             'href',
-            '/devtools/ai-usage',
+            '/devtools/narration',
         );
         expect(screen.getByRole('link', { name: /Feedback/ })).toHaveAttribute(
             'href',

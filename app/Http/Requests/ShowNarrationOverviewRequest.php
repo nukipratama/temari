@@ -8,7 +8,7 @@ use App\Services\AI\AnalysisOrigin;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class ShowTokenUsageRequest extends FormRequest
+class ShowNarrationOverviewRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -28,6 +28,8 @@ class ShowTokenUsageRequest extends FormRequest
             // Closed set: an unknown origin would silently return an empty report
             // rather than the unfiltered one the operator expected.
             'origin' => ['sometimes', Rule::enum(AnalysisOrigin::class)],
+            // The athlete filter narrows the cost chart to one athlete's spend.
+            'athlete' => ['sometimes', 'integer'],
         ];
     }
 }

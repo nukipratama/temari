@@ -15,7 +15,7 @@ uses(RefreshDatabase::class);
 /**
  * A regenerated plan can move its training days, and the very first plan starts
  * on the day the athlete registers — so rows written for days outside it have
- * no session and never will. Left Failed they showed in /ai-usage as "still
+ * no session and never will. Left Failed they showed in /devtools/narration as "still
  * auto-retrying" behind a Try again that could not succeed.
  */
 it('deletes its row when the day has no planned session', function (): void {

@@ -315,7 +315,7 @@ of it; `./vendor/bin/sail` works for everything afterwards.
 **Both** migration sets matters. `analytics` is a second connection with its own migration path, so
 a plain `artisan migrate` does not touch it — the script also runs
 `migrate --database=analytics --path=database/migrations/analytics`. Without it `strava_sync_logs`
-and `ai_token_usages` are missing and `/pulse` + `/devtools/ai-usage` 500. This lived only in the script's
+and `ai_token_usages` are missing and `/pulse` + `/devtools/narration` 500. This lived only in the script's
 printed next-steps until #614, which is exactly why every worktree skipped it.
 
 The PHP suites are ready at that point (they self-initialize their own `mysql_test`/`redis_test`).

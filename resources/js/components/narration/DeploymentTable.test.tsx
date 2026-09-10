@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { DeploymentRow } from '@/pages/AiUsage/types';
+import type { DeploymentRow } from '@/pages/Narration/types';
 
 import DeploymentTable from './DeploymentTable';
 
@@ -23,9 +23,7 @@ describe('DeploymentTable', () => {
     it('renders one row per deployment under its own heading', () => {
         render(<DeploymentTable rows={[row()]} currency="USD" />);
 
-        expect(
-            screen.getByText('Breakdown per Deployment'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('by deployment')).toBeInTheDocument();
         expect(screen.getByText('nuki-mini')).toBeInTheDocument();
         expect(screen.getByText('$0.05')).toBeInTheDocument();
     });

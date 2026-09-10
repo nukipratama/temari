@@ -87,4 +87,4 @@ the per-athlete slice shapes *who* degrades, the total decides *when*.
 
 - [[cost-ceiling-degrades-to-rule-based]] — what a hit ceiling does, unchanged and shared by both
 - [[idempotent-dispatch-cost-ceiling]] — the original dispatch-time guard
-- [[ai-usage]] — where both ceilings are reported
+- [[narration-devtools]] — where both ceilings are reported

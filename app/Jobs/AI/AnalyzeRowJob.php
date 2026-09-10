@@ -54,7 +54,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             $this->afterDone($row, $service);
         } catch (ObsoleteAnalysisException $e) {
             // The subject is gone for good, so the row describes nothing. Left
-            // Failed it would sit in /ai-usage as "still auto-retrying" behind a
+            // Failed it would sit in /devtools/narration as "still auto-retrying" behind a
             // Try again that can never succeed, and burn a self-heal attempt
             // every hour proving it.
             $row->delete();
@@ -143,7 +143,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
     }
 
     /**
-     * Records the fallback so its rate is visible on /devtools/ai-usage
+     * Records the fallback so its rate is visible on /devtools/narration
      * (durable, analytics-schema) and on the /pulse AI pipeline card (7-day
      * trend, same mechanism as the `ai_failure` trend). Never throws: a
      * metering failure must not turn a successfully-degraded row Failed.

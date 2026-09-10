@@ -5,7 +5,7 @@ import type {
     ContentFilterSummary,
     PreviousTotals,
     UsageTotals,
-} from '@/pages/AiUsage/types';
+} from '@/pages/Narration/types';
 
 import UsageKpis from './UsageKpis';
 

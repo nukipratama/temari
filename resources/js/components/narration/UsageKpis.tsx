@@ -2,10 +2,10 @@ import type {
     ContentFilterSummary,
     PreviousTotals,
     UsageTotals,
-} from '@/pages/AiUsage/types';
+} from '@/pages/Narration/types';
 
 import KpiTile from '@/components/dashboard/KpiTile';
-import { fmt, formatCost } from '@/pages/AiUsage/helpers';
+import { fmt, formatCost } from '@/pages/Narration/helpers';
 
 interface UsageKpisProps {
     totals: UsageTotals;

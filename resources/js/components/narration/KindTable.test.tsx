@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { UsageRow } from '@/pages/AiUsage/types';
+import type { UsageRow } from '@/pages/Narration/types';
 
 import KindTable from './KindTable';
 
@@ -42,7 +42,7 @@ describe('KindTable', () => {
             />,
         );
 
-        expect(screen.getByText('Breakdown per Kind')).toBeInTheDocument();
+        expect(screen.getByText('by kind')).toBeInTheDocument();
         expect(screen.getByText('run-insight')).toBeInTheDocument();
         expect(screen.getByText('briefing')).toBeInTheDocument();
     });

@@ -226,6 +226,12 @@
         },
         "ember/0.15": {
             "over": {
+                "resources/js/components/narration/AthleteTable.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/narration/CeilingHeader.tsx": [
+                    "paper"
+                ],
                 "resources/js/components/home/EvidenceList.tsx": [
                     "paper"
                 ],
@@ -354,16 +360,6 @@
         },
         "horizon/0.35": {
             "text": []
-        },
-        "ink/0.05": {
-            "over": {
-                "resources/js/components/aiusage/UserTable.tsx": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "text-2"
-            ]
         },
         "ink/0.7": {
             "over": {

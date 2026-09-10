@@ -21,7 +21,7 @@ use Illuminate\Support\Collection;
  * Every dispatch is invalidate:false, so it never fills a template and a
  * still-capped run is a clean no-op; the Failed-sweeping families are bounded
  * by {@see Analysis::MAX_SELF_HEAL_ATTEMPTS} so a terminally-broken block
- * drops out to the /devtools/ai-usage dead-letter instead of re-billing forever.
+ * drops out to the /devtools/narration dead-letter instead of re-billing forever.
  */
 class SelfHealer
 {

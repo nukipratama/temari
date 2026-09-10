@@ -42,7 +42,7 @@ final readonly class AiProps
      * switch, unconfigured Azure, or a tripped config circuit), so the UI can show
      * a soft "Temari is resting" banner instead of scattered silent empty
      * states. Only the pause *fact* is shared, never the operator-facing reason
-     * (that stays maintainer-only via the Telegram alert + /devtools/ai-usage). Cached
+     * (that stays maintainer-only via the Telegram alert + /devtools/narration). Cached
      * globally for a short window since it fires on every page load; guests never
      * see it, so the check is skipped for them.
      *
@@ -69,7 +69,7 @@ final readonly class AiProps
      * failed attempt is still under retry budget), so the UI can show a soft
      * "still catching up" reassurance instead of an empty-looking run. A
      * dead-lettered row (retry budget exhausted, needs a manual re-arm on
-     * /devtools/ai-usage) is deliberately excluded — it will not resolve on its own, so
+     * /devtools/narration) is deliberately excluded — it will not resolve on its own, so
      * counting it here would make the banner a false promise. Skipped
      * entirely while generation is globally paused: {@see self::aiPausedFor()}
      * already explains that case.

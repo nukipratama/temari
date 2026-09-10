@@ -99,5 +99,5 @@ The demo seeder stages and fills all Analysis rows under [`AnalysisService::with
 ## See also
 
 - [[ai-pipeline]] — the row lifecycle these internals plug into.
-- [[ai-usage]] / [[azure-openai-routing]] — token metering and per-narrator deployment routing.
+- [[narration-devtools]] / [[azure-openai-routing]] — token metering and per-narrator deployment routing.
 - [[recaps]] / [[chained-narration]] — the weekly/monthly recap kinds the filler and chain advance both cover.

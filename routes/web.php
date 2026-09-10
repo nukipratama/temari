@@ -34,7 +34,7 @@ use App\Http\Controllers\Notifications\SendWeeklyRecapNotificationController;
 use App\Http\Controllers\Telegram\TelegramConnectionController;
 use App\Http\Controllers\Telegram\TelegramWebhookController;
 use App\Http\Controllers\WebPush\PushSubscriptionController;
-use App\Http\Controllers\TokenUsageController;
+use App\Http\Controllers\NarrationOverviewController;
 use App\Http\Controllers\TrainingPreferencesController;
 use App\Http\Controllers\TrendsController;
 use Illuminate\Support\Facades\Route;
@@ -205,9 +205,15 @@ Route::middleware(['throttle:60,1', 'devtools'])->group(function (): void {
     Route::get('/devtools', DevtoolsIndexController::class)->name('devtools.index');
     Route::get('/devtools/design', DevtoolsDesignController::class)->name('devtools.design');
     Route::get('/devtools/feedback', DevtoolsFeedbackController::class)->name('devtools.feedback');
-    Route::get('/devtools/ai-usage', [TokenUsageController::class, 'show'])->name('devtools.ai-usage');
-    Route::post('/devtools/ai-usage/recover', [TokenUsageController::class, 'recover'])->name('devtools.ai-usage.recover');
-    Route::post('/devtools/ai-usage/users/{userId}/retry-failed', [TokenUsageController::class, 'retryFailed'])
+    Route::get('/devtools/narration', [NarrationOverviewController::class, 'show'])->name('devtools.narration');
+    Route::get('/devtools/narration/athletes/{userId}', [NarrationOverviewController::class, 'athlete'])
         ->whereNumber('userId')
-        ->name('devtools.ai-usage.retry-failed');
+        ->name('devtools.narration.athlete');
+    Route::post('/devtools/narration/recover', [NarrationOverviewController::class, 'recover'])->name('devtools.narration.recover');
+    Route::post('/devtools/narration/athletes/{userId}/retry-failed', [NarrationOverviewController::class, 'retryFailed'])
+        ->whereNumber('userId')
+        ->name('devtools.narration.retry-failed');
+
+    // The old path kept its bookmarks and any linked dashboard; the page moved.
+    Route::permanentRedirect('/devtools/ai-usage', '/devtools/narration');
 });

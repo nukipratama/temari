@@ -22,7 +22,7 @@ it('records the local actor when the request carries no basic-auth user', functi
 });
 
 it('records the basic-auth username as the actor', function (): void {
-    $request = Request::create('/devtools/ai-usage', 'GET');
+    $request = Request::create('/devtools/narration', 'GET');
     $request->headers->set('PHP_AUTH_USER', 'nuki');
     app()->instance('request', $request);
 

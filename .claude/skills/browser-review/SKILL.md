@@ -70,7 +70,7 @@ reports **dark 1** with it on, the "Attempts" header on `/devtools/pulse` at 3.6
 own `<x-pulse::th>` styling showing through our `self-heal-attempts` card, which only has rows once a
 failed Analysis exists. Vendor component internals on an operator page, recorded rather than chased.
 
-### The operator console (`/devtools`, `/devtools/design`, `/devtools/ai-usage`, `/pulse`)
+### The operator console (`/devtools`, `/devtools/design`, `/devtools/narration`, `/pulse`)
 
 **All four are swept by default, and locally they need no password.**
 [EnsureDevtoolsAccess](../../../app/Http/Middleware/EnsureDevtoolsAccess.php) returns early when

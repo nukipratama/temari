@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { OriginRow } from '@/pages/AiUsage/types';
+import type { OriginRow } from '@/pages/Narration/types';
 
 import OriginTable from './OriginTable';
 

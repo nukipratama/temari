@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { KindOption, RangeToken } from '@/pages/AiUsage/types';
+import type { KindOption, RangeToken } from '@/pages/Narration/types';
 
 import UsageFilters from './UsageFilters';
 
@@ -26,6 +26,7 @@ function renderFilters(
             to="2026-05-19"
             kind={null}
             origin={null}
+            athlete={null}
             availableKinds={availableKinds}
             availableOrigins={availableOrigins}
             {...overrides}
@@ -48,13 +49,13 @@ describe('UsageFilters', () => {
     it('leaves the kind out of the readout when no filter is active', () => {
         renderFilters();
 
-        expect(screen.queryByText(/Kind:/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/kind:/)).not.toBeInTheDocument();
     });
 
     it('names the active kind filter in the readout', () => {
         renderFilters({ kind: 'briefing' });
 
-        expect(screen.getByText(/Kind:/)).toBeInTheDocument();
+        expect(screen.getByText(/kind:/)).toBeInTheDocument();
         expect(screen.getByText('briefing')).toBeInTheDocument();
     });
 
@@ -64,7 +65,7 @@ describe('UsageFilters', () => {
         fireEvent.click(screen.getByRole('button', { name: /apply/i }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/devtools/ai-usage',
+            '/devtools/narration',
             { from: '2026-05-01', to: '2026-05-19' },
             { preserveState: true, preserveScroll: true },
         );
@@ -76,7 +77,7 @@ describe('UsageFilters', () => {
         fireEvent.click(screen.getByRole('button', { name: /apply/i }));
 
         expect(router.get).toHaveBeenCalledWith(
-            '/devtools/ai-usage',
+            '/devtools/narration',
             { from: '2026-05-01', to: '2026-05-19', kind: 'briefing' },
             { preserveState: true, preserveScroll: true },
         );
@@ -108,7 +109,7 @@ describe('UsageFilters', () => {
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/devtools/ai-usage',
+            '/devtools/narration',
             { range: '7d', kind: 'briefing' },
             { preserveState: true, preserveScroll: true },
         );
@@ -122,7 +123,7 @@ describe('UsageFilters', () => {
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/devtools/ai-usage',
+            '/devtools/narration',
             { range: '7d' },
             { preserveState: true, preserveScroll: true },
         );
@@ -149,7 +150,7 @@ describe('UsageFilters', () => {
                 screen
                     .getByRole('link', { name: pattern })
                     .getAttribute('href'),
-            ).toBe(`/devtools/ai-usage?range=${token}`);
+            ).toBe(`/devtools/narration?range=${token}`);
         },
     );
 
@@ -158,7 +159,7 @@ describe('UsageFilters', () => {
 
         expect(
             screen.getByRole('link', { name: /7 days/i }).getAttribute('href'),
-        ).toBe('/devtools/ai-usage?range=7d&kind=briefing');
+        ).toBe('/devtools/narration?range=7d&kind=briefing');
     });
 
     it('highlights the active preset', () => {
@@ -177,7 +178,7 @@ describe('origin filter', () => {
     it('offers every origin present in the range', () => {
         renderFilters();
 
-        expect(screen.getByLabelText('Origin')).toBeInTheDocument();
+        expect(screen.getByLabelText('origin')).toBeInTheDocument();
         expect(
             screen.getByRole('option', { name: 'Ingest cascade' }),
         ).toBeInTheDocument();
@@ -186,12 +187,12 @@ describe('origin filter', () => {
     it('applies immediately and keeps the active range window', () => {
         renderFilters({ range: '7d' as RangeToken });
 
-        fireEvent.change(screen.getByLabelText('Origin'), {
+        fireEvent.change(screen.getByLabelText('origin'), {
             target: { value: 'ingest' },
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/devtools/ai-usage',
+            '/devtools/narration',
             { range: '7d', origin: 'ingest' },
             { preserveState: true, preserveScroll: true },
         );
@@ -200,12 +201,12 @@ describe('origin filter', () => {
     it('carries the active kind filter alongside the origin', () => {
         renderFilters({ range: '7d' as RangeToken, kind: 'briefing' });
 
-        fireEvent.change(screen.getByLabelText('Origin'), {
+        fireEvent.change(screen.getByLabelText('origin'), {
             target: { value: 'user' },
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/devtools/ai-usage',
+            '/devtools/narration',
             { range: '7d', kind: 'briefing', origin: 'user' },
             { preserveState: true, preserveScroll: true },
         );
@@ -214,12 +215,12 @@ describe('origin filter', () => {
     it('clears back to every origin', () => {
         renderFilters({ range: '7d' as RangeToken, origin: 'ingest' });
 
-        fireEvent.change(screen.getByLabelText('Origin'), {
+        fireEvent.change(screen.getByLabelText('origin'), {
             target: { value: '' },
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/devtools/ai-usage',
+            '/devtools/narration',
             { range: '7d' },
             { preserveState: true, preserveScroll: true },
         );

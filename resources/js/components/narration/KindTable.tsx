@@ -1,22 +1,22 @@
 import { Shapes } from 'lucide-react';
 
-import type { UsageRow } from '@/pages/AiUsage/types';
+import type { UsageRow } from '@/pages/Narration/types';
 
-import EmptyState from '@/components/aiusage/EmptyState';
+import EmptyState from '@/components/narration/EmptyState';
 import DataTable, { Td } from '@/components/ui/DataTable';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { cn } from '@/lib/cn';
-import { fmt, formatCost } from '@/pages/AiUsage/helpers';
+import { fmt, formatCost } from '@/pages/Narration/helpers';
 
 const COLUMNS = [
-    'Kind',
-    'Calls',
-    'Prompt',
-    'Completion',
-    'Total',
-    'Cost',
-    'Latency (avg/max)',
-    'Truncated',
+    'kind',
+    'calls',
+    'prompt',
+    'completion',
+    'total',
+    'cost',
+    'latency (avg/max)',
+    'truncated',
 ];
 
 export default function KindTable({
@@ -27,8 +27,8 @@ export default function KindTable({
     return (
         <DataTable
             icon={Shapes}
-            title="Breakdown per Kind"
-            subtitle="Analysis kinds eating the most tokens."
+            title="by kind"
+            subtitle="Which narrator ate the most tokens."
             tone="brand"
             columns={COLUMNS}
             minWidth={760}

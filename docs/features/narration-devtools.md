@@ -11,7 +11,7 @@ code_refs:
   - resources/js/pages/AiUsage.tsx
   - resources/js/pages/AiUsage/helpers.ts
   - resources/js/pages/AiUsage/types.ts
-  - app/Http/Controllers/TokenUsageController.php
+  - app/Http/Controllers/NarrationOverviewController.php
   - app/Services/AI/TokenUsageReport.php
   - resources/js/components/dashboard/KpiTile.tsx
   - resources/js/components/aiusage/UsageFilters.tsx
@@ -30,9 +30,9 @@ code_refs:
 
 # AI usage dashboard
 
-`/devtools/ai-usage` is the operator's view of what the LLM pipeline is costing. It is not part of the runner-facing app — it has no `auth` middleware so ops can open it without a Strava session, and is gated by a separate devtools password instead (see Access below).
+`/devtools/narration` is the operator's view of what the LLM pipeline is costing. It is not part of the runner-facing app — it has no `auth` middleware so ops can open it without a Strava session, and is gated by a separate devtools password instead (see Access below).
 
-**Navigation:** `route('devtools.ai-usage')` → `/devtools/ai-usage`. Named route: `devtools.ai-usage`.
+**Navigation:** `route('devtools.ai-usage')` → `/devtools/narration`. Named route: `devtools.ai-usage`.
 
 ## System dependencies
 
@@ -55,7 +55,7 @@ A kind filter and from/to date controls ([UsageFilters](../../resources/js/compo
 
 ## Server side
 
-[TokenUsageController::show](../../app/Http/Controllers/TokenUsageController.php) validates optional `from` / `to` (`Y-m-d`) and `kind`, defaulting the window to the start of the current month through now. It delegates to [TokenUsageReport::build](../../app/Services/AI/TokenUsageReport.php), which aggregates the metering rows and returns `totals`, `byKind`, `byUser`, `byDeployment`, `daily`, `availableKinds` and `budget` — all passed straight into the Inertia page.
+[NarrationOverviewController::show](../../app/Http/Controllers/NarrationOverviewController.php) validates optional `from` / `to` (`Y-m-d`) and `kind`, defaulting the window to the start of the current month through now. It delegates to [TokenUsageReport::build](../../app/Services/AI/TokenUsageReport.php), which aggregates the metering rows and returns `totals`, `byKind`, `byUser`, `byDeployment`, `daily`, `availableKinds` and `budget` — all passed straight into the Inertia page.
 
 The metering rows (`ai_token_usages`) live on the separate `analytics` connection, not the app database — see [[analytics-db]]. Each row also carries the `analysis_id` it paid for and the run's `tool_calls` trace, and the operator actions on this page are audited to `devtools_actions` on the same connection — see [[narration-analytics-are-joinable]].
 
