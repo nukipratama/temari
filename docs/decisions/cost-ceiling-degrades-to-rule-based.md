@@ -15,6 +15,14 @@ code_refs:
 
 **Status:** Accepted (decided 2026-08-14)
 
+> **2026-09-10 — an app-wide total now sits ABOVE the per-athlete ceiling.** The 2026-09-07
+> banner below says the per-athlete slice is "the only enforced ceiling" and that
+> `pauseReason()` cannot return `cost_ceiling`; both facts have changed.
+> `azure_openai.daily_cost_ceiling_total` (default **$5.00/day**) bounds the whole app's spend
+> and, when it trips, degrades *every* athlete through this same decision's rules — and it does
+> pause globally, and it does push a maintainer alert. The per-athlete slice is unchanged
+> underneath it. See [[app-wide-ceiling-above-the-per-athlete-one]].
+
 > **2026-09-07 — the ceiling is now PER ATHLETE, not a shared pool. The decision below
 > is unchanged: it still degrades to rule-based rather than pausing.** What changed is
 > blast radius. `azure_openai.daily_cost_ceiling` was one budget shared by everyone, so

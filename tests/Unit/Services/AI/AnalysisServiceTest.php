@@ -22,6 +22,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\CostCeilingLedger;
+use App\Services\AI\LlmCostCalculator;
 use App\Services\AI\MaintainerAlerter;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
@@ -41,16 +42,32 @@ beforeEach(function (): void {
     $this->service = app(AnalysisService::class);
 });
 
-/** Push ONE athlete's estimated spend to $2.50, over a $1.00 per-athlete ceiling. */
+/** Push ONE athlete's estimated spend to $2.50, over a $1.00 per-athlete ceiling, with app-wide headroom. */
 function breachTheCeilingFor(int $userId): void
 {
     config(['azure_openai.daily_cost_ceiling_per_user' => 1.0]);
+    config(['azure_openai.daily_cost_ceiling_total' => 100.0]);
     config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
 
+    spend($userId, 1_000_000);
+}
+
+/** Push the app-wide spend to $6.00, over a $5.00 total ceiling, leaving the per-athlete slice untouched. */
+function breachTheTotalCeilingWith(int $userId): void
+{
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
+    config(['azure_openai.daily_cost_ceiling_total' => 5.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 6.00, 'output_per_1m' => 10.00]]]);
+
+    spend($userId, 1_000_000);
+}
+
+function spend(int $userId, int $promptTokens): void
+{
     TokenUsage::query()->create([
         'user_id' => $userId,
-        'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
-        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+        'kind' => 'briefing', 'prompt_tokens' => $promptTokens, 'completion_tokens' => 0,
+        'total_tokens' => $promptTokens, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
     ]);
 }
 
@@ -716,6 +733,94 @@ it('records the trip time and the degraded-fill count for /ai-usage', function (
         ->degradedFills->toBe(2);
 });
 
+it('keeps dispatching while app-wide spend is still under the total ceiling', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    breachTheTotalCeilingWith($snap->user_id);
+    config(['azure_openai.daily_cost_ceiling_total' => 10.0]);
+
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Queued)
+        ->and($this->service->costCeilingDegraded($snap->user_id))->toBeFalse();
+    Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('degrades an athlete who has spent nothing once the app-wide ceiling is passed', function (): void {
+    $heavy = WeeklySnapshot::factory()->create();
+    $bystander = WeeklySnapshot::factory()->create();
+    breachTheTotalCeilingWith($heavy->user_id);
+
+    $bystanderRow = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $bystander->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    // Their own slice is untouched: only the app-wide stop above it degrades them.
+    expect(app(LlmCostCalculator::class)->dailyCost($bystander->user_id))->toBe(0.0)
+        ->and($bystanderRow->status)->toBe(AnalysisStatus::Done)
+        ->and($bystanderRow->content)->toBe(
+            app(RuleBasedNarrationFiller::class)->fillFor($bystanderRow),
+        )
+        ->and($this->service->costCeilingDegraded($bystander->user_id))->toBeTrue();
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('leaves a Failed row Failed once the app-wide ceiling is passed', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    $row = Analysis::factory()->failed('narrator exploded')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+    breachTheTotalCeilingWith($snap->user_id);
+
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Failed)
+        ->and($row->error)->toBe('narrator exploded')
+        ->and($row->content)->toBeNull();
+});
+
+it('pushes one maintainer alert naming the spend, the ceiling and the athletes degraded', function (): void {
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+    $this->app->forgetInstance(AnalysisService::class);
+    $service = app(AnalysisService::class);
+
+    $snap = WeeklySnapshot::factory()->create();
+    breachTheTotalCeilingWith($snap->user_id);
+
+    // Memoized for the scope, so a second gated request in the same request
+    // does not push again even before the alerter's own cooldown applies.
+    $alerter->shouldReceive('totalCeilingReached')->once()->with(6.0, 5.0, 1);
+
+    foreach ([1, 2] as $ignored) {
+        $service->request(
+            subjectOrType: WeeklySnapshot::class,
+            subjectId: $snap->id,
+            type: AnalysisType::WeeklyRecap,
+        );
+    }
+});
+
+it('reports the app-wide ceiling as a genuine global pause', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    breachTheTotalCeilingWith($snap->user_id);
+
+    expect($this->service->generationPaused())->toBeTrue()
+        ->and($this->service->pauseReason())->toBe('cost_ceiling');
+});
+
 it('does not degrade a staged row under withoutDispatching', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     breachTheCeilingFor($snap->user_id);
@@ -1358,8 +1463,8 @@ it('runs the daily cost aggregate once per scope no matter how many rows one ath
         );
     }
 
-    // This athlete's slice once, not once per row.
-    expect($aggregates)->toBe(1);
+    // The app-wide total once and this athlete's slice once, not once per row.
+    expect($aggregates)->toBe(2);
     Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 4);
 });
 
@@ -1385,7 +1490,8 @@ it('reads each athlete\'s slice once, so a scope touching several does not re-re
         );
     }
 
-    expect($aggregates)->toBe(4);
+    // Four slices plus the one app-wide total the whole scope shares.
+    expect($aggregates)->toBe(5);
 });
 
 it('re-reads the ceiling in a fresh scope, so a memo never outlives its request or job', function (): void {
@@ -1416,7 +1522,8 @@ it('re-reads the ceiling in a fresh scope, so a memo never outlives its request 
         type: AnalysisType::WeeklyRecap,
     );
 
-    expect($aggregates)->toBe(2);
+    // Two scopes, each reading the app-wide total and its athlete's slice.
+    expect($aggregates)->toBe(4);
 });
 
 it('honours a ceiling that is already breached when the scope starts', function (): void {

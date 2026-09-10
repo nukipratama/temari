@@ -9,6 +9,7 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
         todayCost,
         dailyCeiling,
         perUserCeiling,
+        totalCeiling,
         athletes,
         currency,
         trippedAt,
@@ -18,6 +19,8 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
     const hasCeiling = dailyCeiling !== null && dailyCeiling > 0;
     const ratio = hasCeiling ? todayCost / dailyCeiling : 0;
     const overBudget = hasCeiling && ratio > 1;
+    const hasTotalCeiling = totalCeiling !== null && totalCeiling > 0;
+    const totalRatio = hasTotalCeiling ? todayCost / totalCeiling : 0;
     const caveat = 'Estimate uses list price from config, not the final bill.';
 
     return (
@@ -72,6 +75,29 @@ export default function BudgetGauge({ budget }: Readonly<{ budget: Budget }>) {
                     {formatCost(todayCost - dailyCeiling, currency)} — spend
                     predating the current ceiling, or an athlete since removed.
                 </p>
+            )}
+
+            {hasTotalCeiling && (
+                <div className="mt-4 border-t border-border-strong pt-3">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span className="text-label-micro text-text-2">
+                            App-wide ceiling
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                            {formatCost(totalCeiling, currency)}
+                        </span>
+                    </div>
+                    <ProgressBar
+                        value={totalRatio}
+                        tone={totalRatio > 1 ? 'sky' : 'horizon'}
+                        ariaLabel={`App-wide ceiling: ${Math.round(totalRatio * 100)}% used`}
+                        className="mt-3"
+                    />
+                    <p className="mt-2 text-xs text-text-3">
+                        The same spend against the app-wide stop. Past it, all
+                        narration is served rule-based until midnight.
+                    </p>
+                </div>
             )}
 
             {trippedTime !== undefined && (

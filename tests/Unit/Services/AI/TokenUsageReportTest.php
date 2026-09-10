@@ -37,6 +37,7 @@ beforeEach(function (): void {
     $this->freezeTime();
 
     config()->set('azure_openai.daily_cost_ceiling_per_user', null);
+    config()->set('azure_openai.daily_cost_ceiling_total', null);
 
     // Deterministic manual rates: gpt-4o = 2.50 in / 10.00 out, gpt-4o-mini =
     // 0.15 / 0.60 (per 1M).
@@ -183,6 +184,25 @@ it('reports no combined ceiling when none is configured', function () use ($rang
 
     expect($result['budget']['dailyCeiling'])->toBeNull()
         ->and($result['budget']['perUserCeiling'])->toBeNull();
+});
+
+it('reports the enforced app-wide ceiling alongside the derived combined figure', function (): void {
+    config()->set('azure_openai.daily_cost_ceiling_per_user', 5.0);
+    config()->set('azure_openai.daily_cost_ceiling_total', 8.0);
+    User::factory()->count(3)->create();
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), model: 'gpt-4o'); // 2.50 today
+
+    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
+
+    expect($result['budget']['totalCeiling'])->toBe(8.0)
+        ->and($result['budget']['dailyCeiling'])->toBe(15.0)
+        ->and($result['budget']['todayCost'])->toBe(2.50);
+});
+
+it('reports no app-wide ceiling when none is configured', function (): void {
+    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
+
+    expect($result['budget']['totalCeiling'])->toBeNull();
 });
 
 it('carries the ceiling trip and the rule-based fill count into the budget block', function () use ($range): void {

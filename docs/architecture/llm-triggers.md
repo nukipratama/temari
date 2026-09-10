@@ -196,8 +196,10 @@ from the rule-based filler and marked `Done` by
 day of empty blocks. A `Failed` row is explicitly excluded and stays failed, keeping its dead-letter
 visibility. And a *manual* trigger past the ceiling is refused with a 409 rather than degraded,
 because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L662) asks with the budget
-included while auto-dispatch asks without it. See [[cost-ceiling-degrades-to-rule-based]] and
-[[cost-ceiling-answers-run-questions-rule-based]].
+included while auto-dispatch asks without it. Two ceilings reach that behaviour through the same
+path — the per-athlete slice and the app-wide total above it, which gates callers holding no
+athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
+[[cost-ceiling-degrades-to-rule-based]] and [[cost-ceiling-answers-run-questions-rule-based]].
 
 Three more limits:
 

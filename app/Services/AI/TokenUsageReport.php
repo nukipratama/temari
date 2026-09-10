@@ -42,7 +42,7 @@ class TokenUsageReport
      *     byOrigin: list<array{origin:string, label:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
  *     availableKinds: list<array{value:string, label:string}>,
  *     availableOrigins: list<array{value:string, label:string}>,
-     *     budget: array{todayCost:float, dailyCeiling:float|null, perUserCeiling:float|null, athletes:int, currency:string, trippedAt:string|null, degradedFills:int},
+     *     budget: array{todayCost:float, dailyCeiling:float|null, perUserCeiling:float|null, totalCeiling:float|null, athletes:int, currency:string, trippedAt:string|null, degradedFills:int},
      *     contentFilter: array{trips:int, pct:float|null},
      * }
      */
@@ -61,10 +61,10 @@ class TokenUsageReport
 
         $aggregate = $this->aggregate($baseQuery);
         $perUserCeiling = config('azure_openai.daily_cost_ceiling_per_user');
-        // The enforced ceiling is per athlete, so the total is derived rather
-        // than configured: nothing stops the aggregate except every athlete
-        // individually running out. Reported so the bill stays visible in one
-        // number even though no single limit produces it.
+        $totalCeiling = config('azure_openai.daily_cost_ceiling_total');
+        // `dailyCeiling` is the per-athlete slice times the athlete count: what
+        // the bill would reach if every athlete spent theirs. `totalCeiling` is
+        // the configured app-wide stop that binds before it.
         $athletes = User::query()->notDemo()->count();
 
         return [
@@ -81,6 +81,7 @@ class TokenUsageReport
                 'todayCost' => $this->costCalculator->dailyCost(),
                 'dailyCeiling' => $perUserCeiling === null ? null : (float) $perUserCeiling * $athletes,
                 'perUserCeiling' => $perUserCeiling === null ? null : (float) $perUserCeiling,
+                'totalCeiling' => $totalCeiling === null ? null : (float) $totalCeiling,
                 'athletes' => $athletes,
                 'currency' => 'USD', // Prices are quoted in USD.
                 ...$this->ceilingLedger->today(),

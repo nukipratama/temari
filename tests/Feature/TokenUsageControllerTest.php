@@ -167,6 +167,27 @@ it('surfaces the content-filter trip count and rate on the ai-usage page', funct
         );
 });
 
+it('carries the app-wide ceiling into the budget block the gauge renders', function (): void {
+    config([
+        'azure_openai.daily_cost_ceiling_total' => 8.5,
+        'azure_openai.daily_cost_ceiling_per_user' => 1.25,
+    ]);
+
+    $this->get('/devtools/ai-usage')
+        ->assertSuccessful()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->has(
+                    'budget',
+                    fn (AssertableInertia $budget) => $budget
+                        ->where('totalCeiling', 8.5)
+                        ->where('perUserCeiling', 1.25)
+                        ->etc(),
+                )
+                ->etc(),
+        );
+});
+
 it('defaults to the rolling last 7 days when no range is given', function (): void {
     Carbon::setTestNow('2026-05-19 12:00:00'); // 7d window = 2026-05-13 .. now
     seedUsage('inside', 50, 50, Carbon::parse('2026-05-15'));
