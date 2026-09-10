@@ -60,9 +60,10 @@ interface Props {
     /** Whether to show the manual trigger button when status is `done`. */
     allowReanalyze?: boolean;
     /**
-     * The in-progress period (week or month): its recap waits for the scheduler,
-     * so the manual trigger is suppressed and the empty state reads "not
-     * available yet". The wording is set via {@link awaitingScheduleLabel}.
+     * There is a known reason this block has no text yet, so say it instead of
+     * rendering nothing: the in-progress period whose recap waits for the
+     * scheduler, or an athlete's very first briefing. The manual trigger is
+     * suppressed and the wording is set via {@link awaitingScheduleLabel}.
      */
     awaitingSchedule?: boolean;
     /** Empty-state copy shown when {@link awaitingSchedule}. Defaults to the weekly wording. */
@@ -108,6 +109,22 @@ function triggerTone(onSky: boolean): string {
 
 /** Widths of the stacked skeleton bars shown while a block is queued/processing. */
 const SKELETON_WIDTHS = ['w-full', 'w-[70%]', 'w-[85%]'];
+
+function WaitingNote({
+    label,
+    onSky,
+}: Readonly<{ label: string; onSky: boolean }>) {
+    return (
+        <div className="flex flex-col gap-1.5">
+            <span
+                className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
+            >
+                <Icon icon={Clock} aria-hidden />
+                <span>{label}</span>
+            </span>
+        </div>
+    );
+}
 
 function RateLimitedNote({ onSky }: Readonly<{ onSky: boolean }>) {
     return (
@@ -227,16 +244,15 @@ export default function AnalysisStatus({
     if (effectiveStatus === 'queued' || effectiveStatus === 'processing') {
         // Polling gave up without the block settling: drop the fake "working"
         // skeleton for an honest, quiet reload affordance.
+        if (awaitingSchedule) {
+            return <WaitingNote label={awaitingScheduleLabel} onSky={onSky} />;
+        }
         if (pollingRetired && !pending) {
             return (
-                <div className="flex flex-col gap-1.5">
-                    <span
-                        className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
-                    >
-                        <Icon icon={Clock} aria-hidden />
-                        <span>still processing, check back in a bit.</span>
-                    </span>
-                </div>
+                <WaitingNote
+                    label="still processing, check back in a bit."
+                    onSky={onSky}
+                />
             );
         }
         const skeletonBg = onSky ? 'skeleton-on-sky' : 'skeleton';
@@ -296,14 +312,5 @@ export default function AnalysisStatus({
         return null;
     }
 
-    return (
-        <div className="flex flex-col gap-1.5">
-            <span
-                className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
-            >
-                <Icon icon={Clock} aria-hidden />
-                <span>{awaitingScheduleLabel}</span>
-            </span>
-        </div>
-    );
+    return <WaitingNote label={awaitingScheduleLabel} onSky={onSky} />;
 }

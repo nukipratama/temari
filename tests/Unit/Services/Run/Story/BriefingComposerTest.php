@@ -13,6 +13,7 @@ use App\Services\Run\Story\BriefingComposer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -141,4 +142,71 @@ it('computes non-LLM fields (vibe label, streak, mood) without an LLM call', fun
         ->and($result->sigilPattern)->toBeString()->not->toBeEmpty()
         ->and($result->recoveryLabel)->toBeString()->not->toBeEmpty()
         ->and($result->streakLabel)->toBe('Ran today');
+});
+
+it('flags the very first briefing so the Today card can say it is reading', function (): void {
+    $user = User::factory()->create();
+    $asOf = Carbon::parse('2026-05-18');
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => $asOf->toDateString(),
+        'status' => AnalysisStatus::Queued,
+        'content' => null,
+    ]);
+
+    expect(app(BriefingComposer::class)->compose($user, $asOf)->firstRead)->toBeTrue();
+});
+
+it('drops the flag once any briefing has been narrated', function (): void {
+    $user = User::factory()->create();
+    $asOf = Carbon::parse('2026-05-18');
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => $asOf->copy()->subDay()->toDateString(),
+        'status' => AnalysisStatus::Done,
+        'content' => 'yesterday, read.',
+    ]);
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => $asOf->toDateString(),
+        'status' => AnalysisStatus::Pending,
+        'content' => null,
+    ]);
+
+    $result = app(BriefingComposer::class)->compose($user, $asOf);
+
+    expect($result->firstRead)->toBeFalse()
+        ->and($result->mascotVoice['status'])->toBe(AnalysisStatus::Pending->value);
+});
+
+it('reads today\'s row and the first-read flag in a single query', function (): void {
+    $user = User::factory()->create();
+    $asOf = Carbon::parse('2026-05-18');
+    foreach (range(1, 4) as $daysAgo) {
+        Analysis::factory()->create([
+            'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::BriefingMascotVoice,
+            'discriminator' => $asOf->copy()->subDays($daysAgo)->toDateString(),
+            'status' => AnalysisStatus::Done,
+            'content' => 'read.',
+        ]);
+    }
+
+    $briefingReads = 0;
+    DB::listen(function ($query) use (&$briefingReads): void {
+        if (str_contains((string) $query->sql, '`ai_analyses`')) {
+            $briefingReads++;
+        }
+    });
+
+    app(BriefingComposer::class)->compose($user, $asOf);
+
+    expect($briefingReads)->toBe(1);
 });

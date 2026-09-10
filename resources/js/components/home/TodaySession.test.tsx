@@ -12,6 +12,7 @@ function briefing(content: string, status = 'done'): BriefingResult {
         vibeState: 'pumped',
         vibeLabel: 'Pumped',
         vibeEmoji: '💥',
+        firstRead: false,
         mascotVoice: {
             id: 4,
             status: status as BriefingResult['mascotVoice']['status'],
@@ -120,6 +121,29 @@ describe('TodaySession', () => {
             ?.parentElement as HTMLElement;
 
         expect(mascotRow).not.toContainElement(screen.getByText('Easy 6k.'));
+    });
+
+    it('says it is reading while the very first briefing is being written', () => {
+        const first = briefing('', 'queued');
+        first.firstRead = true;
+        first.mascotVoice.content = null;
+
+        render(<TodaySession briefing={first} />);
+
+        expect(
+            screen.getByText('temari is reading your first week\u2026'),
+        ).toBeInTheDocument();
+    });
+
+    it('stays silent for a pending briefing once one has been narrated', () => {
+        const later = briefing('', 'pending');
+        later.mascotVoice.content = null;
+
+        render(<TodaySession briefing={later} />);
+
+        expect(
+            screen.queryByText('temari is reading your first week\u2026'),
+        ).not.toBeInTheDocument();
     });
 
     it('labels the block as today', () => {

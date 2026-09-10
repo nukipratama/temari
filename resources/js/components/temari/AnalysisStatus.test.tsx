@@ -143,6 +143,22 @@ describe('AnalysisStatus', () => {
         ).not.toBeInTheDocument();
     });
 
+    // A queued row would otherwise draw the "thinking it over" skeleton, which
+    // says nothing about why this particular block has never had text.
+    it('keeps the note instead of the skeleton while a queued block awaits its reason', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({ status: 'queued' })}
+                awaitingSchedule
+                awaitingScheduleLabel="temari is reading your first week\u2026"
+            />,
+        );
+        expect(
+            screen.getByText(/temari is reading your first week/),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
     it('uses a custom awaitingScheduleLabel when provided (e.g. the current month)', () => {
         render(
             <AnalysisStatus
