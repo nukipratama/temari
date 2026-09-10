@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Notifications\UsualRunTime;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\PastYouTrendBuilder;
@@ -448,6 +449,7 @@ it('drops the caches derived from the history it just rebuilt', function (string
     $today = Carbon::today()->toDateString();
     Cache::put(PastYouTrendBuilder::cacheKey($user->id, $today), ['verdict' => 'stale']);
     Cache::put("training-load:{$user->id}:{$today}", ['stale']);
+    Cache::put(UsualRunTime::cacheKey($user->id, $today), 999);
 
     match ($rebuild) {
         'rebuildFor' => $this->aggregator->rebuildFor($user),
@@ -456,5 +458,6 @@ it('drops the caches derived from the history it just rebuilt', function (string
     };
 
     expect(Cache::has(PastYouTrendBuilder::cacheKey($user->id, $today)))->toBeFalse()
-        ->and(Cache::has("training-load:{$user->id}:{$today}"))->toBeFalse();
+        ->and(Cache::has("training-load:{$user->id}:{$today}"))->toBeFalse()
+        ->and(Cache::has(UsualRunTime::cacheKey($user->id, $today)))->toBeFalse();
 })->with(['rebuildFor', 'rebuildForWeekOf', 'rebuildForwardFrom']);
