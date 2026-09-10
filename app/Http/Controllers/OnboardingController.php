@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\AI\RequestTodaysBriefing;
 use App\Http\Requests\CompleteOnboardingRequest;
 use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
@@ -53,6 +54,7 @@ class OnboardingController extends Controller
         CompleteOnboardingRequest $request,
         Periodizer $periodizer,
         PlanNarrationRequester $narrationRequester,
+        RequestTodaysBriefing $briefing,
     ): RedirectResponse {
         /** @var User $user */
         $user = $request->user();
@@ -110,6 +112,10 @@ class OnboardingController extends Controller
         if ($user->refresh()->backfilled_at !== null) {
             $narrationRequester->requestForFirstWeek($user, Carbon::today());
         }
+
+        // Today's briefing would otherwise wait for the 00:01 kickoff, so a
+        // signup after midnight met an empty Today card for the rest of the day.
+        $briefing->atSignup($user);
 
         return redirect()->route('dashboard')->with('success', 'You\'re all set. Let\'s see how you\'ve been running.');
     }

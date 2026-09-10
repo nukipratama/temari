@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Services\AI\AnalysisType;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -146,8 +147,14 @@ it('narrates nothing, and promises nothing, while the backfill is still running'
     Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 
     // No row means no payload, which is what keeps the Plan page from drawing
-    // a skeleton over a job nobody queued.
-    expect(Analysis::query()->where('subject_id', $user->id)->exists())->toBeFalse();
+    // a skeleton over a job nobody queued. Today's briefing is a different
+    // block on a different page and is staged at signup either way.
+    expect(
+        Analysis::query()
+            ->where('subject_id', $user->id)
+            ->where('analysis_type', '!=', AnalysisType::BriefingMascotVoice)
+            ->exists(),
+    )->toBeFalse();
 
     Carbon::setTestNow();
 });
