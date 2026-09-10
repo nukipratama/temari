@@ -25,6 +25,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
     streak_reminder: 'Streak',
     plan_clamp: 'Plan',
     strava_disconnected: 'Strava',
+    race_tomorrow: 'Race',
     test: 'Test',
 };
 
@@ -35,6 +36,7 @@ const KIND_ICON: Record<NotificationKind, string> = {
     streak_reminder: 'mdi:fire',
     plan_clamp: 'mdi:sleep',
     strava_disconnected: 'mdi:sync-off',
+    race_tomorrow: 'mdi:flag-checkered',
     test: 'mdi:bell-outline',
 };
 
@@ -45,6 +47,7 @@ const KIND_TONE: Record<NotificationKind, Tone> = {
     streak_reminder: 'accent',
     plan_clamp: 'neutral',
     strava_disconnected: 'neutral',
+    race_tomorrow: 'accent',
     test: 'neutral',
 };
 

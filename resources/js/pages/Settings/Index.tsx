@@ -297,7 +297,7 @@ function NotificationPrefsPanel({
                     <SettingsRow
                         icon="mdi:bell-outline"
                         label="keep me posted"
-                        description="post-run recaps, weekly and monthly summaries, plus a nudge when your streak's about to end."
+                        description="post-run recaps, weekly and monthly summaries, your morning briefing, a heads-up the day before a race, plus a nudge when your streak's about to end."
                         control={
                             <Toggle
                                 label="keep me posted"

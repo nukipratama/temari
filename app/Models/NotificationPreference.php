@@ -17,8 +17,8 @@ use Override;
  *
  * **What** gets sent — `notifications_enabled` — is one channel-neutral master
  * switch over everything Temari initiates: the post-run story, the weekly and
- * monthly recaps, and the streak-at-risk nudge. The same switch gates Telegram
- * and web push alike.
+ * monthly recaps, the morning briefing push, the race-day-tomorrow reminder and
+ * the streak-at-risk nudge. The same switch gates Telegram and web push alike.
  *
  * **Where** it may go — `telegram_enabled`, `push_enabled` — is a non-destructive
  * mute. Off means the connection or subscription stays intact and simply

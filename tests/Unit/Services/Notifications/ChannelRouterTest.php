@@ -209,3 +209,52 @@ describe('the in-app inbox', function (): void {
             ->and($this->router->canReach($demo->fresh()))->toBeFalse();
     });
 });
+
+describe('push alone', function (): void {
+    // What the morning briefing push asks for: an interruption timed to a
+    // moment, whose content the dashboard already carries.
+    it('routes a subscribed athlete to web push and nothing else', function (): void {
+        $user = userWithTelegram();
+        $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+
+        expect($this->router->pushOnly($user->fresh()))->toBe([IdempotentWebPushChannel::class]);
+    });
+
+    it('routes nobody without a subscription', function (): void {
+        expect($this->router->pushOnly(User::factory()->create()))->toBe([]);
+    });
+
+    it('routes nobody who muted push', function (): void {
+        $user = User::factory()->create();
+        $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+        NotificationPreference::factory()->for($user)->create(['push_enabled' => false]);
+
+        expect($this->router->pushOnly($user->fresh()))->toBe([]);
+    });
+
+    it('routes the demo identity nowhere, subscribed or not', function (): void {
+        $demo = User::factory()->create(['is_demo' => true]);
+        $demo->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+
+        expect($this->router->pushOnly($demo->fresh()))->toBe([]);
+    });
+
+    // The bulk equivalent, so an every-quarter-hour sweep does not queue a
+    // notification per athlete only for via() to return nothing.
+    it('selects the same athletes in bulk as it routes one at a time', function (): void {
+        $reachable = User::factory()->create();
+        $reachable->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+
+        $muted = User::factory()->create();
+        $muted->updatePushSubscription('https://push.example/other', 'key', 'auth');
+        NotificationPreference::factory()->for($muted)->create(['push_enabled' => false]);
+
+        $demo = User::factory()->create(['is_demo' => true]);
+        $demo->updatePushSubscription('https://push.example/demo', 'key', 'auth');
+
+        User::factory()->create();
+
+        expect(User::query()->where($this->router->scopePushReachable(...))->pluck('id')->all())
+            ->toBe([$reachable->id]);
+    });
+});

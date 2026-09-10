@@ -22,7 +22,7 @@ Every row is something Temari already sent; nothing is written here, and nothing
 
 ## The kinds
 
-Seven, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
+Eight, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
 Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never the kind's.
 
 | kind | what fires it | channels | opens |
@@ -33,6 +33,7 @@ Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never
 | `streak_reminder` | Saturday 18:00, one per at-risk week | inbox · Telegram · push | the dashboard |
 | `plan_clamp` | a rest day being stepped down | inbox only | the plan |
 | `strava_disconnected` | the Strava grant being revoked | inbox · Telegram · push | the profile, where the reconnect button is |
+| `race_tomorrow` | 18:00 the evening before an active race goal's date | inbox · Telegram · push | the race page |
 | `test` | the "send test notification" button | inbox · Telegram · push | the dashboard |
 
 **`plan_clamp` is the one inbox-only kind.** A step-down used to exist only while the plan page
@@ -49,11 +50,21 @@ row once one is `done`, and otherwise the templated note that [[the-clamp-explai
 a permanent floor. The note is what a row usually carries, because the narration is requested moments
 before the notification is queued.
 
+**`race_tomorrow` has no claim table of its own.** `race:remind` sweeps active race goals whose
+`race_date` is tomorrow ([RaceRemindCommand](../../app/Console/Commands/Run/RaceRemindCommand.php#L21))
+and the inbox row it writes *is* the claim: the dedupe key is the race plus its date
+([RaceTomorrowNotification](../../app/Notifications/RaceTomorrowNotification.php#L45)), so a re-run
+finds the row and says nothing. That makes it a read-then-write rather than an atomic insert, which
+is safe here for the reason [[scheduler]] gives — one scheduler container, and the command holds an
+overlap lock while it runs. The body says the race and its distance, repeats the plan's own taper
+rest when today is one, and ends on the single practical thing left to do that evening; there is no
+narrator behind it and no hype in it.
+
 **`strava_disconnected` is the one kind the master switch does not govern.** Until it notified, the
 only surface that admitted a dead grant was the empty-runs hero, a screen an athlete with runs on
 the dashboard never sees, so their history just stopped growing with no page saying why.
 `notifications_enabled` names what it covers in its own Settings description (the story, the recaps,
-the nudge), all of it content Temari initiates; this is the app reporting that something the athlete
+the morning briefing, the race heads-up, the nudge), all of it content Temari initiates; this is the app reporting that something the athlete
 wired up broke. The per-channel mutes still apply, because those answer *where* rather than
 *whether*.
 
@@ -169,6 +180,18 @@ fan-out along with the job dispatch, so nothing there is *sent* at all — inste
 the demo's inbox rows straight to the table, one weekly recap, one monthly and one post-run, so the
 page shows all three of its buckets and three distinct kinds. The routing rule still holds for
 anything the demo did send ([[demo-notifications-are-inbox-only]]).
+
+## The one push with no row behind it
+
+`briefing:morning-push` pushes today's already-generated briefing at the quarter hour the athlete's
+own run history says they usually start
+([MorningBriefingPushCommand](../../app/Console/Commands/Notifications/MorningBriefingPushCommand.php#L27)),
+and writes **no inbox row at all**
+([MorningBriefingNotification](../../app/Notifications/MorningBriefingNotification.php#L46)). It is
+the one deliberate exception to "the inbox is the record of everything Temari sent": the briefing is
+already on the dashboard, so a row of it would record nothing new, and what the push adds is the
+timing. It generates nothing either — a briefing row that is not `done` is skipped rather than
+narrated. See [[the-briefing-arrives-when-you-run]].
 
 ## See also
 
