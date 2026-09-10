@@ -37,12 +37,12 @@ predicate dropped.
 
 **2. Both ceilings are one code path.** [`dailyCostCeilingExceeded()`](app/Services/AI/AnalysisService.php#L774)
 asks the total first and the athlete's own slice second, both through the same
-[`ceilingExceeded()`](app/Services/AI/AnalysisService.php#L797) helper. Sharing the path is the point: what "past the ceiling" *does* can never diverge between the two. So
+[`ceilingExceeded()`](app/Services/AI/AnalysisService.php#L872) helper. Sharing the path is the point: what "past the ceiling" *does* can never diverge between the two. So
 everything [[cost-ceiling-degrades-to-rule-based]] decided holds unchanged for the total —
 `Pending` blocks are filled from [RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php)
 and marked `Done`, a `Failed` row stays `Failed` with its dead-letter visibility, manual triggers
 are refused with the same honest message, and the demo login is served rule-based regardless
-([`shouldServeRuleBased()`](app/Services/AI/AnalysisService.php#L613)) so it is
+([`shouldServeRuleBased()`](app/Services/AI/AnalysisService.php#L643)) so it is
 neither affected by the ceiling nor able to trip it.
 
 **3. The total *is* a global pause; the per-athlete slice still is not.** The total takes no

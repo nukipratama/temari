@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Models\AI;
+namespace App\Models\Analytics;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -10,13 +10,19 @@ use Illuminate\Support\Carbon;
 use Override;
 
 /**
+ * One operator action taken from /devtools. Write through
+ * {@see \App\Services\Devtools\DevtoolsActionRecorder}, which resolves the actor
+ * from the current request.
+ *
  * @property int $id
- * @property int|null $user_id  The athlete whose narration tripped the filter; a bare integer, since `users` lives on the default connection.
- * @property string $kind
+ * @property string $actor
+ * @property string $action
+ * @property int|null $user_id  The athlete acted on, when the action names one.
+ * @property array<string, mixed>|null $payload
  * @property Carbon $created_at
  */
-#[Fillable(['user_id', 'kind', 'created_at'])]
-class ContentFilterEvent extends Model
+#[Fillable(['actor', 'action', 'user_id', 'payload', 'created_at'])]
+class DevtoolsAction extends Model
 {
     #[Override]
     public $timestamps = false;
@@ -25,7 +31,7 @@ class ContentFilterEvent extends Model
     protected $connection = 'analytics';
 
     #[Override]
-    protected $table = 'ai_content_filter_events';
+    protected $table = 'devtools_actions';
 
     /** @return array<string, string> */
     #[Override]
@@ -33,6 +39,7 @@ class ContentFilterEvent extends Model
     {
         return [
             'user_id' => 'integer',
+            'payload' => 'array',
             'created_at' => 'datetime',
         ];
     }

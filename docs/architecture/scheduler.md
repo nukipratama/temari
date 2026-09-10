@@ -66,7 +66,7 @@ despite that.
 | `ai:self-heal` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s — skipped, generation paused (Azure unset) |
 | `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.5s — created 0 missing kickoff rows |
 | `queue:prune-failed` | daily 02:20 | 15 | yes | one `DELETE` on `failed_jobs` | ~1.6s — 0 entries deleted |
-| `analytics:prune` | daily 02:25 | 15 | yes | a couple of `DELETE`s on the `analytics` connection | ~1.7s — 0 rows pruned |
+| `analytics:prune` | daily 02:25 | 15 | yes | four `DELETE`s — three on the `analytics` connection, one on `analysis_versions` | ~1.7s — 0 rows pruned |
 | `strava:sync` / `strava:ingest` / `strava:hydrate-backlog` | see `routes/console.php` | 55/10/14 (unchanged) | yes | already guarded pre-DF-1 | ~1.3-1.4s each — no real Strava connection to poll/drain against locally (needs live Strava credentials); cannot be meaningfully measured in this worktree |
 | `geo:backfill-locations` / `weather:correct-forecast` / `weather:backfill` | see `routes/console.php` | 55/55/55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s each — 0 rows to backfill; `weather:*` additionally need a live Open-Meteo call to exercise the fetch path |
 | `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.6s — wrote 1 row, for the seeded user |

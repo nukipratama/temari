@@ -34,13 +34,20 @@ read/write must name it explicitly.
 
 ## Which models use it
 
-Two Eloquent models pin themselves to it via `protected $connection = 'analytics'`:
+Four Eloquent models pin themselves to it via `protected $connection = 'analytics'`:
 
 - [TokenUsage](app/Models/AI/TokenUsage.php) — table `ai_token_usages`, the per-call
   LLM token/cost ledger (`$timestamps = false`, only `created_at`).
 - [StravaSyncLog](app/Models/Analytics/StravaSyncLog.php) — table `strava_sync_logs`;
   write through its `StravaSyncLog::log()` factory method, not raw `create()` scattered
   about.
+- [ContentFilterEvent](app/Models/AI/ContentFilterEvent.php) — table
+  `ai_content_filter_events`, one row per output-side content-filter trip that degraded to the
+  rule-based filler.
+- [DevtoolsAction](app/Models/Analytics/DevtoolsAction.php) — table `devtools_actions`, the
+  audit trail for operator actions taken from /devtools; write through
+  [DevtoolsActionRecorder](app/Services/Devtools/DevtoolsActionRecorder.php), which resolves the
+  actor from the current request.
 
 Read-side services skip Eloquent and go straight through the query builder with
 `DB::connection('analytics')` — see `LlmCostCalculator`, `TokenUsageReport`, and the
@@ -66,7 +73,9 @@ since the first one does. The flag alone is a footgun: run the command without i
 and a plain `Schema::create(...)` silently builds the table in the app database.
 Naming the connection makes the migration correct regardless of how it is invoked. There is no
 cross-schema foreign key from these tables back to `users` (impossible across schemas),
-so `user_id` is a bare nullable integer.
+so `user_id` is a bare nullable integer. The same holds for `ai_token_usages.analysis_id`,
+which points at `ai_analyses` on the default connection and is therefore joined in PHP rather
+than in SQL — see [[narration-analytics-are-joinable]].
 
 Because nothing constrains it, a usage row outlives the account it belonged to. `user_name`
 and `strava_athlete_id` are stamped onto those rows by [UserEraser](app/Services/User/UserEraser.php)
@@ -96,3 +105,4 @@ tables into the default test DB so they migrate and roll back transactionally:
 - [[data-model]]
 - [[ai-pipeline]]
 - [[analytics-db-separate-connection]] (ADR — not written yet)
+- [[narration-analytics-are-joinable]] (ADR — why usage rows carry an analysis id)

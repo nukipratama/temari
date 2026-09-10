@@ -14,6 +14,7 @@ use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RecapPeriod;
 use App\Services\AI\TokenUsageReport;
+use App\Services\Devtools\DevtoolsActionRecorder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
@@ -28,6 +29,7 @@ class TokenUsageController extends Controller
     public function __construct(
         private readonly TokenUsageReport $report,
         private readonly AnalysisService $analysisService,
+        private readonly DevtoolsActionRecorder $recorder,
     ) {
     }
 
@@ -72,6 +74,7 @@ class TokenUsageController extends Controller
     public function recover(): RedirectResponse
     {
         Artisan::call('ai:recover');
+        $this->recorder->record('ai_usage.recover');
 
         return back()->with('info', 'Recovery ran: dead-lettered blocks were retried and self-heal swept immediately.');
     }
@@ -108,6 +111,8 @@ class TokenUsageController extends Controller
                 invalidate: false,
             );
         }
+
+        $this->recorder->record('ai_usage.retry_failed', $userId, ['blocks' => $matching->count()]);
 
         $userName = User::query()->find($userId)?->name ?? "User #{$userId}";
 

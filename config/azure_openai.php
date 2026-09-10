@@ -73,6 +73,15 @@ return [
         ? (float) env('AZURE_OPENAI_DAILY_COST_CEILING_PER_USER')
         : 1.00,
 
+    // USD/day cap on what re-narration replays (AnalysisOrigin::Replay) may
+    // spend across the whole app. A replay is an operator's QA tool, not an
+    // athlete's narration, so it counts against this and the app-wide total only
+    // — never against the athlete's own daily slice, which their real narration
+    // needs.
+    'replay_daily_cap' => env('AZURE_OPENAI_REPLAY_DAILY_CAP') !== null
+        ? (float) env('AZURE_OPENAI_REPLAY_DAILY_CAP')
+        : 0.50,
+
     // USD/day ceiling on the WHOLE app's spend, sitting above the per-athlete
     // one. Past it, every athlete's pending narration is served from the same
     // rule-based filler until midnight, so the bill is bounded absolutely rather

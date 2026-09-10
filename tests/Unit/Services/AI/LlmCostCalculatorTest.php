@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\AI\TokenUsage;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\LlmCostCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -102,4 +103,22 @@ it('bills cached input as ordinary input when a deployment declares no cached ra
     // A missing cached rate must never understate: cached and uncached cost the same.
     expect($calculator->costFor('legacy', 1_000_000, 0, 1_000_000))
         ->toBe($calculator->costFor('legacy', 1_000_000, 0, 0));
+});
+
+it('scopes the daily cost to one origin, which is how the replay cap reads its own slice', function (): void {
+    config()->set('azure_openai.prices', ['gpt-4o' => ['input_per_1m' => 2.00, 'output_per_1m' => 10.00]]);
+
+    TokenUsage::query()->create([
+        'kind' => 'briefing', 'origin' => AnalysisOrigin::Replay, 'prompt_tokens' => 1_000_000,
+        'completion_tokens' => 0, 'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+    TokenUsage::query()->create([
+        'kind' => 'briefing', 'origin' => AnalysisOrigin::Scheduled, 'prompt_tokens' => 1_000_000,
+        'completion_tokens' => 0, 'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+
+    $calculator = new LlmCostCalculator();
+
+    expect($calculator->dailyCost(origin: AnalysisOrigin::Replay))->toBe(2.00)
+        ->and($calculator->dailyCost())->toBe(4.00);
 });

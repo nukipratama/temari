@@ -105,3 +105,23 @@ it('reads the deadline from config', function (): void {
     expect($budget->deadlinePassed())->toBeTrue()
         ->and($budget->exhaustedReason())->toBeNull();
 });
+
+it('accumulates the tool trace in call order, truncating the arguments summary', function (): void {
+    $budget = new AgentBudget(maxSteps: 5, maxTokens: 1000);
+
+    $budget->recordToolCall('get_thing', '{"id":1}', 12);
+    $budget->recordToolCall('get_other', str_repeat('x', 500), 3);
+
+    expect($budget->toolCalls())->toHaveCount(2)
+        ->and($budget->toolCalls()[0])->toBe([
+            'tool' => 'get_thing',
+            'arguments_summary' => '{"id":1}',
+            'duration_ms' => 12,
+        ])
+        ->and($budget->toolCalls()[1]['arguments_summary'])
+        ->toHaveLength(AgentBudget::ARGUMENTS_SUMMARY_LENGTH);
+});
+
+it('starts with an empty tool trace', function (): void {
+    expect(new AgentBudget(maxSteps: 5, maxTokens: 1000)->toolCalls())->toBe([]);
+});

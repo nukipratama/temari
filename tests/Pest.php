@@ -11,6 +11,7 @@ use App\Services\AI\Agent\AgentTool;
 use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
+use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\StructuredChatCaller;
 use App\Actions\AI\RecordTokenUsageAction;
@@ -272,6 +273,7 @@ function fakeStructuredCaller(ClientFake $client, string $deployment = 'gpt-test
         app(RecordTokenUsageAction::class),
         new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)),
         app(NarrationOrigin::class),
+        app(NarratedAnalysis::class),
     );
 }
 

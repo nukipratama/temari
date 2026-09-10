@@ -10,7 +10,10 @@ use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
+use App\Services\AI\ServedBy;
+use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +21,15 @@ use Throwable;
 
 abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 {
+    /**
+     * Row id per AnalysisType value for the rows this run is narrating, so
+     * {@see self::narrating()} can attribute each narrator call's metering to
+     * the block it paid for.
+     *
+     * @var array<string, int>
+     */
+    private array $pendingRowIds = [];
+
     public function __construct(
         public readonly int $subjectId,
         public readonly ?string $discriminator = null,
@@ -67,6 +79,10 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             $service->markProcessing($row);
         }
 
+        $this->pendingRowIds = $pending->mapWithKeys(
+            fn (Analysis $row): array => [$row->analysis_type->value => $row->id],
+        )->all();
+
         // Computed inside the try so a failure here (DB blip, a future bug in a
         // fingerprintFor() override) goes through the same settleFailure()
         // handling as a generation failure, instead of throwing uncaught and
@@ -81,7 +97,13 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             // Even the continuity-stripped retry content-filtered. Fill every
             // pending row from the rule-based narrator so the group settles Done
             // with benign content instead of dead-lettering the whole briefing.
-            $this->finalizePending($pending, $service, $this->ruleBasedPayload($pending), $fingerprint);
+            $this->finalizePending(
+                $pending,
+                $service,
+                $this->ruleBasedPayload($pending),
+                $fingerprint,
+                ServedBy::RuleBased,
+            );
             Log::info('narrator.ai.content_filter_fallback', [
                 'kind' => static::subjectType(),
                 'subject' => $this->subjectId,
@@ -126,6 +148,20 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
     }
 
     /**
+     * Run one of the group's narrator calls attributed to the row it produces,
+     * so the usage it meters carries that row's id.
+     *
+     * @template TReturn
+     *
+     * @param  Closure(): TReturn  $generate
+     * @return TReturn
+     */
+    protected function narrating(AnalysisType $type, Closure $generate): mixed
+    {
+        return app(NarratedAnalysis::class)->during($this->pendingRowIds[$type->value] ?? null, $generate);
+    }
+
+    /**
      * Rule-based content for each pending row, keyed the same way $pending is
      * (by AnalysisType value) so it drops straight into {@see finalizePending}.
      *
@@ -143,11 +179,16 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
      * @param Collection<string, Analysis> $pending
      * @param array<string, string> $payload
      */
-    private function finalizePending(Collection $pending, AnalysisService $service, array $payload, ?string $fingerprint = null): void
-    {
-        DB::transaction(function () use ($pending, $payload, $service, $fingerprint): void {
+    private function finalizePending(
+        Collection $pending,
+        AnalysisService $service,
+        array $payload,
+        ?string $fingerprint = null,
+        ServedBy $servedBy = ServedBy::Llm,
+    ): void {
+        DB::transaction(function () use ($pending, $payload, $service, $fingerprint, $servedBy): void {
             foreach ($pending as $key => $row) {
-                $service->markDone($row, $payload[$key], fingerprint: $fingerprint);
+                $service->markDone($row, $payload[$key], fingerprint: $fingerprint, servedBy: $servedBy);
             }
         });
     }
