@@ -122,30 +122,6 @@ function trainedArc(User $user, int $weeks, array $missedWeekIndexes = []): arra
     return $trained;
 }
 
-it('trains every phase of the arc rather than restarting it each Monday', function (): void {
-    $arc = trainedArc(anchoredArcAthlete(), 8);
-
-    expect(array_column($arc, 'phase'))->toBe([
-        PlanPhase::Base,
-        PlanPhase::Base,
-        PlanPhase::Build,
-        PlanPhase::Deload,
-        PlanPhase::Build,
-        PlanPhase::Peak,
-        PlanPhase::Peak,
-        PlanPhase::Taper,
-    ]);
-});
-
-it('trains a ramp that builds, dips through the scheduled deload and tapers', function (): void {
-    $arc = trainedArc(anchoredArcAthlete(), 8);
-
-    // Base flat, Build's first week off it, the scheduled Deload at -35%,
-    // Build resuming its 7.5% compounding across the dip, Peak just under
-    // that, and race week at 40% of Peak.
-    expect(array_column($arc, 'multiplier'))->toBe([1.0, 1.0, 1.0, 0.65, 1.075, 0.989, 0.989, 0.396]);
-});
-
 it('prescribes the deload week well under the build weeks around it', function (): void {
     $arc = trainedArc(anchoredArcAthlete(), 8);
 

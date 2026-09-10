@@ -24,7 +24,7 @@ use App\Actions\Run\Plan\ResolveSeasonAction;
  * (never cached) every time it's called, and a `RaceGoal` set or cleared
  * mid-season only changes the season at the NEXT call, not retroactively.
  *
- * Called from both {@see \App\Http\Controllers\PlanController::index()} (so
+ * Called from both {@see PlanPageAssembler} (so
  * a first-ever page view already has a season, even before any plan has been
  * regenerated) and {@see Periodizer::regenerate()} (so the weekly job and
  * on-demand regeneration keep the season in lockstep with the plan's own

@@ -17,7 +17,7 @@ use LogicException;
 
 /**
  * The two render-time computations shared by every "current week" surface —
- * {@see \App\Http\Controllers\PlanController} (the full multi-week arc) and
+ * {@see PlanPageAssembler} (the full multi-week arc) and
  * {@see CurrentWeekPlanBuilder} (Home's single-week widget). Pulled out so
  * the two pages can never numerically drift on the same week: the
  * phase→volume-multiplier math is relative to how far into a Peak/Taper/
@@ -96,7 +96,7 @@ final class PlanRenderer
     /**
      * The week's first Easy day gets the bigger (Medium) core-km fraction —
      * see {@see SegmentGenerator::coreKmFor()}'s `$isPrimaryEasy`. Shared by
-     * every caller that needs a week's per-day km (`PlanController`,
+     * every caller that needs a week's per-day km (`PlanPageAssembler`,
      * `CurrentWeekPlanBuilder`, `plan:score-compliance`) so none of them
      * silently drift on which day is "primary".
      *

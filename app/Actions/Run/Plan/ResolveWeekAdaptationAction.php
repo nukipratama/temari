@@ -9,7 +9,7 @@ use App\Models\PlanAdaptation;
 /**
  * One week's plan adaptation, read once per request per (athlete, week).
  *
- * Bound `scoped()` in AppServiceProvider — PlanController's `adaptation` prop
+ * Bound `scoped()` in AppServiceProvider — PlanPageAssembler's `adaptation` prop
  * and both of PlanNarrationRequester's week-voice paths ask for the same row
  * within one deferred Plan render. {@see PlanAdaptation::booted()} drops the
  * memo on any write.

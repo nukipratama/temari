@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * history.
  *
  * Only PAST days (strictly before "today") are counted, matching
- * {@see \App\Http\Controllers\PlanController}'s own `Done`/`Missed`
+ * {@see \App\Services\Run\Plan\PlanPageAssembler}'s own `Done`/`Missed`
  * boundary — a day that hasn't finished yet can't be "completed" or
  * "honored".
  */
