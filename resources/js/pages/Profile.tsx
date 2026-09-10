@@ -11,6 +11,7 @@ import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 import PaceTargetsCard, {
     type TrainingPaces,
     type VdotSource,
+    type WeekSession,
 } from '@/components/profile/PaceTargetsCard';
 import ProfileHero from '@/components/profile/ProfileHero';
 import ProgressionCard from '@/components/profile/ProgressionCard';
@@ -46,6 +47,7 @@ interface FitnessPayload {
     threshold_pace_sec: number | null;
     threshold_confidence: string | null;
     training_paces: TrainingPaces | null;
+    week_sessions: WeekSession[];
 }
 
 interface ProfileProps {
@@ -189,6 +191,7 @@ export default function Profile({
                                 <PaceTargetsCard
                                     paces={fitness.training_paces}
                                     source={fitness.vdot_source}
+                                    weekSessions={fitness.week_sessions}
                                 />
                             </div>
                         ) : null

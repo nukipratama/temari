@@ -18,6 +18,7 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
+use App\Services\Run\Plan\WeekSessionTypesBuilder;
 use App\Services\Run\ProgressionSeriesBuilder;
 use App\Services\AI\AnalysisType;
 use Illuminate\Http\Request;
@@ -53,6 +54,7 @@ class ProfileController extends Controller
         SeasonStreakSummaryBuilder $seasonStreakBuilder,
         SeasonSummaryBuilder $seasonSummaryBuilder,
         ResolveActiveRaceAction $activeRace,
+        WeekSessionTypesBuilder $weekSessionTypes,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -99,7 +101,7 @@ class ProfileController extends Controller
             ],
             'profileVoice' => fn (): array => $this->resolveProfileVoice($user),
             'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user), $activeRace($user->id))),
-            'fitness' => Inertia::defer(fn (): ?array => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $user)),
+            'fitness' => Inertia::defer(fn (): ?array => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $weekSessionTypes, $user, $today)),
             'timeInZone' => Inertia::defer(fn (): ?array => $timeInZoneSummary->forUser($user, $today) ?: null),
             'season' => Inertia::defer(fn (): ?array => $seasonStreakBuilder->seasonPayload($user, $loadSeason(), $today)),
             'seasonWeeks' => Inertia::defer(function () use ($loadSeason, $seasonSummaryBuilder, $user, $today): ?array {
@@ -122,9 +124,9 @@ class ProfileController extends Controller
     }
 
     /**
-     * @return array{vdot: float|null, vdot_source: array{category: string, set_at: string, stale: bool, quality_category: string|null, quality_set_at: string|null}|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null}|null
+     * @return array{vdot: float|null, vdot_source: array{category: string, set_at: string, stale: bool, quality_category: string|null, quality_set_at: string|null}|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null, week_sessions: list<array{weekday: string, session_type: string, distance_km: float}>}|null
      */
-    private function fitness(VdotEstimator $vdotEstimator, EstimateThresholdAction $thresholdEstimator, TrainingPaceCalculator $trainingPaceCalculator, User $user): ?array
+    private function fitness(VdotEstimator $vdotEstimator, EstimateThresholdAction $thresholdEstimator, TrainingPaceCalculator $trainingPaceCalculator, WeekSessionTypesBuilder $weekSessionTypes, User $user, Carbon $today): ?array
     {
         $vdot = $vdotEstimator->estimate($user);
         $threshold = $thresholdEstimator($user);
@@ -132,6 +134,8 @@ class ProfileController extends Controller
         if ($vdot === null && $threshold === null) {
             return null;
         }
+
+        $paces = $trainingPaceCalculator->fromVdotResult($vdot);
 
         return [
             'vdot' => $vdot['vdot'] ?? null,
@@ -146,7 +150,8 @@ class ProfileController extends Controller
             ],
             'threshold_pace_sec' => $threshold['pace_sec'] ?? null,
             'threshold_confidence' => $threshold['confidence'] ?? null,
-            'training_paces' => $trainingPaceCalculator->fromVdotResult($vdot),
+            'training_paces' => $paces,
+            'week_sessions' => $weekSessionTypes->forUser($user, $today, $paces),
         ];
     }
 
