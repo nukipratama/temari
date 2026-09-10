@@ -17,6 +17,7 @@ code_refs:
   - app/Http/Controllers/Api/AnalysisController.php
   - app/Http/Controllers/Api/RunQuestionController.php
   - app/Services/AI/SelfHealer.php
+  - app/Actions/AI/RequestTodaysBriefing.php
   - app/Services/AI/PlanNarrationRequester.php
   - app/Services/AI/BackfillAgeGate.php
   - app/Models/AI/TokenUsage.php
@@ -85,6 +86,22 @@ but the command then calls
 [`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L163) for every non-demo
 user, touching up to nine rows: `PlanDayVoice` ×7, `PlanWeekVoice`, and `PlanSeasonVoice`. It is the
 largest scheduled spend in the app, which is why it is also the only one that checks before it bills.
+
+**A brand-new account also gets today's briefing on the day it signs up.** `BriefingMascotVoice`
+is keyed by the day, and the only thing that used to stage it was the 00:01 kickoff, so an account
+created at any other hour met a silent Today card until the next midnight. Two triggers close that,
+both through [RequestTodaysBriefing](../../app/Actions/AI/RequestTodaysBriefing.php#L23) and both
+reusing `AnalysisService::requestBriefing()`, the same upsert the kickoff and `ai:catch-up` share:
+
+| when | entry point | origin | what it dispatches |
+|---|---|---|---|
+| the onboarding wizard is submitted | [`RequestTodaysBriefing::atSignup()`](../../app/Actions/AI/RequestTodaysBriefing.php#L29) from [OnboardingController::store](../../app/Http/Controllers/OnboardingController.php#L53) | user | one `BriefingMascotVoice` for today — one mini call per new athlete, never a second row |
+| the first-connect backfill lands | [`RequestTodaysBriefing::afterBackfill()`](../../app/Actions/AI/RequestTodaysBriefing.php#L43) from [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php#L65) | ingest | the same row, invalidated, so a briefing narrated against an empty history is re-read once — at most one re-run per athlete per day |
+
+The second exists because `BriefingMascotVoice` stamps no `MaterialFingerprint`: a plain request
+leaves a Done row alone, so without `invalidate: true` the first briefing would keep whatever it said
+about an account with no runs in it. The demo account reaches neither as an LLM call — both route
+through `shouldServeRuleBased()` to the filler, per [[demo-triggers-served-rule-based]].
 
 **A brand-new account narrates the same nine rows once, off-schedule.** Onboarding and the first-connect
 backfill chain race, and whichever finishes second calls
@@ -165,7 +182,7 @@ rendered somewhere a user can see — both directions matter, and only one of th
 
 | type | narrator | subject · discriminator | origin | renders |
 |---|---|---|---|---|
-| `briefing_mascot_voice` | `BriefingMascotVoiceNarrator` | synthetic user+day · `Y-m-d` | scheduled + ingest | `TodaySession` on Home |
+| `briefing_mascot_voice` | `BriefingMascotVoiceNarrator` | synthetic user+day · `Y-m-d` | scheduled + ingest + signup | `TodaySession` on Home |
 | `post_run_speech` | `PostRunSpeechNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, top of "What Temari says" |
 | `run_insight` | `RunInsightNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, "What stood out" claims |
 | `card_flavor` | `CardFlavorNarrator` | `RunCard` · none | ingest | the line burned into the share card, `ShareCardModal` |

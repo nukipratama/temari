@@ -5,6 +5,7 @@ tags: [feature, onboarding]
 status: living
 reviewed: 2026-09-09
 code_refs:
+  - app/Actions/AI/RequestTodaysBriefing.php
   - app/Http/Controllers/OnboardingController.php
   - app/Http/Middleware/EnsureOnboarded.php
   - app/Http/Requests/CompleteOnboardingRequest.php
@@ -57,6 +58,12 @@ The goal form only offers submissions the server can accept. [raceGoal.ts](../..
 ## The first week's voice
 
 Onboarding and the Strava backfill race: the wizard writes a plan the moment signup finishes, while the connect chain is still importing history. Whoever finishes second narrates that first week. Onboarding requests narration only when `users.backfilled_at` is already stamped; otherwise it writes the rows and stops, and [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php) — the chain's last link, which stamps that column — re-sizes that plan against the history it just imported and then narrates it, once it finds a plan waiting. Regenerating first matters: narrating first would describe a week that is about to be replaced. Both call [PlanNarrationRequester::requestForFirstWeek()](../../app/Services/AI/PlanNarrationRequester.php), which never invalidates a row, so the interleaving where both fire costs nothing extra. Until one fires the Plan page has no `Analysis` row to render and omits the day rather than drawing a skeleton over a job nobody queued. See [[plan-periodizer]] and [[strava-connect]].
+
+## Today's first briefing
+
+`BriefingMascotVoice` is keyed by the day and was staged only by the 00:01 `ai:daily-briefing` kickoff, so an account created at any other hour met a silent Today card until the next midnight. `OnboardingController::store` now asks for it at the end of the wizard through [RequestTodaysBriefing::atSignup](../../app/Actions/AI/RequestTodaysBriefing.php#L29) ([OnboardingController.php:118](../../app/Http/Controllers/OnboardingController.php#L118)) — the same upsert the kickoff and the hourly `ai:catch-up` share, so an existing row is never duplicated and the demo account is served from the rule-based filler. The composer tolerates a zero-activity athlete (`hoursSince` is nullable), so the briefing is honest about a history that has not landed yet.
+
+Which is why [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php#L65) asks again: the same row, invalidated, once the backfill stamps `backfilled_at`. `BriefingMascotVoice` stamps no material fingerprint, so nothing else would re-open a Done row that read an empty history. That re-request is bounded to one per athlete per day, so a resync re-running the connect chain cannot re-bill the day's briefing. Until the first one lands, the Today card says so rather than staying blank — see [[dashboard]].
 
 ## See also
 
