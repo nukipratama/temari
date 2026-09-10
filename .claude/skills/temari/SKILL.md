@@ -22,7 +22,7 @@ Backend logic is split by domain under `app/Services/`:
 - **Notifications/** — channel routing + delivery-claim idempotency.
 - **Inertia/** — per-page shared prop builders (`SharedProps`, `AiProps`, `GamificationProps`, `NotificationProps`, `StravaProps`).
 
-Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`, one per prototype screen: `Home` (the Today dashboard — the render name is `Home`, not `Today`), `Plan`, `Race`, `Trends`, `History` with `Activities/{Feed,Calendar}`, `Runs/Show`, `Inbox`, `Profile`, `Settings/Index`, plus `Auth/Login`, `Onboarding/Index`, `Legal/Document` and the operator screens `AiUsage` / `Devtools` / `Devtools/Design`. There is no `Collection/` tree — the cards, records and accessories pages were cut by the parity port.
+Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`, one per prototype screen: `Home` (the Today dashboard — the render name is `Home`, not `Today`), `Plan`, `Race`, `Trends`, `History` with `Activities/{Feed,Calendar}`, `Runs/Show`, `Inbox`, `Profile`, `Settings/Index`, plus `Auth/Login`, `Onboarding/Index`, `Legal/Document` and the operator screens `Narration/Overview` / `Devtools` / `Devtools/Design`. There is no `Collection/` tree — the cards, records and accessories pages were cut by the parity port.
 
 ## Voice & copy
 

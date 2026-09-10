@@ -22,7 +22,7 @@ _Pages_
 - [[settings]] — Settings hub (Telegram toggles, HR-zone entry, account deletion)
 - [[settings-hr-zones]] — HR zones (Karvonen zones)
 - [[legal-pages]] — the four public documents (terms, privacy, AI use, training disclaimer)
-- [[narration-devtools]] — token usage dashboard (ops-gated)
+- [[narration-devtools]] — narration spend + per-athlete overview (ops-gated)
 - [[race-projection]] — Race, the goal race and fitted-Riegel finish-time projection, plus the 90-day fitness trend
 - [[plan-periodizer]] — Plan, the deterministic periodizer, readiness clamp, and volume redistribution
 
