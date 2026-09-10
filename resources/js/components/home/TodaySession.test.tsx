@@ -184,6 +184,28 @@ describe('TodaySession', () => {
         );
     });
 
+    it('grows the face to span the label and the prescription beside it', () => {
+        const { container } = render(
+            <TodaySession briefing={briefing('Easy 6k.')} today={day()} />,
+        );
+
+        expect(container.querySelector('[data-face-icon]')).toHaveAttribute(
+            'width',
+            '60',
+        );
+    });
+
+    it('keeps the face small when there is only the label to sit beside', () => {
+        const { container } = render(
+            <TodaySession briefing={briefing('Easy 6k.')} />,
+        );
+
+        expect(container.querySelector('[data-face-icon]')).toHaveAttribute(
+            'width',
+            '42',
+        );
+    });
+
     it('states the session, its distance and its pace above the voice', () => {
         render(
             <TodaySession

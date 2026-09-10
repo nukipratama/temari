@@ -36,7 +36,7 @@ it('renders for a user with no synced activities', function (): void {
         ->assertInertia(fn (Assert $page) => $page
             ->component('Home')
             ->where('auth.user.first_name', explode(' ', (string) $user->name)[0])
-            ->where('load', null)
+            ->missing('load')
             ->where('recentRuns', []));
 });
 
@@ -63,7 +63,7 @@ it('selects only the recent-run columns Today still draws', function (): void {
             ->missing('recentRuns.0.weather_temp_c'));
 });
 
-it('renders KPIs + recent runs when the user has training-load history', function (): void {
+it('renders the week snapshot + recent runs when the user has training-load history', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
     $user = User::factory()->create();
 
@@ -85,8 +85,7 @@ it('renders KPIs + recent runs when the user has training-load history', functio
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Home')
-            ->has('load.weekly_trimp')
-            ->has('load.form')
+            ->missing('load')
             ->has('snapshot')
             ->has('recentRuns', 8));
 
@@ -188,7 +187,7 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
     $response->assertJsonPath('component', 'Home');
     // The one prop the poll does name still has to resolve.
     $response->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood));
-    foreach (['load', 'snapshot', 'recentRuns', 'weekPlan'] as $skipped) {
+    foreach (['snapshot', 'recentRuns', 'weekPlan'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
@@ -207,7 +206,8 @@ it('still returns every dashboard prop on a full page load', function (): void {
             ->has('snapshot')
             ->has('recentRuns', 1)
             ->has('pastYouTrend')
-            ->has('weekPlan'));
+            ->has('weekPlan')
+            ->missing('load'));
 });
 
 it('ships weekPlan as null when the user has no planned sessions this week', function (): void {

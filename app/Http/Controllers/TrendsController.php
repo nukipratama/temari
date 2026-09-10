@@ -4,31 +4,48 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Story\BriefingComposer;
+use App\Services\Run\Story\BriefingResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * /trends — a year of running read as lines rather than a list. Four blocks
- * only (P25): the headline, the range tabs, Temari's read, and one fitness
- * panel carrying the CTL/ATL chart, its stat tiles and the badges earned in
- * the window.
+ * /trends — a year of running read as lines rather than a list: the headline,
+ * the load section Home used to hold behind a disclosure, the range tabs,
+ * Temari's read, and one fitness panel carrying the CTL/ATL chart, its stat
+ * tiles and the badges earned in the window.
  */
 class TrendsController extends Controller
 {
-    public function __invoke(Request $request, TrainingLoad $trainingLoad, SeasonStreakSummaryBuilder $seasonStreakBuilder): Response
-    {
+    public function __invoke(
+        Request $request,
+        TrainingLoad $trainingLoad,
+        SeasonStreakSummaryBuilder $seasonStreakBuilder,
+        BriefingComposer $briefingComposer,
+        ResolveTrailingWeeksAction $trailingWeeks,
+    ): Response {
         /** @var User $user */
         $user = $request->user();
+        $today = Carbon::today();
 
         return Inertia::render('Trends', [
+            'briefing' => Inertia::defer(fn (): BriefingResult => $briefingComposer->compose($user, $today)),
+            'load' => Inertia::defer(fn (): ?array => $trainingLoad->summary($user, $today)),
+            'snapshot' => Inertia::defer(fn (): ?WeeklySnapshot => $trailingWeeks(
+                $user->id,
+                $today->copy()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+                1,
+            )->first()),
             'ctlTrend' => Inertia::defer(fn (): array => $trainingLoad->ctlTrend($user, 365)),
             'badgeMilestones' => Inertia::defer(fn (): array => collect(RunCard::firstEarnedBadgesForUser($user->id))
                 ->map(static fn (array $earned, string $slug): array => [

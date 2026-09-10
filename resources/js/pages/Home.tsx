@@ -4,7 +4,6 @@ import type {
     ActivityDetail,
     BriefingResult,
     PastYouTrend,
-    TrainingLoad,
     WeekPlan,
     WeeklySnapshot,
 } from '@/types/inertia';
@@ -15,7 +14,6 @@ import NoVerdictPanel from '@/components/home/NoVerdictPanel';
 import TodaySession from '@/components/home/TodaySession';
 import VerdictHero from '@/components/home/VerdictHero';
 import WeekPlanWidget from '@/components/home/WeekPlanWidget';
-import WeekStatsDisclosure from '@/components/home/WeekStatsDisclosure';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
@@ -24,7 +22,6 @@ import { todayLocalIso } from '@/lib/pace';
 
 interface HomeProps {
     briefing: BriefingResult;
-    load: TrainingLoad | null;
     snapshot: WeeklySnapshot | null;
     recentRuns: ActivityDetail[];
     pastYouTrend?: PastYouTrend | null;
@@ -32,19 +29,18 @@ interface HomeProps {
 }
 
 /**
- * Today, on the frozen prototype's `TodayScreen` section list: the week's plan
- * card (or its empty state), "you vs past you" and the evidence behind it,
- * Temari's read on today, then the week's stats behind a closed disclosure.
+ * Today, on the frozen prototype's `TodayScreen` section list: Temari's read
+ * on today, the week's plan card carrying the week's own numbers (or its empty
+ * state), then "you vs past you" and the evidence behind it. The deep stats —
+ * vitals and condition — live on Trends.
  */
 export default function Home({
     briefing,
-    load,
     snapshot,
     recentRuns,
     pastYouTrend = null,
     weekPlan = null,
 }: Readonly<HomeProps>) {
-    const lastRun = recentRuns[0] ?? null;
     const hasRuns = recentRuns.length > 0;
     const todayIso = todayLocalIso();
     const todayPlan =
@@ -69,17 +65,13 @@ export default function Home({
                         />
 
                         {weekPlan !== null ? (
-                            <WeekPlanWidget weekPlan={weekPlan} />
+                            <WeekPlanWidget
+                                weekPlan={weekPlan}
+                                snapshot={snapshot}
+                            />
                         ) : (
-                            <NoPlanCard />
+                            <NoPlanCard snapshot={snapshot} />
                         )}
-
-                        <WeekStatsDisclosure
-                            briefing={briefing}
-                            load={load}
-                            snapshot={snapshot}
-                            lastRun={lastRun}
-                        />
 
                         {pastYouTrend !== null &&
                             (judged !== null ? (

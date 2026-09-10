@@ -48,7 +48,40 @@ it('paints the shell with every heavy block deferred', function (): void {
             ->missing('badgeMilestones')
             ->missing('streak')
             ->missing('narration')
+            ->missing('briefing')
+            ->missing('load')
+            ->missing('snapshot')
             ->etc());
+});
+
+it('ships the load section props Home used to hold behind its stats disclosure', function (): void {
+    $user = User::factory()->create();
+    seedTrendsTrimpDay($user, 80);
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => now()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'distance_km' => 35.5,
+        'weekly_trimp' => 280,
+    ]);
+
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'briefing,load,snapshot'))
+        ->assertSuccessful()
+        ->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood))
+        ->assertJsonPath('props.load.ctl_42d', fn (mixed $ctl): bool => is_numeric($ctl))
+        ->assertJsonPath('props.snapshot.weekly_trimp', 280);
+});
+
+it('never surfaces another user\'s week snapshot on the load section', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    WeeklySnapshot::factory()->for($other)->create([
+        'week_ending' => now()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'distance_km' => 35.5,
+    ]);
+
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'snapshot'))
+        ->assertJsonPath('props.snapshot', null);
 });
 
 it('renders an empty fitness trend for a fresh user', function (): void {
