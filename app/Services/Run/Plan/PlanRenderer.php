@@ -152,6 +152,29 @@ final class PlanRenderer
     }
 
     /**
+     * The whole outing, and the figure the segments beneath it add up to.
+     * An Interval day is the one that cannot land on its own budget — a
+     * whole number of fixed-duration reps rarely does — so it reports what
+     * its reps actually come to. Without a VDOT estimate nothing has a
+     * distance yet, and the budget stands in, scaled by a redistributed
+     * week's own scale.
+     *
+     * @param  list<SessionSegment>  $segments  from {@see SegmentGenerator::generate()} for this same day
+     */
+    public static function sessionDistanceKm(
+        array $segments,
+        SessionType $sessionType,
+        bool $isPrimaryEasy,
+        float $longRunKm,
+        float $multiplier,
+        ?float $raceDistanceM,
+        float $volumeScale = 1.0,
+    ): float {
+        return SegmentGenerator::prescribedKm($segments)
+            ?? round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $raceDistanceM) * $volumeScale, 1);
+    }
+
+    /**
      * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null $clamp
      * @param  array<string, float>  $volumeScaleByDate  date => scale, from {@see VolumeRedistributor::redistribute()}
      * @param  bool  $isPrimaryEasy  whether this is the week's first (bigger) Easy day — see {@see SegmentGenerator::coreKmFor()}
@@ -193,13 +216,15 @@ final class PlanRenderer
             $volumeScale,
             $raceGoalTimeSec,
         );
-        // The whole outing, and the figure the segments beneath it add up to.
-        // An Interval day is the one that cannot land on its own budget — a
-        // whole number of fixed-duration reps rarely does — so it reports what
-        // its reps actually come to. Without a VDOT estimate nothing has a
-        // distance yet, and the budget stands in.
-        $distanceKm = SegmentGenerator::prescribedKm($segments)
-            ?? round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $raceDistanceM) * $volumeScale, 1);
+        $distanceKm = self::sessionDistanceKm(
+            $segments,
+            $sessionType,
+            $isPrimaryEasy,
+            $longRunKm,
+            $multiplier,
+            $raceDistanceM,
+            $volumeScale,
+        );
 
         return [
             'id' => $s->id,

@@ -2,7 +2,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type {
-    ActivityDetail,
     BriefingResult,
     PastYouComparison,
     PastYouTrend,
@@ -51,29 +50,6 @@ const snapshot: WeeklySnapshot = {
     avg_decoupling: 3.2,
     monotony: 1.4,
     strain: 392,
-};
-
-const lastRun: ActivityDetail = {
-    id: 1,
-    activity_id: 99,
-    name: 'Morning negative-split',
-    start_date_local: '2026-06-12T07:00',
-    distance: 8200,
-    elapsed_time: 2400,
-    average_heartrate: 152,
-    trimp_edwards: 87,
-    activity: {
-        id: 99,
-        user_id: 1,
-        analyzed_at: '2026-06-12T08:00',
-        run_card: {
-            id: 7,
-            activity_id: 99,
-            rarity: 'epic',
-            special_move: 'Game Changer',
-            badges: ['negative_split'],
-        },
-    },
 };
 
 const pair: PastYouComparison = {
@@ -128,7 +104,7 @@ function renderHome(
         <Home
             briefing={briefing}
             snapshot={snapshot}
-            recentRuns={[lastRun]}
+            hasRuns
             pastYouTrend={pastYouTrend}
             weekPlan={weekPlan}
         />,
@@ -299,7 +275,7 @@ describe('Home', () => {
             <Home
                 briefing={briefing}
                 snapshot={snapshot}
-                recentRuns={[]}
+                hasRuns={false}
                 pastYouTrend={trend()}
             />,
         );

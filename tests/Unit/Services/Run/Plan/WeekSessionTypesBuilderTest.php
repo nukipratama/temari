@@ -91,6 +91,25 @@ it('sizes a day exactly as the week plan Home renders does', function (): void {
     Carbon::setTestNow();
 });
 
+// The accent on Profile's pace ladder follows this flag rather than the
+// viewer's own clock, so it has to answer to the date it is handed.
+it('flags the day that is today, from the date it is given', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    seedMixedWeek($user, $weekStart);
+
+    $wednesday = app(WeekSessionTypesBuilder::class)->forUser($user, Carbon::today(), null, null);
+    $saturday = app(WeekSessionTypesBuilder::class)->forUser($user, $weekStart->copy()->addDays(5), null, null);
+
+    expect(array_column($wednesday, 'is_today', 'weekday'))
+        ->toBe(['mon' => false, 'wed' => true, 'thu' => false, 'sat' => false, 'sun' => false])
+        ->and(array_column($saturday, 'is_today', 'weekday'))
+        ->toBe(['mon' => false, 'wed' => false, 'thu' => false, 'sat' => true, 'sun' => false]);
+
+    Carbon::setTestNow();
+});
+
 it('sizes a race day from the distance the row stores for itself', function (): void {
     Carbon::setTestNow('2026-08-12'); // a Wednesday
     $user = User::factory()->create();

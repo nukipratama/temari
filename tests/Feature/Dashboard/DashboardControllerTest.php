@@ -37,33 +37,36 @@ it('renders for a user with no synced activities', function (): void {
             ->component('Home')
             ->where('auth.user.first_name', explode(' ', (string) $user->name)[0])
             ->missing('load')
-            ->where('recentRuns', []));
+            ->where('hasRuns', false));
 });
 
-// The route hero, zone bar and weather/location chips all went with PP3's
-// featured-card cut and PS3's port to the prototype's mini last-run card, so
-// the select carries only what Today still draws. A regression here is a
-// per-request cost for nothing.
-it('selects only the recent-run columns Today still draws', function (): void {
+// Home reads this prop for one thing: whether the empty state is drawn. It used
+// to ship an eight-row, eight-column select of rows nothing rendered.
+it('answers the empty state with a boolean, hydrating no run rows', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-        'stream_summary' => ['time_in_zone_pct' => ['Z1' => 10, 'Z2' => 70, 'Z3' => 20]],
-    ]);
+    ActivityDetail::factory()->for($activity)->create();
+
+    $queries = [];
+    DB::listen(function (QueryExecuted $query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
 
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('recentRuns.0.distance')
-            ->has('recentRuns.0.trimp_edwards')
-            ->missing('recentRuns.0.summary_polyline')
-            ->missing('recentRuns.0.stream_summary')
-            ->missing('recentRuns.0.location_name')
-            ->missing('recentRuns.0.weather_temp_c'));
+        ->assertInertia(fn (Assert $page) => $page->where('hasRuns', true));
+
+    $existsProbes = array_filter(
+        $queries,
+        fn (string $sql): bool => str_contains($sql, 'select exists') && str_contains($sql, '`activity_details`'),
+    );
+    $eightRowSelects = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'limit 8'));
+
+    expect($existsProbes)->toHaveCount(1)
+        ->and($eightRowSelects)->toBeEmpty();
 });
 
-it('renders the week snapshot + recent runs when the user has training-load history', function (): void {
+it('renders the week snapshot and flags the runs when the user has training-load history', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
     $user = User::factory()->create();
 
@@ -87,7 +90,7 @@ it('renders the week snapshot + recent runs when the user has training-load hist
             ->component('Home')
             ->missing('load')
             ->has('snapshot')
-            ->has('recentRuns', 8));
+            ->where('hasRuns', true));
 
     Carbon::setTestNow();
 });
@@ -177,8 +180,10 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
 
     $response = $this->actingAs($user)->get('/', $headers)->assertSuccessful();
 
-    // `trimp_edwards` is unique to the recent-run select.
-    $recentRunFetches = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'trimp_edwards'));
+    $recentRunFetches = array_filter(
+        $queries,
+        fn (string $sql): bool => str_contains($sql, 'select exists') && str_contains($sql, '`activity_details`'),
+    );
     $snapshotReads = array_filter($queries, fn (string $sql): bool => str_contains($sql, '`weekly_snapshots`'));
 
     expect($recentRunFetches)->toBeEmpty()
@@ -187,7 +192,7 @@ it('does not fetch recent runs or weekly snapshots on a briefing-only partial re
     $response->assertJsonPath('component', 'Home');
     // The one prop the poll does name still has to resolve.
     $response->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood));
-    foreach (['snapshot', 'recentRuns', 'weekPlan'] as $skipped) {
+    foreach (['snapshot', 'hasRuns', 'weekPlan'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
@@ -204,7 +209,7 @@ it('still returns every dashboard prop on a full page load', function (): void {
             ->component('Home')
             ->has('briefing')
             ->has('snapshot')
-            ->has('recentRuns', 1)
+            ->where('hasRuns', true)
             ->has('pastYouTrend')
             ->has('weekPlan')
             ->missing('load'));

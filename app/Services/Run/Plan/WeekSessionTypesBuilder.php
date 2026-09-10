@@ -15,9 +15,9 @@ use Illuminate\Support\Carbon;
  * ladder needs to say which paces the week actually asks for.
  *
  * Reads the same rows over the same trailing window {@see CurrentWeekPlanBuilder}
- * does, and sizes each day through the same {@see SegmentGenerator} pair
- * {@see PlanRenderer::dayPayload()} uses, so a distance here cannot disagree
- * with the one Home shows for that day.
+ * does, and sizes each day through {@see PlanRenderer::sessionDistanceKm()},
+ * the same helper {@see PlanRenderer::dayPayload()} sizes Home's days with, so
+ * a distance here cannot disagree with the one Home shows for that day.
  */
 final readonly class WeekSessionTypesBuilder
 {
@@ -29,7 +29,7 @@ final readonly class WeekSessionTypesBuilder
 
     /**
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
-     * @return list<array{weekday: string, session_type: string, distance_km: float}>
+     * @return list<array{weekday: string, session_type: string, distance_km: float, is_today: bool}>
      */
     public function forUser(User $user, Carbon $today, ?array $paces, ?float $activeRaceDistanceM): array
     {
@@ -63,6 +63,7 @@ final readonly class WeekSessionTypesBuilder
                 'weekday' => strtolower($s->date->format('D')),
                 'session_type' => $s->session_type->value,
                 'distance_km' => $this->distanceKm($s, $primaryEasyDate, $longRunKm, $multiplier, $paces, $activeRaceDistanceM),
+                'is_today' => $s->date->isSameDay($today),
             ])
             ->all());
     }
@@ -91,7 +92,13 @@ final readonly class WeekSessionTypesBuilder
             $paces,
         );
 
-        return SegmentGenerator::prescribedKm($segments)
-            ?? SegmentGenerator::coreKmFor($session->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $raceDistanceM);
+        return PlanRenderer::sessionDistanceKm(
+            $segments,
+            $session->session_type,
+            $isPrimaryEasy,
+            $longRunKm,
+            $multiplier,
+            $raceDistanceM,
+        );
     }
 }

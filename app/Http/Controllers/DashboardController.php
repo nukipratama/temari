@@ -15,7 +15,6 @@ use App\Services\Run\Story\BriefingResult;
 use App\Services\Run\Story\PastYouTrendBuilder;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -43,22 +42,7 @@ class DashboardController extends Controller
 
         // Lazy, not deferred: a closure only skips work on a partial reload
         // that doesn't name it (Inertia's `useAnalysisTrigger` poll), and still
-        // runs on first paint. Memoized.
-        /** @var Collection<int, ActivityDetail>|null $loadedRecentRuns */
-        $loadedRecentRuns = null;
-        $loadRecentRuns = function () use ($user, &$loadedRecentRuns): Collection {
-            /** @var Collection<int, ActivityDetail> */
-            return $loadedRecentRuns ??= ActivityDetail::query()
-                ->select([
-                    'id', 'activity_id', 'name', 'start_date_local',
-                    'distance', 'elapsed_time', 'average_heartrate', 'trimp_edwards',
-                ])
-                ->forUser($user->id)
-                ->orderByDesc('start_date_local')
-                ->limit(8)
-                ->get();
-        };
-
+        // runs on first paint.
         return Inertia::render('Home', [
             'briefing' => fn (): BriefingResult => $briefingComposer->compose($user, $today),
             'snapshot' => fn (): ?WeeklySnapshot => $trailingWeeks(
@@ -66,7 +50,7 @@ class DashboardController extends Controller
                 $today->copy()->endOfWeek(Carbon::SUNDAY)->toDateString(),
                 1,
             )->first(),
-            'recentRuns' => fn (): Collection => $loadRecentRuns(),
+            'hasRuns' => fn (): bool => ActivityDetail::query()->forUser($user->id)->exists(),
             'pastYouTrend' => fn (): array => $pastYouTrend->payload($user, $today),
             'weekPlan' => fn (): ?array => $weekPlanBuilder->forUser($user, $today),
         ]);

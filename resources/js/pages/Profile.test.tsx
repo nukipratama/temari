@@ -218,6 +218,7 @@ describe('Profile', () => {
                             weekday: 'mon',
                             session_type: 'tempo',
                             distance_km: 9.6,
+                            is_today: false,
                         },
                     ],
                 }}

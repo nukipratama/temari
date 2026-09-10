@@ -1,7 +1,6 @@
 import { Head } from '@inertiajs/react';
 
 import type {
-    ActivityDetail,
     BriefingResult,
     PastYouTrend,
     WeekPlan,
@@ -23,7 +22,7 @@ import { todayLocalIso } from '@/lib/pace';
 interface HomeProps {
     briefing: BriefingResult;
     snapshot: WeeklySnapshot | null;
-    recentRuns: ActivityDetail[];
+    hasRuns: boolean;
     pastYouTrend?: PastYouTrend | null;
     weekPlan?: WeekPlan | null;
 }
@@ -37,11 +36,10 @@ interface HomeProps {
 export default function Home({
     briefing,
     snapshot,
-    recentRuns,
+    hasRuns,
     pastYouTrend = null,
     weekPlan = null,
 }: Readonly<HomeProps>) {
-    const hasRuns = recentRuns.length > 0;
     const todayIso = todayLocalIso();
     const todayPlan =
         weekPlan?.days.find((day) => day.date === todayIso) ?? null;

@@ -31,6 +31,8 @@ export interface WeekSession {
     weekday: string;
     session_type: string;
     distance_km: number;
+    /** Set on the entry for the server's own today, so the accent never follows a viewer clock. */
+    is_today: boolean;
 }
 
 type PaceKey = keyof TrainingPaces;
@@ -96,16 +98,9 @@ function hintFor(rung: (typeof RUNGS)[number], week: WeekSession[]): string {
     return days.map((session) => session.weekday).join(', ');
 }
 
-function todayWeekday(): string {
-    return new Date()
-        .toLocaleDateString('en-US', { weekday: 'short' })
-        .toLowerCase();
-}
-
 /** The pace today's session is run at, and null on a rest day or a day off-plan. */
 function todaysPaceKey(week: WeekSession[]): PaceKey | null {
-    const weekday = todayWeekday();
-    const today = week.find((session) => session.weekday === weekday);
+    const today = week.find((session) => session.is_today);
     if (today === undefined) {
         return null;
     }

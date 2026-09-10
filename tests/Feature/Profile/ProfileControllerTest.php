@@ -148,6 +148,33 @@ it('carries this week\'s training days beside the paces, so the ladder can say w
     Carbon::setTestNow();
 });
 
+// The card accents the rung today is run at. The viewer's clock is not the
+// server's, so the day is flagged where the week is built.
+it('flags this week\'s training day that is today', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1200.0,
+    ]);
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    foreach ([0, 2, 4] as $offset) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $weekStart->copy()->addDays($offset),
+            'phase' => PlanPhase::Base,
+            'session_type' => SessionType::Easy,
+        ]);
+    }
+
+    $response = $this->actingAs($user)
+        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'));
+
+    expect(array_column($response->json('props.fitness.week_sessions'), 'is_today', 'weekday'))
+        ->toBe(['mon' => false, 'wed' => true, 'fri' => false]);
+
+    Carbon::setTestNow();
+});
+
 it('reports an empty week when the athlete has no plan', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create([

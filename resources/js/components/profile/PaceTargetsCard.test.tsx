@@ -1,19 +1,27 @@
 import { render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import PaceTargetsCard, { type WeekSession } from './PaceTargetsCard';
 
 const PACES = { easy: 370, marathon: 320, threshold: 292, interval: 268 };
 
-// A Wednesday, so 'wed' is today's weekday for the accent assertions.
-const WEDNESDAY = new Date(2026, 8, 9, 9, 0, 0);
-
 const WEEK: WeekSession[] = [
-    { weekday: 'mon', session_type: 'easy', distance_km: 6.4 },
-    { weekday: 'wed', session_type: 'tempo', distance_km: 9.8 },
-    { weekday: 'sat', session_type: 'easy', distance_km: 7.2 },
-    { weekday: 'sun', session_type: 'long', distance_km: 16.4 },
+    { weekday: 'mon', session_type: 'easy', distance_km: 6.4, is_today: false },
+    { weekday: 'wed', session_type: 'tempo', distance_km: 9.8, is_today: true },
+    { weekday: 'sat', session_type: 'easy', distance_km: 7.2, is_today: false },
+    {
+        weekday: 'sun',
+        session_type: 'long',
+        distance_km: 16.4,
+        is_today: false,
+    },
 ];
+
+/** The server flags the day it is on; a week with none is a day off the plan. */
+const WEEK_OFF_PLAN: WeekSession[] = WEEK.map((session) => ({
+    ...session,
+    is_today: false,
+}));
 
 function fills(container: HTMLElement): number[] {
     return [
@@ -22,15 +30,6 @@ function fills(container: HTMLElement): number[] {
 }
 
 describe('PaceTargetsCard', () => {
-    beforeEach(() => {
-        vi.useFakeTimers();
-        vi.setSystemTime(WEDNESDAY);
-    });
-
-    afterEach(() => {
-        vi.useRealTimers();
-    });
-
     it('lists the four targets slowest first, with their formatted pace', () => {
         render(<PaceTargetsCard paces={PACES} />);
 
@@ -74,6 +73,7 @@ describe('PaceTargetsCard', () => {
                         weekday: 'tue',
                         session_type: 'interval',
                         distance_km: 0,
+                        is_today: false,
                     },
                 ]}
             />,
@@ -97,9 +97,8 @@ describe('PaceTargetsCard', () => {
     });
 
     it('accents nothing when today is off the plan', () => {
-        vi.setSystemTime(new Date(2026, 8, 11)); // a Friday, which the week skips
         const { container } = render(
-            <PaceTargetsCard paces={PACES} weekSessions={WEEK} />,
+            <PaceTargetsCard paces={PACES} weekSessions={WEEK_OFF_PLAN} />,
         );
 
         expect(container.querySelectorAll('.bg-icon-accent')).toHaveLength(0);
@@ -110,7 +109,12 @@ describe('PaceTargetsCard', () => {
             <PaceTargetsCard
                 paces={PACES}
                 weekSessions={[
-                    { weekday: 'wed', session_type: 'race', distance_km: 21.1 },
+                    {
+                        weekday: 'wed',
+                        session_type: 'race',
+                        distance_km: 21.1,
+                        is_today: true,
+                    },
                 ]}
             />,
         );
