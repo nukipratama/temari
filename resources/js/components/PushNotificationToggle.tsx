@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/react';
+import { Bell, BellOff, BellRing, Smartphone } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
@@ -142,7 +143,7 @@ export default function PushNotificationToggle({
     return (
         <>
             <SettingsRow
-                icon="mdi:cellphone"
+                icon={Smartphone}
                 label="push notifications"
                 description={description}
                 control={
@@ -220,12 +221,7 @@ function PushAction({
         case 'stale':
             return (
                 <Button disabled={busy} onClick={onSubscribe}>
-                    <Icon
-                        icon="mdi:bell-cog-outline"
-                        width={14}
-                        height={14}
-                        aria-hidden
-                    />
+                    <Icon icon={Bell} width={14} height={14} aria-hidden />
                     Fix
                 </Button>
             );
@@ -236,24 +232,14 @@ function PushAction({
                     disabled={busy}
                     onClick={onUnsubscribe}
                 >
-                    <Icon
-                        icon="mdi:bell-off-outline"
-                        width={14}
-                        height={14}
-                        aria-hidden
-                    />
+                    <Icon icon={BellOff} width={14} height={14} aria-hidden />
                     Turn off
                 </PillButton>
             );
         case 'ready':
             return (
                 <Button disabled={busy} onClick={onSubscribe}>
-                    <Icon
-                        icon="mdi:bell-ring-outline"
-                        width={14}
-                        height={14}
-                        aria-hidden
-                    />
+                    <Icon icon={BellRing} width={14} height={14} aria-hidden />
                     Turn on
                 </Button>
             );

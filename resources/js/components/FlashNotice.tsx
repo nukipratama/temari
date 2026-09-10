@@ -1,30 +1,36 @@
 import { usePage } from '@inertiajs/react';
+import { CircleAlert, CircleCheck, Info, X } from 'lucide-react';
 import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 
 type FlashTone = 'error' | 'info' | 'success';
 
 const TONES: Record<
     FlashTone,
-    { icon: string; role: 'alert' | 'status'; frame: string; glyph: string }
+    {
+        icon: IconComponent;
+        role: 'alert' | 'status';
+        frame: string;
+        glyph: string;
+    }
 > = {
     error: {
-        icon: 'mdi:alert-circle-outline',
+        icon: CircleAlert,
         role: 'alert',
         frame: 'border-ember/30 bg-ember/[0.08]',
         glyph: 'text-ember-ink',
     },
     info: {
-        icon: 'mdi:information-outline',
+        icon: Info,
         role: 'status',
         frame: 'border-border bg-popover',
         glyph: 'text-text-3',
     },
     success: {
-        icon: 'mdi:check-circle-outline',
+        icon: CircleCheck,
         role: 'status',
         frame: 'border-leaf/30 bg-leaf/[0.08]',
         glyph: 'text-leaf-ink',
@@ -85,7 +91,7 @@ export default function FlashNotice() {
                     aria-label="Close"
                     className="focus-ring -m-1 rounded p-1 text-text-3 transition hover:text-foreground"
                 >
-                    <Icon icon="mdi:close" width={16} height={16} />
+                    <Icon icon={X} width={16} height={16} />
                 </button>
             </div>
         </div>

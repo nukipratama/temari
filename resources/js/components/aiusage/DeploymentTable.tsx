@@ -1,3 +1,5 @@
+import { Server } from 'lucide-react';
+
 import type { DeploymentRow } from '@/pages/AiUsage/types';
 
 import EmptyState from '@/components/aiusage/EmptyState';
@@ -20,7 +22,7 @@ export default function DeploymentTable({
 }: Readonly<{ rows: DeploymentRow[]; currency: string }>) {
     return (
         <DataTable
-            icon="mdi:server"
+            icon={Server}
             title="Breakdown per Deployment"
             subtitle="Cost per Azure model called."
             tone="accent"

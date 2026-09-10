@@ -1,4 +1,5 @@
 import { Deferred, Head, Link, router } from '@inertiajs/react';
+import { ArrowRight, Clock, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
 import type {
@@ -128,11 +129,7 @@ export default function Plan({
                         disabled={regenerating || regenerateCooling}
                     >
                         <Icon
-                            icon={
-                                regenerateCooling
-                                    ? 'mdi:clock-outline'
-                                    : 'mdi:sync'
-                            }
+                            icon={regenerateCooling ? Clock : RefreshCw}
                             className="size-3"
                             aria-hidden
                         />
@@ -153,7 +150,7 @@ export default function Plan({
                     >
                         {race ? 'change your race' : 'set a race'}
                         <Icon
-                            icon="mdi:arrow-right"
+                            icon={ArrowRight}
                             className="size-3"
                             aria-hidden
                         />

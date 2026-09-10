@@ -1,8 +1,10 @@
+import { Footprints, Mountain, Scale } from 'lucide-react';
+
 import type { ActivityDetail, StreamSummary } from '@/types/inertia';
 
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import { showsDecoupling, showsGrade } from '@/lib/anchors';
 import { cn } from '@/lib/cn';
@@ -64,7 +66,7 @@ function decouplingNote(
 
 interface VitalTile {
     label: string;
-    icon: string;
+    icon: IconComponent;
     value: string;
     /**
      * The `metric:<name>` this tile draws, so a claim about it can point here.
@@ -100,7 +102,7 @@ export default function VitalsCard({
     if (detail.average_cadence != null) {
         tiles.push({
             label: 'spm avg',
-            icon: 'mdi:shoe-print',
+            icon: Footprints,
             value: `${Math.round(detail.average_cadence * 2)}`,
             metric: null,
         });
@@ -112,14 +114,14 @@ export default function VitalsCard({
     if (showsGrade(summary)) {
         tiles.push({
             label: 'steepest grade',
-            icon: 'mdi:terrain',
+            icon: Mountain,
             value: `${maxGrade}%`,
             metric: 'grade',
         });
         if (summary.gap_pace != null) {
             tiles.push({
                 label: 'flat pace /km',
-                icon: 'mdi:scale-balance',
+                icon: Scale,
                 value: summary.gap_pace,
                 metric: 'gap_pace',
             });

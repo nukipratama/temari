@@ -1,3 +1,5 @@
+import { Flag } from 'lucide-react';
+
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -39,7 +41,7 @@ export default function RaceCard({
         <Card className={className}>
             <div className="flex items-center gap-2">
                 <Icon
-                    icon="mdi:flag-checkered"
+                    icon={Flag}
                     width={15}
                     height={15}
                     className="flex-none text-icon-accent"

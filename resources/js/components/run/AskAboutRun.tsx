@@ -1,3 +1,4 @@
+import { LoaderCircle, MessageCircle, Send } from 'lucide-react';
 import { useRef, useState, type FormEvent } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -81,7 +82,7 @@ export default function AskAboutRun({
             <Card tone="narration" padding="hero">
                 <div className="flex items-center gap-1.5">
                     <Icon
-                        icon="mdi:chat-outline"
+                        icon={MessageCircle}
                         width={12}
                         height={12}
                         aria-hidden
@@ -180,7 +181,7 @@ export default function AskAboutRun({
                         className="disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <Icon
-                            icon={asking ? 'mdi:loading' : 'mdi:send'}
+                            icon={asking ? LoaderCircle : Send}
                             width={15}
                             height={15}
                             className={asking ? 'animate-spin' : undefined}
@@ -230,7 +231,7 @@ function QuestionRow({
                         className="inline-flex items-center gap-1.5 font-sans text-xs text-text-2"
                     >
                         <Icon
-                            icon="mdi:loading"
+                            icon={LoaderCircle}
                             width={12}
                             height={12}
                             className={stalled ? undefined : 'animate-spin'}

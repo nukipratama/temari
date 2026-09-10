@@ -1,5 +1,8 @@
 import { render, screen } from '@testing-library/react';
+import { HeartPulse, RotateCcwClock, X } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
+
+import { StravaIcon, TelegramIcon } from '@/components/ui/Icon';
 
 import { Icon } from './Icon';
 
@@ -9,9 +12,9 @@ import { Icon } from './Icon';
 vi.unmock('@/components/ui/Icon');
 
 describe('Icon', () => {
-    it('renders the mapped lucide icon for a known mdi key', () => {
+    it('renders the icon component it is handed', () => {
         const { container } = render(
-            <Icon icon="mdi:heart-pulse" className="text-leaf-ink" />,
+            <Icon icon={HeartPulse} className="text-leaf-ink" />,
         );
 
         const svg = container.querySelector('svg');
@@ -21,36 +24,34 @@ describe('Icon', () => {
 
     it('sizes from width, falling back to height, then 24', () => {
         const { container: byWidth } = render(
-            <Icon icon="mdi:close" width={18} height={30} />,
+            <Icon icon={X} width={18} height={30} />,
         );
         expect(byWidth.querySelector('svg')).toHaveAttribute('width', '18');
 
-        const { container: byHeight } = render(
-            <Icon icon="mdi:close" height={20} />,
-        );
+        const { container: byHeight } = render(<Icon icon={X} height={20} />);
         expect(byHeight.querySelector('svg')).toHaveAttribute('width', '20');
 
-        const { container: byDefault } = render(<Icon icon="mdi:close" />);
+        const { container: byDefault } = render(<Icon icon={X} />);
         expect(byDefault.querySelector('svg')).toHaveAttribute('width', '24');
     });
 
     it('passes through arbitrary SVG props', () => {
         render(
             <Icon
-                icon="mdi:history"
+                icon={RotateCcwClock}
                 role="img"
-                aria-label="History"
+                aria-label="RotateCcwClock"
                 style={{ transform: 'rotate(4deg)' }}
             />,
         );
 
-        const svg = screen.getByRole('img', { name: 'History' });
+        const svg = screen.getByRole('img', { name: 'RotateCcwClock' });
         expect(svg).toHaveStyle({ transform: 'rotate(4deg)' });
     });
 
     it('renders the Strava and Telegram brand marks as their own fixed path, never a lucide icon', () => {
-        const { container: strava } = render(<Icon icon="mdi:strava" />);
-        const { container: telegram } = render(<Icon icon="mdi:telegram" />);
+        const { container: strava } = render(<Icon icon={StravaIcon} />);
+        const { container: telegram } = render(<Icon icon={TelegramIcon} />);
 
         expect(strava.querySelector('path')?.getAttribute('d')).toContain(
             'M14.92 17.16',
@@ -58,11 +59,5 @@ describe('Icon', () => {
         expect(telegram.querySelector('path')?.getAttribute('d')).toContain(
             'M9.78 18.65',
         );
-    });
-
-    it('renders nothing for an unmapped icon key rather than throwing', () => {
-        const { container } = render(<Icon icon="mdi:not-a-real-icon" />);
-
-        expect(container).toBeEmptyDOMElement();
     });
 });

@@ -1,3 +1,5 @@
+import { ChevronDown } from 'lucide-react';
+
 import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
@@ -164,7 +166,7 @@ export default function SeasonWeekRow({
                                 </span>
                             </span>
                             <Icon
-                                icon="mdi:chevron-down"
+                                icon={ChevronDown}
                                 className="size-4 flex-none text-text-2 transition-transform group-aria-expanded:rotate-180"
                                 aria-hidden
                             />

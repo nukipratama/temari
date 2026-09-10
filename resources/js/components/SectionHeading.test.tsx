@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { Footprints } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
 import SectionHeading from './SectionHeading';
@@ -20,7 +21,7 @@ describe('SectionHeading', () => {
 
     it('renders an icon container when icon prop is set', () => {
         const { container } = render(
-            <SectionHeading title="T" icon="mdi:run" />,
+            <SectionHeading title="T" icon={Footprints} />,
         );
         // Icon wrapper is the aria-hidden span sibling of the h2 wrapper
         expect(container.querySelector('[aria-hidden]')).toBeInTheDocument();
@@ -38,7 +39,7 @@ describe('SectionHeading', () => {
                 <SectionHeading
                     title={`T-${tone}`}
                     tone={tone}
-                    icon="mdi:run"
+                    icon={Footprints}
                 />,
             );
             expect(

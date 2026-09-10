@@ -1,3 +1,5 @@
+import { Ellipsis } from 'lucide-react';
+
 import type { SeasonSummaryWeek } from '@/lib/plan';
 
 import { Icon } from '@/components/ui/Icon';
@@ -31,7 +33,7 @@ export default function WeekCluster({
                     aria-hidden
                     className="z-10 flex size-5 flex-none items-center justify-center rounded-full border-2 border-dashed border-border-strong bg-card text-text-2"
                 >
-                    <Icon icon="mdi:dots-horizontal" className="size-3" />
+                    <Icon icon={Ellipsis} className="size-3" />
                 </span>
                 {!isLast && (
                     <span

@@ -1,9 +1,18 @@
+import {
+    Flame,
+    HeartPulse,
+    Share2,
+    Timer,
+    TrendingUp,
+    Zap,
+} from 'lucide-react';
+
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
 import MapWeatherPanel from '@/components/run/MapWeatherPanel';
 import FaceIcon from '@/components/temari/FaceIcon';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import MoodChip from '@/components/ui/MoodChip';
 import { useCountUp } from '@/hooks/useCountUp';
 import { formatPace, formatShortDateTimeId } from '@/lib/pace';
@@ -56,19 +65,19 @@ export default function RunHero({
     const secondary = [
         {
             label: 'HR',
-            icon: 'mdi:heart-pulse',
+            icon: HeartPulse,
             value: display(hr, hrCount, rounded),
             unit: 'bpm',
         },
         {
             label: 'TRIMP',
-            icon: 'mdi:fire',
+            icon: Flame,
             value: display(trimp, trimpCount, rounded),
             unit: null,
         },
         {
             label: 'ELEV',
-            icon: 'mdi:trending-up',
+            icon: TrendingUp,
             value: display(
                 detail.total_elevation_gain ?? null,
                 elevationCount,
@@ -98,7 +107,7 @@ export default function RunHero({
                         className="focus-ring pressable -mr-1 -mt-1 inline-flex flex-none items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-label-micro text-text-2 transition hover:text-foreground"
                     >
                         <Icon
-                            icon="mdi:share-variant"
+                            icon={Share2}
                             width={12}
                             height={12}
                             aria-hidden
@@ -127,12 +136,12 @@ export default function RunHero({
                     </div>
                     <div className="flex flex-col items-end gap-1.5 pb-0.5">
                         <SupportingStat
-                            icon="mdi:timer-outline"
+                            icon={Timer}
                             label="DURATION"
                             value={duration}
                         />
                         <SupportingStat
-                            icon="mdi:lightning-bolt"
+                            icon={Zap}
                             label="PACE"
                             value={`${display(paceSec, paceCount, formatPace)}/km`}
                         />
@@ -182,7 +191,7 @@ function SupportingStat({
     icon,
     label,
     value,
-}: Readonly<{ icon: string; label: string; value: string }>) {
+}: Readonly<{ icon: IconComponent; label: string; value: string }>) {
     return (
         <div className="flex items-center gap-1.5">
             <span className="sr-only">{label}</span>

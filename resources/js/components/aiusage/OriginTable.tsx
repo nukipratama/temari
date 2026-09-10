@@ -1,3 +1,5 @@
+import { CirclePlay } from 'lucide-react';
+
 import type { OriginRow } from '@/pages/AiUsage/types';
 
 import EmptyState from '@/components/aiusage/EmptyState';
@@ -17,7 +19,7 @@ export default function OriginTable({
 }: Readonly<{ rows: OriginRow[]; currency: string }>) {
     return (
         <DataTable
-            icon="mdi:play-circle-outline"
+            icon={CirclePlay}
             title="Breakdown per Origin"
             subtitle="What started the call, as opposed to which narrator answered it."
             tone="accent"

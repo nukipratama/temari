@@ -1,4 +1,5 @@
 import { Head } from '@inertiajs/react';
+import { Flag } from 'lucide-react';
 
 import DataTable, { Td } from '@/components/ui/DataTable';
 import EmptyPanel from '@/components/ui/EmptyPanel';
@@ -29,11 +30,7 @@ export default function DevtoolsFeedback({
                 <div className="mx-auto flex max-w-page items-center justify-between px-6 py-4 2xl:max-w-page-2xl">
                     <div className="flex items-center gap-3">
                         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-leaf-deep text-cream">
-                            <Icon
-                                icon="mdi:flag-outline"
-                                width={20}
-                                aria-hidden
-                            />
+                            <Icon icon={Flag} width={20} aria-hidden />
                         </span>
                         <div>
                             <h1 className="font-serif italic text-headline-xs text-foreground">
@@ -55,7 +52,7 @@ export default function DevtoolsFeedback({
 
             <PageContainer>
                 <DataTable
-                    icon="mdi:flag-outline"
+                    icon={Flag}
                     title="flagged"
                     subtitle="last 200 flags."
                     tone="accent"

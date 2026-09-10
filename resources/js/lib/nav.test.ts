@@ -1,3 +1,9 @@
+import {
+    CalendarCheck,
+    ChartLine,
+    RotateCcwClock,
+    Sunrise,
+} from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
 import { backTargetFor, ITEMS, navTabFor } from './nav';
@@ -12,12 +18,12 @@ describe('nav', () => {
         ]);
     });
 
-    it('carries a lucide component name, not an iconify string, per decision 16', () => {
+    it('carries the icon component itself, so a tab ships only its own glyph', () => {
         expect(ITEMS.map((item) => item.icon)).toEqual([
-            'Sunrise',
-            'CalendarCheck',
-            'LineChart',
-            'History',
+            Sunrise,
+            CalendarCheck,
+            ChartLine,
+            RotateCcwClock,
         ]);
     });
 

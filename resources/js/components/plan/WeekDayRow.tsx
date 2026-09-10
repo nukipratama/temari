@@ -1,4 +1,12 @@
 import { Link } from '@inertiajs/react';
+import {
+    ArrowDown,
+    ArrowRight,
+    ArrowRightLeft,
+    ChevronDown,
+    Feather,
+    SkipForward,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import type { PlanDay } from '@/lib/plan';
@@ -66,7 +74,7 @@ function ClampStepDown({
     return (
         <div className="mt-2 border-l-2 border-border-strong pl-3">
             <p className="flex items-center gap-1.5 text-label-micro text-text-2">
-                <Icon icon="mdi:arrow-down" className="size-3" aria-hidden />
+                <Icon icon={ArrowDown} className="size-3" aria-hidden />
                 {clamp.label}
             </p>
             <p className="mt-0.5 text-xs font-semibold text-foreground">
@@ -144,8 +152,7 @@ export default function WeekDayRow({
                         </span>
                         <Icon
                             icon={
-                                SESSION_TYPE_ICON[day.session_type] ??
-                                'mdi:feather'
+                                SESSION_TYPE_ICON[day.session_type] ?? Feather
                             }
                             className="size-3.5"
                             style={{ color: iconColor(day) }}
@@ -183,7 +190,7 @@ export default function WeekDayRow({
                         )}
                     </span>
                     <Icon
-                        icon="mdi:chevron-down"
+                        icon={ChevronDown}
                         className="size-4 flex-none text-text-2 transition-transform group-aria-expanded:rotate-180"
                         aria-hidden
                     />
@@ -216,7 +223,7 @@ export default function WeekDayRow({
                             >
                                 View activity · {runSummary(run)}
                                 <Icon
-                                    icon="mdi:arrow-right"
+                                    icon={ArrowRight}
                                     className="size-3"
                                     aria-hidden
                                 />
@@ -258,7 +265,7 @@ export default function WeekDayRow({
                                         className="focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
                                     >
                                         <Icon
-                                            icon="mdi:swap-horizontal"
+                                            icon={ArrowRightLeft}
                                             className="size-3"
                                             aria-hidden
                                         />
@@ -272,7 +279,7 @@ export default function WeekDayRow({
                                         className="focus-ring flex items-center gap-1.5 text-label-micro text-text-2"
                                     >
                                         <Icon
-                                            icon="mdi:skip-next"
+                                            icon={SkipForward}
                                             className="size-3"
                                             aria-hidden
                                         />

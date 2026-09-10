@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { ChevronDown, Sparkle } from 'lucide-react';
 import { useState } from 'react';
 
 import type { WeeklySnapshotWithRecap } from '@/types/inertia';
@@ -76,7 +77,7 @@ export default function CalendarWeekRow({
                                 )}
                             >
                                 <Icon
-                                    icon="mdi:sparkle-outline"
+                                    icon={Sparkle}
                                     width={10}
                                     height={10}
                                     aria-hidden
@@ -136,7 +137,7 @@ function WeekSummaryButton({
                         )}
                         {!disabled && (
                             <Icon
-                                icon="mdi:chevron-down"
+                                icon={ChevronDown}
                                 width={7}
                                 height={7}
                                 className={cn(

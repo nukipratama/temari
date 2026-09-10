@@ -1,3 +1,4 @@
+import { Medal } from 'lucide-react';
 import { lazy, Suspense, useMemo, useState } from 'react';
 
 import type { Rarity } from '@/types/inertia';
@@ -312,7 +313,7 @@ export default function FitnessPanel({
                                 )}
                             >
                                 <Icon
-                                    icon="mdi:medal-outline"
+                                    icon={Medal}
                                     className={cn(
                                         'size-3.5',
                                         RARITY_INK[chip.rarity],
@@ -330,7 +331,7 @@ export default function FitnessPanel({
                 <div className="mt-2.5 rounded-lg bg-muted px-3 py-2.5">
                     <p className="flex items-center gap-1.5 text-sm font-bold text-foreground">
                         <Icon
-                            icon="mdi:medal-outline"
+                            icon={Medal}
                             className={cn(
                                 'size-3.5',
                                 RARITY_INK[active.rarity],

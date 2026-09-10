@@ -1,11 +1,12 @@
 import { render, screen, act } from '@testing-library/react';
+import { HeartPulse } from 'lucide-react';
 import { describe, it, expect, vi } from 'vitest';
 
 import SettingsRow from './SettingsRow';
 
 describe('SettingsRow', () => {
     const defaultProps = {
-        icon: 'mdi:test-icon',
+        icon: HeartPulse,
         label: 'Test Label',
         description: 'Test Description',
     };

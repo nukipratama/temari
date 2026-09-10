@@ -153,9 +153,7 @@ describe('Settings', () => {
     // pushed screen and the shell topbar's back chevron owns the way out.
     it('has no breadcrumb-style back link', () => {
         const { container } = render(<Settings />);
-        expect(
-            container.querySelector('[data-icon="mdi:arrow-left"]'),
-        ).toBeNull();
+        expect(container.querySelector('[data-icon="ArrowLeft"]')).toBeNull();
     });
 
     it('renders no in-page Me nav — the topbar chrome replaces it', () => {

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { Check } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 
 import TemariNudgeModal from './TemariNudgeModal';
@@ -7,7 +8,7 @@ const baseProps = {
     title: 'Nudge title',
     body: 'A friendly message.',
     primaryLabel: 'Do it',
-    primaryIcon: 'mdi:check',
+    primaryIcon: Check,
     onPrimary: vi.fn(),
 };
 

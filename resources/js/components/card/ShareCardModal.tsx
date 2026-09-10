@@ -1,3 +1,4 @@
+import { Copy, Share2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
@@ -224,7 +225,7 @@ export default function ShareCardModal({
                         aria-label="Close"
                         className={iconButtonVariants({ size: 'sm' })}
                     >
-                        <Icon icon="mdi:close" width={16} height={16} />
+                        <Icon icon={X} width={16} height={16} />
                     </button>
                     <div className="flex-1 text-center">
                         <div className="text-label-micro text-text-2">
@@ -342,7 +343,7 @@ export default function ShareCardModal({
                         className="w-full justify-center py-3.5 font-semibold"
                     >
                         <Icon
-                            icon="mdi:share-variant"
+                            icon={Share2}
                             width={16}
                             height={16}
                             aria-hidden
@@ -354,12 +355,7 @@ export default function ShareCardModal({
                         onClick={handleCopy}
                         className="w-full justify-center"
                     >
-                        <Icon
-                            icon="mdi:content-copy"
-                            width={16}
-                            height={16}
-                            aria-hidden
-                        />
+                        <Icon icon={Copy} width={16} height={16} aria-hidden />
                         Copy image
                     </PillButton>
                     {status !== null && (

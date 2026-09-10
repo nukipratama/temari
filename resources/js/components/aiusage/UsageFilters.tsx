@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { SlidersHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
 import type { KindOption, RangeToken } from '@/pages/AiUsage/types';
@@ -115,7 +116,7 @@ export default function UsageFilters({
                     )}
 
                     <PillButton type="submit" tone="sky" size="sm">
-                        <Icon icon="mdi:filter-variant" aria-hidden />
+                        <Icon icon={SlidersHorizontal} aria-hidden />
                         <span>Apply</span>
                     </PillButton>
 

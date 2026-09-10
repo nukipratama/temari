@@ -1,3 +1,5 @@
+import { Shapes } from 'lucide-react';
+
 import type { UsageRow } from '@/pages/AiUsage/types';
 
 import EmptyState from '@/components/aiusage/EmptyState';
@@ -24,7 +26,7 @@ export default function KindTable({
 }: Readonly<{ rows: UsageRow[]; grandTotal: number; currency: string }>) {
     return (
         <DataTable
-            icon="mdi:shape"
+            icon={Shapes}
             title="Breakdown per Kind"
             subtitle="Analysis kinds eating the most tokens."
             tone="brand"

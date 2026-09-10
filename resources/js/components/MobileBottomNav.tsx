@@ -1,7 +1,6 @@
-import type { ComponentType, MouseEvent, SVGProps } from 'react';
+import type { MouseEvent } from 'react';
 
 import { Link, router, usePage } from '@inertiajs/react';
-import { CalendarCheck, History, LineChart, Sunrise } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import type { TabId } from '@/lib/nav';
@@ -9,16 +8,6 @@ import type { SharedProps } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
 import { ITEMS, navTabFor } from '@/lib/nav';
-
-// Keyed by NavItem.icon (a lucide component name, not an iconify string — see
-// nav.ts) rather than the shared Icon wrapper, whose mdi:xxx lookup this fixed
-// 4-item nav list has no need of.
-const ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
-    Sunrise,
-    CalendarCheck,
-    LineChart,
-    History,
-};
 
 // Tapping the active tab scrolls to top instead of a full Inertia round-trip to the same page.
 function scrollToTop(event: MouseEvent<Element>) {
@@ -92,7 +81,7 @@ export default function MobileBottomNav() {
                 {ITEMS.map((item) => {
                     const isCurrent = current === item.id;
                     const isActive = active === item.id;
-                    const TabIcon = ICONS[item.icon];
+                    const TabIcon = item.icon;
                     return (
                         <Link
                             key={item.id}
@@ -120,7 +109,7 @@ export default function MobileBottomNav() {
                                         isActive && 'pop-once',
                                     )}
                                 >
-                                    {TabIcon && (
+                                    {
                                         <TabIcon
                                             className={cn(
                                                 'transition-[width,height] duration-150',
@@ -130,7 +119,7 @@ export default function MobileBottomNav() {
                                             )}
                                             aria-hidden
                                         />
-                                    )}
+                                    }
                                 </span>
                                 {item.id === 'today' && hasUnread && (
                                     <span

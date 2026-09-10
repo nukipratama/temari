@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/react';
+import { CircleAlert, X } from 'lucide-react';
 import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
@@ -36,7 +37,7 @@ export default function ErrorBanner() {
                 className="mx-auto flex max-w-column min-[1280px]:max-w-column-wide items-start gap-3 rounded-lg border border-ember/30 bg-ember/[0.08] px-4 py-3"
             >
                 <Icon
-                    icon="mdi:alert-circle-outline"
+                    icon={CircleAlert}
                     width={20}
                     height={20}
                     className="mt-0.5 shrink-0 text-ember-ink"
@@ -51,7 +52,7 @@ export default function ErrorBanner() {
                     aria-label="Close"
                     className="focus-ring -m-1 rounded p-1 text-text-3 transition hover:text-foreground"
                 >
-                    <Icon icon="mdi:close" width={16} height={16} />
+                    <Icon icon={X} width={16} height={16} />
                 </button>
             </div>
         </div>

@@ -1,3 +1,5 @@
+import { Footprints, Zap } from 'lucide-react';
+
 import type { StreamSummaryLap } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
@@ -50,7 +52,7 @@ export default function LapsCarousel({
                                 </span>
                                 {isFastest && (
                                     <Icon
-                                        icon="mdi:lightning-bolt"
+                                        icon={Zap}
                                         width={12}
                                         height={12}
                                         aria-hidden
@@ -69,7 +71,7 @@ export default function LapsCarousel({
                                 <span>♡ {lap.avg_hr ?? '—'}</span>
                                 <span className="flex items-center gap-1">
                                     <Icon
-                                        icon="mdi:shoe-print"
+                                        icon={Footprints}
                                         width={10}
                                         height={10}
                                         aria-hidden

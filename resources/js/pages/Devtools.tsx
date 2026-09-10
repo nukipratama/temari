@@ -1,11 +1,12 @@
 import { Head } from '@inertiajs/react';
+import { Activity, DollarSign, Flag, Palette, Sailboat } from 'lucide-react';
 
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { cardVariants } from '@/lib/variants';
 
 interface DevtoolsLink {
-    icon: string;
+    icon: IconComponent;
     label: string;
     desc: string;
     href: string;
@@ -13,31 +14,31 @@ interface DevtoolsLink {
 
 const LINKS: ReadonlyArray<DevtoolsLink> = [
     {
-        icon: 'mdi:palette-swatch-outline',
+        icon: Palette,
         label: 'Design',
         desc: 'The token set, type specimens, and the contrast audit read live.',
         href: '/devtools/design',
     },
     {
-        icon: 'mdi:currency-usd',
+        icon: DollarSign,
         label: 'AI Usage',
         desc: 'Token spend, budget gauge, and self-heal panel.',
         href: '/devtools/ai-usage',
     },
     {
-        icon: 'mdi:flag-outline',
+        icon: Flag,
         label: 'Feedback',
         desc: 'The flags runners have filed as wrong, newest first.',
         href: '/devtools/feedback',
     },
     {
-        icon: 'mdi:sail-boat',
+        icon: Sailboat,
         label: 'Horizon',
         desc: 'Queue worker & job monitoring.',
         href: '/devtools/horizon',
     },
     {
-        icon: 'mdi:pulse',
+        icon: Activity,
         label: 'Pulse',
         desc: 'Server, request, and exception metrics.',
         href: '/devtools/pulse',

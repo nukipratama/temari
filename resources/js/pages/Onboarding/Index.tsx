@@ -1,6 +1,19 @@
 import type { FormDataConvertible } from '@inertiajs/core';
 
 import { Head, router, usePage } from '@inertiajs/react';
+import {
+    ChevronLeft,
+    Download,
+    Flag,
+    Layers,
+    RotateCcw,
+    RotateCcwClock,
+    Scale,
+    Sprout,
+    Target,
+    Trophy,
+    Undo2,
+} from 'lucide-react';
 import { type FormEvent, type ReactNode, useState } from 'react';
 
 import type { ExperienceLevel, GoalType } from '@/types/generated';
@@ -16,7 +29,7 @@ import PushNotificationToggle from '@/components/PushNotificationToggle';
 import FaceIcon from '@/components/temari/FaceIcon';
 import Chip from '@/components/ui/Chip';
 import DateField from '@/components/ui/DateField';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent, TelegramIcon } from '@/components/ui/Icon';
 import LegacyCard from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
@@ -37,17 +50,17 @@ const DISTANCE_PRESETS = [
     { label: 'marathon', km: 42.2 },
 ] as const;
 
-const WHAT_LANDS: ReadonlyArray<{ icon: string; text: string }> = [
+const WHAT_LANDS: ReadonlyArray<{ icon: IconComponent; text: string }> = [
     {
-        icon: 'mdi:history',
+        icon: RotateCcwClock,
         text: 'every run Strava already has for you is landing now, with its distance, time and pace.',
     },
     {
-        icon: 'mdi:progress-download',
+        icon: Download,
         text: "the deeper read (splits, HR zones, effort, and the run's card) is fetched per run, the first time you open it.",
     },
     {
-        icon: 'mdi:scale-balance',
+        icon: Scale,
         text: 'that history is the point. it is what every run you do from here gets measured against.',
     },
 ];
@@ -56,25 +69,25 @@ const EXPERIENCE_OPTIONS: ReadonlyArray<{
     value: ExperienceLevel;
     label: string;
     description: string;
-    icon: string;
+    icon: IconComponent;
 }> = [
     {
         value: 'new_to_running',
         label: 'new to running',
         description: 'first few months, learning the ropes.',
-        icon: 'mdi:sprout',
+        icon: Sprout,
     },
     {
         value: 'returning',
         label: 'getting back into it',
         description: 'coming back after time off.',
-        icon: 'mdi:restore',
+        icon: RotateCcw,
     },
     {
         value: 'experienced',
         label: 'experienced',
         description: 'know your paces, chasing more.',
-        icon: 'mdi:trophy',
+        icon: Trophy,
     },
 ];
 
@@ -84,31 +97,31 @@ const GOAL_OPTIONS: ReadonlyArray<{
     value: GoalType;
     label: string;
     description: string;
-    icon: string;
+    icon: IconComponent;
 }> = [
     {
         value: 'consistent',
         label: 'stay consistent',
         description: 'show up steady, week after week.',
-        icon: 'mdi:target',
+        icon: Target,
     },
     {
         value: 'race',
         label: 'chase a race time',
         description: 'training toward a real finish time.',
-        icon: 'mdi:flag-checkered',
+        icon: Flag,
     },
     {
         value: 'base',
         label: 'build a base',
         description: 'stack easy miles, no pressure yet.',
-        icon: 'mdi:layers-outline',
+        icon: Layers,
     },
     {
         value: 'return',
         label: 'ease back in',
         description: 'rebuilding gently after a break.',
-        icon: 'mdi:undo-variant',
+        icon: Undo2,
     },
 ];
 
@@ -354,7 +367,7 @@ export default function OnboardingIndex({
                         <LegacyCard className="flex w-full flex-col gap-4 text-left">
                             {WHAT_LANDS.map((item) => (
                                 <div
-                                    key={item.icon}
+                                    key={item.text}
                                     className="flex items-start gap-3"
                                 >
                                     <Icon
@@ -390,7 +403,7 @@ export default function OnboardingIndex({
                                     className="focus-ring flex size-11 flex-none items-center justify-center rounded-full bg-muted text-foreground shadow-e1"
                                 >
                                     <Icon
-                                        icon="mdi:chevron-left"
+                                        icon={ChevronLeft}
                                         width={18}
                                         height={18}
                                         aria-hidden
@@ -762,7 +775,7 @@ export default function OnboardingIndex({
                                 className="focus-ring flex size-11 flex-none items-center justify-center rounded-full bg-muted text-foreground shadow-e1"
                             >
                                 <Icon
-                                    icon="mdi:chevron-left"
+                                    icon={ChevronLeft}
                                     width={18}
                                     height={18}
                                     aria-hidden
@@ -794,7 +807,7 @@ export default function OnboardingIndex({
                         <LegacyCard className="mt-6 flex flex-col">
                             {telegramConnectUrl !== null && (
                                 <SettingsRow
-                                    icon="mdi:telegram"
+                                    icon={TelegramIcon}
                                     label="Telegram"
                                     description="connect it so temari can keep you posted."
                                     externalHref={telegramConnectUrl}

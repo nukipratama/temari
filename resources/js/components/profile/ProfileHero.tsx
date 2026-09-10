@@ -7,14 +7,14 @@ import TimeInZoneBar from '@/components/profile/TimeInZoneBar';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import FaceIcon from '@/components/temari/FaceIcon';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import Skeleton from '@/components/ui/Skeleton';
 import { SCROLL_FADE_MASK, useScrollFade } from '@/hooks/useScrollFade';
 import { formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 
 export interface HeroStat {
-    icon: string;
+    icon: IconComponent;
     label: string;
     value: string;
 }

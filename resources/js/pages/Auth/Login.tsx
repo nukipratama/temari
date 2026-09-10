@@ -1,4 +1,14 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
+import {
+    ArrowRight,
+    ArrowUpDown,
+    CalendarCheck,
+    ChevronDown,
+    CirclePlay,
+    CircleQuestionMark,
+    ScanSearch,
+    Trophy,
+} from 'lucide-react';
 import { lazy, Suspense, useId, useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
@@ -7,7 +17,7 @@ import BrandMark from '@/components/BrandMark';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
 
@@ -29,24 +39,24 @@ interface LoginProps {
 }
 
 interface WhyItem {
-    icon: string;
+    icon: IconComponent;
     label: string;
     desc: string;
 }
 
 const WHY_FAIR: ReadonlyArray<WhyItem> = [
     {
-        icon: 'mdi:magnify-scan',
+        icon: ScanSearch,
         label: 'fair matches only',
         desc: 'same pace band, comparable distance, recent history',
     },
     {
-        icon: 'mdi:swap-vertical-bold',
+        icon: ArrowUpDown,
         label: 'reads the gap, not the vibe',
         desc: 'pace and heart rate, together',
     },
     {
-        icon: 'mdi:help-rhombus-outline',
+        icon: CircleQuestionMark,
         label: 'says when it cannot tell',
         desc: 'no trend gets invented to fill the space',
     },
@@ -54,12 +64,12 @@ const WHY_FAIR: ReadonlyArray<WhyItem> = [
 
 const WHY_GET: ReadonlyArray<WhyItem> = [
     {
-        icon: 'mdi:calendar-check-outline',
+        icon: CalendarCheck,
         label: 'a plan that answers to your week',
         desc: 'built from the volume you actually ran',
     },
     {
-        icon: 'mdi:trophy-outline',
+        icon: Trophy,
         label: 'records and recaps',
         desc: 'your PRs, your weeks, your months',
     },
@@ -239,7 +249,7 @@ function ConnectPanel({
                     className="mt-2 h-auto w-full gap-1.5 px-0 py-2.5 text-sm font-semibold text-foreground"
                 >
                     <Icon
-                        icon="mdi:play-circle-outline"
+                        icon={CirclePlay}
                         width={14}
                         height={14}
                         aria-hidden
@@ -357,7 +367,7 @@ function DataUseDisclosure({
             >
                 data &amp; AI use
                 <Icon
-                    icon="mdi:chevron-down"
+                    icon={ChevronDown}
                     width={18}
                     height={18}
                     aria-hidden
@@ -395,7 +405,7 @@ function DataUseDisclosure({
                         >
                             read the whole disclaimer
                             <Icon
-                                icon="mdi:arrow-right"
+                                icon={ArrowRight}
                                 width={12}
                                 height={12}
                                 aria-hidden

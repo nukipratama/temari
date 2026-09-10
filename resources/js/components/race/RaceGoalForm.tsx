@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { CircleAlert } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 
 import type { RaceProjection } from '@/components/race/ProjectionBlock';
@@ -225,7 +226,7 @@ export default function RaceGoalForm({
                             className="mt-2 flex items-start gap-1.5 rounded-sm bg-ember/8 px-2.5 py-2 font-sans text-xs leading-relaxed text-ember-ink"
                         >
                             <Icon
-                                icon="mdi:alert-circle-outline"
+                                icon={CircleAlert}
                                 width={14}
                                 height={14}
                                 className="mt-0.5 shrink-0"

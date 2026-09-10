@@ -1,3 +1,5 @@
+import { ChevronDown } from 'lucide-react';
+
 import type {
     ActivityDetail,
     BriefingResult,
@@ -68,7 +70,7 @@ export default function WeekStatsDisclosure({
                     {runsDisplay} runs · {kmDisplay} km
                 </span>
                 <Icon
-                    icon="mdi:chevron-down"
+                    icon={ChevronDown}
                     width={18}
                     height={18}
                     className="flex-none transition-transform group-aria-expanded:rotate-180"

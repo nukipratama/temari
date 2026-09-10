@@ -1,4 +1,5 @@
 import { Deferred, Head, Link, router, usePage } from '@inertiajs/react';
+import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import type { InboxItem, SharedProps } from '@/types/inertia';
@@ -173,12 +174,7 @@ function LoadOlder({ shown }: Readonly<{ shown: number }>) {
                 className="pressable focus-ring inline-flex items-center gap-1.25 rounded-full border border-border-strong bg-card px-4.5 py-2.25 font-mono text-[0.59375rem] leading-[1.2] font-extrabold tracking-[.05em] text-foreground uppercase shadow-e1"
             >
                 Load older
-                <Icon
-                    icon="mdi:chevron-down"
-                    width={12}
-                    height={12}
-                    aria-hidden
-                />
+                <Icon icon={ChevronDown} width={12} height={12} aria-hidden />
             </Link>
         </div>
     );

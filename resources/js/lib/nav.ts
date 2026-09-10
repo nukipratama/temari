@@ -1,10 +1,19 @@
+import {
+    CalendarCheck,
+    ChartLine,
+    RotateCcwClock,
+    Sunrise,
+} from 'lucide-react';
+
+import type { IconComponent } from '@/components/ui/Icon';
+
 export type TabId = 'today' | 'plan' | 'trends' | 'history';
 
 export interface NavItem {
     id: TabId;
     label: string;
     href: string;
-    icon: string; // lucide-react component name, per decision 16 — not an iconify string
+    icon: IconComponent;
 }
 
 export interface BackTarget {
@@ -17,25 +26,25 @@ export const ITEMS: ReadonlyArray<NavItem> = [
         id: 'today',
         label: 'Today',
         href: '/',
-        icon: 'Sunrise',
+        icon: Sunrise,
     },
     {
         id: 'plan',
         label: 'Plan',
         href: '/plan',
-        icon: 'CalendarCheck',
+        icon: CalendarCheck,
     },
     {
         id: 'trends',
         label: 'Trends',
         href: '/trends',
-        icon: 'LineChart',
+        icon: ChartLine,
     },
     {
         id: 'history',
         label: 'History',
         href: '/history',
-        icon: 'History',
+        icon: RotateCcwClock,
     },
 ];
 

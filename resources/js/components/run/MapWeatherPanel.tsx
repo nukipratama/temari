@@ -1,3 +1,4 @@
+import { Navigation, Wind } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 
 import type { ActivityDetail } from '@/types/inertia';
@@ -68,7 +69,7 @@ export default function MapWeatherPanel({
                     {windSpeed != null && (
                         <div className="flex items-center gap-1 font-sans text-xs text-text-2">
                             <Icon
-                                icon="mdi:weather-windy"
+                                icon={Wind}
                                 width={12}
                                 height={12}
                                 aria-hidden
@@ -77,7 +78,7 @@ export default function MapWeatherPanel({
                             {showGust && <span>· gust {Math.round(gust)}</span>}
                             {direction != null && (
                                 <Icon
-                                    icon="mdi:navigation"
+                                    icon={Navigation}
                                     width={10}
                                     height={10}
                                     aria-hidden

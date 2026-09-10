@@ -1,10 +1,11 @@
 import { Link } from '@inertiajs/react';
+import { Bed, ChevronRight, Feather, Flag, Flame } from 'lucide-react';
 
 import type { WeekPlan, WeekPlanDay } from '@/types/inertia';
 
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
@@ -31,13 +32,13 @@ const STATUS_LABEL: Record<string, string> = {
  *  quality/hard days read as a flame, easy/long days as a feather, rest as a
  *  bed, and the goal race as the chequered flag it is. This is the day's
  *  `session_type`, independent of how it went. */
-const TYPE_ICON: Record<string, string> = {
-    tempo: 'mdi:fire',
-    interval: 'mdi:fire',
-    easy: 'mdi:feather',
-    long: 'mdi:feather',
-    rest: 'mdi:bed',
-    race: 'mdi:flag-checkered',
+const TYPE_ICON: Record<string, IconComponent> = {
+    tempo: Flame,
+    interval: Flame,
+    easy: Feather,
+    long: Feather,
+    rest: Bed,
+    race: Flag,
 };
 
 /** Compliance-v2's six statuses, colored distinctly so "did more than asked"
@@ -179,7 +180,7 @@ function DayCell({
                 {weekdayAbbr(day.date)}
             </span>
             <Icon
-                icon={TYPE_ICON[day.session_type] ?? 'mdi:fire'}
+                icon={TYPE_ICON[day.session_type] ?? Flame}
                 width={13}
                 height={13}
                 className={tone}
@@ -251,7 +252,7 @@ export default function WeekPlanWidget({
             >
                 <span>see the plan</span>
                 <Icon
-                    icon="mdi:chevron-right"
+                    icon={ChevronRight}
                     width={16}
                     height={16}
                     className="flex-none text-foreground"

@@ -43,7 +43,12 @@ const ENTRY = 'resources/js/app.tsx';
  * own chunk with the highest `advancedChunks` priority for this to hold --
  * see docs/architecture/frontend-architecture.md.
  */
-const ENTRY_ALLOWED = ['rolldown-runtime', 'app', 'react-vendor'];
+const ENTRY_ALLOWED = [
+    'rolldown-runtime',
+    'app',
+    'react-vendor',
+    'lucide-runtime',
+];
 
 /*
  * Gzipped ceiling for a cold visit to a route: the entry closure plus that

@@ -1,3 +1,4 @@
+import { Flag, Footprints } from 'lucide-react';
 import { Fragment, type ReactElement, type ReactNode } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
@@ -53,26 +54,14 @@ export function DayCell({
         circleSize = 'size-10';
         circleTone =
             'border-icon-accent bg-icon-accent text-btn-primary-fg ring-4 ring-horizon/20';
-        icon = (
-            <Icon
-                icon="mdi:flag-checkered"
-                width={14}
-                height={14}
-                aria-hidden
-            />
-        );
+        icon = <Icon icon={Flag} width={14} height={14} aria-hidden />;
     } else if (active) {
         circleSize = 'size-8';
         circleTone = 'border-icon-accent bg-horizon/[0.18] text-icon-accent';
         icon = flagCandidate ? (
-            <Icon
-                icon="mdi:flag-checkered"
-                width={12}
-                height={12}
-                aria-hidden
-            />
+            <Icon icon={Flag} width={12} height={12} aria-hidden />
         ) : (
-            <Icon icon="mdi:run" width={12} height={12} aria-hidden />
+            <Icon icon={Footprints} width={12} height={12} aria-hidden />
         );
     }
 

@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/react';
+import { Clock, HeartPulse, RefreshCw } from 'lucide-react';
 import { type ReactNode } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
@@ -44,7 +45,7 @@ function hasStaleZones(
 function StaleZonesBadge() {
     return (
         <span className="inline-flex items-center self-start gap-1 rounded-full bg-horizon/15 px-2 py-0.5 text-xs text-horizon-ink">
-            <Icon icon="mdi:heart-pulse" aria-hidden />
+            <Icon icon={HeartPulse} aria-hidden />
             <span>calculated with old zones</span>
         </span>
     );
@@ -207,7 +208,7 @@ export default function AnalysisStatus({
                         className={cn(TRIGGER_CLASS, triggerTone(onSky))}
                     >
                         <Icon
-                            icon={cooling ? 'mdi:clock-outline' : 'mdi:sync'}
+                            icon={cooling ? Clock : RefreshCw}
                             className="size-3"
                             aria-hidden
                         />
@@ -232,7 +233,7 @@ export default function AnalysisStatus({
                     <span
                         className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
                     >
-                        <Icon icon="mdi:clock-outline" aria-hidden />
+                        <Icon icon={Clock} aria-hidden />
                         <span>still processing, check back in a bit.</span>
                     </span>
                 </div>
@@ -278,7 +279,7 @@ export default function AnalysisStatus({
                         disabled={pending}
                         className={cn(TRIGGER_CLASS, triggerTone(onSky))}
                     >
-                        <Icon icon="mdi:sync" className="size-3" aria-hidden />
+                        <Icon icon={RefreshCw} className="size-3" aria-hidden />
                         <span>try again</span>
                     </button>
                 )}
@@ -300,7 +301,7 @@ export default function AnalysisStatus({
             <span
                 className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
             >
-                <Icon icon="mdi:clock-outline" aria-hidden />
+                <Icon icon={Clock} aria-hidden />
                 <span>{awaitingScheduleLabel}</span>
             </span>
         </div>

@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { ICON_TONE, type Tone } from '@/lib/tones';
 
 interface SectionHeadingProps {
-    icon?: string;
+    icon?: IconComponent;
     title: string;
     subtitle?: ReactNode;
     tone?: Tone;
@@ -32,7 +32,7 @@ export default function SectionHeading({
 }: Readonly<SectionHeadingProps>) {
     return (
         <div className={cn('flex items-start gap-3', className)}>
-            {icon !== undefined && icon !== '' && (
+            {icon !== undefined && (
                 <span
                     className={cn(
                         'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',

@@ -52,7 +52,7 @@ describe('DayPicker', () => {
         expect(
             screen
                 .getByRole('button', { name: 'Wed' })
-                .querySelector('[data-icon="mdi:flag-checkered"]'),
+                .querySelector('[data-icon="Flag"]'),
         ).toBeInTheDocument();
     });
 
@@ -62,7 +62,7 @@ describe('DayPicker', () => {
         expect(
             screen
                 .getByRole('button', { name: 'Wed' })
-                .querySelector('[data-icon="mdi:flag-checkered"]'),
+                .querySelector('[data-icon="Flag"]'),
         ).toBeInTheDocument();
     });
 
@@ -72,7 +72,7 @@ describe('DayPicker', () => {
         expect(
             screen
                 .getByRole('button', { name: 'Wed' })
-                .querySelector('[data-icon="mdi:run"]'),
+                .querySelector('[data-icon="Footprints"]'),
         ).toBeInTheDocument();
     });
 });

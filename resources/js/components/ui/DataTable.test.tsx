@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { Table } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
 import DataTable, { Td } from './DataTable';
@@ -18,7 +19,7 @@ function renderTable(
 ) {
     return render(
         <DataTable<Row>
-            icon="mdi:table"
+            icon={Table}
             title="Judul"
             subtitle="Sub"
             tone="accent"

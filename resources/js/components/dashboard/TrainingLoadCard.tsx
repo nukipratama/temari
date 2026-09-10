@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { ArrowRight } from 'lucide-react';
 
 import type { TrainingLoad, WeeklySnapshot } from '@/types/inertia';
 
@@ -50,12 +51,7 @@ export default function TrainingLoadCard({
                 className="focus-ring mt-2 inline-flex items-center gap-0.5 rounded text-[0.65625rem] text-foreground underline"
             >
                 Technical detail
-                <Icon
-                    icon="mdi:arrow-right"
-                    width={12}
-                    height={12}
-                    aria-hidden
-                />
+                <Icon icon={ArrowRight} width={12} height={12} aria-hidden />
             </Link>
         </Card>
     );

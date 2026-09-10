@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { ArrowRight } from 'lucide-react';
 
 import FaceIcon from '@/components/temari/FaceIcon';
 import { Icon } from '@/components/ui/Icon';
@@ -26,7 +27,7 @@ export default function NoPlanCard() {
                 >
                     Set up a plan
                     <Icon
-                        icon="mdi:arrow-right"
+                        icon={ArrowRight}
                         width={12}
                         height={12}
                         aria-hidden

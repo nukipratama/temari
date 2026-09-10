@@ -1,10 +1,21 @@
 import { Link } from '@inertiajs/react';
+import {
+    ArrowRight,
+    Bell,
+    Calendar,
+    CalendarDays,
+    Flag,
+    Flame,
+    Footprints,
+    Moon,
+    RefreshCwOff,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import type { InboxItem, NotificationKind } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import PillLink from '@/components/ui/PillLink';
 import { cn } from '@/lib/cn';
@@ -29,15 +40,15 @@ const KIND_LABEL: Record<NotificationKind, string> = {
     test: 'Test',
 };
 
-const KIND_ICON: Record<NotificationKind, string> = {
-    post_run: 'mdi:run',
-    weekly_recap: 'mdi:calendar-week',
-    monthly_recap: 'mdi:calendar-blank-outline',
-    streak_reminder: 'mdi:fire',
-    plan_clamp: 'mdi:sleep',
-    strava_disconnected: 'mdi:sync-off',
-    race_tomorrow: 'mdi:flag-checkered',
-    test: 'mdi:bell-outline',
+const KIND_ICON: Record<NotificationKind, IconComponent> = {
+    post_run: Footprints,
+    weekly_recap: CalendarDays,
+    monthly_recap: Calendar,
+    streak_reminder: Flame,
+    plan_clamp: Moon,
+    strava_disconnected: RefreshCwOff,
+    race_tomorrow: Flag,
+    test: Bell,
 };
 
 const KIND_TONE: Record<NotificationKind, Tone> = {
@@ -173,7 +184,7 @@ export default function InboxRow({
                             >
                                 open
                                 <Icon
-                                    icon="mdi:arrow-right"
+                                    icon={ArrowRight}
                                     className="size-3"
                                     aria-hidden
                                 />

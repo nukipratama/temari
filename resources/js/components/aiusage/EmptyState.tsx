@@ -1,3 +1,5 @@
+import { DatabaseX } from 'lucide-react';
+
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 
@@ -5,7 +7,7 @@ export default function EmptyState() {
     return (
         <Card tone="empty" padding="hero" className="mt-4 text-center">
             <Icon
-                icon="mdi:database-off"
+                icon={DatabaseX}
                 width={32}
                 className="mx-auto text-text-3"
                 aria-hidden

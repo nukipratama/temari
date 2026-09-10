@@ -1,12 +1,12 @@
 import { Link } from '@inertiajs/react';
+import { ChevronRight } from 'lucide-react';
 import { type MouseEventHandler, type ReactNode } from 'react';
 
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 interface SettingsRowProps {
-    /** Iconify icon name (e.g., "mdi:heart-pulse") */
-    icon: string;
+    icon: IconComponent;
     /** Main label (e.g., "HR Zones") */
     label: string;
     /** Secondary description (e.g., "Set your own Z1-Z5 boundaries...") */
@@ -85,7 +85,7 @@ export default function SettingsRow({
             </span>
             {control ?? (
                 <Icon
-                    icon="mdi:chevron-right"
+                    icon={ChevronRight}
                     width={18}
                     height={18}
                     className="shrink-0 text-text-3"

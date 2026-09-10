@@ -1,7 +1,8 @@
+import { X } from 'lucide-react';
 import { useRef, type ReactNode } from 'react';
 
 import FaceIcon from '@/components/temari/FaceIcon';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { useExitTransition } from '@/hooks/useExitTransition';
 import { useModal } from '@/hooks/useModal';
@@ -18,7 +19,7 @@ interface TemariNudgeModalProps {
     /** Primary CTA. */
     primaryLabel: string;
     /** Iconify icon name shown before the primary label. */
-    primaryIcon: string;
+    primaryIcon: IconComponent;
     /** Extra classes merged onto the primary CTA (e.g. a brand color override). */
     primaryClassName?: string;
     onPrimary: () => void;
@@ -77,7 +78,7 @@ export default function TemariNudgeModal({
                         aria-label="Close"
                         className={iconButtonVariants({ size: 'sm' })}
                     >
-                        <Icon icon="mdi:close" width={16} height={16} />
+                        <Icon icon={X} width={16} height={16} />
                     </button>
                 </div>
 
@@ -116,12 +117,7 @@ export default function TemariNudgeModal({
                         onClick={onClose}
                         className="w-full justify-center"
                     >
-                        <Icon
-                            icon="mdi:close"
-                            width={16}
-                            height={16}
-                            aria-hidden
-                        />
+                        <Icon icon={X} width={16} height={16} aria-hidden />
                         {secondaryLabel}
                     </PillButton>
                 </div>

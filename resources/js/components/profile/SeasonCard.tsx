@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { ArrowRight } from 'lucide-react';
 
 import type { SeasonSummaryWeek } from '@/lib/plan';
 
@@ -53,7 +54,7 @@ export default function SeasonCard({
                     >
                         Start one on Plan
                         <Icon
-                            icon="mdi:arrow-right"
+                            icon={ArrowRight}
                             width={12}
                             height={12}
                             aria-hidden

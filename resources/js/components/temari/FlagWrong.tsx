@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/react';
+import { Flag } from 'lucide-react';
 import { Suspense, lazy, useState } from 'react';
 
 import type { FeedbackSubject } from '@/types/generated';
@@ -64,11 +65,7 @@ export default function FlagWrong({
                 title="flagged"
                 className={cn(box, tone)}
             >
-                <Icon
-                    icon="mdi:flag"
-                    className="size-5 fill-current"
-                    aria-hidden
-                />
+                <Icon icon={Flag} className="size-5 fill-current" aria-hidden />
             </span>
         );
     }
@@ -89,7 +86,7 @@ export default function FlagWrong({
                     tone,
                 )}
             >
-                <Icon icon="mdi:flag-outline" className="size-5" aria-hidden />
+                <Icon icon={Flag} className="size-5" aria-hidden />
             </button>
             {asked && (
                 <Suspense fallback={null}>
