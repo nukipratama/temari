@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
  * The prescribed session for one day: type, phase, and a rough core
  * distance, plus how the day actually went once it has been graded.
  * Deliberately the unredistributed, multiplier-1.0 figure rather than
- * {@see \App\Http\Controllers\PlanController}'s exact render-time number:
+ * {@see \App\Services\Run\Plan\PlanPageAssembler}'s exact render-time number:
  * the day's plan can still shift before it's actually run, so the
  * narration only needs to be qualitatively right, not pixel-matched to a
  * number the UI itself may later redistribute.

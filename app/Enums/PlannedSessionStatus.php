@@ -12,7 +12,7 @@ namespace App\Enums;
  * is what resolves a past `Planned` row to `Done`/`Partial`/`Missed`/
  * `Overreached`/`Skip` and writes it back — see
  * {@see \App\Services\Run\Plan\SessionMatcher::scoreFor()} for the km-ratio
- * bands that decide it. `PlanController`/`CurrentWeekPlanBuilder` read the
+ * bands that decide it. `PlanPageAssembler`/`CurrentWeekPlanBuilder` read the
  * stored value directly; `SessionMatcher::statuses()` survives only as a
  * defensive live-compute fallback for a past row the daily command hasn't
  * reached yet.

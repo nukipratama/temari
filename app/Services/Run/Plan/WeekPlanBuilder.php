@@ -270,7 +270,7 @@ final class WeekPlanBuilder
     /**
      * Whether a race is long enough to earn race-pace-specific (Marathon
      * band) quality work in Peak/Taper — shared with render-time callers
-     * ({@see \App\Http\Controllers\PlanController}, {@see CurrentWeekPlanBuilder})
+     * ({@see PlanPageAssembler}, {@see CurrentWeekPlanBuilder})
      * so `SegmentGenerator::generate()` picks the same pace this class
      * decided the session structure with.
      */

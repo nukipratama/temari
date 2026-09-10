@@ -23,13 +23,13 @@ use LogicException;
  * Home's "this week's plan" widget — the current week only, no lookahead and
  * no volume redistribution (Home never shows a future day's resized
  * distance, only its status glyph), but the same trailing-history window
- * {@see \App\Http\Controllers\PlanController} queries, so
+ * {@see PlanPageAssembler} queries, so
  * {@see PlanRenderer::weekPhasesAndMultipliers()} computes an identical
  * multiplier for the shared week.
  */
 final readonly class CurrentWeekPlanBuilder
 {
-    /** The trailing window both this builder and PlanController read, so the week they share resolves to one multiplier. */
+    /** The trailing window both this builder and PlanPageAssembler read, so the week they share resolves to one multiplier. */
     public const int HISTORY_WEEKS = 3;
 
     public function __construct(

@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * Builds the season and streak read models shared by the Plan tab and the
- * Profile page. Purely a read: {@see \App\Http\Controllers\PlanController}
+ * Profile page. Purely a read: {@see \App\Services\Run\Plan\PlanPageAssembler}
  * passes it the {@see Season} its own {@see
  * \App\Services\Run\Plan\SeasonService::ensureCurrent()} call already
  * created, while {@see \App\Http\Controllers\ProfileController} passes

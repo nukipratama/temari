@@ -41,6 +41,7 @@ use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Actions\Run\Story\ResolveLastRunStartAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
+use App\Services\Run\Plan\PlanPageAssembler;
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 
 class AppServiceProvider extends ServiceProvider
@@ -77,7 +78,9 @@ class AppServiceProvider extends ServiceProvider
         // The rest of the Plan tab's repeated reads, same reason. One deferred
         // Plan render enters TrainingBaseline four times and each pass re-read
         // the preferences row, the trailing snapshot window, the season arc and
-        // the distance PRs; the week's adaptation is asked for three times.
+        // the distance PRs; the week's adaptation is asked for three times. The
+        // assembler joins them because it memoizes the season three props want.
+        $this->app->scoped(PlanPageAssembler::class);
         $this->app->scoped(ResolveTrainingPreferenceAction::class);
         $this->app->scoped(ResolveTrailingWeeksAction::class);
         $this->app->scoped(ResolveDistanceRecordsAction::class);

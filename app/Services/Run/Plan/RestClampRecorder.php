@@ -41,7 +41,7 @@ final readonly class RestClampRecorder
 
     /**
      * The week's volume multiplier, read the same way {@see CurrentWeekPlanBuilder}
-     * and {@see \App\Http\Controllers\PlanController} do — the same trailing
+     * and {@see PlanPageAssembler} do — the same trailing
      * window resolves to the same multiplier for the shared week. Needed so
      * the eased distance recorded here matches the one the render actually
      * showed: {@see ReadinessClamp::apply()}'s core_km scales with it, and a
