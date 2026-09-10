@@ -1,4 +1,8 @@
-import type { PreviousTotals, UsageTotals } from '@/pages/AiUsage/types';
+import type {
+    ContentFilterSummary,
+    PreviousTotals,
+    UsageTotals,
+} from '@/pages/AiUsage/types';
 
 import KpiTile from '@/components/dashboard/KpiTile';
 import { fmt, formatCost } from '@/pages/AiUsage/helpers';
@@ -7,12 +11,14 @@ interface UsageKpisProps {
     totals: UsageTotals;
     previousTotals: PreviousTotals | null;
     currency: string;
+    contentFilter: ContentFilterSummary;
 }
 
 export default function UsageKpis({
     totals,
     previousTotals,
     currency,
+    contentFilter,
 }: Readonly<UsageKpisProps>) {
     const promptShare =
         totals.total > 0 ? Math.round((totals.prompt / totals.total) * 100) : 0;
@@ -24,7 +30,7 @@ export default function UsageKpis({
             : 0;
 
     return (
-        <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <KpiTile
                 label="Total Tokens"
                 value={fmt(totals.total)}
@@ -61,6 +67,16 @@ export default function UsageKpis({
                 value={`${truncatedShare}%`}
                 sub={`${totals.truncated_calls} of ${totals.calls} call${totals.calls === 1 ? '' : 's'}`}
                 tone={truncatedShare > 1 ? 'alert' : 'neutral'}
+            />
+            <KpiTile
+                label="Content-Filter Trips"
+                value={`${contentFilter.trips}`}
+                sub={
+                    contentFilter.pct === null
+                        ? 'no calls in range'
+                        : `${contentFilter.pct}% of calls`
+                }
+                tone={contentFilter.trips > 0 ? 'alert' : 'neutral'}
             />
         </section>
     );

@@ -25,6 +25,12 @@ it('renders the status snapshot without error', function (): void {
         ->assertSee('done');
 });
 
+it('shows the content-filter fallback trend line', function (): void {
+    Livewire::test(AiPipelineHealth::class)
+        ->assertOk()
+        ->assertSee('content-filter fallbacks: 0');
+});
+
 it('shows an ok health badge when no analysis has failed', function (): void {
     Livewire::test(AiPipelineHealth::class)
         ->assertOk()

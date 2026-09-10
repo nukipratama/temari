@@ -100,7 +100,7 @@ into something that reads identically — the same session type, phase and presc
 the same blurb — so each row carries a
 [`MaterialFingerprint`](../../app/Services/AI/MaterialFingerprint.php#L26) of what it describes,
 stamped by the job through
-[`AnalyzeRowJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeRowJob.php#L94), and an unchanged
+[`AnalyzeRowJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeRowJob.php#L112), and an unchanged
 fingerprint means the row is left alone. `PlanSeasonVoice` needs no fingerprint; it relies on
 `AnalysisService`'s own idempotency.
 

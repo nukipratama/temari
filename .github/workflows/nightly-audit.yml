@@ -8,9 +8,14 @@ name: Nightly dependency audit
 # installs dependencies — both read the lock files directly.
 #
 # Failure is visible as a red run in the Actions tab plus GitHub's own
-# failed-scheduled-run notification. It deliberately does NOT push through
-# MaintainerAlerter: that path is Telegram-over-the-prod-DB and is only
-# reachable from inside the prod app container on the homelab runner.
+# failed-scheduled-run notification, plus a direct Telegram push below. It
+# deliberately does NOT go through MaintainerAlerter: that path is
+# Telegram-over-the-prod-DB and is only reachable from inside the prod app
+# container on the homelab runner, which this workflow does not touch (both
+# audit jobs run on ubuntu-latest and read the lock files directly - no
+# install, no homelab). The push needs its own `TELEGRAM_BOT_TOKEN` and
+# `TELEGRAM_MAINTAINER_CHAT_ID` repository secrets; until both are set the
+# alert step is a no-op skip (both jobs still fail/pass normally).
 
 on:
   schedule:
@@ -57,3 +62,34 @@ jobs:
       # reach production (the image's assets stage never ships node_modules).
       - name: Audit npm dependencies (prod, high+)
         run: npm audit --omit=dev --audit-level=high --package-lock-only
+
+  # Separate job so it can run `if: always()` and read both jobs' results,
+  # rather than duplicating the push as a failure step inside each of them.
+  alert-on-failure:
+    needs: [composer-audit, npm-audit]
+    if: always() && (needs.composer-audit.result == 'failure' || needs.npm-audit.result == 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Push a Telegram alert
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}
+          COMPOSER_RESULT: ${{ needs.composer-audit.result }}
+          NPM_RESULT: ${{ needs.npm-audit.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_MAINTAINER_CHAT_ID" ]; then
+            echo "TELEGRAM_BOT_TOKEN / TELEGRAM_MAINTAINER_CHAT_ID not set, skipping the push (see the workflow's top comment)."
+            exit 0
+          fi
+
+          failed="composer audit"
+          if [ "$COMPOSER_RESULT" != "failure" ]; then failed="npm audit"; fi
+          if [ "$COMPOSER_RESULT" = "failure" ] && [ "$NPM_RESULT" = "failure" ]; then failed="composer audit and npm audit"; fi
+
+          message="Nightly dependency audit failed ($failed). Check the run: $RUN_URL"
+
+          curl -sS --fail-with-body \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_MAINTAINER_CHAT_ID}" \
+            --data-urlencode text="$message"

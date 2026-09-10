@@ -75,6 +75,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | AI Supervisor Process Count
+    |--------------------------------------------------------------------------
+    |
+    | `supervisor-ai`'s production maxProcesses, below. Not auto-scaled: the
+    | homelab host is shared with prod, so this is set by hand from the
+    | recommendation `horizon:recommend-ai-processes` prints. See "Horizon ai
+    | supervisor sizing" in docs/architecture/deployment.md.
+    |
+    */
+
+    'ai_processes' => (int) env('HORIZON_AI_PROCESSES', 2),
+
+    /*
+    |--------------------------------------------------------------------------
     | Horizon Route Middleware
     |--------------------------------------------------------------------------
     |
@@ -246,7 +260,10 @@ return [
         'production' => [
             // Horizon container is capped at 1 vCPU / 1 GB (compose.prod.yaml).
             // 4 workers (~128 MB each) keep memory + CPU headroom; 8 risked OOM.
-            // Split 2/2 so a narration backlog can never occupy every worker.
+            // Split 2/2 by default so a narration backlog can never occupy every
+            // worker. supervisor-ai's share is owner-tunable (HORIZON_AI_PROCESSES,
+            // see "Horizon ai supervisor sizing" in docs/architecture/deployment.md)
+            // since it needs to grow with the athlete count; supervisor-1 stays fixed.
             'supervisor-1' => [
                 'minProcesses' => 1,
                 'maxProcesses' => 2,
@@ -254,7 +271,7 @@ return [
             ],
             'supervisor-ai' => [
                 'minProcesses' => 1,
-                'maxProcesses' => 2,
+                'maxProcesses' => (int) env('HORIZON_AI_PROCESSES', 2),
                 'maxJobs' => 500,
             ],
         ],

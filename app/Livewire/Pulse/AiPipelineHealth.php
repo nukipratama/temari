@@ -40,6 +40,7 @@ class AiPipelineHealth extends Card
 
         [$trend, $time, $runAt] = $this->remember(fn (): array => [
             'failures' => $this->asCount($this->aggregateTotal('ai_failure', 'count')),
+            'contentFilterFallbacks' => $this->asCount($this->aggregateTotal('ai_content_filter_fallback', 'count')),
         ]);
 
         $failed = (int) ($statusCounts[AnalysisStatus::Failed->value] ?? 0);

@@ -7,11 +7,13 @@ namespace App\Jobs\AI;
 use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\ObsoleteAnalysisException;
 use App\Models\AI\Analysis;
+use App\Models\AI\ContentFilterEvent;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Laravel\Pulse\Facades\Pulse;
 use Throwable;
 
 abstract class AnalyzeRowJob extends AnalyzeBaseJob
@@ -66,6 +68,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
                 'kind' => $row->analysis_type->value,
                 'subject' => $row->subject_id,
             ]);
+            $this->recordContentFilterFallback($row);
             $this->afterDone($row, $service);
         } catch (Throwable $e) {
             $this->settleFailure(
@@ -127,5 +130,28 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
         return $row->discriminator !== null
             ? Carbon::parse($row->discriminator)
             : Carbon::today();
+    }
+
+    /**
+     * Records the fallback so its rate is visible on /devtools/ai-usage
+     * (durable, analytics-schema) and on the /pulse AI pipeline card (7-day
+     * trend, same mechanism as the `ai_failure` trend). Never throws: a
+     * metering failure must not turn a successfully-degraded row Failed.
+     */
+    private function recordContentFilterFallback(Analysis $row): void
+    {
+        try {
+            ContentFilterEvent::query()->create([
+                'kind' => $row->analysis_type->value,
+                'created_at' => Carbon::now(),
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('content_filter_event.record_failed', [
+                'kind' => $row->analysis_type->value,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        Pulse::record('ai_content_filter_fallback', $row->analysis_type->value)->count();
     }
 }

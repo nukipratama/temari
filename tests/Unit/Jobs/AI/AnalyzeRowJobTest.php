@@ -8,6 +8,7 @@ use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\AI\Analysis;
+use App\Models\AI\ContentFilterEvent;
 use App\Models\AI\TokenUsage;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -230,6 +231,14 @@ it('falls back to rule-based content (row Done) when generation content-filters'
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->not->toBeEmpty()
         ->and($fresh->error)->toBeNull();
+});
+
+it('records a content-filter event on fallback so the rate is queryable', function (): void {
+    $row = makeRowForRowJobTest();
+
+    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class));
+
+    expect(ContentFilterEvent::query()->where('kind', $row->analysis_type->value)->count())->toBe(1);
 });
 
 it('re-raises unexpected throwables so the queue can apply retry policy', function (): void {
