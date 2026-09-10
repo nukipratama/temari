@@ -42,7 +42,7 @@ final class UsualRunTime
      */
     public function forUser(int $userId): int
     {
-        return Cache::remember(
+        return (int) Cache::remember(
             self::cacheKey($userId, Carbon::today()->toDateString()),
             Carbon::tomorrow(),
             fn (): int => $this->computeForUser($userId),

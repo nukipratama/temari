@@ -112,6 +112,15 @@ it('busts the cached slot when clearCache is called for that athlete', function 
     expect($usualRunTime->forUser($user->id))->toBe(19 * 60);
 });
 
+it('returns int when the cache round-trips the value as a numeric string', function (): void {
+    $user = User::factory()->create();
+    Cache::put(UsualRunTime::cacheKey($user->id, Carbon::today()->toDateString()), '360', now()->addDay());
+
+    $result = new UsualRunTime()->forUser($user->id);
+
+    expect($result)->toBe(360)->toBeInt();
+});
+
 it('keys the cache per athlete and per day', function (): void {
     $user = User::factory()->create();
     $today = Carbon::today()->toDateString();
