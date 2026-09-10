@@ -3,7 +3,12 @@ import type { ComponentProps } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { AnalysisPayload } from '@/types/inertia';
+import type {
+    AnalysisPayload,
+    BriefingResult,
+    TrainingLoad,
+    WeeklySnapshot,
+} from '@/types/inertia';
 
 import { setMockDeferred } from '@/test/setup';
 
@@ -31,7 +36,59 @@ const NARRATION = {
     '12mo': narrationPayload('12mo', 'The full year.\n\nA long climb.'),
 };
 
+const briefing: BriefingResult = {
+    vibeState: 'pumped',
+    vibeLabel: 'Pumped',
+    vibeEmoji: '💥',
+    firstRead: false,
+    mascotVoice: {
+        id: 4,
+        status: 'done',
+        content: 'Easy 6k.',
+        type: 'briefing_mascot_voice',
+        subject_type: 'briefing_user_day',
+        subject_id: 1,
+        discriminator: '2026-06-12',
+    },
+    recoveryLabel: 'Recovery: 41h',
+    recoveryTone: 'positive',
+    recoveryHoursLabel: '41h',
+    recoveryHours: 41,
+    streakLabel: 'Ran today',
+    sigilPattern: 'orct',
+    mood: 'blazing',
+};
+
+const load: TrainingLoad = {
+    form: -2.5,
+    form_status: 'optimal',
+    ctl_42d: 42,
+    atl_7d: 44.5,
+    weekly_trimp: 320,
+    monotony: 1.2,
+    strain: 384,
+};
+
+const snapshot: WeeklySnapshot = {
+    id: 1,
+    user_id: 1,
+    week_ending: '2026-06-14',
+    runs: 4,
+    distance_km: 35.5,
+    weekly_trimp: 280,
+    ctl_42d: 42,
+    atl_7d: 44.5,
+    form: -2.5,
+    form_status: 'optimal',
+    avg_decoupling: 3.2,
+    monotony: 1.4,
+    strain: 392,
+};
+
 const BASE_PROPS: ComponentProps<typeof Trends> = {
+    briefing,
+    load,
+    snapshot,
     ctlTrend: [],
     badgeMilestones: [],
     streak: {
@@ -59,6 +116,29 @@ describe('Trends', () => {
 
         expect(screen.getByText('how things')).toBeInTheDocument();
         expect(screen.getByText('are going.')).toBeInTheDocument();
+    });
+
+    it('renders the load section under the hero, above the range tabs', () => {
+        const { container } = render(<Trends {...BASE_PROPS} />);
+
+        const eyebrow = screen.getByText('load');
+        expect(screen.getByText('Pumped')).toBeInTheDocument();
+        expect(screen.getByText('Condition · 7 days')).toBeInTheDocument();
+        expect(
+            eyebrow.compareDocumentPosition(
+                screen.getByRole('group', { name: 'Time range' }),
+            ) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(container).toContainElement(eyebrow);
+    });
+
+    it('holds the load section back behind a skeleton until its props land', () => {
+        setMockDeferred(['briefing', 'load', 'snapshot']);
+
+        render(<Trends {...BASE_PROPS} />);
+
+        expect(screen.queryByText('load')).not.toBeInTheDocument();
+        expect(screen.queryByText('Pumped')).not.toBeInTheDocument();
     });
 
     it('renders exactly the four prototype blocks', () => {
@@ -105,7 +185,15 @@ describe('Trends', () => {
     });
 
     it('shows skeletons for the deferred blocks until their props land', () => {
-        setMockDeferred(['narration', 'ctlTrend', 'badgeMilestones', 'streak']);
+        setMockDeferred([
+            'narration',
+            'ctlTrend',
+            'badgeMilestones',
+            'streak',
+            'briefing',
+            'load',
+            'snapshot',
+        ]);
 
         const { container } = render(<Trends />);
 

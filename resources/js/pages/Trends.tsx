@@ -1,8 +1,15 @@
 import { Deferred, Head } from '@inertiajs/react';
 import { useState } from 'react';
 
-import type { AnalysisPayload } from '@/types/inertia';
+import type {
+    AnalysisPayload,
+    BriefingResult,
+    TrainingLoad,
+    WeeklySnapshot,
+} from '@/types/inertia';
 
+import TrainingLoadCard from '@/components/dashboard/TrainingLoadCard';
+import VitalBars from '@/components/dashboard/VitalBars';
 import NarrationCard from '@/components/trends/NarrationCard';
 import FitnessPanel, {
     type BadgeMilestone,
@@ -26,18 +33,26 @@ interface TrendsProps {
     badgeMilestones?: BadgeMilestone[];
     streak?: StreakSummaryLike;
     narration?: Record<TrendRange, AnalysisPayload>;
+    briefing?: BriefingResult;
+    load?: TrainingLoad | null;
+    snapshot?: WeeklySnapshot | null;
 }
 
 /**
- * Trends, on the frozen prototype's `TrendsScreen`: four blocks only (P25) —
- * the headline, the range tabs, Temari's read, and one fitness panel. The tabs
- * really select the window every block below them reads (P3).
+ * Trends, on the frozen prototype's `TrendsScreen`: the headline, the load
+ * section (vitals and condition, which used to sit behind Home's stats
+ * disclosure), the range tabs, Temari's read, and one fitness panel. The tabs
+ * really select the window every block below them reads (P3) — the load
+ * section sits above them and always reads the last 7 days.
  */
 export default function Trends({
     ctlTrend,
     badgeMilestones,
     streak,
     narration,
+    briefing,
+    load = null,
+    snapshot = null,
 }: Readonly<TrendsProps>) {
     const [range, setRange] = useState<TrendRange>('30d');
 
@@ -56,6 +71,35 @@ export default function Trends({
                 <p className="mt-2 text-xs leading-relaxed text-text-2">
                     A year of running, read as lines rather than a list.
                 </p>
+
+                <Deferred
+                    data={['briefing', 'load', 'snapshot']}
+                    fallback={
+                        <Card as="section" className="mt-4">
+                            <SkeletonStats className="mt-3.5" />
+                        </Card>
+                    }
+                >
+                    {() => (
+                        <section className="mt-4">
+                            <Eyebrow token="micro" className="text-foreground">
+                                load
+                            </Eyebrow>
+                            <div className="mt-2 grid gap-2 md:grid-cols-2">
+                                <Card padding="panel">
+                                    <VitalBars
+                                        briefing={briefing!}
+                                        load={load}
+                                    />
+                                </Card>
+                                <TrainingLoadCard
+                                    load={load}
+                                    snapshot={snapshot}
+                                />
+                            </div>
+                        </section>
+                    )}
+                </Deferred>
 
                 <RangeToggle
                     value={range}

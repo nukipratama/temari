@@ -1,9 +1,25 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { WeekPlan, WeekPlanDay } from '@/types/inertia';
+import type { WeekPlan, WeekPlanDay, WeeklySnapshot } from '@/types/inertia';
 
 import WeekPlanWidget from './WeekPlanWidget';
+
+const snapshot: WeeklySnapshot = {
+    id: 1,
+    user_id: 1,
+    week_ending: '2026-01-11',
+    runs: 3,
+    distance_km: 18.2,
+    weekly_trimp: 214,
+    ctl_42d: 42,
+    atl_7d: 44.5,
+    form: -2.5,
+    form_status: 'optimal',
+    avg_decoupling: 3.2,
+    monotony: 1.4,
+    strain: 392,
+};
 
 vi.mock('@/lib/pace', async () => {
     const actual =
@@ -66,16 +82,44 @@ const MON_TO_SUN = [
 ];
 
 describe('WeekPlanWidget', () => {
-    it("renders the week's sessions, distance, and phase", async () => {
+    it("reads the week's sessions, actual against planned km, trimp and phase", async () => {
         const days = MON_TO_SUN.map((date) => day({ date, id: date.length }));
-        render(<WeekPlanWidget weekPlan={weekOf(days)} />);
+        render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
 
         await waitFor(() => {
-            // Once in the ring's centre label, once as the sessions figure.
-            expect(screen.getAllByText('2/5')).toHaveLength(2);
-            expect(screen.getByText('32.0')).toBeInTheDocument();
+            expect(screen.getByText('2/5')).toBeInTheDocument();
+            expect(screen.getByText('18.2 of 32.0')).toBeInTheDocument();
+            expect(screen.getByText('214')).toBeInTheDocument();
         });
+        expect(screen.getByText('sessions')).toBeInTheDocument();
+        expect(screen.getByText('km')).toBeInTheDocument();
+        expect(screen.getByText('trimp')).toBeInTheDocument();
         expect(screen.getByText('build')).toBeInTheDocument();
+    });
+
+    it('states a week with nothing run yet as a plain zero, not 0.0', async () => {
+        const days = MON_TO_SUN.map((date) => day({ date, id: date.length }));
+        render(
+            <WeekPlanWidget
+                weekPlan={weekOf(days)}
+                snapshot={{ ...snapshot, distance_km: 0, weekly_trimp: null }}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText('0 of 32.0')).toBeInTheDocument();
+        });
+        expect(screen.getByText('—')).toBeInTheDocument();
+    });
+
+    it('falls back to dashes when no snapshot has been written for the week', async () => {
+        const days = MON_TO_SUN.map((date) => day({ date, id: date.length }));
+        render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={null} />);
+
+        await waitFor(() => {
+            expect(screen.getByText('0 of 32.0')).toBeInTheDocument();
+        });
+        expect(screen.getByText('—')).toBeInTheDocument();
     });
 
     it('renders a day glyph icon by session type, not by status', () => {
@@ -87,7 +131,7 @@ describe('WeekPlanWidget', () => {
             }),
         );
         const { container } = render(
-            <WeekPlanWidget weekPlan={weekOf(days)} />,
+            <WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />,
         );
 
         expect(
@@ -110,7 +154,7 @@ describe('WeekPlanWidget', () => {
             }),
         );
         const { container } = render(
-            <WeekPlanWidget weekPlan={weekOf(days)} />,
+            <WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />,
         );
 
         const overreachedIcon = container.querySelector(
@@ -135,7 +179,7 @@ describe('WeekPlanWidget', () => {
                 : day({ date }),
         );
         const { container } = render(
-            <WeekPlanWidget weekPlan={weekOf(days)} />,
+            <WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />,
         );
 
         expect(screen.getByText('4.2k')).toBeInTheDocument();
@@ -151,7 +195,7 @@ describe('WeekPlanWidget', () => {
                 : day({ date }),
         );
         const { container } = render(
-            <WeekPlanWidget weekPlan={weekOf(days)} />,
+            <WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />,
         );
 
         expect(
@@ -165,15 +209,34 @@ describe('WeekPlanWidget', () => {
                 ? day({ date, status: 'done', actual_km: 9.4 })
                 : day({ date }),
         );
-        render(<WeekPlanWidget weekPlan={weekOf(days)} />);
+        render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
 
-        expect(screen.getByText('9.4k')).toBeInTheDocument();
+        expect(screen.getByText('9.4k')).toHaveClass('text-leaf-ink');
+        expect(screen.getByText('of 8k')).toBeInTheDocument();
         expect(screen.getAllByText('8k')).toHaveLength(6);
+    });
+
+    it('leaves a run rest day showing the actual alone, with nothing to be "of"', () => {
+        const days = MON_TO_SUN.map((date) =>
+            date === '2026-01-05'
+                ? day({
+                      date,
+                      session_type: 'rest',
+                      status: 'done',
+                      ran_anyway: true,
+                      actual_km: 4.2,
+                  })
+                : day({ date }),
+        );
+        render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
+
+        expect(screen.getByText('4.2k')).toBeInTheDocument();
+        expect(screen.queryByText(/^of /)).not.toBeInTheDocument();
     });
 
     it('links out to the full plan, which states today once, on the today card', () => {
         const days = MON_TO_SUN.map((date) => day({ date }));
-        render(<WeekPlanWidget weekPlan={weekOf(days)} />);
+        render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
 
         expect(
             screen.getByRole('link', { name: 'see the plan' }),
@@ -184,7 +247,7 @@ describe('WeekPlanWidget', () => {
     it('renders one cell per day and rings today', () => {
         const days = MON_TO_SUN.map((date) => day({ date }));
         const { container } = render(
-            <WeekPlanWidget weekPlan={weekOf(days)} />,
+            <WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />,
         );
 
         expect(
