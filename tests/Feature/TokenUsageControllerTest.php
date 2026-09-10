@@ -8,6 +8,7 @@ use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
 use App\Models\AI\TokenUsage;
+use App\Models\Analytics\DevtoolsAction;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -575,4 +576,31 @@ it('challenges the recover action with the wrong devtools password', function ()
         ->withSession($token)
         ->post('/devtools/ai-usage/recover', $token)
         ->assertUnauthorized();
+});
+
+it('audits a per-user re-arm, naming the athlete and how many blocks it touched', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    deadLetterWeeklyRecap($user);
+
+    $this->post("/devtools/ai-usage/users/{$user->id}/retry-failed")->assertRedirect();
+
+    $action = DevtoolsAction::query()->sole();
+
+    expect($action->action)->toBe('ai_usage.retry_failed')
+        ->and($action->user_id)->toBe($user->id)
+        ->and($action->payload)->toBe(['blocks' => 1])
+        ->and($action->actor)->not->toBe('');
+});
+
+it('audits the app-wide recovery run', function (): void {
+    Bus::fake();
+    deadLetterWeeklyRecap(User::factory()->create());
+
+    $this->post('/devtools/ai-usage/recover')->assertRedirect();
+
+    $action = DevtoolsAction::query()->sole();
+
+    expect($action->action)->toBe('ai_usage.recover')
+        ->and($action->user_id)->toBeNull();
 });
