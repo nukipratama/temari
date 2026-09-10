@@ -113,6 +113,15 @@ describe('TodaySession', () => {
         expect(screen.getByText('Take it easy today.')).toBeInTheDocument();
     });
 
+    it('starts the voice at the card edge, outside the mascot row', () => {
+        render(<TodaySession briefing={briefing('Easy 6k.')} today={day()} />);
+
+        const mascotRow = screen.getByText('Today').closest('div')
+            ?.parentElement as HTMLElement;
+
+        expect(mascotRow).not.toContainElement(screen.getByText('Easy 6k.'));
+    });
+
     it('labels the block as today', () => {
         render(<TodaySession briefing={briefing('Easy 6k.')} />);
 

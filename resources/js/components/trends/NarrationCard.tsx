@@ -40,7 +40,6 @@ export default function NarrationCard({
                 analysis={analysis}
                 inertiaReloadProps={['narration']}
                 awaitingSchedule={false}
-                showTimestamp={false}
                 renderContent={(content) => {
                     const { title, description } = splitContent(content);
                     return (

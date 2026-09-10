@@ -9,7 +9,8 @@ import FlagWrong from './FlagWrong';
 function renderFlag({
     isDemo = false,
     flagged = false,
-}: { isDemo?: boolean; flagged?: boolean } = {}) {
+    compact = false,
+}: { isDemo?: boolean; flagged?: boolean; compact?: boolean } = {}) {
     setMockPage({ auth: { user: makeUser({ is_demo: isDemo }) } });
 
     return render(
@@ -18,6 +19,7 @@ function renderFlag({
             subjectId={12}
             label="flag this day"
             flagged={flagged}
+            compact={compact}
         />,
     );
 }
@@ -96,6 +98,16 @@ describe('FlagWrong', () => {
 
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         expect(router.post).not.toHaveBeenCalled();
+    });
+
+    it('draws small on an eyebrow line while keeping its 44px target', () => {
+        renderFlag({ compact: true });
+
+        const control = screen.getByRole('button', { name: 'flag this day' });
+
+        expect(control).toHaveClass('size-5');
+        expect(control).toHaveClass('before:-inset-3');
+        expect(control).not.toHaveClass('size-11');
     });
 
     it('renders an inert flagged icon when the server says it is already flagged', () => {

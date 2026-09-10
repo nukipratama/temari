@@ -68,8 +68,6 @@ interface Props {
     awaitingSchedule?: boolean;
     /** Empty-state copy shown when {@link awaitingSchedule}. Defaults to the weekly wording. */
     awaitingScheduleLabel?: string;
-    /** Whether to render the "Dibuat …" relative timestamp when status is `done`. */
-    showTimestamp?: boolean;
     /** Use cream-tinted colours for non-done states when rendered on a dark sky panel. */
     onSky?: boolean;
     /**
@@ -130,7 +128,6 @@ export default function AnalysisStatus({
     allowReanalyze = true,
     awaitingSchedule = false,
     awaitingScheduleLabel = "this week's recap isn't available yet.",
-    showTimestamp = true,
     onSky = false,
     chained = false,
     isChainHead = false,
@@ -158,9 +155,10 @@ export default function AnalysisStatus({
 
     if (effectiveStatus === 'done' && content !== null) {
         const cooling = cooldownRemaining > 0;
+        const generatedAt = analysis.generated_at ?? null;
         const staleZones = hasStaleZones(
             analysis.is_zone_dependent,
-            analysis.generated_at,
+            generatedAt,
             hrZonesChangedAt,
         );
         return (
@@ -178,44 +176,19 @@ export default function AnalysisStatus({
                         : renderBold(content)}
                 </div>
                 {staleZones && <StaleZonesBadge />}
-                {showTimestamp && analysis.generated_at && (
-                    <span
-                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
+                {(generatedAt !== null || analysis.id !== null) && (
+                    <div
+                        className={cn(
+                            'flex items-center gap-1.5',
+                            generatedAt === null && 'justify-end',
+                        )}
                     >
-                        generated {formatRelativeId(analysis.generated_at)}
-                    </span>
-                )}
-                {(canRegenerate || analysis.id !== null) && (
-                    <div className="flex items-center justify-end gap-2">
-                        {canRegenerate && (
-                            <button
-                                type="button"
-                                onClick={trigger}
-                                disabled={cooling || pending}
-                                aria-label={cooldownAriaLabel(
-                                    cooldownRemaining,
-                                    'reread',
-                                )}
-                                className={cn(
-                                    TRIGGER_CLASS,
-                                    triggerTone(onSky),
-                                )}
+                        {generatedAt !== null && (
+                            <span
+                                className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
                             >
-                                <Icon
-                                    icon={
-                                        cooling
-                                            ? 'mdi:clock-outline'
-                                            : 'mdi:sync'
-                                    }
-                                    className="size-3"
-                                    aria-hidden
-                                />
-                                <span>
-                                    {cooling
-                                        ? `next in ${formatDurationHMS(cooldownRemaining)}`
-                                        : 'reread'}
-                                </span>
-                            </button>
+                                generated {formatRelativeId(generatedAt)}
+                            </span>
                         )}
                         {analysis.id !== null && (
                             <FlagWrong
@@ -224,9 +197,33 @@ export default function AnalysisStatus({
                                 label="flag this read"
                                 flagged={analysis.flagged === true}
                                 onSky={onSky}
+                                compact
                             />
                         )}
                     </div>
+                )}
+                {canRegenerate && (
+                    <button
+                        type="button"
+                        onClick={trigger}
+                        disabled={cooling || pending}
+                        aria-label={cooldownAriaLabel(
+                            cooldownRemaining,
+                            'reread',
+                        )}
+                        className={cn(TRIGGER_CLASS, triggerTone(onSky))}
+                    >
+                        <Icon
+                            icon={cooling ? 'mdi:clock-outline' : 'mdi:sync'}
+                            className="size-3"
+                            aria-hidden
+                        />
+                        <span>
+                            {cooling
+                                ? `next in ${formatDurationHMS(cooldownRemaining)}`
+                                : 'reread'}
+                        </span>
+                    </button>
                 )}
                 {rateLimited && <RateLimitedNote onSky={onSky} />}
             </motion.div>

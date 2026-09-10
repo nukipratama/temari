@@ -727,11 +727,11 @@ body {
     }
     /* Narrator prose — the reading register for LLM and rule-based output. */
     .narration {
-        @apply max-w-[65ch] font-sans text-quote-sm leading-relaxed text-foreground;
+        @apply font-sans text-quote-sm leading-relaxed text-foreground;
     }
     /* Narrator prose, compact tier — list rows, calendar cells, recap cards. */
     .narration-dense {
-        @apply max-w-[65ch] font-sans text-[0.75rem] leading-[1.45] text-foreground;
+        @apply font-sans text-[0.75rem] leading-[1.45] text-foreground;
     }
 
     /* Rarity halo — every card gets a calm, static glow ring in its own

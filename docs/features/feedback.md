@@ -3,7 +3,7 @@ title: Flag this as wrong
 description: A per-row "this is wrong" control on plan days and narrations, read by the owner in tinker.
 tags: [feature, feedback]
 status: living
-reviewed: 2026-09-09
+reviewed: 2026-09-10
 code_refs:
   - app/Models/Feedback.php
   - app/Enums/FeedbackSubject.php
@@ -45,10 +45,10 @@ Ownership lives in [StoreFeedbackRequest::authorize()](../../app/Http/Requests/S
 
 ## The control
 
-[FlagWrong](../../resources/js/components/temari/FlagWrong.tsx) is one icon-only ghost button at a 44px tap target, on every width, that opens a bottom sheet titled `something off?`: the subject's four reasons as single-select chips, an optional note, `send` (disabled until a reason is chosen) and `never mind`. There is no toast — the icon itself fills in and goes inert, which is the confirmation. It is mounted twice:
+[FlagWrong](../../resources/js/components/temari/FlagWrong.tsx) is one icon-only ghost button that opens a bottom sheet titled `something off?`: the subject's four reasons as single-select chips, an optional note, `send` (disabled until a reason is chosen) and `never mind`. There is no toast — the icon itself fills in and goes inert, which is the confirmation. It is mounted twice:
 
-- On every `done` narration block, from inside [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx), at the right end of the same action line the `reread` trigger sits on, so it follows narration wherever it renders (home, run detail, trends, plan) and inherits that block's `onSky` styling. It is drawn whether or not that block may be reread. A block that has no row yet (`analysis.id === null`) has nothing to flag, so it draws none.
-- On the expanded plan day row in [WeekDayRow](../../resources/js/components/plan/WeekDayRow.tsx), at the right end of the `view activity` line, or alone on its own right-aligned line on a day with no run. Labelled `flag this day` against the narration's `flag this read` — a wrong prescription and a wrong reading of it are different complaints.
+- On every `done` narration block, from inside [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx), at the end of the `generated …` meta line under the paragraph, so it follows narration wherever it renders (home, run detail, trends, plan, the recaps) and inherits that block's `onSky` styling. It is drawn whether or not that block may be reread, and the `reread` pill keeps its own line below. A block that has no row yet (`analysis.id === null`) has nothing to flag, so it draws none; a `done` block with no `generated_at` draws the flag alone, right-aligned, on the line the meta text would have occupied. A meta line is ~16px and the tap target is 44px, so this placement passes `compact`: the icon draws on a 20px box and the 44px target is pushed back out with a pseudo-element.
+- On the collapsed plan-day trigger row in [WeekDayRow](../../resources/js/components/plan/WeekDayRow.tsx), at its right edge, since a plan day carries no narration meta line of its own. It keeps the full 44px box there, that row already being taller. Labelled `flag this day` against the narration's `flag this read` — a wrong prescription and a wrong reading of it are different complaints. The trigger is itself a button, so the flag is its sibling in the row rather than nested inside it.
 
 It posts through `router.post` with `preserveState`, so the confirmation survives the redirect back.
 

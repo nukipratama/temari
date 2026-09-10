@@ -136,56 +136,65 @@ export default function WeekDayRow({
                     : 'border-border-strong',
             )}
         >
-            <CollapsibleTrigger className="group focus-ring flex w-full items-center gap-3 px-4 py-3 text-left">
-                <span className="flex w-9 flex-none flex-col items-center gap-1">
-                    <span className="text-label-micro text-text-2">
-                        {weekdayLabel(day.date)}
+            <div className="flex items-center pr-1">
+                <CollapsibleTrigger className="group focus-ring flex min-w-0 flex-1 items-center gap-3 py-3 pr-2 pl-4 text-left">
+                    <span className="flex w-9 flex-none flex-col items-center gap-1">
+                        <span className="text-label-micro text-text-2">
+                            {weekdayLabel(day.date)}
+                        </span>
+                        <Icon
+                            icon={
+                                SESSION_TYPE_ICON[day.session_type] ??
+                                'mdi:feather'
+                            }
+                            className="size-3.5"
+                            style={{ color: iconColor(day) }}
+                            aria-hidden
+                        />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-foreground">
+                            {SESSION_TYPE_LABEL[day.session_type] ??
+                                day.session_type}
+                        </span>
+                        {!isRest && (
+                            <span className="mt-0.5 block text-xs text-text-2">
+                                {kmLabel(day)}
+                                {pace !== null && ` · ${pace}`}
+                            </span>
+                        )}
+                        {ranAnyway && (
+                            <span className="mt-0.5 block text-xs font-semibold text-leaf-ink">
+                                Ran anyway · {daySummary(day)}
+                            </span>
+                        )}
+                        <MiniSessionBar segments={day.segments} />
+                        {!isRest && STATUS_LABEL[status] && (
+                            <span
+                                className={cn(
+                                    'mt-1 block text-label-micro',
+                                    STATUS_TONE[status] ?? 'text-text-3',
+                                )}
+                            >
+                                {STATUS_LABEL[status]}
+                                {day.compliance_score != null &&
+                                    ` · ${day.compliance_score}%`}
+                            </span>
+                        )}
                     </span>
                     <Icon
-                        icon={
-                            SESSION_TYPE_ICON[day.session_type] ?? 'mdi:feather'
-                        }
-                        className="size-3.5"
-                        style={{ color: iconColor(day) }}
+                        icon="mdi:chevron-down"
+                        className="size-4 flex-none text-text-2 transition-transform group-aria-expanded:rotate-180"
                         aria-hidden
                     />
-                </span>
-                <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-foreground">
-                        {SESSION_TYPE_LABEL[day.session_type] ??
-                            day.session_type}
-                    </span>
-                    {!isRest && (
-                        <span className="mt-0.5 block text-xs text-text-2">
-                            {kmLabel(day)}
-                            {pace !== null && ` · ${pace}`}
-                        </span>
-                    )}
-                    {ranAnyway && (
-                        <span className="mt-0.5 block text-xs font-semibold text-leaf-ink">
-                            Ran anyway · {daySummary(day)}
-                        </span>
-                    )}
-                    <MiniSessionBar segments={day.segments} />
-                    {!isRest && STATUS_LABEL[status] && (
-                        <span
-                            className={cn(
-                                'mt-1 block text-label-micro',
-                                STATUS_TONE[status] ?? 'text-text-3',
-                            )}
-                        >
-                            {STATUS_LABEL[status]}
-                            {day.compliance_score != null &&
-                                ` · ${day.compliance_score}%`}
-                        </span>
-                    )}
-                </span>
-                <Icon
-                    icon="mdi:chevron-down"
-                    className="size-4 flex-none text-text-2 transition-transform group-aria-expanded:rotate-180"
-                    aria-hidden
+                </CollapsibleTrigger>
+                <FlagWrong
+                    subjectType="plan_day"
+                    subjectId={day.id}
+                    label="flag this day"
+                    flagged={day.flagged === true}
                 />
-            </CollapsibleTrigger>
+            </div>
             <CollapsibleContent className="border-t border-border-strong px-4 py-3">
                 {narration && (
                     <TemariTake analysis={narration} allowReanalyze={false} />
@@ -197,8 +206,8 @@ export default function WeekDayRow({
                     />
                 )}
                 <SessionBarGraph segments={day.segments} />
-                <div className="mt-3 flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 flex-col gap-2">
+                {day.activities.length > 0 && (
+                    <div className="mt-3 flex min-w-0 flex-col gap-2">
                         {day.activities.map((run) => (
                             <Link
                                 key={run.id}
@@ -214,13 +223,7 @@ export default function WeekDayRow({
                             </Link>
                         ))}
                     </div>
-                    <FlagWrong
-                        subjectType="plan_day"
-                        subjectId={day.id}
-                        label="flag this day"
-                        flagged={day.flagged === true}
-                    />
-                </div>
+                )}
                 {(canMove || canSkip) && (
                     <div className="mt-3">
                         {picking ? (

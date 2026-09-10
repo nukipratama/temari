@@ -8,7 +8,7 @@ import { type MetricKey } from '@/lib/metricGlossary';
 const MONOTONY_ALERT_AT = 1.5;
 const DECOUPLING_ALERT_PCT_AT = 8;
 
-const CHIP_BASE =
+export const CHIP_BASE =
     'inline-flex items-center gap-1 rounded-full px-1.75 py-0.5 font-mono text-[0.5rem] leading-[1.2] font-extrabold tracking-[.03em] uppercase';
 
 /**

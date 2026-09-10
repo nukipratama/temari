@@ -226,7 +226,6 @@ export default function RunLenses({
                     chained
                     isChainHead={isChainHead}
                     allowReanalyze={!isChainHead}
-                    showTimestamp={false}
                     renderContent={(text) => (
                         <p className="narration">{renderBold(text)}</p>
                     )}
@@ -247,7 +246,6 @@ export default function RunLenses({
                             chained
                             isChainHead={isChainHead}
                             allowReanalyze={!isChainHead}
-                            showTimestamp={false}
                             renderContent={(text) => (
                                 <ClaimList text={text} drawn={drawnAnchors} />
                             )}
