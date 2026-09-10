@@ -1,0 +1,18 @@
+# Throwaway single-service MySQL for .github/workflows/restore-dry-run.yml.
+# Same image and env_file as compose.prod.yaml's `mysql` service (so DB_* and
+# MYSQL_ROOT_PASSWORD are identical, which scripts/restore-db.sh relies on),
+# but brought up under its own compose project (`-p temari-restore`), with an
+# anonymous volume and no published ports, so it never touches the live stack.
+services:
+  mysql_restore:
+    image: temari/mysql:8.4
+    env_file:
+      - /opt/temari/.env
+    volumes:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 60s

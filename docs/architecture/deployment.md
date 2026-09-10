@@ -10,7 +10,9 @@ code_refs:
   - docker/Caddyfile
   - .github/workflows/ci.yml
   - .github/workflows/nightly-audit.yml
+  - .github/workflows/restore-dry-run.yml
   - scripts/restore-db.sh
+  - deploy/restore-dry-run-compose.yml
   - config/octane.php
   - config/database.php
   - routes/console.php
@@ -116,7 +118,7 @@ A failed deploy **tries to roll itself back first**. The `Roll back on failure` 
 
 **It refuses to auto-roll when a migration ran this deploy.** `Detect pending migrations` ([.github/workflows/ci.yml](.github/workflows/ci.yml#L437)) runs `migrate:status --pending=1` on both connections before migrating and records `MIGRATIONS_APPLIED`. When that is `true` — including when it is *unset*, which it defaults to, so an early failure fails safe — the rollback step deliberately stops and prints a manual-recovery error instead. Re-tagging the image would put old code against a new schema, which is the one thing expand/contract cannot protect against if the migration was destructive. Recover with the `Rollback prod` workflow plus `./scripts/restore-db.sh <backup>`.
 
-Neither path has ever fired in prod. The restore half is now exercised nightly in CI against a throwaway database — [restore-db-exercise](.github/workflows/nightly-audit.yml) migrates a fresh schema on **both** the default and analytics connections, dumps and drops each, and runs [scripts/restore-db.sh](scripts/restore-db.sh) for real on both (its flags, env expectations, and the gzip/streaming path, including the `analytics-*` filename branch) via the `COMPOSE_FILE`/`MYSQL_SERVICE` overrides added for that job — but only that script's mechanics, not a real incident. Rollback itself, the "migrations applied → refuse rollback" branch, and a prod dry run of either path remain untested; the dry run is a separate owner-approved step.
+Neither path has ever fired in prod. The restore half is now exercised nightly in CI against a throwaway database — [restore-db-exercise](.github/workflows/nightly-audit.yml) migrates a fresh schema on **both** the default and analytics connections, dumps and drops each, and runs [scripts/restore-db.sh](scripts/restore-db.sh) for real on both (its flags, env expectations, and the gzip/streaming path, including the `analytics-*` filename branch) via the `COMPOSE_FILE`/`MYSQL_SERVICE` overrides added for that job — but only that script's mechanics, not a real backup. Restoring a **real** backup now has a manual dry run too: the owner-triggered [Restore dry-run](.github/workflows/restore-dry-run.yml) workflow picks the newest (or a given `backup_sha`) `pre-deploy-*.sql.gz`/`analytics-pre-deploy-*.sql.gz` pair from `/var/lib/temari-backups`, restores both into a throwaway MySQL from [deploy/restore-dry-run-compose.yml](deploy/restore-dry-run-compose.yml) (prod's image + env_file, its own `temari-restore` compose project, no published ports), and compares table lists plus a fixed set of row counts against live with read-only queries before tearing the throwaway stack down; it shares the `deploy-prod` concurrency group so it can't overlap a real deploy. Rollback itself and the "migrations applied → refuse rollback" branch remain untested — a rollback dry run is still a separate owner-run step.
 
 ## Nightly dependency audit alert
 

@@ -13,11 +13,16 @@ set -euo pipefail
 #      (and the matching analytics-pre-deploy-<sha>.sql.gz if analytics moved too)
 #   3. run the "Rollback prod" GitHub workflow to roll code to :previous
 
-# COMPOSE_FILE / MYSQL_SERVICE / RESTORE_DB_ASSUME_YES let CI point this at a
-# throwaway stack instead of prod; all three default to the prod values.
+# COMPOSE_FILE / MYSQL_SERVICE / RESTORE_DB_ASSUME_YES / COMPOSE_PROJECT let CI
+# point this at a throwaway stack instead of prod; all default to the prod
+# values, so COMPOSE_PROJECT empty (unset) leaves prod behaviour unchanged.
 COMPOSE_FILE="${COMPOSE_FILE:-compose.prod.yaml}"
 MYSQL_SERVICE="${MYSQL_SERVICE:-mysql}"
+COMPOSE_PROJECT="${COMPOSE_PROJECT:-}"
 COMPOSE="docker compose -f $COMPOSE_FILE"
+if [ -n "$COMPOSE_PROJECT" ]; then
+  COMPOSE="docker compose -p $COMPOSE_PROJECT -f $COMPOSE_FILE"
+fi
 backup="${1:-}"
 
 if [ -z "$backup" ] || [ ! -f "$backup" ]; then

@@ -1,0 +1,161 @@
+name: Restore dry-run
+
+# Manual, owner-triggered dry run of scripts/restore-db.sh against a real prod
+# backup pair, restored into a throwaway MySQL instead of the live one. Proves
+# the backup is actually restorable without touching prod data — see the
+# "Rollback" section of docs/architecture/deployment.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_sha:
+        description: 'git SHA of the pre-deploy-<sha>.sql.gz pair to restore (default: newest on disk)'
+        required: false
+        default: ''
+
+concurrency:
+  # Shares the deploy job's group: a dry run must never overlap a real deploy
+  # (or a rollback) touching the same host.
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  restore-dry-run:
+    runs-on: [self-hosted, homelab]
+    timeout-minutes: 45
+    env:
+      BACKUP_DIR: /var/lib/temari-backups
+      LIVE_COMPOSE: docker compose -f compose.prod.yaml
+      LIVE_SERVICE: mysql
+      RESTORE_COMPOSE_FILE: deploy/restore-dry-run-compose.yml
+      RESTORE_PROJECT: temari-restore
+      RESTORE_SERVICE: mysql_restore
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Pick the backup pair
+        id: pick
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+
+          sha="${{ inputs.backup_sha }}"
+          if [ -n "$sha" ]; then
+            app="$BACKUP_DIR/pre-deploy-$sha.sql.gz"
+            [ -f "$app" ] || { echo "::error::no backup at $app"; exit 1; }
+          else
+            app=$(ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz 2>/dev/null | head -n1 || true)
+            [ -n "$app" ] || { echo "::error::no pre-deploy-*.sql.gz found in $BACKUP_DIR"; exit 1; }
+            sha=$(basename "$app" .sql.gz)
+            sha=${sha#pre-deploy-}
+          fi
+
+          analytics="$BACKUP_DIR/analytics-pre-deploy-$sha.sql.gz"
+          [ -f "$analytics" ] || { echo "::error::no matching analytics backup at $analytics"; exit 1; }
+
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+          echo "analytics=$analytics" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+          echo "Selected pair (sha $sha):"
+          ls -lh "$app" "$analytics"
+
+      - name: Bring up the throwaway MySQL
+        timeout-minutes: 5
+        run: docker compose -p "$RESTORE_PROJECT" -f "$RESTORE_COMPOSE_FILE" up -d --wait --wait-timeout 120 "$RESTORE_SERVICE"
+
+      - name: Restore the app dump into the throwaway
+        timeout-minutes: 10
+        env:
+          COMPOSE_FILE: deploy/restore-dry-run-compose.yml
+          MYSQL_SERVICE: mysql_restore
+          COMPOSE_PROJECT: temari-restore
+          RESTORE_DB_ASSUME_YES: '1'
+        run: ./scripts/restore-db.sh "${{ steps.pick.outputs.app }}"
+
+      - name: Restore the analytics dump into the throwaway
+        timeout-minutes: 10
+        env:
+          COMPOSE_FILE: deploy/restore-dry-run-compose.yml
+          MYSQL_SERVICE: mysql_restore
+          COMPOSE_PROJECT: temari-restore
+          RESTORE_DB_ASSUME_YES: '1'
+        run: ./scripts/restore-db.sh "${{ steps.pick.outputs.analytics }}"
+
+      # Read-only against the live mysql (SELECT COUNT / SHOW TABLES only, never
+      # a write) so this step is safe to run beside a live deploy even though
+      # concurrency already keeps them from overlapping.
+      - name: Verify the restore against live (read-only)
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+
+          sql() { # $1=compose cmd  $2=service  $3=query, against $DB_DATABASE
+            $1 exec -T "$2" sh -c "export MYSQL_PWD=\"\$DB_PASSWORD\"; mysql -h 127.0.0.1 -N -u\"\$DB_USERNAME\" \"\$DB_DATABASE\" -e \"$3\""
+          }
+
+          sql_analytics() { # same, against $DB_ANALYTICS_DATABASE
+            $1 exec -T "$2" sh -c "adb=\"\${DB_ANALYTICS_DATABASE:-temari_analytics}\"; export MYSQL_PWD=\"\$DB_PASSWORD\"; mysql -h 127.0.0.1 -N -u\"\$DB_USERNAME\" \"\$adb\" -e \"$3\""
+          }
+
+          fail=0
+
+          check_tables() { # $1=sql-fn  label
+            local fn="$1" label="$2"
+            local live_tables throwaway_tables missing
+            live_tables=$("$fn" "$LIVE_COMPOSE" "$LIVE_SERVICE" "SHOW TABLES" | sort)
+            throwaway_tables=$("$fn" "docker compose -p $RESTORE_PROJECT -f $RESTORE_COMPOSE_FILE" "$RESTORE_SERVICE" "SHOW TABLES" | sort)
+            missing=$(comm -23 <(printf '%s\n' "$live_tables") <(printf '%s\n' "$throwaway_tables"))
+            if [ -n "$missing" ]; then
+              echo "::error::$label — tables missing from the throwaway restore:"
+              printf '%s\n' "$missing"
+              fail=1
+            else
+              echo "$label — throwaway has every live table."
+            fi
+          }
+
+          check_counts() { # $1=sql-fn  $2=table
+            local fn="$1" table="$2" live_n throwaway_n
+            live_n=$("$fn" "$LIVE_COMPOSE" "$LIVE_SERVICE" "SELECT COUNT(*) FROM $table" 2>/dev/null || echo -1)
+            throwaway_n=$("$fn" "docker compose -p $RESTORE_PROJECT -f $RESTORE_COMPOSE_FILE" "$RESTORE_SERVICE" "SELECT COUNT(*) FROM $table" 2>/dev/null || echo -1)
+            printf '  %-20s live=%-10s throwaway=%-10s' "$table" "$live_n" "$throwaway_n"
+            if [ "$throwaway_n" -gt "$live_n" ] || { [ "$live_n" -gt 0 ] && [ "$throwaway_n" -eq 0 ]; }; then
+              echo "  FAIL"
+              fail=1
+            else
+              echo "  OK"
+            fi
+          }
+
+          echo "== default schema =="
+          check_tables sql "default"
+          for t in users activities ai_analyses planned_sessions; do
+            check_counts sql "$t"
+          done
+
+          echo "== analytics schema =="
+          check_tables sql_analytics "analytics"
+          check_counts sql_analytics ai_token_usages
+
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::restore dry-run FAILED verification"
+            exit 1
+          fi
+          echo "restore dry-run PASSED verification"
+
+      - name: Tear down the throwaway stack
+        if: always()
+        run: |
+          docker compose -p "$RESTORE_PROJECT" -f "$RESTORE_COMPOSE_FILE" down -v
+          {
+            echo "## Restore dry-run"
+            if [ "${{ job.status }}" = "success" ]; then
+              echo "PASS — sha \`${{ steps.pick.outputs.sha }}\` restored clean into a throwaway database and verified against live."
+            else
+              echo "FAIL — sha \`${{ steps.pick.outputs.sha }}\`, see the Verify step above."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
