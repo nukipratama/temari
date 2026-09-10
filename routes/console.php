@@ -217,3 +217,10 @@ Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->without
 // a streak this command might be about to restore. No LLM and no Strava call.
 Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer()
     ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE));
+
+// 18:00 daily (Asia/Jakarta, the app timezone): tell an athlete whose goal race
+// is tomorrow that it is tomorrow, while there is still an evening left to act
+// on it. Demo excluded (notDemo() on the race scan); the inbox row's unique
+// (user, dedupe key) pair makes a same-day re-run a no-op rather than a second
+// push. No LLM — the copy is templated.
+Schedule::command('race:remind')->dailyAt('18:00')->withoutOverlapping(15)->onOneServer();

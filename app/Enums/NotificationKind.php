@@ -18,6 +18,7 @@ enum NotificationKind: string
     case StreakReminder = 'streak_reminder';
     case PlanClamp = 'plan_clamp';
     case StravaDisconnected = 'strava_disconnected';
+    case RaceTomorrow = 'race_tomorrow';
     case Test = 'test';
 
     /** Null for an analysis type that never notifies. */

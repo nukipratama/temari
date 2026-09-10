@@ -41,6 +41,7 @@ const BILLING = [
     'strava:ingest' => 'whereHas(user, is_demo = false) on the stub drain',
     'strava:hydrate-backlog' => 'where(is_demo, false) on the user scan, and DetailHydrator refuses a demo run again per activity',
     'streak:remind' => 'where(is_demo, false) inside the command',
+    'race:remind' => 'notDemo() on the race scan inside the command',
     'plan:regenerate' => 'is_demo === false gates the plan-narration request only; the regenerate itself stays free and still runs for demo',
 ];
 
@@ -116,5 +117,6 @@ it('reads the demo exclusion straight out of each billing command source', funct
     'strava:sync-zones' => ['strava:sync-zones', 'app/Console/Commands/Strava/SyncZonesCommand.php'],
     'strava:ingest' => ['strava:ingest', 'app/Console/Commands/Strava/IngestCommand.php'],
     'streak:remind' => ['streak:remind', 'app/Console/Commands/Gamification/StreakRemindCommand.php'],
+    'race:remind' => ['race:remind', 'app/Console/Commands/Run/RaceRemindCommand.php'],
     'plan:regenerate' => ['plan:regenerate', 'app/Console/Commands/Run/RegeneratePlanCommand.php'],
 ]);
