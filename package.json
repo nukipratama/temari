@@ -55,7 +55,6 @@
         "@mapbox/polyline": "^1.2.1",
         "chart.js": "^4.5.1",
         "class-variance-authority": "0.7.1",
-        "framer-motion": "^12.38.0",
         "leaflet": "^1.9.4",
         "lucide-react": "^1.31.0",
         "react": "^19.2.6",

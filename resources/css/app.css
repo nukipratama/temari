@@ -27,8 +27,8 @@
 @theme static {
     /* Three families, each with one job: Fraunces italic for display/voice,
        Plus Jakarta Sans for prose/UI, JetBrains Mono for telemetry only
-       (numbers, stats, uppercase metadata labels). Loaded via Google Fonts
-       <link> in app.blade.php. */
+       (numbers, stats, uppercase metadata labels). Faces are self-hosted and
+       declared in fonts.css. */
     --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
     --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
@@ -382,7 +382,7 @@
 /* `-webkit-tap-highlight-color: transparent` drops the grey flash Safari
    paints over a tapped element — one of the loudest "this is a webview"
    tells. Safe only because tappables carry their own press feedback (the
-   `pressShrink` scale, see lib/motion.ts); do not remove that without
+   `.pressable` scale below); do not remove that without
    restoring a highlight here. */
 html {
     /* Tells the UA how to render what it owns — form controls, scrollbars,
@@ -543,7 +543,180 @@ body {
     animation: anchor-hit 1.6s ease-out forwards;
 }
 
+/* ─── Entrance / exit primitives ──────────────────────────────────────
+   `--reveal-delay` carries the stagger a group wants: set it per child from
+   the render index where the children are a list, literally where they are
+   spelled out. */
+@keyframes reveal-up {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+@keyframes reveal-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+.reveal {
+    animation: reveal-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--reveal-delay, 0s);
+}
+
+/* The same landing without the travel, for elements whose own box is smaller
+   than the 8px `.reveal` moves through. */
+.fade-in {
+    animation: reveal-fade 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--reveal-delay, 0s);
+}
+
+/* A dimmed backdrop and the panel that rides in over it. */
+@keyframes panel-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.96);
+    }
+}
+
+.panel-reveal {
+    animation: panel-reveal 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.backdrop-reveal {
+    animation: reveal-fade 0.3s both;
+}
+
+/* A popover anchored under its trigger. The horizontal centring lives in the
+   keyframes rather than in a utility class, since an animated transform
+   replaces one set in CSS. */
+@keyframes popover-reveal {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -4px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+}
+
+.popover-reveal {
+    animation: popover-reveal 0.15s ease both;
+}
+
+/* Leaving the way it arrived. A separate keyframe name per exit rather than
+   `animation-direction: reverse`: reversing an animation that has already
+   finished only re-resolves its fill state, so the element would blink out
+   instead of playing. `useExitTransition` holds `data-closing` on for the
+   matching window before unmounting. */
+@keyframes reveal-up-out {
+    to {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+@keyframes reveal-fade-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes panel-reveal-out {
+    to {
+        opacity: 0;
+        transform: translateY(8px) scale(0.96);
+    }
+}
+
+@keyframes popover-reveal-out {
+    from {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, -4px) scale(0.97);
+    }
+}
+
+.reveal[data-closing] {
+    animation-name: reveal-up-out;
+    animation-delay: 0s;
+}
+
+.fade-in[data-closing],
+.backdrop-reveal[data-closing] {
+    animation-name: reveal-fade-out;
+    animation-delay: 0s;
+}
+
+.panel-reveal[data-closing] {
+    animation-name: panel-reveal-out;
+}
+
+.popover-reveal[data-closing] {
+    animation-name: popover-reveal-out;
+}
+
+@keyframes pop-once {
+    0% {
+        transform: scale(1);
+    }
+    40% {
+        transform: scale(1.18);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.pop-once {
+    animation: pop-once 0.34s cubic-bezier(0.34, 1.1, 0.64, 1) both;
+}
+
+/* An SVG line traced rather than popped in. The element must carry
+   `pathLength="1"` so the dash lengths here are a fraction of the path. */
+@keyframes draw-in-path {
+    from {
+        stroke-dashoffset: 1;
+    }
+}
+
+.draw-in {
+    stroke-dasharray: 1;
+    animation:
+        draw-in-path 0.9s cubic-bezier(0.4, 0, 0.2, 1) both,
+        reveal-fade 0.3s both;
+    animation-delay: var(--reveal-delay, 0s);
+}
+
 @media (prefers-reduced-motion: reduce) {
+    /* Movement goes, the opacity change stays — the same split `.pressable`
+       makes. */
+    .reveal,
+    .panel-reveal,
+    .popover-reveal {
+        animation-name: reveal-fade;
+    }
+
+    .reveal[data-closing],
+    .panel-reveal[data-closing],
+    .popover-reveal[data-closing] {
+        animation-name: reveal-fade-out;
+    }
+
+    .pop-once {
+        animation: none;
+    }
+
+    .draw-in {
+        stroke-dasharray: none;
+        animation: none;
+    }
+
     /* No fade to watch, so the ring simply holds for the same window and is
        removed with the attribute. */
     [data-anchor-hit] {
@@ -559,7 +732,7 @@ body {
 
     /* useViewTransitions already declines to arm a transition under reduced
        motion, but a visit started before the setting changed is mid-flight by
-       then, and the UA's default cross-fade is not covered by MotionConfig. */
+       then, and the UA's default cross-fade is nobody else's to gate. */
     ::view-transition-group(*),
     ::view-transition-old(*),
     ::view-transition-new(*) {
@@ -675,13 +848,13 @@ body {
        it drops the ~300ms double-tap-zoom wait on controls while leaving
        double-tap zoom intact on content, which a global rule would kill.
        `motion-safe:` keeps the scale out of reduced-motion, matching the
-       app-wide <MotionConfig reducedMotion="user">.
+       entrance primitives above.
 
        The opacity dip is deliberately NOT motion-safe: it is a brightness
        change rather than movement, so it is the one press confirmation a
        reduced-motion user can still receive once the scale is stripped. The
-       release curve overshoots slightly (the LIVELY_EASE from lib/motion.ts)
-       so the control springs back instead of gliding. */
+       release curve overshoots slightly so the control springs back instead
+       of gliding. */
     .pressable {
         @apply touch-manipulation transition-opacity duration-100 active:opacity-70 motion-safe:transition-[transform,opacity] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.34,1.1,0.64,1)] motion-safe:active:scale-[0.97];
     }

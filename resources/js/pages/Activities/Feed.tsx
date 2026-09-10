@@ -1,5 +1,4 @@
 import { Deferred, Head, Link, usePage } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 
 import type {
@@ -24,7 +23,7 @@ import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
-import { fadeInUp, staggerContainer } from '@/lib/motion';
+import { revealDelay } from '@/lib/styles';
 
 import {
     groupByWeek,
@@ -99,11 +98,8 @@ export default function RunsIndex({
                 >
                     {() =>
                         hasRuns ? (
-                            <motion.div
+                            <div
                                 key={weekFilter ?? 'all'}
-                                initial="hidden"
-                                animate="visible"
-                                variants={staggerContainer}
                                 className="mt-8 space-y-8"
                             >
                                 {rangeAutoWidened && (
@@ -111,10 +107,11 @@ export default function RunsIndex({
                                         rangeFilter={rangeFilter}
                                     />
                                 )}
-                                {buckets.map((bucket) => (
-                                    <motion.div
+                                {buckets.map((bucket, index) => (
+                                    <div
                                         key={bucket.weekStart}
-                                        variants={fadeInUp}
+                                        className="reveal"
+                                        style={revealDelay(index)}
                                     >
                                         <WeekSection
                                             bucket={bucket}
@@ -126,12 +123,12 @@ export default function RunsIndex({
                                             notes={notes}
                                             moods={moods}
                                         />
-                                    </motion.div>
+                                    </div>
                                 ))}
                                 {hasOlderWeeks && (
                                     <LoadOlderWeeks weeksShown={weeksShown} />
                                 )}
-                            </motion.div>
+                            </div>
                         ) : (
                             <EmptyState />
                         )

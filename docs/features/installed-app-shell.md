@@ -309,9 +309,9 @@ shell immediately: between an instant shell and a cross-faded swap there is no
 gap left for a bar to fill, so it only ever flashed. It is deleted, along with
 its motion variants, and Inertia's built-in bar stays off.
 
-Reduced motion is honoured twice over, because `MotionConfig reducedMotion="user"`
-covers framer-motion and not the UA's own cross-fade: the hook reads the media
-query **at event time** rather than on mount, so a mid-session change applies to
+Reduced motion is honoured twice over, because the UA's own cross-fade is
+nobody else's to gate: the hook reads the media query **at event time** rather
+than on mount, so a mid-session change applies to
 the next tap, and `app.css` additionally kills
 `::view-transition-old/new/group` animations under `prefers-reduced-motion`. The
 duration is set to 180ms — quicker than the UA default, since this replaces a

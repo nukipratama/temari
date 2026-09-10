@@ -56,7 +56,7 @@ Only the icon and its state are on the first-paint path. The sheet and the form 
 
 ## The sheet
 
-[Sheet](../../resources/js/components/ui/Sheet.tsx) is a bottom sheet on Base UI's Dialog, which already owns the focus trap, the body scroll lock and the escape/outside-press dismissals. What sits on top of it is CSS and pointer events only: the slide-up is a `transition-transform` keyed off Base UI's own `data-starting-style` / `data-ending-style`, and swipe-to-dismiss is `pointerdown`/`move`/`up` on the grab bar against a `SWIPE_DISMISS_PX` threshold. No motion or gesture library — the sheet has to work from the bare layout, whose entry chunk is framer-motion-free and guarded as such in CI.
+[Sheet](../../resources/js/components/ui/Sheet.tsx) is a bottom sheet on Base UI's Dialog, which already owns the focus trap, the body scroll lock and the escape/outside-press dismissals. What sits on top of it is CSS and pointer events only: the slide-up is a `transition-transform` keyed off Base UI's own `data-starting-style` / `data-ending-style`, and swipe-to-dismiss is `pointerdown`/`move`/`up` on the grab bar against a `SWIPE_DISMISS_PX` threshold. No gesture library — and no animation library anywhere in the app any more, the sheet's `data-starting-style` transition being the pattern the rest of the entrances were rebuilt on.
 
 ## Knowing it is already flagged
 

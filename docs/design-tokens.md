@@ -76,6 +76,29 @@ Vite fingerprints the `.woff2` into `/build/assets`, which
 italic, since Plus Jakarta Sans and JetBrains Mono are only ever used upright. The files come
 from the pinned `@fontsource-variable/*` packages rather than being committed as binaries.
 
+**The faces ship whole, and that is a decision, not an oversight.** Fraunces italic is 81.5 kB —
+the largest single asset on Home, where it sets exactly one line of text — and a first paint there
+pulls 149.3 kB of font in total. Three ways to cut that were measured against the built output:
+
+| what | italic | upright | visible change |
+|---|---|---|---|
+| ship as-is | 81.5 kB | 67.3 kB | — |
+| glyph-subset to the latin range fonts.css declares | 80.8 kB | — | none, and no saving: the fontsource latin subset is already that tight |
+| drop the `opsz` axis (fontsource's `wght`-only file) | 45.7 kB | 36.6 kB | **yes** — every headline would render Fraunces' 14pt design, and the app sets it from 17 to 52px |
+| instance the axes to the *declared* type scale (`wght` 400–800, `opsz` 12–96) | 75.8 kB | 62.6 kB | none |
+| instance the axes to the sizes actually rendered today (`opsz` 16–56 italic, 14–32 upright) | 65.9 kB | 49.4 kB | none today; a headline at a larger token would silently lose optical sizing |
+
+Only the last two are honest options, and the safe one saves ~7%: 11.2 kB across two faces, 5.7 kB
+of it on Home's critical path. That does not pay for a font-subsetting build step, a wasm
+dependency and a generated asset that can drift from the pinned package — and the 20–27% version
+buys its extra bytes by making the type scale unsafe to extend. So the faces stay whole. If font
+bytes ever become the binding constraint, the tight instancing is the lever, and it needs a guard
+that fails the build when a `font-serif` element renders outside the instanced `opsz` range.
+
+`font-display: swap` on every face means none of this blocks first paint: the headline renders in
+Georgia and swaps when Fraunces lands. Sizes and weights in use were measured across 11 routes at
+four viewport widths — italic `wght` 400–600 at 17–52px, upright `wght` 400–700 at 16–28px.
+
 This replaced a Google Fonts `<link>`, which put a third-party origin in the critical path of a
 cold standalone launch — after the splash had already shown, on a connection the app has no say
 over. The error pages ([errors/layout.blade.php](../resources/views/errors/layout.blade.php))
@@ -305,38 +328,41 @@ carries the resting step.
 
 ## Motion
 
-Three tiers, built from `framer-motion` variants in
-[lib/motion.ts](../resources/js/lib/motion.ts) (declarative-only: `Variants` / `Transition`
-constants, no functions or branches) plus the `.pressable` CSS primitive below. Every tier sits
-inside the app-wide `<MotionConfig reducedMotion="user">`
-([AppShell.tsx](../resources/js/layouts/AppShell.tsx)): a transform property (scale, x/y, rotate)
-reduces to an instant snap under the user's OS reduced-motion setting, while `opacity` keeps
-animating — the one cue a reduced-motion user still gets.
-`MotionConfig` only reaches motion *components*, so anything animating imperatively — the
-stat count-ups ([useCountUp.ts](../resources/js/hooks/useCountUp.ts)), the SVG glyph draw-ins,
-the confetti burst — reads the same preference itself through
-[useReducedMotion](../resources/js/hooks/useReducedMotion.ts) and snaps to its end state.
+Three tiers, built from CSS keyframes in [app.css](../resources/css/app.css) plus the
+`.pressable` primitive below. There is no animation library: `framer-motion` came out entirely
+once it was measured, because the shell rendered it — a `MotionConfig` provider, the bottom nav's
+tab pop, every `PageContainer` entrance — and so every authenticated page paid ~43 KB gzipped for
+animations CSS already expresses. Reduced motion is honoured per primitive rather than by a provider: a
+`prefers-reduced-motion` block swaps each movement keyframe for its opacity-only twin, so a
+transform drops out while the fade survives — the one cue a reduced-motion user still gets.
+Anything animating imperatively — the stat count-ups
+([useCountUp.ts](../resources/js/hooks/useCountUp.ts)), the confetti burst — reads the same
+preference through [useReducedMotion](../resources/js/hooks/useReducedMotion.ts) and snaps to its
+end state.
 
 1. **Global / subtle** — press feedback and route transitions; present everywhere, never opt-in.
-   `pressShrink` (scale 0.97 + 70% opacity dip, 150ms) is the one convention
-   [MotionLink](../resources/js/components/MotionLink.tsx) (default `whileTap`), `.pressable`
-   (its CSS `active:` state) and [button](../resources/js/components/ui/button.tsx) all implement,
-   so a framer-driven link, a nav item and a plain button feel identical under the thumb. Button
-   used to press with a 1px translate instead, which is why it did not. The one exception is a
-   control with `aria-haspopup`: it keeps `touch-manipulation` and gives up the movement, since the
-   popup it opens is anchored to it.
+   `.pressable` (scale 0.97 + 70% opacity dip, 150ms) is the one convention every tappable and
+   [button](../resources/js/components/ui/button.tsx) implement, so a link, a nav item and a plain
+   button feel identical under the thumb. Button used to press with a 1px translate instead, which
+   is why it did not. The one exception is a control with `aria-haspopup`: it keeps
+   `touch-manipulation` and gives up the movement, since the popup it opens is anchored to it.
    Route transitions carry no tokens at all any more: the swap cross-fades through the
    **View Transitions API** (the browser's own animation, tuned only by a 180ms duration in
    `app.css`), and the progress bar it replaced is gone — see [[installed-app-shell]].
 2. **Data reveal** — a page's first showing of real data, not every render. Stat count-ups
-   (`useCountUp` + `countUpEase`, an ease-out curve with no overshoot — a tallying number should
-   land exactly on target), chart/route draw-ins (`drawIn`, SVG `pathLength` 0→1), and staggered
-   group reveals (`staggerContainer` wrapping `fadeInUp` children).
-3. **Celebratory** — the `idleByMood` / fidget keyframes in `lib/motion.ts`. Reserved for moments
-   that are actually earned — never layer tier 3 onto routine navigation or data loading. Nothing
-   uses this tier now: the overlays it was written for (the card reveal, the unlock toast and the
-   accessory takeover) were cut in `PP3`, and the mascot those keyframes animated in `PP2`. The
-   constants are left for `W2` to sweep.
+   (`useCountUp`, an ease-out curve with no overshoot — a tallying number should land exactly on
+   target), route draw-ins (`.draw-in`, SVG `pathLength` 1 with an animated `stroke-dashoffset`),
+   and staggered group reveals (`.reveal` children each carrying their own `--reveal-delay`, fed by
+   [`revealDelay`](../resources/js/lib/styles.ts)). `.fade-in` is the same landing without the
+   travel, for an element whose own box is smaller than the 8px `.reveal` moves through.
+   A popover, a notice or a modal panel that has to leave the way it arrived pairs its entrance
+   class with `data-closing` and
+   [useExitTransition](../resources/js/hooks/useExitTransition.ts), which holds the element mounted
+   for one exit window and reverses the same keyframe.
+3. **Celebratory** — reserved for moments that are actually earned; never layered onto routine
+   navigation or data loading. Nothing uses this tier: the overlays it was written for (the card
+   reveal, the unlock toast and the accessory takeover) were cut in `PP3`, and the mascot whose
+   fidget keyframes defined it in `PP2`.
 
 ## Gradients & atmospherics
 

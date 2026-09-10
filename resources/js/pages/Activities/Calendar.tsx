@@ -1,5 +1,4 @@
 import { Deferred, Head, Link } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
@@ -13,7 +12,6 @@ import Skeleton, { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { MOOD_FILL, MOOD_LABEL, MOOD_ORDER } from '@/lib/mood';
-import { fadeInUp } from '@/lib/motion';
 
 import { useCalendar, type CalendarCell } from './useCalendar';
 import { snapshotsByWeekEnding } from './weekBuckets';
@@ -140,12 +138,7 @@ export default function Calendar({
                     fallback={<SkeletonRows count={6} />}
                 >
                     {() => (
-                        <motion.div
-                            key={month}
-                            initial="hidden"
-                            animate="visible"
-                            variants={fadeInUp}
-                        >
+                        <div key={month} className="reveal">
                             {weeks.map((week) => (
                                 <CalendarWeekRow
                                     key={week.weekStart}
@@ -156,7 +149,7 @@ export default function Calendar({
                                     }
                                 />
                             ))}
-                        </motion.div>
+                        </div>
                     )}
                 </Deferred>
             </PageContainer>

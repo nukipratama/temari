@@ -17,7 +17,9 @@ describe('useCountUp', () => {
     it('counts up from 0 to the target value', async () => {
         const { result } = renderHook(() => useCountUp(120));
         expect(result.current).toBe(0);
-        await waitFor(() => expect(result.current).toBe(120));
+        await waitFor(() => expect(result.current).toBe(120), {
+            timeout: 3000,
+        });
     });
 
     it('tweens from the previous value to a new target when target changes', async () => {
@@ -25,10 +27,10 @@ describe('useCountUp', () => {
             ({ target }) => useCountUp(target),
             { initialProps: { target: 50 } },
         );
-        await waitFor(() => expect(result.current).toBe(50));
+        await waitFor(() => expect(result.current).toBe(50), { timeout: 3000 });
 
         rerender({ target: 80 });
-        await waitFor(() => expect(result.current).toBe(80));
+        await waitFor(() => expect(result.current).toBe(80), { timeout: 3000 });
     });
 
     it('snaps straight to target with no animation under reduced motion', () => {

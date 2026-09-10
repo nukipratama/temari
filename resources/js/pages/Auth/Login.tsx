@@ -11,8 +11,8 @@ import { Icon } from '@/components/ui/Icon';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
 
-// Lazy: RunCardMini's rarity-chrome glyphs statically import framer-motion,
-// which this route's entry-chunk budget must stay clear of.
+// Lazy: the card and its rarity chrome are the heaviest thing on this route
+// and sit below the fold, so they stay out of its entry-chunk budget.
 const RunCardMini = lazy(() => import('@/components/card/RunCardMini'));
 
 interface CopyBlock {

@@ -1,4 +1,3 @@
-import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
@@ -203,195 +202,182 @@ export default function ShareCardModal({
     };
 
     return (
-        <AnimatePresence>
-            <motion.div
-                key="share-backdrop"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[51] flex items-center justify-center p-4"
-                style={{
-                    background: 'rgba(0,0,0,0.5)',
-                    backdropFilter: 'blur(6px)',
-                }}
+        <div
+            className="backdrop-reveal fixed inset-0 z-[51] flex items-center justify-center p-4"
+            style={{
+                background: 'rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(6px)',
+            }}
+        >
+            <div
+                ref={panelRef}
+                role="dialog"
+                aria-modal="true"
+                className="panel-reveal flex w-full max-w-md flex-col overflow-hidden rounded-xl bg-card shadow-e4"
+                style={{ maxHeight: '92dvh' }}
             >
-                <motion.div
-                    key="share-panel"
-                    ref={panelRef}
-                    role="dialog"
-                    aria-modal="true"
-                    initial={{ opacity: 0, scale: 0.96, y: 8 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.96, y: 8 }}
-                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    className="flex w-full max-w-md flex-col overflow-hidden rounded-xl bg-card shadow-e4"
-                    style={{ maxHeight: '92dvh' }}
-                >
-                    {/* Header — pinned. */}
-                    <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            aria-label="Close"
-                            className={iconButtonVariants({ size: 'sm' })}
-                        >
-                            <Icon icon="mdi:close" width={16} height={16} />
-                        </button>
-                        <div className="flex-1 text-center">
-                            <div className="text-label-micro text-text-2">
-                                Share card
-                            </div>
-                            <div className="font-serif text-xl tracking-tight text-foreground">
-                                {card.name}
-                            </div>
+                {/* Header — pinned. */}
+                <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Close"
+                        className={iconButtonVariants({ size: 'sm' })}
+                    >
+                        <Icon icon="mdi:close" width={16} height={16} />
+                    </button>
+                    <div className="flex-1 text-center">
+                        <div className="text-label-micro text-text-2">
+                            Share card
                         </div>
-                        <div className="w-8" />
+                        <div className="font-serif text-xl tracking-tight text-foreground">
+                            {card.name}
+                        </div>
                     </div>
+                    <div className="w-8" />
+                </div>
 
-                    {/* Body — preview + pickers, scrolls on short screens. */}
-                    <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto bg-muted px-5 py-5">
-                        {/* Preview canvas — fixed internal resolution, bounded by HEIGHT so
+                {/* Body — preview + pickers, scrolls on short screens. */}
+                <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto bg-muted px-5 py-5">
+                    {/* Preview canvas — fixed internal resolution, bounded by HEIGHT so
                             a tall 9:16 story scales to fit instead of being forced to the
                             column width. Width derives from the canvas's intrinsic ratio, so
                             the bitmap is never distorted. This canvas IS the exported image. */}
-                        <canvas
-                            ref={canvasRef}
-                            width={1080}
-                            height={format === 'story' ? 1920 : 1080}
-                            aria-label={`Preview of ${card.name}`}
-                            className="block rounded-lg"
-                            style={{ maxWidth: '100%', maxHeight: '52vh' }}
-                        />
+                    <canvas
+                        ref={canvasRef}
+                        width={1080}
+                        height={format === 'story' ? 1920 : 1080}
+                        aria-label={`Preview of ${card.name}`}
+                        className="block rounded-lg"
+                        style={{ maxWidth: '100%', maxHeight: '52vh' }}
+                    />
 
-                        {/* Format picker */}
-                        <div className="grid w-full grid-cols-2 gap-2">
-                            {(['story', 'feed'] as Format[]).map((f) => (
-                                <button
-                                    key={f}
-                                    type="button"
-                                    onClick={() => setFormat(f)}
-                                    aria-pressed={format === f}
-                                    className={cn(
-                                        'focus-ring flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-medium transition',
-                                        format === f
-                                            ? 'border-2 border-border-strong bg-card font-semibold text-foreground'
-                                            : 'border-2 border-transparent bg-card text-text-2 hover:border-border',
-                                    )}
-                                >
-                                    <span
-                                        aria-hidden
-                                        className={cn(
-                                            'rounded-sm bg-sky/25',
-                                            f === 'story'
-                                                ? 'h-6 w-3.5'
-                                                : 'h-5 w-5',
-                                        )}
-                                    />
-                                    {f === 'story'
-                                        ? 'portrait · 9:16'
-                                        : 'square · 1:1'}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Style — template picker. Hidden only if a single layout remains
-                            to choose from (e.g. Route needs a polyline the run doesn't have). */}
-                        {availableLayouts.length > 1 && (
-                            <div className="flex w-full gap-2">
-                                {availableLayouts.map((l) => (
-                                    <button
-                                        key={l}
-                                        type="button"
-                                        onClick={() => setLayout(l)}
-                                        aria-pressed={effectiveLayout === l}
-                                        className={cn(
-                                            toggleButtonVariants({
-                                                selected: effectiveLayout === l,
-                                                size: 'md',
-                                            }),
-                                            'flex-1',
-                                        )}
-                                    >
-                                        {LAYOUT_LABELS[l]}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Colorway — swatch picker. Always 3 choices; unlike the
-                            template picker, colorway never depends on run data. */}
-                        <div className="flex w-full items-center justify-center gap-3">
-                            {COLORWAYS_LIST.map((c) => (
-                                <button
-                                    key={c}
-                                    type="button"
-                                    onClick={() => setColorway(c)}
-                                    aria-pressed={colorway === c}
-                                    aria-label={`Colorway: ${COLORWAY_LABELS[c]}`}
-                                    className={cn(
-                                        'focus-ring h-9 w-9 rounded-full border-2 transition',
-                                        colorway === c
-                                            ? 'border-foreground'
-                                            : 'border-transparent hover:border-foreground/40',
-                                    )}
-                                >
-                                    <span
-                                        aria-hidden
-                                        className="block h-full w-full rounded-full border border-black/10"
-                                        style={{
-                                            background: COLORWAYS[c].surface,
-                                        }}
-                                    />
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* CTAs — pinned footer. */}
-                    <div className="flex flex-col gap-2 border-t border-border bg-card px-5 py-4">
-                        <PillButton
-                            tone="sky"
-                            onClick={handleShare}
-                            className="w-full justify-center py-3.5 font-semibold"
-                        >
-                            <Icon
-                                icon="mdi:share-variant"
-                                width={16}
-                                height={16}
-                                aria-hidden
-                            />
-                            Share
-                        </PillButton>
-                        <PillButton
-                            tone="ghost"
-                            onClick={handleCopy}
-                            className="w-full justify-center"
-                        >
-                            <Icon
-                                icon="mdi:content-copy"
-                                width={16}
-                                height={16}
-                                aria-hidden
-                            />
-                            Copy image
-                        </PillButton>
-                        {status !== null && (
-                            <p
-                                role="status"
-                                aria-live="polite"
+                    {/* Format picker */}
+                    <div className="grid w-full grid-cols-2 gap-2">
+                        {(['story', 'feed'] as Format[]).map((f) => (
+                            <button
+                                key={f}
+                                type="button"
+                                onClick={() => setFormat(f)}
+                                aria-pressed={format === f}
                                 className={cn(
-                                    'text-center font-sans text-xs',
-                                    status.tone === 'ok'
-                                        ? 'text-leaf-ink'
-                                        : 'text-ember-ink',
+                                    'focus-ring flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-medium transition',
+                                    format === f
+                                        ? 'border-2 border-border-strong bg-card font-semibold text-foreground'
+                                        : 'border-2 border-transparent bg-card text-text-2 hover:border-border',
                                 )}
                             >
-                                {status.text}
-                            </p>
-                        )}
+                                <span
+                                    aria-hidden
+                                    className={cn(
+                                        'rounded-sm bg-sky/25',
+                                        f === 'story' ? 'h-6 w-3.5' : 'h-5 w-5',
+                                    )}
+                                />
+                                {f === 'story'
+                                    ? 'portrait · 9:16'
+                                    : 'square · 1:1'}
+                            </button>
+                        ))}
                     </div>
-                </motion.div>
-            </motion.div>
-        </AnimatePresence>
+
+                    {/* Style — template picker. Hidden only if a single layout remains
+                            to choose from (e.g. Route needs a polyline the run doesn't have). */}
+                    {availableLayouts.length > 1 && (
+                        <div className="flex w-full gap-2">
+                            {availableLayouts.map((l) => (
+                                <button
+                                    key={l}
+                                    type="button"
+                                    onClick={() => setLayout(l)}
+                                    aria-pressed={effectiveLayout === l}
+                                    className={cn(
+                                        toggleButtonVariants({
+                                            selected: effectiveLayout === l,
+                                            size: 'md',
+                                        }),
+                                        'flex-1',
+                                    )}
+                                >
+                                    {LAYOUT_LABELS[l]}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Colorway — swatch picker. Always 3 choices; unlike the
+                            template picker, colorway never depends on run data. */}
+                    <div className="flex w-full items-center justify-center gap-3">
+                        {COLORWAYS_LIST.map((c) => (
+                            <button
+                                key={c}
+                                type="button"
+                                onClick={() => setColorway(c)}
+                                aria-pressed={colorway === c}
+                                aria-label={`Colorway: ${COLORWAY_LABELS[c]}`}
+                                className={cn(
+                                    'focus-ring h-9 w-9 rounded-full border-2 transition',
+                                    colorway === c
+                                        ? 'border-foreground'
+                                        : 'border-transparent hover:border-foreground/40',
+                                )}
+                            >
+                                <span
+                                    aria-hidden
+                                    className="block h-full w-full rounded-full border border-black/10"
+                                    style={{
+                                        background: COLORWAYS[c].surface,
+                                    }}
+                                />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* CTAs — pinned footer. */}
+                <div className="flex flex-col gap-2 border-t border-border bg-card px-5 py-4">
+                    <PillButton
+                        tone="sky"
+                        onClick={handleShare}
+                        className="w-full justify-center py-3.5 font-semibold"
+                    >
+                        <Icon
+                            icon="mdi:share-variant"
+                            width={16}
+                            height={16}
+                            aria-hidden
+                        />
+                        Share
+                    </PillButton>
+                    <PillButton
+                        tone="ghost"
+                        onClick={handleCopy}
+                        className="w-full justify-center"
+                    >
+                        <Icon
+                            icon="mdi:content-copy"
+                            width={16}
+                            height={16}
+                            aria-hidden
+                        />
+                        Copy image
+                    </PillButton>
+                    {status !== null && (
+                        <p
+                            role="status"
+                            aria-live="polite"
+                            className={cn(
+                                'text-center font-sans text-xs',
+                                status.tone === 'ok'
+                                    ? 'text-leaf-ink'
+                                    : 'text-ember-ink',
+                            )}
+                        >
+                            {status.text}
+                        </p>
+                    )}
+                </div>
+            </div>
+        </div>
     );
 }

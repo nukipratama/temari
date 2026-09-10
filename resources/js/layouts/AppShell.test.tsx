@@ -1,47 +1,13 @@
-import type { MotionConfigProps } from 'framer-motion';
-
 import { render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
 import AppShell from './AppShell';
 
-// Spy on MotionConfig so we can assert the app tree is wrapped in it with
-// reducedMotion="user" (it renders no DOM of its own, so we can't query it).
-const motionConfigSpy = vi.fn();
-vi.mock('framer-motion', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('framer-motion')>();
-    return {
-        ...actual,
-        MotionConfig: (props: MotionConfigProps) => {
-            motionConfigSpy(props.reducedMotion);
-            return actual.MotionConfig(props);
-        },
-    };
-});
-
 const andiUser = { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null };
 
 describe('AppShell', () => {
-    afterEach(() => {
-        motionConfigSpy.mockClear();
-    });
-
-    it('wraps the app tree in MotionConfig reducedMotion="user"', () => {
-        setMockPage({
-            auth: { user: andiUser },
-            flash: {},
-            demoLoginEnabled: false,
-        });
-        render(
-            <AppShell>
-                <p>x</p>
-            </AppShell>,
-        );
-        expect(motionConfigSpy).toHaveBeenCalledWith('user');
-    });
-
     it('insets the whole shell past a landscape notch', () => {
         setMockPage({
             auth: { user: andiUser },

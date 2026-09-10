@@ -88,6 +88,10 @@ describe('MobileBottomNav', () => {
     it('scrolls to top instead of navigating when the active tab is tapped', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn(() => ({ matches: false })),
+        );
         setMockPage({}, '/history', 'History');
         render(<MobileBottomNav />);
 

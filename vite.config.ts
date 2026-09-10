@@ -54,12 +54,6 @@ export default defineConfig({
                             priority: 10,
                         },
                         {
-                            name: 'motion',
-                            test: (id) =>
-                                id.includes('node_modules/framer-motion'),
-                            priority: 10,
-                        },
-                        {
                             name: 'base-ui',
                             test: (id) =>
                                 id.includes('node_modules/@base-ui') ||

@@ -33,17 +33,11 @@ const EXEMPT = new Set<string>([
  *     (acronym/label/body strings). No functions, no branches.
  *   - lib/tones.ts          — a `Record<Tone, string>` of icon-tile class names.
  *     No functions, no branches.
- *   - lib/motion.ts         — declarative Framer Motion `Variants` / fidget
- *     keyframe constants. No functions, no branches.
  *
  * A NEW logic-bearing `.ts` not listed here must ship with a sibling test, or
  * this fails. Do NOT add a module here to dodge writing a test for real logic.
  */
-const TS_EXEMPT = new Set<string>([
-    'lib/metricGlossary.ts',
-    'lib/tones.ts',
-    'lib/motion.ts',
-]);
+const TS_EXEMPT = new Set<string>(['lib/metricGlossary.ts', 'lib/tones.ts']);
 
 function normalize(globKeys: string[]): string[] {
     return globKeys.map((p) => p.replace(/^\.\.\//, ''));

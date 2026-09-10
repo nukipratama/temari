@@ -1,8 +1,8 @@
+import { Link } from '@inertiajs/react';
 import { memo } from 'react';
 
 import type { ActivityDetail, Mood, RunCard } from '@/types/inertia';
 
-import MotionLink from '@/components/MotionLink';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { MOOD_FILL } from '@/lib/mood';
@@ -48,9 +48,9 @@ function RunListRow({
     const startTime = formatNaiveTimeId(detail.start_date_local);
 
     return (
-        <MotionLink
+        <Link
             href={activityUrl(detail)}
-            className="block border-b border-border-strong p-3.5 text-sm transition last:border-b-0 hover:bg-background"
+            className="pressable block border-b border-border-strong p-3.5 text-sm transition last:border-b-0 hover:bg-background"
         >
             <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-1.5">
@@ -105,7 +105,7 @@ function RunListRow({
                     &quot;{renderBold(note.oneline)}&quot;
                 </p>
             )}
-        </MotionLink>
+        </Link>
     );
 }
 

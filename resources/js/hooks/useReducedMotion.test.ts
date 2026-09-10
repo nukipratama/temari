@@ -3,28 +3,44 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { useReducedMotion } from './useReducedMotion';
 
-vi.mock('framer-motion', () => ({
-    useReducedMotion: vi.fn(),
-}));
-
-import { useReducedMotion as useFmReducedMotion } from 'framer-motion';
+function stubMatchMedia(matches: boolean) {
+    vi.stubGlobal(
+        'matchMedia',
+        vi.fn(() => ({
+            matches,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+        })),
+    );
+}
 
 describe('useReducedMotion', () => {
-    it('returns true when FM hook reports user prefers reduced motion', () => {
-        vi.mocked(useFmReducedMotion).mockReturnValue(true);
+    it('returns true when the user prefers reduced motion', () => {
+        stubMatchMedia(true);
         const { result } = renderHook(() => useReducedMotion());
         expect(result.current).toBe(true);
     });
 
-    it('returns false when FM hook reports user prefers normal motion', () => {
-        vi.mocked(useFmReducedMotion).mockReturnValue(false);
+    it('returns false when the user prefers normal motion', () => {
+        stubMatchMedia(false);
         const { result } = renderHook(() => useReducedMotion());
         expect(result.current).toBe(false);
     });
 
-    it('returns false when FM hook returns null (SSR / pre-mount)', () => {
-        vi.mocked(useFmReducedMotion).mockReturnValue(null);
-        const { result } = renderHook(() => useReducedMotion());
-        expect(result.current).toBe(false);
+    it('subscribes to the query so a mid-session change is picked up', () => {
+        const addEventListener = vi.fn();
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn(() => ({
+                matches: false,
+                addEventListener,
+                removeEventListener: vi.fn(),
+            })),
+        );
+        renderHook(() => useReducedMotion());
+        expect(addEventListener).toHaveBeenCalledWith(
+            'change',
+            expect.any(Function),
+        );
     });
 });
