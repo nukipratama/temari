@@ -158,7 +158,7 @@ export default function AnalysisStatus({
         const generatedAt = analysis.generated_at ?? null;
         const staleZones = hasStaleZones(
             analysis.is_zone_dependent,
-            analysis.generated_at,
+            generatedAt,
             hrZonesChangedAt,
         );
         return (
