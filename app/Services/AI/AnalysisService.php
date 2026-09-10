@@ -11,6 +11,7 @@ use App\Jobs\AI\AnalyzeGroupJob;
 use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Models\AI\AnalysisVersion;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Notifications\AnalysisReadyNotification;
@@ -52,6 +53,7 @@ class AnalysisService
         private readonly ChainResolver $chains,
         private readonly CostCeilingLedger $ceilingLedger,
         private readonly NarrationOrigin $origin,
+        private readonly CeilingOverride $ceilingOverride,
     ) {
     }
 
@@ -219,12 +221,20 @@ class AnalysisService
         ]);
     }
 
-    public function markDone(Analysis $row, string $content, ?Carbon $generatedAt = null, ?string $fingerprint = null): void
-    {
+    public function markDone(
+        Analysis $row,
+        string $content,
+        ?Carbon $generatedAt = null,
+        ?string $fingerprint = null,
+        ServedBy $servedBy = ServedBy::Llm,
+    ): void {
+        $this->archivePreviousVersion($row);
+
         $row->update([
             'status' => AnalysisStatus::Done,
             'content' => $content,
             'error' => null,
+            'served_by' => $servedBy,
             'generated_at' => $generatedAt ?? Carbon::now(),
             // Only per-run activity groups pass a fingerprint; write the existing
             // value back for other narration types (they don't drive a resync
@@ -254,6 +264,26 @@ class AnalysisService
                 new AnalysisReadyNotification($row)->afterCommit(),
             );
         }
+    }
+
+    /**
+     * Keep the narration this row is about to lose. A row with no content has
+     * never been narrated, so there is nothing to supersede and no version is
+     * written.
+     */
+    private function archivePreviousVersion(Analysis $row): void
+    {
+        if ($row->content === null) {
+            return;
+        }
+
+        AnalysisVersion::query()->create([
+            'analysis_id' => $row->id,
+            'content' => $row->content,
+            'fingerprint' => $row->content_fingerprint,
+            'served_by' => $row->served_by,
+            'generated_at' => $row->generated_at,
+        ]);
     }
 
     public function markFailed(Analysis $row, string $error): void
@@ -761,7 +791,11 @@ class AnalysisService
     private function fillRuleBased(Analysis $row): void
     {
         $this->withoutDispatching(function () use ($row): void {
-            $this->markDone($row, app(RuleBasedNarrationFiller::class)->fillFor($row));
+            $this->markDone(
+                $row,
+                app(RuleBasedNarrationFiller::class)->fillFor($row),
+                servedBy: ServedBy::RuleBased,
+            );
         });
     }
 
@@ -770,55 +804,96 @@ class AnalysisService
      * app-wide total, which gates everyone including a caller with no athlete in
      * hand (the /pulse status line, ai:self-heal), or this athlete's own slice
      * underneath it. A ceiling left null never gates.
+     *
+     * A replay swaps the athlete's slice for its own app-wide cap
+     * ({@see self::replayCapExceeded()}); the total still gates it.
      */
     private function dailyCostCeilingExceeded(?int $userId = null): bool
     {
-        if ($this->ceilingExceeded('total', 'azure_openai.daily_cost_ceiling_total', null, appWide: true)) {
+        if ($this->ceilingExceeded('total', self::configCeiling('azure_openai.daily_cost_ceiling_total'), null, appWide: true)) {
             return true;
+        }
+
+        if ($this->origin->current() === AnalysisOrigin::Replay) {
+            return $this->replayCapExceeded();
         }
 
         // Memoized per athlete, prefixed so the key stays a string: PHP silently
         // casts a numeric string array key to an int, which the declared shape
         // is not.
         return $userId !== null
-            && $this->ceilingExceeded('user:'.$userId, 'azure_openai.daily_cost_ceiling_per_user', $userId);
+            && $this->ceilingExceeded('user:'.$userId, $this->perUserCeiling($userId), $userId);
     }
 
     /**
-     * A configured ceiling with today's spend already past it, memoized under
-     * `$memoKey` for the life of the scope. Null ceiling means that ceiling never
-     * gates dispatch.
+     * This athlete's ceiling for today: an operator's today-only override when
+     * one is set, otherwise the configured slice.
+     */
+    private function perUserCeiling(int $userId): ?float
+    {
+        return $this->ceilingOverride->get($userId)
+            ?? self::configCeiling('azure_openai.daily_cost_ceiling_per_user');
+    }
+
+    /**
+     * Whether today's replay spend has reached its own cap. A replay is an
+     * operator's QA tool rather than an athlete's narration, so it is measured
+     * against this cap and the app-wide total, and deliberately never against
+     * the athlete's own slice — replaying their block must not cost them the
+     * budget their real narration needs. Refused *at* the cap rather than past
+     * it, unlike the two ceilings, since a replay is discretionary.
+     */
+    private function replayCapExceeded(): bool
+    {
+        $cap = self::configCeiling('azure_openai.replay_daily_cap');
+        if ($cap === null) {
+            return false;
+        }
+
+        return $this->costCalculator->dailyCost(origin: AnalysisOrigin::Replay) >= $cap;
+    }
+
+    private static function configCeiling(string $configKey): ?float
+    {
+        $ceiling = config($configKey);
+
+        return is_numeric($ceiling) ? (float) $ceiling : null;
+    }
+
+    /**
+     * A ceiling with today's spend already past it, memoized under `$memoKey`
+     * for the life of the scope. Null ceiling means that ceiling never gates
+     * dispatch.
      *
      * Both ceilings share this path so the per-athlete slice and the app-wide
      * total can never diverge in what "past the ceiling" does. `$appWide` marks
      * the total, whose trip is an incident worth a maintainer push rather than
      * one athlete's ordinary day.
      */
-    private function ceilingExceeded(string $memoKey, string $configKey, ?int $userId, bool $appWide = false): bool
+    private function ceilingExceeded(string $memoKey, ?float $ceiling, ?int $userId, bool $appWide = false): bool
     {
         if (isset($this->costCeilingMemo[$memoKey])) {
             return $this->costCeilingMemo[$memoKey];
         }
 
-        $ceiling = config($configKey);
         if ($ceiling === null) {
             return $this->costCeilingMemo[$memoKey] = false;
         }
 
         $todayCost = $this->costCalculator->dailyCost($userId);
-        if ($todayCost <= (float) $ceiling) {
+        if ($todayCost <= $ceiling) {
             return $this->costCeilingMemo[$memoKey] = false;
         }
 
         Log::warning('ai.daily_cost_ceiling_exceeded', [
             'today_cost' => $todayCost,
-            'ceiling' => (float) $ceiling,
+            'ceiling' => $ceiling,
             'user_id' => $userId,
         ]);
         $this->ceilingLedger->recordTrip();
 
         if ($appWide) {
-            $this->alerter->totalCeilingReached($todayCost, (float) $ceiling, User::query()->notDemo()->count());
+            $this->alerter->totalCeilingReached($todayCost, $ceiling, User::query()->notDemo()->count());
         }
 
         return $this->costCeilingMemo[$memoKey] = true;

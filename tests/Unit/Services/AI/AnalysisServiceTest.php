@@ -11,6 +11,7 @@ use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\AI\AnalysisVersion;
 use App\Models\AI\TokenUsage;
 use App\Models\TelegramConnection;
 use App\Models\User;
@@ -21,11 +22,13 @@ use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\CeilingOverride;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\LlmCostCalculator;
 use App\Services\AI\MaintainerAlerter;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
+use App\Services\AI\ServedBy;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Database\Events\QueryExecuted;
@@ -62,10 +65,11 @@ function breachTheTotalCeilingWith(int $userId): void
     spend($userId, 1_000_000);
 }
 
-function spend(int $userId, int $promptTokens): void
+function spend(int $userId, int $promptTokens, ?AnalysisOrigin $origin = null): void
 {
     TokenUsage::query()->create([
         'user_id' => $userId,
+        ...($origin !== null ? ['origin' => $origin] : []),
         'kind' => 'briefing', 'prompt_tokens' => $promptTokens, 'completion_tokens' => 0,
         'total_tokens' => $promptTokens, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
     ]);
@@ -1575,4 +1579,169 @@ it('keeps withoutDispatching suppressing after the memo is already warm', functi
         type: AnalysisType::WeeklyRecap,
     );
     Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 2);
+});
+
+// ── served_by: which producer wrote the content on the row ────────────
+
+it('marks a normal completion as LLM-served', function (): void {
+    $row = Analysis::factory()->queued()->create();
+
+    $this->service->markDone($row, 'narrated');
+
+    expect($row->fresh()->served_by)->toBe(ServedBy::Llm);
+});
+
+it('marks a rule-based trigger as rule-based', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+
+    $row = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+
+    expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased);
+});
+
+it('marks a ceiling degrade as rule-based', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    breachTheCeilingFor($snap->user_id);
+
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased);
+});
+
+// ── analysis_versions: what a re-narration supersedes ─────────────────
+
+it('keeps the previous narration when a done row is re-narrated', function (): void {
+    $row = Analysis::factory()->done('first')->create([
+        'content_fingerprint' => 'abc123',
+        'served_by' => ServedBy::RuleBased,
+    ]);
+
+    $this->service->markDone($row, 'second');
+
+    $version = AnalysisVersion::query()->sole();
+
+    expect($version->analysis_id)->toBe($row->id)
+        ->and($version->content)->toBe('first')
+        ->and($version->fingerprint)->toBe('abc123')
+        ->and($version->served_by)->toBe(ServedBy::RuleBased)
+        ->and($row->fresh()->content)->toBe('second');
+});
+
+it('writes no version for a first narration, which supersedes nothing', function (): void {
+    $row = Analysis::factory()->queued()->create();
+
+    $this->service->markDone($row, 'first');
+
+    expect(AnalysisVersion::query()->count())->toBe(0);
+});
+
+// ── replay: its own app-wide cap, never the athlete's slice ───────────
+
+it('spends a replay against the replay cap rather than the athlete slice', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    breachTheCeilingFor($snap->user_id);
+    config(['azure_openai.replay_daily_cap' => 100.0]);
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Replay);
+
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Queued);
+    Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('refuses a replay once today replay spend has reached its cap', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
+    config(['azure_openai.daily_cost_ceiling_total' => 100.0]);
+    config(['azure_openai.replay_daily_cap' => 0.50]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 0.60, 'output_per_1m' => 10.00]]]);
+    spend($snap->user_id, 1_000_000, AnalysisOrigin::Replay);
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Replay);
+
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Done)
+        ->and($row->served_by)->toBe(ServedBy::RuleBased);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+// The two ceilings degrade only *past* their figure; the replay cap refuses
+// *at* it, since a replay is discretionary. Locked here so the asymmetry can't
+// be tidied away as an inconsistency.
+it('refuses a replay whose spend lands exactly on the cap', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
+    config(['azure_openai.daily_cost_ceiling_total' => 100.0]);
+    config(['azure_openai.replay_daily_cap' => 0.50]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 0.50, 'output_per_1m' => 10.00]]]);
+    spend($snap->user_id, 1_000_000, AnalysisOrigin::Replay);
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Replay);
+
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('still stops a replay at the app-wide total', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    breachTheTotalCeilingWith($snap->user_id);
+    config(['azure_openai.replay_daily_cap' => 100.0]);
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Replay);
+
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+// ── today-only per-athlete ceiling override ───────────────────────────
+
+it('reads a today-only override in place of the configured athlete ceiling', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    breachTheCeilingFor($snap->user_id);
+    app(CeilingOverride::class)->set($snap->user_id, 10.0);
+
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Queued);
+    Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('degrades again once the override is cleared', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    breachTheCeilingFor($snap->user_id);
+    app(CeilingOverride::class)->set($snap->user_id, 10.0);
+    app(CeilingOverride::class)->clear($snap->user_id);
+
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Done);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });

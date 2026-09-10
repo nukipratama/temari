@@ -39,6 +39,7 @@ final readonly class StructuredChatCaller
         private RecordTokenUsageAction $recordUsage,
         private AgentLoop $loop,
         private NarrationOrigin $origin,
+        private NarratedAnalysis $narrated,
     ) {
     }
 
@@ -253,6 +254,7 @@ final readonly class StructuredChatCaller
             truncated: $response !== null && self::isTruncated($response),
             userId: $userId,
             origin: $this->origin->current(),
+            analysisId: $this->narrated->current(),
         );
     }
 

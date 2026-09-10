@@ -32,10 +32,12 @@ class RecordTokenUsageAction
         bool $truncated = false,
         ?int $userId = null,
         AnalysisOrigin $origin = AnalysisOrigin::Unknown,
+        ?int $analysisId = null,
     ): void {
         try {
             TokenUsage::query()->create([
                 'user_id' => $userId,
+                'analysis_id' => $analysisId,
                 'kind' => $kind,
                 'origin' => $origin,
                 // The usage table's prompt/completion columns hold input/output.
@@ -45,6 +47,7 @@ class RecordTokenUsageAction
                 'cached_tokens' => $usage->cachedTokens(),
                 'reasoning_tokens' => $usage->reasoningTokens(),
                 'steps' => $usage->steps(),
+                'tool_calls' => $usage->toolCalls() === [] ? null : $usage->toolCalls(),
                 'model' => $model,
                 'latency_ms' => $latencyMs,
                 'truncated' => $truncated,

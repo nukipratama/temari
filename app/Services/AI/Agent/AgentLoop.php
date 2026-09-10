@@ -73,11 +73,15 @@ final readonly class AgentLoop
             }
 
             foreach ($calls as $call) {
+                $invokedAt = microtime(true);
+                $output = $toolbox->invoke($call->name, $call->arguments);
+                $budget->recordToolCall($call->name, $call->arguments, self::latencyMs($invokedAt));
+
                 $input[] = $call->toArray();
                 $input[] = [
                     'type' => 'function_call_output',
                     'call_id' => $call->callId,
-                    'output' => $toolbox->invoke($call->name, $call->arguments),
+                    'output' => $output,
                 ];
             }
 

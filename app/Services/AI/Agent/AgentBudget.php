@@ -27,6 +27,8 @@ final class AgentBudget
 
     public const string REASON_TOKENS = 'max_tokens';
 
+    public const int ARGUMENTS_SUMMARY_LENGTH = 200;
+
     private int $steps = 0;
 
     private int $inputTokens = 0;
@@ -38,6 +40,9 @@ final class AgentBudget
     private int $cachedTokens = 0;
 
     private int $reasoningTokens = 0;
+
+    /** @var list<array{tool: string, arguments_summary: string, duration_ms: int}> */
+    private array $toolCalls = [];
 
     private readonly ?CarbonImmutable $deadlineAt;
 
@@ -148,5 +153,30 @@ final class AgentBudget
     public function reasoningTokens(): int
     {
         return $this->reasoningTokens;
+    }
+
+    /**
+     * Fold one executed tool call into the run's trace. `$arguments` is the raw
+     * JSON the model sent, truncated to {@see self::ARGUMENTS_SUMMARY_LENGTH} —
+     * enough to tell two calls of the same tool apart without storing a payload
+     * per row.
+     */
+    public function recordToolCall(string $tool, string $arguments, int $durationMs): void
+    {
+        $this->toolCalls[] = [
+            'tool' => $tool,
+            'arguments_summary' => mb_substr($arguments, 0, self::ARGUMENTS_SUMMARY_LENGTH),
+            'duration_ms' => $durationMs,
+        ];
+    }
+
+    /**
+     * Every tool call the run made, in order.
+     *
+     * @return list<array{tool: string, arguments_summary: string, duration_ms: int}>
+     */
+    public function toolCalls(): array
+    {
+        return $this->toolCalls;
     }
 }

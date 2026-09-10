@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Scope;
 use App\Models\Scopes\KnownAnalysisTypeScope;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\ServedBy;
 use App\Support\Cooldown;
 use Database\Factories\AI\AnalysisFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -29,6 +30,7 @@ use Override;
  * @property AnalysisStatus $status
  * @property string|null $content
  * @property string|null $content_fingerprint
+ * @property ServedBy|null $served_by  Which producer wrote the current content; null while the row has never been Done.
  * @property string|null $error
  * @property Carbon|null $generated_at
  * @property Carbon|null $queued_at
@@ -45,6 +47,7 @@ use Override;
     'status',
     'content',
     'content_fingerprint',
+    'served_by',
     'error',
     'generated_at',
     'queued_at',
@@ -85,6 +88,7 @@ class Analysis extends Model
             'subject_id' => 'integer',
             'analysis_type' => AnalysisType::class,
             'status' => AnalysisStatus::class,
+            'served_by' => ServedBy::class,
             'generated_at' => 'datetime',
             'queued_at' => 'datetime',
             'attempts' => 'integer',

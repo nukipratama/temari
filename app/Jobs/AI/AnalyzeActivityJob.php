@@ -179,8 +179,10 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
         // group must fail before the speech LLM is ever billed, not after.
         $insight = $this->resolveInsight($subject, $detail);
 
-        $speech = app(PostRunSpeechNarrator::class)
-            ->generate($subject, $detail, $storyLine->mood);
+        $speech = $this->narrating(
+            AnalysisType::PostRunSpeech,
+            fn (): string => app(PostRunSpeechNarrator::class)->generate($subject, $detail, $storyLine->mood),
+        );
 
         return [
             AnalysisType::PostRunSpeech->value => $speech,
@@ -198,9 +200,12 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
     private function resolveInsight(Activity $activity, ActivityDetail $detail): string
     {
         return $this->doneInsight($activity)
-            ?? json_encode(
-                app(RunInsightNarrator::class)->generate($activity, $detail)['claims'],
-                JSON_THROW_ON_ERROR,
+            ?? $this->narrating(
+                AnalysisType::RunInsight,
+                fn (): string => json_encode(
+                    app(RunInsightNarrator::class)->generate($activity, $detail)['claims'],
+                    JSON_THROW_ON_ERROR,
+                ),
             );
     }
 

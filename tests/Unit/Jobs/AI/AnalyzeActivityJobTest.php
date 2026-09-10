@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
+use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\UnavailableException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
@@ -14,8 +15,10 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\MaterialFingerprint;
+use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
+use App\Services\AI\ServedBy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -335,4 +338,60 @@ it('does not advance the chain when no later activity group is Pending', functio
     new AnalyzeActivityJob($only->id)->handle(app(AnalysisService::class));
 
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
+});
+
+it('marks a group the LLM answered as LLM-served, each narrator call attributed to its own row', function (): void {
+    $activity = seedActivityForJob();
+    $seen = [];
+
+    $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
+    $speechMock->shouldReceive('generate')->andReturnUsing(function () use (&$seen): string {
+        $seen[AnalysisType::PostRunSpeech->value] = app(NarratedAnalysis::class)->current();
+
+        return 'nice run';
+    });
+    app()->instance(PostRunSpeechNarrator::class, $speechMock);
+
+    $insightMock = Mockery::mock(RunInsightNarrator::class);
+    $insightMock->shouldReceive('generate')->andReturnUsing(function () use (&$seen): array {
+        $seen[AnalysisType::RunInsight->value] = app(NarratedAnalysis::class)->current();
+
+        return ['claims' => [sampleClaim()]];
+    });
+    app()->instance(RunInsightNarrator::class, $insightMock);
+
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+
+    $rows = Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $activity->id)
+        ->get()
+        ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
+
+    expect($seen[AnalysisType::PostRunSpeech->value])->toBe($rows[AnalysisType::PostRunSpeech->value]->id)
+        ->and($seen[AnalysisType::RunInsight->value])->toBe($rows[AnalysisType::RunInsight->value]->id)
+        ->and($rows[AnalysisType::PostRunSpeech->value]->served_by)->toBe(ServedBy::Llm)
+        ->and($rows[AnalysisType::RunInsight->value]->served_by)->toBe(ServedBy::Llm);
+});
+
+it('marks a content-filtered group as rule-based across every row it settles', function (): void {
+    $activity = seedActivityForJob();
+
+    $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
+    $speechMock->shouldReceive('generate')->andThrow(new ContentFilterException('filtered'));
+    app()->instance(PostRunSpeechNarrator::class, $speechMock);
+    mockInsightNarrator([sampleClaim()]);
+
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+
+    $rows = Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $activity->id)
+        ->get();
+
+    expect($rows)->toHaveCount(2);
+    foreach ($rows as $row) {
+        expect($row->status)->toBe(AnalysisStatus::Done)
+            ->and($row->served_by)->toBe(ServedBy::RuleBased);
+    }
 });
