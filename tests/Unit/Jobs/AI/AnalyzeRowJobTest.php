@@ -13,7 +13,9 @@ use App\Models\AI\TokenUsage;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
+use App\Services\AI\ServedBy;
 use Illuminate\Contracts\Queue\Job as JobContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -434,4 +436,50 @@ it('deletes an obsolete row instead of failing it forever', function (): void {
     fakeObsoleteRowJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh())->toBeNull();
+});
+
+it('attributes the content-filter event to the athlete whose narration tripped it', function (): void {
+    $row = makeRowForRowJobTest();
+
+    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class));
+
+    expect(ContentFilterEvent::query()->sole()->user_id)->toBe($row->subject_id);
+});
+
+it('marks a content-filter fallback as rule-based, so filler prose never reads as a narration', function (): void {
+    $row = makeRowForRowJobTest();
+
+    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased);
+});
+
+it('marks a generated row as LLM-served', function (): void {
+    $row = makeRowForRowJobTest();
+
+    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->served_by)->toBe(ServedBy::Llm);
+});
+
+it('stamps the row being narrated so its usage row can be joined back to it', function (): void {
+    $row = makeRowForRowJobTest();
+    $seen = null;
+
+    new class ($row->id, $seen) extends AnalyzeRowJob {
+        public function __construct(int $id, public mixed &$seen)
+        {
+            parent::__construct($id);
+        }
+
+        protected function generateContent(Analysis $analysisRow): string
+        {
+            $this->seen = app(NarratedAnalysis::class)->current();
+
+            return 'generated';
+        }
+    }->handle(app(AnalysisService::class));
+
+    expect($seen)->toBe($row->id)
+        ->and(app(NarratedAnalysis::class)->current())->toBeNull();
 });

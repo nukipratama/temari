@@ -22,6 +22,7 @@ enum AnalysisOrigin: string
     case Ingest = 'ingest';
     case User = 'user';
     case Recovery = 'recovery';
+    case Replay = 'replay';
     case Unknown = 'unknown';
 
     public function label(): string
@@ -31,6 +32,7 @@ enum AnalysisOrigin: string
             self::Ingest => 'Ingest cascade',
             self::User => 'User-initiated',
             self::Recovery => 'Recovery',
+            self::Replay => 'Replay',
             self::Unknown => 'Unattributed',
         };
     }

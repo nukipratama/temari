@@ -10,7 +10,10 @@ use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisSubjectMap;
+use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
+use App\Services\AI\ServedBy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Laravel\Pulse\Facades\Pulse;
@@ -43,7 +46,10 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
         $service->markProcessing($row);
 
         try {
-            $content = $this->generateContent($row);
+            $content = app(NarratedAnalysis::class)->during(
+                $row->id,
+                fn (): string => $this->generateContent($row),
+            );
             $service->markDone($row, $content, fingerprint: $this->fingerprintFor($row));
             $this->afterDone($row, $service);
         } catch (ObsoleteAnalysisException $e) {
@@ -63,7 +69,11 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             // rule-based content instead of dead-lettering: the user gets a
             // benign line, and (for chained narrators) that benign line becomes
             // the next prev_narrative, breaking the poison loop at its source.
-            $service->markDone($row, app(RuleBasedNarrationFiller::class)->fillFor($row));
+            $service->markDone(
+                $row,
+                app(RuleBasedNarrationFiller::class)->fillFor($row),
+                servedBy: ServedBy::RuleBased,
+            );
             Log::info('narrator.ai.content_filter_fallback', [
                 'kind' => $row->analysis_type->value,
                 'subject' => $row->subject_id,
@@ -142,6 +152,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
     {
         try {
             ContentFilterEvent::query()->create([
+                'user_id' => AnalysisSubjectMap::ownerId($row->subject_type, $row->subject_id),
                 'kind' => $row->analysis_type->value,
                 'created_at' => Carbon::now(),
             ]);

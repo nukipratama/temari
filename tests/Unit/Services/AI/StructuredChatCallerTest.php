@@ -20,6 +20,7 @@ use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\MaintainerAlerter;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\AI\Agent\AgentBudget;
@@ -253,7 +254,7 @@ it('meters the call against the origin the entry point declared, not the narrato
 
     app(NarrationOrigin::class)->set(AnalysisOrigin::Recovery);
 
-    new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class))
+    new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class), app(NarratedAnalysis::class))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
     expect(TokenUsage::query()->first()->origin)->toBe(AnalysisOrigin::Recovery);
@@ -266,7 +267,7 @@ it('meters an undeclared entry point as unattributed rather than guessing', func
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
     $azure->shouldReceive('client')->andReturn($client);
 
-    new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class))
+    new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class), app(NarratedAnalysis::class))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
     expect(TokenUsage::query()->first()->origin)->toBe(AnalysisOrigin::Unknown);
@@ -277,7 +278,7 @@ it('does not record usage when Azure call fails', function (): void {
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
     $azure->shouldReceive('client')->andThrow(new RuntimeException('network down'));
 
-    $caller = new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class));
+    $caller = new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class), app(NarratedAnalysis::class));
 
     expect(fn () => $caller->call('briefing', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class);
@@ -295,7 +296,7 @@ it('routes the per-kind client and records the resolved deployment', function ()
     $azure->shouldReceive('deploymentFor')->with('briefing')->andReturn('gpt-4o-briefing');
     $azure->shouldReceive('client')->andReturn($client);
 
-    new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class))
+    new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class), app(NarratedAnalysis::class))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
     expect(TokenUsage::query()->first()->model)->toBe('gpt-4o-briefing');
@@ -911,4 +912,52 @@ it('throws when the answer the validator asked for is rejected too', function ()
     expect(fn () => fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(
         validator: fn (array $answer): ?string => 'still wrong',
     )))->toThrow(UnavailableException::class, 'rejected twice: still wrong');
+});
+
+// ── metering: joining a usage row back to the block it paid for ────────
+
+it('stamps the analysis row being narrated onto the usage row', function (): void {
+    $caller = structuredCaller(json_encode(['headline' => 'ok'], JSON_THROW_ON_ERROR));
+
+    app(NarratedAnalysis::class)->during(
+        77,
+        fn (): array => $caller->call('briefing', 'sys', [], 'schema', ['headline']),
+    );
+
+    expect(TokenUsage::query()->first()->analysis_id)->toBe(77);
+});
+
+it('leaves analysis_id null for a call made outside a narration', function (): void {
+    structuredCaller(json_encode(['headline' => 'ok'], JSON_THROW_ON_ERROR))
+        ->call('run_question', 'sys', [], 'schema', ['headline']);
+
+    expect(TokenUsage::query()->first()->analysis_id)->toBeNull();
+});
+
+it('writes the run tool trace onto the usage row, in call order', function (): void {
+    $client = new ClientFake([
+        fakeAzureToolCallResponse([['name' => 'get_thing', 'arguments' => '{"id":1}']]),
+        fakeAzureToolCallResponse([['name' => 'get_other']]),
+        fakeAzureResponse(json_encode(['headline' => 'read it'], JSON_THROW_ON_ERROR)),
+    ]);
+    $toolbox = new AgentToolbox([
+        fakeAgentTool('get_thing', fn (): array => ['value' => 42]),
+        fakeAgentTool('get_other', fn (): array => ['value' => 1]),
+    ]);
+
+    fakeStructuredCaller($client)
+        ->call('run_insight', 'sys', [], 'schema', ['headline'], new ChatCallOptions(toolbox: $toolbox));
+
+    $trace = TokenUsage::query()->first()->tool_calls;
+
+    expect(array_column($trace, 'tool'))->toBe(['get_thing', 'get_other'])
+        ->and($trace[0]['arguments_summary'])->toBe('{"id":1}')
+        ->and($trace[0]['duration_ms'])->toBeInt();
+});
+
+it('leaves tool_calls null for a one-shot call that used no tools', function (): void {
+    structuredCaller(json_encode(['headline' => 'ok'], JSON_THROW_ON_ERROR))
+        ->call('briefing', 'sys', [], 'schema', ['headline']);
+
+    expect(TokenUsage::query()->first()->tool_calls)->toBeNull();
 });
