@@ -1,6 +1,6 @@
 import { useId } from 'react';
 
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 /**
@@ -17,7 +17,7 @@ export default function IconChoiceCard({
     active,
     onClick,
 }: Readonly<{
-    icon: string;
+    icon: IconComponent;
     label: string;
     description?: string;
     active: boolean;

@@ -1,3 +1,5 @@
+import { Sparkles } from 'lucide-react';
+
 import type { AnalysisPayload } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -33,7 +35,7 @@ export default function NarrationCard({
                 token="micro"
                 className="mb-1.5 flex items-center gap-1.5 text-icon-accent"
             >
-                <Icon icon="mdi:auto-awesome" className="size-3" aria-hidden />
+                <Icon icon={Sparkles} className="size-3" aria-hidden />
                 Temari&apos;s read
             </Eyebrow>
             <AnalysisStatus

@@ -1,4 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
+import { Bell } from 'lucide-react';
 
 import type { SharedProps } from '@/types/inertia';
 
@@ -32,7 +33,7 @@ export default function NotificationBell({
             )}
         >
             <Icon
-                icon="mdi:bell-outline"
+                icon={Bell}
                 width={compact ? 19 : 21}
                 height={compact ? 19 : 21}
                 aria-hidden

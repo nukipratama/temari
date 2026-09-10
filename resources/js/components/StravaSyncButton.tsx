@@ -1,10 +1,11 @@
 import { router } from '@inertiajs/react';
+import { LoaderCircle, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
 import type { StravaSyncState } from '@/types/inertia';
 
 import StravaAction from '@/components/StravaAction';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, StravaIcon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 interface StravaSyncButtonProps {
@@ -37,7 +38,7 @@ export default function StravaSyncButton({
                     className,
                 )}
             >
-                <Icon icon="mdi:strava" width={16} height={16} aria-hidden />
+                <Icon icon={StravaIcon} width={16} height={16} aria-hidden />
                 {state === 'revoked' ? 'reconnect' : 'Connect Strava'}
             </a>
         );
@@ -66,7 +67,7 @@ export default function StravaSyncButton({
                     )}
                 >
                     <Icon
-                        icon={pending ? 'mdi:loading' : 'mdi:sync'}
+                        icon={pending ? LoaderCircle : RefreshCw}
                         width={16}
                         height={16}
                         aria-hidden

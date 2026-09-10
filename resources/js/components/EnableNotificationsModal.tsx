@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { Bell } from 'lucide-react';
 
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 
@@ -31,7 +32,7 @@ export default function EnableNotificationsModal({
                 </>
             }
             primaryLabel="Go to Settings"
-            primaryIcon="mdi:bell-outline"
+            primaryIcon={Bell}
             onPrimary={() => router.visit('/settings')}
         />
     );

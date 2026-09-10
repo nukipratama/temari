@@ -91,13 +91,13 @@ describe('WeekPlanWidget', () => {
         );
 
         expect(
-            container.querySelector('[data-icon="mdi:fire"]'),
+            container.querySelector('[data-icon="Flame"]'),
         ).toBeInTheDocument();
         expect(
-            container.querySelector('[data-icon="mdi:feather"]'),
+            container.querySelector('[data-icon="Feather"]'),
         ).toBeInTheDocument();
         expect(
-            container.querySelector('[data-icon="mdi:bed"]'),
+            container.querySelector('[data-icon="Bed"]'),
         ).toBeInTheDocument();
     });
 

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { Footprints, Route } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
@@ -6,8 +7,8 @@ import { makeUser, setMockPage } from '@/test/setup';
 import ProfileHero from './ProfileHero';
 
 const STATS = [
-    { icon: 'mdi:map-marker-distance', label: 'Total km', value: '284.6' },
-    { icon: 'mdi:run', label: 'Total runs', value: '42' },
+    { icon: Route, label: 'Total km', value: '284.6' },
+    { icon: Footprints, label: 'Total runs', value: '42' },
 ];
 
 beforeEach(() => {

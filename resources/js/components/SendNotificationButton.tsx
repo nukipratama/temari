@@ -1,8 +1,9 @@
+import { BellPlus, Clock, LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import EnableNotificationsModal from '@/components/EnableNotificationsModal';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import {
     cooldownAriaLabel,
     useCooldownCountdown,
@@ -58,12 +59,7 @@ export default function SendNotificationButton({
                     title="turn on notifications to send"
                     aria-label="turn on notifications to send"
                 >
-                    <Icon
-                        icon="mdi:bell-plus"
-                        width={13}
-                        height={13}
-                        aria-hidden
-                    />
+                    <Icon icon={BellPlus} width={13} height={13} aria-hidden />
                 </button>
                 <EnableNotificationsModal
                     open={enableOpen}
@@ -80,12 +76,11 @@ export default function SendNotificationButton({
         title = 'sending…';
     }
 
-    let icon: 'mdi:loading' | 'mdi:clock-outline' | 'mdi:bell-plus' =
-        'mdi:bell-plus';
+    let icon: IconComponent = BellPlus;
     if (sending) {
-        icon = 'mdi:loading';
+        icon = LoaderCircle;
     } else if (cooling) {
-        icon = 'mdi:clock-outline';
+        icon = Clock;
     }
 
     return (

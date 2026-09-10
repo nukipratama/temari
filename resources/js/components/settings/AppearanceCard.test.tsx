@@ -35,7 +35,7 @@ describe('AppearanceCard', () => {
         expect(
             screen
                 .getByRole('button', { name: 'light' })
-                .querySelector('[data-icon="mdi:white-balance-sunny"]'),
+                .querySelector('[data-icon="Sun"]'),
         ).toBeInTheDocument();
     });
 

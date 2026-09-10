@@ -1,4 +1,5 @@
 import { Deferred, Head, usePage } from '@inertiajs/react';
+import { Footprints, Gauge, Route, Timer, Trophy } from 'lucide-react';
 
 import type { HeroStat } from '@/components/profile/ProfileHero';
 import type { ProgressionSeries } from '@/components/profile/ProgressionCard';
@@ -16,7 +17,7 @@ import ProgressionCard from '@/components/profile/ProgressionCard';
 import RaceCard from '@/components/profile/RaceCard';
 import SeasonCard from '@/components/profile/SeasonCard';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, StravaIcon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
@@ -75,31 +76,31 @@ export default function Profile({
 
     const heroStats: HeroStat[] = [
         {
-            icon: 'mdi:map-marker-distance',
+            icon: Route,
             label: 'Total km',
             value: stats.total_km.toFixed(1),
         },
         {
-            icon: 'mdi:run',
+            icon: Footprints,
             label: 'Total runs',
             value: stats.total_runs.toString(),
         },
         {
-            icon: 'mdi:trophy-outline',
+            icon: Trophy,
             label: 'Longest run',
             value: stats.longest_run_km.toFixed(2),
         },
     ];
     if (fitness?.vdot != null) {
         heroStats.push({
-            icon: 'mdi:speedometer',
+            icon: Gauge,
             label: 'VDOT',
             value: fitness.vdot.toFixed(1),
         });
     }
     if (fitness?.threshold_pace_sec != null) {
         heroStats.push({
-            icon: 'mdi:timer-outline',
+            icon: Timer,
             label: 'Threshold',
             value: `${formatPace(fitness.threshold_pace_sec)}/km`,
         });
@@ -140,7 +141,7 @@ export default function Profile({
                                     className="focus-ring inline-flex items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1 text-label-micro text-white transition hover:bg-strava-orange-hover"
                                 >
                                     <Icon
-                                        icon="mdi:strava"
+                                        icon={StravaIcon}
                                         width={12}
                                         height={12}
                                         aria-hidden

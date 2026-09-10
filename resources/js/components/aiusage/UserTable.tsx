@@ -1,3 +1,5 @@
+import { Users } from 'lucide-react';
+
 import type { UserRow } from '@/pages/AiUsage/types';
 
 import EmptyState from '@/components/aiusage/EmptyState';
@@ -13,7 +15,7 @@ export default function UserTable({
 }: Readonly<{ rows: UserRow[]; grandTotal: number }>) {
     return (
         <DataTable
-            icon="mdi:account-multiple"
+            icon={Users}
             title="Breakdown per User"
             subtitle="Users who chat with temari the most."
             tone="accent"

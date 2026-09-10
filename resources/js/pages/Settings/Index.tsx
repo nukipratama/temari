@@ -1,4 +1,13 @@
 import { Head, Link, router } from '@inertiajs/react';
+import {
+    Bell,
+    ChevronRight,
+    LoaderCircle,
+    LogOut,
+    Send,
+    Unlink,
+    UserX,
+} from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
@@ -11,7 +20,7 @@ import TrainingPreferencesCard, {
     type TrainingPreferencesPayload,
 } from '@/components/settings/TrainingPreferencesCard';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, TelegramIcon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
@@ -198,7 +207,7 @@ export default function Settings({
                             >
                                 {row.label}
                                 <Icon
-                                    icon="mdi:chevron-right"
+                                    icon={ChevronRight}
                                     width={16}
                                     height={16}
                                     className="shrink-0 text-text-3"
@@ -233,7 +242,7 @@ function AccountActions() {
                 onClick={() => router.post('/logout')}
                 className="pressable focus-ring flex w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-card py-3 font-sans text-[0.8125rem] font-bold text-foreground transition hover:bg-cream-deep/30 min-[900px]:w-auto min-[900px]:px-6"
             >
-                <Icon icon="mdi:logout" width={16} height={16} aria-hidden />
+                <Icon icon={LogOut} width={16} height={16} aria-hidden />
                 log out
             </button>
             <button
@@ -255,7 +264,7 @@ function AccountActions() {
                     </>
                 }
                 primaryLabel="yes, delete my account"
-                primaryIcon="mdi:account-remove-outline"
+                primaryIcon={UserX}
                 primaryClassName="bg-ember-deep text-cream hover:opacity-90"
                 onPrimary={() => router.delete('/account')}
             />
@@ -295,7 +304,7 @@ function NotificationPrefsPanel({
                     makes that coupling honest. */}
                 <div className="flex flex-col">
                     <SettingsRow
-                        icon="mdi:bell-outline"
+                        icon={Bell}
                         label="keep me posted"
                         description="post-run recaps, weekly and monthly summaries, your morning briefing, a heads-up the day before a race, plus a nudge when your streak's about to end."
                         control={
@@ -386,7 +395,7 @@ function TestSendButton({
             )}
         >
             <Icon
-                icon={sending ? 'mdi:loading' : 'mdi:send-outline'}
+                icon={sending ? LoaderCircle : Send}
                 width={14}
                 height={14}
                 className={sending ? 'animate-spin' : undefined}
@@ -421,7 +430,7 @@ function TelegramPanel({
         if (telegram.connect_url === null) {
             return (
                 <SettingsRow
-                    icon="mdi:telegram"
+                    icon={TelegramIcon}
                     label="Telegram"
                     description="the Telegram bot isn't configured yet."
                     control={<span aria-hidden />}
@@ -434,7 +443,7 @@ function TelegramPanel({
         if (isDemo) {
             return (
                 <SettingsRow
-                    icon="mdi:telegram"
+                    icon={TelegramIcon}
                     label="Telegram"
                     description="connect it so temari can keep you posted."
                     onClick={() => setOpen(true)}
@@ -449,7 +458,7 @@ function TelegramPanel({
 
         return (
             <SettingsRow
-                icon="mdi:telegram"
+                icon={TelegramIcon}
                 label="Telegram"
                 description="connect it so temari can keep you posted."
                 externalHref={telegram.connect_url}
@@ -471,7 +480,7 @@ function TelegramPanel({
     return (
         <>
             <SettingsRow
-                icon="mdi:telegram"
+                icon={TelegramIcon}
                 label="Telegram"
                 description={description}
                 control={
@@ -494,12 +503,7 @@ function TelegramPanel({
                     }
                     className="focus-ring inline-flex shrink-0 items-center gap-1 rounded text-label-small text-text-3 transition hover:text-ember-ink"
                 >
-                    <Icon
-                        icon="mdi:link-off"
-                        width={13}
-                        height={13}
-                        aria-hidden
-                    />
+                    <Icon icon={Unlink} width={13} height={13} aria-hidden />
                     Disconnect
                 </button>
             </div>

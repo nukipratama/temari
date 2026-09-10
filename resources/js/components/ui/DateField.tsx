@@ -1,6 +1,7 @@
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRef, useState } from 'react';
 
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import { useCoarsePointer } from '@/hooks/useCoarsePointer';
 import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/cn';
@@ -67,12 +68,7 @@ export default function DateField({
                     onClick={() => setOpen((wasOpen) => !wasOpen)}
                     className="focus-ring absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-sm text-text-3 transition-colors hover:text-foreground"
                 >
-                    <Icon
-                        icon="mdi:calendar-blank-outline"
-                        width={16}
-                        height={16}
-                        aria-hidden
-                    />
+                    <Icon icon={Calendar} width={16} height={16} aria-hidden />
                 </button>
             )}
             {!coarse && open && (
@@ -121,7 +117,7 @@ function CalendarPopover({
             <div className="flex items-center justify-between gap-2">
                 <MonthStep
                     label="Previous month"
-                    icon="mdi:chevron-left"
+                    icon={ChevronLeft}
                     onClick={() => setMonth(addMonths(month, -1))}
                 />
                 <span className="text-label-micro text-foreground">
@@ -129,7 +125,7 @@ function CalendarPopover({
                 </span>
                 <MonthStep
                     label="Next month"
-                    icon="mdi:chevron-right"
+                    icon={ChevronRight}
                     onClick={() => setMonth(addMonths(month, 1))}
                 />
             </div>
@@ -164,7 +160,7 @@ function MonthStep({
     label,
     icon,
     onClick,
-}: Readonly<{ label: string; icon: string; onClick: () => void }>) {
+}: Readonly<{ label: string; icon: IconComponent; onClick: () => void }>) {
     return (
         <button
             type="button"

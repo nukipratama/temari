@@ -1,4 +1,5 @@
 import { Link, usePage, usePoll } from '@inertiajs/react';
+import { ChartLine } from 'lucide-react';
 import { useEffect } from 'react';
 
 import type { SharedProps, StravaSyncState } from '@/types/inertia';
@@ -39,7 +40,7 @@ const HERO: Record<
 
 const ACTIONS = [
     {
-        icon: 'mdi:chart-line',
+        icon: ChartLine,
         title: 'see your run recap',
         desc: 'once your first run comes in, the recap shows up here.',
         href: '/history',

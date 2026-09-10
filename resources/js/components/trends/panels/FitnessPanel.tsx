@@ -1,4 +1,5 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { Medal } from 'lucide-react';
+import { Suspense, useMemo, useState } from 'react';
 
 import type { Rarity } from '@/types/inertia';
 
@@ -11,6 +12,7 @@ import { useCountUp } from '@/hooks/useCountUp';
 import { useIsChartDark } from '@/hooks/useIsChartDark';
 import { CHART_GROUND } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
+import { lazyIsland } from '@/lib/lazyIsland';
 import { formatNaiveIdDate } from '@/lib/pace';
 import { badgeName, BADGE_ABILITY, RARITY_INK } from '@/lib/runcard';
 import { revealDelay } from '@/lib/styles';
@@ -20,7 +22,7 @@ import type { TrendRange } from '../RangeToggle';
 // Chart.js core + its scale/element registration live inside this lazy
 // module, mirroring CtlTrendChart/ProgressionChart so nothing chart-related
 // enters this page's own chunk either.
-const Line = lazy(() => import('@/components/collection/LineChart'));
+const Line = lazyIsland(() => import('@/components/collection/LineChart'));
 
 export interface FitnessTrendPoint {
     date: string;
@@ -312,7 +314,7 @@ export default function FitnessPanel({
                                 )}
                             >
                                 <Icon
-                                    icon="mdi:medal-outline"
+                                    icon={Medal}
                                     className={cn(
                                         'size-3.5',
                                         RARITY_INK[chip.rarity],
@@ -330,7 +332,7 @@ export default function FitnessPanel({
                 <div className="mt-2.5 rounded-lg bg-muted px-3 py-2.5">
                     <p className="flex items-center gap-1.5 text-sm font-bold text-foreground">
                         <Icon
-                            icon="mdi:medal-outline"
+                            icon={Medal}
                             className={cn(
                                 'size-3.5',
                                 RARITY_INK[active.rarity],

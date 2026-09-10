@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 
+import type { IconComponent } from '@/components/ui/Icon';
+
 import SectionHeading from '@/components/SectionHeading';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/cn';
 
 interface DataTableProps<T> {
-    icon: string;
+    icon: IconComponent;
     title: string;
     subtitle: string;
     tone: 'brand' | 'accent';

@@ -272,10 +272,22 @@ vi.mock('react-chartjs-2', () => ({
 // rendered, not lucide's actual SVG output — stub a synchronous span that
 // keeps the layout/aria props the components pass through and records the
 // icon key as a queryable attribute.
-vi.mock('@/components/ui/Icon', () => ({
-    Icon: ({ icon, ...rest }: { icon?: unknown; [k: string]: unknown }) =>
-        createElement('span', {
-            'data-icon': typeof icon === 'string' ? icon : undefined,
-            ...rest,
-        }),
-}));
+vi.mock('@/components/ui/Icon', () => {
+    const nameOf = (icon: unknown) =>
+        typeof icon === 'function' ||
+        (typeof icon === 'object' && icon !== null)
+            ? ((icon as { displayName?: string; name?: string }).displayName ??
+              (icon as { name?: string }).name)
+            : undefined;
+
+    return {
+        Icon: ({ icon, ...rest }: { icon?: unknown; [k: string]: unknown }) =>
+            createElement('span', { 'data-icon': nameOf(icon), ...rest }),
+        StravaIcon: function StravaIcon() {
+            return createElement('svg', { 'data-icon': 'StravaIcon' });
+        },
+        TelegramIcon: function TelegramIcon() {
+            return createElement('svg', { 'data-icon': 'TelegramIcon' });
+        },
+    };
+});

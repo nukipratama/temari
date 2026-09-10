@@ -1,4 +1,5 @@
 import { Deferred, Head, Link } from '@inertiajs/react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo } from 'react';
 
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
@@ -6,7 +7,7 @@ import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 import CalendarWeekRow from '@/components/history/CalendarWeekRow';
 import HistoryHeader from '@/components/history/HistoryHeader';
 import RecapCard from '@/components/history/RecapCard';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import Skeleton, { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
@@ -170,7 +171,7 @@ function MonthNav({
         <div className="flex w-full items-center justify-between gap-2">
             <NavButton
                 href={`/history?view=calendar&month=${prevMonth}`}
-                icon="mdi:chevron-left"
+                icon={ChevronLeft}
                 label="Previous month"
             />
             <h2 className="font-serif text-[0.9375rem] leading-[1.2] font-semibold text-foreground">
@@ -178,7 +179,7 @@ function MonthNav({
             </h2>
             <NavButton
                 href={`/history?view=calendar&month=${nextMonth}`}
-                icon="mdi:chevron-right"
+                icon={ChevronRight}
                 label="Next month"
             />
         </div>
@@ -189,7 +190,7 @@ function NavButton({
     href,
     icon,
     label,
-}: Readonly<{ href: string; icon: string; label: string }>) {
+}: Readonly<{ href: string; icon: IconComponent; label: string }>) {
     return (
         <Link
             href={href}

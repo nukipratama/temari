@@ -1,4 +1,14 @@
 import { router } from '@inertiajs/react';
+import {
+    CircleCheck,
+    Flag,
+    Layers,
+    RotateCcw,
+    Sprout,
+    Target,
+    Trophy,
+    Undo2,
+} from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import type { ExperienceLevel, GoalType } from '@/types/generated';
@@ -6,7 +16,7 @@ import type { ExperienceLevel, GoalType } from '@/types/generated';
 import { DayCell, DayRow } from '@/components/onboarding/DayPicker';
 import IconChoiceCard from '@/components/onboarding/IconChoiceCard';
 import SessionsDial from '@/components/onboarding/SessionsDial';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { useExitTransition } from '@/hooks/useExitTransition';
@@ -19,25 +29,25 @@ const EXPERIENCE_OPTIONS: ReadonlyArray<{
     value: ExperienceLevel;
     label: string;
     description: string;
-    icon: string;
+    icon: IconComponent;
 }> = [
     {
         value: 'new_to_running',
         label: 'new to running',
         description: 'first few months, learning the ropes.',
-        icon: 'mdi:sprout',
+        icon: Sprout,
     },
     {
         value: 'returning',
         label: 'getting back into it',
         description: 'coming back after time off.',
-        icon: 'mdi:restore',
+        icon: RotateCcw,
     },
     {
         value: 'experienced',
         label: 'experienced',
         description: 'know your paces, chasing more.',
-        icon: 'mdi:trophy',
+        icon: Trophy,
     },
 ];
 
@@ -47,31 +57,31 @@ const GOAL_OPTIONS: ReadonlyArray<{
     value: GoalType;
     label: string;
     description: string;
-    icon: string;
+    icon: IconComponent;
 }> = [
     {
         value: 'consistent',
         label: 'stay consistent',
         description: 'show up steady, week after week.',
-        icon: 'mdi:target',
+        icon: Target,
     },
     {
         value: 'race',
         label: 'chase a race time',
         description: 'training toward a real finish time.',
-        icon: 'mdi:flag-checkered',
+        icon: Flag,
     },
     {
         value: 'base',
         label: 'build a base',
         description: 'stack easy miles, no pressure yet.',
-        icon: 'mdi:layers-outline',
+        icon: Layers,
     },
     {
         value: 'return',
         label: 'ease back in',
         description: 'rebuilding gently after a break.',
-        icon: 'mdi:undo-variant',
+        icon: Undo2,
     },
 ];
 
@@ -309,7 +319,7 @@ export default function TrainingPreferencesCard({
                         className="reveal inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-ink"
                     >
                         <Icon
-                            icon="mdi:check-circle-outline"
+                            icon={CircleCheck}
                             width={16}
                             height={16}
                             aria-hidden

@@ -1,3 +1,4 @@
+import { CircleQuestionMark, Lightbulb } from 'lucide-react';
 import { useCallback, useId, useRef, useState } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
@@ -64,7 +65,7 @@ export default function MetricExplainer({
                 className={buttonClass}
             >
                 <Icon
-                    icon="mdi:help-circle-outline"
+                    icon={CircleQuestionMark}
                     width={iconSize}
                     height={iconSize}
                     aria-hidden
@@ -86,7 +87,7 @@ export default function MetricExplainer({
                     <div className="px-3.5 py-3 pl-4">
                         <div className="flex items-center gap-1.5 font-mono text-[0.6875rem] font-semibold uppercase tracking-wider text-leaf-ink">
                             <Icon
-                                icon="mdi:lightbulb-on-outline"
+                                icon={Lightbulb}
                                 width={12}
                                 height={12}
                                 aria-hidden

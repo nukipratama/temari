@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/react';
+import { LoaderCircle } from 'lucide-react';
 
 import type { SharedProps } from '@/types/inertia';
 
@@ -25,7 +26,7 @@ export default function AiCatchingUpBanner() {
         <div className="px-4 pt-4 min-[900px]:px-6">
             <div className="mx-auto flex max-w-column min-[1280px]:max-w-column-wide items-start gap-3 rounded-lg border border-border bg-muted px-4 py-3">
                 <Icon
-                    icon="mdi:progress-clock"
+                    icon={LoaderCircle}
                     width={20}
                     height={20}
                     className="mt-0.5 shrink-0 text-text-3"

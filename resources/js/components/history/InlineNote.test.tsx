@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { RotateCcwClock } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
 import InlineNote, { RangeWidenedNote, WeekFocusNote } from './InlineNote';
@@ -6,17 +7,17 @@ import InlineNote, { RangeWidenedNote, WeekFocusNote } from './InlineNote';
 describe('InlineNote', () => {
     it('renders the icon and the sentence', () => {
         const { container } = render(
-            <InlineNote icon="mdi:history">Something is hidden.</InlineNote>,
+            <InlineNote icon={RotateCcwClock}>Something is hidden.</InlineNote>,
         );
 
         expect(screen.getByText('Something is hidden.')).toBeInTheDocument();
         expect(
-            container.querySelector('[data-icon="mdi:history"]'),
+            container.querySelector('[data-icon="RotateCcwClock"]'),
         ).not.toBeNull();
     });
 
     it('renders no trailing control when the note offers no way out', () => {
-        render(<InlineNote icon="mdi:history">Just one line.</InlineNote>);
+        render(<InlineNote icon={RotateCcwClock}>Just one line.</InlineNote>);
 
         expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
@@ -24,7 +25,7 @@ describe('InlineNote', () => {
     it('renders the action beside the sentence when one is given', () => {
         render(
             <InlineNote
-                icon="mdi:history"
+                icon={RotateCcwClock}
                 action={<a href="/activities">Exit</a>}
             >
                 Just one line.

@@ -1,4 +1,5 @@
 import { useForm, usePage } from '@inertiajs/react';
+import { CircleAlert, RotateCcw, Sparkles } from 'lucide-react';
 
 import type { DeadLetterGroup } from '@/pages/AiUsage/types';
 import type { SharedProps } from '@/types/inertia';
@@ -86,7 +87,7 @@ function RecoverBar() {
                 disabled={processing}
                 className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-sky px-4 py-2 text-xs font-semibold text-cream transition-colors hover:bg-sky-deep disabled:cursor-wait disabled:opacity-60"
             >
-                <Icon icon="mdi:restore" aria-hidden />
+                <Icon icon={RotateCcw} aria-hidden />
                 <span>{processing ? 'Recovering…' : 'Recover all'}</span>
             </button>
         </Card>
@@ -118,7 +119,7 @@ function AttentionPanel({
     return (
         <section className="mt-10">
             <SectionHeading
-                icon="mdi:alert-circle-outline"
+                icon={CircleAlert}
                 title={title}
                 subtitle={subtitle}
                 tone="accent"
@@ -204,7 +205,7 @@ function AttentionGroupRow({
                     }
                     className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-leaf-deep px-3 py-1.5 text-xs font-semibold text-cream transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
                 >
-                    <Icon icon="mdi:auto-awesome" aria-hidden />
+                    <Icon icon={Sparkles} aria-hidden />
                     <span>{processing ? 'Sending…' : 'Retry all'}</span>
                 </button>
             )}

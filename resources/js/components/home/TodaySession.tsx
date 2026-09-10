@@ -1,3 +1,5 @@
+import { ArrowDown } from 'lucide-react';
+
 import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -91,11 +93,7 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
             {day.clamp !== null && (
                 <div className="mt-2 border-l-2 border-border-strong pl-3">
                     <p className="flex items-center gap-1.5 text-label-micro text-text-2">
-                        <Icon
-                            icon="mdi:arrow-down"
-                            className="size-3"
-                            aria-hidden
-                        />
+                        <Icon icon={ArrowDown} className="size-3" aria-hidden />
                         {day.clamp.label}
                     </p>
                     <p className="mt-0.5 text-sm font-semibold text-foreground">

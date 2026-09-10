@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { Clock, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
@@ -59,11 +60,7 @@ export default function RunHydratingNotice({
             className="flex items-start gap-3 rounded-md border border-border-strong bg-card p-4 shadow-e1"
         >
             <Icon
-                icon={
-                    stoppedPolling
-                        ? 'mdi:clock-outline'
-                        : 'mdi:progress-download'
-                }
+                icon={stoppedPolling ? Clock : Download}
                 width={18}
                 height={18}
                 className={cn(

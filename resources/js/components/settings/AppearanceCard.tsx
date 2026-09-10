@@ -1,4 +1,6 @@
-import { Icon } from '@/components/ui/Icon';
+import { Monitor, Moon, Sun } from 'lucide-react';
+
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
@@ -7,11 +9,11 @@ import { cardVariants } from '@/lib/variants';
 const OPTIONS: ReadonlyArray<{
     value: ThemePreference;
     label: string;
-    icon: string;
+    icon: IconComponent;
 }> = [
-    { value: 'light', label: 'light', icon: 'mdi:white-balance-sunny' },
-    { value: 'dark', label: 'dark', icon: 'mdi:weather-night' },
-    { value: 'system', label: 'system', icon: 'mdi:monitor' },
+    { value: 'light', label: 'light', icon: Sun },
+    { value: 'dark', label: 'dark', icon: Moon },
+    { value: 'system', label: 'system', icon: Monitor },
 ];
 
 // The local ToggleGroup wrapper doesn't propagate base-ui's generic, so

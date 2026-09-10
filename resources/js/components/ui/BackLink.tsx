@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 import { type ReactNode } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
@@ -42,7 +43,7 @@ export default function BackLink({
                 className,
             )}
         >
-            <Icon icon="mdi:arrow-left" width={14} height={14} aria-hidden />
+            <Icon icon={ArrowLeft} width={14} height={14} aria-hidden />
             {children}
         </Link>
     );

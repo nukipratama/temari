@@ -1,3 +1,4 @@
+import { Flag } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
 import type { PlanDay, SeasonSummaryWeek } from './plan';
@@ -304,6 +305,6 @@ describe('paceLabel', () => {
 describe('race day', () => {
     it('names and marks race day, so the goal race never reads as an ordinary session', () => {
         expect(SESSION_TYPE_LABEL.race).toBe('race day');
-        expect(SESSION_TYPE_ICON.race).toBe('mdi:flag-checkered');
+        expect(SESSION_TYPE_ICON.race).toBe(Flag);
     });
 });

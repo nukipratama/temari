@@ -1,4 +1,11 @@
 import { router, usePage } from '@inertiajs/react';
+import {
+    ChevronDown,
+    CircleCheck,
+    HeartPulse,
+    LoaderCircle,
+    RefreshCw,
+} from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import StravaAction from '@/components/StravaAction';
@@ -232,7 +239,7 @@ export default function HrZonesDisclosure({
                 className="pressable focus-ring flex w-full items-center gap-2.5 p-4 text-left transition hover:bg-cream-deep/30"
             >
                 <Icon
-                    icon="mdi:heart-pulse"
+                    icon={HeartPulse}
                     width={19}
                     height={19}
                     className="shrink-0 text-icon-accent"
@@ -247,7 +254,7 @@ export default function HrZonesDisclosure({
                     </span>
                 </span>
                 <Icon
-                    icon="mdi:chevron-down"
+                    icon={ChevronDown}
                     width={18}
                     height={18}
                     className={cn(
@@ -361,9 +368,7 @@ export default function HrZonesDisclosure({
                                 >
                                     <Icon
                                         icon={
-                                            resyncing
-                                                ? 'mdi:loading'
-                                                : 'mdi:sync'
+                                            resyncing ? LoaderCircle : RefreshCw
                                         }
                                         width={14}
                                         height={14}
@@ -389,7 +394,7 @@ export default function HrZonesDisclosure({
                             className="reveal mt-2.5 inline-flex items-center gap-1.5 text-sm font-semibold text-leaf-ink"
                         >
                             <Icon
-                                icon="mdi:check-circle-outline"
+                                icon={CircleCheck}
                                 width={16}
                                 height={16}
                                 aria-hidden

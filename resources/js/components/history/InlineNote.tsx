@@ -1,8 +1,9 @@
+import { CalendarDays, UnfoldHorizontal } from 'lucide-react';
 import { type ReactNode } from 'react';
 
 import BackLink from '@/components/ui/BackLink';
 import { Card } from '@/components/ui/card';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatIdDate } from '@/lib/pace';
 
@@ -18,7 +19,7 @@ const RANGE_LABELS: Record<RangeFilterValue, string> = {
 };
 
 interface InlineNoteProps {
-    icon: string;
+    icon: IconComponent;
     children: ReactNode;
     action?: ReactNode;
     className?: string;
@@ -53,9 +54,7 @@ export function RangeWidenedNote({
         rangeFilter === 'all'
             ? 'showing all your runs, so your most recent one stays visible.'
             : `Range automatically widened to ${label} so your latest run stays visible.`;
-    return (
-        <InlineNote icon="mdi:arrow-expand-horizontal">{message}</InlineNote>
-    );
+    return <InlineNote icon={UnfoldHorizontal}>{message}</InlineNote>;
 }
 
 /**
@@ -73,7 +72,7 @@ export function WeekFocusNote({
 
     return (
         <InlineNote
-            icon="mdi:calendar-week"
+            icon={CalendarDays}
             className="mb-6 flex-wrap"
             action={
                 <BackLink href="/history" tone="accent">

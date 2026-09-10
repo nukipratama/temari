@@ -40,6 +40,16 @@ export default defineConfig({
                             priority: 100,
                         },
                         {
+                            // lucide's shared runtime only — never the icon
+                            // modules, which must stay loose so Rolldown can
+                            // attribute each one to the routes that render it.
+                            name: 'lucide-runtime',
+                            test: (id) =>
+                                id.includes('node_modules/lucide-react/') &&
+                                !id.includes('/icons/'),
+                            priority: 10,
+                        },
+                        {
                             name: 'charts',
                             test: (id) =>
                                 id.includes('node_modules/chart.js') ||

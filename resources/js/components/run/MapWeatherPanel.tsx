@@ -1,12 +1,14 @@
-import { lazy, Suspense } from 'react';
+import { Navigation, Wind } from 'lucide-react';
+import { Suspense } from 'react';
 
 import type { ActivityDetail } from '@/types/inertia';
 
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+import { lazyIsland } from '@/lib/lazyIsland';
 import { formatKm } from '@/lib/pace';
 
-const RouteMap = lazy(() => import('@/components/run/RouteMap'));
+const RouteMap = lazyIsland(() => import('@/components/run/RouteMap'));
 
 /**
  * The route map with the run's conditions read underneath it, as one sunken
@@ -68,7 +70,7 @@ export default function MapWeatherPanel({
                     {windSpeed != null && (
                         <div className="flex items-center gap-1 font-sans text-xs text-text-2">
                             <Icon
-                                icon="mdi:weather-windy"
+                                icon={Wind}
                                 width={12}
                                 height={12}
                                 aria-hidden
@@ -77,7 +79,7 @@ export default function MapWeatherPanel({
                             {showGust && <span>· gust {Math.round(gust)}</span>}
                             {direction != null && (
                                 <Icon
-                                    icon="mdi:navigation"
+                                    icon={Navigation}
                                     width={10}
                                     height={10}
                                     aria-hidden

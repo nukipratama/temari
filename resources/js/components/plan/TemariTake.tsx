@@ -1,3 +1,5 @@
+import { Sparkles } from 'lucide-react';
+
 import type { AnalysisPayload } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -20,11 +22,7 @@ export default function TemariTake({
     return (
         <div className={cn(className)}>
             <div className="flex items-center gap-1.5 text-horizon-ink">
-                <Icon
-                    icon="mdi:auto-awesome"
-                    className="size-3.5"
-                    aria-hidden
-                />
+                <Icon icon={Sparkles} className="size-3.5" aria-hidden />
                 <span className="text-label-micro">Temari&apos;s take</span>
             </div>
             <div className="mt-1">

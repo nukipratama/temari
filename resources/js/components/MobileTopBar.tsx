@@ -1,4 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
+import { ArrowLeft, Settings } from 'lucide-react';
 
 import type { SharedProps } from '@/types/inertia';
 
@@ -66,12 +67,7 @@ export default function MobileTopBar() {
                         'pressable focus-ring size-9 text-foreground',
                     )}
                 >
-                    <Icon
-                        icon="mdi:arrow-left"
-                        width={18}
-                        height={18}
-                        aria-hidden
-                    />
+                    <Icon icon={ArrowLeft} width={18} height={18} aria-hidden />
                 </Link>
             ) : (
                 <Link
@@ -94,7 +90,7 @@ export default function MobileTopBar() {
                         )}
                     >
                         <Icon
-                            icon="mdi:cog-outline"
+                            icon={Settings}
                             width={18}
                             height={18}
                             aria-hidden

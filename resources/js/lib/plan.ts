@@ -1,3 +1,6 @@
+import { Bed, Feather, Flag, Flame } from 'lucide-react';
+
+import type { IconComponent } from '@/components/ui/Icon';
 import type {
     AnalysisPayload,
     PlanDayClamp,
@@ -109,13 +112,13 @@ export const SESSION_TYPE_LABEL: Record<string, string> = {
     race: 'race day',
 };
 
-export const SESSION_TYPE_ICON: Record<string, string> = {
-    easy: 'mdi:feather',
-    long: 'mdi:feather',
-    tempo: 'mdi:fire',
-    interval: 'mdi:fire',
-    rest: 'mdi:bed',
-    race: 'mdi:flag-checkered',
+export const SESSION_TYPE_ICON: Record<string, IconComponent> = {
+    easy: Feather,
+    long: Feather,
+    tempo: Flame,
+    interval: Flame,
+    rest: Bed,
+    race: Flag,
 };
 
 export const STATUS_LABEL: Record<string, string> = {

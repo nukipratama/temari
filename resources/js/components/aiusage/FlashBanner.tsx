@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { useState } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
@@ -28,7 +29,7 @@ export default function FlashBanner({
                 aria-label="Close"
                 className="focus-ring shrink-0 rounded-full p-1 text-text-3 hover:text-foreground"
             >
-                <Icon icon="mdi:close" width={16} aria-hidden />
+                <Icon icon={X} width={16} aria-hidden />
             </button>
         </Card>
     );

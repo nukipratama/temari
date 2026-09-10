@@ -1,4 +1,11 @@
 import { router, usePage } from '@inertiajs/react';
+import {
+    ArrowDown,
+    Clock,
+    Lightbulb,
+    MessageCircle,
+    RefreshCw,
+} from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
@@ -7,7 +14,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import FaceIcon from '@/components/temari/FaceIcon';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, IconComponent } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import { triggerAnalysis } from '@/hooks/useAnalysisTrigger';
 import {
@@ -120,7 +127,7 @@ function ClaimLine({
                             )}
                         >
                             <Icon
-                                icon="mdi:arrow-down"
+                                icon={ArrowDown}
                                 width={10}
                                 height={10}
                                 aria-hidden
@@ -156,7 +163,7 @@ function ClaimList({
 function LensLabel({
     icon,
     children,
-}: Readonly<{ icon: string; children: string }>) {
+}: Readonly<{ icon: IconComponent; children: string }>) {
     return (
         <div className="mb-2 flex items-center gap-1.5">
             <Icon icon={icon} width={12} height={12} aria-hidden />
@@ -217,7 +224,7 @@ export default function RunLenses({
             </header>
 
             <Card tone="narration" padding="hero">
-                <LensLabel icon="mdi:chat-outline">
+                <LensLabel icon={MessageCircle}>
                     This run&apos;s story
                 </LensLabel>
                 <AnalysisStatus
@@ -237,9 +244,7 @@ export default function RunLenses({
                             aria-hidden
                             className="my-3.5 h-px bg-border-strong"
                         />
-                        <LensLabel icon="mdi:lightbulb-on-outline">
-                            What stood out
-                        </LensLabel>
+                        <LensLabel icon={Lightbulb}>What stood out</LensLabel>
                         <AnalysisStatus
                             analysis={insight}
                             inertiaReloadProps={inertiaReloadProps}
@@ -268,11 +273,7 @@ export default function RunLenses({
                             className="focus-ring pressable inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1.5 text-label-micro text-text-2 transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70"
                         >
                             <Icon
-                                icon={
-                                    cooling
-                                        ? 'mdi:clock-outline'
-                                        : 'mdi:refresh'
-                                }
+                                icon={cooling ? Clock : RefreshCw}
                                 width={12}
                                 height={12}
                                 className={cn(bulkPending && 'animate-spin')}

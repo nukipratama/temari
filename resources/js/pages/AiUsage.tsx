@@ -1,4 +1,5 @@
 import { Head, usePage } from '@inertiajs/react';
+import { ChartBar, Hash } from 'lucide-react';
 
 import type { SharedProps } from '@/types/inertia';
 
@@ -50,7 +51,7 @@ export default function AiUsage({
                 <div className="mx-auto flex max-w-page items-center justify-between px-6 py-4 2xl:max-w-page-2xl">
                     <div className="flex items-center gap-3">
                         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-leaf-deep text-cream">
-                            <Icon icon="mdi:counter" width={20} aria-hidden />
+                            <Icon icon={Hash} width={20} aria-hidden />
                         </span>
                         <div>
                             <h1 className="font-serif italic text-headline-xs text-foreground">
@@ -101,7 +102,7 @@ export default function AiUsage({
                 {daily.length > 0 && (
                     <section className="mt-10">
                         <SectionHeading
-                            icon="mdi:chart-bar"
+                            icon={ChartBar}
                             title="Daily Consumption"
                             subtitle="Tokens per day within the selected range."
                             tone="accent"

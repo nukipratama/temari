@@ -43,7 +43,12 @@ const ENTRY = 'resources/js/app.tsx';
  * own chunk with the highest `advancedChunks` priority for this to hold --
  * see docs/architecture/frontend-architecture.md.
  */
-const ENTRY_ALLOWED = ['rolldown-runtime', 'app', 'react-vendor'];
+const ENTRY_ALLOWED = [
+    'rolldown-runtime',
+    'app',
+    'react-vendor',
+    'lucide-runtime',
+];
 
 /*
  * Gzipped ceiling for a cold visit to a route: the entry closure plus that
@@ -56,35 +61,35 @@ const ENTRY_ALLOWED = ['rolldown-runtime', 'app', 'react-vendor'];
 /*
  * One entry per screen the prototype draws, which is also every screen a user
  * can land on cold. Budgets are the measured weight plus ~10%, rounded up to
- * 5. Re-baselined after the animation engine came out of the shell: the
- * authenticated routes each dropped ~43KB gzipped, and leaving the old
- * ceilings in place would have left room for it to come back unnoticed.
+ * 5. Re-baselined when the global icon registry came out of the entry: every
+ * route dropped 3-6KB gzipped, and leaving the old ceilings in place would
+ * have left room for a new registry to walk back in unnoticed.
  * Operator pages (Devtools, Devtools/Design, AiUsage) and the legal documents
  * stay out, per P20.
  */
 const ROUTE_BUDGETS_KB = [
-    { name: 'Login', src: 'resources/js/pages/Auth/Login.tsx', budgetKb: 150 },
+    { name: 'Login', src: 'resources/js/pages/Auth/Login.tsx', budgetKb: 145 },
     {
         name: 'Onboarding',
         src: 'resources/js/pages/Onboarding/Index.tsx',
-        budgetKb: 165,
+        budgetKb: 160,
     },
-    { name: 'Today', src: 'resources/js/pages/Home.tsx', budgetKb: 180 },
-    { name: 'Plan', src: 'resources/js/pages/Plan.tsx', budgetKb: 170 },
-    { name: 'Race', src: 'resources/js/pages/Race.tsx', budgetKb: 155 },
-    { name: 'Trends', src: 'resources/js/pages/Trends.tsx', budgetKb: 160 },
+    { name: 'Today', src: 'resources/js/pages/Home.tsx', budgetKb: 175 },
+    { name: 'Plan', src: 'resources/js/pages/Plan.tsx', budgetKb: 165 },
+    { name: 'Race', src: 'resources/js/pages/Race.tsx', budgetKb: 150 },
+    { name: 'Trends', src: 'resources/js/pages/Trends.tsx', budgetKb: 155 },
     { name: 'History', src: 'resources/js/pages/History.tsx', budgetKb: 175 },
     {
         name: 'Activity',
         src: 'resources/js/pages/Runs/Show.tsx',
-        budgetKb: 175,
+        budgetKb: 170,
     },
-    { name: 'Inbox', src: 'resources/js/pages/Inbox.tsx', budgetKb: 150 },
-    { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 165 },
+    { name: 'Inbox', src: 'resources/js/pages/Inbox.tsx', budgetKb: 145 },
+    { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 160 },
     {
         name: 'Settings',
         src: 'resources/js/pages/Settings/Index.tsx',
-        budgetKb: 175,
+        budgetKb: 170,
     },
 ];
 

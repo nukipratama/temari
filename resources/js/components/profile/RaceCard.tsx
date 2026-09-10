@@ -1,3 +1,5 @@
+import { Flag } from 'lucide-react';
+
 import type { ActiveRace } from '@/types/inertia';
 
 import { Icon } from '@/components/ui/Icon';
@@ -18,12 +20,7 @@ export default function RaceCard({
                 className="pressable flex items-center justify-between gap-2.5 transition hover:border-horizon/60"
             >
                 <span className="flex items-center gap-2 text-sm font-bold text-foreground">
-                    <Icon
-                        icon="mdi:flag-checkered"
-                        width={15}
-                        height={15}
-                        aria-hidden
-                    />
+                    <Icon icon={Flag} width={15} height={15} aria-hidden />
                     Got a race coming up?
                 </span>
                 <span className="text-label-micro text-text-3">
@@ -41,7 +38,7 @@ export default function RaceCard({
             className="pressable flex items-center gap-3 transition hover:border-horizon/60"
         >
             <Icon
-                icon="mdi:flag-checkered"
+                icon={Flag}
                 width={20}
                 height={20}
                 className="flex-none text-horizon-ink"

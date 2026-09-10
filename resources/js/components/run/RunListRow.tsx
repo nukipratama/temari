@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { Sparkle } from 'lucide-react';
 import { memo } from 'react';
 
 import type { ActivityDetail, Mood, RunCard } from '@/types/inertia';
@@ -71,7 +72,7 @@ function RunListRow({
                     </span>
                     {runCard && (
                         <Icon
-                            icon="mdi:sparkle-outline"
+                            icon={Sparkle}
                             width={12}
                             height={12}
                             className={cn(

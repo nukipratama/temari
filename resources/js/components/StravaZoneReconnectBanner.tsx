@@ -1,9 +1,10 @@
 import { usePage } from '@inertiajs/react';
+import { HeartPulse, X } from 'lucide-react';
 import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
-import { Icon } from '@/components/ui/Icon';
+import { Icon, StravaIcon } from '@/components/ui/Icon';
 
 const DISMISS_KEY_PREFIX = 'strava-zone-reconnect-dismissed';
 
@@ -49,7 +50,7 @@ export default function StravaZoneReconnectBanner() {
         <div className="px-4 pt-4 min-[900px]:px-6">
             <div className="mx-auto flex max-w-column min-[1280px]:max-w-column-wide items-start gap-3 rounded-lg border border-border bg-muted px-4 py-3">
                 <Icon
-                    icon="mdi:heart-pulse"
+                    icon={HeartPulse}
                     width={20}
                     height={20}
                     className="mt-0.5 shrink-0 text-text-3"
@@ -65,7 +66,7 @@ export default function StravaZoneReconnectBanner() {
                     className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1.5 font-sans text-[1.1875rem] leading-none font-bold text-white transition hover:bg-strava-orange-hover"
                 >
                     <Icon
-                        icon="mdi:strava"
+                        icon={StravaIcon}
                         width={18}
                         height={18}
                         aria-hidden
@@ -81,7 +82,7 @@ export default function StravaZoneReconnectBanner() {
                     aria-label="Dismiss"
                     className="focus-ring -m-1 shrink-0 rounded p-1 text-text-3 transition hover:text-foreground"
                 >
-                    <Icon icon="mdi:close" width={16} height={16} />
+                    <Icon icon={X} width={16} height={16} />
                 </button>
             </div>
         </div>

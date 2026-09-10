@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import type { StreamSummaryPartial, StreamSummaryPerKm } from '@/types/inertia';
@@ -186,7 +187,7 @@ export default function SplitsChart({
                         >
                             {bar.fastest && (
                                 <Icon
-                                    icon="mdi:star"
+                                    icon={Star}
                                     width={12}
                                     height={12}
                                     aria-hidden
@@ -217,7 +218,7 @@ export default function SplitsChart({
                 <div className="mt-4 flex items-center justify-between gap-3 rounded-sm bg-muted px-3 py-2.5">
                     <div className="flex items-center gap-2">
                         <Icon
-                            icon="mdi:star"
+                            icon={Star}
                             width={14}
                             height={14}
                             aria-hidden

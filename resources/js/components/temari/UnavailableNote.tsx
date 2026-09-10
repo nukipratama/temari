@@ -1,3 +1,5 @@
+import { ClockAlert } from 'lucide-react';
+
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
@@ -25,7 +27,7 @@ export default function UnavailableNote({
             )}
             role="status"
         >
-            <Icon icon="mdi:clock-alert-outline" aria-hidden />
+            <Icon icon={ClockAlert} aria-hidden />
             <span>{message}</span>
         </span>
     );
