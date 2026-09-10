@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use App\Actions\AI\KickoffMonthlyRecaps;
 use App\Actions\AI\KickoffWeeklyRecaps;
 use App\Enums\IngestState;
+use App\Actions\AI\RequestTodaysBriefing;
 use App\Jobs\AI\KickoffRecapsJob;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
@@ -228,6 +229,7 @@ it('holds the backfilled history back until it is hydrated, then narrates it wit
         app(PlanNarrationRequester::class),
         app(AnalysisService::class),
         app(Periodizer::class),
+        app(RequestTodaysBriefing::class),
     );
 
     // The backfill already wrote the weekly snapshot and the summary detail rows

@@ -313,6 +313,22 @@ function captureAnalysisServiceRequests(array &$captured): AnalysisService
             return new Analysis();
         });
 
+    $service->shouldReceive('shouldServeRuleBased')->andReturn(false);
+    $service->shouldReceive('requestBriefing')
+        ->andReturnUsing(function (User $user, string $discriminator, bool $invalidate = false, ?int $delaySeconds = null) use (&$captured): Analysis {
+            $captured[] = [
+                'subjectOrType' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+                'subjectId' => $user->id,
+                'type' => AnalysisType::BriefingMascotVoice,
+                'discriminator' => $discriminator,
+                'delaySeconds' => $delaySeconds,
+                'invalidate' => $invalidate,
+                'ruleBased' => false,
+            ];
+
+            return new Analysis();
+        });
+
     return $service;
 }
 
