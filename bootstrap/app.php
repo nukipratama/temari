@@ -4,6 +4,7 @@ use App\Http\Middleware\BlockDemoTelegramWrites;
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Http\Middleware\EnsureOnboarded;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\SetDefaultNarrationOrigin;
 use App\Http\Middleware\SetInertiaEtag;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -38,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             HandleInertiaRequests::class,
+            SetDefaultNarrationOrigin::class,
         ]);
 
         $middleware->alias([

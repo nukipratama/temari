@@ -7,8 +7,6 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
-use App\Services\AI\AnalysisOrigin;
-use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanPageAssembler;
@@ -53,8 +51,6 @@ class PlanController extends Controller
 
     public function regenerate(Request $request, Periodizer $periodizer, PlanNarrationRequester $narrationRequester): RedirectResponse
     {
-        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
-
         /** @var User $user */
         $user = $request->user();
 
@@ -83,8 +79,6 @@ class PlanController extends Controller
     public function update(UpdatePlannedSessionRequest $request, PlannedSession $plannedSession, PlanNarrationRequester $narrationRequester): RedirectResponse
     {
         $this->authorizeOwner($request, $plannedSession);
-
-        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
 
         $attributes = $request->validated();
         if (! array_key_exists('pinned', $attributes)) {

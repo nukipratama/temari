@@ -11,6 +11,7 @@ code_refs:
   - app/Services/AI/AnalysisType.php
   - app/Services/AI/AnalysisOrigin.php
   - app/Services/AI/NarrationOrigin.php
+  - app/Http/Middleware/SetDefaultNarrationOrigin.php
   - app/Services/AI/TemariPersona.php
   - app/Listeners/DispatchPostRunAnalysis.php
   - app/Http/Controllers/Api/AnalysisController.php
@@ -48,12 +49,18 @@ without a row here is a red build.
 ## The four origins
 
 Origin is a property of the dispatcher, not the narrator: the same `RunInsightNarrator` answers an
-ingest cascade, a "Reread" and a self-heal. Each entry point declares itself once by setting
-[`NarrationOrigin`](../../app/Services/AI/NarrationOrigin.php#L23),
-[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L372) writes that
-[`AnalysisOrigin`](../../app/Services/AI/AnalysisOrigin.php#L19) onto the job, and the job restores it
-before generating, so the metering row records what started the call rather than only which narrator
-answered. A dispatch site that declares nothing records `unknown` rather than a guess.
+ingest cascade, a "Reread" and a self-heal. An authenticated web request gets its origin for free —
+[SetDefaultNarrationOrigin](../../app/Http/Middleware/SetDefaultNarrationOrigin.php), appended to
+the `web` middleware group, stamps `AnalysisOrigin::User` on every one of them — and a controller
+whose origin is not `User` (a webhook, a devtools re-arm) still declares itself explicitly, which
+wins because it runs after the middleware default. A job or console command, which never runs
+through that middleware, always declares itself with
+[`NarrationOrigin::set()`](../../app/Services/AI/NarrationOrigin.php#L32). Either way,
+[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L372) writes the current
+[`AnalysisOrigin`](../../app/Services/AI/AnalysisOrigin.php#L19) onto the job it dispatches, and the
+job restores it before generating, so the metering row records what started the call rather than
+only which narrator answered. A dispatch site that is not an authenticated web request and declares
+nothing records `unknown` rather than a guess.
 
 ### 1. Scheduled
 

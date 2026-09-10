@@ -6,8 +6,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateTrainingPreferencesRequest;
 use App\Models\User;
-use App\Services\AI\AnalysisOrigin;
-use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
 use Illuminate\Http\RedirectResponse;
@@ -20,8 +18,6 @@ class TrainingPreferencesController extends Controller
         Periodizer $periodizer,
         PlanNarrationRequester $narrationRequester,
     ): RedirectResponse {
-        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
-
         /** @var User $user */
         $user = $request->user();
 

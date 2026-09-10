@@ -16,6 +16,16 @@ code_refs:
 **Status:** Accepted (documented 2026-09-09). Refines the dispatch mechanism of
 [[idempotent-dispatch-cost-ceiling]] and the retry budget of [[bounded-self-heal-and-dead-letter]].
 
+> **One claim below is superseded (noted 2026-09-10).** "The plan-day edit now declares its
+> origin" and every other `User`-origin controller no longer call
+> `app(NarrationOrigin::class)->set(AnalysisOrigin::User)` themselves —
+> [SetDefaultNarrationOrigin](../../app/Http/Middleware/SetDefaultNarrationOrigin.php), appended
+> to the `web` middleware group, now stamps `AnalysisOrigin::User` once for every authenticated
+> web request, and `PlanController::update()` inherits it like the rest. The re-arming behaviour
+> this decision describes is unchanged: an invalidation whose origin is `AnalysisOrigin::User`
+> still re-arms the budget, the origin just arrives from the request default now instead of a
+> per-controller line.
+
 ## Context
 
 Two problems, both about a bill being paid twice.
