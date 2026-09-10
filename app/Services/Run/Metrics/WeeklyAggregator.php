@@ -9,6 +9,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Notifications\UsualRunTime;
 use App\Services\Run\Story\PastYouTrendBuilder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -45,13 +46,14 @@ class WeeklyAggregator
 
     /**
      * Every per-user, per-day read derived from the history this rebuild is
-     * about to change. Both are keyed by today's date and both only move when
-     * an activity lands or leaves.
+     * about to change. All three are keyed by today's date and all only move
+     * when an activity lands or leaves.
      */
     private function clearDerivedCaches(User $user): void
     {
         TrainingLoad::clearSummaryCache($user);
         PastYouTrendBuilder::clearCache($user);
+        UsualRunTime::clearCache($user);
     }
 
     public function rebuildForWeekOf(User $user, Carbon $when): ?WeeklySnapshot

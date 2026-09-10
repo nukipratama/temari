@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Notifications\UsualRunTime;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
@@ -84,4 +85,40 @@ it('ignores another athlete\'s runs', function (): void {
     runsStartingAt(User::factory()->create(), '19:00:00', '19:00:00', '19:00:00', '19:00:00', '19:00:00');
 
     expect(new UsualRunTime()->forUser($user->id))->toBe(UsualRunTime::FALLBACK_MINUTE);
+});
+
+it('caches the computed slot for the day, so a second call within the day skips the query', function (): void {
+    $user = User::factory()->create();
+    runsStartingAt($user, '05:00:00', '05:30:00', '06:00:00', '06:30:00', '07:00:00');
+
+    $usualRunTime = new UsualRunTime();
+    expect($usualRunTime->forUser($user->id))->toBe(6 * 60);
+
+    ActivityDetail::query()->update(['start_date_local' => Carbon::parse('2026-06-01 19:00:00')]);
+
+    expect($usualRunTime->forUser($user->id))->toBe(6 * 60);
+});
+
+it('busts the cached slot when clearCache is called for that athlete', function (): void {
+    $user = User::factory()->create();
+    runsStartingAt($user, '05:00:00', '05:30:00', '06:00:00', '06:30:00', '07:00:00');
+
+    $usualRunTime = new UsualRunTime();
+    expect($usualRunTime->forUser($user->id))->toBe(6 * 60);
+
+    ActivityDetail::query()->update(['start_date_local' => Carbon::parse('2026-06-01 19:00:00')]);
+    UsualRunTime::clearCache($user);
+
+    expect($usualRunTime->forUser($user->id))->toBe(19 * 60);
+});
+
+it('keys the cache per athlete and per day', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today()->toDateString();
+
+    expect(Cache::has(UsualRunTime::cacheKey($user->id, $today)))->toBeFalse();
+
+    new UsualRunTime()->forUser($user->id);
+
+    expect(Cache::has(UsualRunTime::cacheKey($user->id, $today)))->toBeTrue();
 });
