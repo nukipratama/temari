@@ -8,9 +8,9 @@ import type {
 
 import Chip from '@/components/ui/Chip';
 import Card from '@/components/ui/LegacyCard';
+import { fmt, formatCost, formatTimestamp } from '@/pages/Narration/helpers';
 
 import ConfirmAction from './ConfirmAction';
-import { formatCost, formatCount, formatTimestamp } from './format';
 import VersionDiff from './VersionDiff';
 
 interface NarrationRowProps {
@@ -73,17 +73,17 @@ export default function NarrationRow({
                 <Stat label="cost" value={formatCost(row.cost, currency)} />
                 <Stat
                     label="tokens"
-                    value={`${formatCount(row.prompt_tokens)} in / ${formatCount(row.completion_tokens)} out`}
+                    value={`${fmt(row.prompt_tokens)} in / ${fmt(row.completion_tokens)} out`}
                 />
                 <Stat
                     label="latency"
                     value={
                         row.latency_ms === null
                             ? '—'
-                            : `${formatCount(row.latency_ms)} ms`
+                            : `${fmt(row.latency_ms)} ms`
                     }
                 />
-                <Stat label="steps" value={formatCount(row.steps)} />
+                <Stat label="steps" value={fmt(row.steps)} />
             </dl>
 
             {toolCalls.length > 0 && (
@@ -94,7 +94,7 @@ export default function NarrationRow({
                             className="rounded-full bg-muted px-2 py-0.5 text-label-micro text-text-2"
                         >
                             {call.tool} · {call.arguments_summary} ·{' '}
-                            {formatCount(call.duration_ms)}ms
+                            {fmt(call.duration_ms)}ms
                         </li>
                     ))}
                 </ul>

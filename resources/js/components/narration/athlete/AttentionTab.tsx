@@ -18,9 +18,9 @@ import type { SharedProps } from '@/types/inertia';
 import { Icon, type IconComponent } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import PillButton from '@/components/ui/PillButton';
+import { formatCost, formatTimestamp } from '@/pages/Narration/helpers';
 
 import ConfirmAction from './ConfirmAction';
-import { formatCost, formatTimestamp } from './format';
 
 interface AttentionTabProps {
     athleteId: number;

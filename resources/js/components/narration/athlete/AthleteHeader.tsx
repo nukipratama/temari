@@ -2,8 +2,8 @@ import type { AthleteHeaderData } from '@/pages/Narration/types';
 
 import Card from '@/components/ui/LegacyCard';
 import ProgressBar from '@/components/ui/ProgressBar';
+import { formatCost } from '@/pages/Narration/helpers';
 
-import { formatCost } from './format';
 import Sparkline from './Sparkline';
 
 /**

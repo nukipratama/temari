@@ -135,16 +135,14 @@ describe('AttentionTab', () => {
             audit: [
                 {
                     actor: 'nuki',
-                    action: 'narration.athlete.resync',
+                    action: 'narration.resync',
                     payload: { blocks: 2 },
                     at: '2026-09-10T08:00:00Z',
                 },
             ],
         });
 
-        expect(
-            screen.getByText('narration.athlete.resync'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('narration.resync')).toBeInTheDocument();
         expect(screen.getByText('{"blocks":2}')).toBeInTheDocument();
     });
 });

@@ -123,7 +123,7 @@ describe('actions', function (): void {
             ->assertSessionHas('info');
 
         $action = DevtoolsAction::query()->sole();
-        expect($action->action)->toBe('narration.athlete.retry_failed')
+        expect($action->action)->toBe('narration.retry_failed')
             ->and($action->user_id)->toBe($user->id)
             ->and($action->payload)->toBe(['blocks' => 1]);
     });
@@ -152,7 +152,7 @@ describe('actions', function (): void {
             SyncActivitiesJob::class,
             fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === null,
         );
-        expect(DevtoolsAction::query()->sole()->action)->toBe('narration.athlete.resync');
+        expect(DevtoolsAction::query()->sole()->action)->toBe('narration.resync');
     });
 
     it('sets and clears a today-only ceiling override', function (): void {
@@ -166,8 +166,8 @@ describe('actions', function (): void {
         expect($override->get($user->id))->toBeNull();
 
         expect(DevtoolsAction::query()->pluck('action')->all())->toBe([
-            'narration.athlete.ceiling_override',
-            'narration.athlete.ceiling_override_cleared',
+            'narration.ceiling_override',
+            'narration.ceiling_clear',
         ]);
     });
 

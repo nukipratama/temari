@@ -2,8 +2,7 @@ import type { CostByKindRow } from '@/pages/Narration/types';
 
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Card from '@/components/ui/LegacyCard';
-
-import { formatCost, formatCount } from './format';
+import { fmt, formatCost } from '@/pages/Narration/helpers';
 
 interface CostByKindTabProps {
     rows: CostByKindRow[];
@@ -92,7 +91,7 @@ function Cell({
                 {formatCost(cost, currency)}
             </span>
             <span className="block font-mono text-xs text-text-3">
-                {formatCount(calls)} calls
+                {fmt(calls)} calls
             </span>
         </td>
     );

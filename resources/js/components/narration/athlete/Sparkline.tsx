@@ -1,4 +1,4 @@
-import { formatCost, formatDay } from './format';
+import { formatCost, formatDayLabel } from '@/pages/Narration/helpers';
 
 interface SparklineProps {
     points: Array<{ day: string; cost: number }>;
@@ -32,7 +32,7 @@ export default function Sparkline({
     const label =
         last === undefined
             ? 'no spend recorded'
-            : `daily spend for the last ${points.length} days, peaking at ${formatCost(peak, currency)}, latest ${formatDay(last.day)} at ${formatCost(last.cost, currency)}`;
+            : `daily spend for the last ${points.length} days, peaking at ${formatCost(peak, currency)}, latest ${formatDayLabel(last.day)} at ${formatCost(last.cost, currency)}`;
 
     return (
         <figure className="mt-2 w-full max-w-[240px]">
@@ -54,7 +54,9 @@ export default function Sparkline({
             </svg>
             <figcaption className="mt-1 flex justify-between text-label-micro text-text-3">
                 <span>
-                    {points[0] !== undefined ? formatDay(points[0].day) : ''}
+                    {points[0] !== undefined
+                        ? formatDayLabel(points[0].day)
+                        : ''}
                 </span>
                 <span>peak {formatCost(peak, currency)}</span>
             </figcaption>

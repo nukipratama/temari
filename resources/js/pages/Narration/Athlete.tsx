@@ -5,8 +5,8 @@ import type { SharedProps } from '@/types/inertia';
 import AthleteHeader from '@/components/narration/athlete/AthleteHeader';
 import AttentionTab from '@/components/narration/athlete/AttentionTab';
 import CostByKindTab from '@/components/narration/athlete/CostByKindTab';
-import FlashNotice from '@/components/narration/athlete/FlashNotice';
 import NarrationsTab from '@/components/narration/athlete/NarrationsTab';
+import FlashBanner from '@/components/narration/FlashBanner';
 import PageContainer from '@/components/ui/PageContainer';
 import { cn } from '@/lib/cn';
 import { toggleButtonVariants } from '@/lib/variants';
@@ -62,7 +62,7 @@ export default function Athlete({
             </header>
 
             <PageContainer>
-                {flashInfo && <FlashNotice message={flashInfo} />}
+                {flashInfo && <FlashBanner message={flashInfo} />}
 
                 <AthleteHeader header={header} />
 

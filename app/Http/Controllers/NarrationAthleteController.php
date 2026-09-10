@@ -84,7 +84,7 @@ class NarrationAthleteController extends Controller
     public function retryFailed(int $userId): RedirectResponse
     {
         $count = $this->reArm->retryFailed($userId);
-        $this->recorder->record('narration.athlete.retry_failed', $userId, ['blocks' => $count]);
+        $this->recorder->record('narration.retry_failed', $userId, ['blocks' => $count]);
 
         return back()->with('info', "retrying {$count} failed block(s).");
     }
@@ -92,7 +92,7 @@ class NarrationAthleteController extends Controller
     public function reArm(int $userId): RedirectResponse
     {
         $count = $this->reArm->reArmDeadLettered($userId);
-        $this->recorder->record('narration.athlete.re_arm', $userId, ['blocks' => $count]);
+        $this->recorder->record('narration.re_arm', $userId, ['blocks' => $count]);
 
         return back()->with('info', "re-armed {$count} dead-lettered block(s).");
     }
@@ -100,7 +100,7 @@ class NarrationAthleteController extends Controller
     public function resync(int $userId): RedirectResponse
     {
         SyncActivitiesJob::dispatch($userId);
-        $this->recorder->record('narration.athlete.resync', $userId);
+        $this->recorder->record('narration.resync', $userId);
 
         return back()->with('info', 'queued a full Strava sync for this athlete.');
     }
@@ -113,7 +113,7 @@ class NarrationAthleteController extends Controller
 
         $ceiling = (float) $validated['ceiling'];
         $this->override->set($userId, $ceiling);
-        $this->recorder->record('narration.athlete.ceiling_override', $userId, ['ceiling' => $ceiling]);
+        $this->recorder->record('narration.ceiling_override', $userId, ['ceiling' => $ceiling]);
 
         return back()->with('info', "today's ceiling for this athlete is now \${$ceiling}.");
     }
@@ -121,7 +121,7 @@ class NarrationAthleteController extends Controller
     public function clearCeiling(int $userId): RedirectResponse
     {
         $this->override->clear($userId);
-        $this->recorder->record('narration.athlete.ceiling_override_cleared', $userId);
+        $this->recorder->record('narration.ceiling_clear', $userId);
 
         return back()->with('info', 'ceiling override cleared, the configured slice applies again.');
     }
@@ -146,7 +146,7 @@ class NarrationAthleteController extends Controller
         }
 
         $this->replayAction->replay($row, $athlete);
-        $this->recorder->record('narration.athlete.replay', $userId, [
+        $this->recorder->record('narration.replay', $userId, [
             'analysis_id' => $row->id,
             'kind' => $row->analysis_type->value,
         ]);
