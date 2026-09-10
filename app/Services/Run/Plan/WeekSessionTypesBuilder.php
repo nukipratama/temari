@@ -31,7 +31,7 @@ final readonly class WeekSessionTypesBuilder
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @return list<array{weekday: string, session_type: string, distance_km: float}>
      */
-    public function forUser(User $user, Carbon $today, ?array $paces): array
+    public function forUser(User $user, Carbon $today, ?array $paces, ?float $activeRaceDistanceM): array
     {
         $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
         $weekKey = $weekStart->toDateString();
@@ -62,7 +62,7 @@ final readonly class WeekSessionTypesBuilder
             ->map(fn (PlannedSession $s): array => [
                 'weekday' => strtolower($s->date->format('D')),
                 'session_type' => $s->session_type->value,
-                'distance_km' => $this->distanceKm($s, $primaryEasyDate, $longRunKm, $multiplier, $paces),
+                'distance_km' => $this->distanceKm($s, $primaryEasyDate, $longRunKm, $multiplier, $paces, $activeRaceDistanceM),
             ])
             ->all());
     }
@@ -76,9 +76,10 @@ final readonly class WeekSessionTypesBuilder
         float $longRunKm,
         float $multiplier,
         ?array $paces,
+        ?float $activeRaceDistanceM,
     ): float {
         $isPrimaryEasy = $session->date->toDateString() === $primaryEasyDate;
-        $raceDistanceM = $session->race_distance_m === null ? null : (float) $session->race_distance_m;
+        $raceDistanceM = $session->race_distance_m === null ? $activeRaceDistanceM : (float) $session->race_distance_m;
 
         $segments = SegmentGenerator::generate(
             $session->session_type,

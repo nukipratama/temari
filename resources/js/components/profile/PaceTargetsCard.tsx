@@ -38,31 +38,31 @@ type PaceKey = keyof TrainingPaces;
 const RUNGS: {
     key: PaceKey;
     label: string;
-    sessionTypes: readonly string[];
+    sessionType: string;
     fallback: string;
 }[] = [
     {
         key: 'easy',
         label: 'easy',
-        sessionTypes: ['easy'],
+        sessionType: 'easy',
         fallback: 'most of your runs',
     },
     {
         key: 'marathon',
         label: 'marathon',
-        sessionTypes: ['long'],
+        sessionType: 'long',
         fallback: 'long steady efforts',
     },
     {
         key: 'threshold',
         label: 'tempo',
-        sessionTypes: ['tempo'],
+        sessionType: 'tempo',
         fallback: 'comfortably hard, 20–40 min',
     },
     {
         key: 'interval',
         label: 'interval',
-        sessionTypes: ['interval'],
+        sessionType: 'interval',
         fallback: 'short hard reps',
     },
 ];
@@ -83,8 +83,8 @@ function hintFor(rung: (typeof RUNGS)[number], week: WeekSession[]): string {
         return rung.fallback;
     }
 
-    const days = week.filter((session) =>
-        rung.sessionTypes.includes(session.session_type),
+    const days = week.filter(
+        (session) => session.session_type === rung.sessionType,
     );
     if (days.length === 0) {
         return 'none this week';
@@ -111,8 +111,8 @@ function todaysPaceKey(week: WeekSession[]): PaceKey | null {
     }
 
     return (
-        RUNGS.find((rung) => rung.sessionTypes.includes(today.session_type))
-            ?.key ?? null
+        RUNGS.find((rung) => rung.sessionType === today.session_type)?.key ??
+        null
     );
 }
 
