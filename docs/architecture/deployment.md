@@ -64,6 +64,14 @@ Two Redis instances, each addressed by DB number ([config/database.php](config/d
 
 Session cookie name and the Redis/cache key prefixes are pinned to **fixed literals** (`SESSION_COOKIE`, `REDIS_PREFIX`, `CACHE_PREFIX`) instead of being derived from `APP_NAME`, so a cosmetic name/tagline edit can't rename the cookie or shift every key prefix and log everyone out. See [[fixed-session-cookie]].
 
+### Horizon `ai` supervisor sizing
+
+`supervisor-ai`'s `maxProcesses` in production ([config/horizon.php](config/horizon.php)) comes from `horizon.ai_processes` (env `HORIZON_AI_PROCESSES`, default `2`) rather than a hardcoded number — it needs to grow with the athlete count, but the homelab's 4-core host is shared with prod, so nothing here auto-scales; a human sets the env after reading a recommendation.
+
+**Rule of thumb**: `ceil(athletes / 5)`, bounded to `[2, 6]`. `php artisan horizon:recommend-ai-processes` prints the current athlete count and this recommendation (also folded into the hourly `ai:self-heal` report), so the owner can compare it to the configured `HORIZON_AI_PROCESSES` and bump the env if they've drifted apart. The floor of 2 matches today's fixed value; the ceiling of 6 is a guess, not a measurement — revisit it once real multi-athlete Monday-burst data exists.
+
+Why this matters: `plan:regenerate` can dispatch up to 9 rows per athlete, and the weekly recap + weekly-profile + plan regen all cluster at `00:01`-`00:07` WIB on Mondays (see [[bounded-self-heal-and-dead-letter]] for the retry/deadline model and #839 for the 240s per-run wall-clock deadline). At 2 workers, a 10-athlete Monday burst queues a lot of rows behind 2 processes; nothing is lost (idempotent generation + self-heal covers stragglers), but narration for later athletes lands later. Raising `maxProcesses` shortens that queue at the cost of `horizon`'s own CPU/memory share on the 1 vCPU / 1 GB container (see the `deploy.resources` floors above) — a tradeoff for the owner to make deliberately, never something the app decides for itself.
+
 ## Where the image is built
 
 The `build` job ([.github/workflows/ci.yml:309](.github/workflows/ci.yml)) runs on `ubuntu-latest`, gated by the same `push`-to-`main` condition as `deploy` but with no `needs`, so it builds in parallel with the test jobs. It pushes `ghcr.io/<owner>/<repo>/app:<git-sha>` using the job's own `GITHUB_TOKEN` widened to `packages: write` — **no new repository secret**. Layer cache is a registry cache (`cache-from`/`cache-to` on a `:buildcache` tag in the same GHCR package), not `type=gha`: the Actions cache is one 10 GB per-repo LRU that the hot composer and `node_modules` entries would evict a ~1 GB image cache out of between deploys.
@@ -107,6 +115,12 @@ A failed deploy **tries to roll itself back first**. The `Roll back on failure` 
 **It refuses to auto-roll when a migration ran this deploy.** `Detect pending migrations` ([.github/workflows/ci.yml:437](.github/workflows/ci.yml)) runs `migrate:status --pending=1` on both connections before migrating and records `MIGRATIONS_APPLIED`. When that is `true` — including when it is *unset*, which it defaults to, so an early failure fails safe — the rollback step deliberately stops and prints a manual-recovery error instead. Re-tagging the image would put old code against a new schema, which is the one thing expand/contract cannot protect against if the migration was destructive. Recover with the `Rollback prod` workflow plus `./scripts/restore-db.sh <backup>`.
 
 Neither path has ever fired in prod, so treat both as untested.
+
+## Nightly dependency audit alert
+
+[.github/workflows/nightly-audit.yml](.github/workflows/nightly-audit.yml) runs `composer audit` and `npm audit` nightly on `ubuntu-latest` (no install, both read the lock files directly) and does not go through `MaintainerAlerter`/`deploy:alert` — that path only exists inside the prod app container on the homelab runner, which this workflow never touches. Instead, an `alert-on-failure` job pushes a Telegram message directly via `curl` when either audit job fails, using two repository secrets: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_MAINTAINER_CHAT_ID`.
+
+**Neither secret is currently set.** Until both exist, the alert step logs a skip and exits 0 (the audit jobs themselves still go red normally; only the push is skipped). To wire it up: add both secrets under the repo's Actions secrets, with the bot token from the same Telegram bot `MaintainerAlerter` uses and the chat id of whichever chat should receive ops pushes.
 
 **Overruns reach that failure path by design.** Timeouts are set per *step* (the image pull, both dumps, both migrates, and the two failure-path steps) rather than only on the job, because a job-level timeout is a *cancellation* and GitHub skips every `if: failure()` step when one trips — an overrun would otherwise strand a half-deployed stack with no rollback, no alert and no summary. The job cap is a last-resort backstop sitting above the sum of the step caps. Every `curl` in the deploy and rollback workflows carries `--max-time` for the same reason: a worker that accepts a connection but never answers would otherwise hang a retry loop past the backstop.
 

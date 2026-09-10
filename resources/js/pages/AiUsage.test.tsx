@@ -136,6 +136,10 @@ const baseProps: AiUsageProps = {
         trippedAt: null,
         degradedFills: 0,
     },
+    contentFilter: {
+        trips: 0,
+        pct: 0,
+    },
     deadLettered: [],
     failedUnderBudget: [],
     nyangkut: [],

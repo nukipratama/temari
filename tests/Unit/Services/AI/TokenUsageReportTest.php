@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\AI\ContentFilterEvent;
 use App\Models\AI\TokenUsage;
 use App\Models\StravaConnection;
 use App\Models\User;
@@ -453,5 +454,28 @@ it('offers only the origins actually present in the range', function () use ($ra
     expect($this->report->build($from, $to, null)['availableOrigins'])->toBe([
         ['value' => 'ingest', 'label' => 'Ingest cascade'],
         ['value' => 'recovery', 'label' => 'Recovery'],
+    ]);
+});
+
+it('reports the content-filter trip count and its share of calls in range', function () use ($range): void {
+    seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-10'));
+    seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-11'));
+    ContentFilterEvent::query()->create(['kind' => 'briefing', 'created_at' => Carbon::parse('2026-05-10')]);
+    ContentFilterEvent::query()->create(['kind' => 'briefing', 'created_at' => Carbon::parse('2026-04-01')]); // out of range
+
+    [$from, $to] = $range();
+
+    expect($this->report->build($from, $to, null)['contentFilter'])->toBe([
+        'trips' => 1,
+        'pct' => 50.0,
+    ]);
+});
+
+it('reports a null content-filter share when the range has no calls', function () use ($range): void {
+    [$from, $to] = $range();
+
+    expect($this->report->build($from, $to, null)['contentFilter'])->toBe([
+        'trips' => 0,
+        'pct' => null,
     ]);
 });

@@ -34,6 +34,7 @@ export default function AiUsage({
     availableKinds,
     availableOrigins,
     budget,
+    contentFilter,
     deadLettered,
     failedUnderBudget,
     nyangkut,
@@ -86,6 +87,7 @@ export default function AiUsage({
                     totals={totals}
                     previousTotals={previousTotals}
                     currency={currency}
+                    contentFilter={contentFilter}
                 />
 
                 <BudgetGauge budget={budget} />

@@ -75,7 +75,7 @@ That cap is **365 days, deliberately wider than the 84-day narration cutoff**. T
 
 - **Enables:** a bounded worst case per signup. The deepest a new connection can bill is 12 weeks of history, and no click can extend it.
 - **Costs:** narration on a run older than 12 weeks is deterministic rather than written. It reads as Temari but does not know the run; volume, pace and PR data are untouched, since the cutoff only governs prose.
-- **`RuleBasedNarrationFiller` is a production surface, not a seed-only helper.** This decision is the second of three paths that reach it in production, alongside the Azure content-filter fallback in [AnalyzeRowJob's `fillFor`](app/Jobs/AI/AnalyzeRowJob.php#L49) / [AnalyzeGroupJob's `ruleBasedPayload`](app/Jobs/AI/AnalyzeGroupJob.php#L135) and the public demo account's triggers. [[bounded-self-heal-and-dead-letter]] calls it "demo-seed-only", which was true when written and is not now.
+- **`RuleBasedNarrationFiller` is a production surface, not a seed-only helper.** This decision is the second of three paths that reach it in production, alongside the Azure content-filter fallback in [AnalyzeRowJob's `fillFor`](app/Jobs/AI/AnalyzeRowJob.php#L66) / [AnalyzeGroupJob's `ruleBasedPayload`](app/Jobs/AI/AnalyzeGroupJob.php#L135) and the public demo account's triggers. [[bounded-self-heal-and-dead-letter]] calls it "demo-seed-only", which was true when written and is not now.
 - **Raising the value re-opens the cost.** It is the one number that scales with signups rather than with usage, which is why it carries a comment in `.env.example` rather than being a bare tunable.
 
 ## See also

@@ -96,6 +96,13 @@ export interface Budget {
     degradedFills: number;
 }
 
+export interface ContentFilterSummary {
+    /** Azure output-side content-filter trips that degraded to rule-based content, in range. */
+    trips: number;
+    /** Share of calls in range that tripped, or null when there were no calls. */
+    pct: number | null;
+}
+
 export interface DeadLetterBlock {
     type: string;
     error: string | null;
@@ -130,6 +137,7 @@ export interface AiUsageProps {
     availableKinds: KindOption[];
     availableOrigins: KindOption[];
     budget: Budget;
+    contentFilter: ContentFilterSummary;
     deadLettered: DeadLetterGroup[];
     failedUnderBudget: DeadLetterGroup[];
     nyangkut: DeadLetterGroup[];

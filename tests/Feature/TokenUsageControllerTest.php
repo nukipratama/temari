@@ -6,6 +6,7 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Models\AI\ContentFilterEvent;
 use App\Models\AI\TokenUsage;
 use App\Models\RunCard;
 use App\Models\User;
@@ -148,7 +149,21 @@ it('renders the AiUsage page with totals + per-kind breakdown filtered by date',
                     'reasoning_pct' => null,
                 ])
                 ->has('byDeployment')
-                ->has('budget'),
+                ->has('budget')
+                ->has('contentFilter'),
+        );
+});
+
+it('surfaces the content-filter trip count and rate on the ai-usage page', function (): void {
+    seedUsage('briefing', 100, 50, Carbon::parse('2026-05-10'));
+    seedUsage('briefing', 100, 50, Carbon::parse('2026-05-11'));
+    ContentFilterEvent::query()->create(['kind' => 'briefing', 'created_at' => Carbon::parse('2026-05-10')]);
+
+    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
+        ->assertSuccessful()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->where('contentFilter', ['trips' => 1, 'pct' => 50]),
         );
 });
 

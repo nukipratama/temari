@@ -57,6 +57,7 @@ class TokenUsageController extends Controller
             'availableKinds' => $report['availableKinds'],
             'availableOrigins' => $report['availableOrigins'],
             'budget' => $report['budget'],
+            'contentFilter' => $report['contentFilter'],
             'deadLettered' => $this->deadLetteredByUser(),
             'failedUnderBudget' => $this->failedUnderBudgetByUser(),
             'nyangkut' => $this->nyangkutByUser(),
