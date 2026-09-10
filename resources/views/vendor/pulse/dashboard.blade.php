@@ -59,6 +59,12 @@
 
     <livewire:pulse.strava-health cols="6" rows="2" />
 
+    {{-- The two budgets that stop the app when they run out. --}}
+    <livewire:pulse.burn-down cols="6" rows="2" />
+
+    {{-- Per-athlete sync + delivery, where the two rollups above cannot look. --}}
+    <livewire:pulse.athlete-operations cols="6" rows="2" />
+
     {{-- Delivery + retry-budget detail behind the pipeline rollup. --}}
     <livewire:pulse.notification-delivery-health cols="6" rows="2" />
 

@@ -25,7 +25,7 @@ code_refs:
 Two questions are asked about AI generation, and they were answered by two different pieces of code:
 
 - **"May we dispatch?"** — a boolean, asked by every dispatch path and by `ai:self-heal`.
-- **"Why not?"** — a string, asked by `/pulse` ([`pauseReason`](app/Livewire/Pulse/AiPipelineHealth.php#L48)) and by the maintainer Telegram alert ([`syncPauseState`](app/Console/Commands/AI/SelfHealCommand.php#L23)).
+- **"Why not?"** — a string, asked by `/pulse` ([`pauseReason`](app/Livewire/Pulse/AiPipelineHealth.php#L57)) and by the maintainer Telegram alert ([`syncPauseState`](app/Console/Commands/AI/SelfHealCommand.php#L23)).
 
 `pauseReason()` re-derived the stop conditions in its own hand-maintained `if` ladder rather than deriving them from the gate it reports on. Its docblock claimed the two were "checked in the same precedence". They were not, and the drift was already shipping: the ladder never checked `ai.auto_dispatch`.
 

@@ -119,11 +119,12 @@ Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)
     ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE));
 
 Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer()
-    ->when(static fn (): bool => SchedulerChain::isDoneToday(SchedulerChain::STREAK_SETTLE));
+    ->when(static fn (): bool => SchedulerChain::prerequisitesMet('ai:weekly-recap'));
 ```
 
-and the same shape for `plan:regenerate`'s `->when()`, which checks both
-`plan:close-finished-races` and `plan:score-compliance`. This was chosen over an
+and the same shape for `plan:regenerate`'s `->when()`. Which prerequisites each gated command
+waits for lives in `SchedulerChain::PREREQUISITES`, so the gates and the `/pulse` scheduler
+timeline (which renders each prerequisite as done/pending) read the same map. This was chosen over an
 `Event::then()`/`Artisan::call()` chain that runs the dependent immediately after its prerequisite:
 a `->when()` gate keeps every command's own cron expression the single source of truth for *when*
 it runs (`schedule:list` still shows `ai:weekly-recap` at its own `16 0 * * 1`, not folded into

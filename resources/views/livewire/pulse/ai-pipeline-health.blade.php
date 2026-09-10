@@ -23,6 +23,66 @@
             @endforeach
         </div>
 
+        <div class="mb-4">
+            <div class="text-label-micro text-text-3 mb-1">Spend today</div>
+            <div class="grid grid-cols-2 gap-2">
+                @include('livewire.pulse.partials.stat-tile', [
+                    'label' => $spend['totalCeiling'] === null ? 'app-wide, no ceiling' : 'app-wide of $'.number_format($spend['totalCeiling'], 2),
+                    'value' => '$'.number_format($spend['today'], 2),
+                    'tone' => $spend['totalCeiling'] !== null && $spend['today'] >= $spend['totalCeiling'] ? 'alert' : 'neutral',
+                ])
+                @include('livewire.pulse.partials.stat-tile', [
+                    'label' => $spend['perUserCeiling'] === null ? 'top athlete, no ceiling' : 'top athlete of $'.number_format($spend['perUserCeiling'], 2),
+                    'value' => '$'.number_format($spend['topAthlete'], 2),
+                    'tone' => $spend['cappedAthletes'] > 0 ? 'warn' : 'neutral',
+                ])
+            </div>
+            @if ($spend['cappedAthletes'] > 0)
+                <div class="mt-1 text-label-micro text-horizon-ink">
+                    {{ $spend['cappedAthletes'] }} {{ \Illuminate\Support\Str::plural('athlete', $spend['cappedAthletes']) }} capped today — served rule-based
+                </div>
+            @endif
+        </div>
+
+        <div class="mb-4">
+            <div class="text-label-micro text-text-3 mb-1">Azure latency, last {{ $this->periodForHumans() }}</div>
+            <div class="grid grid-cols-3 gap-2">
+                @include('livewire.pulse.partials.stat-tile', [
+                    'label' => 'p50',
+                    'value' => $latency['p50'] === null ? '—' : ($latency['p50'] >= 1000 ? round($latency['p50'] / 1000, 1).'s' : $latency['p50'].'ms'),
+                    'tone' => 'neutral',
+                ])
+                @include('livewire.pulse.partials.stat-tile', [
+                    'label' => 'p95',
+                    'value' => $latency['p95'] === null ? '—' : ($latency['p95'] >= 1000 ? round($latency['p95'] / 1000, 1).'s' : $latency['p95'].'ms'),
+                    'tone' => 'neutral',
+                ])
+                @include('livewire.pulse.partials.stat-tile', [
+                    'label' => 'timed calls',
+                    'value' => number_format($latency['calls']),
+                    'tone' => 'neutral',
+                ])
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <div class="text-label-micro text-text-3 mb-1">ai queue</div>
+            <div class="grid grid-cols-2 gap-2">
+                @include('livewire.pulse.partials.stat-tile', [
+                    'label' => 'waiting',
+                    'value' => number_format($queue['depth']),
+                    'tone' => 'neutral',
+                ])
+                @include('livewire.pulse.partials.stat-tile', [
+                    'label' => 'oldest job',
+                    'value' => $queue['oldestSeconds'] === null
+                        ? '—'
+                        : ($queue['oldestSeconds'] >= 60 ? round($queue['oldestSeconds'] / 60).'m' : $queue['oldestSeconds'].'s'),
+                    'tone' => $queue['oldestSeconds'] !== null && $queue['oldestSeconds'] >= 900 ? 'warn' : 'neutral',
+                ])
+            </div>
+        </div>
+
         <div class="grid grid-cols-2 gap-2 mb-4">
             <div>
                 <div class="text-label-micro text-text-3 mb-1">Dead-letter</div>
