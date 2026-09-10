@@ -40,6 +40,14 @@ describe('CeilingHeader', () => {
         expect(screen.getByText('/ $5.00')).toBeInTheDocument();
     });
 
+    it('says the share in words, since a near-empty bar reads as nothing', () => {
+        renderHeader();
+
+        expect(
+            screen.getByText('25% of the app-wide ceiling'),
+        ).toBeInTheDocument();
+    });
+
     it('says so plainly when no app-wide ceiling is configured', () => {
         renderHeader({ totalCeiling: null });
 

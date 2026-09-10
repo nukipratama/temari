@@ -413,7 +413,8 @@ class TokenUsageReport
      * segment bill against its own deployment rate before rolling up.
      *
      * `$userId` narrows the whole chart to one athlete, which is the athlete
-     * filter above it.
+     * filter above it. Kinds that cost nothing in range are left out of both the
+     * stack and the legend.
      *
      * @return array{
      *     kinds: list<array{kind:string, label:string, cost:float}>,
@@ -458,6 +459,12 @@ class TokenUsageReport
 
         $kinds = [];
         foreach ($kindCost as $kind => $cost) {
+            // A kind that cost nothing is not a band: it would sit in the legend
+            // claiming a colour no bar ever paints.
+            if ($cost <= 0) {
+                continue;
+            }
+
             $key = (string) $kind;
             $type = AnalysisType::tryFrom($key);
             $kinds[] = [
@@ -550,9 +557,8 @@ class TokenUsageReport
             ];
         }
 
-        usort($rows, function (array $a, array $b): int {
-            return [$a['is_demo'], -$a['last30'], $a['user_id']] <=> [$b['is_demo'], -$b['last30'], $b['user_id']];
-        });
+        usort($rows, fn (array $a, array $b): int => [$a['is_demo'], -$a['last30'], $a['user_id']]
+            <=> [$b['is_demo'], -$b['last30'], $b['user_id']]);
 
         return $rows;
     }

@@ -113,8 +113,10 @@ describe('AthleteTable', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('posts the per-athlete retry when blocks are dead-lettered', () => {
+    it('posts the per-athlete retry beside the dead-letter count', () => {
         renderTable({ dead_lettered: 3 });
+
+        expect(screen.getByText('3')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'retry failed' }));
 

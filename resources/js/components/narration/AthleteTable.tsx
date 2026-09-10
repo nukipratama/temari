@@ -25,7 +25,6 @@ const COLUMNS = [
     'served by',
     'flags',
     'dead-lettered',
-    '',
 ];
 
 export default function AthleteTable({
@@ -39,7 +38,7 @@ export default function AthleteTable({
             subtitle="What each athlete costs, and what their narration was served by."
             tone="brand"
             columns={COLUMNS}
-            minWidth={1180}
+            minWidth={1080}
             rows={rows}
             rowKey={(row) => row.user_id}
             emptyState={<EmptyState />}
@@ -88,15 +87,17 @@ function AthleteCells({
             <Td className={row.flags > 0 ? 'text-ember-ink' : undefined}>
                 {row.flags > 0 ? fmt(row.flags) : '—'}
             </Td>
-            <Td
-                className={
-                    row.dead_lettered > 0 ? 'text-mood-gassed-ink' : undefined
-                }
-            >
-                {row.dead_lettered > 0 ? fmt(row.dead_lettered) : '—'}
-            </Td>
-            <td className="px-5 py-3">
-                {row.dead_lettered > 0 && <RetryButton userId={row.user_id} />}
+            <td className="px-5 py-3 text-text-2">
+                {row.dead_lettered > 0 ? (
+                    <div className="flex items-center gap-2">
+                        <span className="font-semibold text-mood-gassed-ink">
+                            {fmt(row.dead_lettered)}
+                        </span>
+                        <RetryButton userId={row.user_id} />
+                    </div>
+                ) : (
+                    '—'
+                )}
             </td>
         </>
     );

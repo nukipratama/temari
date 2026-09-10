@@ -63,12 +63,17 @@ export default function CeilingHeader({
             </div>
 
             {hasCeiling ? (
-                <ProgressBar
-                    value={ratio}
-                    tone={ratio > 1 ? 'sky' : 'horizon'}
-                    ariaLabel={`app-wide ceiling: ${Math.round(ratio * 100)}% used`}
-                    className="mt-3"
-                />
+                <>
+                    <ProgressBar
+                        value={ratio}
+                        tone={ratio > 1 ? 'sky' : 'horizon'}
+                        ariaLabel={`app-wide ceiling: ${Math.round(ratio * 100)}% used`}
+                        className="mt-3"
+                    />
+                    <p className="mt-2 font-mono text-xs text-text-2 tabular-nums">
+                        {Math.round(ratio * 100)}% of the app-wide ceiling
+                    </p>
+                </>
             ) : (
                 <p className="mt-3 text-xs text-text-3">
                     No app-wide ceiling set.

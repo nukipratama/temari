@@ -262,6 +262,17 @@ it('orders the stack by kind spend, heaviest band first, and labels it', functio
         ->and($chart['kinds'][1]['label'])->toBe('CardFlavor');
 });
 
+it('leaves a kind that cost nothing out of the stack and its legend', function () use ($range): void {
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-10'), model: 'gpt-4o');
+    seedReportUsage('card_flavor', 100, 50, Carbon::parse('2026-05-10'), model: 'not-priced');
+
+    [$from, $to] = $range();
+    $chart = $this->report->dailyCostByKind($from, $to);
+
+    expect(array_column($chart['kinds'], 'kind'))->toBe(['briefing'])
+        ->and($chart['days'][0]['byKind'])->toHaveKey('card_flavor');
+});
+
 it('narrows the stacked series to one athlete when the chart filter names one', function () use ($range): void {
     $alice = User::factory()->create();
     $bob = User::factory()->create();
