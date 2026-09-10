@@ -17,6 +17,7 @@ use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\InboxController;
 use App\Http\Controllers\LegalController;
+use App\Http\Controllers\NarrationAthleteController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\OnboardingController;
@@ -210,4 +211,20 @@ Route::middleware(['throttle:60,1', 'devtools'])->group(function (): void {
     Route::post('/devtools/ai-usage/users/{userId}/retry-failed', [TokenUsageController::class, 'retryFailed'])
         ->whereNumber('userId')
         ->name('devtools.ai-usage.retry-failed');
+
+    Route::prefix('/devtools/narration/athletes/{userId}')->whereNumber('userId')->group(function (): void {
+        Route::get('/', [NarrationAthleteController::class, 'show'])->name('devtools.narration.athlete');
+        Route::post('/retry-failed', [NarrationAthleteController::class, 'retryFailed'])
+            ->name('devtools.narration.athlete.retry-failed');
+        Route::post('/re-arm', [NarrationAthleteController::class, 'reArm'])
+            ->name('devtools.narration.athlete.re-arm');
+        Route::post('/resync', [NarrationAthleteController::class, 'resync'])
+            ->name('devtools.narration.athlete.resync');
+        Route::post('/ceiling', [NarrationAthleteController::class, 'setCeiling'])
+            ->name('devtools.narration.athlete.ceiling');
+        Route::post('/ceiling/clear', [NarrationAthleteController::class, 'clearCeiling'])
+            ->name('devtools.narration.athlete.ceiling-clear');
+        Route::post('/replay', [NarrationAthleteController::class, 'replay'])
+            ->name('devtools.narration.athlete.replay');
+    });
 });
