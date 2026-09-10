@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { lazy, Suspense, useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import type {
     Activity,
@@ -22,13 +22,16 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { drawnRunAnchors } from '@/lib/anchors';
+import { lazyIsland } from '@/lib/lazyIsland';
 import { formatAbsoluteId } from '@/lib/pace';
 import { zonePctFromDetail } from '@/lib/runcard';
 
 import { useRunShow, type RunCardDetail } from './useRunShow';
 
 // Carries the ~1200-line canvas engine; fetched on the share tap.
-const ShareCardModal = lazy(() => import('@/components/card/ShareCardModal'));
+const ShareCardModal = lazyIsland(
+    () => import('@/components/card/ShareCardModal'),
+);
 
 type DetailedActivity = Activity & {
     detail: ActivityDetail;

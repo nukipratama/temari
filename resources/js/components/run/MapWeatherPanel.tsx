@@ -1,13 +1,14 @@
 import { Navigation, Wind } from 'lucide-react';
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 
 import type { ActivityDetail } from '@/types/inertia';
 
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+import { lazyIsland } from '@/lib/lazyIsland';
 import { formatKm } from '@/lib/pace';
 
-const RouteMap = lazy(() => import('@/components/run/RouteMap'));
+const RouteMap = lazyIsland(() => import('@/components/run/RouteMap'));
 
 /**
  * The route map with the run's conditions read underneath it, as one sunken

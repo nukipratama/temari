@@ -9,7 +9,7 @@ import {
     ScanSearch,
     Trophy,
 } from 'lucide-react';
-import { lazy, Suspense, useId, useState } from 'react';
+import { Suspense, useId, useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
@@ -20,10 +20,11 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
+import { lazyIsland } from '@/lib/lazyIsland';
 
 // Lazy: the card and its rarity chrome are the heaviest thing on this route
 // and sit below the fold, so they stay out of its entry-chunk budget.
-const RunCardMini = lazy(() => import('@/components/card/RunCardMini'));
+const RunCardMini = lazyIsland(() => import('@/components/card/RunCardMini'));
 
 interface CopyBlock {
     headline: string;

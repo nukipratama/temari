@@ -1,5 +1,5 @@
 import { Medal } from 'lucide-react';
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 
 import type { Rarity } from '@/types/inertia';
 
@@ -12,6 +12,7 @@ import { useCountUp } from '@/hooks/useCountUp';
 import { useIsChartDark } from '@/hooks/useIsChartDark';
 import { CHART_GROUND } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
+import { lazyIsland } from '@/lib/lazyIsland';
 import { formatNaiveIdDate } from '@/lib/pace';
 import { badgeName, BADGE_ABILITY, RARITY_INK } from '@/lib/runcard';
 import { revealDelay } from '@/lib/styles';
@@ -21,7 +22,7 @@ import type { TrendRange } from '../RangeToggle';
 // Chart.js core + its scale/element registration live inside this lazy
 // module, mirroring CtlTrendChart/ProgressionChart so nothing chart-related
 // enters this page's own chunk either.
-const Line = lazy(() => import('@/components/collection/LineChart'));
+const Line = lazyIsland(() => import('@/components/collection/LineChart'));
 
 export interface FitnessTrendPoint {
     date: string;

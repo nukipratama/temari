@@ -1,14 +1,15 @@
 import { usePage } from '@inertiajs/react';
 import { Flag } from 'lucide-react';
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import type { FeedbackSubject } from '@/types/generated';
 import type { SharedProps } from '@/types/inertia';
 
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+import { lazyIsland } from '@/lib/lazyIsland';
 
-const FlagSheet = lazy(() => import('./FlagSheet'));
+const FlagSheet = lazyIsland(() => import('./FlagSheet'));
 
 const ICON_BUTTON_CLASS =
     'inline-flex size-11 flex-none items-center justify-center rounded-full';
