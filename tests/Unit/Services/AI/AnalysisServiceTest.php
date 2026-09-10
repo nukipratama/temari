@@ -65,19 +65,11 @@ function breachTheTotalCeilingWith(int $userId): void
     spend($userId, 1_000_000);
 }
 
-function spend(int $userId, int $promptTokens): void
+function spend(int $userId, int $promptTokens, ?AnalysisOrigin $origin = null): void
 {
     TokenUsage::query()->create([
         'user_id' => $userId,
-        'kind' => 'briefing', 'prompt_tokens' => $promptTokens, 'completion_tokens' => 0,
-        'total_tokens' => $promptTokens, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
-    ]);
-}
-
-function replaySpend(int $userId, int $promptTokens): void
-{
-    TokenUsage::query()->create([
-        'user_id' => $userId, 'origin' => AnalysisOrigin::Replay,
+        ...($origin !== null ? ['origin' => $origin] : []),
         'kind' => 'briefing', 'prompt_tokens' => $promptTokens, 'completion_tokens' => 0,
         'total_tokens' => $promptTokens, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
     ]);
@@ -1671,7 +1663,7 @@ it('refuses a replay once today replay spend has reached its cap', function (): 
     config(['azure_openai.daily_cost_ceiling_total' => 100.0]);
     config(['azure_openai.replay_daily_cap' => 0.50]);
     config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 0.60, 'output_per_1m' => 10.00]]]);
-    replaySpend($snap->user_id, 1_000_000);
+    spend($snap->user_id, 1_000_000, AnalysisOrigin::Replay);
     app(NarrationOrigin::class)->set(AnalysisOrigin::Replay);
 
     $row = $this->service->request(
@@ -1682,6 +1674,27 @@ it('refuses a replay once today replay spend has reached its cap', function (): 
 
     expect($row->status)->toBe(AnalysisStatus::Done)
         ->and($row->served_by)->toBe(ServedBy::RuleBased);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+// The two ceilings degrade only *past* their figure; the replay cap refuses
+// *at* it, since a replay is discretionary. Locked here so the asymmetry can't
+// be tidied away as an inconsistency.
+it('refuses a replay whose spend lands exactly on the cap', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
+    config(['azure_openai.daily_cost_ceiling_total' => 100.0]);
+    config(['azure_openai.replay_daily_cap' => 0.50]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 0.50, 'output_per_1m' => 10.00]]]);
+    spend($snap->user_id, 1_000_000, AnalysisOrigin::Replay);
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Replay);
+
+    $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 

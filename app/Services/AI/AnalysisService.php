@@ -840,7 +840,8 @@ class AnalysisService
      * operator's QA tool rather than an athlete's narration, so it is measured
      * against this cap and the app-wide total, and deliberately never against
      * the athlete's own slice — replaying their block must not cost them the
-     * budget their real narration needs.
+     * budget their real narration needs. Refused *at* the cap rather than past
+     * it, unlike the two ceilings, since a replay is discretionary.
      */
     private function replayCapExceeded(): bool
     {
