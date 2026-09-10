@@ -27,7 +27,7 @@ Rector pass was the slowest single step the hook ever carried, so it moved to th
 ## `composer gate`: the fast pre-push gate
 
 [scripts/gate.sh](../../scripts/gate.sh) (wired as `composer gate` / `composer check:full` in
-[composer.json:70](../../composer.json)) is a shared script with two modes:
+[composer.json](../../composer.json#L70)) is a shared script with two modes:
 
 - **fast** (`composer gate`, `sh scripts/gate.sh`): config clear, TS-enum drift check, the doc-citation
   and `{@see}` guards, the design-token palette guard, the structural Pest + Vitest suites, `tsc`,
@@ -43,10 +43,10 @@ Rector pass was the slowest single step the hook ever carried, so it moved to th
 
 [.github/workflows/ci.yml](../../.github/workflows/ci.yml) does not shell out to `gate.sh`; its jobs
 run the same checks directly so each can be its own job with its own cache and log — structural
-Pest ([:149](../../.github/workflows/ci.yml)), the full Pest suite with coverage
-([:173-178](../../.github/workflows/ci.yml)), the Vitest structure test, Pint and PHPStan
-(`--test`/no dry-run, [:267](../../.github/workflows/ci.yml) and
-[:270](../../.github/workflows/ci.yml)), and more. **CI is the authoritative full gate** — a green
+Pest ([ci.yml](../../.github/workflows/ci.yml#L149)), the full Pest suite with coverage
+([ci.yml](../../.github/workflows/ci.yml#L173)), the Vitest structure test, Pint and PHPStan
+(`--test`/no dry-run, [ci.yml](../../.github/workflows/ci.yml#L267) and
+[ci.yml](../../.github/workflows/ci.yml#L270)), and more. **CI is the authoritative full gate** — a green
 `composer gate` locally is a fast pre-push signal, not a substitute for CI passing. On `push` to
 `main`, `deploy` additionally builds and rolls the image once `ci-gate` and `build` both pass; see
 [[deployment]] for that half.

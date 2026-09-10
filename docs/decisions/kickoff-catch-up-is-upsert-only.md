@@ -20,8 +20,8 @@ covers the fill side; nothing it decided changes.
 ## Context
 
 Every recovery family in [SelfHealer](../../app/Services/AI/SelfHealer.php) starts from a row that
-already exists — `resumeSingleRowType` [:291](../../app/Services/AI/SelfHealer.php#L291),
-`resumeCardFlavor` [:253](../../app/Services/AI/SelfHealer.php#L253) and the two chain sweeps all
+already exists — [`resumeSingleRowType`](../../app/Services/AI/SelfHealer.php#L291),
+[`resumeCardFlavor`](../../app/Services/AI/SelfHealer.php#L253) and the two chain sweeps all
 query `Analysis::query()->stalled()`. There is no `firstOrCreate` anywhere in it.
 
 But a row's existence is decided by a single scheduled minute. `ai:daily-briefing` stages the day's
@@ -39,9 +39,8 @@ rows and does nothing else**.
 
 - **It runs the kickoffs' own creation code**, under
   [`AnalysisService::withoutDispatching()`](../../app/Services/AI/AnalysisService.php#L64). Dispatch
-  suppression short-circuits `blockingReason` [:697](../../app/Services/AI/AnalysisService.php#L697),
-  which reduces `dispatchRow` to its `firstOrCreate` in `upsertRow`
-  [:379](../../app/Services/AI/AnalysisService.php#L379): a missing row is created `Pending`, an
+  suppression short-circuits [`blockingReason`](../../app/Services/AI/AnalysisService.php#L697),
+  which reduces `dispatchRow` to its `firstOrCreate` in [`upsertRow`](../../app/Services/AI/AnalysisService.php#L379): a missing row is created `Pending`, an
   existing row of any status is untouched, and no job is queued. The eligibility rules are not
   restated — the athlete scan is the shared [RecentlyActiveUsers](../../app/Actions/AI/RecentlyActiveUsers.php)
   the two commands now also use, and the recap sweep is

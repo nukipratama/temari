@@ -27,14 +27,14 @@ That combination is exploitable in this topology. The private-range list does no
 
 **Pass an explicit header set: `X_FORWARDED_FOR | X_FORWARDED_PROTO | X_FORWARDED_PORT`.** These are the three the topology actually needs — `PROTO` to generate `https` behind the TLS-terminating tunnel, `FOR` for real client IPs in logs and rate limiting, `PORT` to keep generated URLs off `:7001`. `HOST` and `PREFIX` are dropped.
 
-Nothing legitimate depends on them. With `X-Forwarded-Host` untrusted, `getHost()` falls back to the `Host` header, which cloudflared forwards intact — so `route('auth.strava.callback')` ([app/Http/Controllers/Auth/StravaAuthController.php:106](app/Http/Controllers/Auth/StravaAuthController.php)) still builds the registered `https://` callback and Strava OAuth is unaffected. If the edge does send `X-Forwarded-Host`, it sends the same hostname `Host` already carries; the two only diverge when someone is forging one.
+Nothing legitimate depends on them. With `X-Forwarded-Host` untrusted, `getHost()` falls back to the `Host` header, which cloudflared forwards intact — so `route('auth.strava.callback')` ([app/Http/Controllers/Auth/StravaAuthController.php](app/Http/Controllers/Auth/StravaAuthController.php#L106)) still builds the registered `https://` callback and Strava OAuth is unaffected. If the edge does send `X-Forwarded-Host`, it sends the same hostname `Host` already carries; the two only diverge when someone is forging one.
 
 ### Why not `trustHosts`
 
 `trustHosts` was the other candidate and was **rejected**. It works by rejecting requests whose `Host` is not on an allowlist, and this stack makes several legitimate requests with an unroutable Host:
 
-- the container healthcheck is `wget -qO- http://127.0.0.1:7001/up` ([compose.prod.yaml:142-147](compose.prod.yaml)), sending `Host: 127.0.0.1:7001`;
-- the deploy's healthcheck and smoke tests curl the same address from the runner ([.github/workflows/ci.yml:412](.github/workflows/ci.yml)).
+- the container healthcheck is `wget -qO- http://127.0.0.1:7001/up` ([compose.prod.yaml](compose.prod.yaml#L142)), sending `Host: 127.0.0.1:7001`;
+- the deploy's healthcheck and smoke tests curl the same address from the runner ([.github/workflows/ci.yml](.github/workflows/ci.yml#L412)).
 
 An allowlist holding only the public domain would 403 all of those, mark the container unhealthy and fail the deploy. Adding `127.0.0.1` back to the allowlist would restore the deploy and simultaneously hand the control back to anyone who can set a Host header. Narrowing the header set needs no allowlist, cannot reject a request, and additionally covers `X-Forwarded-Prefix`, which `trustHosts` does not touch.
 
