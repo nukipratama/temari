@@ -128,7 +128,10 @@ export default function TodaySession({
     return (
         <Card as="section" className="border-today-accent">
             <div className="flex items-start gap-3">
-                <FaceIcon size={42} ring="var(--color-leaf)" />
+                <FaceIcon
+                    size={today !== null ? 60 : 42}
+                    ring="var(--color-leaf)"
+                />
                 <div className="min-w-0 flex-1">
                     <Eyebrow token="micro" className="text-icon-accent">
                         Today

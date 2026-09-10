@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { Bed, ChevronRight, Feather, Flag, Flame } from 'lucide-react';
 
-import type { WeekPlan, WeekPlanDay } from '@/types/inertia';
+import type { WeekPlan, WeekPlanDay, WeeklySnapshot } from '@/types/inertia';
 
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
@@ -148,15 +148,6 @@ function PlanFigure({
     );
 }
 
-/** A day that has happened reads as the distance actually run; a day still
- *  ahead reads as what the plan asks for. `dayDetail` carries both. */
-function distanceLabel(day: WeekPlanDay, hasElapsed: boolean): string {
-    if (hasElapsed && day.actual_km !== null) {
-        return `${day.actual_km}k`;
-    }
-    return day.session_type === 'rest' ? 'rest' : `${day.distance_km}k`;
-}
-
 function DayCell({
     day,
     isToday,
@@ -167,6 +158,8 @@ function DayCell({
     if (isRest) {
         tone = day.ran_anyway ? 'text-leaf-ink' : 'text-foreground';
     }
+
+    const ran = hasElapsed && day.actual_km !== null;
 
     return (
         <li
@@ -186,26 +179,56 @@ function DayCell({
                 className={tone}
                 aria-hidden
             />
-            <span className="font-mono text-[0.5rem] text-foreground">
-                {distanceLabel(day, hasElapsed)}
-            </span>
+            {ran ? (
+                <>
+                    <span
+                        className={cn(
+                            'font-mono text-[0.5625rem] font-bold',
+                            tone,
+                        )}
+                    >
+                        {day.actual_km}k
+                    </span>
+                    {!isRest && (
+                        <span className="font-mono text-[0.5rem] leading-none text-text-2">
+                            of {day.distance_km}k
+                        </span>
+                    )}
+                </>
+            ) : (
+                <span className="font-mono text-[0.5rem] text-foreground">
+                    {isRest ? 'rest' : `${day.distance_km}k`}
+                </span>
+            )}
         </li>
     );
 }
 
 /**
  * "This week's plan" — the week at a glance, on the prototype's `PlanCard`
- * shape: phase badge, a credited/total ring beside two figures, a seven-day
- * grid, and a link into Plan. Today's own session is stated once, on
- * `TodaySession`, beside the voice describing it. Fields are exactly
+ * shape: phase badge, a credited/total ring beside the week's actual km
+ * against its planned km and its TRIMP, a seven-day grid, and a link into
+ * Plan. Today's own session is stated once, on `TodaySession`, beside the
+ * voice describing it. Plan fields are exactly
  * `CurrentWeekPlanBuilder::forUser()`'s shape, the same computation Plan's own
- * week rows use, so nothing shown here can drift from Plan.
+ * week rows use, so nothing shown here can drift from Plan; the actuals are
+ * the week's `WeeklySnapshot`.
  */
 export default function WeekPlanWidget({
     weekPlan,
-}: Readonly<{ weekPlan: WeekPlan }>) {
+    snapshot,
+}: Readonly<{ weekPlan: WeekPlan; snapshot: WeeklySnapshot | null }>) {
     const todayIso = todayLocalIso();
-    const kmTweened = useCountUp(weekPlan.planned_km_this_week);
+    const actualKm = snapshot?.distance_km ?? 0;
+    const actualTweened = useCountUp(actualKm);
+    const plannedTweened = useCountUp(weekPlan.planned_km_this_week);
+    const trimpTweened = useCountUp(snapshot?.weekly_trimp ?? 0);
+
+    const kmValue = `${actualKm === 0 ? '0' : actualTweened.toFixed(1)} of ${plannedTweened.toFixed(1)}`;
+    const trimpValue =
+        snapshot?.weekly_trimp != null
+            ? Math.round(trimpTweened).toString()
+            : '—';
 
     return (
         <Card as="section">
@@ -219,19 +242,18 @@ export default function WeekPlanWidget({
             </div>
 
             <div className="mb-3.5 flex items-center gap-4 min-[900px]:gap-6">
-                <ProgressRing
-                    credited={weekPlan.credited_this_week}
-                    total={weekPlan.sessions_this_week}
-                />
-                <div className="grid flex-1 grid-cols-2 gap-2">
-                    <PlanFigure
-                        value={`${weekPlan.credited_this_week}/${weekPlan.sessions_this_week}`}
-                        label="Sessions"
+                <div className="flex flex-none flex-col items-center gap-1">
+                    <ProgressRing
+                        credited={weekPlan.credited_this_week}
+                        total={weekPlan.sessions_this_week}
                     />
-                    <PlanFigure
-                        value={kmTweened.toFixed(1)}
-                        label="Km planned"
-                    />
+                    <span className="font-mono text-[0.5625rem] uppercase tracking-[0.05em] text-foreground">
+                        sessions
+                    </span>
+                </div>
+                <div className="flex flex-1 items-center justify-center gap-6 px-2 text-center min-[900px]:gap-10">
+                    <PlanFigure value={kmValue} label="km" />
+                    <PlanFigure value={trimpValue} label="trimp" />
                 </div>
             </div>
 

@@ -1,5 +1,4 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type {
@@ -7,7 +6,6 @@ import type {
     BriefingResult,
     PastYouComparison,
     PastYouTrend,
-    TrainingLoad,
     WeekPlan,
     WeeklySnapshot,
 } from '@/types/inertia';
@@ -37,16 +35,6 @@ const briefing: BriefingResult = {
     streakLabel: 'Ran today',
     sigilPattern: 'orct',
     mood: 'blazing',
-};
-
-const load: TrainingLoad = {
-    form: -2.5,
-    form_status: 'optimal',
-    ctl_42d: 42,
-    atl_7d: 44.5,
-    weekly_trimp: 320,
-    monotony: 1.2,
-    strain: 384,
 };
 
 const snapshot: WeeklySnapshot = {
@@ -139,7 +127,6 @@ function renderHome(
     return render(
         <Home
             briefing={briefing}
-            load={load}
             snapshot={snapshot}
             recentRuns={[lastRun]}
             pastYouTrend={pastYouTrend}
@@ -192,13 +179,12 @@ beforeEach(() => {
 });
 
 describe('Home', () => {
-    it("leads with today, then the week's plan and its stats, retrospective last", () => {
+    it("leads with today, then the week's plan, retrospective last", () => {
         const { container } = renderHome(trend(), weekPlan);
 
         const order = [
             screen.getByText('Easy 6k.'),
             screen.getByText("this week's plan"),
-            screen.getByText(/this week's stats/),
             screen.getByText("you're faster than you were in march."),
         ];
 
@@ -282,32 +268,36 @@ describe('Home', () => {
         ).toBeInTheDocument();
     });
 
-    // Amendment (d) of 2026-08-31 supersedes V0 fork 4: the prototype passes no
-    // `defaultOpen`, so the disclosure ships closed.
-    it('renders the week-stats disclosure closed, and opens it on click', async () => {
-        renderHome();
+    it("folds the week's own numbers into the plan card, deep stats gone to Trends", async () => {
+        renderHome(trend(), weekPlan);
 
-        const trigger = screen.getByRole('button', { expanded: false });
+        await waitFor(() => {
+            expect(screen.getByText('35.5 of 32.0')).toBeInTheDocument();
+        });
+        expect(screen.getByText('280')).toBeInTheDocument();
         expect(screen.queryByText('Pumped')).not.toBeInTheDocument();
+        expect(screen.queryByText(/^Last run · /)).not.toBeInTheDocument();
+    });
 
-        await userEvent.click(trigger);
+    it('keeps the week numbers visible on the no-plan card', () => {
+        renderHome(trend(), null);
 
-        expect(screen.getByText('Pumped')).toBeInTheDocument();
-        expect(screen.getByText(/^Last run · /)).toBeInTheDocument();
+        expect(
+            screen.getByText('this week · 35.5 km · 280 trimp'),
+        ).toBeInTheDocument();
     });
 
     it('omits the verdict block entirely when the backend shipped no trend', () => {
         renderHome(null);
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
-        expect(screen.getByText(/this week's stats/)).toBeInTheDocument();
+        expect(screen.getByText('No plan yet.')).toBeInTheDocument();
     });
 
     it('shows the no-runs empty state instead of a verdict on a brand new account', () => {
         render(
             <Home
                 briefing={briefing}
-                load={load}
                 snapshot={snapshot}
                 recentRuns={[]}
                 pastYouTrend={trend()}
@@ -315,6 +305,6 @@ describe('Home', () => {
         );
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/this week's stats/)).not.toBeInTheDocument();
+        expect(screen.queryByText('No plan yet.')).not.toBeInTheDocument();
     });
 });

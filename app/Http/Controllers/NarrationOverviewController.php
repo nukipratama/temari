@@ -5,13 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ShowNarrationOverviewRequest;
-use App\Models\AI\Analysis;
-use App\Models\User;
-use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisStatus;
-use App\Services\AI\AnalysisSubjectMap;
-use App\Services\AI\NarrationOrigin;
 use App\Services\AI\TokenUsageReport;
 use App\Services\Devtools\DevtoolsActionRecorder;
 use Illuminate\Http\RedirectResponse;
@@ -65,15 +59,6 @@ class NarrationOverviewController extends Controller
     }
 
     /**
-     * Placeholder for the per-athlete page, so the athlete rows can already link
-     * by route name. Replaced by the real controller in the athlete slice.
-     */
-    public function athlete(int $userId): never
-    {
-        abort(404);
-    }
-
-    /**
      * One-shot post-outage recovery: re-arm every dead-lettered block across users
      * and run the full self-heal sweep immediately, instead of an N-click,
      * up-to-60-min-cadence scavenger hunt. Admin-gated by the route.
@@ -84,45 +69,6 @@ class NarrationOverviewController extends Controller
         $this->recorder->record('narration.recover');
 
         return back()->with('info', 'Recovery ran: dead-lettered blocks were retried and self-heal swept immediately.');
-    }
-
-    /**
-     * Re-arm and re-dispatch every Failed block for one user, whether dead-lettered
-     * or still under budget. Resetting attempts to 0 restores the self-heal budget,
-     * and invalidate:false re-dispatches without re-billing any Done siblings.
-     * Cost-safe even mid-cap: the job-level guard reverts to Pending. Powers the
-     * per-athlete retry button on the narration overview's athlete table.
-     *
-     * Binds by raw id rather than implicit `User` model binding: a hard-deleted
-     * user's user-keyed `ai_analyses` rows survive (no FK), so their group must
-     * stay retryable even when the `users` row is gone. The user model is only
-     * needed for the flash message's display name.
-     */
-    public function retryFailed(int $userId): RedirectResponse
-    {
-        app(NarrationOrigin::class)->set(AnalysisOrigin::Recovery);
-
-        $matching = AnalysisSubjectMap::whereOwnedBy(
-            Analysis::query()->knownType()->where('status', AnalysisStatus::Failed),
-            $userId,
-        )->get();
-
-        foreach ($matching as $row) {
-            $row->update(['attempts' => 0]);
-            $this->analysisService->request(
-                subjectOrType: $row->subject_type,
-                subjectId: $row->subject_id,
-                type: $row->analysis_type,
-                discriminator: $row->discriminator,
-                invalidate: false,
-            );
-        }
-
-        $this->recorder->record('narration.retry_failed', $userId, ['blocks' => $matching->count()]);
-
-        $userName = User::query()->find($userId)?->name ?? "User #{$userId}";
-
-        return back()->with('info', "Retrying {$matching->count()} block(s) for {$userName}.");
     }
 
     /**

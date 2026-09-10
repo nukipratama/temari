@@ -9,7 +9,6 @@ use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Story\BriefingComposer;
 use App\Services\Run\Story\BriefingResult;
@@ -28,7 +27,6 @@ class DashboardController extends Controller
         Request $request,
         Vibe $vibe,
         Temari $temari,
-        TrainingLoad $trainingLoad,
         BriefingComposer $briefingComposer,
         PastYouTrendBuilder $pastYouTrend,
         CurrentWeekPlanBuilder $weekPlanBuilder,
@@ -63,7 +61,6 @@ class DashboardController extends Controller
 
         return Inertia::render('Home', [
             'briefing' => fn (): BriefingResult => $briefingComposer->compose($user, $today),
-            'load' => fn (): ?array => $trainingLoad->summary($user, $today),
             'snapshot' => fn (): ?WeeklySnapshot => $trailingWeeks(
                 $user->id,
                 $today->copy()->endOfWeek(Carbon::SUNDAY)->toDateString(),
