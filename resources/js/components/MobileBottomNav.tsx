@@ -109,17 +109,13 @@ export default function MobileBottomNav() {
                                         isActive && 'pop-once',
                                     )}
                                 >
-                                    {
-                                        <TabIcon
-                                            className={cn(
-                                                'transition-[width,height] duration-150',
-                                                isActive
-                                                    ? 'size-5'
-                                                    : 'size-[18px]',
-                                            )}
-                                            aria-hidden
-                                        />
-                                    }
+                                    <TabIcon
+                                        className={cn(
+                                            'transition-[width,height] duration-150',
+                                            isActive ? 'size-5' : 'size-[18px]',
+                                        )}
+                                        aria-hidden
+                                    />
                                 </span>
                                 {item.id === 'today' && hasUnread && (
                                     <span
