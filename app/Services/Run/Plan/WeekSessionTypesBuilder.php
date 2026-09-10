@@ -29,7 +29,7 @@ final readonly class WeekSessionTypesBuilder
 
     /**
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
-     * @return list<array{weekday: string, session_type: string, distance_km: float}>
+     * @return list<array{weekday: string, session_type: string, distance_km: float, is_today: bool}>
      */
     public function forUser(User $user, Carbon $today, ?array $paces, ?float $activeRaceDistanceM): array
     {
@@ -63,6 +63,7 @@ final readonly class WeekSessionTypesBuilder
                 'weekday' => strtolower($s->date->format('D')),
                 'session_type' => $s->session_type->value,
                 'distance_km' => $this->distanceKm($s, $primaryEasyDate, $longRunKm, $multiplier, $paces, $activeRaceDistanceM),
+                'is_today' => $s->date->isSameDay($today),
             ])
             ->all());
     }

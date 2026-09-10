@@ -124,7 +124,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * @return array{vdot: float|null, vdot_source: array{category: string, set_at: string, stale: bool, quality_category: string|null, quality_set_at: string|null}|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null, week_sessions: list<array{weekday: string, session_type: string, distance_km: float}>}|null
+     * @return array{vdot: float|null, vdot_source: array{category: string, set_at: string, stale: bool, quality_category: string|null, quality_set_at: string|null}|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null, week_sessions: list<array{weekday: string, session_type: string, distance_km: float, is_today: bool}>}|null
      */
     private function fitness(VdotEstimator $vdotEstimator, EstimateThresholdAction $thresholdEstimator, TrainingPaceCalculator $trainingPaceCalculator, WeekSessionTypesBuilder $weekSessionTypes, User $user, Carbon $today, ResolveActiveRaceAction $activeRace): ?array
     {
