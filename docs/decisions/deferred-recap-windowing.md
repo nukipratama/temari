@@ -6,7 +6,6 @@ status: accepted
 reviewed: 2026-06-20
 code_refs:
   - app/Services/AI/AnalysisService.php
-  - app/Services/AI/AnalysisCadence.php
   - app/Console/Commands/AI/WeeklyRecapCommand.php
   - app/Console/Commands/AI/MonthlyRecapCommand.php
   - app/Http/Controllers/Api/AnalysisController.php
@@ -19,6 +18,8 @@ code_refs:
 
 > **2026-09-06 — the scheduled tick is no longer the only trigger.** A first Strava connect now chains [KickoffRecapsJob](app/Jobs/AI/KickoffRecapsJob.php) behind the history backfill, running the same weekly + monthly kickoff for that one user. The decision below is unchanged: the kickoff still caps at the latest fully-closed period, still passes `invalidate: false`, and the scheduled commands and the job now share one implementation ([KickoffWeeklyRecaps](app/Actions/AI/KickoffWeeklyRecaps.php) / [KickoffMonthlyRecaps](app/Actions/AI/KickoffMonthlyRecaps.php)). What changed is only *when* a new user's first bill lands: on connect rather than after a 7 to 31 day wait.
 
+> **2026-09-10 — `AnalysisCadence` removed.** The enum cited below no longer exists (it had no production callers). The windowed-cadence path it labelled is unchanged; see [[llm-triggers]] for how each type's dispatch origin is actually determined.
+
 ## Context
 
 A weekly or monthly recap describes a whole period. But activities trickle in across that period (each Strava ingest fires the post-run cascade). If the recap narrated on every ingest, the *same* recap would be re-billed several times per week as runs landed — and any narration produced mid-window would describe an incomplete period. We needed the recap to bill once, on final data, after the window closes.
@@ -27,7 +28,7 @@ A weekly or monthly recap describes a whole period. But activities trickle in ac
 
 We decided to **stage the recap row on ingest but defer its LLM narration to a scheduled command**, gated on the period being closed:
 
-- On ingest, [`AnalysisService::requestDeferred`](app/Services/AI/AnalysisService.php) upserts the WeeklyRecap / MonthlyRecap row as `Pending` (a `firstOrCreate`) without dispatching, filling, or invalidating. This is the windowed-cadence path; [AnalysisCadence](app/Services/AI/AnalysisCadence.php) marks these `Weekly` / `Monthly`.
+- On ingest, [`AnalysisService::requestDeferred`](app/Services/AI/AnalysisService.php) upserts the WeeklyRecap / MonthlyRecap row as `Pending` (a `firstOrCreate`) without dispatching, filling, or invalidating. This is the windowed-cadence path; `AnalysisCadence` marked these `Weekly` / `Monthly`.
 - The single billed narration comes from a scheduled command. [WeeklyRecapCommand](app/Console/Commands/AI/WeeklyRecapCommand.php) (`ai:weekly-recap`) and [MonthlyRecapCommand](app/Console/Commands/AI/MonthlyRecapCommand.php) (`ai:monthly-recap`) narrate every completed period whose recap is not yet `Done`, oldest first. Both cap at the latest **fully-closed** period (`RecapPeriod::lastClosedWeekEnding()` / `lastClosedMonth()`), so the still-running current period is never narrated on incomplete data.
 - Schedule ([routes/console.php](routes/console.php)): `ai:weekly-recap` runs `weeklyOn(1, '00:16')` (Monday 00:16); `ai:monthly-recap` runs `monthlyOn(1, '05:45')` (1st of month).
 - On-demand narration of the still-open current period is also blocked: [`AnalysisService::isStillOpenRecapPeriod`](app/Services/AI/AnalysisService.php) makes [AnalysisController](app/Http/Controllers/Api/AnalysisController.php) return the inert row unchanged for a recap whose week/month hasn't closed (and the UI hides the trigger for it).

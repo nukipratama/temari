@@ -42,9 +42,8 @@ structure group when a narrator, a concrete agent tool or an `AnalysisType` case
 not here, *and* when this note names a narrator or tool that no longer exists. Adding a surface
 without a row here is a red build.
 
-> **`cadence()` on `AnalysisType` looks like the origin map and is not.** `OnDemand` covers both a
-> scheduled command and a user button, and `PerActivity` fires from an ingest cascade the enum never
-> mentions. Use the origins below. The enum is a standing trap and a cut candidate.
+> 2026-09-10: `AnalysisType::cadence()` and its `AnalysisCadence` enum were removed — they had no
+> production callers and were flagged here as a standing trap. Use the origins below.
 
 ## The four origins
 
