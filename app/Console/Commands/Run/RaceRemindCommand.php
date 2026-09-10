@@ -11,6 +11,7 @@ use App\Notifications\RaceTomorrowNotification;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 #[Signature('race:remind')]
@@ -22,7 +23,7 @@ class RaceRemindCommand extends Command
         $races = RaceGoal::query()
             ->active()
             ->whereDate('race_date', Carbon::tomorrow())
-            ->whereIn('user_id', User::query()->notDemo()->select('id'))
+            ->whereIn('user_id', User::query()->notDemo()->where($this->wantsNotifications(...))->select('id'))
             ->with('user')
             ->get();
 
@@ -40,6 +41,22 @@ class RaceRemindCommand extends Command
         $this->info("Dispatched race-day reminder to {$sent} users.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The master switch names this reminder among what it governs, and `via()`
+     * re-checks it per notifiable — so filtering here is what keeps the reported
+     * count honest rather than counting sends that resolve to no channel at all.
+     * A missing preference row means all-on.
+     *
+     * @param  Builder<User>  $query
+     */
+    private function wantsNotifications(Builder $query): void
+    {
+        $query->whereDoesntHave(
+            'notificationPreference',
+            fn (Builder $preference): Builder => $preference->where('notifications_enabled', false),
+        );
     }
 
     /**

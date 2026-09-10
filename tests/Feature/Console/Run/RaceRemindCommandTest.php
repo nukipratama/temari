@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\InboxNotification;
+use App\Models\NotificationPreference;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Notifications\RaceTomorrowNotification;
@@ -87,6 +88,20 @@ it('skips a race the athlete has already retired', function (): void {
     ]);
 
     $this->artisan('race:remind')->assertSuccessful();
+
+    Notification::assertNothingSent();
+});
+
+it('leaves alone an athlete who turned the master switch off', function (): void {
+    Notification::fake();
+
+    $user = User::factory()->create();
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
+    raceTomorrow($user);
+
+    $this->artisan('race:remind')
+        ->expectsOutputToContain('Dispatched race-day reminder to 0 users.')
+        ->assertSuccessful();
 
     Notification::assertNothingSent();
 });

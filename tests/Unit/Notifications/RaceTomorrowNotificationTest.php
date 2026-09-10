@@ -84,5 +84,6 @@ it('says nothing about the taper when today is not a rest day', function (): voi
     ]);
 
     expect(new RaceTomorrowNotification(raceFor($user))->toInbox($user)->body)
-        ->not->toContain('the plan rests you today');
+        ->not->toContain('the plan rests you today')
+        ->not->toContain('  ');
 });

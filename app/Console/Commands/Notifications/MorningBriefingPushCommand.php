@@ -14,6 +14,7 @@ use App\Services\Notifications\UsualRunTime;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 #[Signature('briefing:morning-push')]
@@ -28,7 +29,13 @@ class MorningBriefingPushCommand extends Command
         $bucket = intdiv($now->hour * 60 + $now->minute, self::BUCKET_MINUTES);
         $today = $now->toDateString();
 
-        $users = User::query()->where($router->scopePushReachable(...))->get();
+        $users = User::query()
+            ->where($router->scopePushReachable(...))
+            ->whereDoesntHave(
+                'notificationPreference',
+                fn (Builder $preference): Builder => $preference->where('notifications_enabled', false),
+            )
+            ->get();
 
         $sent = 0;
 

@@ -96,11 +96,15 @@ class RaceTomorrowNotification extends Notification implements ShouldQueue
     private function body(User $notifiable): string
     {
         $distance = DistanceFormatter::kmString((float) $this->race->distance_m);
-        $subject = $this->race->name === null
-            ? "your {$distance} km is tomorrow."
-            : "{$this->race->name} is tomorrow — {$distance} km.";
+        $lines = [
+            $this->race->name === null
+                ? "your {$distance} km is tomorrow."
+                : "{$this->race->name} is tomorrow — {$distance} km.",
+            $this->taperNote($notifiable),
+            'lay your kit out tonight so morning-you has nothing left to decide.',
+        ];
 
-        return trim($subject.' '.$this->taperNote($notifiable).' lay your kit out tonight so morning-you has nothing left to decide.');
+        return implode(' ', array_filter($lines));
     }
 
     /**
@@ -108,13 +112,13 @@ class RaceTomorrowNotification extends Notification implements ShouldQueue
      * week rests the day before the race, so an athlete who reads this in the
      * evening is being told to leave that rest alone.
      */
-    private function taperNote(User $notifiable): string
+    private function taperNote(User $notifiable): ?string
     {
         $today = PlannedSession::query()
             ->where('user_id', $notifiable->id)
             ->whereDate('date', Carbon::today())
             ->value('session_type');
 
-        return $today === SessionType::Rest ? 'the plan rests you today, so leave it rested.' : '';
+        return $today === SessionType::Rest ? 'the plan rests you today, so leave it rested.' : null;
     }
 }

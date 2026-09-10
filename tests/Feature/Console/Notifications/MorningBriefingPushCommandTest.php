@@ -160,6 +160,19 @@ it('skips an athlete who muted push', function (): void {
     Notification::assertNothingSent();
 });
 
+it('skips an athlete who turned the master switch off', function (): void {
+    Notification::fake();
+
+    $user = morningAthlete();
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
+
+    $this->artisan('briefing:morning-push')
+        ->expectsOutputToContain('Pushed the morning briefing to 0 athletes.')
+        ->assertSuccessful();
+
+    Notification::assertNothingSent();
+});
+
 it('excludes the demo account, like every other kickoff', function (): void {
     Notification::fake();
 
