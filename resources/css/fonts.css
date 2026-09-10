@@ -13,7 +13,12 @@
    opsz 9..144 alongside wght, which is what makes its optical sizing work at
    headline sizes, and its italic is a second file. Plus Jakarta Sans and
    JetBrains Mono were only ever requested upright, so their italics stay
-   synthesised, exactly as today. */
+   synthesised, exactly as today.
+
+   The Fraunces faces are the two heaviest assets the app serves (81.5 and
+   67.3 kB) and both ship whole. Narrowing their axis ranges was measured and
+   declined; docs/design-tokens.md carries the numbers and what would have to
+   be true to revisit it. */
 
 @font-face {
     font-family: 'Fraunces';

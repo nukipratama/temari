@@ -76,6 +76,29 @@ Vite fingerprints the `.woff2` into `/build/assets`, which
 italic, since Plus Jakarta Sans and JetBrains Mono are only ever used upright. The files come
 from the pinned `@fontsource-variable/*` packages rather than being committed as binaries.
 
+**The faces ship whole, and that is a decision, not an oversight.** Fraunces italic is 81.5 kB —
+the largest single asset on Home, where it sets exactly one line of text — and a first paint there
+pulls 149.3 kB of font in total. Three ways to cut that were measured against the built output:
+
+| what | italic | upright | visible change |
+|---|---|---|---|
+| ship as-is | 81.5 kB | 67.3 kB | — |
+| glyph-subset to the latin range fonts.css declares | 80.8 kB | — | none, and no saving: the fontsource latin subset is already that tight |
+| drop the `opsz` axis (fontsource's `wght`-only file) | 45.7 kB | 36.6 kB | **yes** — every headline would render Fraunces' 14pt design, and the app sets it from 17 to 52px |
+| instance the axes to the *declared* type scale (`wght` 400–800, `opsz` 12–96) | 75.8 kB | 62.6 kB | none |
+| instance the axes to the sizes actually rendered today (`opsz` 16–56 italic, 14–32 upright) | 65.9 kB | 49.4 kB | none today; a headline at a larger token would silently lose optical sizing |
+
+Only the last two are honest options, and the safe one saves ~7%: 11.2 kB across two faces, 5.7 kB
+of it on Home's critical path. That does not pay for a font-subsetting build step, a wasm
+dependency and a generated asset that can drift from the pinned package — and the 20–27% version
+buys its extra bytes by making the type scale unsafe to extend. So the faces stay whole. If font
+bytes ever become the binding constraint, the tight instancing is the lever, and it needs a guard
+that fails the build when a `font-serif` element renders outside the instanced `opsz` range.
+
+`font-display: swap` on every face means none of this blocks first paint: the headline renders in
+Georgia and swaps when Fraunces lands. Sizes and weights in use were measured across 11 routes at
+four viewport widths — italic `wght` 400–600 at 17–52px, upright `wght` 400–700 at 16–28px.
+
 This replaced a Google Fonts `<link>`, which put a third-party origin in the critical path of a
 cold standalone launch — after the splash had already shown, on a connection the app has no say
 over. The error pages ([errors/layout.blade.php](../resources/views/errors/layout.blade.php))

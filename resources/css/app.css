@@ -27,8 +27,8 @@
 @theme static {
     /* Three families, each with one job: Fraunces italic for display/voice,
        Plus Jakarta Sans for prose/UI, JetBrains Mono for telemetry only
-       (numbers, stats, uppercase metadata labels). Loaded via Google Fonts
-       <link> in app.blade.php. */
+       (numbers, stats, uppercase metadata labels). Faces are self-hosted and
+       declared in fonts.css. */
     --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
     --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
