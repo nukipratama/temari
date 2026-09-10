@@ -11,7 +11,6 @@ use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Models\PlanAdaptation;
 use App\Models\Season;
-use App\Services\AI\AnalysisCadence;
 use App\Services\AI\AnalysisType;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
@@ -94,26 +93,6 @@ it('flags only the connected + chained kinds wired so far', function (AnalysisTy
     'card flavor (standalone)' => [AnalysisType::CardFlavor, false],
     'briefing mascot voice (standalone)' => [AnalysisType::BriefingMascotVoice, false],
     'trend read (always as-of-now, never a sequence of closed periods)' => [AnalysisType::TrendRead, false],
-]);
-
-it('assigns a cadence to every type', function (): void {
-    foreach (AnalysisType::cases() as $type) {
-        expect($type->cadence())->toBeInstanceOf(AnalysisCadence::class);
-    }
-});
-
-it('maps representative types to the expected cadence', function (AnalysisType $type, AnalysisCadence $expected): void {
-    expect($type->cadence())->toBe($expected);
-})->with([
-    'post-run speech is per-activity' => [AnalysisType::PostRunSpeech, AnalysisCadence::PerActivity],
-    'card flavor is per-activity' => [AnalysisType::CardFlavor, AnalysisCadence::PerActivity],
-    'weekly recap is weekly' => [AnalysisType::WeeklyRecap, AnalysisCadence::Weekly],
-    'monthly recap is monthly' => [AnalysisType::MonthlyRecap, AnalysisCadence::Monthly],
-    'profile voice is on-demand' => [AnalysisType::ProfileVoice, AnalysisCadence::OnDemand],
-    'trend read is on-demand (its own 3 cron schedules, not cascade-driven)' => [AnalysisType::TrendRead, AnalysisCadence::OnDemand],
-    'plan day voice is daily' => [AnalysisType::PlanDayVoice, AnalysisCadence::Daily],
-    'plan week voice is weekly' => [AnalysisType::PlanWeekVoice, AnalysisCadence::Weekly],
-    'plan season voice is on-demand (changes only at season boundaries)' => [AnalysisType::PlanSeasonVoice, AnalysisCadence::OnDemand],
 ]);
 
 it('is the single source of truth for group membership', function (): void {

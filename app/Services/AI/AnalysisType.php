@@ -99,32 +99,6 @@ enum AnalysisType: string
         ));
     }
 
-    /** How often this type is meant to (re)generate; governs cascade dispatch. */
-    public function cadence(): AnalysisCadence
-    {
-        return match ($this) {
-            self::PostRunSpeech,
-            self::RunInsight,
-            self::CardFlavor => AnalysisCadence::PerActivity,
-            self::BriefingMascotVoice,
-            self::PlanDayVoice,
-            self::PlanClampVoice => AnalysisCadence::Daily,
-            self::WeeklyRecap,
-            self::PlanWeekVoice => AnalysisCadence::Weekly,
-            self::MonthlyRecap => AnalysisCadence::Monthly,
-            // Neither ProfileVoice nor TrendRead is cascade-dispatched
-            // from post-run ingest, both have their own separate scheduled
-            // command(s) instead. TrendRead actually runs three different
-            // cadences (one per range — see routes/console.php), which no
-            // single case here represents. PlanSeasonVoice changes only at
-            // season boundaries (a race set/cleared, or a self-scaled
-            // season's 12-week expiry), not on any fixed clock.
-            self::ProfileVoice,
-            self::TrendRead,
-            self::PlanSeasonVoice => AnalysisCadence::OnDemand,
-        };
-    }
-
     /** @return class-string<AnalyzeBaseJob> */
     public function jobClass(): string
     {

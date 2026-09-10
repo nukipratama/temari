@@ -9,7 +9,6 @@ code_refs:
   - app/Services/AI/ChainResolver.php
   - app/Services/AI/AnalysisType.php
   - app/Services/AI/AnalysisStatus.php
-  - app/Services/AI/AnalysisCadence.php
   - app/Jobs/AI/AnalyzeBaseJob.php
   - app/Jobs/AI/AnalyzeGroupJob.php
   - app/Jobs/AI/AnalyzeRowJob.php
@@ -43,7 +42,7 @@ narrator (LLM)             ->  queued Job  ->  AnalysisService marks the row  ->
 
 The full catalogue of copy kinds lives in the [AnalysisType](app/Services/AI/AnalysisType.php) enum (don't hand-copy the cases; they change). Each case answers a few questions in one place:
 
-- `cadence()` returns an [AnalysisCadence](app/Services/AI/AnalysisCadence.php): `PerActivity`, `Daily`, `Weekly`, `Monthly`, or `OnDemand`. Cadence governs how the post-ingest cascade dispatches the type — per-activity types fire on every ingest, windowed (daily/weekly/monthly) types are deferred to a scheduled command so a multi-run window isn't re-billed per run, and on-demand types only fire on an explicit user click.
+- How often a type (re)generates isn't a property on the enum: per-activity types fire on every ingest via the post-ingest cascade, daily/weekly/monthly types are deferred to the scheduled commands in [routes/console.php](routes/console.php) so a multi-run window isn't re-billed per run, and on-demand types only fire on an explicit user click. See [[llm-triggers]] for the origin each type actually dispatches from.
 - `jobClass()` maps the type to its concrete [AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php) subclass.
 - `subjectType()` maps it to a model class or a synthetic string subject (e.g. `briefing_user_day`, `monthly_recap_user_month`) — the subject for daily/weekly/monthly copy is a user+period token, not a row.
 - `isChained()`, `isZoneDependent()` are flags consumed below.
