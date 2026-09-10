@@ -17,6 +17,13 @@ code_refs:
 **Status:** Accepted (documented 2026-09-09). Extends [[bounded-self-heal-and-dead-letter]], which
 covers the fill side; nothing it decided changes.
 
+> **2026-09-10:** "a row's existence is decided by a single scheduled minute" no longer holds for
+> `BriefingMascotVoice`. Onboarding stages today's briefing at signup and the first-connect backfill
+> re-requests it, both through
+> [RequestTodaysBriefing](../../app/Actions/AI/RequestTodaysBriefing.php#L23) — which calls the same
+> `AnalysisService::requestBriefing()` upsert this sweep does, so nothing below changes: an existing
+> row of any status is still untouched. See [[llm-triggers]].
+
 ## Context
 
 Every recovery family in [SelfHealer](../../app/Services/AI/SelfHealer.php) starts from a row that

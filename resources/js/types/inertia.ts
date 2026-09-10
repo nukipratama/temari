@@ -130,6 +130,8 @@ export interface BriefingResult {
     vibeLabel: string;
     vibeEmoji: string;
     mascotVoice: AnalysisPayload;
+    /** No briefing has ever been narrated for this athlete — a pending one says so on the Today card. */
+    firstRead: boolean;
     recoveryLabel: string;
     recoveryTone: RecoveryTone;
     recoveryHoursLabel: string | null;

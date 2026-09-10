@@ -6,6 +6,7 @@ namespace App\Jobs\AI;
 
 use App\Actions\AI\KickoffMonthlyRecaps;
 use App\Actions\AI\KickoffWeeklyRecaps;
+use App\Actions\AI\RequestTodaysBriefing;
 use App\Models\Activity;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -29,7 +30,9 @@ use Illuminate\Support\Carbon;
  * Being last, it is also where `users.backfilled_at` is stamped — the marker
  * nothing else could supply, since the chain's own position is unreadable from
  * outside it — and where the first week is re-sized against the history that
- * just landed, then narrated, if onboarding already wrote a plan.
+ * just landed, then narrated, if onboarding already wrote a plan. Today's
+ * briefing, asked for at signup against a history that had not arrived yet, is
+ * re-requested here so it reads the runs instead.
  */
 class KickoffRecapsJob implements ShouldQueue
 {
@@ -45,6 +48,7 @@ class KickoffRecapsJob implements ShouldQueue
         PlanNarrationRequester $planNarration,
         AnalysisService $analysis,
         Periodizer $periodizer,
+        RequestTodaysBriefing $briefing,
     ): void {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
 
@@ -57,6 +61,8 @@ class KickoffRecapsJob implements ShouldQueue
         }
 
         $user->markBackfilled();
+
+        $briefing->afterBackfill($user);
 
         $this->kickoffTrendReads($analysis, $user);
 

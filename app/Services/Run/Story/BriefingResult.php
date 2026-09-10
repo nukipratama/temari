@@ -30,6 +30,8 @@ final readonly class BriefingResult implements Arrayable
         public string $vibeLabel,
         public string $vibeEmoji,
         public array $mascotVoice,
+        /** No briefing has ever been narrated for this athlete, so a pending one says so instead of staying silent. */
+        public bool $firstRead,
         public string $recoveryLabel,
         public string $recoveryTone,
         public ?string $recoveryHoursLabel,
@@ -50,6 +52,7 @@ final readonly class BriefingResult implements Arrayable
             'vibeLabel' => $this->vibeLabel,
             'vibeEmoji' => $this->vibeEmoji,
             'mascotVoice' => $this->mascotVoice,
+            'firstRead' => $this->firstRead,
             'recoveryLabel' => $this->recoveryLabel,
             'recoveryTone' => $this->recoveryTone,
             'recoveryHoursLabel' => $this->recoveryHoursLabel,

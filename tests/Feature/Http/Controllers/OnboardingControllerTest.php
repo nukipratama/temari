@@ -2,14 +2,32 @@
 
 declare(strict_types=1);
 
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
+use Illuminate\Database\Eloquent\Collection;
+use App\Models\AI\Analysis;
 use App\Models\RaceGoal;
 use App\Models\TelegramConnection;
 use App\Models\TrainingPreference;
 use App\Models\User;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
+
+/** @return Collection<int, Analysis> */
+function briefingRowsFor(User $user): Collection
+{
+    return Analysis::query()
+        ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::BriefingMascotVoice)
+        ->where('discriminator', Carbon::today()->toDateString())
+        ->get();
+}
 
 /**
  * @return array<string, mixed>
@@ -176,4 +194,36 @@ it('creates no training_preferences row when the preferences step is skipped', f
     $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
 
     expect(TrainingPreference::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+// Before this, today's briefing was staged only by the 00:01 kickoff, so an
+// account created at any other hour met an empty Today card until midnight.
+it('asks for today\'s briefing when the wizard is finished', function (): void {
+    Bus::fake();
+    $user = User::factory()->needsOnboarding()->create();
+
+    $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
+
+    expect(briefingRowsFor($user))->toHaveCount(1);
+    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
+});
+
+it('does not stage a second briefing row on a resubmitted wizard', function (): void {
+    Bus::fake();
+    $user = User::factory()->needsOnboarding()->create();
+
+    $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
+    $this->actingAs($user->fresh())->post('/onboarding')->assertRedirect(route('dashboard'));
+
+    expect(briefingRowsFor($user))->toHaveCount(1);
+});
+
+it('serves the demo account\'s first briefing from the rule-based filler', function (): void {
+    Bus::fake();
+    $user = User::factory()->needsOnboarding()->create(['is_demo' => true]);
+
+    $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
+
+    expect(briefingRowsFor($user)->first()->status)->toBe(AnalysisStatus::Done);
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });

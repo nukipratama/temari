@@ -7,8 +7,10 @@ use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Story\PastYouTrendBuilder;
 use App\Models\WeeklySnapshot;
@@ -351,4 +353,23 @@ it('reads the clamp narration once on a clamped day', function (): void {
     expect($clampReads)->toBe(1);
 
     Carbon::setTestNow();
+});
+
+it('tells Home this is the athlete\'s first briefing, until one has been narrated', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page->where('briefing.firstRead', true)->etc());
+
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => Carbon::today()->toDateString(),
+        'status' => AnalysisStatus::Done,
+        'content' => 'read.',
+    ]);
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page->where('briefing.firstRead', false)->etc());
 });

@@ -20,6 +20,7 @@ const briefing: BriefingResult = {
     vibeState: 'pumped',
     vibeLabel: 'Pumped',
     vibeEmoji: '💥',
+    firstRead: false,
     mascotVoice: {
         id: 4,
         status: 'done',

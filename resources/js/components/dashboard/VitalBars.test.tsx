@@ -9,6 +9,7 @@ const briefing: BriefingResult = {
     vibeState: 'steady',
     vibeLabel: 'Steady',
     vibeEmoji: '🙂',
+    firstRead: false,
     mascotVoice: {
         id: 1,
         status: 'done',

@@ -141,6 +141,8 @@ export default function TodaySession({
                     analysis={briefing.mascotVoice}
                     inertiaReloadProps={['briefing']}
                     allowReanalyze={false}
+                    awaitingSchedule={briefing.firstRead}
+                    awaitingScheduleLabel="temari is reading your first week…"
                     renderContent={(text) => (
                         <SessionVoice text={text} drawnAnchors={drawnAnchors} />
                     )}
