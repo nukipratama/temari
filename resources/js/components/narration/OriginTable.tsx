@@ -6,7 +6,7 @@ import EmptyState from '@/components/narration/EmptyState';
 import DataTable, { Td } from '@/components/ui/DataTable';
 import { fmt, formatCost } from '@/pages/Narration/helpers';
 
-const COLUMNS = ['origin', 'calls', 'prompt', 'completion', 'total', 'Cost'];
+const COLUMNS = ['origin', 'calls', 'prompt', 'completion', 'total', 'cost'];
 
 /**
  * Spend by what started the call. The per-kind table answers "which narrator",
