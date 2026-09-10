@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
-use App\Services\Run\Metrics\RiegelProjector;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 
 /**
- * Orchestrates the deterministic periodizer: reads the athlete's active race
- * (if any) and their own recent behavior, computes a phase schedule, and
- * writes {@see PlannedSession} rows today-forward. Called weekly
- * (`routes/console.php`) and on demand ({@see \App\Http\Controllers\PlanController}).
+ * Orchestrates the deterministic periodizer: computes a phase schedule from
+ * {@see PlanInputs} and writes {@see PlannedSession} rows today-forward.
+ * Called weekly (`routes/console.php`) and on demand
+ * ({@see \App\Http\Controllers\PlanController}).
+ *
+ * The database side is {@see PlanInputsGatherer}; {@see self::rowsFor()} is
+ * the whole computation and touches neither.
  *
  * Invariants (see `docs/features/plan-periodizer.md`):
  * - The arc is counted from the {@see \App\Models\Season}'s own start, not
@@ -34,7 +34,7 @@ use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
  * - A row already carrying a verdict is left alone, even inside the
  *   today-forward window: it records what was run, not what is still planned.
  * - A mode switch (race set/cleared) only takes effect at the next call —
- *   this method always reads the CURRENT active race fresh.
+ *   the gatherer always reads the CURRENT active race fresh.
  * - The plan reacts to what actually happened: {@see PlanAdapter} can turn
  *   the current week into a real {@see PlanPhase::Deload} (fewer km, no
  *   quality work) and resize every week's quality block against the race
@@ -52,127 +52,90 @@ final readonly class Periodizer
     public const int HORIZON_WEEKS = 12;
 
     public function __construct(
-        private TrainingBaseline $baseline,
         private PhaseSchedule $phaseSchedule,
         private WeekPlanBuilder $weekPlanBuilder,
-        private SeasonService $seasonService,
-        private PlanAdapter $planAdapter,
-        private RiegelProjector $riegelProjector,
-        private ResolveActiveRaceAction $activeRace,
-        private ResolveTrainingPreferenceAction $trainingPreference,
+        private PlanInputsGatherer $gatherer,
     ) {
     }
 
     public function regenerate(User $user, ?Carbon $today = null): void
     {
-        $today = ($today ?? Carbon::today())->copy()->startOfDay();
-        $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
-        $deleteHorizonEnd = $currentWeekStart->copy()->addWeeks(self::HORIZON_WEEKS - 1)->addDays(6);
+        $this->persist($this->gatherer->forUser($user, $today ?? Carbon::today()));
+    }
 
-        // Keeps the season in lockstep with the plan's own mode: a race
-        // set/cleared since the last call, or a self-scaled season's 12-week
-        // expiry, both take effect here — see SeasonService's own docblock.
-        $season = $this->seasonService->ensureCurrent($user, $today);
-
-        $race = ($this->activeRace)($user->id);
-        $preference = ($this->trainingPreference)($user->id);
-        $baselineData = $this->baseline->forUser($user, $today);
-        $sessionsPerWeek = $baselineData['sessions_per_week'];
-
-        $adaptation = $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race);
-
-        $arcStart = $season->starts_at->copy()->startOfWeek(Carbon::MONDAY);
-        $arc = $race !== null
-            ? $this->phaseSchedule->forRace($arcStart, $race->race_date, (float) $race->distance_m)
+    /**
+     * The plan itself: one row per calendar day across the horizon, keyed by
+     * Y-m-d. Reads nothing and writes nothing — everything it needs is in
+     * {@see PlanInputs}.
+     *
+     * @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float}>
+     */
+    public function rowsFor(PlanInputs $inputs): array
+    {
+        $arcStart = $inputs->arcStart();
+        $arc = $inputs->raceDate !== null && $inputs->raceDistanceM !== null
+            ? $this->phaseSchedule->forRace($arcStart, $inputs->raceDate, $inputs->raceDistanceM)
             // The season's own window, not a fresh horizon, so the arc
             // SeasonSummaryBuilder draws is the one the athlete trains.
-            : $this->phaseSchedule->selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($season->ends_at) + 1), $season->opens_with_recovery);
+            : $this->phaseSchedule->selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($inputs->seasonEnd) + 1), $inputs->seasonOpensWithRecovery);
 
-        $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $currentWeekStart, $adaptation['deload']);
-
-        $pinnedDates = array_fill_keys(
-            PlannedSession::query()
-                ->where('user_id', $user->id)
-                ->where('pinned', true)
-                ->whereBetween('date', [$today->toDateString(), $deleteHorizonEnd->toDateString()])
-                ->pluck('date')
-                ->map(fn (Carbon $date): string => $date->toDateString())
-                ->all(),
-            true,
-        );
-
-        // A day that already carries a verdict is the record of what was run,
-        // not a slot left to plan. Since compliance lands at ingest rather
-        // than at 00:03 the next morning, regeneration can meet a settled row
-        // inside its own today-forward window — see
-        // `docs/decisions/a-day-is-scored-when-it-is-run.md`.
-        $settledDates = array_fill_keys(
-            PlannedSession::query()
-                ->where('user_id', $user->id)
-                ->where('status', '!=', PlannedSessionStatus::Planned)
-                ->whereBetween('date', [$today->toDateString(), $deleteHorizonEnd->toDateString()])
-                ->pluck('date')
-                ->map(fn (Carbon $date): string => $date->toDateString())
-                ->all(),
-            true,
-        );
-
-        $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
-        // How long the race will take this athlete, not how far it is: the same
-        // 10K is a VO2max event for one runner and a threshold event for
-        // another, and only the projection can tell them apart.
-        $projectedRaceSeconds = $race === null
-            ? null
-            : $this->riegelProjector->project($user, (float) $race->distance_m)['predicted_sec'] ?? null;
+        $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $inputs->currentWeekStart(), $inputs->adaptation['deload']);
 
         $rows = [];
         foreach ($weeks as $week) {
             $weekRows = $this->weekPlanBuilder->build(
                 $week['week_start'],
                 $week['phase'],
-                $sessionsPerWeek,
-                $pinnedDates,
-                $raceDistanceM,
-                $race === null,
-                $today,
-                $adaptation['quality_delta'],
-                $preference?->run_days,
-                $preference?->long_run_day,
-                $projectedRaceSeconds,
-                $race?->race_date,
-                $adaptation['reason']->keepsAQualitySession(),
+                $inputs->sessionsPerWeek,
+                $inputs->pinnedDates,
+                $inputs->raceDistanceM,
+                $inputs->isSelfScaled(),
+                $inputs->today,
+                $inputs->adaptation['quality_delta'],
+                $inputs->runDays,
+                $inputs->longRunDay,
+                $inputs->projectedRaceSeconds,
+                $inputs->raceDate,
+                $inputs->adaptation['reason']->keepsAQualitySession(),
             );
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier']];
             }
         }
 
-        DB::transaction(function () use ($user, $today, $currentWeekStart, $deleteHorizonEnd, $rows, $settledDates, $adaptation, $raceDistanceM): void {
+        return $rows;
+    }
+
+    private function persist(PlanInputs $inputs): void
+    {
+        $rows = $this->rowsFor($inputs);
+
+        DB::transaction(function () use ($inputs, $rows): void {
             // Clear the full horizon's stale unpinned rows (not just the
             // freshly-computed weeks) so a shrinking horizon — e.g. a
             // self-scaled plan's far-future weeks after the user sets a
             // near-term race — doesn't leave orphaned rows from the old mode.
             PlannedSession::query()
-                ->where('user_id', $user->id)
+                ->where('user_id', $inputs->userId)
                 ->where('pinned', false)
                 ->where('status', PlannedSessionStatus::Planned)
-                ->whereBetween('date', [$today->toDateString(), $deleteHorizonEnd->toDateString()])
+                ->whereBetween('date', [$inputs->today->toDateString(), $inputs->horizonEnd()->toDateString()])
                 ->delete();
 
             foreach ($rows as $date => $row) {
-                if (isset($settledDates[$date])) {
+                if (isset($inputs->settledDates[$date])) {
                     continue;
                 }
 
                 PlannedSession::query()->updateOrCreate(
-                    ['user_id' => $user->id, 'date' => $date],
+                    ['user_id' => $inputs->userId, 'date' => $date],
                     [
                         'phase' => $row['phase'],
                         'session_type' => $row['session_type'],
                         'volume_multiplier' => $row['volume_multiplier'],
                         // Stamped on the row so race day still knows its own
                         // distance once the goal behind it has been retired.
-                        'race_distance_m' => $row['session_type'] === SessionType::Race ? (int) $raceDistanceM : null,
+                        'race_distance_m' => $row['session_type'] === SessionType::Race ? (int) $inputs->raceDistanceM : null,
                         'pinned' => false,
                         'status' => PlannedSessionStatus::Planned,
                     ],
@@ -180,12 +143,12 @@ final readonly class Periodizer
             }
 
             PlanAdaptation::query()->updateOrCreate(
-                ['user_id' => $user->id, 'week_start' => $currentWeekStart->toDateString()],
+                ['user_id' => $inputs->userId, 'week_start' => $inputs->currentWeekStart()->toDateString()],
                 [
-                    'reason' => $adaptation['reason'],
-                    'deload' => $adaptation['deload'],
-                    'quality_delta' => $adaptation['quality_delta'],
-                    'adherence_pct' => $adaptation['adherence_pct'],
+                    'reason' => $inputs->adaptation['reason'],
+                    'deload' => $inputs->adaptation['deload'],
+                    'quality_delta' => $inputs->adaptation['quality_delta'],
+                    'adherence_pct' => $inputs->adaptation['adherence_pct'],
                 ],
             );
         });
