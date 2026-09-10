@@ -86,6 +86,11 @@ export interface ReplayBudget {
     cap_reached: boolean;
 }
 
+export interface CeilingOverride {
+    value: number;
+    expires_at: string;
+}
+
 export type AthleteTab = 'narrations' | 'cost' | 'attention';
 
 export interface AthletePageProps {
@@ -103,6 +108,6 @@ export interface AthletePageProps {
     costByKind: CostByKindRow[];
     attention: AttentionData;
     audit: AuditRow[];
-    override: { value: number; expires_at: string } | null;
+    override: CeilingOverride | null;
     replayBudget: ReplayBudget;
 }

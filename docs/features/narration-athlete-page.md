@@ -82,6 +82,11 @@ clears it:
 | resync Strava | [SyncActivitiesJob](app/Jobs/Strava/SyncActivitiesJob.php), the same per-user dispatch "Sync now" uses |
 | today-only ceiling | [`CeilingOverride::set()`](app/Services/AI/CeilingOverride.php#L20), expiring at local midnight, plus a clear |
 
+The two re-arms resolve the demo athlete through the rule-based filler rather than
+dispatching, for the same reason its "Reread" does ([[demo-triggers-served-rule-based]]):
+[`AnalysisService::request()`](app/Services/AI/AnalysisService.php#L77) carries no demo
+guard, so every manual trigger has to bring its own.
+
 Every one of them takes a **confirm step rendered in the page** — never the browser's
 `confirm()`, which cannot state what is about to happen — and writes a row through
 [DevtoolsActionRecorder](app/Services/Devtools/DevtoolsActionRecorder.php) before

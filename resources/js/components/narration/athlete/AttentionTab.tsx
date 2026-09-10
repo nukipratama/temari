@@ -8,7 +8,11 @@ import {
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
-import type { AttentionBlock, AuditRow } from '@/pages/Narration/types';
+import type {
+    AttentionBlock,
+    AuditRow,
+    CeilingOverride,
+} from '@/pages/Narration/types';
 import type { SharedProps } from '@/types/inertia';
 
 import { Icon, type IconComponent } from '@/components/ui/Icon';
@@ -25,7 +29,7 @@ interface AttentionTabProps {
     deadLettered: AttentionBlock[];
     stuck: AttentionBlock[];
     audit: AuditRow[];
-    override: { value: number; expires_at: string } | null;
+    override: CeilingOverride | null;
 }
 
 export default function AttentionTab({
@@ -150,7 +154,7 @@ function CeilingOverrideCard({
 }: Readonly<{
     athleteId: number;
     currency: string;
-    override: { value: number; expires_at: string } | null;
+    override: CeilingOverride | null;
 }>) {
     const base = `/devtools/narration/athletes/${athleteId}`;
     const [armed, setArmed] = useState(false);

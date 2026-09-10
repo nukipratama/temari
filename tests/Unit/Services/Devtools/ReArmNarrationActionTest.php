@@ -71,3 +71,18 @@ it('declares the recovery origin so the re-dispatch is metered as one', function
 
     expect(app(NarrationOrigin::class)->current())->toBe(AnalysisOrigin::Recovery);
 });
+
+it('serves the demo athlete from the rule-based filler instead of billing a real re-dispatch', function (): void {
+    $demo = User::factory()->create(['is_demo' => true]);
+    $block = reArmFailedBlock($demo, AnalysisType::TrendRead, 1);
+
+    $service = $this->mock(AnalysisService::class);
+    $service->shouldNotReceive('request');
+    $service->shouldReceive('requestRuleBased')
+        ->once()
+        ->withArgs(fn (...$args): bool => $args[0] === $block->subject_type
+            && $args[1] === $block->subject_id
+            && $args[2] === $block->analysis_type);
+
+    expect(app(ReArmNarrationAction::class)->retryFailed($demo->id))->toBe(1);
+});

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Devtools;
 
 use App\Models\AI\Analysis;
+use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -18,6 +19,10 @@ use Illuminate\Database\Eloquent\Collection;
  * re-dispatch. `invalidate: false` keeps a Done sibling from being re-billed,
  * and the job-level pause guard reverts to Pending mid-cap, so neither is a way
  * to spend past a ceiling.
+ *
+ * The demo athlete resolves through the rule-based filler instead, like every
+ * other manual trigger: `AnalysisService::request()` carries no demo guard of
+ * its own, so a re-arm there would dispatch a real, billed LLM job.
  */
 class ReArmNarrationAction
 {
@@ -30,13 +35,14 @@ class ReArmNarrationAction
     /** Every Failed block for the athlete, whether or not its budget is spent. */
     public function retryFailed(int $userId): int
     {
-        return $this->reDispatch($this->failed($userId));
+        return $this->reDispatch($userId, $this->failed($userId));
     }
 
     /** Only the blocks that burned their retry budget and stopped auto-retrying. */
     public function reArmDeadLettered(int $userId): int
     {
         return $this->reDispatch(
+            $userId,
             $this->failed($userId)
                 ->filter(fn (Analysis $row): bool => $row->attempts >= Analysis::MAX_SELF_HEAL_ATTEMPTS),
         );
@@ -52,14 +58,27 @@ class ReArmNarrationAction
     }
 
     /** @param iterable<int, Analysis> $rows */
-    private function reDispatch(iterable $rows): int
+    private function reDispatch(int $userId, iterable $rows): int
     {
         $this->origin->set(AnalysisOrigin::Recovery);
+        $isDemo = (bool) User::query()->whereKey($userId)->value('is_demo');
 
         $count = 0;
         foreach ($rows as $row) {
             $count++;
             $row->update(['attempts' => 0]);
+
+            if ($isDemo) {
+                $this->service->requestRuleBased(
+                    $row->subject_type,
+                    $row->subject_id,
+                    $row->analysis_type,
+                    $row->discriminator,
+                );
+
+                continue;
+            }
+
             $this->service->request(
                 subjectOrType: $row->subject_type,
                 subjectId: $row->subject_id,
