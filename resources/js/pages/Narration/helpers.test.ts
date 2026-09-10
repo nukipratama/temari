@@ -8,6 +8,7 @@ import {
     formatCost,
     formatDayLabel,
     formatDayLabelShort,
+    formatTimestamp,
     navigate,
     presetHref,
     PRESETS,
@@ -31,6 +32,24 @@ describe('formatCost', () => {
 
     it('follows the budget currency rather than assuming dollars', () => {
         expect(formatCost(1234.5, 'IDR')).toBe('Rp\u00a01,234.50');
+    });
+
+    it('keeps four decimals for a sub-cent amount, so it never reads as free', () => {
+        expect(formatCost(0.0012, 'USD')).toBe('$0.0012');
+    });
+
+    it('renders an exact zero plainly', () => {
+        expect(formatCost(0, 'USD')).toBe('$0.00');
+    });
+});
+
+describe('formatTimestamp', () => {
+    it('renders a placeholder for a missing timestamp', () => {
+        expect(formatTimestamp(null)).toBe('—');
+    });
+
+    it('renders a date and time for an ISO string', () => {
+        expect(formatTimestamp('2026-09-10T08:30:00Z')).toContain('Sep 10');
     });
 });
 
