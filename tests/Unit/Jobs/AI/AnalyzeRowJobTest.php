@@ -426,7 +426,7 @@ it('settles a budget-spent row stranded in Processing to Failed so it dead-lette
 });
 
 /**
- * A row whose subject is gone for good must not sit Failed: /ai-usage would
+ * A row whose subject is gone for good must not sit Failed: /devtools/narration would
  * show it as "still auto-retrying" behind a Try again that cannot succeed, and
  * every hourly self-heal would burn an attempt proving it.
  */

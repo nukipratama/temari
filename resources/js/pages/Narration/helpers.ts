@@ -6,6 +6,12 @@ import type { RangeToken } from './types';
 
 const numberFmt = new Intl.NumberFormat('en-US');
 
+export const OVERVIEW_PATH = '/devtools/narration';
+
+export function athletePath(userId: number): string {
+    return `${OVERVIEW_PATH}/athletes/${userId}`;
+}
+
 export function fmt(n: number): string {
     return numberFmt.format(n);
 }
@@ -21,6 +27,15 @@ export function formatCost(amount: number, currency: string): string {
     }).format(amount);
 }
 
+interface ReportFilters {
+    range: RangeToken;
+    from: string;
+    to: string;
+    kind: string | null;
+    origin: string | null;
+    athlete?: number | null;
+}
+
 /**
  * Navigate the report. A preset range travels as a self-correcting `range`
  * token (resolved server-side, never stale); a custom From/To window
@@ -32,13 +47,8 @@ export function navigate({
     to,
     kind,
     origin,
-}: {
-    range: RangeToken;
-    from: string;
-    to: string;
-    kind: string | null;
-    origin: string | null;
-}): void {
+    athlete = null,
+}: ReportFilters): void {
     const params: Record<string, string> = {};
     if (range === 'custom') {
         params.from = from;
@@ -52,7 +62,10 @@ export function navigate({
     if (origin !== null) {
         params.origin = origin;
     }
-    router.get('/devtools/ai-usage', params, {
+    if (athlete !== null) {
+        params.athlete = String(athlete);
+    }
+    router.get(OVERVIEW_PATH, params, {
         preserveState: true,
         preserveScroll: true,
     });
@@ -63,6 +76,7 @@ export function presetHref(
     token: RangeToken,
     kind: string | null,
     origin: string | null = null,
+    athlete: number | null = null,
 ): string {
     const params = new URLSearchParams({ range: token });
     if (kind !== null) {
@@ -71,15 +85,18 @@ export function presetHref(
     if (origin !== null) {
         params.set('origin', origin);
     }
-    return `/devtools/ai-usage?${params.toString()}`;
+    if (athlete !== null) {
+        params.set('athlete', String(athlete));
+    }
+    return `${OVERVIEW_PATH}?${params.toString()}`;
 }
 
 export const PRESETS: ReadonlyArray<{ token: RangeToken; label: string }> = [
-    { token: 'today', label: 'Today' },
+    { token: 'today', label: 'today' },
     { token: '7d', label: '7 days' },
     { token: '30d', label: '30 days' },
-    { token: 'month', label: 'This month' },
-    { token: 'all', label: 'All' },
+    { token: 'month', label: 'this month' },
+    { token: 'all', label: 'all' },
 ];
 
 export function formatDayLabel(day: string): string {
@@ -88,4 +105,9 @@ export function formatDayLabel(day: string): string {
 
 export function formatDayLabelShort(day: string): string {
     return formatWeekdayDayId(new Date(day + 'T00:00:00'));
+}
+
+/** The athlete's display name, falling back to the bare id for a deleted one. */
+export function athleteLabel(name: string | null, userId: number): string {
+    return name ?? `User #${userId}`;
 }

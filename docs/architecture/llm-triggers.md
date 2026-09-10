@@ -171,7 +171,7 @@ flight, then resumes the earliest stalled link per user per family. **Every disp
 `invalidate: false`**, so recovery never re-bills content that already exists, and demo users are
 excluded from every sweep. Failed rows are bounded by
 [`MAX_SELF_HEAL_ATTEMPTS`](../../app/Models/AI/Analysis.php#L62) and then dead-letter to
-`/devtools/ai-usage` for a manual re-arm, which is itself a recovery-origin dispatch. See
+`/devtools/narration` for a manual re-arm, which is itself a recovery-origin dispatch. See
 [[bounded-self-heal-and-dead-letter]].
 
 ## The twelve surfaces
@@ -427,7 +427,7 @@ cost is a fraction of its worst case — and its worst case is unchanged.
 **`pr_context`** (cut 2026-09-04). Narrated once per beaten personal record on every ingest, resumed
 by self-heal, re-staged on activity delete — and **never rendered anywhere**. No controller built a
 payload for it and nothing in `resources/js/` read it outside the generated enum and the
-`/devtools/ai-usage` admin list. Real spend, no output. The enum case, narrator, job, its
+`/devtools/narration` admin list. Real spend, no output. The enum case, narrator, job, its
 `PersonalRecordTool`, the authorizer arm, the ingest dispatch, the self-heal sweep, the age-gate arm,
 the rule-based arm and the routing key are all gone. PR celebration survives: `PostRunSpeechNarrator`
 already carries `PersonalRecordsTool`.
@@ -447,7 +447,7 @@ Spend is metered per call into `ai_token_usages` on the separate `analytics` con
 [`TokenUsage`](../../app/Models/AI/TokenUsage.php#L32). A write failure is swallowed and logged, so
 metering never fails a call that already succeeded.
 
-**This note deliberately carries no cost table.** `/devtools/ai-usage` renders spend live with kind,
+**This note deliberately carries no cost table.** `/devtools/narration` renders spend live with kind,
 origin and range filters, and a frozen table here would duplicate a working page and then rot. Run
 the query instead — the `(created_at, kind)` and `(created_at, origin)` indexes make it cheap:
 

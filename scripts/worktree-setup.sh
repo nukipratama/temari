@@ -87,7 +87,7 @@ app php artisan migrate --force
 
 # The analytics schema is a SECOND connection with its own migration path, so a
 # plain `migrate` does not touch it. Skipping this leaves strava_sync_logs and
-# ai_token_usages missing, which 500s /pulse and /ai-usage — a gap every
+# ai_token_usages missing, which 500s /pulse and /devtools/narration — a gap every
 # worktree hit, because it only ever lived in this script's printed next-steps.
 # The schema itself is created on a fresh volume by docker/mysql/init.
 app php artisan migrate --database=analytics --path=database/migrations/analytics --force
@@ -98,7 +98,7 @@ Stack is up, PHP deps installed, both the app and analytics schemas migrated.
 Composer/npm caches are shared across worktrees, so installs after the first
 one should be faster.
 
-/devtools, /ai-usage, /horizon and /pulse sit behind HTTP Basic — any username,
+/devtools, /devtools/narration, /horizon and /pulse sit behind HTTP Basic — any username,
 password = DEVTOOLS_PASSWORD from this worktree's .env (seeded from .env.example).
 
 The PHP suites are ready now (they use their own self-initializing

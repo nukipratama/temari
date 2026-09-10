@@ -105,7 +105,7 @@ class MaintainerAlerter
 
         $blocks = $count === 1 ? '1 AI block' : "{$count} AI blocks";
 
-        $this->broadcast("{$blocks} gave up in the last few minutes. Open /devtools/ai-usage to retry manually.");
+        $this->broadcast("{$blocks} gave up in the last few minutes. Open /devtools/narration to retry manually.");
     }
 
     /**

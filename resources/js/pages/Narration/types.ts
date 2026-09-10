@@ -25,27 +25,6 @@ export interface UsageTotals {
     truncated_calls: number;
 }
 
-export interface UserRow {
-    user_id: number;
-    user_name: string | null;
-    strava_athlete_id: number | null;
-    /** The account is gone; name and athlete id are the snapshot taken on delete. */
-    deleted: boolean;
-    prompt: number;
-    completion: number;
-    total: number;
-    calls: number;
-}
-
-export interface DailyRow {
-    day: string;
-    prompt: number;
-    completion: number;
-    total: number;
-    calls: number;
-    cost: number;
-}
-
 export interface DeploymentRow {
     deployment: string;
     prompt: number;
@@ -80,8 +59,8 @@ export interface OriginRow {
 export interface Budget {
     todayCost: number;
     /**
-     * Combined figure: perUserCeiling x athletes. Derived — what the bill would
-     * reach if every athlete spent their own slice, not a limit of its own.
+     * Combined figure: perUserCeiling x athletes. Derived, not a limit of its
+     * own: what the bill would reach if every athlete spent their slice.
      */
     dailyCeiling: number | null;
     /** The enforced per-athlete daily ceiling. */
@@ -103,17 +82,56 @@ export interface ContentFilterSummary {
     pct: number | null;
 }
 
-export interface DeadLetterBlock {
-    type: string;
-    error: string | null;
-    failed_at: string;
+/** One day of spend, split by the narrator kind that billed it. */
+export interface ChartDay {
+    day: string;
+    cost: number;
+    byKind: Record<string, number>;
 }
 
-export interface DeadLetterGroup {
+export interface ChartKind {
+    kind: string;
+    label: string;
+    cost: number;
+}
+
+export interface CostChart {
+    /** Kinds present in the range, most expensive first, which is the stack order. */
+    kinds: ChartKind[];
+    days: ChartDay[];
+}
+
+export interface SparklinePoint {
+    day: string;
+    cost: number;
+}
+
+/** How a period's Done narration was produced, per athlete. */
+export interface ServedSplit {
+    llm: number;
+    rule_based: number;
+    /** Narrated before `served_by` existed. Not the same as rule-based. */
+    unknown: number;
+}
+
+export interface AthleteRow {
     user_id: number;
-    user_name: string;
-    count: number;
-    blocks: DeadLetterBlock[];
+    user_name: string | null;
+    is_demo: boolean;
+    /** The account is gone; the name is the snapshot taken on delete. */
+    deleted: boolean;
+    today: number;
+    last7: number;
+    last30: number;
+    calls: number;
+    /** The athlete's effective daily ceiling, override included. */
+    ceiling: number | null;
+    ceiling_overridden: boolean;
+    capped: boolean;
+    sparkline: SparklinePoint[];
+    served: ServedSplit;
+    flags: number;
+    dead_lettered: number;
 }
 
 export type PreviousTotals = Omit<UsageTotals, 'truncated_calls'>;
@@ -121,24 +139,26 @@ export type PreviousTotals = Omit<UsageTotals, 'truncated_calls'>;
 /** Relative range token resolved server-side; drives preset highlighting. */
 export type RangeToken = 'today' | '7d' | '30d' | 'month' | 'all' | 'custom';
 
-export interface AiUsageProps {
+export interface NarrationOverviewProps {
     range: RangeToken;
     from: string;
     to: string;
     kind: string | null;
     origin: string | null;
+    /** The athlete the cost chart is narrowed to, or null for all of them. */
+    athlete: number | null;
     totals: UsageTotals;
     previousTotals: PreviousTotals | null;
     byKind: UsageRow[];
-    byUser: UserRow[];
     byDeployment: DeploymentRow[];
-    daily: DailyRow[];
     byOrigin: OriginRow[];
     availableKinds: KindOption[];
     availableOrigins: KindOption[];
     budget: Budget;
     contentFilter: ContentFilterSummary;
-    deadLettered: DeadLetterGroup[];
-    failedUnderBudget: DeadLetterGroup[];
-    nyangkut: DeadLetterGroup[];
+    chart: CostChart;
+    athletes: AthleteRow[];
+    cappedToday: number;
+    /** Why auto-dispatch is stopped right now, or null when it is running. */
+    pauseReason: string | null;
 }

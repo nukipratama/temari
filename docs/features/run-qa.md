@@ -66,7 +66,7 @@ queue and calls
 goes through `StructuredChatCaller` like every other narrator — so the persona,
 the agent budget, the content-filter retry, the exception taxonomy and the
 `ai_token_usages` metering all apply unchanged, under the `run_question` kind
-(visible on [[ai-usage]]).
+(visible on [[narration-devtools]]).
 
 The [toolbox](app/Services/AI/Narrators/RunQuestionNarrator.php#L113) is the run
 insight set minus the claim-shaping bits, and shrinks to the run summary plus the

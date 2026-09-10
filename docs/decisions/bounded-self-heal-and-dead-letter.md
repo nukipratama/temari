@@ -9,7 +9,7 @@ code_refs:
   - app/Jobs/AI/AnalyzeBaseJob.php
   - app/Console/Commands/AI/SelfHealCommand.php
   - app/Models/AI/Analysis.php
-  - app/Http/Controllers/TokenUsageController.php
+  - app/Http/Controllers/NarrationOverviewController.php
 ---
 
 # Bounded self-heal + dead-letter for failed AI blocks
@@ -53,7 +53,7 @@ We wanted honest empty states instead of fake templates, cost-free recovery once
 - **Paused generation stays honest, never templated.** `dispatchRow()` fills only genuinely rule-based types inline; a paused single-row LLM block rests `Pending` (an existing `Done` keeps its real prose) rather than being templated ([`dispatchRow()`](app/Services/AI/AnalysisService.php#L309)). `RuleBasedNarrationFiller` is now demo-seed-only.
 - **Execution-time cost guard.** The cap was only a dispatch-time gate, so a job dispatched just before the ceiling tripped would still bill. `AnalyzeBaseJob::haltForPausedGeneration()` reverts a job's rows to `Pending` before `markProcessing` when paused ([`haltForPausedGeneration()`](app/Jobs/AI/AnalyzeBaseJob.php#L193), via [`AnalysisService::revertToPending()`](app/Services/AI/AnalysisService.php#L596) and [`generationPaused()`](app/Services/AI/AnalysisService.php#L692)), so no `attempts` burn and no bill.
 - **Bounded self-heal.** `ai:self-heal` (renamed from `ai:resume-chains`, [SelfHealCommand](app/Console/Commands/AI/SelfHealCommand.php)) re-kicks the earliest stalled block per user (the chains, plus the ingest-only card-flavor and PR-context narration) with `invalidate:false`, early-exits while paused, and is bounded by `Analysis::MAX_SELF_HEAL_ATTEMPTS` ([`MAX_SELF_HEAL_ATTEMPTS`](app/Models/AI/Analysis.php#L62), [`scopeStalled`](app/Models/AI/Analysis.php#L101)). A paused re-dispatch is a free no-op; a `Pending` block is always under budget, so the budget only ever stops a `Failed` block that has burned its retries.
-- **Dead-letter + per-user manual re-arm.** A `Failed` block past the budget is `scopeDeadLettered` ([`deadLettered`](app/Models/AI/Analysis.php#L156)), surfaced grouped-per-user on `/ai-usage` with a single "Coba lagi semua" (now "Recover all") that resets `attempts` (re-arming the budget) and re-dispatches all of that user's stuck blocks ([TokenUsageController::retryFailed](app/Http/Controllers/TokenUsageController.php#L85)). That surface is session-less (edge basicauth), so the `viewAiUsage` gate can't apply.
+- **Dead-letter + per-user manual re-arm.** A `Failed` block past the budget is `scopeDeadLettered` ([`deadLettered`](app/Models/AI/Analysis.php#L156)), surfaced grouped-per-user on `/ai-usage` with a single "Coba lagi semua" (now "Recover all") that resets `attempts` (re-arming the budget) and re-dispatches all of that user's stuck blocks ([NarrationOverviewController::retryFailed](app/Http/Controllers/NarrationOverviewController.php#L101)). That surface is session-less (edge basicauth), so the `viewAiUsage` gate can't apply.
 
 ## Consequences
 

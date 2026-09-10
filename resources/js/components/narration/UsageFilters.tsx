@@ -2,14 +2,14 @@ import { Link } from '@inertiajs/react';
 import { SlidersHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
-import type { KindOption, RangeToken } from '@/pages/AiUsage/types';
+import type { KindOption, RangeToken } from '@/pages/Narration/types';
 
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
 import { toggleButtonVariants } from '@/lib/variants';
-import { navigate, presetHref, PRESETS } from '@/pages/AiUsage/helpers';
+import { navigate, presetHref, PRESETS } from '@/pages/Narration/helpers';
 
 interface UsageFiltersProps {
     range: RangeToken;
@@ -17,6 +17,7 @@ interface UsageFiltersProps {
     to: string;
     kind: string | null;
     origin: string | null;
+    athlete: number | null;
     availableKinds: KindOption[];
     availableOrigins: KindOption[];
 }
@@ -27,6 +28,7 @@ export default function UsageFilters({
     to,
     kind,
     origin,
+    athlete,
     availableKinds,
     availableOrigins,
 }: Readonly<UsageFiltersProps>) {
@@ -44,6 +46,7 @@ export default function UsageFilters({
             to: toInput,
             kind: kindInput || null,
             origin: originInput || null,
+            athlete,
         });
     }
 
@@ -56,6 +59,7 @@ export default function UsageFilters({
             to,
             kind: value || null,
             origin: originInput || null,
+            athlete,
         });
     }
 
@@ -67,6 +71,7 @@ export default function UsageFilters({
             to,
             kind: kindInput || null,
             origin: value || null,
+            athlete,
         });
     }
 
@@ -84,13 +89,13 @@ export default function UsageFilters({
                 >
                     <DateField
                         id="from"
-                        label="From"
+                        label="from"
                         value={fromInput}
                         onChange={setFromInput}
                     />
                     <DateField
                         id="to"
-                        label="To"
+                        label="to"
                         value={toInput}
                         onChange={setToInput}
                     />
@@ -98,7 +103,7 @@ export default function UsageFilters({
                     {availableKinds.length > 0 && (
                         <SelectFilter
                             id="kind-filter"
-                            label="Kind"
+                            label="kind"
                             options={availableKinds}
                             value={kindInput}
                             onChange={handleKindChange}
@@ -108,7 +113,7 @@ export default function UsageFilters({
                     {availableOrigins.length > 0 && (
                         <SelectFilter
                             id="origin-filter"
-                            label="Origin"
+                            label="origin"
                             options={availableOrigins}
                             value={originInput}
                             onChange={handleOriginChange}
@@ -117,7 +122,7 @@ export default function UsageFilters({
 
                     <PillButton type="submit" tone="sky" size="sm">
                         <Icon icon={SlidersHorizontal} aria-hidden />
-                        <span>Apply</span>
+                        <span>apply</span>
                     </PillButton>
 
                     <div className="ml-auto flex flex-wrap gap-2">
@@ -125,7 +130,12 @@ export default function UsageFilters({
                             <PresetButton
                                 key={preset.token}
                                 label={preset.label}
-                                href={presetHref(preset.token, kind, origin)}
+                                href={presetHref(
+                                    preset.token,
+                                    kind,
+                                    origin,
+                                    athlete,
+                                )}
                                 active={range === preset.token}
                             />
                         ))}
@@ -134,13 +144,13 @@ export default function UsageFilters({
             </Card>
 
             <p className="mt-3 text-xs text-text-3">
-                Active range:{' '}
+                active range:{' '}
                 <span className="font-semibold text-foreground">{from}</span> to{' '}
                 <span className="font-semibold text-foreground">{to}</span>
                 {kind && (
                     <>
                         {' '}
-                        <span className="text-text-2">|</span> Kind:{' '}
+                        <span className="text-text-2">|</span> kind:{' '}
                         <span className="font-semibold text-foreground">
                             {kind}
                         </span>
@@ -149,7 +159,7 @@ export default function UsageFilters({
                 {origin && (
                     <>
                         {' '}
-                        <span className="text-text-2">|</span> Origin:{' '}
+                        <span className="text-text-2">|</span> origin:{' '}
                         <span className="font-semibold text-foreground">
                             {origin}
                         </span>
