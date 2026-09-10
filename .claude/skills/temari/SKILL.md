@@ -22,7 +22,7 @@ Backend logic is split by domain under `app/Services/`:
 - **Notifications/** — channel routing + delivery-claim idempotency.
 - **Inertia/** — per-page shared prop builders (`SharedProps`, `AiProps`, `GamificationProps`, `NotificationProps`, `StravaProps`).
 
-Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`, one per prototype screen: `Home` (the Today dashboard — the render name is `Home`, not `Today`), `Plan`, `Race`, `Trends`, `History` with `Activities/{Feed,Calendar}`, `Runs/Show`, `Inbox`, `Profile`, `Settings/Index`, plus `Auth/Login`, `Onboarding/Index`, `Legal/Document` and the operator screens `AiUsage` / `Devtools` / `Devtools/Design`. There is no `Collection/` tree — the cards, records and accessories pages were cut by the parity port.
+Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`, one per prototype screen: `Home` (the Today dashboard — the render name is `Home`, not `Today`), `Plan`, `Race`, `Trends`, `History` with `Activities/{Feed,Calendar}`, `Runs/Show`, `Inbox`, `Profile`, `Settings/Index`, plus `Auth/Login`, `Onboarding/Index`, `Legal/Document` and the operator screens `Narration/Overview` / `Devtools` / `Devtools/Design`. There is no `Collection/` tree — the cards, records and accessories pages were cut by the parity port.
 
 ## Voice & copy
 
@@ -315,7 +315,7 @@ of it; `./vendor/bin/sail` works for everything afterwards.
 **Both** migration sets matters. `analytics` is a second connection with its own migration path, so
 a plain `artisan migrate` does not touch it — the script also runs
 `migrate --database=analytics --path=database/migrations/analytics`. Without it `strava_sync_logs`
-and `ai_token_usages` are missing and `/pulse` + `/devtools/ai-usage` 500. This lived only in the script's
+and `ai_token_usages` are missing and `/pulse` + `/devtools/narration` 500. This lived only in the script's
 printed next-steps until #614, which is exactly why every worktree skipped it.
 
 The PHP suites are ready at that point (they self-initialize their own `mysql_test`/`redis_test`).

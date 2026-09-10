@@ -1,19 +1,19 @@
 import { Server } from 'lucide-react';
 
-import type { DeploymentRow } from '@/pages/AiUsage/types';
+import type { DeploymentRow } from '@/pages/Narration/types';
 
-import EmptyState from '@/components/aiusage/EmptyState';
+import EmptyState from '@/components/narration/EmptyState';
 import DataTable, { Td } from '@/components/ui/DataTable';
-import { fmt, formatCost } from '@/pages/AiUsage/helpers';
+import { fmt, formatCost } from '@/pages/Narration/helpers';
 
 const COLUMNS = [
-    'Deployment',
-    'Price in/out /1M',
-    'Calls',
-    'Prompt',
-    'Completion',
-    'Total',
-    'Cost',
+    'deployment',
+    'price in/out /1M',
+    'calls',
+    'prompt',
+    'completion',
+    'total',
+    'cost',
 ];
 
 export default function DeploymentTable({
@@ -23,7 +23,7 @@ export default function DeploymentTable({
     return (
         <DataTable
             icon={Server}
-            title="Breakdown per Deployment"
+            title="by deployment"
             subtitle="Cost per Azure model called."
             tone="accent"
             columns={COLUMNS}

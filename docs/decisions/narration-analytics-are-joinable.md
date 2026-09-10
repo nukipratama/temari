@@ -115,4 +115,4 @@ for the same cross-connection reason as (2).
 - [[analytics-db-separate-connection]] — why the metering tables are a separate schema at all
 - [[analytics-db]] — the connection, its migrations, and how tests rebind it
 - [[cost-ceiling-degrades-to-rule-based]] — the path that makes `served_by` worth recording
-- [[ai-usage]] — the dashboard that reads all of this
+- [[narration-devtools]] — the dashboard that reads all of this

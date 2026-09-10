@@ -720,7 +720,7 @@ it('leaves a Failed row Failed past the ceiling while its Pending sibling degrad
     expect(app(CostCeilingLedger::class)->today()['degradedFills'])->toBe(1);
 });
 
-it('records the trip time and the degraded-fill count for /ai-usage', function (): void {
+it('records the trip time and the degraded-fill count for /devtools/narration', function (): void {
     $this->freezeTime();
 
     foreach (WeeklySnapshot::factory()->count(2)->create() as $snap) {

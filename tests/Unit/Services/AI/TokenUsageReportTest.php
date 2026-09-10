@@ -2,13 +2,19 @@
 
 declare(strict_types=1);
 
+use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
+use App\Models\Feedback;
 use App\Models\AI\TokenUsage;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\User\UserEraser;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
+use App\Services\AI\CeilingOverride;
 use App\Services\AI\CostCeilingLedger;
+use App\Services\AI\ServedBy;
 use App\Services\AI\TokenUsageReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -219,7 +225,7 @@ it('carries the ceiling trip and the rule-based fill count into the budget block
 });
 
 
-it('filters by kind while leaving the daily series unfiltered', function () use ($range): void {
+it('narrows every figure to one kind when the filter names it', function () use ($range): void {
     seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-10'));
     seedReportUsage('run-insight', 300, 150, Carbon::parse('2026-05-10'));
 
@@ -228,98 +234,60 @@ it('filters by kind while leaving the daily series unfiltered', function () use 
 
     expect($result['byKind'])->toHaveCount(1)
         ->and($result['byKind'][0]['kind'])->toBe('briefing')
-        ->and($result['totals']['total'])->toBe(150)
-        // daily ignores the kind filter so it still sums both kinds.
-        ->and($result['daily'][0])->toMatchArray(['day' => '2026-05-10', 'total' => 600]);
+        ->and($result['totals']['total'])->toBe(150);
 });
 
-it('sums per-day cost across deployments in the daily series', function () use ($range): void {
-    seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-10'), model: 'gpt-4o');       // 2.50
+it('sums per-day cost across deployments in the stacked series', function () use ($range): void {
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-10'), model: 'gpt-4o');         // 2.50
     seedReportUsage('run-insight', 1_000_000, 0, Carbon::parse('2026-05-10'), model: 'gpt-4o-mini'); // 0.15
 
     [$from, $to] = $range();
-    $daily = collect($this->report->build($from, $to, null)['daily'])->keyBy('day');
+    $chart = $this->report->dailyCostByKind($from, $to);
 
-    expect($daily->get('2026-05-10'))->toMatchArray(['day' => '2026-05-10', 'total' => 2_000_000])
-        ->and($daily->get('2026-05-10')['cost'])->toBe(2.65);
+    expect($chart['days'])->toHaveCount(1)
+        ->and($chart['days'][0]['day'])->toBe('2026-05-10')
+        ->and($chart['days'][0]['cost'])->toBe(2.65)
+        ->and($chart['days'][0]['byKind']['briefing'])->toBe(2.50)
+        ->and($chart['days'][0]['byKind']['run-insight'])->toBe(0.15);
 });
 
-it('stitches user names from the app schema and skips system (null user_id) rows', function () use ($range): void {
-    $alice = User::factory()->create(['name' => 'Alice']);
-    $bob = User::factory()->create(['name' => 'Bob']);
-
-    seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-10'), userId: $alice->id);
-    seedReportUsage('briefing', 200, 80, Carbon::parse('2026-05-12'), userId: $alice->id);
-    seedReportUsage('run-insight', 50, 25, Carbon::parse('2026-05-11'), userId: $bob->id);
-    seedReportUsage('briefing', 10, 5, Carbon::parse('2026-05-13')); // null user_id, excluded
+it('orders the stack by kind spend, heaviest band first, and labels it', function () use ($range): void {
+    seedReportUsage('card_flavor', 10, 5, Carbon::parse('2026-05-10'));
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-11'));
 
     [$from, $to] = $range();
-    $result = $this->report->build($from, $to, null);
+    $chart = $this->report->dailyCostByKind($from, $to);
 
-    expect($result['byUser'])->toHaveCount(2)
-        ->and($result['byUser'][0])->toBe([
-            'user_id' => $alice->id,
-            'user_name' => 'Alice',
-            'strava_athlete_id' => null,
-            'deleted' => false,
-            'prompt' => 300,
-            'completion' => 130,
-            'total' => 430,
-            'calls' => 2,
-        ])
-        ->and($result['byUser'][1]['user_name'])->toBe('Bob');
+    expect(array_column($chart['kinds'], 'kind'))->toBe(['briefing', 'card_flavor'])
+        ->and($chart['kinds'][1]['label'])->toBe('CardFlavor');
 });
 
-it('keeps the user_id with a null name when the user vanished without a snapshot', function () use ($range): void {
-    $alice = User::factory()->create(['name' => 'Alice']);
-    $aliceId = $alice->id;
-    seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-10'), userId: $aliceId);
-    // Straight $user->delete(), not the eraser: nothing stamped the identity.
-    $alice->delete();
+it('leaves a kind that cost nothing out of the stack and its legend', function () use ($range): void {
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-10'), model: 'gpt-4o');
+    seedReportUsage('card_flavor', 100, 50, Carbon::parse('2026-05-10'), model: 'not-priced');
 
     [$from, $to] = $range();
-    $result = $this->report->build($from, $to, null);
+    $chart = $this->report->dailyCostByKind($from, $to);
 
-    expect($result['byUser'][0])->toMatchArray([
-        'user_id' => $aliceId,
-        'user_name' => null,
-        'strava_athlete_id' => null,
-        'deleted' => true,
-    ]);
+    expect(array_column($chart['kinds'], 'kind'))->toBe(['briefing'])
+        ->and($chart['days'][0]['byKind'])->toHaveKey('card_flavor');
 });
 
-it('names a deleted user from the snapshot the eraser left behind', function () use ($range): void {
-    $alice = User::factory()->create(['name' => 'Alice']);
-    $aliceId = $alice->id;
-    StravaConnection::factory()->for($alice)->create(['strava_athlete_id' => 909090]);
-    seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-10'), userId: $aliceId);
-
-    app(UserEraser::class)->erase($alice);
+it('narrows the stacked series to one athlete when the chart filter names one', function () use ($range): void {
+    $alice = User::factory()->create();
+    $bob = User::factory()->create();
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-10'), userId: $alice->id);
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-10'), userId: $bob->id);
 
     [$from, $to] = $range();
-    $result = $this->report->build($from, $to, null);
 
-    expect($result['byUser'][0])->toMatchArray([
-        'user_id' => $aliceId,
-        'user_name' => 'Alice',
-        'strava_athlete_id' => 909090,
-        'deleted' => true,
-    ]);
+    expect($this->report->dailyCostByKind($from, $to, $alice->id)['days'][0]['cost'])->toBe(2.50);
 });
 
-it('reads a live user Strava id from the connection, not from any snapshot', function () use ($range): void {
-    $alice = User::factory()->create(['name' => 'Alice']);
-    StravaConnection::factory()->for($alice)->create(['strava_athlete_id' => 555]);
-    seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-10'), userId: $alice->id);
-
+it('returns an empty stacked series when nothing billed in the range', function () use ($range): void {
     [$from, $to] = $range();
-    $result = $this->report->build($from, $to, null);
 
-    expect($result['byUser'][0])->toMatchArray([
-        'user_name' => 'Alice',
-        'strava_athlete_id' => 555,
-        'deleted' => false,
-    ]);
+    expect($this->report->dailyCostByKind($from, $to))->toBe(['kinds' => [], 'days' => []]);
 });
 
 it('labels available kinds via AnalysisType, falling back to the raw value', function () use ($range): void {
@@ -374,8 +342,6 @@ it('returns zeroed totals and empty breakdowns when no rows fall in range', func
     ])
         ->and($result['byKind'])->toBe([])
         ->and($result['byDeployment'])->toBe([])
-        ->and($result['byUser'])->toBe([])
-        ->and($result['daily'])->toBe([])
         ->and($result['availableKinds'])->toBe([]);
 });
 
@@ -478,4 +444,169 @@ it('reports a null content-filter share when the range has no calls', function (
         'trips' => 0,
         'pct' => null,
     ]);
+});
+
+/** A Done narration owned by $userId, narrated inside the report's range. */
+function seedDoneNarration(int $userId, ?ServedBy $servedBy, Carbon $when): void
+{
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $userId,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => $when->toDateString(),
+        'status' => AnalysisStatus::Done,
+        'content' => 'narrated',
+        'served_by' => $servedBy,
+        'generated_at' => $when,
+    ]);
+}
+
+it('measures the money columns over fixed windows, whatever range is selected', function (): void {
+    $alice = User::factory()->create();
+
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $alice->id);            // 2.50
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today()->subDays(3), userId: $alice->id); // 2.50
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today()->subDays(20), userId: $alice->id); // 2.50
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today()->subDays(60), userId: $alice->id); // outside
+
+    $row = collect($this->report->athletes(Carbon::parse('2026-05-10'), Carbon::parse('2026-05-19')))
+        ->firstWhere('user_id', $alice->id);
+
+    expect($row['today'])->toBe(2.50)
+        ->and($row['last7'])->toBe(5.00)
+        ->and($row['last30'])->toBe(7.50)
+        ->and($row['calls'])->toBe(3);
+});
+
+it('gives the sparkline one slot per day of the window, silent days included', function (): void {
+    $alice = User::factory()->create();
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $alice->id);
+
+    $row = collect($this->report->athletes(Carbon::today(), Carbon::now()))
+        ->firstWhere('user_id', $alice->id);
+
+    expect($row['sparkline'])->toHaveCount(TokenUsageReport::ATHLETE_WINDOW_DAYS)
+        ->and($row['sparkline'][0]['cost'])->toBe(0.0)
+        ->and(end($row['sparkline'])['cost'])->toBe(2.50);
+});
+
+it('marks an athlete capped once today reaches their ceiling', function (): void {
+    config()->set('azure_openai.daily_cost_ceiling_per_user', 2.0);
+    $alice = User::factory()->create();
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $alice->id); // 2.50
+
+    $row = collect($this->report->athletes(Carbon::today(), Carbon::now()))
+        ->firstWhere('user_id', $alice->id);
+
+    expect($row['ceiling'])->toBe(2.0)
+        ->and($row['capped'])->toBeTrue()
+        ->and($row['ceiling_overridden'])->toBeFalse();
+});
+
+it('reads a today-only override in place of the configured ceiling', function (): void {
+    config()->set('azure_openai.daily_cost_ceiling_per_user', 2.0);
+    $alice = User::factory()->create();
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $alice->id); // 2.50
+    app(CeilingOverride::class)->set($alice->id, 10.0);
+
+    $row = collect($this->report->athletes(Carbon::today(), Carbon::now()))
+        ->firstWhere('user_id', $alice->id);
+
+    expect($row['ceiling'])->toBe(10.0)
+        ->and($row['ceiling_overridden'])->toBeTrue()
+        ->and($row['capped'])->toBeFalse();
+});
+
+it('never caps an athlete when no ceiling is configured at all', function (): void {
+    $alice = User::factory()->create();
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $alice->id);
+
+    $row = collect($this->report->athletes(Carbon::today(), Carbon::now()))
+        ->firstWhere('user_id', $alice->id);
+
+    expect($row['ceiling'])->toBeNull()
+        ->and($row['capped'])->toBeFalse();
+});
+
+it('splits done narration by its producer, counting a null served_by as unknown', function () use ($range): void {
+    $alice = User::factory()->create();
+    seedDoneNarration($alice->id, ServedBy::Llm, Carbon::parse('2026-05-11'));
+    seedDoneNarration($alice->id, ServedBy::Llm, Carbon::parse('2026-05-12'));
+    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-13'));
+    seedDoneNarration($alice->id, null, Carbon::parse('2026-05-14'));
+    seedDoneNarration($alice->id, ServedBy::Llm, Carbon::parse('2026-04-01')); // outside the range
+
+    [$from, $to] = $range();
+    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
+
+    expect($row['served'])->toBe(['llm' => 2, 'rule_based' => 1, 'unknown' => 1]);
+});
+
+it('counts the flags an athlete filed in range', function () use ($range): void {
+    $alice = User::factory()->create();
+    Feedback::factory()->for($alice)->create(['subject_id' => 1, 'created_at' => Carbon::parse('2026-05-11')]);
+    Feedback::factory()->for($alice)->create(['subject_id' => 2, 'created_at' => Carbon::parse('2026-05-12')]);
+    Feedback::factory()->for($alice)->create(['subject_id' => 3, 'created_at' => Carbon::parse('2026-04-01')]);
+
+    [$from, $to] = $range();
+    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
+
+    expect($row['flags'])->toBe(2);
+});
+
+it('counts dead-lettered blocks regardless of the range, since they still need an action', function () use ($range): void {
+    $alice = User::factory()->create();
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $alice->id,
+        'status' => AnalysisStatus::Failed,
+        'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
+        'updated_at' => Carbon::parse('2026-01-01'),
+    ]);
+
+    [$from, $to] = $range();
+    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
+
+    expect($row['dead_lettered'])->toBe(1);
+});
+
+it('lists a silent athlete rather than hiding them behind zero spend', function () use ($range): void {
+    $alice = User::factory()->create();
+
+    [$from, $to] = $range();
+    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
+
+    expect($row['today'])->toBe(0.0)
+        ->and($row['calls'])->toBe(0)
+        ->and($row['sparkline'])->toHaveCount(TokenUsageReport::ATHLETE_WINDOW_DAYS);
+});
+
+it('sorts the demo account last and the rest by 30-day spend', function () use ($range): void {
+    $demo = User::factory()->create(['is_demo' => true]);
+    $quiet = User::factory()->create();
+    $heavy = User::factory()->create();
+
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $demo->id);
+    seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $heavy->id);
+    seedReportUsage('briefing', 10, 0, Carbon::today(), userId: $quiet->id);
+
+    [$from, $to] = $range();
+
+    expect(array_column($this->report->athletes($from, $to), 'user_id'))
+        ->toBe([$heavy->id, $quiet->id, $demo->id]);
+});
+
+it('keeps a deleted account listed under the snapshot the eraser left behind', function () use ($range): void {
+    $alice = User::factory()->create(['name' => 'Alice']);
+    $aliceId = $alice->id;
+    StravaConnection::factory()->for($alice)->create(['strava_athlete_id' => 909090]);
+    seedReportUsage('briefing', 100, 50, Carbon::today(), userId: $aliceId);
+
+    app(UserEraser::class)->erase($alice);
+
+    [$from, $to] = $range();
+    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $aliceId);
+
+    expect($row['user_name'])->toBe('Alice')
+        ->and($row['deleted'])->toBeTrue();
 });

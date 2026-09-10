@@ -2,6 +2,8 @@ import { router } from '@inertiajs/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+    athleteLabel,
+    athletePath,
     fmt,
     formatCost,
     formatDayLabel,
@@ -43,7 +45,7 @@ describe('navigate', () => {
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/devtools/ai-usage',
+            '/devtools/narration',
             { from: '2026-05-01', to: '2026-05-19' },
             { preserveState: true, preserveScroll: true },
         );
@@ -59,7 +61,7 @@ describe('navigate', () => {
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/devtools/ai-usage',
+            '/devtools/narration',
             { range: '7d' },
             { preserveState: true, preserveScroll: true },
         );
@@ -75,26 +77,77 @@ describe('navigate', () => {
         });
 
         expect(router.get).toHaveBeenCalledWith(
-            '/devtools/ai-usage',
+            '/devtools/narration',
             { range: '7d', kind: 'briefing' },
             { preserveState: true, preserveScroll: true },
         );
     });
 });
 
+describe('navigate, athlete filter', () => {
+    it('carries the athlete the chart is narrowed to', () => {
+        navigate({
+            range: '7d',
+            from: '2026-05-01',
+            to: '2026-05-19',
+            kind: null,
+            origin: null,
+            athlete: 7,
+        });
+
+        expect(router.get).toHaveBeenCalledWith(
+            '/devtools/narration',
+            { range: '7d', athlete: '7' },
+            { preserveState: true, preserveScroll: true },
+        );
+    });
+});
+
+describe('athletePath', () => {
+    it('points at the per-athlete page under the overview', () => {
+        expect(athletePath(12)).toBe('/devtools/narration/athletes/12');
+    });
+});
+
+describe('athleteLabel', () => {
+    it('uses the name when there is one', () => {
+        expect(athleteLabel('Nuki', 3)).toBe('Nuki');
+    });
+
+    it('falls back to the bare id for a deleted account', () => {
+        expect(athleteLabel(null, 3)).toBe('User #3');
+    });
+});
+
 describe('presetHref', () => {
     it('builds a date-free href so the link stays valid tomorrow', () => {
-        expect(presetHref('30d', null)).toBe('/devtools/ai-usage?range=30d');
+        expect(presetHref('30d', null)).toBe('/devtools/narration?range=30d');
     });
 
     it('preserves the active kind filter', () => {
         expect(presetHref('7d', 'briefing')).toBe(
-            '/devtools/ai-usage?range=7d&kind=briefing',
+            '/devtools/narration?range=7d&kind=briefing',
+        );
+    });
+
+    it('preserves the athlete filter', () => {
+        expect(presetHref('7d', null, null, 4)).toBe(
+            '/devtools/narration?range=7d&athlete=4',
         );
     });
 });
 
 describe('PRESETS', () => {
+    it('labels every window in lowercase chrome', () => {
+        expect(PRESETS.map((p) => p.label)).toEqual([
+            'today',
+            '7 days',
+            '30 days',
+            'this month',
+            'all',
+        ]);
+    });
+
     it('offers the five relative windows in shortest-first order', () => {
         expect(PRESETS.map((p) => p.token)).toEqual([
             'today',

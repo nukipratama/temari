@@ -71,7 +71,7 @@ class Analysis extends Model
     /**
      * How long a Queued/Processing row may sit before it counts as a lost-queue
      * zombie ({@see self::staleInFlight()}), and how long a Pending/Queued
-     * row may sit before /devtools/ai-usage surfaces it as "Nyangkut". Well beyond the
+     * row may sit before /devtools/narration surfaces it as "Nyangkut". Well beyond the
      * job's tries + backoff + Retry-After cap, so a genuinely in-flight row is
      * never yanked mid-attempt.
      */
@@ -155,7 +155,7 @@ class Analysis extends Model
 
     /**
      * Rows ai:self-heal has given up on: Failed with the retry budget exhausted.
-     * These surface on /devtools/ai-usage for a manual per-user re-arm.
+     * These surface on /devtools/narration for a manual per-user re-arm.
      *
      * @param  Builder<Analysis>  $query
      * @return Builder<Analysis>

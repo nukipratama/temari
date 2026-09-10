@@ -21,9 +21,9 @@ const LINKS: ReadonlyArray<DevtoolsLink> = [
     },
     {
         icon: DollarSign,
-        label: 'AI Usage',
-        desc: 'Token spend, budget gauge, and self-heal panel.',
-        href: '/devtools/ai-usage',
+        label: 'Narration',
+        desc: 'Spend per athlete, the ceilings, and who was served by what.',
+        href: '/devtools/narration',
     },
     {
         icon: Flag,

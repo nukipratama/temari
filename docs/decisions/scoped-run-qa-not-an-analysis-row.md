@@ -106,7 +106,7 @@ cap.
 - **Enables:** a genuinely scoped Q&A that cannot be widened by phrasing, with
   metering, the content-filter retry, the truncation retry, the agent budget and
   the exception taxonomy all inherited from `StructuredChatCaller` unchanged. The
-  `run_question` kind shows up on `/ai-usage` for free ([[ai-usage]]).
+  `run_question` kind shows up on `/ai-usage` for free ([[narration-devtools]]).
 - **Costs:** a second AI storage shape to keep in mind. [[ai-pipeline]]'s "every
   piece of AI copy is an `ai_analyses` row" is no longer true, and the
   self-heal / dead-letter machinery ([[bounded-self-heal-and-dead-letter]]) does

@@ -1,12 +1,12 @@
 import { CirclePlay } from 'lucide-react';
 
-import type { OriginRow } from '@/pages/AiUsage/types';
+import type { OriginRow } from '@/pages/Narration/types';
 
-import EmptyState from '@/components/aiusage/EmptyState';
+import EmptyState from '@/components/narration/EmptyState';
 import DataTable, { Td } from '@/components/ui/DataTable';
-import { fmt, formatCost } from '@/pages/AiUsage/helpers';
+import { fmt, formatCost } from '@/pages/Narration/helpers';
 
-const COLUMNS = ['Origin', 'Calls', 'Prompt', 'Completion', 'Total', 'Cost'];
+const COLUMNS = ['origin', 'calls', 'prompt', 'completion', 'total', 'cost'];
 
 /**
  * Spend by what started the call. The per-kind table answers "which narrator",
@@ -20,7 +20,7 @@ export default function OriginTable({
     return (
         <DataTable
             icon={CirclePlay}
-            title="Breakdown per Origin"
+            title="by origin"
             subtitle="What started the call, as opposed to which narrator answered it."
             tone="accent"
             columns={COLUMNS}

@@ -35,7 +35,7 @@ use App\Http\Controllers\Notifications\SendWeeklyRecapNotificationController;
 use App\Http\Controllers\Telegram\TelegramConnectionController;
 use App\Http\Controllers\Telegram\TelegramWebhookController;
 use App\Http\Controllers\WebPush\PushSubscriptionController;
-use App\Http\Controllers\TokenUsageController;
+use App\Http\Controllers\NarrationOverviewController;
 use App\Http\Controllers\TrainingPreferencesController;
 use App\Http\Controllers\TrendsController;
 use Illuminate\Support\Facades\Route;
@@ -206,16 +206,13 @@ Route::middleware(['throttle:60,1', 'devtools'])->group(function (): void {
     Route::get('/devtools', DevtoolsIndexController::class)->name('devtools.index');
     Route::get('/devtools/design', DevtoolsDesignController::class)->name('devtools.design');
     Route::get('/devtools/feedback', DevtoolsFeedbackController::class)->name('devtools.feedback');
-    Route::get('/devtools/ai-usage', [TokenUsageController::class, 'show'])->name('devtools.ai-usage');
-    Route::post('/devtools/ai-usage/recover', [TokenUsageController::class, 'recover'])->name('devtools.ai-usage.recover');
-    Route::post('/devtools/ai-usage/users/{userId}/retry-failed', [TokenUsageController::class, 'retryFailed'])
-        ->whereNumber('userId')
-        ->name('devtools.ai-usage.retry-failed');
+    Route::get('/devtools/narration', [NarrationOverviewController::class, 'show'])->name('devtools.narration');
+    Route::post('/devtools/narration/recover', [NarrationOverviewController::class, 'recover'])->name('devtools.narration.recover');
 
     Route::prefix('/devtools/narration/athletes/{userId}')->whereNumber('userId')->group(function (): void {
         Route::get('/', [NarrationAthleteController::class, 'show'])->name('devtools.narration.athlete');
         Route::post('/retry-failed', [NarrationAthleteController::class, 'retryFailed'])
-            ->name('devtools.narration.athlete.retry-failed');
+            ->name('devtools.narration.retry-failed');
         Route::post('/re-arm', [NarrationAthleteController::class, 'reArm'])
             ->name('devtools.narration.athlete.re-arm');
         Route::post('/resync', [NarrationAthleteController::class, 'resync'])
@@ -227,4 +224,7 @@ Route::middleware(['throttle:60,1', 'devtools'])->group(function (): void {
         Route::post('/replay', [NarrationAthleteController::class, 'replay'])
             ->name('devtools.narration.athlete.replay');
     });
+
+    // The old path kept its bookmarks and any linked dashboard; the page moved.
+    Route::permanentRedirect('/devtools/ai-usage', '/devtools/narration');
 });

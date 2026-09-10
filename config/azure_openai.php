@@ -43,7 +43,7 @@ return [
     ],
 
     // Manual per-1M-token USD rates keyed by DEPLOYMENT name (the value recorded
-    // in ai_token_usages.model), for the /ai-usage cost estimate. Azure's retail
+    // in ai_token_usages.model), for the /devtools/narration cost estimate. Azure's retail
     // price catalog (Foundry Models) uses cryptic, region/tier-specific meter
     // names that can't be matched reliably, so these are maintained by hand from
     // https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/.

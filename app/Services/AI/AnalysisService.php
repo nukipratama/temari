@@ -773,7 +773,7 @@ class AnalysisService
      *
      * Two statuses are left alone. An already-Done row keeps the real prose it
      * was billed for. A Failed row is a genuine fault (content filter, malformed
-     * response, spent retry budget) that the bounded self-heal and the /devtools/ai-usage
+     * response, spent retry budget) that the bounded self-heal and the /devtools/narration
      * dead-letter exist to surface, so it stays Failed with its "Try again"
      * rather than hiding a break behind plausible content — on a day the ceiling
      * trips repeatedly, filling it would erase that signal every time.

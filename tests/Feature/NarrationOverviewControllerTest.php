@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
-use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
 use App\Models\AI\TokenUsage;
 use App\Models\Analytics\DevtoolsAction;
-use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
@@ -22,7 +20,7 @@ use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
-// The /devtools/ai-usage dashboard is gated by HTTP Basic Auth against a
+// The /devtools/narration dashboard is gated by HTTP Basic Auth against a
 // shared devtools password. Every case below sends the correct credential;
 // the authorization cases override it and call armDevtoolsGate() first,
 // because the gate only challenges in production.
@@ -77,14 +75,14 @@ function seedUsage(
 it('is reachable with the correct devtools password', function (): void {
     armDevtoolsGate();
 
-    $this->get('/devtools/ai-usage')->assertSuccessful();
+    $this->get('/devtools/narration')->assertSuccessful();
 });
 
 it('challenges a request with no devtools password', function (): void {
     armDevtoolsGate();
 
     $this->withHeaders(['Authorization' => ''])
-        ->get('/devtools/ai-usage')
+        ->get('/devtools/narration')
         ->assertUnauthorized()
         ->assertHeader('WWW-Authenticate', 'Basic realm="Devtools"');
 });
@@ -93,21 +91,21 @@ it('challenges a request with the wrong devtools password', function (): void {
     armDevtoolsGate();
 
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
-        ->get('/devtools/ai-usage')
+        ->get('/devtools/narration')
         ->assertUnauthorized();
 });
 
-it('renders the AiUsage page with totals + per-kind breakdown filtered by date', function (): void {
+it('renders the narration overview with totals + per-kind breakdown filtered by date', function (): void {
     seedUsage('briefing', 100, 50, Carbon::parse('2026-05-10 09:00:00'), latencyMs: 800);
     seedUsage('briefing', 200, 80, Carbon::parse('2026-05-15 11:00:00'), latencyMs: 1200, truncated: true);
     seedUsage('run-insight', 300, 150, Carbon::parse('2026-05-12 13:00:00'), latencyMs: 2400);
     seedUsage('briefing', 999, 999, Carbon::parse('2026-04-30 23:00:00')); // outside range
 
-    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
+    $this->get('/devtools/narration?from=2026-05-01&to=2026-05-19')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
-                ->component('AiUsage')
+                ->component('Narration/Overview')
                 ->where('from', '2026-05-01')
                 ->where('to', '2026-05-19')
                 ->where('totals', [
@@ -151,16 +149,20 @@ it('renders the AiUsage page with totals + per-kind breakdown filtered by date',
                 ])
                 ->has('byDeployment')
                 ->has('budget')
-                ->has('contentFilter'),
+                ->has('contentFilter')
+                ->has('chart')
+                ->has('athletes')
+                ->where('cappedToday', 0)
+                ->has('pauseReason'),
         );
 });
 
-it('surfaces the content-filter trip count and rate on the ai-usage page', function (): void {
+it('surfaces the content-filter trip count and rate on the overview', function (): void {
     seedUsage('briefing', 100, 50, Carbon::parse('2026-05-10'));
     seedUsage('briefing', 100, 50, Carbon::parse('2026-05-11'));
     ContentFilterEvent::query()->create(['kind' => 'briefing', 'created_at' => Carbon::parse('2026-05-10')]);
 
-    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
+    $this->get('/devtools/narration?from=2026-05-01&to=2026-05-19')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -174,7 +176,7 @@ it('carries the app-wide ceiling into the budget block the gauge renders', funct
         'azure_openai.daily_cost_ceiling_per_user' => 1.25,
     ]);
 
-    $this->get('/devtools/ai-usage')
+    $this->get('/devtools/narration')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -194,7 +196,7 @@ it('defaults to the rolling last 7 days when no range is given', function (): vo
     seedUsage('inside', 50, 50, Carbon::parse('2026-05-15'));
     seedUsage('outside', 50, 50, Carbon::parse('2026-05-10')); // older than 7 days
 
-    $this->get('/devtools/ai-usage')
+    $this->get('/devtools/narration')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -209,7 +211,7 @@ it('defaults to the rolling last 7 days when no range is given', function (): vo
 it('resolves relative range tokens to self-correcting windows', function (string $range, string $expectedFrom): void {
     Carbon::setTestNow('2026-05-19 12:00:00');
 
-    $this->get("/devtools/ai-usage?range={$range}")
+    $this->get("/devtools/narration?range={$range}")
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -227,7 +229,7 @@ it('resolves relative range tokens to self-correcting windows', function (string
 ]);
 
 it('maps legacy absolute from+to links (no range) to a custom range', function (): void {
-    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
+    $this->get('/devtools/narration?from=2026-05-01&to=2026-05-19')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -242,25 +244,25 @@ it('includes previousTotals for a bounded range and null for all-time', function
     seedUsage('briefing', 100, 50, Carbon::parse('2026-05-15')); // current 7d window
     seedUsage('briefing', 40, 20, Carbon::parse('2026-05-10')); // prior window
 
-    $this->get('/devtools/ai-usage?range=7d')
+    $this->get('/devtools/narration?range=7d')
         ->assertInertia(
             fn (AssertableInertia $page) => $page
                 ->where('totals.total', 150)
                 ->where('previousTotals.total', 60),
         );
 
-    $this->get('/devtools/ai-usage?range=all')
+    $this->get('/devtools/narration?range=all')
         ->assertInertia(fn (AssertableInertia $page) => $page->where('previousTotals', null));
 
     Carbon::setTestNow();
 });
 
 it('rejects malformed date inputs', function (): void {
-    $this->getJson('/devtools/ai-usage?from=yesterday')->assertStatus(422);
+    $this->getJson('/devtools/narration?from=yesterday')->assertStatus(422);
 });
 
 it('returns zeroed totals and empty breakdown when no rows fall within range', function (): void {
-    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
+    $this->get('/devtools/narration?from=2026-05-01&to=2026-05-19')
         ->assertSuccessful()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
@@ -273,111 +275,8 @@ it('returns zeroed totals and empty breakdown when no rows fall within range', f
                     'cost' => 0,
                 ])
                 ->has('byKind', 0)
-                ->has('byUser', 0),
+                ->has('athletes', 0),
         );
-});
-
-it('renders a byUser breakdown joined to users.name, skipping system-context rows', function (): void {
-    $alice = User::factory()->create(['name' => 'Alice']);
-    $bob = User::factory()->create(['name' => 'Bob']);
-
-    seedUsage('briefing', 100, 50, Carbon::parse('2026-05-10'), userId: $alice->id);
-    seedUsage('briefing', 200, 80, Carbon::parse('2026-05-12'), userId: $alice->id);
-    seedUsage('run-insight', 50, 25, Carbon::parse('2026-05-11'), userId: $bob->id);
-    seedUsage('briefing', 10, 5, Carbon::parse('2026-05-13')); // user_id null — system call, excluded from per-user breakdown
-
-    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
-        ->assertSuccessful()
-        ->assertInertia(
-            fn (AssertableInertia $page) => $page
-                ->has('byUser', 2)
-                ->where('byUser.0', [
-                    'user_id' => $alice->id,
-                    'user_name' => 'Alice',
-            'strava_athlete_id' => null,
-            'deleted' => false,
-                    'prompt' => 300,
-                    'completion' => 130,
-                    'total' => 430,
-                    'calls' => 2,
-                ])
-                ->where('byUser.1', [
-                    'user_id' => $bob->id,
-                    'user_name' => 'Bob',
-            'strava_athlete_id' => null,
-            'deleted' => false,
-                    'prompt' => 50,
-                    'completion' => 25,
-                    'total' => 75,
-                    'calls' => 1,
-                ]),
-        );
-});
-
-it('keeps the user_id in the breakdown after the user is deleted (no FK cascade)', function (): void {
-    $alice = User::factory()->create(['name' => 'Alice']);
-    $aliceId = $alice->id;
-
-    seedUsage('briefing', 100, 50, Carbon::parse('2026-05-10'), userId: $aliceId);
-    seedUsage('briefing', 200, 80, Carbon::parse('2026-05-12'), userId: $aliceId);
-
-    $alice->delete();
-
-    $this->get('/devtools/ai-usage?from=2026-05-01&to=2026-05-19')
-        ->assertSuccessful()
-        ->assertInertia(
-            fn (AssertableInertia $page) => $page
-                ->has('byUser', 1)
-                ->where('byUser.0', [
-                    'user_id' => $aliceId,
-                    'user_name' => null,
-            'strava_athlete_id' => null,
-            'deleted' => true,
-                    'prompt' => 300,
-                    'completion' => 130,
-                    'total' => 430,
-                    'calls' => 2,
-                ]),
-        );
-});
-
-it('surfaces dead-lettered blocks grouped per user', function (): void {
-    $alice = User::factory()->create(['name' => 'Alice']);
-    deadLetterWeeklyRecap($alice);
-    // A second dead-lettered block for the same user, on a different subject.
-    $card = RunCard::factory()->for(Activity::factory()->for($alice))->create();
-    Analysis::factory()->failed()->create([
-        'subject_type' => RunCard::class,
-        'subject_id' => $card->id,
-        'analysis_type' => AnalysisType::CardFlavor,
-        'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
-    ]);
-
-    $this->get('/devtools/ai-usage')
-        ->assertSuccessful()
-        ->assertInertia(
-            fn (AssertableInertia $page) => $page
-                ->has('deadLettered', 1)
-                ->where('deadLettered.0.user_id', $alice->id)
-                ->where('deadLettered.0.user_name', 'Alice')
-                ->where('deadLettered.0.count', 2)
-                ->has('deadLettered.0.blocks', 2),
-        );
-});
-
-it('excludes Done and under-budget Failed blocks from the dead-letter panel', function (): void {
-    $user = User::factory()->create();
-    // Under-budget Failed (attempts 1) -> still self-healing, not dead-lettered.
-    $snap = WeeklySnapshot::factory()->for($user)->create();
-    Analysis::factory()->failed()->create([
-        'subject_type' => WeeklySnapshot::class,
-        'subject_id' => $snap->id,
-        'analysis_type' => AnalysisType::WeeklyRecap,
-    ]);
-
-    $this->get('/devtools/ai-usage')
-        ->assertSuccessful()
-        ->assertInertia(fn (AssertableInertia $page) => $page->has('deadLettered', 0));
 });
 
 it('renders the dashboard past a dead-lettered row of a retired type', function (): void {
@@ -393,12 +292,9 @@ it('renders the dashboard past a dead-lettered row of a retired type', function 
         'updated_at' => Carbon::now(),
     ]);
 
-    $this->get('/devtools/ai-usage')
+    $this->get('/devtools/narration')
         ->assertSuccessful()
-        ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('deadLettered', 0)
-            ->has('failedUnderBudget', 0)
-            ->has('nyangkut', 0));
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('athletes.0.dead_lettered', 0));
 });
 
 it('re-arms and re-dispatches a user\'s dead-lettered blocks on retry', function (): void {
@@ -406,7 +302,7 @@ it('re-arms and re-dispatches a user\'s dead-lettered blocks on retry', function
     $user = User::factory()->create();
     $row = deadLetterWeeklyRecap($user);
 
-    $this->post("/devtools/ai-usage/users/{$user->id}/retry-failed")
+    $this->post("/devtools/narration/athletes/{$user->id}/retry-failed")
         ->assertRedirect();
 
     $fresh = $row->fresh();
@@ -429,7 +325,7 @@ it('retries a dead-lettered group for a hard-deleted user instead of 404ing', fu
     ]);
     $user->delete();
 
-    $this->post("/devtools/ai-usage/users/{$userId}/retry-failed")
+    $this->post("/devtools/narration/athletes/{$userId}/retry-failed")
         ->assertRedirect();
 
     $fresh = $row->fresh();
@@ -446,7 +342,7 @@ it('retry is reachable with the correct devtools password', function (): void {
 
     // No dead-lettered rows: still a clean redirect (0 retried).
     $this->withSession($token)
-        ->post("/devtools/ai-usage/users/{$user->id}/retry-failed", $token)
+        ->post("/devtools/narration/athletes/{$user->id}/retry-failed", $token)
         ->assertRedirect();
     Bus::assertNothingDispatched();
 });
@@ -459,7 +355,7 @@ it('challenges the mutating retry with the wrong devtools password', function ()
 
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
         ->withSession($token)
-        ->post("/devtools/ai-usage/users/{$user->id}/retry-failed", $token)
+        ->post("/devtools/narration/athletes/{$user->id}/retry-failed", $token)
         ->assertUnauthorized();
     Bus::assertNothingDispatched();
 });
@@ -475,7 +371,7 @@ it('also re-arms a user\'s under-budget Failed blocks on retry (not only dead-le
         'attempts' => 1,
     ]);
 
-    $this->post("/devtools/ai-usage/users/{$user->id}/retry-failed")->assertRedirect();
+    $this->post("/devtools/narration/athletes/{$user->id}/retry-failed")->assertRedirect();
 
     $fresh = $underBudget->fresh();
     expect($fresh->attempts)->toBe(0)
@@ -483,83 +379,11 @@ it('also re-arms a user\'s under-budget Failed blocks on retry (not only dead-le
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('surfaces the failed-but-still-retrying bucket grouped per user', function (): void {
-    $user = User::factory()->create(['name' => 'Eve']);
-    $snap = WeeklySnapshot::factory()->for($user)->create();
-    Analysis::factory()->failed()->create([
-        'subject_type' => WeeklySnapshot::class,
-        'subject_id' => $snap->id,
-        'analysis_type' => AnalysisType::WeeklyRecap,
-        'attempts' => 1,
-    ]);
-    // A dead-lettered block must NOT appear here (it belongs to the dead-letter panel).
-    deadLetterWeeklyRecap($user);
-
-    $this->get('/devtools/ai-usage')
-        ->assertSuccessful()
-        ->assertInertia(
-            fn (AssertableInertia $page) => $page
-                ->has('failedUnderBudget', 1)
-                ->where('failedUnderBudget.0.user_name', 'Eve')
-                ->where('failedUnderBudget.0.count', 1)
-                ->has('deadLettered', 1),
-        );
-});
-
-it('surfaces the "Nyangkut" bucket for stale Pending/Queued blocks, excluding open-period recaps', function (): void {
-    $user = User::factory()->create(['name' => 'Frank']);
-    $old = Carbon::now()->subHours(3);
-
-    // created_at is not mass-assignable, so backdate it directly on the row.
-    $stale = function (Analysis $row) use ($old): void {
-        $row->forceFill(['created_at' => $old])->save();
-    };
-
-    // Stale Pending briefing (queued_at null, created long ago) -> nyangkut.
-    $stale(Analysis::factory()->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => '2026-01-01',
-        'status' => AnalysisStatus::Pending,
-        'queued_at' => null,
-    ]));
-
-    // Open-MONTH monthly recap Pending, also old -> inert by design, excluded.
-    $stale(Analysis::factory()->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::MonthlyRecap,
-        'discriminator' => Carbon::now()->format('Y-m'),
-        'status' => AnalysisStatus::Pending,
-        'queued_at' => null,
-    ]));
-
-    // A fresh Pending (< 2h) is not yet nyangkut.
-    Analysis::factory()->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => '2026-02-02',
-        'status' => AnalysisStatus::Pending,
-        'queued_at' => null,
-    ]);
-
-    $this->get('/devtools/ai-usage')
-        ->assertSuccessful()
-        ->assertInertia(
-            fn (AssertableInertia $page) => $page
-                ->has('nyangkut', 1)
-                ->where('nyangkut.0.user_name', 'Frank')
-                ->where('nyangkut.0.count', 1),
-        );
-});
-
 it('runs the recover command and flashes a confirmation', function (): void {
     Bus::fake();
     $row = deadLetterWeeklyRecap(User::factory()->create());
 
-    $this->post('/devtools/ai-usage/recover')
+    $this->post('/devtools/narration/recover')
         ->assertRedirect()
         ->assertSessionHas('info');
 
@@ -574,7 +398,7 @@ it('challenges the recover action with the wrong devtools password', function ()
 
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
         ->withSession($token)
-        ->post('/devtools/ai-usage/recover', $token)
+        ->post('/devtools/narration/recover', $token)
         ->assertUnauthorized();
 });
 
@@ -583,11 +407,11 @@ it('audits a per-user re-arm, naming the athlete and how many blocks it touched'
     $user = User::factory()->create();
     deadLetterWeeklyRecap($user);
 
-    $this->post("/devtools/ai-usage/users/{$user->id}/retry-failed")->assertRedirect();
+    $this->post("/devtools/narration/athletes/{$user->id}/retry-failed")->assertRedirect();
 
     $action = DevtoolsAction::query()->sole();
 
-    expect($action->action)->toBe('ai_usage.retry_failed')
+    expect($action->action)->toBe('narration.retry_failed')
         ->and($action->user_id)->toBe($user->id)
         ->and($action->payload)->toBe(['blocks' => 1])
         ->and($action->actor)->not->toBe('');
@@ -597,10 +421,66 @@ it('audits the app-wide recovery run', function (): void {
     Bus::fake();
     deadLetterWeeklyRecap(User::factory()->create());
 
-    $this->post('/devtools/ai-usage/recover')->assertRedirect();
+    $this->post('/devtools/narration/recover')->assertRedirect();
 
     $action = DevtoolsAction::query()->sole();
 
-    expect($action->action)->toBe('ai_usage.recover')
+    expect($action->action)->toBe('narration.recover')
         ->and($action->user_id)->toBeNull();
+});
+
+it('permanently redirects the old ai-usage path to the renamed page', function (): void {
+    $this->get('/devtools/ai-usage')
+        ->assertStatus(301)
+        ->assertRedirect('/devtools/narration');
+});
+
+it('carries one row per athlete, demo last, with the money and quality columns', function (): void {
+    $alice = User::factory()->create(['name' => 'Alice']);
+    $demo = User::factory()->create(['name' => 'Demo', 'is_demo' => true]);
+    seedUsage('briefing', 100, 50, Carbon::now(), userId: $alice->id);
+
+    $this->get('/devtools/narration')
+        ->assertSuccessful()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->has('athletes', 2)
+                ->where('athletes.0.user_id', $alice->id)
+                ->where('athletes.0.calls', 1)
+                ->where('athletes.1.user_id', $demo->id)
+                ->where('athletes.1.is_demo', true)
+                ->has('athletes.0.sparkline')
+                ->has('athletes.0.served'),
+        );
+});
+
+it('counts the athletes already capped today for the header strip', function (): void {
+    config()->set('azure_openai.daily_cost_ceiling_per_user', 0.0000001);
+    config()->set('azure_openai.prices', ['gpt-test' => ['input_per_1m' => 2.5, 'output_per_1m' => 10.0]]);
+    $alice = User::factory()->create();
+    seedUsage('briefing', 100_000, 0, Carbon::now(), userId: $alice->id);
+
+    $this->get('/devtools/narration')
+        ->assertSuccessful()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('cappedToday', 1));
+});
+
+it('narrows the cost chart to the athlete the filter names', function (): void {
+    config()->set('azure_openai.prices', ['gpt-test' => ['input_per_1m' => 2.5, 'output_per_1m' => 10.0]]);
+    $alice = User::factory()->create();
+    $bob = User::factory()->create();
+    seedUsage('briefing', 1_000_000, 0, Carbon::now(), userId: $alice->id);
+    seedUsage('briefing', 1_000_000, 0, Carbon::now(), userId: $bob->id);
+
+    $this->get("/devtools/narration?athlete={$alice->id}")
+        ->assertSuccessful()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->where('athlete', $alice->id)
+                ->where('chart.days.0.cost', 2.5),
+        );
+});
+
+it('rejects a non-numeric athlete filter', function (): void {
+    $this->getJson('/devtools/narration?athlete=alice')->assertStatus(422);
 });
