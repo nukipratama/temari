@@ -18,8 +18,6 @@ use App\Services\Run\Metrics\SummaryRecomputer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Services\AI\AnalysisOrigin;
-use App\Services\AI\NarrationOrigin;
 
 class AnalysisController extends Controller
 {
@@ -32,8 +30,6 @@ class AnalysisController extends Controller
         string $type,
         int $subjectId,
     ): JsonResponse {
-        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
-
         // Validation in TriggerAnalysisRequest guarantees a known type.
         $analysisType = AnalysisType::from($type);
 

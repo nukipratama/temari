@@ -8,8 +8,6 @@ use App\Http\Requests\CompleteOnboardingRequest;
 use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
-use App\Services\AI\AnalysisOrigin;
-use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Telegram\TelegramLinkToken;
@@ -110,7 +108,6 @@ class OnboardingController extends Controller
         // that is this request; if it has not, KickoffRecapsJob narrates once
         // it does, and finds the plan written just above.
         if ($user->refresh()->backfilled_at !== null) {
-            app(NarrationOrigin::class)->set(AnalysisOrigin::User);
             $narrationRequester->requestForFirstWeek($user, Carbon::today());
         }
 
