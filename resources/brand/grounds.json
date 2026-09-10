@@ -250,6 +250,9 @@
             "over": {
                 "resources/js/pages/Devtools/Design.tsx": [
                     "paper"
+                ],
+                "resources/js/components/narration/athlete/VersionDiff.tsx": [
+                    "paper"
                 ]
             },
             "text": [
@@ -396,6 +399,9 @@
         "leaf/0.18": {
             "over": {
                 "resources/js/pages/Devtools/Design.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/narration/athlete/VersionDiff.tsx": [
                     "paper"
                 ]
             },

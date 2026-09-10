@@ -435,12 +435,6 @@ it('permanently redirects the old ai-usage path to the renamed page', function (
         ->assertRedirect('/devtools/narration');
 });
 
-it('has no per-athlete page yet, so its route 404s rather than half-rendering', function (): void {
-    $user = User::factory()->create();
-
-    $this->get("/devtools/narration/athletes/{$user->id}")->assertNotFound();
-});
-
 it('carries one row per athlete, demo last, with the money and quality columns', function (): void {
     $alice = User::factory()->create(['name' => 'Alice']);
     $demo = User::factory()->create(['name' => 'Demo', 'is_demo' => true]);

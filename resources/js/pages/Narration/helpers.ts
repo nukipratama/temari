@@ -16,15 +16,33 @@ export function fmt(n: number): string {
     return numberFmt.format(n);
 }
 
-/** Format a cost as a currency string, scaled to the budget's currency. */
+/**
+ * Format a cost as a currency string, scaled to the budget's currency. A
+ * non-zero sub-cent amount keeps four decimals so it never reads as free.
+ */
 export function formatCost(amount: number, currency: string): string {
+    const subCent = amount !== 0 && Math.abs(amount) < 0.01;
+
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency,
         currencyDisplay: 'narrowSymbol',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+        minimumFractionDigits: subCent ? 4 : 2,
+        maximumFractionDigits: subCent ? 4 : 2,
     }).format(amount);
+}
+
+export function formatTimestamp(iso: string | null): string {
+    if (iso === null) {
+        return '—';
+    }
+
+    return new Date(iso).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 }
 
 interface ReportFilters {
