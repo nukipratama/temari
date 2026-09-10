@@ -10,6 +10,7 @@ use App\Models\Activity;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Services\Strava\StravaClient;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Support\Facades\View;
 use Laravel\Pulse\Livewire\Card;
@@ -26,7 +27,7 @@ class StravaHealth extends Card
 {
     use SumsPulseTotals;
 
-    public function render(): Renderable
+    public function render(StravaClient $strava): Renderable
     {
         $now = now();
 
@@ -50,7 +51,7 @@ class StravaHealth extends Card
         ]);
 
         $perUser = $this->perUserSyncHistory();
-        $rateLimit = $this->globalRateLimit();
+        $rateLimit = $this->globalRateLimit($strava);
         $webhookStatus = $this->webhookStatus();
 
         $connectionStates = [
@@ -132,20 +133,13 @@ class StravaHealth extends Card
 
     /**
      * The shared read-API budget (Strava limits per client, not per athlete), read
-     * from the newest sync log overall — one global number, not a per-user figure.
+     * live from the rate limiter — one global number, not a per-user figure.
      *
-     * @return array{'15min': int|null, daily: int|null}
+     * @return array{'15min': int, daily: int}
      */
-    private function globalRateLimit(): array
+    private function globalRateLimit(StravaClient $strava): array
     {
-        $latest = StravaSyncLog::query()
-            ->orderByDesc('id')
-            ->first(['rate_limit_15min_remaining', 'rate_limit_daily_remaining']);
-
-        return [
-            '15min' => $latest?->rate_limit_15min_remaining !== null ? (int) $latest->rate_limit_15min_remaining : null,
-            'daily' => $latest?->rate_limit_daily_remaining !== null ? (int) $latest->rate_limit_daily_remaining : null,
-        ];
+        return $strava->rateLimitRemaining();
     }
 
     /**

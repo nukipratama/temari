@@ -9,6 +9,7 @@ use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -20,6 +21,28 @@ it('renders connection states and rate-limit headroom without error', function (
         ->assertSee('stranded')
         ->assertSee('synced')
         ->assertSee('Shared API Budget (whole app)');
+});
+
+it('reads the shared API budget from the live rate limiter', function (): void {
+    RateLimiter::hit('strava-api:15min', 900);
+    RateLimiter::hit('strava-api:15min', 900);
+    RateLimiter::hit('strava-api:daily', 86400);
+
+    Livewire::test(StravaHealth::class)
+        ->assertOk()
+        ->assertSee('198')
+        ->assertSee('1999');
+});
+
+it('does not let a stale sync-log row drive the shared API budget', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    StravaSyncLog::log($user->id, 'success', rateLimits: ['15min' => 1, 'daily' => 1]);
+
+    Livewire::test(StravaHealth::class)
+        ->assertOk()
+        ->assertSee('200')
+        ->assertSee('2000');
 });
 
 it('shows an ok health badge when there are no connection problems', function (): void {
