@@ -22,6 +22,11 @@ on:
     # 03:17 WIB — off the hour, since on-the-hour crons queue behind everyone else's.
     - cron: '17 20 * * *'
   workflow_dispatch:
+    inputs:
+      test_alert:
+        description: 'send a test message through the alert step without failing anything'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -224,7 +229,7 @@ jobs:
   # rather than duplicating the push as a failure step inside each of them.
   alert-on-failure:
     needs: [composer-audit, npm-audit, restore-db-exercise]
-    if: always() && (needs.composer-audit.result == 'failure' || needs.npm-audit.result == 'failure' || needs.restore-db-exercise.result == 'failure')
+    if: always() && (needs.composer-audit.result == 'failure' || needs.npm-audit.result == 'failure' || needs.restore-db-exercise.result == 'failure' || inputs.test_alert == 'true')
     runs-on: ubuntu-latest
     steps:
       - name: Push a Telegram alert
@@ -234,6 +239,7 @@ jobs:
           COMPOSER_RESULT: ${{ needs.composer-audit.result }}
           NPM_RESULT: ${{ needs.npm-audit.result }}
           RESTORE_RESULT: ${{ needs.restore-db-exercise.result }}
+          TEST_ALERT: ${{ inputs.test_alert }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_MAINTAINER_CHAT_ID" ]; then
@@ -241,12 +247,16 @@ jobs:
             exit 0
           fi
 
-          failed=""
-          [ "$COMPOSER_RESULT" = "failure" ] && failed="${failed:+$failed, }composer audit"
-          [ "$NPM_RESULT" = "failure" ] && failed="${failed:+$failed, }npm audit"
-          [ "$RESTORE_RESULT" = "failure" ] && failed="${failed:+$failed, }restore-db exercise"
+          if [ "$TEST_ALERT" = "true" ]; then
+            message="temari nightly audit: test message, the alert path works (run $RUN_URL)"
+          else
+            failed=""
+            [ "$COMPOSER_RESULT" = "failure" ] && failed="${failed:+$failed, }composer audit"
+            [ "$NPM_RESULT" = "failure" ] && failed="${failed:+$failed, }npm audit"
+            [ "$RESTORE_RESULT" = "failure" ] && failed="${failed:+$failed, }restore-db exercise"
 
-          message="Nightly dependency audit failed ($failed). Check the run: $RUN_URL"
+            message="Nightly dependency audit failed ($failed). Check the run: $RUN_URL"
+          fi
 
           curl -sS --fail-with-body \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
