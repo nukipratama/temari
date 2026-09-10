@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Pulse;
 
+use Illuminate\Support\Carbon;
 use App\Models\AI\Analysis;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\NotificationDelivery;
@@ -106,7 +107,7 @@ class AthleteOperations extends Card
      * delivery table. Deliveries hang off an analysis, whose owner comes from
      * the subject map — analyses carry no user_id of their own.
      *
-     * @return array<int, list<array{channel: string, status: string, at: \Illuminate\Support\Carbon|null}>>
+     * @return array<int, list<array{channel: string, status: string, at: Carbon|null}>>
      */
     private function latestDeliveries(): array
     {

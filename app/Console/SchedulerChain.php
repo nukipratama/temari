@@ -34,13 +34,7 @@ final class SchedulerChain
 
     public static function prerequisitesMet(string $command): bool
     {
-        foreach (self::prerequisitesFor($command) as $prerequisite) {
-            if (! self::isDoneToday($prerequisite)) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all(self::prerequisitesFor($command), fn ($prerequisite) => self::isDoneToday($prerequisite));
     }
 
     public static function markDoneToday(string $command): void
