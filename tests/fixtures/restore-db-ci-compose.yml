@@ -15,6 +15,7 @@ services:
       DB_USERNAME: sail
       DB_PASSWORD: password
       DB_DATABASE: temari_ci_restore
+      DB_ANALYTICS_DATABASE: temari_ci_restore_analytics
     ports:
       - "3306"
     healthcheck:
