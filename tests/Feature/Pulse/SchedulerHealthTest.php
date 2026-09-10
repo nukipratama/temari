@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Console\SchedulerChain;
 use App\Livewire\Pulse\SchedulerHealth;
 use App\Models\ScheduledTaskRun;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -63,4 +64,41 @@ it('flags a command that has missed its cadence as late', function (): void {
         ->assertOk()
         ->assertSee('strava:ingest')
         ->assertSee('late');
+});
+
+it('lists a registered command that has never run, in next-due order', function (): void {
+    Livewire::test(SchedulerHealth::class)
+        ->assertOk()
+        ->assertSee('strava:sync')
+        ->assertSee('never run')
+        ->assertSee('next');
+});
+
+it('shows the Monday chain prerequisites as pending until they finish today', function (): void {
+    Livewire::test(SchedulerHealth::class)
+        ->assertOk()
+        ->assertSee('waits for')
+        ->assertSee('streak:settle pending');
+});
+
+it('marks a chain prerequisite as done once it has run today', function (): void {
+    SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE);
+
+    Livewire::test(SchedulerHealth::class)
+        ->assertOk()
+        ->assertSee('streak:settle done');
+});
+
+it('keeps a recorded command that is no longer on the schedule', function (): void {
+    ScheduledTaskRun::query()->create([
+        'command' => 'ai:retired-command',
+        'expression' => '0 * * * *',
+        'last_status' => 'ok',
+        'last_run_at' => Carbon::now()->subDay(),
+    ]);
+
+    Livewire::test(SchedulerHealth::class)
+        ->assertOk()
+        ->assertSee('ai:retired-command')
+        ->assertSee('off the schedule');
 });

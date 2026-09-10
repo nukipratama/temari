@@ -55,7 +55,7 @@ Schedule::command('demo:daily-refresh')->dailyAt('00:13')->withoutOverlapping(10
 // narrated. 00:16 is a spacing fallback, not the enforcement — see the Monday
 // ordering table in docs/architecture/scheduler.md.
 $alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer()
-    ->when(static fn (): bool => SchedulerChain::isDoneToday(SchedulerChain::STREAK_SETTLE)), 'ai:weekly-recap');
+    ->when(static fn (): bool => SchedulerChain::prerequisitesMet('ai:weekly-recap')), 'ai:weekly-recap');
 
 // Monday 00:21: refresh the Profile-page persona summary + Temari voice once a
 // week, just after the recap (00:16). These two have no per-run cadence, so
@@ -98,8 +98,7 @@ $alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:09')->wi
 // idempotent plan_season_voice. Up to 9 rows per user per week. See
 // docs/architecture/llm-triggers.md.
 $alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:26')->withoutOverlapping(45)->onOneServer()
-    ->when(static fn (): bool => SchedulerChain::isDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES)
-        && SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE)), 'plan:regenerate');
+    ->when(static fn (): bool => SchedulerChain::prerequisitesMet('plan:regenerate')), 'plan:regenerate');
 
 // 1st of the month 00:10: HR zones change rarely, so a monthly sweep is enough
 // (also piggybacks the per-connect SyncZonesJob dispatch). Skips manual-source

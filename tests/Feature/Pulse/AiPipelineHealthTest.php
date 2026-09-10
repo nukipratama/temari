@@ -153,3 +153,67 @@ it('stays healthy when one athlete has spent their own ceiling, since nothing sh
         ->assertOk()
         ->assertSee('healthy');
 });
+
+it('shows today spend against the app-wide ceiling', function (): void {
+    config(['azure_openai.daily_cost_ceiling_total' => 5.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
+
+    TokenUsage::query()->create([
+        'user_id' => User::factory()->create()->id,
+        'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => now(),
+    ]);
+
+    Livewire::test(AiPipelineHealth::class)
+        ->assertOk()
+        ->assertSee('app-wide of $5.00')
+        ->assertSee('$2.50');
+});
+
+it('measures the heaviest athlete today against the per-athlete ceiling', function (): void {
+    config(['azure_openai.daily_cost_ceiling_per_user' => 1.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
+
+    $heavy = User::factory()->create();
+    $light = User::factory()->create();
+
+    TokenUsage::query()->create([
+        'user_id' => $heavy->id,
+        'kind' => 'briefing', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => now(),
+    ]);
+    TokenUsage::query()->create([
+        'user_id' => $light->id,
+        'kind' => 'briefing', 'prompt_tokens' => 1_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000, 'model' => 'gpt-4o', 'created_at' => now(),
+    ]);
+
+    Livewire::test(AiPipelineHealth::class)
+        ->assertOk()
+        ->assertSee('top athlete of $1.00')
+        ->assertSee('1 athlete capped today');
+});
+
+it('reports Azure latency percentiles from the usage rows', function (): void {
+    foreach ([100, 200, 300, 400, 5000] as $latency) {
+        TokenUsage::query()->create([
+            'kind' => 'briefing', 'prompt_tokens' => 10, 'completion_tokens' => 10,
+            'total_tokens' => 20, 'model' => 'gpt-4o', 'latency_ms' => $latency,
+            'created_at' => now()->subMinutes(5),
+        ]);
+    }
+
+    Livewire::test(AiPipelineHealth::class)
+        ->assertOk()
+        ->assertSee('300ms')
+        ->assertSee('400ms')
+        ->assertSee('timed calls');
+});
+
+it('shows the ai queue depth and an unknown oldest job on a non-redis queue', function (): void {
+    Livewire::test(AiPipelineHealth::class)
+        ->assertOk()
+        ->assertSee('ai queue')
+        ->assertSee('waiting')
+        ->assertSee('oldest job');
+});
