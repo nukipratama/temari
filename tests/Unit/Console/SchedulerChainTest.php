@@ -32,3 +32,23 @@ it('does not carry a done flag over to the next day', function (): void {
 
     expect(SchedulerChain::isDoneToday(SchedulerChain::STREAK_SETTLE))->toBeFalse();
 });
+
+it('names what each gated command waits for', function (): void {
+    expect(SchedulerChain::prerequisitesFor('plan:regenerate'))
+        ->toBe([SchedulerChain::PLAN_CLOSE_FINISHED_RACES, SchedulerChain::PLAN_SCORE_COMPLIANCE])
+        ->and(SchedulerChain::prerequisitesFor('strava:sync'))->toBe([]);
+});
+
+it('holds a gated command until every prerequisite is done today', function (): void {
+    expect(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeFalse();
+
+    SchedulerChain::markDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES);
+    expect(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeFalse();
+
+    SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE);
+    expect(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeTrue();
+});
+
+it('lets an ungated command through', function (): void {
+    expect(SchedulerChain::prerequisitesMet('strava:sync'))->toBeTrue();
+});

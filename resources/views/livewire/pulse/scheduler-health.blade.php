@@ -1,5 +1,5 @@
 <x-pulse::card :cols="$cols" :rows="$rows" :class="$class">
-    <x-pulse::card-header name="Scheduler">
+    <x-pulse::card-header name="Scheduler" details="next due first">
         <x-slot:icon>
             <x-pulse::icons.clock />
         </x-slot:icon>
@@ -9,9 +9,9 @@
         @if ($tasks->isEmpty())
             <x-pulse::no-results />
         @else
-            <div class="space-y-2">
+            <ol class="space-y-2">
                 @foreach ($tasks as $task)
-                    <div class="rounded-sm bg-muted p-2">
+                    <li class="rounded-sm bg-muted p-2">
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-2 min-w-0">
                                 <span @class([
@@ -19,6 +19,7 @@
                                     'bg-ember' => $task['status'] === 'failed',
                                     'bg-horizon' => $task['status'] === 'late',
                                     'bg-leaf' => $task['status'] === 'ok',
+                                    'bg-stone' => $task['status'] === 'never run',
                                 ])></span>
                                 <div class="min-w-0">
                                     <div class="truncate text-sm font-bold text-foreground">{{ $task['command'] }}</div>
@@ -31,6 +32,11 @@
                                         @if ($task['runtimeMs'] !== null)
                                             · {{ $task['runtimeMs'] >= 1000 ? round($task['runtimeMs'] / 1000, 1).'s' : $task['runtimeMs'].'ms' }}
                                         @endif
+                                        @if ($task['nextDue'])
+                                            · next {{ $task['nextDue']->diffForHumans() }}
+                                        @else
+                                            · off the schedule
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -39,19 +45,35 @@
                                 'bg-ember/15 text-ember-ink' => $task['status'] === 'failed',
                                 'bg-horizon/25 text-foreground' => $task['status'] === 'late',
                                 'bg-leaf/10 text-leaf-ink' => $task['status'] === 'ok',
+                                'bg-stone/15 text-text-2' => $task['status'] === 'never run',
                             ])>
                                 {{ $task['status'] }}
                             </div>
                         </div>
+
+                        @if ($task['prerequisites'] !== [])
+                            <div class="mt-1 flex flex-wrap items-center gap-1 text-label-micro text-text-3">
+                                <span>waits for</span>
+                                @foreach ($task['prerequisites'] as $prerequisite)
+                                    <span @class([
+                                        'rounded-full px-2 py-0.5',
+                                        'bg-leaf/10 text-leaf-ink' => $prerequisite['met'],
+                                        'bg-stone/15 text-text-2' => ! $prerequisite['met'],
+                                    ])>
+                                        {{ $prerequisite['command'] }} {{ $prerequisite['met'] ? 'done' : 'pending' }}
+                                    </span>
+                                @endforeach
+                            </div>
+                        @endif
 
                         @if ($task['status'] === 'failed' && $task['failureMessage'])
                             <div class="mt-1 truncate text-xs text-ember-ink" title="{{ $task['failureMessage'] }}">
                                 {{ $task['failureMessage'] }}
                             </div>
                         @endif
-                    </div>
+                    </li>
                 @endforeach
-            </div>
+            </ol>
         @endif
     </x-pulse::scroll>
 </x-pulse::card>
