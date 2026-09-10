@@ -67,7 +67,7 @@ it('surfaces a recent failed analysis with its error', function (): void {
 it('shows no dead-letter attention link when nothing is dead-lettered', function (): void {
     Livewire::test(AiPipelineHealth::class)
         ->assertOk()
-        ->assertDontSee('/devtools/ai-usage');
+        ->assertDontSee('/devtools/narration');
 });
 
 it('surfaces a dead-letter attention link when a failed analysis exhausted self-heal', function (): void {
@@ -80,7 +80,7 @@ it('surfaces a dead-letter attention link when a failed analysis exhausted self-
 
     Livewire::test(AiPipelineHealth::class)
         ->assertOk()
-        ->assertSee('/devtools/ai-usage');
+        ->assertSee('/devtools/narration');
 });
 
 it('surfaces the failed_jobs count', function (): void {
@@ -148,7 +148,7 @@ it('stays healthy when one athlete has spent their own ceiling, since nothing sh
 
     // The ceiling is per athlete, so one of them running out is ordinary
     // operation rather than an incident the maintainer should be alerted to.
-    // Their trip is still visible on /devtools/ai-usage via CostCeilingLedger.
+    // Their trip is still visible on /devtools/narration via CostCeilingLedger.
     Livewire::test(AiPipelineHealth::class)
         ->assertOk()
         ->assertSee('healthy');

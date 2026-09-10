@@ -124,8 +124,8 @@
                 ])>
                     <div class="font-mono text-lg font-bold tabular-nums text-foreground">{{ number_format($deadLettered) }}</div>
                     @if ($deadLettered > 0)
-                        <a href="{{ url('/devtools/ai-usage') }}" class="block text-label-micro text-ember-ink underline">
-                            /ai-usage
+                        <a href="{{ url('/devtools/narration') }}" class="block text-label-micro text-ember-ink underline">
+                            /devtools/narration
                         </a>
                     @else
                         <div class="text-label-micro text-text-3">gave up</div>
