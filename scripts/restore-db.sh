@@ -13,7 +13,11 @@ set -euo pipefail
 #      (and the matching analytics-pre-deploy-<sha>.sql.gz if analytics moved too)
 #   3. run the "Rollback prod" GitHub workflow to roll code to :previous
 
-COMPOSE="docker compose -f compose.prod.yaml"
+# COMPOSE_FILE / MYSQL_SERVICE / RESTORE_DB_ASSUME_YES let CI point this at a
+# throwaway stack instead of prod; all three default to the prod values.
+COMPOSE_FILE="${COMPOSE_FILE:-compose.prod.yaml}"
+MYSQL_SERVICE="${MYSQL_SERVICE:-mysql}"
+COMPOSE="docker compose -f $COMPOSE_FILE"
 backup="${1:-}"
 
 if [ -z "$backup" ] || [ ! -f "$backup" ]; then
@@ -23,23 +27,25 @@ if [ -z "$backup" ] || [ ! -f "$backup" ]; then
   exit 1
 fi
 
-echo "Restoring $backup — this OVERWRITES the live database."
-read -rp "Proceed? [y/N] " reply
-case "$reply" in
-  y | Y) ;;
-  *) echo "Aborted."; exit 1 ;;
-esac
+if [ "${RESTORE_DB_ASSUME_YES:-}" != "1" ]; then
+  echo "Restoring $backup — this OVERWRITES the live database."
+  read -rp "Proceed? [y/N] " reply
+  case "$reply" in
+    y | Y) ;;
+    *) echo "Aborted."; exit 1 ;;
+  esac
+fi
 
 # analytics-*.sql.gz was dumped with --databases (carries its own CREATE DATABASE
 # + USE), so it self-targets its schema; the main dump restores into $DB_DATABASE
 # from the container env. MYSQL_PWD keeps the password out of the process table.
 case "${backup##*/}" in
   analytics-*)
-    gunzip -c "$backup" | $COMPOSE exec -T mysql sh -c \
+    gunzip -c "$backup" | $COMPOSE exec -T "$MYSQL_SERVICE" sh -c \
       'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME"'
     ;;
   *)
-    gunzip -c "$backup" | $COMPOSE exec -T mysql sh -c \
+    gunzip -c "$backup" | $COMPOSE exec -T "$MYSQL_SERVICE" sh -c \
       'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" "$DB_DATABASE"'
     ;;
 esac
