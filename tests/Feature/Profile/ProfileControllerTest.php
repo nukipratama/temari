@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Enums\PlanPhase;
+use App\Enums\SessionType;
 use App\Models\AI\Analysis;
+use App\Models\PlannedSession;
 use App\Models\StoryLine;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -113,6 +116,48 @@ it('includes training_paces derived from VDOT when the user has a qualifying PR'
     $this->actingAs($user)
         ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'))
         ->assertJsonStructure(['props' => ['fitness' => ['training_paces' => ['easy', 'marathon', 'threshold', 'interval']]]]);
+});
+
+it('carries this week\'s training days beside the paces, so the ladder can say what they are for', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1200.0,
+    ]);
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $weekStart,
+        'phase' => PlanPhase::Base,
+        'session_type' => SessionType::Rest,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $weekStart->copy()->addDays(3),
+        'phase' => PlanPhase::Base,
+        'session_type' => SessionType::Tempo,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'))
+        ->assertJsonCount(1, 'props.fitness.week_sessions')
+        ->assertJsonPath('props.fitness.week_sessions.0.weekday', 'thu')
+        ->assertJsonPath('props.fitness.week_sessions.0.session_type', 'tempo');
+
+    expect($response->json('props.fitness.week_sessions.0.distance_km'))->toBeGreaterThan(0);
+
+    Carbon::setTestNow();
+});
+
+it('reports an empty week when the athlete has no plan', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1200.0,
+    ]);
+
+    $this->actingAs($user)
+        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'))
+        ->assertJsonPath('props.fitness.week_sessions', []);
 });
 
 it('reports null training_paces when the user has no VDOT-eligible PR', function (): void {

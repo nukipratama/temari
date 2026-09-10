@@ -1,132 +1,136 @@
-import { act, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import PaceTargetsCard from './PaceTargetsCard';
+import PaceTargetsCard, { type WeekSession } from './PaceTargetsCard';
 
 const PACES = { easy: 370, marathon: 320, threshold: 292, interval: 268 };
 
+// A Wednesday, so 'wed' is today's weekday for the accent assertions.
+const WEDNESDAY = new Date(2026, 8, 9, 9, 0, 0);
+
+const WEEK: WeekSession[] = [
+    { weekday: 'mon', session_type: 'easy', distance_km: 6.4 },
+    { weekday: 'wed', session_type: 'tempo', distance_km: 9.8 },
+    { weekday: 'sat', session_type: 'easy', distance_km: 7.2 },
+    { weekday: 'sun', session_type: 'long', distance_km: 16.4 },
+];
+
+function fills(container: HTMLElement): number[] {
+    return [
+        ...container.querySelectorAll<HTMLElement>('div[style*="width"]'),
+    ].map((bar) => Number.parseFloat(bar.style.width));
+}
+
 describe('PaceTargetsCard', () => {
-    it('draws all four targets with their formatted pace', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(WEDNESDAY);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('lists the four targets slowest first, with their formatted pace', () => {
         render(<PaceTargetsCard paces={PACES} />);
 
-        expect(screen.getByText('easy')).toBeInTheDocument();
-        expect(screen.getByText('6:10')).toBeInTheDocument();
-        expect(screen.getByText('marathon')).toBeInTheDocument();
-        expect(screen.getByText('tempo')).toBeInTheDocument();
-        expect(screen.getByText('interval')).toBeInTheDocument();
-        expect(screen.getByText('4:28')).toBeInTheDocument();
+        const rungs = screen.getAllByRole('listitem');
+
+        expect(rungs).toHaveLength(4);
+        expect(rungs[0]).toHaveTextContent('easy');
+        expect(rungs[0]).toHaveTextContent('6:10');
+        expect(rungs[1]).toHaveTextContent('marathon');
+        expect(rungs[2]).toHaveTextContent('tempo');
+        expect(rungs[3]).toHaveTextContent('interval');
+        expect(rungs[3]).toHaveTextContent('4:28');
     });
 
-    it('anchors the slowest pace at the left of the rail and the fastest at the right', () => {
+    it('describes each pace in words when the week holds no plan', () => {
+        render(<PaceTargetsCard paces={PACES} />);
+
+        expect(screen.getByText('most of your runs')).toBeInTheDocument();
+        expect(screen.getByText('long steady efforts')).toBeInTheDocument();
+        expect(
+            screen.getByText('comfortably hard, 20–40 min'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('short hard reps')).toBeInTheDocument();
+    });
+
+    it('names the days this week asks for each pace, with the distance of a single one', () => {
+        render(<PaceTargetsCard paces={PACES} weekSessions={WEEK} />);
+
+        expect(screen.getByText('mon, sat')).toBeInTheDocument();
+        expect(screen.getByText('sun · 16k')).toBeInTheDocument();
+        expect(screen.getByText('wed · 10k')).toBeInTheDocument();
+        expect(screen.getByText('none this week')).toBeInTheDocument();
+    });
+
+    it('leaves the distance off a day too short to round to a kilometre', () => {
+        render(
+            <PaceTargetsCard
+                paces={PACES}
+                weekSessions={[
+                    {
+                        weekday: 'tue',
+                        session_type: 'interval',
+                        distance_km: 0,
+                    },
+                ]}
+            />,
+        );
+
+        expect(screen.getByText('tue')).toBeInTheDocument();
+    });
+
+    it('accents the rung today is run at, and only that one', () => {
+        const { container } = render(
+            <PaceTargetsCard paces={PACES} weekSessions={WEEK} />,
+        );
+
+        const accented =
+            container.querySelectorAll<HTMLElement>('.bg-icon-accent');
+
+        expect(accented).toHaveLength(1);
+        expect(screen.getAllByRole('listitem')[2]).toContainElement(
+            accented[0],
+        );
+    });
+
+    it('accents nothing when today is off the plan', () => {
+        vi.setSystemTime(new Date(2026, 8, 11)); // a Friday, which the week skips
+        const { container } = render(
+            <PaceTargetsCard paces={PACES} weekSessions={WEEK} />,
+        );
+
+        expect(container.querySelectorAll('.bg-icon-accent')).toHaveLength(0);
+    });
+
+    it('accents nothing when today prescribes a session no pace answers to', () => {
+        const { container } = render(
+            <PaceTargetsCard
+                paces={PACES}
+                weekSessions={[
+                    { weekday: 'wed', session_type: 'race', distance_km: 21.1 },
+                ]}
+            />,
+        );
+
+        expect(container.querySelectorAll('.bg-icon-accent')).toHaveLength(0);
+    });
+
+    it('fills each bar by where its pace sits between the slowest and the fastest', () => {
         const { container } = render(<PaceTargetsCard paces={PACES} />);
-        const dots =
-            container.querySelectorAll<HTMLElement>('i[style*="left"]');
 
-        expect(dots[0].style.left).toBe('0%');
-        expect(dots[3].style.left).toBe('100%');
+        const [easy, marathon, tempo, interval] = fills(container);
+
+        expect(easy).toBe(12);
+        expect(interval).toBe(100);
+        expect(marathon).toBeGreaterThan(easy);
+        expect(tempo).toBeGreaterThan(marathon);
+        expect(tempo).toBeLessThan(interval);
     });
 
-    it('holds the end labels inside the rail but centres the ones between', () => {
-        const { container } = render(<PaceTargetsCard paces={PACES} />);
-        const labels = [
-            ...container.querySelectorAll<HTMLElement>('span[style*="left"]'),
-        ];
-        const dots = [
-            ...container.querySelectorAll<HTMLElement>('i[style*="left"]'),
-        ];
-        const leftOf = (element: HTMLElement): number =>
-            Number.parseFloat(element.style.left);
-
-        expect(labels).toHaveLength(4);
-        // Flush with the rail's left edge, and short of its right one.
-        expect(leftOf(labels[0])).toBe(0);
-        expect(leftOf(labels[3])).toBeLessThan(100);
-        // The two between start left of their own dot by half a label.
-        for (const index of [1, 2]) {
-            expect(leftOf(labels[index])).toBeGreaterThan(
-                leftOf(dots[index]) - 15,
-            );
-            expect(leftOf(labels[index])).toBeLessThan(leftOf(dots[index]));
-        }
-    });
-
-    it('names the PR the targets came from, and when it was set', () => {
-        render(
-            <PaceTargetsCard
-                paces={{
-                    easy: 360,
-                    marathon: 320,
-                    threshold: 300,
-                    interval: 280,
-                }}
-                source={{
-                    category: 'half_marathon',
-                    set_at: '2026-05-19',
-                    stale: false,
-                    quality_category: null,
-                    quality_set_at: null,
-                }}
-            />,
-        );
-
-        expect(
-            screen.getByText('from your half marathon pr, set may 2026'),
-        ).toBeInTheDocument();
-    });
-
-    it('says so when no PR is recent enough, rather than passing an old one off as current', () => {
-        render(
-            <PaceTargetsCard
-                paces={{
-                    easy: 360,
-                    marathon: 320,
-                    threshold: 300,
-                    interval: 280,
-                }}
-                source={{
-                    category: '5km',
-                    set_at: '2024-01-08',
-                    stale: true,
-                    quality_category: null,
-                    quality_set_at: null,
-                }}
-            />,
-        );
-
-        expect(
-            screen.getByText(
-                'from your 5 km pr, set jan 2024 · nothing newer to go on',
-            ),
-        ).toBeInTheDocument();
-    });
-
-    it('names both records when tempo and interval read a fresher one', () => {
-        render(
-            <PaceTargetsCard
-                paces={{
-                    easy: 450,
-                    marathon: 408,
-                    threshold: 344,
-                    interval: 323,
-                }}
-                source={{
-                    category: 'half_marathon',
-                    set_at: '2026-05-17',
-                    stale: false,
-                    quality_category: '5km',
-                    quality_set_at: '2026-08-29',
-                }}
-            />,
-        );
-
-        expect(
-            screen.getByText(
-                'easy and marathon from your half marathon pr, set may 2026 · tempo and interval from your 5 km pr, set aug 2026',
-            ),
-        ).toBeInTheDocument();
-    });
-
-    it('centres every dot when all four paces are identical', () => {
+    it('fills every bar equally when all four paces are identical', () => {
         const { container } = render(
             <PaceTargetsCard
                 paces={{
@@ -138,71 +142,88 @@ describe('PaceTargetsCard', () => {
             />,
         );
 
-        for (const dot of container.querySelectorAll<HTMLElement>(
-            'i[style*="left"]',
-        )) {
-            expect(dot.style.left).toBe('50%');
-        }
+        expect(fills(container)).toEqual([50, 50, 50, 50]);
     });
 
-    it('moves the label of a pace that crowds its neighbour, not its dot', () => {
-        const { container } = render(
+    it('names the PR the targets came from, and when it was set', () => {
+        render(
             <PaceTargetsCard
-                paces={{
-                    easy: 420,
-                    marathon: 272,
-                    threshold: 268,
-                    interval: 265,
+                paces={PACES}
+                source={{
+                    category: 'half_marathon',
+                    set_at: '2026-05-19',
+                    stale: false,
+                    quality_category: null,
+                    quality_set_at: null,
                 }}
             />,
         );
 
-        const leftOf = (element: HTMLElement): number =>
-            Number.parseFloat(element.style.left);
-        const labels = [
-            ...container.querySelectorAll<HTMLElement>('span[style*="left"]'),
-        ];
-        const dots = [
-            ...container.querySelectorAll<HTMLElement>('i[style*="left"]'),
-        ];
-
-        // Marathon and interval share the rail's right end, four percent apart.
-        expect(leftOf(dots[3]) - leftOf(dots[1])).toBeLessThan(6);
-        // Their labels do not, and both stay on the rail.
-        expect(leftOf(labels[3]) - leftOf(labels[1])).toBeGreaterThan(20);
-        expect(dots[3].style.left).toBe('100%');
-        expect(leftOf(labels[3])).toBeLessThan(leftOf(dots[3]));
-        expect(leftOf(labels[1])).toBeGreaterThan(0);
+        expect(
+            screen.getByText('from half marathon pr · may 19'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('stale')).not.toBeInTheDocument();
     });
 
-    afterEach(() => {
-        vi.restoreAllMocks();
-        Reflect.deleteProperty(document, 'fonts');
-    });
-
-    it('remeasures the rail once webfonts finish loading', async () => {
-        const clientWidthSpy = vi
-            .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
-            .mockReturnValue(0);
-        let resolveReady: () => void = () => {};
-        const ready = new Promise<void>((resolve) => {
-            resolveReady = resolve;
-        });
-        Object.defineProperty(document, 'fonts', {
-            configurable: true,
-            value: { ready },
-        });
-
-        render(<PaceTargetsCard paces={PACES} />);
-        const callsBeforeReady = clientWidthSpy.mock.calls.length;
-
-        resolveReady();
-        await act(async () => {
-            await ready;
-        });
-
-        expect(clientWidthSpy.mock.calls.length).toBeGreaterThan(
-            callsBeforeReady,
+    it('marks the source stale when no PR is recent enough to stand behind it', () => {
+        render(
+            <PaceTargetsCard
+                paces={PACES}
+                source={{
+                    category: '5km',
+                    set_at: '2024-01-08',
+                    stale: true,
+                    quality_category: null,
+                    quality_set_at: null,
+                }}
+            />,
         );
+
+        expect(screen.getByText('from 5 km pr · jan 8')).toBeInTheDocument();
+        expect(screen.getByText('stale')).toBeInTheDocument();
+    });
+
+    it('names both records when tempo and interval read a fresher one', () => {
+        render(
+            <PaceTargetsCard
+                paces={PACES}
+                source={{
+                    category: 'half_marathon',
+                    set_at: '2026-05-17',
+                    stale: false,
+                    quality_category: '5km',
+                    quality_set_at: '2026-08-29',
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByText('tempo + interval from 5 km pr · aug 29'),
+        ).toBeInTheDocument();
+    });
+
+    it('falls back to the raw category when the PR has no label', () => {
+        render(
+            <PaceTargetsCard
+                paces={PACES}
+                source={{
+                    category: 'best_90min',
+                    set_at: '2026-05-17',
+                    stale: false,
+                    quality_category: null,
+                    quality_set_at: null,
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByText('from best_90min pr · may 17'),
+        ).toBeInTheDocument();
+    });
+
+    it('renders no chips at all when nothing is known about the source', () => {
+        render(<PaceTargetsCard paces={PACES} />);
+
+        expect(screen.queryByText(/pr ·/)).not.toBeInTheDocument();
     });
 });

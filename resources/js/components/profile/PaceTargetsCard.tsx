@@ -1,10 +1,8 @@
-import { Fragment, useLayoutEffect, useRef, useState } from 'react';
-
+import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import LegacyCard from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
-import { formatPace, parseNaiveLocalDate } from '@/lib/pace';
-import { layoutPaceLabels } from '@/lib/paceRail';
+import { formatNaiveMonthDayId, formatPace } from '@/lib/pace';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
 
 export interface TrainingPaces {
@@ -27,174 +25,197 @@ export interface VdotSource {
     quality_set_at: string | null;
 }
 
-// parseNaiveLocalDate rather than `new Date(iso)`: the latter reads
-// '2025-05-19' as UTC midnight, which is the previous month in any
-// negative-offset timezone.
-function monthYear(iso: string): string {
-    const date = parseNaiveLocalDate(iso);
-    if (date === null) return iso;
-
-    return date
-        .toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-        .toLowerCase();
+/** One training day of the current week — `WeekSessionTypesBuilder`. */
+export interface WeekSession {
+    /** Lowercase short weekday, `mon` … `sun`. */
+    weekday: string;
+    session_type: string;
+    distance_km: number;
 }
+
+type PaceKey = keyof TrainingPaces;
+
+const RUNGS: {
+    key: PaceKey;
+    label: string;
+    sessionType: string;
+    fallback: string;
+}[] = [
+    {
+        key: 'easy',
+        label: 'easy',
+        sessionType: 'easy',
+        fallback: 'most of your runs',
+    },
+    {
+        key: 'marathon',
+        label: 'marathon',
+        sessionType: 'long',
+        fallback: 'long steady efforts',
+    },
+    {
+        key: 'threshold',
+        label: 'tempo',
+        sessionType: 'tempo',
+        fallback: 'comfortably hard, 20–40 min',
+    },
+    {
+        key: 'interval',
+        label: 'interval',
+        sessionType: 'interval',
+        fallback: 'short hard reps',
+    },
+];
+
+/** Every bar keeps a stub, so the slowest pace still reads as a bar. */
+const MIN_FILL = 12;
 
 function prLabel(category: string): string {
     return (PR_CATEGORY_LABELS[category] ?? category).toLowerCase();
 }
 
-function sourceLine(source: VdotSource): string {
-    const set = `from your ${prLabel(source.category)} pr, set ${monthYear(source.set_at)}`;
+function distanceLabel(km: number): string {
+    return km >= 1 ? ` · ${Math.round(km)}k` : '';
+}
+
+function hintFor(rung: (typeof RUNGS)[number], week: WeekSession[]): string {
+    if (week.length === 0) {
+        return rung.fallback;
+    }
+
+    const days = week.filter(
+        (session) => session.session_type === rung.sessionType,
+    );
+    if (days.length === 0) {
+        return 'none this week';
+    }
+    if (days.length === 1) {
+        return `${days[0].weekday}${distanceLabel(days[0].distance_km)}`;
+    }
+
+    return days.map((session) => session.weekday).join(', ');
+}
+
+function todayWeekday(): string {
+    return new Date()
+        .toLocaleDateString('en-US', { weekday: 'short' })
+        .toLowerCase();
+}
+
+/** The pace today's session is run at, and null on a rest day or a day off-plan. */
+function todaysPaceKey(week: WeekSession[]): PaceKey | null {
+    const weekday = todayWeekday();
+    const today = week.find((session) => session.weekday === weekday);
+    if (today === undefined) {
+        return null;
+    }
+
+    return (
+        RUNGS.find((rung) => rung.sessionType === today.session_type)?.key ??
+        null
+    );
+}
+
+function sourceChips(source: VdotSource): string[] {
+    const chips = [
+        `from ${prLabel(source.category)} pr · ${formatNaiveMonthDayId(source.set_at)}`,
+    ];
 
     if (source.stale) {
-        return `${set} · nothing newer to go on`;
+        chips.push('stale');
     }
 
     // Easy and marathon stay on the endurance record; tempo and interval read a
     // recent short one, which is a different number and should say so.
     if (source.quality_category !== null && source.quality_set_at !== null) {
-        return `easy and marathon ${set} · tempo and interval from your ${prLabel(source.quality_category)} pr, set ${monthYear(source.quality_set_at)}`;
+        chips.push(
+            `tempo + interval from ${prLabel(source.quality_category)} pr · ${formatNaiveMonthDayId(source.quality_set_at)}`,
+        );
     }
 
-    return set;
-}
-
-/** Slowest first, so the rail reads easy → hard left to right. */
-const MARKERS = [
-    { key: 'easy', label: 'easy', below: false },
-    { key: 'marathon', label: 'marathon', below: true },
-    { key: 'threshold', label: 'tempo', below: false },
-    { key: 'interval', label: 'interval', below: true },
-] as const;
-
-/** Breathing room kept on each side of a label, in pixels. */
-const LABEL_PADDING = 8;
-
-/** Stands in for the rail until it is measured, and where there is no layout. */
-const ASSUMED_RAIL_WIDTH = 260;
-
-/**
- * A label's room before it is measured: the wider of its two lines, at 11px
- * bold over 12px mono.
- */
-function estimateLabelWidth(label: string, pace: string): number {
-    return (
-        ((Math.max(label.length * 6.6, pace.length * 7.2) + LABEL_PADDING) /
-            ASSUMED_RAIL_WIDTH) *
-        100
-    );
+    return chips;
 }
 
 /**
- * The four training paces on one rail. The prototype hardcodes each marker's
- * left offset; here the offsets are the paces themselves, linearly placed
- * between the slowest and the fastest. Dots stay on those offsets; labels
- * centre on them and give way to each other when two paces sit close enough
- * that their labels would collide.
+ * The four training paces as a ladder, slowest at the top. Each rung carries the
+ * number to run, what the week asks of it, and a bar placing it between the
+ * slowest and the fastest pace.
  */
 export default function PaceTargetsCard({
     paces,
     source = null,
-}: Readonly<{ paces: TrainingPaces; source?: VdotSource | null }>) {
-    const [rail, setRail] = useState<HTMLDivElement | null>(null);
-    const [widths, setWidths] = useState<number[] | null>(null);
-    const labelRef = useRef<(HTMLSpanElement | null)[]>([]);
-
-    useLayoutEffect(() => {
-        if (!rail) {
-            return;
-        }
-        const measure = () => {
-            const railWidth = rail.clientWidth;
-            if (railWidth === 0) {
-                return;
-            }
-            setWidths(
-                labelRef.current.map(
-                    (label) =>
-                        (((label?.offsetWidth ?? 0) + LABEL_PADDING) /
-                            railWidth) *
-                        100,
-                ),
-            );
-        };
-        const observer = new ResizeObserver(measure);
-        observer.observe(rail);
-
-        // A ResizeObserver on the rail doesn't fire when a webfont swap
-        // changes label widths without changing the rail's own box, so a
-        // late font load can leave the layout measured against fallback-font
-        // metrics.
-        let cancelled = false;
-        if (typeof document !== 'undefined' && document.fonts) {
-            document.fonts.ready.then(() => {
-                if (!cancelled) {
-                    measure();
-                }
-            });
-        }
-
-        return () => {
-            cancelled = true;
-            observer.disconnect();
-        };
-    }, [rail]);
-
-    const values = MARKERS.map((m) => paces[m.key]);
+    weekSessions = [],
+}: Readonly<{
+    paces: TrainingPaces;
+    source?: VdotSource | null;
+    weekSessions?: WeekSession[];
+}>) {
+    const values = RUNGS.map((rung) => paces[rung.key]);
     const slowest = Math.max(...values);
-    const fastest = Math.min(...values);
-    const span = slowest - fastest;
-
-    const layout = layoutPaceLabels(
-        MARKERS.map((marker, index) => ({
-            below: marker.below,
-            position:
-                span === 0 ? 50 : ((slowest - paces[marker.key]) / span) * 100,
-            width:
-                widths?.[index] ??
-                estimateLabelWidth(marker.label, formatPace(paces[marker.key])),
-        })),
-    );
+    const span = slowest - Math.min(...values);
+    const accentKey = todaysPaceKey(weekSessions);
 
     return (
         <LegacyCard as="section">
             <Eyebrow token="micro" tone="ink-3">
                 Training · pace targets · per km
             </Eyebrow>
-            <div ref={setRail} className="relative mx-4 mt-2.5 h-[78px]">
-                <div className="absolute inset-x-0 top-[39px] h-1 rounded-full bg-gradient-to-r from-leaf to-horizon" />
-                {MARKERS.map((marker, index) => {
-                    const { position, left } = layout[index];
+            <ul className="mx-4 mt-3 space-y-3.5">
+                {RUNGS.map((rung) => {
+                    const accented = rung.key === accentKey;
+                    const fill =
+                        span === 0
+                            ? 50
+                            : MIN_FILL +
+                              ((slowest - paces[rung.key]) / span) *
+                                  (100 - MIN_FILL);
 
                     return (
-                        <Fragment key={marker.key}>
-                            <span
-                                ref={(element) => {
-                                    labelRef.current[index] = element;
-                                }}
-                                className={cn(
-                                    'absolute text-center leading-tight whitespace-nowrap',
-                                    marker.below ? 'bottom-0' : 'top-0',
-                                )}
-                                style={{ left: `${left}%` }}
-                            >
-                                <b className="block font-mono text-xs font-bold tabular-nums text-foreground">
-                                    {formatPace(paces[marker.key])}
-                                </b>
-                                <span className="block text-label-micro text-text-2">
-                                    {marker.label}
+                        <li key={rung.key}>
+                            <div className="flex items-baseline justify-between gap-3">
+                                <span
+                                    className={cn(
+                                        'text-sm',
+                                        accented
+                                            ? 'font-semibold text-foreground'
+                                            : 'text-text-2',
+                                    )}
+                                >
+                                    {rung.label}
                                 </span>
-                            </span>
-                            <i
-                                className="absolute top-[37px] size-2 -translate-x-1/2 rounded-full bg-foreground ring-[3px] ring-card"
-                                style={{ left: `${position}%` }}
-                            />
-                        </Fragment>
+                                <b className="font-mono text-display-xs font-bold tabular-nums text-foreground">
+                                    {formatPace(paces[rung.key])}
+                                </b>
+                            </div>
+                            <p className="mt-0.5 text-xs text-text-3">
+                                {hintFor(rung, weekSessions)}
+                            </p>
+                            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
+                                <div
+                                    className={cn(
+                                        'h-full rounded-full',
+                                        accented
+                                            ? 'bg-icon-accent'
+                                            : 'bg-border',
+                                    )}
+                                    style={{ width: `${fill}%` }}
+                                />
+                            </div>
+                        </li>
                     );
                 })}
-            </div>
+            </ul>
             {source && (
-                <p className="mx-4 text-xs text-text-3">{sourceLine(source)}</p>
+                <div className="mx-4 mt-3.5 flex flex-wrap gap-1.5">
+                    {sourceChips(source).map((chip) => (
+                        <Chip
+                            key={chip}
+                            tone={chip === 'stale' ? 'horizon' : 'neutral'}
+                        >
+                            {chip}
+                        </Chip>
+                    ))}
+                </div>
             )}
         </LegacyCard>
     );

@@ -197,7 +197,7 @@ describe('Profile', () => {
         expect(screen.queryByText(/pace targets/)).not.toBeInTheDocument();
     });
 
-    it('renders VDOT, threshold and the pace-target rail when fitness is provided', async () => {
+    it('renders VDOT, threshold and the pace ladder when fitness is provided', async () => {
         render(
             <Profile
                 identity={identity}
@@ -213,6 +213,13 @@ describe('Profile', () => {
                         threshold: 258,
                         interval: 240,
                     },
+                    week_sessions: [
+                        {
+                            weekday: 'mon',
+                            session_type: 'tempo',
+                            distance_km: 9.6,
+                        },
+                    ],
                 }}
             />,
         );
