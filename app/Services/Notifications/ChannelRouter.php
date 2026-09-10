@@ -69,6 +69,18 @@ final readonly class ChannelRouter
      * true: the callers asking this ("can the test send prove anything", "is
      * this user worth a streak nudge") are asking about the outbound channels.
      */
+    /**
+     * Web push alone, for a notification that is an interruption timed to a
+     * moment rather than a record: the morning briefing push carries what the
+     * dashboard already shows, so an inbox row of it would only be noise.
+     *
+     * @return list<class-string>
+     */
+    public function pushOnly(User $user): array
+    {
+        return $this->pushReachable($user) && ! $user->is_demo ? [IdempotentWebPushChannel::class] : [];
+    }
+
     public function canReach(User $user): bool
     {
         return $this->outboundChannelsFor($user) !== [];
@@ -133,6 +145,23 @@ final readonly class ChannelRouter
                     );
             });
         });
+    }
+
+    /**
+     * Query-level equivalent of {@see self::pushOnly()}, for the every-quarter-hour
+     * sweep that would otherwise queue a notification per athlete only for
+     * `via()` to return nothing.
+     *
+     * @param  Builder<User>  $query
+     */
+    public function scopePushReachable(Builder $query): void
+    {
+        $query->where('is_demo', false)
+            ->whereHas('pushSubscriptions')
+            ->whereDoesntHave(
+                'notificationPreference',
+                fn (Builder $preference): Builder => $preference->where('push_enabled', false),
+            );
     }
 
     /**

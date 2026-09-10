@@ -71,6 +71,7 @@ despite that.
 | `geo:backfill-locations` / `weather:correct-forecast` / `weather:backfill` | see `routes/console.php` | 55/55/55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s each — 0 rows to backfill; `weather:*` additionally need a live Open-Meteo call to exercise the fetch path |
 | `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.6s — wrote 1 row, for the seeded user |
 | `race:remind` | daily 18:00 | 15 | yes | one race-goal sweep, same shape and cost as `streak:remind` | not measured — added after this pass; the sweep is one indexed `race_date` query plus one notify per athlete racing tomorrow |
+| `briefing:morning-push` | every 15 min | 14 | yes | one median-start-time sweep, sized like the other quarter-hourly drain; sends only, generates nothing | not measured — added after this pass; one indexed read per push-subscribed athlete per tick |
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep | ~2.0s — dispatched to 0 users |
 | `streak:settle` | Mon 00:00 | 20 | yes | per-user token settle over users with a `WeeklySnapshot` | ~1.5s — minted 0, spent 0 |
 

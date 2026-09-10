@@ -64,6 +64,7 @@ const NON_BILLING = [
     'streak:settle' => 'reads weekly snapshots and writes rest-token rows, no LLM and no Strava call',
     'trend:snapshot-daily' => 'free local computation (VdotEstimator + StreamSummary), no LLM and no Strava call',
     'plan:close-finished-races' => 'stamps completed_at on race goals whose day has passed, no LLM and no Strava call',
+    'briefing:morning-push' => 'sends a briefing ai:daily-briefing already generated and never generates one, no LLM and no Strava call; the demo identity has no outbound channel anyway',
 ];
 
 /**

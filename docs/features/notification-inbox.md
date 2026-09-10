@@ -64,7 +64,7 @@ narrator behind it and no hype in it.
 only surface that admitted a dead grant was the empty-runs hero, a screen an athlete with runs on
 the dashboard never sees, so their history just stopped growing with no page saying why.
 `notifications_enabled` names what it covers in its own Settings description (the story, the recaps,
-the nudge), all of it content Temari initiates; this is the app reporting that something the athlete
+the morning briefing, the race heads-up, the nudge), all of it content Temari initiates; this is the app reporting that something the athlete
 wired up broke. The per-channel mutes still apply, because those answer *where* rather than
 *whether*.
 
@@ -180,6 +180,18 @@ fan-out along with the job dispatch, so nothing there is *sent* at all — inste
 the demo's inbox rows straight to the table, one weekly recap, one monthly and one post-run, so the
 page shows all three of its buckets and three distinct kinds. The routing rule still holds for
 anything the demo did send ([[demo-notifications-are-inbox-only]]).
+
+## The one push with no row behind it
+
+`briefing:morning-push` pushes today's already-generated briefing at the quarter hour the athlete's
+own run history says they usually start
+([MorningBriefingPushCommand](../../app/Console/Commands/Notifications/MorningBriefingPushCommand.php#L27)),
+and writes **no inbox row at all**
+([MorningBriefingNotification](../../app/Notifications/MorningBriefingNotification.php#L46)). It is
+the one deliberate exception to "the inbox is the record of everything Temari sent": the briefing is
+already on the dashboard, so a row of it would record nothing new, and what the push adds is the
+timing. It generates nothing either — a briefing row that is not `done` is skipped rather than
+narrated. See [[the-briefing-arrives-when-you-run]].
 
 ## See also
 
