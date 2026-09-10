@@ -55,12 +55,12 @@ function expectActionLinks() {
 }
 
 describe('EmptyRunsState', () => {
-    it('starts polling recentRuns + stravaSync while a sync is in flight', () => {
+    it('starts polling hasRuns + stravaSync while a sync is in flight', () => {
         const { start, stop } = renderWithState('syncing');
 
         expect(usePoll).toHaveBeenCalledWith(
             7000,
-            { only: ['recentRuns', 'stravaSync'] },
+            { only: ['hasRuns', 'stravaSync'] },
             { autoStart: false },
         );
         expect(start).toHaveBeenCalled();

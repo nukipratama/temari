@@ -63,7 +63,7 @@ export default function EmptyRunsState({
     // reload. Stops the moment `stravaSync.state` flips off `syncing`.
     const { start, stop } = usePoll(
         7000,
-        { only: ['recentRuns', 'stravaSync'] },
+        { only: ['hasRuns', 'stravaSync'] },
         { autoStart: false },
     );
 

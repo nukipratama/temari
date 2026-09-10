@@ -98,12 +98,12 @@ generating and billing for the deleted panel.
 
 ## Empty state
 
-When `recentRuns.length === 0`, the page renders `EmptyRunsState` alone — connect Strava and run, see [[strava-connect]]. That is the `no-runs` state, distinct from `no-past-match` above: a brand new account is not shown a verdict block it cannot fill.
+When `hasRuns` is false, the page renders `EmptyRunsState` alone — connect Strava and run, see [[strava-connect]]. That is the `no-runs` state, distinct from `no-past-match` above: a brand new account is not shown a verdict block it cannot fill.
 
 ## Notes / gotchas
 
 - `pastYouTrend` is a **plain (eager) closure**, not `Inertia::defer()`, so the verdict is present at first paint rather than popping in after it. That is deliberate now that it is the page's hero — but it means the dashboard's response time includes the verdict. That used to be ~70 % of Home's server time, so the whole payload is now cached per runner per day and invalidated at ingest (see [[past-you-engine]]); only the first load of the day pays for it. The rebuild behind that cache still calls `TrainingLoad::ctlTrend`, which is **uncached** (`summary()` is cached, `ctlTrend()` is not). If the dashboard gets slower, look there first.
 - The previous dashboard (`Today.tsx`), its hero banner and the standalone `PastYouTrendCard` were **deleted** in an earlier change; the shared helper module moved with the page, and `pages/Today/helpers.ts` is now [pages/Home/helpers.ts](resources/js/pages/Home/helpers.ts). `PS3` emptied most of it out in turn — the week-range label, the weather/location formatters and the training-load hint/tone helpers all lost their last caller with the mini cards. Git history has them.
 - The weekly recap narrative lives on [[run-history]]/Feed and [[recaps]], not the dashboard.
-- `recentRuns` is now read for one thing only — whether the account has any runs at all, which picks the empty state. Its eight-row select is what the deleted last-run card needed; trimming it is a live saving nobody has taken yet.
+- `hasRuns` is a boolean backed by an [`exists()`](app/Http/Controllers/DashboardController.php#L53) query — the page reads it for one thing, whether the empty state is drawn. It replaced `recentRuns`, an eight-row, eight-column select the deleted last-run card needed and nothing read afterwards. `EmptyRunsState`'s post-connect poll names it in place of the old prop ([EmptyRunsState.tsx:66](resources/js/components/run/EmptyRunsState.tsx#L66)).
 - Every Temari voice block routes through the [[ai-pipeline]]; see [[data-model]] for `Analysis`, `WeeklySnapshot`, and `StoryLine`.
