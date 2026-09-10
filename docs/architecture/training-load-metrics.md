@@ -37,7 +37,7 @@ This is **not** the same as a 365-day window: a true window would zero out a con
 
 The remaining two numbers describe the *distribution* of load across the last 7 days, computed in [weekStats](app/Services/Run/Metrics/TrainingLoad.php#L285). **Monotony** is the week's mean daily TRIMP over its standard deviation — high when every day looks the same (a known injury-risk pattern), capped to avoid a divide-by-zero on a perfectly uniform week. **Strain** is the week's total TRIMP scaled by monotony, so a high-volume week that's also samey scores worse than the same volume spread out. These feed the dashboard's Strain / Monotony hints.
 
-`weekStats` takes a **run-day set** alongside the daily TRIMP map, because those two numbers plus `weekly_trimp` are the ones a zero would lie about. A week nobody ran scores an honest `0.0`; a week whose runs all lacked heart rate returns `null`, since "no reading" is a different fact from "did nothing" — see [[unscored-load-is-null-not-zero]]. Both maps come out of one query in [loadDailyHistory](app/Services/Run/Metrics/TrainingLoad.php#L110), or off the already-loaded detail set in [dailyHistory](app/Services/Run/Metrics/WeeklyAggregator.php#L223), so they cannot drift.
+`weekStats` takes a **run-day set** alongside the daily TRIMP map, because those two numbers plus `weekly_trimp` are the ones a zero would lie about. A week nobody ran scores an honest `0.0`; a week whose runs all lacked heart rate returns `null`, since "no reading" is a different fact from "did nothing" — see [[unscored-load-is-null-not-zero]]. Both maps come out of one query in [loadDailyHistory](app/Services/Run/Metrics/TrainingLoad.php#L110), or off the already-loaded detail set in [dailyHistory](app/Services/Run/Metrics/WeeklyAggregator.php#L239), so they cannot drift.
 
 ## Weekly snapshots and forward propagation
 
@@ -52,7 +52,7 @@ Two subtleties:
 
 ### Backdated runs propagate forward
 
-CTL is **cumulative**: a run inserted into a past week changes the fitness baseline of *every* later week too. So ingest doesn't just rebuild that one week — [rebuildForwardFrom](app/Services/Run/Metrics/WeeklyAggregator.php#L68) rebuilds the affected week and every week through today, loading one shared lead-in series and re-rolling each week's snapshot from it in a single query. This is what [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L448) calls after a run's TRIMP changes. A full from-scratch backfill is [rebuildFor](app/Services/Run/Metrics/WeeklyAggregator.php#L130).
+CTL is **cumulative**: a run inserted into a past week changes the fitness baseline of *every* later week too. So ingest doesn't just rebuild that one week — [rebuildForwardFrom](app/Services/Run/Metrics/WeeklyAggregator.php#L84) rebuilds the affected week and every week through today, loading one shared lead-in series and re-rolling each week's snapshot from it in a single query. This is what [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L448) calls after a run's TRIMP changes. A full from-scratch backfill is [rebuildFor](app/Services/Run/Metrics/WeeklyAggregator.php#L147).
 
 ## Where the numbers surface
 

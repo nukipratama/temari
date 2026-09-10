@@ -31,7 +31,7 @@ Edwards TRIMP needs heart-rate minutes per zone, so a run without an HR stream s
 
 **Carry the run days beside the TRIMP, and let the three week-window fields be null.**
 
-[loadDailyHistory](app/Services/Run/Metrics/TrainingLoad.php#L110) returns both maps from one query (a day whose runs all lack TRIMP sums to SQL `NULL`, so it lands in `runDays` and not in `trimp`), and [dailyHistory](app/Services/Run/Metrics/WeeklyAggregator.php#L223) derives the same pair from the detail set it has already loaded. One source each, so the two maps cannot drift apart.
+[loadDailyHistory](app/Services/Run/Metrics/TrainingLoad.php#L110) returns both maps from one query (a day whose runs all lack TRIMP sums to SQL `NULL`, so it lands in `runDays` and not in `trimp`), and [dailyHistory](app/Services/Run/Metrics/WeeklyAggregator.php#L239) derives the same pair from the detail set it has already loaded. One source each, so the two maps cannot drift apart.
 
 `weekStats` then answers three ways rather than two: no runs in the window is `0.0`, runs but nothing scored is `null`, anything scored is the number.
 
@@ -56,7 +56,7 @@ A missing reading renders as the em-dash the rest of the app already uses for a 
 - **Enables:** a first screen that reads "we have no reading yet" instead of "you have been idle for a year", and consumers that can tell an unknown week from a rest week without guessing.
 - **Costs:** every reader of the three fields must handle null. The TypeScript shape enforces this on the frontend; on the backend the `?float` contracts largely already did.
 - **A partially-scored week is still an understatement**, not an unknown: one HR-bearing run among five reports that one run's load. It is low rather than absent, so it does not read as idleness, and splitting "partial" into a fourth state would need a policy on how partial is too partial.
-- **Backfilled snapshots correct themselves.** Hydrating a run recomputes its week and every later one through [rebuildForwardFrom](app/Services/Run/Metrics/WeeklyAggregator.php#L68), so unknown becomes a number as the history fills in.
+- **Backfilled snapshots correct themselves.** Hydrating a run recomputes its week and every later one through [rebuildForwardFrom](app/Services/Run/Metrics/WeeklyAggregator.php#L84), so unknown becomes a number as the history fills in.
 
 ## See also
 

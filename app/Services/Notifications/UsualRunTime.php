@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Notifications;
 
 use App\Models\Activity;
+use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * The time of day an athlete usually starts running, as minutes since midnight
@@ -32,7 +34,33 @@ final class UsualRunTime
 
     public const int FALLBACK_MINUTE = 6 * 60;
 
+    /**
+     * Memoized for the athlete's day: the push command calls this once per
+     * 15-minute tick for every push-reachable athlete, but the median only
+     * moves when a run lands, so {@see clearCache} at ingest is what makes
+     * this fresh. The date in the key is what makes it roll over at midnight.
+     */
     public function forUser(int $userId): int
+    {
+        return Cache::remember(
+            self::cacheKey($userId, Carbon::today()->toDateString()),
+            Carbon::tomorrow(),
+            fn (): int => $this->computeForUser($userId),
+        );
+    }
+
+    public static function cacheKey(int $userId, string $day): string
+    {
+        return "usual-run-time:{$userId}:{$day}";
+    }
+
+    /** Called wherever an activity enters or leaves a user's history. */
+    public static function clearCache(User $user): void
+    {
+        Cache::forget(self::cacheKey($user->id, Carbon::today()->toDateString()));
+    }
+
+    private function computeForUser(int $userId): int
     {
         $minutes = Activity::query()
             ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')

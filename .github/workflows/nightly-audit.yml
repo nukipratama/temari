@@ -79,6 +79,7 @@ jobs:
     env:
       FIXTURE_COMPOSE: tests/fixtures/restore-db-ci-compose.yml
       FIXTURE_DB: temari_ci_restore
+      FIXTURE_ANALYTICS_DB: temari_ci_restore_analytics
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -100,18 +101,36 @@ jobs:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_DATABASE: ${{ env.FIXTURE_DB }}
+          DB_ANALYTICS_DATABASE: ${{ env.FIXTURE_ANALYTICS_DB }}
           DB_USERNAME: sail
           DB_PASSWORD: password
           CACHE_STORE: array
           SESSION_DRIVER: array
         run: |
           port=$(docker compose -f "$FIXTURE_COMPOSE" port mysql 3306 | cut -d: -f2)
+
+          # sail is only auto-granted on MYSQL_DATABASE, so the analytics schema
+          # needs its own CREATE + GRANT as root, same as docker/mysql/init/01-databases.sh.
+          docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+            'export MYSQL_PWD="$MYSQL_ROOT_PASSWORD"; mysql -h 127.0.0.1 -uroot -e "
+              CREATE DATABASE IF NOT EXISTS $DB_ANALYTICS_DATABASE;
+              GRANT ALL PRIVILEGES ON $DB_ANALYTICS_DATABASE.* TO \"$DB_USERNAME\"@\"%\";
+              FLUSH PRIVILEGES;
+            "'
+
           DB_PORT="$port" php artisan migrate --force
+          DB_PORT="$port" php artisan migrate --database=analytics --path=database/migrations/analytics --force
 
           docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
             'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" "$DB_DATABASE" -e "
               CREATE TABLE restore_ci_sentinel (id INT PRIMARY KEY, note VARCHAR(255));
               INSERT INTO restore_ci_sentinel VALUES (1, \"restore-db-ci-sentinel\");
+            "'
+
+          docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" "$DB_ANALYTICS_DATABASE" -e "
+              CREATE TABLE restore_ci_analytics_sentinel (id INT PRIMARY KEY, note VARCHAR(255));
+              INSERT INTO restore_ci_analytics_sentinel VALUES (1, \"restore-db-ci-analytics-sentinel\");
             "'
 
       - name: Dump the fixture (same mysqldump flags as the prod backup step)
@@ -123,14 +142,27 @@ jobs:
             'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""')
           echo "TABLE_COUNT_BEFORE=$(echo "$before" | tr -d '[:space:]')" >> "$GITHUB_ENV"
 
+          before_analytics=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_ANALYTICS_DATABASE\""')
+          echo "ANALYTICS_TABLE_COUNT_BEFORE=$(echo "$before_analytics" | tr -d '[:space:]')" >> "$GITHUB_ENV"
+
           docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
             'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" "$DB_DATABASE"' \
             | gzip > /tmp/restore-ci/fixture.sql.gz
 
-      - name: Simulate a disaster (drop the schema)
+          # --databases carries its own CREATE DATABASE/USE, matching the analytics
+          # backup step in ci.yml and restore-db.sh's `analytics-*` filename branch.
+          docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" --databases "$DB_ANALYTICS_DATABASE"' \
+            | gzip > /tmp/restore-ci/analytics-fixture.sql.gz
+
+      - name: Simulate a disaster (drop the schemas)
         run: |
           docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
             'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "DROP DATABASE $DB_DATABASE; CREATE DATABASE $DB_DATABASE;"'
+
+          docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "DROP DATABASE $DB_ANALYTICS_DATABASE;"'
 
       - name: Restore via scripts/restore-db.sh
         timeout-minutes: 5
@@ -138,7 +170,9 @@ jobs:
           COMPOSE_FILE: tests/fixtures/restore-db-ci-compose.yml
           MYSQL_SERVICE: mysql
           RESTORE_DB_ASSUME_YES: '1'
-        run: ./scripts/restore-db.sh /tmp/restore-ci/fixture.sql.gz
+        run: |
+          ./scripts/restore-db.sh /tmp/restore-ci/fixture.sql.gz
+          ./scripts/restore-db.sh /tmp/restore-ci/analytics-fixture.sql.gz
 
       - name: Assert the restore actually restored the data
         run: |
@@ -161,6 +195,26 @@ jobs:
           fi
 
           echo "Restore verified: $after tables, sentinel row intact."
+
+          after_analytics=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_ANALYTICS_DATABASE\""')
+          after_analytics="$(echo "$after_analytics" | tr -d '[:space:]')"
+
+          if [ "$after_analytics" != "$ANALYTICS_TABLE_COUNT_BEFORE" ]; then
+            echo "::error::analytics table count after restore ($after_analytics) != before the disaster ($ANALYTICS_TABLE_COUNT_BEFORE)"
+            exit 1
+          fi
+
+          analytics_note=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" "$DB_ANALYTICS_DATABASE" -e "SELECT note FROM restore_ci_analytics_sentinel WHERE id = 1"')
+          analytics_note="$(echo "$analytics_note" | tr -d '[:space:]')"
+
+          if [ "$analytics_note" != "restore-db-ci-analytics-sentinel" ]; then
+            echo "::error::analytics sentinel row missing or wrong after restore: got '$analytics_note'"
+            exit 1
+          fi
+
+          echo "Analytics restore verified: $after_analytics tables, sentinel row intact."
 
       - name: Tear down the throwaway stack
         if: always()
