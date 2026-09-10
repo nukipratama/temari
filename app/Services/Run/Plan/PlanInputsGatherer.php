@@ -45,6 +45,7 @@ final readonly class PlanInputsGatherer
 
         $race = ($this->activeRace)($user->id);
         $preference = ($this->trainingPreference)($user->id);
+        ['pinned' => $pinnedDates, 'settled' => $settledDates] = $this->pinnedAndSettledDatesIn($user, $today, $horizonEnd);
 
         return new PlanInputs(
             userId: $user->id,
@@ -58,13 +59,13 @@ final readonly class PlanInputsGatherer
             runDays: $preference?->run_days,
             longRunDay: $preference?->long_run_day,
             adaptation: $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race),
-            pinnedDates: $this->datesIn($user, $today, $horizonEnd, fn ($query) => $query->where('pinned', true)),
+            pinnedDates: $pinnedDates,
             // A day that already carries a verdict is the record of what was
             // run, not a slot left to plan. Since compliance lands at ingest
             // rather than at 00:03 the next morning, regeneration can meet a
             // settled row inside its own today-forward window — see
             // `docs/decisions/a-day-is-scored-when-it-is-run.md`.
-            settledDates: $this->datesIn($user, $today, $horizonEnd, fn ($query) => $query->where('status', '!=', PlannedSessionStatus::Planned)),
+            settledDates: $settledDates,
             // How long the race will take this athlete, not how far it is: the
             // same 10K is a VO2max event for one runner and a threshold event
             // for another, and only the projection can tell them apart.
@@ -75,21 +76,35 @@ final readonly class PlanInputsGatherer
     }
 
     /**
-     * @param  callable(Builder<PlannedSession>): Builder<PlannedSession>  $filter
-     * @return array<string, true>
+     * Pinned and settled are separate reads on the same window filtered by
+     * different columns, but every row either query would return also
+     * satisfies `pinned OR status != Planned` — so one query fetching both
+     * columns, partitioned client-side, returns the identical two sets.
+     *
+     * @return array{pinned: array<string, true>, settled: array<string, true>}
      */
-    private function datesIn(User $user, Carbon $from, Carbon $to, callable $filter): array
+    private function pinnedAndSettledDatesIn(User $user, Carbon $from, Carbon $to): array
     {
-        return array_fill_keys(
-            $filter(
-                PlannedSession::query()
-                    ->where('user_id', $user->id)
-                    ->whereBetween('date', [$from->toDateString(), $to->toDateString()]),
-            )
-                ->pluck('date')
-                ->map(fn (Carbon $date): string => $date->toDateString())
-                ->all(),
-            true,
-        );
+        $rows = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->where(fn (Builder $query): Builder => $query
+                ->where('pinned', true)
+                ->orWhere('status', '!=', PlannedSessionStatus::Planned))
+            ->get(['date', 'pinned', 'status']);
+
+        $pinned = [];
+        $settled = [];
+        foreach ($rows as $row) {
+            $date = $row->date->toDateString();
+            if ($row->pinned) {
+                $pinned[$date] = true;
+            }
+            if ($row->status !== PlannedSessionStatus::Planned) {
+                $settled[$date] = true;
+            }
+        }
+
+        return ['pinned' => $pinned, 'settled' => $settled];
     }
 }
