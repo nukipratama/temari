@@ -53,7 +53,7 @@ class BurnDown extends Card
     }
 
     /**
-     * @return array{label: string, used: string, ceiling: string|null, pct: float|null, tone: string}
+     * @return array{label: string, used: string, ceiling: string|null, pct: float|null, width: float, tone: string}
      */
     private function bar(string $label, float $used, ?float $ceiling, string $prefix): array
     {
@@ -64,6 +64,8 @@ class BurnDown extends Card
             'used' => $prefix.($prefix === '$' ? number_format($used, 2) : number_format($used)),
             'ceiling' => $ceiling === null ? null : $prefix.($prefix === '$' ? number_format($ceiling, 2) : number_format($ceiling)),
             'pct' => $pct,
+            // A sliver of a bar reads as "some" where a hairline reads as none.
+            'width' => $pct === null || $pct <= 0.0 ? 0.0 : min(100.0, max(2.0, $pct)),
             'tone' => match (true) {
                 $pct === null => 'neutral',
                 $pct >= 100 => 'alert',

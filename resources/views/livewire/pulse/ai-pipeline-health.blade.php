@@ -24,6 +24,37 @@
         </div>
 
         <div class="mb-4">
+            <div class="text-label-micro text-text-3 mb-1">AI generation</div>
+            <div @class([
+                'rounded-sm p-2 text-xs font-semibold',
+                'bg-leaf/10 text-leaf-ink' => $pauseReason === null,
+                'bg-horizon/25 text-foreground' => $pauseReason !== null,
+            ])>
+                {{-- Only a null reason is healthy. A @default that fell through to
+                     "healthy" is why an unrecognised pause read green while the box
+                     styled itself warn, and it is why nothing dispatching went
+                     unnoticed. An unmapped reason prints itself instead. --}}
+                @if ($pauseReason === null)
+                    healthy
+                @else
+                    @switch($pauseReason)
+                        @case('kill_switch')
+                            paused: kill switch off
+                            @break
+                        @case('unconfigured')
+                            paused: Azure unconfigured
+                            @break
+                        @case('config')
+                            paused: check API key / base URL
+                            @break
+                        @default
+                            paused: {{ $pauseReason }}
+                    @endswitch
+                @endif
+            </div>
+        </div>
+
+        <div class="mb-4">
             <div class="text-label-micro text-text-3 mb-1">Spend today</div>
             <div class="grid grid-cols-2 gap-2">
                 @include('livewire.pulse.partials.stat-tile', [
@@ -108,37 +139,6 @@
                     'value' => number_format($failedJobs),
                     'tone' => $failedJobs > 0 ? 'alert' : 'neutral',
                 ])
-            </div>
-        </div>
-
-        <div class="mb-4">
-            <div class="text-label-micro text-text-3 mb-1">AI generation</div>
-            <div @class([
-                'rounded-sm p-2 text-xs font-semibold',
-                'bg-leaf/10 text-leaf-ink' => $pauseReason === null,
-                'bg-horizon/25 text-foreground' => $pauseReason !== null,
-            ])>
-                {{-- Only a null reason is healthy. A @default that fell through to
-                     "healthy" is why an unrecognised pause read green while the box
-                     styled itself warn, and it is why nothing dispatching went
-                     unnoticed. An unmapped reason prints itself instead. --}}
-                @if ($pauseReason === null)
-                    healthy
-                @else
-                    @switch($pauseReason)
-                        @case('kill_switch')
-                            paused: kill switch off
-                            @break
-                        @case('unconfigured')
-                            paused: Azure unconfigured
-                            @break
-                        @case('config')
-                            paused: check API key / base URL
-                            @break
-                        @default
-                            paused: {{ $pauseReason }}
-                    @endswitch
-                @endif
             </div>
         </div>
 

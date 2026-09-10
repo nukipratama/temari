@@ -9,6 +9,7 @@ use App\Listeners\RecordScheduledTaskRun;
 use App\Models\ScheduledTaskRun;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\View;
@@ -27,11 +28,11 @@ use Throwable;
  */
 class SchedulerHealth extends Card
 {
-    public function render(Schedule $schedule): Renderable
+    public function render(): Renderable
     {
         $runs = ScheduledTaskRun::query()->get()->keyBy('command');
 
-        $scheduled = collect($schedule->events())
+        $scheduled = collect($this->scheduledEvents())
             ->map(function (Event $event) use ($runs): array {
                 $command = RecordScheduledTaskRun::label($event);
 
@@ -52,6 +53,25 @@ class SchedulerHealth extends Card
             'class' => $this->class,
             'tasks' => $scheduled->concat($retired),
         ]);
+    }
+
+    /**
+     * routes/console.php is required while the console kernel bootstraps, which
+     * a web request never does on its own — so the schedule reads empty here
+     * until the kernel is bootstrapped. Idempotent: the kernel is a singleton
+     * and only discovers commands once.
+     *
+     * @return array<Event>
+     */
+    private function scheduledEvents(): array
+    {
+        try {
+            app(ConsoleKernel::class)->bootstrap();
+
+            return app(Schedule::class)->events();
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     /**

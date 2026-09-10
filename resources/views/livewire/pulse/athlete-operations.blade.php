@@ -1,5 +1,5 @@
 <x-pulse::card :cols="$cols" :rows="$rows" :class="$class">
-    <x-pulse::card-header name="Athletes" details="last sync &amp; last delivery, per athlete">
+    <x-pulse::card-header name="Athletes" details="last sync and last delivery, per athlete">
         <x-slot:icon>
             <x-pulse::icons.clipboard />
         </x-slot:icon>

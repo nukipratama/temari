@@ -55,9 +55,9 @@
     <livewire:pulse.servers cols="full" />
 
     {{-- Domain-specific health cards. --}}
-    <livewire:pulse.ai-pipeline-health cols="6" rows="2" />
+    <livewire:pulse.ai-pipeline-health cols="6" rows="3" />
 
-    <livewire:pulse.strava-health cols="6" rows="2" />
+    <livewire:pulse.strava-health cols="6" rows="3" />
 
     {{-- The two budgets that stop the app when they run out. --}}
     <livewire:pulse.burn-down cols="6" rows="2" />

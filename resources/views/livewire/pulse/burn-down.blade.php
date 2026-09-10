@@ -24,7 +24,7 @@
                             'bg-ember' => $bar['tone'] === 'alert',
                             'bg-horizon' => $bar['tone'] === 'warn',
                             'bg-leaf' => $bar['tone'] === 'neutral',
-                        ]) style="width: {{ min(100, max(0, $bar['pct'] ?? 0)) }}%"></div>
+                        ]) style="width: {{ $bar['width'] }}%"></div>
                     </div>
                     <div class="mt-0.5 text-label-micro text-text-3">
                         @if ($bar['pct'] === null)
