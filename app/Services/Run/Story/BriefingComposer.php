@@ -52,13 +52,9 @@ class BriefingComposer
 
     /**
      * Today's briefing row and whether this athlete has ever had one narrated,
-     * in a single read: the Today card says "temari is reading your first
-     * week…" while the very first briefing is still being written, and stays
-     * silent for every pending briefing after it.
-     *
-     * One query, ordered so today's row comes first and capped at two, because
-     * the only other row worth carrying back is a single Done one — anything
-     * more would grow with the account's age for an answer that is a boolean.
+     * in a single read. Ordered so today's row comes first and capped at two:
+     * every other row in the filtered set is Done, so one of them settles the
+     * boolean, and the read cannot grow with the account's age.
      *
      * @return array{0: ?Analysis, 1: bool}
      */
