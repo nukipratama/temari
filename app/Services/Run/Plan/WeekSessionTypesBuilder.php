@@ -15,9 +15,9 @@ use Illuminate\Support\Carbon;
  * ladder needs to say which paces the week actually asks for.
  *
  * Reads the same rows over the same trailing window {@see CurrentWeekPlanBuilder}
- * does, and sizes each day through the same {@see SegmentGenerator} pair
- * {@see PlanRenderer::dayPayload()} uses, so a distance here cannot disagree
- * with the one Home shows for that day.
+ * does, and sizes each day through {@see PlanRenderer::sessionDistanceKm()},
+ * the same helper {@see PlanRenderer::dayPayload()} sizes Home's days with, so
+ * a distance here cannot disagree with the one Home shows for that day.
  */
 final readonly class WeekSessionTypesBuilder
 {
@@ -91,7 +91,13 @@ final readonly class WeekSessionTypesBuilder
             $paces,
         );
 
-        return SegmentGenerator::prescribedKm($segments)
-            ?? SegmentGenerator::coreKmFor($session->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $raceDistanceM);
+        return PlanRenderer::sessionDistanceKm(
+            $segments,
+            $session->session_type,
+            $isPrimaryEasy,
+            $longRunKm,
+            $multiplier,
+            $raceDistanceM,
+        );
     }
 }

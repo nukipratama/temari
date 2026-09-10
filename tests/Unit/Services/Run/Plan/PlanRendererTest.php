@@ -483,3 +483,41 @@ it('dayPayload reports whether this athlete has flagged the day', function (): v
 
     expect($render()['flagged'])->toBeTrue();
 });
+
+it('sessionDistanceKm reports what the generated segments add up to', function (): void {
+    $segments = SegmentGenerator::generate(
+        SessionType::Easy,
+        PlanPhase::Base,
+        null,
+        true,
+        20.0,
+        1.0,
+        RENDERER_PACES,
+    );
+
+    expect(PlanRenderer::sessionDistanceKm($segments, SessionType::Easy, true, 20.0, 1.0, null))
+        ->toBe(SegmentGenerator::prescribedKm($segments));
+});
+
+// An Interval day's reps are fixed-duration, so without paces nothing has a
+// distance and the scaled budget stands in.
+it('sessionDistanceKm falls back to the volume-scaled budget when no segment carries a distance', function (): void {
+    $segments = SegmentGenerator::generate(
+        SessionType::Interval,
+        PlanPhase::Build,
+        null,
+        false,
+        20.0,
+        1.0,
+        null,
+    );
+
+    expect(SegmentGenerator::prescribedKm($segments))->toBeNull();
+
+    $budget = SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0, null);
+
+    expect(PlanRenderer::sessionDistanceKm($segments, SessionType::Interval, false, 20.0, 1.0, null))
+        ->toBe($budget)
+        ->and(PlanRenderer::sessionDistanceKm($segments, SessionType::Interval, false, 20.0, 1.0, null, 0.8))
+        ->toBe(round($budget * 0.8, 1));
+});
