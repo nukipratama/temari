@@ -229,7 +229,7 @@ jobs:
   # rather than duplicating the push as a failure step inside each of them.
   alert-on-failure:
     needs: [composer-audit, npm-audit, restore-db-exercise]
-    if: always() && (needs.composer-audit.result == 'failure' || needs.npm-audit.result == 'failure' || needs.restore-db-exercise.result == 'failure' || inputs.test_alert == 'true')
+    if: always() && (needs.composer-audit.result == 'failure' || needs.npm-audit.result == 'failure' || needs.restore-db-exercise.result == 'failure' || inputs.test_alert == true)
     runs-on: ubuntu-latest
     steps:
       - name: Push a Telegram alert
