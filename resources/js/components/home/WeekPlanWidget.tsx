@@ -241,8 +241,8 @@ export default function WeekPlanWidget({
                 </Chip>
             </div>
 
-            <div className="mb-3.5 flex items-center gap-4 min-[900px]:gap-6">
-                <div className="flex flex-none flex-col items-center gap-1">
+            <div className="mb-3.5 grid grid-cols-3 items-center">
+                <div className="flex flex-col items-center gap-1 text-center">
                     <ProgressRing
                         credited={weekPlan.credited_this_week}
                         total={weekPlan.sessions_this_week}
@@ -251,8 +251,10 @@ export default function WeekPlanWidget({
                         sessions
                     </span>
                 </div>
-                <div className="flex flex-1 items-center justify-center gap-6 px-2 text-center min-[900px]:gap-10">
+                <div className="flex flex-col items-center text-center">
                     <PlanFigure value={kmValue} label="km" />
+                </div>
+                <div className="flex flex-col items-center text-center">
                     <PlanFigure value={trimpValue} label="trimp" />
                 </div>
             </div>

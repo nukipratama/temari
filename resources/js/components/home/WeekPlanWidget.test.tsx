@@ -244,6 +244,20 @@ describe('WeekPlanWidget', () => {
         expect(screen.queryByText(/today ·/)).not.toBeInTheDocument();
     });
 
+    it('lays out the ring, km and trimp figures as three sibling columns', async () => {
+        const days = MON_TO_SUN.map((date) => day({ date }));
+        render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
+
+        await waitFor(() => {
+            expect(screen.getByText('18.2 of 32.0')).toBeInTheDocument();
+        });
+        const statsRow = screen.getByText('sessions').closest('.grid');
+        expect(statsRow).toHaveClass('grid-cols-3');
+        expect(statsRow?.children).toHaveLength(3);
+        expect(statsRow?.contains(screen.getByText('km'))).toBe(true);
+        expect(statsRow?.contains(screen.getByText('trimp'))).toBe(true);
+    });
+
     it('renders one cell per day and rings today', () => {
         const days = MON_TO_SUN.map((date) => day({ date }));
         const { container } = render(
