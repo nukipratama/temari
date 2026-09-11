@@ -133,17 +133,6 @@
     @inertiaHead
 </head>
 <body class="bg-background text-foreground antialiased">
-    {{-- iOS 26/27 standalone PWAs sample the background-color of a real DOM
-         element pinned at the very top edge to decide what to paint behind
-         the status bar strip; a pseudo-element is invisible to that sampler,
-         which is why a ::before backing plate would do nothing here.
-         `bg-background` keeps it in lockstep with whatever the theme script
-         above already resolved `data-theme` to, rather than tracking
-         prefers-color-scheme independently — that freezes for the life of
-         the process in standalone mode, so a value read straight from it
-         would drift stale after an OS theme switch mid-session. --}}
-    <div aria-hidden="true" class="fixed inset-x-0 top-0 z-50 h-px bg-background"></div>
-
     @inertia
 </body>
 </html>
