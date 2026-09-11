@@ -133,16 +133,32 @@
     @inertiaHead
 </head>
 <body class="bg-background text-foreground antialiased">
-    {{-- iOS 26/27 standalone PWAs sample the background-color of a real DOM
-         element pinned at the very top edge to decide what to paint behind
-         the status bar strip; a pseudo-element is invisible to that sampler,
-         which is why a ::before backing plate would do nothing here.
+    {{-- iOS 26/27 draws a progressive blur over the top edge of a standalone
+         PWA unconditionally — no apple-mobile-web-app-status-bar-style value
+         opts out (established on-device in #738). A 1px color-sampling hint
+         didn't clear it either (#889, reverted). What does: a real, opaque
+         bar tall enough to fully cover the blurred strip, which is what
+         other iOS 27 PWAs have shipped successfully — 16px is their
+         reported value too.
+
+         navigator.standalone (Safari-only) rather than a `display-mode:
+         standalone` media query, since that also matches non-iOS installed
+         PWAs that don't have this problem. 16px sits well inside the
+         safe-area-inset-top clearance MobileTopBar already reserves on any
+         notched device (44px+), so nothing needs to be pushed down further
+         to make room for it.
+
          `bg-background` keeps it in lockstep with whatever the theme script
          above already resolved `data-theme` to, rather than tracking
          prefers-color-scheme independently — that freezes for the life of
          the process in standalone mode, so a value read straight from it
          would drift stale after an OS theme switch mid-session. --}}
-    <div aria-hidden="true" class="fixed inset-x-0 top-0 z-50 h-px bg-background"></div>
+    <div id="ios-status-bar-tint" aria-hidden="true" class="fixed inset-x-0 top-0 z-50 hidden h-4 bg-background"></div>
+    <script>
+        if (navigator.standalone === true) {
+            document.getElementById('ios-status-bar-tint').classList.remove('hidden');
+        }
+    </script>
 
     @inertia
 </body>
