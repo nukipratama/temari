@@ -27,6 +27,9 @@
       "Bash(docker volume rm *)"
     ]
   },
+  "worktree": {
+    "baseRef": "head"
+  },
   "hooks": {
     "WorktreeCreate": [
       { "hooks": [{ "type": "command", "command": "scripts/worktree-hook-create.sh" }] }

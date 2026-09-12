@@ -309,6 +309,20 @@ Worktrees don't each get their own MySQL/Redis, though — see "Shared services"
 Workflow: `EnterWorktree name=<slice>` (fires the `WorktreeCreate` hook, which auto-picks a free
 slot and runs the setup below) → normal fast-feedback ladder → `ExitWorktree action=remove|keep`
 (fires `WorktreeRemove`, tearing down just that worktree's `app` container and freeing its slot).
+
+**Known limitation, confirmed by testing (3 independent repro cycles):**
+`ExitWorktree action=remove` correctly runs the hook's cleanup (app container stopped, slot lock
+freed), but the worktree **directory and git registration itself is not actually removed**
+afterward — `git worktree list` still shows it. Neither `git worktree remove` nor a plain `rm -rf`
+called *from inside the hook* makes this stick, even though the identical command run directly (not
+via the hook) works immediately. Root cause not fully diagnosable from outside Claude Code's
+internals — possibly a lock/lifecycle ordering specific to hook-created worktrees. **Workaround:**
+after `ExitWorktree action=remove`, manually run
+`git worktree remove .claude/worktrees/<name> --force && git worktree prune` (and
+`git branch -D worktree-<name>`) to actually clear it — the resources that matter (Docker container,
+slot lock) are already freed by the hook, so a lingering empty-of-resources directory is low-cost,
+not a correctness problem, just a manual sweep step for now.
+
 Slot numbering is a formula (`scripts/worktree-setup.sh`), not a fixed table, so there's no cap on
 worktree count: `APP_PORT = 7000 + slot*10 + 1`, `VITE_PORT = +2` (main stays 7001/7002, slot 1 is
 7011/7012, slot 2 is 7021/7022, and so on). The script writes an untracked `compose.override.yaml`
