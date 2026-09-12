@@ -152,6 +152,25 @@ final class PlanRenderer
     }
 
     /**
+     * One session's core km, for a caller holding a single row rather than an
+     * already-loaded week — looks up its own week's siblings so
+     * {@see self::plannedKmByDate()}'s `isPrimaryEasy`/multiplier still apply.
+     * Still the plain, unredistributed figure: no {@see VolumeRedistributor}
+     * scale reaches this.
+     */
+    public static function coreKmForSession(PlannedSession $session, float $longRunBaselineKm): float
+    {
+        $weekStart = $session->date->copy()->startOfWeek(Carbon::MONDAY);
+        $weekSessions = PlannedSession::query()
+            ->where('user_id', $session->user_id)
+            ->whereBetween('date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
+            ->get();
+
+        return self::plannedKmByDate($weekSessions, $longRunBaselineKm)[$session->date->toDateString()]
+            ?? SegmentGenerator::coreKmFor($session->session_type, false, $longRunBaselineKm, 1.0, self::raceDistanceOf($session));
+    }
+
+    /**
      * The whole outing, and the figure the segments beneath it add up to.
      * An Interval day is the one that cannot land on its own budget — a
      * whole number of fixed-duration reps rarely does — so it reports what
