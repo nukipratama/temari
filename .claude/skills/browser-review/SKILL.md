@@ -320,13 +320,16 @@ So the inspect agents **must verify before returning a finding**, and the schema
 so the requirement cannot be quietly skipped. `probe.mjs` makes that one command:
 
 ```bash
-node .claude/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] '<expression>'
+node .claude/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] [--shot] '<expression>'
 ```
 
 It logs in, sets the ground, optionally drives one control, evaluates the expression in the page and
-prints JSON. A claim that content is *missing* is answered by querying for it; a claim that something
-is *invisible* is answered by `getComputedStyle`; a claim about *size* is answered by
-`getBoundingClientRect`. That is how a flex-shrink bug squeezing a 6px dot to 0px was confirmed —
+prints JSON — `{ result, console, shot }`, where `console` is any console/pageerror messages captured
+during the run (always on, a live substitute for a browser devtools console mid-coding) and `shot` is
+a saved screenshot path when `--shot` is passed. A claim that content is *missing* is answered by
+querying for it; a claim that something is *invisible* is answered by `getComputedStyle`; a claim
+about *size* is answered by `getBoundingClientRect`. That is how a flex-shrink bug squeezing a 6px
+dot to 0px was confirmed —
 invisible in a screenshot, obvious in one call.
 
 Two standing sources of false positives to weigh before reporting at all:

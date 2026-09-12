@@ -21,18 +21,24 @@
  *
  * `click` drives a state first, so an accordion or modal can be inspected:
  *   node probe.mjs /settings dark --click='HR zones' 'document.body.innerText.length'
+ *
+ * Console/pageerror messages are always captured and printed alongside the
+ * result — a live substitute for a browser devtools console mid-coding.
+ * `--shot` also saves a full-page screenshot next to the JSON output:
+ *   node probe.mjs /settings dark --shot 'document.title'
  */
 import { chromium } from 'playwright';
-import { BASE, login, dismissReveal, DEVTOOLS_AUTH } from './lib.mjs';
+import { BASE, login, dismissReveal, fullPageScreenshot, SHOT, EXT, DEVTOOLS_AUTH } from './lib.mjs';
 
 const args = process.argv.slice(2);
 const clickArg = args.find((a) => a.startsWith('--click='));
+const wantsShot = args.includes('--shot');
 const rest = args.filter((a) => !a.startsWith('--'));
 const [route, ground = 'dark', expression] = rest;
 
 if (!route || !expression) {
     console.error(
-        "Usage: node probe.mjs <route> [dark|light] [--click=<text>] '<expression>'",
+        "Usage: node probe.mjs <route> [dark|light] [--click=<text>] [--shot] '<expression>'",
     );
     process.exit(2);
 }
@@ -46,6 +52,10 @@ const ctx = await browser.newContext({
     ...DEVTOOLS_AUTH,
 });
 const page = await ctx.newPage();
+
+const errors = [];
+page.on('console', (m) => { if (m.type() === 'error') errors.push(`[console] ${page.url()} :: ${m.text()}`); });
+page.on('pageerror', (e) => errors.push(`[pageerror] ${page.url()} :: ${e.message}`));
 
 await page.goto(`${BASE}/login`, { waitUntil: 'load' });
 await page.evaluate((g) => {
@@ -79,11 +89,18 @@ if (clickArg) {
     }
 }
 
+let shotPath = null;
+if (wantsShot) {
+    shotPath = `/tmp/probe-${Date.now()}.${EXT}`;
+    await fullPageScreenshot(page, shotPath, SHOT);
+}
+
 try {
     const result = await page.evaluate(`(() => (${expression}))()`);
-    console.log(JSON.stringify(result, null, 1));
+    console.log(JSON.stringify({ result, console: errors, shot: shotPath }, null, 1));
 } catch (error) {
     console.error(`EVAL FAILED: ${error.message.split('\n')[0]}`);
+    if (errors.length) console.error(errors.join('\n'));
     process.exitCode = 1;
 }
 
