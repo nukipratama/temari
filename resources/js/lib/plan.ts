@@ -231,6 +231,24 @@ export function kmLabel(day: PlanDay): string {
     return `${day.prescribed_km} km asked · ${day.actual_km ?? 0} km run`;
 }
 
+/**
+ * The current week's live volume redistribution can shrink an ungraded day's
+ * `distance_km` below what it was originally sized at (`asked_km`) as the
+ * athlete banks km elsewhere in the week. Returns that original figure only
+ * when it has actually moved, so the day's header can say why its number
+ * doesn't match what Home or its own narration says. A graded day (`prescribed_km`
+ * set) already has a settled answer to this via {@see kmLabel}.
+ */
+export function volumeAdjustedFrom(day: PlanDay): number | null {
+    if (day.prescribed_km != null || day.session_type === 'rest') {
+        return null;
+    }
+
+    return Math.abs(day.asked_km - day.distance_km) > 0.05
+        ? day.asked_km
+        : null;
+}
+
 /** The core set's pace target, which is the one pace a day is read at. */
 export function paceLabel(day: PlanDay): string | null {
     const core = day.segments.find(

@@ -14,6 +14,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         session_type: 'easy',
         segments: [],
         distance_km: 8,
+        asked_km: 8,
         pinned: false,
         skipped: false,
         status: 'done',

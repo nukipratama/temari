@@ -244,6 +244,11 @@ final class PlanRenderer
             $raceDistanceM,
             $volumeScale,
         );
+        // The plain, unredistributed ask — what Home's widget shows and what
+        // the day's own narration is sized from (see PlanDayTool). Exposed so
+        // the Plan page can say why `distance_km` moved, rather than the two
+        // screens just disagreeing with no explanation.
+        $askedKm = SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $raceDistanceM);
 
         return [
             'id' => $s->id,
@@ -252,6 +257,7 @@ final class PlanRenderer
             'session_type' => $sessionType->value,
             'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $segments),
             'distance_km' => $distanceKm,
+            'asked_km' => $askedKm,
             'pinned' => $s->pinned,
             'skipped' => $s->skipped,
             'status' => $status->value,

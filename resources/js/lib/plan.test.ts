@@ -12,6 +12,7 @@ import {
     kmLabel,
     paceLabel,
     phasesOf,
+    volumeAdjustedFrom,
     weekdayLabel,
     weekRangeLabel,
 } from './plan';
@@ -232,6 +233,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
             },
         ],
         distance_km: 8,
+        asked_km: 8,
         pinned: false,
         skipped: false,
         status: 'planned',
@@ -260,6 +262,46 @@ describe('kmLabel', () => {
         expect(kmLabel(planDay({ prescribed_km: 6 }))).toBe(
             '6 km asked · 0 km run',
         );
+    });
+});
+
+describe('volumeAdjustedFrom', () => {
+    it("reports the original ask once the week's redistribution moves the day off it", () => {
+        expect(
+            volumeAdjustedFrom(planDay({ distance_km: 3, asked_km: 8 })),
+        ).toBe(8);
+    });
+
+    it('reports nothing when redistribution left the day where it was', () => {
+        expect(
+            volumeAdjustedFrom(planDay({ distance_km: 8, asked_km: 8 })),
+        ).toBeNull();
+    });
+
+    it('ignores rounding-sized drift', () => {
+        expect(
+            volumeAdjustedFrom(planDay({ distance_km: 8, asked_km: 8.02 })),
+        ).toBeNull();
+    });
+
+    it('defers to the settled prescribed/actual figures once the day is graded', () => {
+        expect(
+            volumeAdjustedFrom(
+                planDay({ distance_km: 3, asked_km: 8, prescribed_km: 8 }),
+            ),
+        ).toBeNull();
+    });
+
+    it('never flags a rest day', () => {
+        expect(
+            volumeAdjustedFrom(
+                planDay({
+                    session_type: 'rest',
+                    distance_km: 0,
+                    asked_km: 8,
+                }),
+            ),
+        ).toBeNull();
     });
 });
 

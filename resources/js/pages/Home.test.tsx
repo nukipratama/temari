@@ -133,6 +133,7 @@ const weekPlan: WeekPlan = {
                 },
             ],
             distance_km: 8,
+            asked_km: 8,
             pinned: false,
             skipped: false,
             status: 'done',

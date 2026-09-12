@@ -383,8 +383,14 @@ export interface WeekPlanDay {
      *  `App\Services\Run\Plan\SegmentGenerator`. Empty on a rest day. */
     segments: PlanSessionSegment[];
     /** The whole outing, warmup included — the same figure `SessionMatcher`
-     *  grades the day's total logged distance against. */
+     *  grades the day's total logged distance against. Plan's current week
+     *  can shrink this below `asked_km` as the week's live volume
+     *  redistribution reacts to what's already been run. */
     distance_km: number;
+    /** The plain, unredistributed ask — what Home's widget shows and what
+     *  this day's own narration is sized from. Equal to `distance_km` unless
+     *  the current week's redistribution has moved it. */
+    asked_km: number;
     pinned: boolean;
     /** Explicitly excused before the day passed — never scored, doesn't
      *  penalize the week's adherence. Toggle with `PATCH .../sessions/{id}`. */

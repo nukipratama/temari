@@ -32,6 +32,7 @@ import {
     SESSION_TYPE_LABEL,
     STATUS_LABEL,
     STATUS_TONE,
+    volumeAdjustedFrom,
     weekdayLabel,
 } from '@/lib/plan';
 import { cardVariants } from '@/lib/variants';
@@ -121,6 +122,7 @@ export default function WeekDayRow({
     const pace = paceLabel(day);
     const isRest = day.session_type === 'rest';
     const ranAnyway = isRest && day.ran_anyway;
+    const adjustedFrom = volumeAdjustedFrom(day);
     const editable = day.date > today;
     // A day excused before it passes is still `planned` server-side until
     // plan:score-compliance runs the next morning; the row says "skipped" now.
@@ -168,6 +170,17 @@ export default function WeekDayRow({
                             <span className="mt-0.5 block text-xs text-text-2">
                                 {kmLabel(day)}
                                 {pace !== null && ` · ${pace}`}
+                            </span>
+                        )}
+                        {adjustedFrom !== null && (
+                            <span className="mt-0.5 flex items-center gap-1 text-label-micro text-text-2">
+                                <Icon
+                                    icon={ArrowDown}
+                                    className="size-3"
+                                    aria-hidden
+                                />
+                                asked for {adjustedFrom} km · adjusted for the
+                                week
                             </span>
                         )}
                         {ranAnyway && (
