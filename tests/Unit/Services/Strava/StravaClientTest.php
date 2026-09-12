@@ -18,6 +18,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class);
@@ -620,6 +621,7 @@ it('floors background headroom at zero once live reads pass the reserve', functi
 
 it('releases the athlete grant on Strava and reports acceptance', function (): void {
     Http::fake(['https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'revoked-token'])]);
+    Log::spy();
 
     $connection = StravaConnection::factory()->create([
         'access_token' => 'live-access',
@@ -631,6 +633,10 @@ it('releases the athlete grant on Strava and reports acceptance', function (): v
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
         && $request->method() === 'POST'
         && $request['access_token'] === 'live-access');
+    // The only signal a caller (or an operator reading the log later) has
+    // that Strava actually accepted the release, since a silent success
+    // otherwise reads identically to nobody having called this at all.
+    Log::shouldHaveReceived('info')->once()->with('strava deauthorize accepted', ['user_id' => $connection->user_id]);
 });
 
 it('refreshes an expired token before deauthorizing, so the grant is actually released', function (): void {
