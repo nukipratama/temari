@@ -158,6 +158,10 @@ class StravaClient
             return false;
         }
 
+        Log::info('strava deauthorize accepted', [
+            'user_id' => $connection->user_id,
+        ]);
+
         return true;
     }
 
