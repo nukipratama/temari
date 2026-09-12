@@ -24,6 +24,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
             },
         ],
         distance_km: 8,
+        asked_km: 8,
         pinned: false,
         skipped: false,
         status: 'planned',
@@ -82,6 +83,38 @@ describe('WeekDayRow', () => {
         expect(screen.getByText('Thu')).toBeInTheDocument();
         expect(screen.getByText('tempo')).toBeInTheDocument();
         expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
+    });
+
+    it("says why the ask moved when the week's live redistribution shrank it", () => {
+        renderRow({ day: day({ distance_km: 3, asked_km: 8 }) });
+
+        expect(
+            screen.getByText('asked for 8 km · adjusted for the week'),
+        ).toBeInTheDocument();
+    });
+
+    it('stays quiet when the redistributed figure matches what was asked', () => {
+        renderRow({ day: day({ distance_km: 8, asked_km: 8 }) });
+
+        expect(
+            screen.queryByText(/adjusted for the week/),
+        ).not.toBeInTheDocument();
+    });
+
+    it('stays quiet once the day is graded, even if distance and ask differ', () => {
+        renderRow({
+            day: day({
+                distance_km: 3,
+                asked_km: 8,
+                status: 'done',
+                prescribed_km: 8,
+                actual_km: 8,
+            }),
+        });
+
+        expect(
+            screen.queryByText(/adjusted for the week/),
+        ).not.toBeInTheDocument();
     });
 
     it('starts closed, as the prototype does', () => {

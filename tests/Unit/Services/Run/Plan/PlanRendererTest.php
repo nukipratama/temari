@@ -521,3 +521,33 @@ it('sessionDistanceKm falls back to the volume-scaled budget when no segment car
         ->and(PlanRenderer::sessionDistanceKm($segments, SessionType::Interval, false, 20.0, 1.0, null, 0.8))
         ->toBe(round($budget * 0.8, 1));
 });
+
+it('coreKmForSession scales by its own week\'s stamped multiplier, not a flat 1.0', function (): void {
+    $session = PlannedSession::factory()->create([
+        'date' => '2026-09-07',
+        'session_type' => SessionType::Long,
+        'phase' => PlanPhase::Build,
+        'volume_multiplier' => 1.3,
+    ]);
+
+    expect(PlanRenderer::coreKmForSession($session, 20.0))->toBe(round(20.0 * 1.3, 1));
+});
+
+it('coreKmForSession sizes the week\'s primary easy day at the medium fraction, a later one at the short fraction', function (): void {
+    $user = User::factory()->create();
+    $primaryEasy = PlannedSession::factory()->for($user)->create([
+        'date' => '2026-09-07',
+        'session_type' => SessionType::Easy,
+        'volume_multiplier' => 1.0,
+    ]);
+    $laterEasy = PlannedSession::factory()->for($user)->create([
+        'date' => '2026-09-09',
+        'session_type' => SessionType::Easy,
+        'volume_multiplier' => 1.0,
+    ]);
+
+    expect(PlanRenderer::coreKmForSession($primaryEasy, 20.0))
+        ->toBe(SegmentGenerator::coreKmFor(SessionType::Easy, true, 20.0, 1.0))
+        ->and(PlanRenderer::coreKmForSession($laterEasy, 20.0))
+        ->toBe(SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0));
+});

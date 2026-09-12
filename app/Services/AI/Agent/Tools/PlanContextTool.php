@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\WeekPlanBuilder;
@@ -83,7 +84,7 @@ final class PlanContextTool extends UserTool
                     'phase' => $session->phase->value,
                     'distance_km' => $session->prescribed_km !== null
                         ? round($session->prescribed_km, 1)
-                        : SegmentGenerator::coreKmForPlannedSession($session, $longRunBaselineKm),
+                        : PlanRenderer::coreKmForSession($session, $longRunBaselineKm),
                     'target_pace_sec' => $targetPaceSec,
                     'target_pace_formatted' => $targetPaceSec === null
                         ? null

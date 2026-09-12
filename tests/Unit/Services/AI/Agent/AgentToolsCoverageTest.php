@@ -25,8 +25,11 @@ use App\Services\AI\Agent\Tools\TrainingLoadTool;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\PlanPhase;
 use App\Services\AI\Agent\Tools\PlanAdherenceTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
+use App\Services\AI\Agent\Tools\PlanDayTool;
+use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
@@ -865,6 +868,52 @@ it('reads an empty mood mix when the runner has no story lines', function (): vo
         ->and($reading['total_runs'])->toBe(0);
 });
 
+// ── PlanDayTool ───────────────────────────────────────────────────────
+
+/**
+ * Regression for a bug where the tool always read `isPrimaryEasy: false` and
+ * `volumeMultiplier: 1.0`, so every easy day (and every week with a phase
+ * ramp) narrated the wrong distance — see {@see PlanRenderer::coreKmForSession()}.
+ */
+it('sizes the week\'s primary easy day bigger than a later easy day', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-09-07');
+    $primaryEasy = PlannedSession::factory()->for($user)->create([
+        'date' => $monday->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+    $laterEasy = PlannedSession::factory()->for($user)->create([
+        'date' => $monday->copy()->addDays(2)->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+    $baseline = app(TrainingBaseline::class);
+
+    $primaryReading = new PlanDayTool($primaryEasy, $baseline)->handle([]);
+    $laterReading = new PlanDayTool($laterEasy, $baseline)->handle([]);
+
+    expect($primaryReading['distance_km'])->toBeGreaterThan($laterReading['distance_km']);
+});
+
+it('scales today\'s reported distance by the week\'s own volume multiplier', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Long,
+        'phase' => PlanPhase::Build,
+        'volume_multiplier' => 1.3,
+    ]);
+    $baseline = app(TrainingBaseline::class);
+    $longRunKm = $baseline->forUser($user, $today)['long_run_km'];
+    $flatOldReading = round($longRunKm, 1); // the pre-fix figure: multiplier hardcoded to 1.0
+
+    $reading = new PlanDayTool($session, $baseline)->handle([]);
+
+    expect($reading['distance_km'])
+        ->toBe(round($longRunKm * 1.3, 1))
+        ->not->toBe($flatOldReading);
+});
+
 // ── PlanContextTool ───────────────────────────────────────────────────
 
 function planContextTool(User $user, Carbon $from, Carbon $through): PlanContextTool
@@ -926,6 +975,30 @@ it('derives the distance for a day the scorer has not reached yet', function ():
     $reading = planContextTool($user, $today, $today)->handle([]);
 
     expect($reading['days'][0]['distance_km'])->toBeGreaterThan(0.0);
+});
+
+/**
+ * Regression sibling to {@see PlanDayTool}'s own test: this tool falls back to
+ * the same {@see PlanRenderer::coreKmForSession()} figure, which must carry the
+ * week's real volume multiplier rather than a hardcoded 1.0.
+ */
+it('scales the fallback distance by the week\'s own volume multiplier', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Long,
+        'phase' => PlanPhase::Build,
+        'volume_multiplier' => 1.3,
+    ]);
+    $longRunKm = app(TrainingBaseline::class)->forUser($user, $today)['long_run_km'];
+    $flatOldReading = round($longRunKm, 1); // the pre-fix figure: multiplier hardcoded to 1.0
+
+    $reading = planContextTool($user, $today, $today)->handle([])['days'][0];
+
+    expect($reading['distance_km'])
+        ->toBe(round($longRunKm * 1.3, 1))
+        ->not->toBe($flatOldReading);
 });
 
 it('prefers the scored distance once the scorer has written one', function (): void {
