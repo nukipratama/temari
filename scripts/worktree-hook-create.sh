@@ -24,14 +24,22 @@ GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
 LOCKDIR="${GIT_COMMON_DIR}/temari-worktree-slots"
 mkdir -p "$LOCKDIR"
 
-SLOT=1
-while ! mkdir "${LOCKDIR}/slot-${SLOT}" 2>/dev/null; do
-  SLOT=$((SLOT + 1))
-done
+# A retried hook invocation for the same NAME lands here with $DIR already
+# existing (the `git worktree add` above was skipped) — reuse its already-
+# recorded slot instead of grabbing a new one, or the old slot's lock dir
+# leaks forever (nothing ever frees a slot this hook itself abandoned).
+if [ -f "${DIR}/.claude-worktree-slot" ]; then
+  SLOT="$(cat "${DIR}/.claude-worktree-slot")"
+else
+  SLOT=1
+  while ! mkdir "${LOCKDIR}/slot-${SLOT}" 2>/dev/null; do
+    SLOT=$((SLOT + 1))
+  done
+  echo "$SLOT" > "${DIR}/.claude-worktree-slot"
+fi
 
 (
   cd "$DIR"
-  echo "$SLOT" > .claude-worktree-slot
   ./scripts/worktree-setup.sh "$SLOT"
 ) >&2
 

@@ -32,7 +32,10 @@ services:
         image: 'redis:8-alpine'
         container_name: temari-shared-redis
         restart: unless-stopped
-        command: ['redis-server', '--databases', '64']
+        # 256, not the default 16: scripts/worktree-setup.sh assigns 3 indices per
+        # slot (SLOT*3..+2) with no cap on slot count, so 16 (or even 64) silently
+        # runs out ("DB index is out of range") well before that formula does.
+        command: ['redis-server', '--databases', '256']
         healthcheck:
             test: ['CMD', 'redis-cli', 'ping']
             retries: 3
@@ -78,7 +81,9 @@ services:
         image: 'redis:8-alpine'
         container_name: temari-shared-redis-test
         restart: unless-stopped
-        command: ['redis-server', '--save', '', '--appendonly', 'no', '--databases', '64']
+        # See the shared `redis` service above: no cap on slot count means no
+        # fixed database count is really safe either.
+        command: ['redis-server', '--save', '', '--appendonly', 'no', '--databases', '256']
         healthcheck:
             test: ['CMD', 'redis-cli', 'ping']
             retries: 3

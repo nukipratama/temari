@@ -79,6 +79,8 @@ set_env_var DB_ANALYTICS_DATABASE "$TEST_DB_SCHEMA" .env.testing
 set_env_var REDIS_HOST "temari-shared-redis-test" .env.testing
 set_env_var REDIS_DB "$TEST_REDIS_DB" .env.testing
 
+env_var() { grep -E "^${1}=" .env | cut -d= -f2-; }
+
 # A worktree's .git is a file holding an absolute host path into <main
 # repo>/.git/worktrees/<name>, which is outside this checkout's bind mount — so
 # git can't resolve the repo from inside the container and Pest's TIA engine
@@ -115,7 +117,7 @@ EOF
 # recreate. Export DB_PASSWORD so ${DB_PASSWORD} interpolation in that file
 # comes from this worktree's own .env, not a dotenv lookup relative to
 # --project-directory (which would otherwise resolve to the main checkout's).
-export DB_PASSWORD="$(grep -E '^DB_PASSWORD=' .env | cut -d= -f2-)"
+export DB_PASSWORD="$(env_var DB_PASSWORD)"
 SHARED_PROJECT_DIR="$(dirname "$GIT_COMMON_DIR")"
 shared() { docker compose -f compose.shared-services.yml --project-directory "$SHARED_PROJECT_DIR" "$@"; }
 
@@ -127,7 +129,7 @@ shared up -d --wait
 # (docker/mysql/init/01-databases.sh), just invoked directly against the
 # shared instance for this slot's schema names. Safe to re-run — it early-exits
 # once the analytics schema already exists.
-DB_USERNAME_VAL="$(grep -E '^DB_USERNAME=' .env | cut -d= -f2-)"
+DB_USERNAME_VAL="$(env_var DB_USERNAME)"
 shared exec -T \
   -e DB_DATABASE="$DB_SCHEMA" \
   -e DB_ANALYTICS_DATABASE="$DB_ANALYTICS_SCHEMA" \
