@@ -60,10 +60,17 @@ services:
         depends_on:
             mysql:
                 condition: service_healthy
+                required: false
             redis:
                 condition: service_healthy
+                required: false
+    # local-db: this checkout's own mysql/redis/mysql_test/redis_test. A worktree
+    # slot (scripts/worktree-setup.sh) clears COMPOSE_PROFILES so these are skipped
+    # entirely and the app points at compose.shared-services.yml instead — see the
+    # "Parallel worktrees" section in the temari skill.
     mysql:
         <<: *mysql-base
+        profiles: ['local-db']
         command:
             - '--innodb-buffer-pool-size=128M'
             - '--innodb-log-buffer-size=16M'
@@ -86,10 +93,12 @@ services:
             - './docker/mysql/init:/docker-entrypoint-initdb.d:ro'
     redis:
         <<: *redis-base
+        profiles: ['local-db']
         volumes:
             - 'sail-redis:/data'
     mysql_test:
         <<: *mysql-base
+        profiles: ['local-db']
         # Test workload: tmpfs storage, no durability.
         command:
             - '--innodb-buffer-pool-size=32M'
@@ -112,6 +121,7 @@ services:
             - './docker/mysql-test-init.sh:/docker-entrypoint-initdb.d/10-grant-paratest.sh:ro'
     redis_test:
         <<: *redis-base
+        profiles: ['local-db']
         command: ['redis-server', '--save', '', '--appendonly', 'no']
 networks:
     sail:

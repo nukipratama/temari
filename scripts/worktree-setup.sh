@@ -3,25 +3,30 @@
 # through; without it a failing step exits non-zero but reports nothing.
 set -Eeuo pipefail
 
-#   ./scripts/worktree-setup.sh <slot: 1|2|3>
+#   ./scripts/worktree-setup.sh <slot: 1, 2, 3, ...>
 #
 # Run once per worktree, right after `git worktree add` / EnterWorktree. See
-# the "temari" skill's "Parallel worktrees" section.
+# the "temari" skill's "Parallel worktrees" section. Slot numbering is a
+# formula, not a fixed table, so there's no cap on how many worktrees exist.
 
 usage() {
-  echo "Usage: $0 <slot: 1|2|3>" >&2
+  echo "Usage: $0 <slot: positive integer>" >&2
   exit 1
 }
 
 [ $# -eq 1 ] || usage
-
-case "$1" in
-  1) APP_PORT=7011; VITE_PORT=7012 ;;
-  2) APP_PORT=7021; VITE_PORT=7022 ;;
-  3) APP_PORT=7031; VITE_PORT=7032 ;;
-  *) usage ;;
-esac
+[[ "$1" =~ ^[1-9][0-9]*$ ]] || usage
 SLOT=$1
+
+APP_PORT=$((7000 + SLOT * 10 + 1))
+VITE_PORT=$((7000 + SLOT * 10 + 2))
+# Main dev Redis: 3 consecutive indices per slot (default/cache/pulse). Test
+# Redis: a separate, far-away range so it can never collide with the dev one.
+REDIS_BASE=$((SLOT * 3))
+TEST_REDIS_DB=$((30 + SLOT))
+DB_SCHEMA="temari_slot${SLOT}"
+DB_ANALYTICS_SCHEMA="temari_slot${SLOT}_analytics"
+TEST_DB_SCHEMA="temari_testing_slot${SLOT}"
 
 # `set -e` already exits non-zero on a failing step, but the only other signal
 # is the closing banner not printing — and composer's ~160 lines of progress
@@ -38,18 +43,41 @@ if [ "$(git rev-parse --git-common-dir)" = ".git" ]; then
 fi
 
 [ -f .env ] || cp .env.example .env
+[ -f .env.testing ] || cp .env.testing.example .env.testing
 
+# $3 selects the target file so the same helper writes both .env and
+# .env.testing — everything else about it is unchanged.
 set_env_var() {
-  if grep -qE "^${1}=" .env; then
-    sed -i.bak -E "s|^${1}=.*|${1}=${2}|" .env && rm -f .env.bak
+  local file="${3:-.env}"
+  if grep -qE "^${1}=" "$file"; then
+    sed -i.bak -E "s|^${1}=.*|${1}=${2}|" "$file" && rm -f "${file}.bak"
   else
-    printf '%s=%s\n' "$1" "$2" >> .env
+    printf '%s=%s\n' "$1" "$2" >> "$file"
   fi
 }
 
 set_env_var APP_PORT "$APP_PORT"
 set_env_var VITE_PORT "$VITE_PORT"
 set_env_var APP_URL "http://localhost:${APP_PORT}"
+
+# Point this worktree at the shared services (compose.shared-services.yml)
+# instead of its own local mysql/redis/mysql_test/redis_test — schema/DB-index
+# isolation, not container isolation. COMPOSE_PROFILES="" skips the
+# profile-gated local services entirely (see compose.yaml).
+set_env_var COMPOSE_PROFILES ""
+set_env_var DB_HOST "temari-shared-mysql"
+set_env_var DB_DATABASE "$DB_SCHEMA"
+set_env_var DB_ANALYTICS_DATABASE "$DB_ANALYTICS_SCHEMA"
+set_env_var REDIS_HOST "temari-shared-redis"
+set_env_var REDIS_DB "$REDIS_BASE"
+set_env_var REDIS_CACHE_DB "$((REDIS_BASE + 1))"
+set_env_var PULSE_REDIS_DB "$((REDIS_BASE + 2))"
+
+set_env_var DB_HOST "temari-shared-mysql-test" .env.testing
+set_env_var DB_DATABASE "$TEST_DB_SCHEMA" .env.testing
+set_env_var DB_ANALYTICS_DATABASE "$TEST_DB_SCHEMA" .env.testing
+set_env_var REDIS_HOST "temari-shared-redis-test" .env.testing
+set_env_var REDIS_DB "$TEST_REDIS_DB" .env.testing
 
 # A worktree's .git is a file holding an absolute host path into <main
 # repo>/.git/worktrees/<name>, which is outside this checkout's bind mount — so
@@ -66,7 +94,56 @@ services:
     app:
         volumes:
             - '${GIT_COMMON_DIR}:${GIT_COMMON_DIR}'
+        networks:
+            - sail
+            - shared-services
+networks:
+    shared-services:
+        external: true
+        name: temari-shared-services-net
 EOF
+
+# compose.shared-services.yml has a pinned `name:`, but Compose ALSO tracks the
+# invoking directory as part of a project's identity (its "working_dir" label,
+# used to resolve relative paths and .env interpolation) — every worktree calling
+# `docker compose up` from its OWN directory looks like a config change to
+# Compose, which then RECREATES the containers to match. mysql-test is tmpfs, so
+# that recreate silently wipes every other worktree's test schema. Pin
+# --project-directory to the main checkout (stable across every worktree, via
+# the common .git dir this script already resolves above) so every invocation,
+# from any worktree, agrees on the same identity and never triggers a spurious
+# recreate. Export DB_PASSWORD so ${DB_PASSWORD} interpolation in that file
+# comes from this worktree's own .env, not a dotenv lookup relative to
+# --project-directory (which would otherwise resolve to the main checkout's).
+export DB_PASSWORD="$(grep -E '^DB_PASSWORD=' .env | cut -d= -f2-)"
+SHARED_PROJECT_DIR="$(dirname "$GIT_COMMON_DIR")"
+shared() { docker compose -f compose.shared-services.yml --project-directory "$SHARED_PROJECT_DIR" "$@"; }
+
+# Idempotent: a cheap no-op if already up and healthy. Whichever worktree
+# happens to be created first brings this up for every worktree after it.
+shared up -d --wait
+
+# Reuses the same init script dev's own mysql already runs on a fresh volume
+# (docker/mysql/init/01-databases.sh), just invoked directly against the
+# shared instance for this slot's schema names. Safe to re-run — it early-exits
+# once the analytics schema already exists.
+DB_USERNAME_VAL="$(grep -E '^DB_USERNAME=' .env | cut -d= -f2-)"
+shared exec -T \
+  -e DB_DATABASE="$DB_SCHEMA" \
+  -e DB_ANALYTICS_DATABASE="$DB_ANALYTICS_SCHEMA" \
+  -e DB_USERNAME="$DB_USERNAME_VAL" \
+  -e DB_PASSWORD="$DB_PASSWORD" \
+  mysql sh < docker/mysql/init/01-databases.sh
+
+# docker/mysql-test-init.sh's wildcard grant lets paratest self-create each
+# per-worker schema (temari_testing_slot${SLOT}_test_1, _2, ...) at runtime,
+# same as before — but not this slot's own unsuffixed base name, which used
+# to be auto-created by the old per-worktree mysql_test's MYSQL_DATABASE env
+# var at container boot. The shared instance has no such per-slot env var, so
+# create it explicitly (idempotent).
+shared exec -T mysql-test \
+  mysql -uroot -p"${DB_PASSWORD}" \
+  -e "CREATE DATABASE IF NOT EXISTS \`${TEST_DB_SCHEMA}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 docker compose up -d
 docker compose exec -u root app chown -R www-data:www-data node_modules /var/cache/composer /var/cache/npm
@@ -89,11 +166,14 @@ app php artisan migrate --force
 # plain `migrate` does not touch it. Skipping this leaves strava_sync_logs and
 # ai_token_usages missing, which 500s /pulse and /devtools/narration — a gap every
 # worktree hit, because it only ever lived in this script's printed next-steps.
-# The schema itself is created on a fresh volume by docker/mysql/init.
+# The schema itself is created above via docker/mysql/init/01-databases.sh.
 app php artisan migrate --database=analytics --path=database/migrations/analytics --force
 
 cat <<EOF
-worktree-setup: slot $1 configured — APP_PORT=$APP_PORT, VITE_PORT=$VITE_PORT.
+worktree-setup: slot $SLOT configured — APP_PORT=$APP_PORT, VITE_PORT=$VITE_PORT.
+DB: $DB_SCHEMA (+ $DB_ANALYTICS_SCHEMA) on the shared mysql. Redis: indices
+$REDIS_BASE-$((REDIS_BASE + 2)) on the shared redis. Tests: $TEST_DB_SCHEMA
+on the shared test mysql, Redis index $TEST_REDIS_DB — see .env.testing.
 Stack is up, PHP deps installed, both the app and analytics schemas migrated.
 Composer/npm caches are shared across worktrees, so installs after the first
 one should be faster.
@@ -101,8 +181,8 @@ one should be faster.
 /devtools, /devtools/narration, /horizon and /pulse sit behind HTTP Basic — any username,
 password = DEVTOOLS_PASSWORD from this worktree's .env (seeded from .env.example).
 
-The PHP suites are ready now (they use their own self-initializing
-mysql_test/redis_test). To also load pages in a browser:
+The PHP suites are ready now (pest --parallel is safe to run concurrently in
+other worktrees too — see .env.testing above). To also load pages in a browser:
   ./vendor/bin/sail npm ci
   ./vendor/bin/sail npm run dev            # or \`npm run build\` for a one-shot build
 EOF

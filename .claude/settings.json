@@ -26,5 +26,13 @@
       "Bash(git push -f *)",
       "Bash(docker volume rm *)"
     ]
+  },
+  "hooks": {
+    "WorktreeCreate": [
+      { "hooks": [{ "type": "command", "command": "scripts/worktree-hook-create.sh" }] }
+    ],
+    "WorktreeRemove": [
+      { "hooks": [{ "type": "command", "command": "scripts/worktree-hook-remove.sh" }] }
+    ]
   }
 }
