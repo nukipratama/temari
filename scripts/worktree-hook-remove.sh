@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
-# WorktreeRemove hook — fully responsible for deleting the worktree
-# directory, matching the docs' own literal example (`jq -r .worktree_path |
-# xargs rm -rf`). Confirmed by testing: `git worktree remove` invoked FROM
-# THIS HOOK does not actually remove anything (it works fine when run
-# directly by the orchestrator, but silently no-ops from inside the hook —
-# whether that's the isolation sandbox's "no git redirect into the main
-# checkout" rule or a separate restriction on this specific git subcommand,
-# the practical fix is the same: don't rely on git here, just rm -rf like
-# the docs' own example does). A stale `git worktree list` entry left behind
-# self-heals on the next `git worktree add`/`prune`.
+# WorktreeRemove hook — fully responsible for removing the worktree.
 #
-# This hook's cwd is NOT reliably the main checkout (unlike WorktreeCreate),
-# so paths are derived from the known `.claude/worktrees/<name>` layout in
-# the JSON-provided absolute worktree_path, never from `cd`-then-relative.
+# An earlier version used `git -C "$MAIN_DIR" worktree remove ...`, which
+# silently failed to remove anything when run from inside this hook (though
+# the identical command worked fine run directly by the orchestrator).
+# Matches Claude Code's own documented isolation rule: a `git -C` redirect
+# into the main checkout is blocked. The fix, confirmed against a community
+# reference implementation (tfriedel/claude-worktree-hooks) doing the same
+# thing: call `git worktree remove` with NO `-C` flag at all — git resolves
+# the right repo from the target path's own metadata, so nothing "redirects
+# into" the main checkout.
 set -Eeuo pipefail
 
 WORKTREE_PATH="$(jq -r '.worktree_path // empty')"
@@ -28,4 +25,8 @@ if [ -f "${WORKTREE_PATH}/.claude-worktree-slot" ]; then
   [ -n "$GIT_COMMON_DIR" ] && rmdir "${GIT_COMMON_DIR}/temari-worktree-slots/slot-${SLOT}" 2>/dev/null || true
 fi
 
-rm -rf "$WORKTREE_PATH"
+BRANCH="$(git -C "$WORKTREE_PATH" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+git worktree remove "$WORKTREE_PATH" --force >&2 || true
+if [ -n "$BRANCH" ] && [[ "$BRANCH" == worktree-* ]]; then
+  git branch -D "$BRANCH" >&2 || true
+fi

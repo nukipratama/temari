@@ -310,18 +310,18 @@ Workflow: `EnterWorktree name=<slice>` (fires the `WorktreeCreate` hook, which a
 slot and runs the setup below) → normal fast-feedback ladder → `ExitWorktree action=remove|keep`
 (fires `WorktreeRemove`, tearing down just that worktree's `app` container and freeing its slot).
 
-**Known limitation, confirmed by testing (3 independent repro cycles):**
-`ExitWorktree action=remove` correctly runs the hook's cleanup (app container stopped, slot lock
-freed), but the worktree **directory and git registration itself is not actually removed**
-afterward — `git worktree list` still shows it. Neither `git worktree remove` nor a plain `rm -rf`
-called *from inside the hook* makes this stick, even though the identical command run directly (not
-via the hook) works immediately. Root cause not fully diagnosable from outside Claude Code's
-internals — possibly a lock/lifecycle ordering specific to hook-created worktrees. **Workaround:**
-after `ExitWorktree action=remove`, manually run
-`git worktree remove .claude/worktrees/<name> --force && git worktree prune` (and
-`git branch -D worktree-<name>`) to actually clear it — the resources that matter (Docker container,
-slot lock) are already freed by the hook, so a lingering empty-of-resources directory is low-cost,
-not a correctness problem, just a manual sweep step for now.
+**Known limitation, confirmed against a real Claude Code bug (anthropics/claude-code#57378, closed
+as a duplicate, and the community's `tfriedel/claude-worktree-hooks` project hits the same wall):**
+registering a `WorktreeRemove` hook at all changes how `ExitWorktree action=remove` behaves.
+`worktree-hook-remove.sh`'s own cleanup (app container stopped, slot lock freed, `git worktree
+remove` — called with **no `-C` flag**, since `git -C <main-checkout>` from inside the hook is
+exactly the "redirect into the main checkout" the isolation sandbox blocks and silently no-ops) does
+correctly delete the worktree's on-disk directory. But `git worktree list` still shows a `prunable`
+entry afterward, and the `worktree-<name>` branch isn't deleted — both `git worktree prune` and
+`git branch -D` fail to take effect when run from inside the same hook invocation (tested twice),
+so this residue can't currently be closed from the hook's side. **Workaround:** an occasional
+`git worktree prune && git branch -D worktree-<stale-name>` sweep — cheap, standard git hygiene,
+not a resource leak (no disk, containers, or locks left behind, just bookkeeping).
 
 Slot numbering is a formula (`scripts/worktree-setup.sh`), not a fixed table, so there's no cap on
 worktree count: `APP_PORT = 7000 + slot*10 + 1`, `VITE_PORT = +2` (main stays 7001/7002, slot 1 is
