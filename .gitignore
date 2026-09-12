@@ -4,6 +4,7 @@
 .env.backup
 .env.production
 .env.testing*
+!.env.testing.example
 .phpactor.json
 .phpunit.result.cache
 /.codex
@@ -39,6 +40,9 @@ Thumbs.db
 
 # Written per-worktree by scripts/worktree-setup.sh (same-path shared git dir mount)
 /compose.override.yaml
+
+# Written by scripts/worktree-hook-create.sh to record this worktree's slot number
+/.claude-worktree-slot
 
 # Infection log
 /storage/infection.log

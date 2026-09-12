@@ -294,23 +294,91 @@ clean checkout selects nothing and exits 0. Cost of getting that wrong: it found
 
 ## Parallel worktrees & stacked PRs
 
-Running 2-3 Claude Code agents concurrently, each in its own `git worktree`, is safe — Compose
+Running several Claude Code agents concurrently, each in its own `git worktree`, is safe — Compose
 derives its project name (containers/network/volumes) from the checkout's **directory basename**,
 and `compose.yaml` has no hardcoded `name:`/`COMPOSE_PROJECT_NAME`, so every worktree already gets
-its own isolated stack for free. `mysql`/`redis` are never published to the host at all (only
-reached via `sail mysql`/`sail artisan tinker`/`docker exec`), so the only real collision is
-**fixed host ports** (`.env.example`'s `APP_PORT`/`VITE_PORT`), which two worktrees would both try
-to bind off an unmodified `.env`. No changes needed to `compose.yaml` or `.githooks/pre-commit` —
-the pre-commit hook's `docker compose ps` check already resolves per-cwd correctly.
+its own isolated `app` container for free. `mysql`/`redis`/`mysql_test`/`redis_test` are never
+published to the host at all (only reached via `sail mysql`/`sail artisan tinker`/`docker exec`),
+so the only real collision on the main checkout is **fixed host ports**
+(`.env.example`'s `APP_PORT`/`VITE_PORT`), which two worktrees would both try to bind off an
+unmodified `.env`. No changes needed to `.githooks/pre-commit` — its `docker compose ps` check
+already resolves per-cwd correctly.
 
-Workflow: `EnterWorktree name=<slice>` → `./scripts/worktree-setup.sh <slot 1|2|3>` → normal
-fast-feedback ladder → `ExitWorktree action=remove|keep`. The script takes its own
-`APP_PORT`/`VITE_PORT` off a static slot table (main stays 7001/7002, slots use 701x/702x), writes
-an untracked `compose.override.yaml` mounting the shared git dir so TIA works, brings the stack up,
-fixes cache-volume ownership, then bootstraps the app: `composer install`, `key:generate`, and
-**both** migration sets. Every step is guarded or idempotent, so re-running the script after a
-failure is safe. `vendor/` is empty when it starts, so it uses plain `docker compose exec` for all
-of it; `./vendor/bin/sail` works for everything afterwards.
+Worktrees don't each get their own MySQL/Redis, though — see "Shared services" below.
+
+Workflow: `EnterWorktree name=<slice>` (fires the `WorktreeCreate` hook, which auto-picks a free
+slot and runs the setup below) → normal fast-feedback ladder → `ExitWorktree action=remove|keep`
+(fires `WorktreeRemove`, tearing down just that worktree's `app` container and freeing its slot).
+
+**Known limitation, confirmed against a real Claude Code bug (anthropics/claude-code#57378, closed
+as a duplicate, and the community's `tfriedel/claude-worktree-hooks` project hits the same wall):**
+registering a `WorktreeRemove` hook at all changes how `ExitWorktree action=remove` behaves.
+`worktree-hook-remove.sh`'s own cleanup (app container stopped, slot lock freed, `git worktree
+remove` — called with **no `-C` flag**, since `git -C <main-checkout>` from inside the hook is
+exactly the "redirect into the main checkout" the isolation sandbox blocks and silently no-ops) does
+correctly delete the worktree's on-disk directory. But `git worktree list` still shows a `prunable`
+entry afterward, and the `worktree-<name>` branch isn't deleted — both `git worktree prune` and
+`git branch -D` fail to take effect when run from inside the same hook invocation (tested twice),
+so this residue can't currently be closed from the hook's side. **Workaround:** an occasional
+`git worktree prune && git branch -D worktree-<stale-name>` sweep — cheap, standard git hygiene,
+not a resource leak (no disk, containers, or locks left behind, just bookkeeping).
+
+Slot numbering is a formula (`scripts/worktree-setup.sh`), not a fixed table, so there's no cap on
+worktree count: `APP_PORT = 7000 + slot*10 + 1`, `VITE_PORT = +2` (main stays 7001/7002, slot 1 is
+7011/7012, slot 2 is 7021/7022, and so on). The script writes an untracked `compose.override.yaml`
+mounting the shared git dir so TIA works and joining the shared-services network, brings the shared
+stack and this worktree's `app` up, fixes cache-volume ownership, then bootstraps the app:
+`composer install`, `key:generate`, and **both** migration sets. Every step is guarded or
+idempotent, so re-running the script (`./scripts/worktree-setup.sh <slot>`) after a failure is
+safe — this is also how to run it manually instead of via the hook. `vendor/` is empty when it
+starts, so it uses plain `docker compose exec` for all of it; `./vendor/bin/sail` works for
+everything afterwards.
+
+### Shared services
+
+Each worktree's own MySQL+Redis was cheap at 2-3 worktrees but doesn't scale: `docker stats` during
+a real `pest --parallel` run showed `mysql_test` peaking at 168% CPU / 641MB — a real cost per idle
+worktree, not just `app`'s own (dominant, ~300% CPU) load. So `compose.shared-services.yml` (a
+separate, pinned-name Compose project: `temari-shared-services`) runs exactly one `mysql`, `redis`,
+`mysql-test` and `redis-test`, and every worktree's `app` talks to those instead of its own —
+`compose.yaml`'s `mysql`/`redis`/`mysql_test`/`redis_test` are gated behind a `local-db` Compose
+profile that only the main checkout enables by default (`.env.example`'s `COMPOSE_PROFILES=local-db`);
+`worktree-setup.sh` clears it for a worktree, so `docker compose up` there never starts them.
+
+Isolation moves from *separate containers* to *separate schema* (MySQL: `temari_slot{N}` /
+`temari_slot{N}_analytics`) and *separate logical Redis DB index* (`3*N` for dev's
+default/cache/pulse). `migrate:fresh` only ever touches the schema its own connection is bound to,
+so one worktree's `migrate:fresh`/paratest run still can't wipe or lock another's — the safety
+property worktrees used to get from separate containers now comes from separate schemas instead.
+Schema provisioning reuses `docker/mysql/init/01-databases.sh` directly against the shared instance
+(same script dev's own `mysql` already runs on a fresh volume).
+
+Tests get the same treatment via **`.env.testing`** (gitignored, bootstrapped from
+`.env.testing.example` — same pattern as `.env`/`.env.example`): `phpunit.xml` no longer hardcodes
+`DB_HOST`/`DB_DATABASE`/`DB_ANALYTICS_DATABASE`/`REDIS_HOST`, since Laravel swaps in `.env.testing`
+whenever `APP_ENV=testing` (which `phpunit.xml` still sets). Each worktree's `.env.testing` points
+at the shared test services with `DB_DATABASE=temari_testing_slot{N}`; Laravel's `ParallelTesting`
+still appends its own per-worker suffix on top (`_test_{token}`), so the final name
+(`temari_testing_slot{N}_test_{token}`) is unique per worktree *and* per paratest worker with no
+custom resolver needed. `docker/mysql-test-init.sh`'s grant is already a `` `temari_testing%` ``
+wildcard, so paratest self-creates each per-worker schema exactly like before — the one thing that
+wildcard doesn't cover is the slot's own *unsuffixed* base schema (previously auto-created by
+`mysql_test`'s `MYSQL_DATABASE` env var at container boot, which the shared instance has no
+per-slot equivalent of), so `worktree-setup.sh` creates that one explicitly.
+
+`vendor/`/`node_modules` stay per-worktree, unchanged — see below, this was deliberately not
+folded into the consolidation.
+
+**The Compose gotcha that bit this once, so it doesn't again.** `compose.shared-services.yml` has a
+pinned `name:`, but Compose *also* tracks the invoking directory as part of a project's identity
+(its `working_dir` label). A worktree calling `docker compose up` from its own directory looks like
+a config change to Compose even though the file content is identical — Compose then **recreates**
+the containers to match, and since `mysql-test`/`redis-test` are tmpfs, that recreate silently
+wipes every other worktree's test schema. Measured directly: benchmarking 3 concurrent worktrees
+lost 2 of 3 test schemas mid-run this way. Every call against `compose.shared-services.yml` in
+`worktree-setup.sh` goes through its `shared()` helper, which pins `--project-directory` to the
+main checkout (stable across every worktree) specifically to prevent this — **any new call against
+that file must go through `shared()` too**, never a bare `docker compose -f compose.shared-services.yml`.
 
 **Both** migration sets matters. `analytics` is a second connection with its own migration path, so
 a plain `artisan migrate` does not touch it — the script also runs
@@ -330,10 +398,14 @@ worktree's install just replays from cache instead of re-downloading over the ne
 right after bringing the stack up, since they're created root-owned on first boot and the container
 always runs as `www-data` — no manual fix needed.
 
-**Throughput, rule of thumb.** On 6 cores / 10 GB each idle stack costs ≈0.7 GB, so the ceiling is
-CPU, not RAM: at most **two** worktrees may run the gate's Pest step at the same time
+**Throughput, rule of thumb.** `docker stats` during a real `pest --parallel` run showed `app`
+dominates resource use regardless of the shared-services consolidation (peak ~300% CPU; `mysql_test`
+was a distant second at 168%, everything else negligible) — so the ceiling is CPU, not RAM, same as
+before: at most **two** worktrees may run the gate's Pest step at the same time
 (`GATE_PEST_PROCESSES` defaults to 3, and a third concurrent run starves them all), and
-`check:full` — rector, coverage and the Vite build — in **one** worktree at a time.
+`check:full` — rector, coverage and the Vite build — in **one** worktree at a time. Sharing
+MySQL/Redis mainly buys back memory/container overhead for idle worktrees, not CPU headroom during
+genuinely concurrent heavy test runs.
 
 **Git hooks are shared, not per-worktree.** `core.hooksPath` lives in the common `.git/config` that
 linked worktrees inherit, so every worktree runs the *main checkout's* `.githooks/` at whatever
@@ -356,10 +428,7 @@ never rotates it out from under a live session.)
 
 The Docker image (`temari/dev`) and its build cache are shared across worktrees on purpose (plain
 local tag, not project-scoped) — only pass `--build` again if a worktree's slice actually touches
-`Dockerfile`/PHP extensions, so two worktrees don't race an in-flight rebuild. Each worktree gets
-its own full DB/Redis stack rather than sharing one — cheap (dev-tuned, tmpfs test DBs), and
-sharing would let one agent's `migrate:fresh`/paratest run wipe or lock schema state another
-agent's test run depends on mid-flight.
+`Dockerfile`/PHP extensions, so two worktrees don't race an in-flight rebuild.
 
 **Sequential (dependency-wave) slices** — when wave N+1 must branch off wave N's *unmerged* code —
 don't fit plain parallel worktrees (`EnterWorktree`'s base ref is `origin/main` by default). Branch

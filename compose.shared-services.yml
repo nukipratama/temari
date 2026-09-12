@@ -1,0 +1,99 @@
+# One shared MySQL + one shared Redis (dev and test each), used by every git
+# worktree slot instead of each getting its own full stack. Isolation moves
+# from "separate containers" to "separate schema" (MySQL, via DB_DATABASE)
+# and "separate logical DB index" (Redis, via REDIS_DB) — see the "Parallel
+# worktrees" section in the temari skill. Brought up by scripts/worktree-setup.sh;
+# the main checkout never touches this file (COMPOSE_PROFILES=local-db keeps
+# it on its own compose.yaml services).
+name: temari-shared-services
+
+services:
+    mysql:
+        image: 'mysql:8.4'
+        container_name: temari-shared-mysql
+        restart: unless-stopped
+        command:
+            - '--innodb-buffer-pool-size=192M'
+            - '--max-connections=120'
+            - '--performance-schema=OFF'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ROOT_HOST: '%'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        healthcheck:
+            test: ['CMD', 'mysqladmin', 'ping', '-p${DB_PASSWORD}']
+            retries: 3
+            timeout: 5s
+        volumes:
+            - 'temari-shared-mysql:/var/lib/mysql'
+        networks: [shared-services]
+
+    redis:
+        image: 'redis:8-alpine'
+        container_name: temari-shared-redis
+        restart: unless-stopped
+        # 256, not the default 16: scripts/worktree-setup.sh assigns 3 indices per
+        # slot (SLOT*3..+2) with no cap on slot count, so 16 (or even 64) silently
+        # runs out ("DB index is out of range") well before that formula does.
+        command: ['redis-server', '--databases', '256']
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            retries: 3
+            timeout: 5s
+        volumes:
+            - 'temari-shared-redis:/data'
+        networks: [shared-services]
+
+    mysql-test:
+        image: 'mysql:8.4'
+        container_name: temari-shared-mysql-test
+        restart: unless-stopped
+        # Test workload: tmpfs storage, no durability — same tuning as
+        # compose.yaml's mysql_test, bumped for N worktrees' paratest workers
+        # sharing one instance instead of 8 workers alone.
+        command:
+            - '--innodb-buffer-pool-size=64M'
+            - '--max-connections=400'
+            - '--performance-schema=OFF'
+            - '--innodb-flush-log-at-trx-commit=0'
+            - '--innodb-doublewrite=0'
+            - '--skip-log-bin'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ROOT_HOST: '%'
+            MYSQL_USER: '${DB_USERNAME}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        tmpfs:
+            - /var/lib/mysql
+        healthcheck:
+            test: ['CMD', 'mysqladmin', 'ping', '-p${DB_PASSWORD}']
+            retries: 3
+            timeout: 5s
+        volumes:
+            # Same wildcard grant as compose.yaml's mysql_test — covers any
+            # temari_testing*-prefixed schema, including the slot-prefixed
+            # names .env.testing now uses, with no changes needed here.
+            - './docker/mysql-test-init.sh:/docker-entrypoint-initdb.d/10-grant-paratest.sh:ro'
+        networks: [shared-services]
+
+    redis-test:
+        image: 'redis:8-alpine'
+        container_name: temari-shared-redis-test
+        restart: unless-stopped
+        # See the shared `redis` service above: no cap on slot count means no
+        # fixed database count is really safe either.
+        command: ['redis-server', '--save', '', '--appendonly', 'no', '--databases', '256']
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            retries: 3
+            timeout: 5s
+        networks: [shared-services]
+
+networks:
+    shared-services:
+        name: temari-shared-services-net
+
+volumes:
+    temari-shared-mysql:
+    temari-shared-redis:

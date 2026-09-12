@@ -25,16 +25,16 @@
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="mysql"/>
-        <env name="DB_HOST" value="mysql_test"/>
+        <!-- DB_HOST/DB_DATABASE/DB_ANALYTICS_DATABASE/REDIS_HOST come from
+             .env.testing (see .env.testing.example), not hardcoded here:
+             Laravel swaps in .env.testing whenever APP_ENV=testing (set
+             above), the same way .env is per-worktree for dev. Lets each
+             worktree point at its own schema on the shared test services
+             without editing this tracked file. -->
         <env name="DB_PORT" value="3306"/>
-        <env name="DB_DATABASE" value="temari_testing"/>
-        <!-- analytics connection co-locates in the default test DB; TestCase
-             re-points it at the per-process DB before RefreshDatabase boots. -->
-        <env name="DB_ANALYTICS_DATABASE" value="temari_testing"/>
         <env name="DB_USERNAME" value="sail"/>
         <env name="DB_PASSWORD" value="password"/>
         <env name="DB_URL" value=""/>
-        <env name="REDIS_HOST" value="redis_test"/>
         <env name="REDIS_PORT" value="6379"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
