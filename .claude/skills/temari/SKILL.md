@@ -160,7 +160,7 @@ The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headli
 
 Every narrated block flows: **Narrator → Analyze\*Job → Analysis row → AnalysisType → AnalysisController → UI (AnalysisStatus)**.
 The failure model, idempotency guard, and unconfigured-env fallback are documented in the
-always-on guideline ("LLM Integration" in CLAUDE.md).
+always-on guideline ("LLM Integration" in AGENTS.md).
 
 ### Adding a new narrated block — all 6 wires
 
@@ -294,7 +294,7 @@ clean checkout selects nothing and exits 0. Cost of getting that wrong: it found
 
 ## Parallel worktrees & stacked PRs
 
-Running several Claude Code agents concurrently, each in its own `git worktree`, is safe — Compose
+Running several implementation agents concurrently, each in its own `git worktree`, is safe — Compose
 derives its project name (containers/network/volumes) from the checkout's **directory basename**,
 and `compose.yaml` has no hardcoded `name:`/`COMPOSE_PROJECT_NAME`, so every worktree already gets
 its own isolated `app` container for free. `mysql`/`redis`/`mysql_test`/`redis_test` are never
@@ -306,9 +306,12 @@ already resolves per-cwd correctly.
 
 Worktrees don't each get their own MySQL/Redis, though — see "Shared services" below.
 
-Workflow: `EnterWorktree name=<slice>` (fires the `WorktreeCreate` hook, which auto-picks a free
-slot and runs the setup below) → normal fast-feedback ladder → `ExitWorktree action=remove|keep`
-(fires `WorktreeRemove`, tearing down just that worktree's `app` container and freeing its slot).
+Claude Code lifecycle: `EnterWorktree name=<slice>` fires the `WorktreeCreate` hook, which
+auto-picks a free slot and runs the setup below. `ExitWorktree action=remove|keep` fires
+`WorktreeRemove`, tearing down just that worktree's `app` container and freeing its slot. Codex
+does not run these hooks. For Codex, use its isolated worktree support when available; until a
+runtime adapter runs this repository's setup, use the manual `git worktree add` plus
+`scripts/worktree-setup.sh` fallback in `AGENTS.md`.
 
 **Known limitation, confirmed against a real Claude Code bug (anthropics/claude-code#57378, closed
 as a duplicate, and the community's `tfriedel/claude-worktree-hooks` project hits the same wall):**
@@ -431,9 +434,10 @@ local tag, not project-scoped) — only pass `--build` again if a worktree's sli
 `Dockerfile`/PHP extensions, so two worktrees don't race an in-flight rebuild.
 
 **Sequential (dependency-wave) slices** — when wave N+1 must branch off wave N's *unmerged* code —
-don't fit plain parallel worktrees (`EnterWorktree`'s base ref is `origin/main` by default). Branch
-manually instead: `git worktree add .claude/worktrees/<name> wave1-branch`, then
-`EnterWorktree path=.claude/worktrees/<name>` to adopt it for cleanup tracking. This is the one
+don't fit plain parallel worktrees (Claude Code's `EnterWorktree` base ref is `origin/main` by
+default). Branch manually instead: `git worktree add <worktree-root>/<name> wave1-branch`. Claude
+Code may then use `EnterWorktree path=<worktree-root>/<name>` to adopt it for cleanup tracking;
+Codex continues in the explicit worktree and runs the manual setup above. This is the one
 case where GitHub's native **stacked PRs** (public preview since 2026-07-30, `gh extension install
 github/gh-stack`) are worth reaching for: each layer's PR targets the layer below instead of
 `main`, and merging a lower layer auto-cascades the merge/rebase of everything above. Don't reach
