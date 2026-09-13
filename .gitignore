@@ -8,6 +8,7 @@
 .phpactor.json
 .phpunit.result.cache
 /.codex
+/.planning/
 /.cursor/
 /.idea
 /.nova
