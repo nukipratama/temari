@@ -5,10 +5,16 @@ This is the canonical project guidance shared by agents. Runtime entrypoints may
 ## Shared agent workflow
 
 - Small, focused changes may be done directly. Delegate larger implementation work and run it in an isolated worktree, using the current runtime's native isolation when it also applies the repository setup.
-- For manual isolation, run `git worktree add <path> -b <branch> <base>`, then run `./scripts/worktree-setup.sh <unused-positive-slot>` inside the new worktree. The setup script assigns ports and isolated schemas on the shared MySQL/Redis services, installs dependencies, and runs both migration sets.
-- The `WorktreeCreate` and `WorktreeRemove` hooks in `.claude/settings.json` are runtime-specific configuration. Other agent and manual Git worktree flows use the preceding setup command; they do not consume those hooks.
-- Run long commands in the foreground with Bash timeout 600000, never background them; a screenshot-reader subagent runs with run_in_background: false; never artisan tinker <file>, use --execute. Stop tests, builds, and servers when their task ends.
+- For manual isolation, run `scripts/worktree create <name> [base]` to create a worktree (allocates a slot, branches from `base`, assigns ports and isolated schemas on the shared MySQL/Redis services, installs dependencies, runs both migration sets, and rolls back on failure) and `scripts/worktree remove <path>` to tear one down.
+- Run long commands in the foreground, never background them; never `artisan tinker <file>`, use `--execute`. Stop tests, builds, and servers when their task ends.
 - When `.planning/README.md` exists, treat it as the gitignored local pointer to current programme state. It is working context, not a file to commit.
+
+## Claude Code notes
+
+Runtime-specific detail for the Claude Code agent; other agents can skip this section.
+
+- The `WorktreeCreate`/`WorktreeRemove` hooks in `.claude/settings.json`, invoked via `EnterWorktree`/`ExitWorktree`, call the same `scripts/worktree create`/`remove` commands as the manual flow above.
+- Run long commands with Bash `timeout: 600000` instead of backgrounding them; run a screenshot-reader subagent with `run_in_background: false`.
 
 ## External actions
 
@@ -25,7 +31,7 @@ This is the canonical project guidance shared by agents. Runtime entrypoints may
 - Write UI copy, prompt strings, route paths, identifiers, enum values, and environment variable names in English; there is no i18n layer. Deliberate regression assertions retain the Indonesian phrases they prove absent: `angin` and `tidak tersedia` in `RunCardImageRendererTest`, and `maksimal 90 kata` / `maksimal 100 kata` in `NarratorsCoverageTest`. The badge-rename migration also retains old slugs as migration inputs.
 - A second **`analytics`** DB connection (separate schema, same MySQL server) holds metering tables (e.g. `ai_token_usages`). Its migrations live in `database/migrations/analytics/` and run via `--database=analytics --path=...`; in tests it shares the default test DB (see [tests/TestCase.php](tests/TestCase.php)). Beyond `AI`, backend logic is split by domain under `app/Services/` (`AI`, `Run`, `Gamification`, `Strava`, `Geo`, `Weather`); see the `temari` skill for the full map.
 
-> **Design tokens, voice and tone, typography, the AI narrator pipeline, the 1:1 test convention, and the Sail toolchain live in the canonical `temari` skill at `.claude/skills/temari/`; `.agents/skills/temari/` is its discovery pointer.** Activate it for UI, AI narration, or test work. Source-of-truth docs: [docs/design-tokens.md](docs/design-tokens.md), [docs/voice-and-tone.md](docs/voice-and-tone.md).
+> **Design tokens, voice and tone, typography, the AI narrator pipeline, the 1:1 test convention, and the Sail toolchain live in the canonical `temari` skill at `.claude/skills/temari/`.** Activate it for UI, AI narration, or test work. Source-of-truth docs: [docs/design-tokens.md](docs/design-tokens.md), [docs/voice-and-tone.md](docs/voice-and-tone.md).
 
 ## Knowledge base (`docs/`)
 
