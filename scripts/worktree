@@ -1,0 +1,500 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/$(basename "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+CHECKOUT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
+SLOT_FILE=".claude-worktree-slot"
+LOCKS_NAME="temari-worktree-slots"
+
+usage() {
+  cat >&2 <<EOF
+Usage:
+  scripts/worktree create <name> [base]
+  scripts/worktree setup <slot>
+  scripts/worktree remove <path>
+EOF
+  exit 1
+}
+
+fail() {
+  echo "worktree: $*" >&2
+  return 1
+}
+
+is_positive_integer() {
+  [[ "$1" =~ ^[1-9][0-9]*$ ]]
+}
+
+git_dir_for() {
+  git -C "$1" rev-parse --path-format=absolute --git-dir
+}
+
+git_common_dir_for() {
+  git -C "$1" rev-parse --path-format=absolute --git-common-dir
+}
+
+is_main_checkout() {
+  [ "$(git_dir_for "$1")" = "$(git_common_dir_for "$1")" ]
+}
+
+absolute_path() {
+  local path="$1"
+  local parent
+
+  if [ -d "$path" ]; then
+    (cd "$path" && pwd -P)
+    return
+  fi
+
+  parent="$(dirname "$path")"
+  [ -d "$parent" ] || return 1
+  printf '%s/%s\n' "$(cd "$parent" && pwd -P)" "$(basename "$path")"
+}
+
+env_value() {
+  local file="$1"
+  local key="$2"
+  sed -n -E "s/^${key}=//p" "$file" | head -n 1
+}
+
+set_env_var() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+
+  if grep -qE "^${key}=" "$file"; then
+    sed -i.bak -E "s|^${key}=.*|${key}=${value}|" "$file"
+    rm -f "${file}.bak"
+  else
+    printf '%s=%s\n' "$key" "$value" >> "$file"
+  fi
+}
+
+reserve_slot_for() {
+  local worktree="$1"
+  local slot="$2"
+  local common_dir="$3"
+  local locks_dir="${common_dir}/${LOCKS_NAME}"
+  local slot_dir="${locks_dir}/slot-${slot}"
+  local recorded_slot=""
+  local owner=""
+
+  [ ! -f "${worktree}/${SLOT_FILE}" ] || recorded_slot="$(<"${worktree}/${SLOT_FILE}")"
+  if [ -n "$recorded_slot" ] && [ "$recorded_slot" != "$slot" ]; then
+    fail "${worktree} already owns slot ${recorded_slot}; refusing slot ${slot}"
+    return
+  fi
+
+  mkdir -p "$locks_dir"
+  if mkdir "$slot_dir" 2>/dev/null; then
+    if ! printf '%s\n' "$worktree" > "${slot_dir}/path"; then
+      rmdir "$slot_dir" 2>/dev/null || true
+      return 1
+    fi
+  else
+    [ ! -f "${slot_dir}/path" ] || owner="$(<"${slot_dir}/path")"
+    if [ -n "$owner" ] && [ "$owner" != "$worktree" ]; then
+      fail "slot ${slot} is already reserved by ${owner}"
+      return
+    fi
+    if [ -z "$owner" ] && [ "$recorded_slot" != "$slot" ]; then
+      fail "slot ${slot} is already reserved"
+      return
+    fi
+    printf '%s\n' "$worktree" > "${slot_dir}/path"
+  fi
+
+  printf '%s\n' "$slot" > "${worktree}/${SLOT_FILE}"
+}
+
+ALLOCATED_SLOT=""
+allocate_slot_for() {
+  local worktree="$1"
+  local branch="$2"
+  local common_dir="$3"
+  local locks_dir="${common_dir}/${LOCKS_NAME}"
+  local slot=1
+  local slot_dir
+
+  mkdir -p "$locks_dir"
+  while true; do
+    slot_dir="${locks_dir}/slot-${slot}"
+    if mkdir "$slot_dir" 2>/dev/null; then
+      if printf '%s\n' "$worktree" > "${slot_dir}/path" &&
+        printf '%s\n' "$branch" > "${slot_dir}/branch"; then
+        ALLOCATED_SLOT="$slot"
+        return
+      fi
+      rm -f "${slot_dir}/path" "${slot_dir}/branch"
+      rmdir "$slot_dir" 2>/dev/null || true
+      return 1
+    fi
+    slot=$((slot + 1))
+  done
+}
+
+setup_impl() {
+  local worktree="$1"
+  local slot="$2"
+  local git_common_dir
+  local app_port=$((7000 + slot * 10 + 1))
+  local vite_port=$((7000 + slot * 10 + 2))
+  local redis_base=$((slot * 3))
+  local test_redis_db=$((30 + slot))
+  local db_schema="temari_slot${slot}"
+  local db_analytics_schema="temari_slot${slot}_analytics"
+  local test_db_schema="temari_testing_slot${slot}"
+  local db_username
+
+  worktree="$(absolute_path "$worktree")"
+  if is_main_checkout "$worktree"; then
+    fail "setup refuses the main checkout; run it from a linked worktree"
+    return
+  fi
+
+  git_common_dir="$(git_common_dir_for "$worktree")"
+  reserve_slot_for "$worktree" "$slot" "$git_common_dir"
+
+  cd "$worktree"
+  [ -f .env ] || cp .env.example .env
+  [ -f .env.testing ] || cp .env.testing.example .env.testing
+
+  set_env_var .env APP_PORT "$app_port"
+  set_env_var .env VITE_PORT "$vite_port"
+  set_env_var .env APP_URL "http://localhost:${app_port}"
+  set_env_var .env COMPOSE_PROFILES ""
+  set_env_var .env DB_HOST "temari-shared-mysql"
+  set_env_var .env DB_DATABASE "$db_schema"
+  set_env_var .env DB_ANALYTICS_DATABASE "$db_analytics_schema"
+  set_env_var .env REDIS_HOST "temari-shared-redis"
+  set_env_var .env REDIS_DB "$redis_base"
+  set_env_var .env REDIS_CACHE_DB "$((redis_base + 1))"
+  set_env_var .env PULSE_REDIS_DB "$((redis_base + 2))"
+
+  set_env_var .env.testing DB_HOST "temari-shared-mysql-test"
+  set_env_var .env.testing DB_DATABASE "$test_db_schema"
+  set_env_var .env.testing DB_ANALYTICS_DATABASE "$test_db_schema"
+  set_env_var .env.testing REDIS_HOST "temari-shared-redis-test"
+  set_env_var .env.testing REDIS_DB "$test_redis_db"
+
+  cat > compose.override.yaml <<EOF
+# Generated by scripts/worktree setup; not tracked, safe to delete.
+services:
+    app:
+        volumes:
+            - '${git_common_dir}:${git_common_dir}'
+        networks:
+            - sail
+            - shared-services
+networks:
+    shared-services:
+        external: true
+        name: temari-shared-services-net
+EOF
+
+  export DB_PASSWORD="$(env_value .env DB_PASSWORD)"
+  shared() {
+    docker compose -f compose.shared-services.yml --project-directory "$(dirname "$git_common_dir")" "$@"
+  }
+
+  shared up -d --wait
+
+  db_username="$(env_value .env DB_USERNAME)"
+  shared exec -T \
+    -e DB_DATABASE="$db_schema" \
+    -e DB_ANALYTICS_DATABASE="$db_analytics_schema" \
+    -e DB_USERNAME="$db_username" \
+    -e DB_PASSWORD="$DB_PASSWORD" \
+    mysql sh < docker/mysql/init/01-databases.sh
+
+  shared exec -T mysql-test \
+    mysql -uroot -p"${DB_PASSWORD}" \
+    -e "CREATE DATABASE IF NOT EXISTS \`${test_db_schema}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+  docker compose up -d
+  docker compose exec -u root app chown -R www-data:www-data node_modules /var/cache/composer /var/cache/npm
+
+  app() { docker compose exec -T app "$@"; }
+
+  [ -f vendor/autoload.php ] || app composer install
+  grep -qE '^APP_KEY=.+' .env || app php artisan key:generate
+  app php artisan migrate --force
+  app php artisan migrate --database=analytics --path=database/migrations/analytics --force
+
+  cat <<EOF
+worktree: slot $slot configured; APP_PORT=$app_port, VITE_PORT=$vite_port.
+DB: $db_schema (+ $db_analytics_schema) on shared MySQL. Redis: indices
+$redis_base-$((redis_base + 2)) on shared Redis. Tests: $test_db_schema on
+shared test MySQL, Redis index $test_redis_db; see .env.testing.
+Stack is up, PHP dependencies are installed, and both migration sets completed.
+
+/devtools, /devtools/narration, /horizon and /pulse use HTTP Basic; any username,
+password = DEVTOOLS_PASSWORD from this worktree's .env.
+
+The PHP suites are ready. To also load pages in a browser:
+  ./vendor/bin/sail npm ci
+  ./vendor/bin/sail npm run dev
+EOF
+}
+
+compose_project_name() {
+  (cd "$1" && docker compose config --format json 2>/dev/null | jq -r '.name // empty')
+}
+
+remove_project_volumes() {
+  local project="$1"
+  local volume
+
+  [ -n "$project" ] || return
+  for volume in $(docker volume ls --filter "label=com.docker.compose.project=${project}" --format '{{.Name}}'); do
+    case "$volume" in
+      "${project}_"*) docker volume rm "$volume" >/dev/null ;;
+    esac
+  done
+}
+
+clean_slot_data() {
+  local worktree="$1"
+  local slot="$2"
+  local common_dir="$3"
+  local db_schema="temari_slot${slot}"
+  local db_analytics_schema="temari_slot${slot}_analytics"
+  local test_db_schema="temari_testing_slot${slot}"
+  local redis_base=$((slot * 3))
+  local test_redis_db=$((30 + slot))
+  local test_schemas
+  local schema
+
+  [ -f "${worktree}/.env" ] || return
+
+  (
+    cd "$worktree"
+    export DB_PASSWORD="$(env_value .env DB_PASSWORD)"
+    shared() {
+      docker compose -f compose.shared-services.yml --project-directory "$(dirname "$common_dir")" "$@"
+    }
+
+    [ -n "$(shared ps --status running -q mysql)" ]
+    [ -n "$(shared ps --status running -q redis)" ]
+    [ -n "$(shared ps --status running -q mysql-test)" ]
+    [ -n "$(shared ps --status running -q redis-test)" ]
+
+    shared exec -T mysql mysql -uroot -p"${DB_PASSWORD}" \
+      -e "DROP DATABASE IF EXISTS \`${db_schema}\`; DROP DATABASE IF EXISTS \`${db_analytics_schema}\`;"
+
+    test_schemas="$(shared exec -T mysql-test mysql -uroot -p"${DB_PASSWORD}" -Nse \
+      "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${test_db_schema}' OR SCHEMA_NAME LIKE '${test_db_schema}\\_test\\_%';")"
+    for schema in $test_schemas; do
+      case "$schema" in
+        "$test_db_schema"|"${test_db_schema}_test_"*)
+          shared exec -T mysql-test mysql -uroot -p"${DB_PASSWORD}" -e "DROP DATABASE IF EXISTS \`${schema}\`;"
+          ;;
+        *)
+          fail "refusing unexpected test schema ${schema}"
+          return 1
+          ;;
+      esac
+    done
+
+    shared exec -T redis redis-cli -n "$redis_base" FLUSHDB >/dev/null
+    shared exec -T redis redis-cli -n "$((redis_base + 1))" FLUSHDB >/dev/null
+    shared exec -T redis redis-cli -n "$((redis_base + 2))" FLUSHDB >/dev/null
+    shared exec -T redis-test redis-cli -n "$test_redis_db" FLUSHDB >/dev/null
+  )
+}
+
+release_slot() {
+  local slot_dir="$1"
+  rm -f "${slot_dir}/path" "${slot_dir}/branch"
+  rmdir "$slot_dir" 2>/dev/null || true
+}
+
+remove_impl() {
+  local requested_path="$1"
+  local force_cleanup="${TEMARI_WORKTREE_FORCE_CLEANUP:-false}"
+  local worktree
+  local git_dir
+  local common_dir
+  local temari_common_dir
+  local main_dir
+  local slot
+  local slot_dir
+  local owner=""
+  local generated_branch=""
+  local project=""
+  local branch_delete_status=0
+
+  worktree="$(absolute_path "$requested_path")" || {
+    echo "worktree: ${requested_path} is already absent" >&2
+    return 0
+  }
+  if [ ! -e "$worktree" ]; then
+    echo "worktree: ${worktree} is already absent" >&2
+    return 0
+  fi
+
+  [ -f "${worktree}/.git" ] || {
+    fail "${worktree} is not a linked worktree"
+    return
+  }
+
+  git_dir="$(git_dir_for "$worktree")"
+  common_dir="$(git_common_dir_for "$worktree")"
+  [ "$git_dir" != "$common_dir" ] || {
+    fail "refusing to remove the main checkout"
+    return
+  }
+  temari_common_dir="$(git_common_dir_for "$CHECKOUT_DIR")"
+  [ "$common_dir" -ef "$temari_common_dir" ] || {
+    fail "${worktree} does not belong to this Temari repository"
+    return
+  }
+
+  [ -f "${worktree}/${SLOT_FILE}" ] || {
+    fail "${worktree} has no Temari slot metadata"
+    return
+  }
+  slot="$(<"${worktree}/${SLOT_FILE}")"
+  is_positive_integer "$slot" || {
+    fail "${worktree}/${SLOT_FILE} does not contain a positive slot"
+    return
+  }
+
+  slot_dir="${common_dir}/${LOCKS_NAME}/slot-${slot}"
+  [ ! -f "${slot_dir}/path" ] || owner="$(<"${slot_dir}/path")"
+  if [ -n "$owner" ] && [ "$owner" != "$worktree" ]; then
+    fail "slot ${slot} belongs to ${owner}; refusing to release it"
+    return
+  fi
+  [ ! -f "${slot_dir}/branch" ] || generated_branch="$(<"${slot_dir}/branch")"
+  main_dir="$(dirname "$common_dir")"
+
+  project="$(compose_project_name "$worktree" || true)"
+  if [ -f "${worktree}/.env" ]; then
+    if ! (cd "$worktree" && docker compose down --remove-orphans); then
+      if [ "$force_cleanup" != true ]; then
+        fail "could not stop ${worktree}; its slot remains reserved"
+        return
+      fi
+    fi
+
+    if ! clean_slot_data "$worktree" "$slot" "$common_dir"; then
+      if [ "$force_cleanup" != true ]; then
+        fail "could not clean slot ${slot} data; its worktree and lock remain for retry"
+        return
+      fi
+    fi
+  fi
+
+  if ! remove_project_volumes "$project" && [ "$force_cleanup" != true ]; then
+    fail "could not remove ${worktree} volumes; its worktree and lock remain for retry"
+    return
+  fi
+
+  cd "$main_dir"
+  git worktree remove "$worktree" --force >&2
+  if [ -n "$generated_branch" ] &&
+    git show-ref --verify --quiet "refs/heads/${generated_branch}"; then
+    git branch -D -- "$generated_branch" >&2 || branch_delete_status=$?
+  fi
+  release_slot "$slot_dir"
+
+  if [ "$branch_delete_status" -ne 0 ]; then
+    fail "removed ${worktree} and released slot ${slot}, but could not delete branch ${generated_branch}"
+    return "$branch_delete_status"
+  fi
+  echo "worktree: removed ${worktree} and released slot ${slot}" >&2
+}
+
+create_cmd() {
+  local name="$1"
+  local base="${2:-HEAD}"
+  local main_dir="$CHECKOUT_DIR"
+  local common_dir
+  local target
+  local branch
+  local base_commit
+
+  [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || {
+    fail "name must use only letters, numbers, dots, underscores, and hyphens"
+    return
+  }
+  [ "$name" != "." ] && [ "$name" != ".." ] || {
+    fail "invalid worktree name ${name}"
+    return
+  }
+  is_main_checkout "$main_dir" || {
+    fail "create must be run from the main checkout"
+    return
+  }
+
+  common_dir="$(git_common_dir_for "$main_dir")"
+  target="${main_dir}/.claude/worktrees/${name}"
+  branch="worktree-${name}"
+  base_commit="$(git -C "$main_dir" rev-parse --verify "${base}^{commit}")" || {
+    fail "base ${base} does not resolve to a commit"
+    return
+  }
+
+  [ ! -e "$target" ] || {
+    fail "${target} already exists"
+    return
+  }
+  if git -C "$main_dir" show-ref --verify --quiet "refs/heads/${branch}"; then
+    fail "branch ${branch} already exists"
+    return
+  fi
+
+  mkdir -p "$(dirname "$target")"
+  allocate_slot_for "$target" "$branch" "$common_dir"
+
+  if ! git -C "$main_dir" worktree add "$target" -b "$branch" "$base_commit" >&2; then
+    release_slot "${common_dir}/${LOCKS_NAME}/slot-${ALLOCATED_SLOT}"
+    git -C "$main_dir" branch -D -- "$branch" >&2 2>/dev/null || true
+    return 1
+  fi
+
+  if ! TEMARI_WORKTREE_SETUP_DIR="$target" "$SCRIPT_PATH" setup "$ALLOCATED_SLOT" >&2; then
+    echo "worktree: setup failed; removing the new worktree and slot ${ALLOCATED_SLOT}" >&2
+    TEMARI_WORKTREE_FORCE_CLEANUP=true "$SCRIPT_PATH" remove "$target" || true
+    if [ -d "$target" ]; then
+      git -C "$main_dir" worktree remove "$target" --force >&2 2>/dev/null || true
+    fi
+    git -C "$main_dir" branch -D -- "$branch" >&2 2>/dev/null || true
+    release_slot "${common_dir}/${LOCKS_NAME}/slot-${ALLOCATED_SLOT}"
+    return 1
+  fi
+
+  printf '%s\n' "$target"
+}
+
+setup_cmd() {
+  local slot="$1"
+  local target="${TEMARI_WORKTREE_SETUP_DIR:-$CHECKOUT_DIR}"
+
+  is_positive_integer "$slot" || usage
+  trap 'status=$?; printf "\nworktree: setup FAILED at line %s; later steps did not run.\nRe-run scripts/worktree setup %s from this linked worktree to resume.\n" "$LINENO" "$slot" >&2; exit "$status"' ERR
+  setup_impl "$target" "$slot"
+  trap - ERR
+}
+
+[ $# -ge 1 ] || usage
+command="$1"
+shift
+
+case "$command" in
+  create)
+    [ $# -ge 1 ] && [ $# -le 2 ] || usage
+    create_cmd "$@"
+    ;;
+  setup)
+    [ $# -eq 1 ] || usage
+    setup_cmd "$1"
+    ;;
+  remove)
+    [ $# -eq 1 ] || usage
+    remove_impl "$1"
+    ;;
+  *) usage ;;
+esac

@@ -1,11 +1,11 @@
 ---
 name: temari
-description: Project conventions and domain map for the temari repo — design tokens, voice rules, the AI narrator/analysis pipeline, the 1:1 test convention with its aggregate suites, and the sail toolchain. Use when writing UI, AI narration, or tests in this codebase, or when unsure where a change wires in.
+description: Project conventions and domain map for the temari repo — design tokens, voice rules, the AI narrator/analysis pipeline, the 1:1 test convention with its aggregate suites, and the Sail toolchain. Use when writing UI, AI narration, or tests in this codebase, or when unsure where a change wires in.
 ---
 
 # temari conventions
 
-The detailed home for project conventions. Source-of-truth docs are generated from code and
+This is the canonical full skill shared by agents. Source-of-truth docs are generated from code and
 kept honest by `tests/Unit/Architecture/DesignTokenDocsTest.php` (palette/type docs) — link to
 them rather than re-copying, since copies drift.
 
@@ -208,15 +208,8 @@ before reaching for a new `AnalysisType` on anything user-initiated and free-for
 
 ## Toolchain (everything in Docker via Sail)
 
-**Fast-feedback ladder** (cheap to expensive, stop at the first failure, don't jump to the full gate):
-```bash
-./vendor/bin/sail pest --group=structure   # instant: 1:1 + aggregate structural gates. Run first.
-./vendor/bin/sail bin pest --filter=Name    # targeted: one test/feature while iterating
-./vendor/bin/sail bin pest --parallel       # full PHP suite (local parallel — see docker/mysql-test-init.sh)
-./vendor/bin/sail composer gate             # fast pre-push gate (~30s warm): enum/doc guards + palette + structure + tsc + scoped rector on changed files + changed vitest + pest --parallel under TIA
-./vendor/bin/sail composer check:full       # the gate's steps plus pint, format, lint, phpstan, rector, pest --no-tia, coverage, build, check:chunks. Opt-in, slow.
-./vendor/bin/sail bin pint                  # format (also runs on pre-commit with phpstan + eslint)
-```
+Use the fast-feedback ladder in [AGENTS.md](../../../AGENTS.md): start with structure or the
+narrowest targeted test, stop at the first failure, and widen only after it passes.
 Both modes are [scripts/gate.sh](../../../scripts/gate.sh); it stops at the first failure and its
 last line is `GATE: PASS (<n>s, mode=fast|full)` or `GATE: FAIL at <step> (<n>s)`.
 Pint/phpstan/eslint run on **pre-commit**; the fast gate runs **scoped rector on changed files**
@@ -306,25 +299,8 @@ already resolves per-cwd correctly.
 
 Worktrees don't each get their own MySQL/Redis, though — see "Shared services" below.
 
-Claude Code lifecycle: `EnterWorktree name=<slice>` fires the `WorktreeCreate` hook, which
-auto-picks a free slot and runs the setup below. `ExitWorktree action=remove|keep` fires
-`WorktreeRemove`, tearing down just that worktree's `app` container and freeing its slot. Codex
-does not run these hooks. For Codex, use its isolated worktree support when available; until a
-runtime adapter runs this repository's setup, use the manual `git worktree add` plus
-`scripts/worktree-setup.sh` fallback in `AGENTS.md`.
-
-**Known limitation, confirmed against a real Claude Code bug (anthropics/claude-code#57378, closed
-as a duplicate, and the community's `tfriedel/claude-worktree-hooks` project hits the same wall):**
-registering a `WorktreeRemove` hook at all changes how `ExitWorktree action=remove` behaves.
-`worktree-hook-remove.sh`'s own cleanup (app container stopped, slot lock freed, `git worktree
-remove` — called with **no `-C` flag**, since `git -C <main-checkout>` from inside the hook is
-exactly the "redirect into the main checkout" the isolation sandbox blocks and silently no-ops) does
-correctly delete the worktree's on-disk directory. But `git worktree list` still shows a `prunable`
-entry afterward, and the `worktree-<name>` branch isn't deleted — both `git worktree prune` and
-`git branch -D` fail to take effect when run from inside the same hook invocation (tested twice),
-so this residue can't currently be closed from the hook's side. **Workaround:** an occasional
-`git worktree prune && git branch -D worktree-<stale-name>` sweep — cheap, standard git hygiene,
-not a resource leak (no disk, containers, or locks left behind, just bookkeeping).
+Use the worktree creation and lifecycle guidance in [AGENTS.md](../../../AGENTS.md). This section
+records the environment invariants that every worktree setup must preserve.
 
 Slot numbering is a formula (`scripts/worktree-setup.sh`), not a fixed table, so there's no cap on
 worktree count: `APP_PORT = 7000 + slot*10 + 1`, `VITE_PORT = +2` (main stays 7001/7002, slot 1 is
@@ -434,11 +410,9 @@ local tag, not project-scoped) — only pass `--build` again if a worktree's sli
 `Dockerfile`/PHP extensions, so two worktrees don't race an in-flight rebuild.
 
 **Sequential (dependency-wave) slices** — when wave N+1 must branch off wave N's *unmerged* code —
-don't fit plain parallel worktrees (Claude Code's `EnterWorktree` base ref is `origin/main` by
-default). Branch manually instead: `git worktree add <worktree-root>/<name> wave1-branch`. Claude
-Code may then use `EnterWorktree path=<worktree-root>/<name>` to adopt it for cleanup tracking;
-Codex continues in the explicit worktree and runs the manual setup above. This is the one
-case where GitHub's native **stacked PRs** (public preview since 2026-07-30, `gh extension install
+start the next worktree explicitly from the preceding branch:
+`git worktree add <worktree-root>/<name> wave1-branch`, then apply the setup from `AGENTS.md`.
+This is the one case where GitHub's native **stacked PRs** (public preview since 2026-07-30, `gh extension install
 github/gh-stack`) are worth reaching for: each layer's PR targets the layer below instead of
 `main`, and merging a lower layer auto-cascades the merge/rebase of everything above. Don't reach
 for it otherwise — most PRs in this repo are small, independent, and based directly off `main`;

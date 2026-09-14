@@ -1,23 +1,17 @@
 # AGENTS.md
 
-This is the canonical project guidance for Claude Code and Codex. Tool-specific entry points may add orchestration details but must not copy these rules.
+This is the canonical project guidance shared by agents. Runtime entrypoints may add orchestration details without copying these rules.
 
 ## Shared agent workflow
 
-- Small, focused changes may be done directly. Delegate larger implementation work and run it in an isolated worktree. Both Claude Code and Codex support this split; use the current tool's native isolation when available.
-- The repository's worktree setup remains `scripts/worktree-setup.sh`: it assigns per-worktree ports and isolated schemas on the shared MySQL/Redis services, installs dependencies, and runs both migration sets. Claude Code runs it through its configured worktree hooks. Codex has no runtime adapter for those hooks yet. The valid manual fallback is `git worktree add <path> -b <branch> <base>`, followed by `./scripts/worktree-setup.sh <unused-positive-slot>` inside that worktree.
-- Run long commands in the foreground with a 600000 ms timeout. Keep screenshot-reader subagents synchronous; do not leave tests, builds, or servers running after their task.
-- Run Tinker snippets with `artisan tinker --execute`; piping a file into Tinker leaves the REPL open.
+- Small, focused changes may be done directly. Delegate larger implementation work and run it in an isolated worktree, using the current runtime's native isolation when it also applies the repository setup.
+- For manual isolation, run `git worktree add <path> -b <branch> <base>`, then run `./scripts/worktree-setup.sh <unused-positive-slot>` inside the new worktree. The setup script assigns ports and isolated schemas on the shared MySQL/Redis services, installs dependencies, and runs both migration sets.
+- The `WorktreeCreate` and `WorktreeRemove` hooks in `.claude/settings.json` are runtime-specific configuration. Other agent and manual Git worktree flows use the preceding setup command; they do not consume those hooks.
+- Run long commands in the foreground with Bash timeout 600000, never background them; a screenshot-reader subagent runs with run_in_background: false; never artisan tinker <file>, use --execute. Stop tests, builds, and servers when their task ends.
 - When `.planning/README.md` exists, treat it as the gitignored local pointer to current programme state. It is working context, not a file to commit.
-
-## Tool models
-
-- **Codex:** use `gpt-5.6-sol` for implementation and substantial investigation. Use `gpt-5.6-luna` or `gpt-5.6-terra` for lightweight work. Do not use Astra. The orchestrator chooses the model and reasoning effort for each task.
-- **Claude Code:** model-tier rules live only in `CLAUDE.md`.
 
 ## External actions
 
-- An explicit `lgtm` authorizes the current PR after its diff is checked against scope: squash-merge when required checks are green, or enable auto-merge when they are still pending. Do not merge on a failing check.
 - Ask for permission for each SSH task. Permission does not carry to a later SSH task.
 - Before an intentional local LLM-backed run, announce a hard call or spend cap. Run only the selected local job or jobs; never start a worker or queue-drain command that could consume unrelated pending work.
 
@@ -25,13 +19,13 @@ This is the canonical project guidance for Claude Code and Codex. Tool-specific 
 ## Stack notes
 
 - UI is **Inertia 2 + React 19 + TypeScript + Tailwind v4** (Laravel React Starter Kit conventions). Routes go through controllers (`Inertia::render('PageName', $props)`); pages live in `resources/js/pages/`, components in `resources/js/components/`.
-- `livewire/livewire` ships for Pulse internals only. **Do NOT use Livewire in app code.**
+- `livewire/livewire` is reserved for Pulse internals; application UI uses Inertia.
 - `openai-php/laravel` is wired as an **Azure OpenAI** client. `inertiajs/inertia-laravel` v3 speaks the **Inertia 2** protocol.
-- App ships **two grounds**, switched by `data-theme` on `<html>` (never a `.dark` class): **the default follows the device** (`prefers-color-scheme`), and an explicit light/dark choice in Settings overrides it. The semantic `--color-*` layer (`background`/`foreground`/`card`/`popover`/`muted`/`accent`/`*-ink`) flips between them; the named palette beneath it is fixed identity and does not. Write the ground-reactive semantic classes (`text-foreground`, `bg-card`, `text-leaf-ink`), never a value pinned to one ground — and where a surface is deliberately fixed-dark (the sky cards), pin its text explicitly rather than letting it inherit. Full table in [docs/design-tokens.md](docs/design-tokens.md).
-- **English-only, no i18n layer** — UI copy, prompt strings, route paths, identifiers, enum values and env var names alike. A deliberate hard swap on 2026-08-09, and guidance rather than a gate since `C1` cut the script that enforced it, so a considered exception is fine. **`W6` closed the last pockets** (its slice doc is in git history, with the rest of the retired `plan/` tree): `aku_profile_voice` is now `profile_voice`, the share-card layout tokens `kartu`/`rute` are `card`/`route`, and `briefing_featured_kartu_voice` went with the panel `W2` deleted. **Three exceptions remain, all the same shape** — regression assertions whose Indonesian *is* the thing being asserted absent, so removing the word guts the test: `angin` and `tidak tersedia` in `RunCardImageRendererTest`, and `maksimal 90 kata` / `maksimal 100 kata` in `NarratorsCoverageTest`. The badge-rename migration also names the old slugs on purpose, being the map from them.
+- App ships **two grounds**, switched by `data-theme` on `<html>`: the default follows `prefers-color-scheme`, and Settings can store an explicit light/dark choice. Use the ground-reactive semantic classes (`text-foreground`, `bg-card`, `text-leaf-ink`); fixed-dark surfaces such as sky cards pin their text explicitly. The complete fixed-vs-reactive token rules live in the `temari` skill and [docs/design-tokens.md](docs/design-tokens.md).
+- Write UI copy, prompt strings, route paths, identifiers, enum values, and environment variable names in English; there is no i18n layer. Deliberate regression assertions retain the Indonesian phrases they prove absent: `angin` and `tidak tersedia` in `RunCardImageRendererTest`, and `maksimal 90 kata` / `maksimal 100 kata` in `NarratorsCoverageTest`. The badge-rename migration also retains old slugs as migration inputs.
 - A second **`analytics`** DB connection (separate schema, same MySQL server) holds metering tables (e.g. `ai_token_usages`). Its migrations live in `database/migrations/analytics/` and run via `--database=analytics --path=...`; in tests it shares the default test DB (see [tests/TestCase.php](tests/TestCase.php)). Beyond `AI`, backend logic is split by domain under `app/Services/` (`AI`, `Run`, `Gamification`, `Strava`, `Geo`, `Weather`); see the `temari` skill for the full map.
 
-> **Design tokens, voice & tone, typography, the AI narrator pipeline, the 1:1 test convention, and the Sail toolchain all live in the `temari` skill** (`.claude/skills/temari/`, discovered by Codex through `.agents/skills/temari/`). Activate it for any UI, AI-narration, or test work. Source-of-truth docs: [docs/design-tokens.md](docs/design-tokens.md), [docs/voice-and-tone.md](docs/voice-and-tone.md).
+> **Design tokens, voice and tone, typography, the AI narrator pipeline, the 1:1 test convention, and the Sail toolchain live in the canonical `temari` skill at `.claude/skills/temari/`; `.agents/skills/temari/` is its discovery pointer.** Activate it for UI, AI narration, or test work. Source-of-truth docs: [docs/design-tokens.md](docs/design-tokens.md), [docs/voice-and-tone.md](docs/voice-and-tone.md).
 
 ## Knowledge base (`docs/`)
 
@@ -87,7 +81,7 @@ Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-ph
 
 ## Secrets
 
-- **Never read `.env` or other secret files directly** (`.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.json`, `*.p12`, ...). Their values would leak into the session context, which persists. Claude Code additionally enforces this with `~/.claude/hooks/guard.sh`; Codex must follow the rule directly because that hook does not run there. **Every `config:show`/`config:get` needs the user's explicit approval** - config reads resolve env values, so no key is auto-classified as "safe" to read. For a secret value, find the key NAME in `.env.example` and ask the user.
+- **Never read `.env` or other secret files directly** (`.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.json`, `*.p12`, ...). Their values would leak into the session context, which persists. A local pre-tool hook additionally enforces this in one runtime; every agent must follow the rule directly. **Every `config:show`/`config:get` needs the user's explicit approval** - config reads resolve env values, so no key is auto-classified as "safe" to read. For a secret value, find the key NAME in `.env.example` and ask the user.
 
 ## Debugging
 
@@ -95,14 +89,6 @@ When a bug or error is reported, ground the investigation in real state before h
 
 ## Visual iteration
 
-Frontend work converges by tweak → look → tweak, and that loop is the most expensive thing in
-this repo: 110 files have been edited 8+ times in a single session (`shareCard.ts` 121 times).
-The edits are cheap; re-checking is not.
-
-- Batch several visual changes before looking. Don't screenshot per tweak.
-- One screenshot per round, not per change. Have a subagent look and report in text — an image
-  read into the main context is re-billed on every later turn.
-- Cropping for detail: crop and downscale in one step, write `.jpg`. Never write a
-  full-resolution intermediate and then read it.
-- Run the narrowest check that can fail (`--filter`, `--group`, a single path) before the full
-  suite. Stop at the first failure; widen only when it passes.
+Batch several visual changes before reviewing one screenshot for the round. Activate the
+`browser-review` skill for a viewport sweep or repeated image inspection; it owns the image-read,
+cropping, and live-verification rules. Run the narrowest check that can fail before widening.

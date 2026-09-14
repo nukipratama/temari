@@ -5,7 +5,8 @@ description: Drive a real browser to screenshot every user-facing page across a 
 
 # browser-review
 
-End-to-end visual review: log in as the demo user, **discover every page from the route table**,
+This is the canonical full skill shared by agents. For an end-to-end visual review,
+log in as the demo user, **discover every page from the route table**,
 screenshot each across the viewport matrix, collect JS/console errors, and flag any horizontal overflow.
 Then read the PNGs back to spot layout bugs. Everything runs **inside the Sail `app` container**
 (no host browser needed), so the page list is never hardcoded — it comes from
@@ -288,26 +289,22 @@ latter alone still flags a page, since an `overflow-hidden` ancestor can clip a 
 > These PNGs are gitignored (`storage/app/.gitignore` ignores `*`) and your IDE may hide gitignored
 > files — they're on disk under `storage/app/browser-review/`, not in a temp dir.
 
-## Inspect in parallel (audit-gated, split across model tiers, keep the main context lean)
+## Inspect in parallel (audit-gated, isolated, keep the main context lean)
 
-A sweep produces a lot of images — **don't read them all into the orchestrating context, and don't
-vision-read every page at full reasoning effort.** `audit.mjs` already found horizontal overflow
-programmatically for every page; reserve the expensive judgment call for what code can't check.
+A sweep produces a lot of images. Keep them out of the orchestrating context and give each inspector
+a disjoint page set. `audit.mjs` already found horizontal overflow programmatically for every page;
+reserve open-ended visual judgment for what code cannot check.
 
-Run the inspection as a `Workflow` that splits each viewport's pages into two agent calls:
+For each viewport, split inspection into two independent calls:
 
-- **Audit-flagged pages → `model: 'haiku'`** *(fast/cheap tier — confirm-only work)*. The overflow is
-  already found; the agent just describes what's actually broken on the known-flagged PNG so it's
-  fixable. No persona needed — the task is fully specified by the audit flag.
-- **A small evenly-spaced sample of non-flagged pages (4 per viewport) → `model: 'sonnet',
-  effort: 'medium'`** *(default/capable tier — open-ended judgment)*. These pages passed the automated
-  check, so this agent hunts for what code can't detect: overlapping/clipped text, wrong nav chrome,
-  off-screen elements, awkward hierarchy. Framed with a short persona ("senior product designer and
-  frontend engineer doing a visual QA pass") since the task is genuinely subjective, not yes/no.
+- **Audit-flagged pages:** confirm what is actually broken on each known-flagged PNG so the overflow
+  finding is actionable.
+- **Four evenly spaced non-flagged pages:** inspect a small sample for overlapping, clipped or
+  truncated text, wrong nav chrome, off-screen elements, awkward spacing, and hierarchy problems
+  that code cannot detect.
 
-If the model roster changes later (e.g. Haiku or Sonnet is retired), swap in whatever fills the same
-fast/cheap or default/capable tier at the time — the split above is the instruction, the specific model
-names are just today's mapping onto it.
+Treat width-capped content (`PageContainer` / `max-w-page-2xl`), the fixed bottom-nav mid-page
+artifact, sparse demo-data grids, and intentional `overflow-x-auto` as designed behavior.
 
 ### Verify before reporting — the rate is worse than "some"
 
@@ -316,11 +313,11 @@ roughly a third did not survive checking. A later pass produced **3, and all 3 w
 bottom nav read as an element collision, a notification bell read as an empty box, a token-correct
 inverted pill read as a wrong-ground bug. Every one cost a round of someone's attention.
 
-So the inspect agents **must verify before returning a finding**, and the schema requires the evidence
+Every inspector **must verify before returning a finding**, and the result requires the evidence
 so the requirement cannot be quietly skipped. `probe.mjs` makes that one command:
 
 ```bash
-node .claude/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] [--shot] '<expression>'
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] [--shot] '<expression>'
 ```
 
 It logs in, sets the ground, optionally drives one control, evaluates the expression in the page and
@@ -340,7 +337,7 @@ Two standing sources of false positives to weigh before reporting at all:
 - **"Missing" is a much stronger claim than "small/faint/different."** It is also the claim most often
   wrong, and the one most likely to be acted on without re-checking. It always needs a probe.
 
-Pass the batch dir, the viewports you shot, and the parsed `AUDIT` lines as `args`, e.g.:
+Give every inspector the batch dir, its viewport, and the parsed `AUDIT` records, for example:
 ```json
 {
   "dir": "storage/app/browser-review/2026-06-19/143022",
@@ -351,119 +348,11 @@ Pass the batch dir, the viewports you shot, and the parsed `AUDIT` lines as `arg
   }
 }
 ```
-(`dir` is the `BATCH_DIR=` line `shoot.mjs` printed; `pages[viewport]` is every `AUDIT` line for that
-viewport from step 3, `{name, overflow}`; omit `viewports` to use every key in `pages`.) Merge the
-results, then open only the flagged PNGs to confirm before acting — and **state the batch dir path in
-your final summary to the user** so they can open the PNGs directly without digging through logs.
-
-```js
-export const meta = {
-  name: 'browser-review-inspect',
-  description: 'Confirm audit-flagged pages (haiku) + hunt a small sample (sonnet, medium) per viewport',
-  phases: [{ title: 'Inspect', detail: 'flagged pages on haiku, a small non-flagged sample on sonnet' }],
-}
-
-const NAV = {
-  mobile:  { size: '390x844',  nav: 'mobile chrome (top bar + bottom nav)' },
-  se:      { size: '320x568',  nav: 'same chrome, narrowest real device' },
-  tablet:  { size: '834x1112', nav: 'same chrome' },
-  laptop:  { size: '1280x800', nav: 'same mobile chrome, first type step (19.2px)' },
-  wide:    { size: '1536x864', nav: 'same mobile chrome, widest max-w-page-2xl column' },
-  desktop: { size: '2560x1440', nav: 'same mobile chrome, 2K, second type step (21.6px)' },
-}
-const dir = args?.dir ?? 'storage/app/browser-review'
-// args.pages: { [viewport]: [{ name, overflow }] } — parsed from audit.mjs's `AUDIT vp=... name=... overflow=...` lines
-const pagesByViewport = args?.pages ?? {}
-const viewports = args?.viewports?.length ? args.viewports : Object.keys(pagesByViewport)
-
-const FINDINGS = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['viewport', 'findings'],
-  properties: {
-    viewport: { type: 'string' },
-    findings: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['page', 'severity', 'issue', 'evidence'],
-        properties: {
-          page: { type: 'string' },
-          severity: { type: 'string', enum: ['high', 'medium', 'low'] },
-          issue: { type: 'string' },
-          // The probe.mjs command run and what it returned. A finding without
-          // this is a screenshot guess, and the schema is where that gets refused.
-          evidence: { type: 'string' },
-        },
-      },
-    },
-  },
-}
-
-// Plain JS, no fs needed — the workflow only has the page names/overflow flags passed in via args.
-function evenSample(names, k) {
-  if (names.length <= k) return names
-  const step = names.length / k
-  return Array.from({ length: k }, (_, i) => names[Math.floor(i * step)])
-}
-
-phase('Inspect')
-const calls = []
-for (const vp of viewports) {
-  const pages = pagesByViewport[vp] ?? []
-  const flagged = pages.filter((p) => p.overflow).map((p) => p.name)
-  const sample = evenSample(pages.filter((p) => !p.overflow).map((p) => p.name), 4)
-
-  if (flagged.length) {
-    calls.push(() => agent(
-      `Confirm layout bugs on audit-flagged pages of the "${vp}" viewport (${NAV[vp]?.size}, ${NAV[vp]?.nav}) of ` +
-      `the temari app. Read only the *-full.jpg files in ${dir}/${vp}/ whose filename contains one of these ` +
-      `page names (match by "-<name>-full.jpg"): ${flagged.join(', ')}. audit.mjs already found horizontal ` +
-      `overflow here — describe what's actually broken so it's fixable. Ignore by design: width-capped content ` +
-      `(PageContainer / max-w-page-2xl), the fixed bottom-nav mid-page artifact, sparse demo-data grids, and ` +
-      `intentional overflow-x-auto. If you're about to say content is "missing" or "dropped" rather than just ` +
-      `small, low-contrast, or differently styled, say explicitly that it needs live confirmation (a false ` +
-      `positive here costs a wasted implementation pass). ` +
-      `Before returning ANY finding, verify it live with probe.mjs and put the command and its output in `
-      `the finding's \`evidence\` field — the schema requires it. From the repo root: `
-      `\`./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs <route> dark `
-      `[--click=<text>] '<js expression>'\`. Query for content you think is missing, getComputedStyle for `
-      `something you think is invisible, getBoundingClientRect for something you think is mis-sized. `
-      `Discard anything the probe does not confirm: of the last 3 findings reported from screenshots `
-      `alone, all 3 were wrong. `
-      `Return only pages with a real, confirmed issue.`,
-      { label: `inspect:${vp}:flagged`, phase: 'Inspect', model: 'haiku' /* fast/cheap tier */, schema: FINDINGS }
-    ))
-  }
-  if (sample.length) {
-    calls.push(() => agent(
-      `You are a senior product designer and frontend engineer doing a visual QA pass on the "${vp}" viewport ` +
-      `(${NAV[vp]?.size}, ${NAV[vp]?.nav}) of the temari app. Read only the *-full.jpg files in ${dir}/${vp}/ ` +
-      `whose filename contains one of these page names (match by "-<name>-full.jpg"): ${sample.join(', ')}. These ` +
-      `pages passed the automated overflow check, so hunt for issues code can't detect: overlapping/clipped/` +
-      `truncated text, wrong nav chrome for this viewport, off-screen elements, awkward spacing or hierarchy. ` +
-      `Ignore by design: width-capped content (PageContainer / max-w-page-2xl), the fixed bottom-nav mid-page ` +
-      `artifact, sparse demo-data grids, and intentional overflow-x-auto. If you're about to say content is ` +
-      `"missing" or "dropped" between viewports rather than just small, low-contrast, or differently styled, ` +
-      `mobile and desktop are separate logins, so AI-narrated content in particular can legitimately differ ` +
-      `for reasons unrelated to responsive CSS. ` +
-      `Before returning ANY finding, verify it live with probe.mjs and put the command and its output in `
-      `the finding's \`evidence\` field — the schema requires it. From the repo root: `
-      `\`./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs <route> dark `
-      `[--click=<text>] '<js expression>'\`. Query for content you think is missing, getComputedStyle for `
-      `something you think is invisible, getBoundingClientRect for something you think is mis-sized. `
-      `Discard anything the probe does not confirm: of the last 3 findings reported from screenshots `
-      `alone, all 3 were wrong. `
-      `Return only confirmed findings; an empty array is a valid and useful result.`,
-      { label: `inspect:${vp}:sample`, phase: 'Inspect', model: 'sonnet' /* default/capable tier */, effort: 'medium', schema: FINDINGS }
-    ))
-  }
-}
-const results = (await parallel(calls)).filter(Boolean)
-log(`Batch dir: ${dir}`)
-return results
-```
+Here `dir` is the `BATCH_DIR=` line from `shoot.mjs`, and `pages[viewport]` comes from step 3's
+`AUDIT` lines. Each inspector returns `viewport` plus findings containing `page`, `severity`,
+`issue`, and `evidence`; `evidence` includes the `probe.mjs` command and result. Merge the results,
+discard every unverified claim, and allow an empty findings list. State the batch dir in the final
+summary so the screenshots are easy to open.
 
 ## What the scripts handle for you
 
