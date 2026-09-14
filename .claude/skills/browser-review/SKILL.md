@@ -5,7 +5,7 @@ description: Drive a real browser to screenshot every user-facing page across a 
 
 # browser-review
 
-This is the canonical full skill shared by Claude Code and Codex. For an end-to-end visual review,
+This is the canonical full skill shared by agents. For an end-to-end visual review,
 log in as the demo user, **discover every page from the route table**,
 screenshot each across the viewport matrix, collect JS/console errors, and flag any horizontal overflow.
 Then read the PNGs back to spot layout bugs. Everything runs **inside the Sail `app` container**

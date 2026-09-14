@@ -1,12 +1,12 @@
 # AGENTS.md
 
-This is the canonical project guidance shared by Claude Code and Codex. Runtime entrypoints may add orchestration details without copying these rules.
+This is the canonical project guidance shared by agents. Runtime entrypoints may add orchestration details without copying these rules.
 
 ## Shared agent workflow
 
 - Small, focused changes may be done directly. Delegate larger implementation work and run it in an isolated worktree, using the current runtime's native isolation when it also applies the repository setup.
 - For manual isolation, run `git worktree add <path> -b <branch> <base>`, then run `./scripts/worktree-setup.sh <unused-positive-slot>` inside the new worktree. The setup script assigns ports and isolated schemas on the shared MySQL/Redis services, installs dependencies, and runs both migration sets.
-- The `WorktreeCreate` and `WorktreeRemove` hooks in `.claude/settings.json` are Claude Code configuration. Codex and manual Git worktree flows use the preceding setup command; they do not consume those hooks.
+- The `WorktreeCreate` and `WorktreeRemove` hooks in `.claude/settings.json` are runtime-specific configuration. Other agent and manual Git worktree flows use the preceding setup command; they do not consume those hooks.
 - Run long commands in the foreground with Bash timeout 600000, never background them; a screenshot-reader subagent runs with run_in_background: false; never artisan tinker <file>, use --execute. Stop tests, builds, and servers when their task ends.
 - When `.planning/README.md` exists, treat it as the gitignored local pointer to current programme state. It is working context, not a file to commit.
 
@@ -81,7 +81,7 @@ Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-ph
 
 ## Secrets
 
-- **Never read `.env` or other secret files directly** (`.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.json`, `*.p12`, ...). Their values would leak into the session context, which persists. Claude Code additionally enforces this with `~/.claude/hooks/guard.sh`; Codex must follow the rule directly because that hook does not run there. **Every `config:show`/`config:get` needs the user's explicit approval** - config reads resolve env values, so no key is auto-classified as "safe" to read. For a secret value, find the key NAME in `.env.example` and ask the user.
+- **Never read `.env` or other secret files directly** (`.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.json`, `*.p12`, ...). Their values would leak into the session context, which persists. A local pre-tool hook additionally enforces this in one runtime; every agent must follow the rule directly. **Every `config:show`/`config:get` needs the user's explicit approval** - config reads resolve env values, so no key is auto-classified as "safe" to read. For a secret value, find the key NAME in `.env.example` and ask the user.
 
 ## Debugging
 

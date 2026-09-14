@@ -5,7 +5,7 @@ description: Project conventions and domain map for the temari repo — design t
 
 # temari conventions
 
-This is the canonical full skill shared by Claude Code and Codex. Source-of-truth docs are generated from code and
+This is the canonical full skill shared by agents. Source-of-truth docs are generated from code and
 kept honest by `tests/Unit/Architecture/DesignTokenDocsTest.php` (palette/type docs) — link to
 them rather than re-copying, since copies drift.
 

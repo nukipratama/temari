@@ -5,4 +5,4 @@ description: Drive a real browser to screenshot every user-facing page across a 
 
 # browser-review
 
-Read [the canonical browser-review skill](../../../.claude/skills/browser-review/SKILL.md) completely and follow it. Keep every script path under `.claude/skills/browser-review/scripts/`; those existing tracked scripts are shared by both tools.
+Read [the canonical browser-review skill](../../../.claude/skills/browser-review/SKILL.md) completely and follow it. Keep every script path under `.claude/skills/browser-review/scripts/`; those existing tracked scripts are shared by agents.
