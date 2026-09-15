@@ -341,6 +341,63 @@ describe('Onboarding/Index', () => {
         ).toBeInTheDocument();
     });
 
+    it('holds the days question until continue, rather than jumping on a long-run tap', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToDays(2);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Wed' }));
+        expect(screen.getByRole('button', { name: 'continue' })).toBeDisabled();
+
+        fireEvent.click(screen.getAllByRole('button', { name: 'Wed' }).at(-1)!);
+
+        expect(
+            screen.getByText(/which one.s your long run\?/),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('heading', { name: /got a race in mind\?/ }),
+        ).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'continue' })).toBeEnabled();
+    });
+
+    it('steps back from the goal step to the day picker, selections intact', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        advanceToDays(2);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Wed' }));
+        fireEvent.click(screen.getAllByRole('button', { name: 'Wed' }).at(-1)!);
+        fireEvent.click(screen.getByRole('button', { name: 'continue' }));
+
+        expect(
+            screen.getByRole('heading', { name: /got a race in mind\?/ }),
+        ).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+        expect(
+            screen.getByText('pick 2 · 2 of 2 selected.'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/which one.s your long run\?/),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'continue' })).toBeEnabled();
+    });
+
+    it('steps back from the first preferences question to the welcome step', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+        fireEvent.click(screen.getByRole('button', { name: 'continue' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+        expect(
+            screen.getByRole('heading', { name: /you.re connected/ }),
+        ).toBeInTheDocument();
+    });
+
     it('recaps the answered preferences on the goal step', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
@@ -381,6 +438,7 @@ describe('Onboarding/Index', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
         fireEvent.click(screen.getByRole('button', { name: 'Wed' }));
         fireEvent.click(screen.getAllByRole('button', { name: 'Wed' }).at(-1)!);
+        fireEvent.click(screen.getByRole('button', { name: 'continue' }));
 
         expect(
             screen.getByRole('heading', { name: /got a race in mind\?/ }),
