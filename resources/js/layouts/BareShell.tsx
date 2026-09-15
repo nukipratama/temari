@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 
 import ErrorBanner from '@/components/ErrorBanner';
-import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
 
 interface BareShellProps {
@@ -9,7 +8,6 @@ interface BareShellProps {
 }
 
 export default function BareShell({ children }: Readonly<BareShellProps>) {
-    useSwipeBack();
     useSystemTheme();
 
     return (

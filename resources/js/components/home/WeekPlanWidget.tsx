@@ -9,7 +9,7 @@ import { Icon, IconComponent } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
-import { parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
+import { formatKm, parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
 
 const PHASE_LABEL: Record<string, string> = {
     base: 'base',
@@ -55,6 +55,9 @@ const STATUS_TONE: Record<string, string> = {
 const RING_SIZE = 60;
 const RING_STROKE = 6;
 
+const kmFigure = (km: number | null): string =>
+    formatKm(km === null ? null : km * 1000, 1);
+
 function weekdayAbbr(iso: string): string {
     const date = parseNaiveLocalDate(iso);
     return date === null
@@ -67,10 +70,10 @@ function weekdayAbbr(iso: string): string {
 function dayDetail(day: WeekPlanDay): string {
     const parts = [STATUS_LABEL[day.status] ?? day.status];
     if (day.session_type !== 'rest') {
-        parts.push(`planned ${day.distance_km}k`);
+        parts.push(`planned ${kmFigure(day.distance_km)} km`);
     }
     if (day.actual_km !== null) {
-        parts.push(`ran ${day.actual_km}k`);
+        parts.push(`ran ${kmFigure(day.actual_km)} km`);
     }
     if (day.compliance_score !== null) {
         parts.push(`${day.compliance_score}%`);
@@ -162,44 +165,47 @@ function DayCell({
     const ran = hasElapsed && day.actual_km !== null;
 
     return (
-        <li
-            title={dayDetail(day)}
-            className={cn(
-                'flex flex-col items-center gap-0.5 rounded-lg py-1.5',
-                isToday && 'ring-[1.5px] ring-inset ring-icon-accent',
-            )}
-        >
-            <span className="font-mono text-[0.5625rem] uppercase tracking-[0.05em] text-foreground">
-                {weekdayAbbr(day.date)}
-            </span>
-            <Icon
-                icon={TYPE_ICON[day.session_type] ?? Flame}
-                width={13}
-                height={13}
-                className={tone}
-                aria-hidden
-            />
-            {ran ? (
-                <>
-                    <span
-                        className={cn(
-                            'font-mono text-[0.5625rem] font-bold',
-                            tone,
-                        )}
-                    >
-                        {day.actual_km}k
-                    </span>
-                    {!isRest && (
-                        <span className="font-mono text-[0.5rem] leading-none text-text-2">
-                            of {day.distance_km}k
-                        </span>
-                    )}
-                </>
-            ) : (
-                <span className="font-mono text-[0.5rem] text-foreground">
-                    {isRest ? 'rest' : `${day.distance_km}k`}
+        <li title={dayDetail(day)}>
+            <Link
+                href={`/plan?day=${day.date}`}
+                aria-label={`${weekdayAbbr(day.date)} · ${dayDetail(day)}`}
+                className={cn(
+                    'focus-ring flex flex-col items-center gap-0.5 rounded-lg py-1.5 transition-colors hover:bg-muted',
+                    isToday && 'ring-[1.5px] ring-inset ring-icon-accent',
+                )}
+            >
+                <span className="font-mono text-[0.5625rem] uppercase tracking-[0.05em] text-foreground">
+                    {weekdayAbbr(day.date)}
                 </span>
-            )}
+                <Icon
+                    icon={TYPE_ICON[day.session_type] ?? Flame}
+                    width={13}
+                    height={13}
+                    className={tone}
+                    aria-hidden
+                />
+                {ran ? (
+                    <>
+                        <span
+                            className={cn(
+                                'font-mono text-[0.5625rem] font-bold',
+                                tone,
+                            )}
+                        >
+                            {kmFigure(day.actual_km)} km
+                        </span>
+                        {!isRest && (
+                            <span className="font-mono text-[0.5rem] leading-none text-text-2">
+                                of {kmFigure(day.distance_km)}
+                            </span>
+                        )}
+                    </>
+                ) : (
+                    <span className="font-mono text-[0.5rem] text-foreground">
+                        {isRest ? 'rest' : `${kmFigure(day.distance_km)} km`}
+                    </span>
+                )}
+            </Link>
         </li>
     );
 }

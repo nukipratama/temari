@@ -7,7 +7,7 @@ import {
     Feather,
     SkipForward,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { PlanDay } from '@/lib/plan';
 import type { AnalysisPayload, PlanDayClamp } from '@/types/inertia';
@@ -107,6 +107,7 @@ export default function WeekDayRow({
     weekDays,
     today,
     narration,
+    focused = false,
     onMove,
     onSkip,
 }: Readonly<{
@@ -114,10 +115,19 @@ export default function WeekDayRow({
     weekDays: PlanDay[];
     today: string;
     narration: AnalysisPayload | null;
+    /** The day the visitor arrived asking for, from `/plan?day=`. */
+    focused?: boolean;
     onMove: (toDate: string) => void;
     onSkip: () => void;
 }>) {
     const [picking, setPicking] = useState(false);
+    const rowRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (focused) {
+            rowRef.current?.scrollIntoView({ block: 'center' });
+        }
+    }, [focused]);
 
     const pace = paceLabel(day);
     const isRest = day.session_type === 'rest';
@@ -138,6 +148,7 @@ export default function WeekDayRow({
 
     return (
         <Collapsible
+            ref={rowRef}
             className={cn(
                 cardVariants({ padding: 'none' }),
                 'overflow-hidden',

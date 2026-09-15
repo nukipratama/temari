@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 
 import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlanDay, SeasonSummaryWeek } from '@/lib/plan';
 
@@ -104,6 +104,10 @@ function renderPlan(overrides: Partial<ComponentProps<typeof Plan>> = {}) {
 }
 
 describe('Plan', () => {
+    afterEach(() => {
+        window.history.replaceState({}, '', '/plan');
+    });
+
     it('leads with the eyebrow, headline and intro, in the prototype’s order', () => {
         renderPlan();
 
@@ -179,6 +183,27 @@ describe('Plan', () => {
         expect(screen.getByText('Volume this week')).toBeInTheDocument();
         expect(screen.getByText('tempo')).toBeInTheDocument();
         expect(screen.getByText('rest')).toBeInTheDocument();
+    });
+
+    it('scrolls to the day the home week card asked for', () => {
+        const scrollIntoView = vi.fn();
+        Element.prototype.scrollIntoView = scrollIntoView;
+        window.history.replaceState({}, '', '/plan?day=2026-06-19');
+
+        renderPlan();
+
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' });
+    });
+
+    it('reads as usual when the day asked for is not a date', () => {
+        const scrollIntoView = vi.fn();
+        Element.prototype.scrollIntoView = scrollIntoView;
+        window.history.replaceState({}, '', '/plan?day=yesterday');
+
+        renderPlan();
+
+        expect(screen.getByText('Volume this week')).toBeInTheDocument();
+        expect(scrollIntoView).not.toHaveBeenCalled();
     });
 
     it('regenerates the plan', () => {

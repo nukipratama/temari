@@ -41,6 +41,7 @@ export default function SeasonTimeline({
     weekFocus,
     weekNarration,
     dayNarration,
+    focusDay = null,
     onMove,
     onSkip,
 }: Readonly<{
@@ -53,6 +54,8 @@ export default function SeasonTimeline({
     weekFocus: { headline: string; detail: string } | null;
     weekNarration: AnalysisPayload | null;
     dayNarration: Record<string, AnalysisPayload>;
+    /** The day the visitor arrived asking for, from `/plan?day=`. */
+    focusDay?: string | null;
     onMove: (day: PlanDay, toDate: string) => void;
     onSkip: (day: PlanDay) => void;
 }>) {
@@ -92,6 +95,7 @@ export default function SeasonTimeline({
             focus={week.type === 'current' ? weekFocus : null}
             narration={week.type === 'current' ? weekNarration : null}
             dayNarration={week.type === 'current' ? dayNarration : {}}
+            focusDay={focusDay}
             onMove={onMove}
             onSkip={onSkip}
         />

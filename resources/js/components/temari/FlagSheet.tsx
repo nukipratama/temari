@@ -32,11 +32,18 @@ const REASONS: Record<
     ],
 };
 
+/** Picked when none of the offered reasons fit; the note carries the signal instead. */
+const SOMETHING_ELSE = 'something_else';
+
+type Choice = FeedbackReason | typeof SOMETHING_ELSE;
+
 /**
  * The sheet FlagWrong opens, kept in its own module so the Base UI dialog it
  * rests on is fetched on the first tap rather than on every page's first paint.
- * The note stays optional — the reason is the signal worth having, and asking
- * for prose before accepting a flag would cost most of them.
+ * The note stays optional behind a named reason — that reason is the signal
+ * worth having, and asking for prose before accepting a flag would cost most of
+ * them. "Something else" is the one chip with nothing else to go on, so it
+ * holds the send until the note says what happened.
  */
 export default function FlagSheet({
     subjectType,
@@ -52,13 +59,21 @@ export default function FlagSheet({
     onSent: () => void;
 }>) {
     const noteId = useId();
-    const [reason, setReason] = useState<FeedbackReason | null>(null);
+    const [choice, setChoice] = useState<Choice | null>(null);
     const [note, setNote] = useState('');
     const [sending, setSending] = useState(false);
 
+    const choices: { value: Choice; label: string }[] = [
+        ...REASONS[subjectType],
+        { value: SOMETHING_ELSE, label: 'something else' },
+    ];
+    const freeText = choice === SOMETHING_ELSE;
+    const canSend =
+        choice !== null && (!freeText || note.trim() !== '') && !sending;
+
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        if (reason === null) {
+        if (!canSend) {
             return;
         }
 
@@ -67,7 +82,7 @@ export default function FlagSheet({
             {
                 subject_type: subjectType,
                 subject_id: subjectId,
-                reason,
+                reason: freeText ? null : choice,
                 note: note.trim(),
             },
             {
@@ -87,26 +102,26 @@ export default function FlagSheet({
         <Sheet open={open} onOpenChange={onOpenChange} title="something off?">
             <form onSubmit={submit} className="flex flex-col gap-4 pt-4">
                 <div className="flex flex-wrap gap-2">
-                    {REASONS[subjectType].map((choice) => (
+                    {choices.map((option) => (
                         <button
-                            key={choice.value}
+                            key={option.value}
                             type="button"
-                            aria-pressed={reason === choice.value}
-                            onClick={() => setReason(choice.value)}
+                            aria-pressed={choice === option.value}
+                            onClick={() => setChoice(option.value)}
                             className={cn(
                                 'focus-ring pad-chip min-h-11 rounded-full border text-sm transition-colors',
-                                reason === choice.value
+                                choice === option.value
                                     ? 'border-transparent bg-horizon text-sky'
                                     : 'border-border-strong text-foreground',
                             )}
                         >
-                            {choice.label}
+                            {option.label}
                         </button>
                     ))}
                 </div>
                 <div className="flex flex-col gap-2">
                     <label htmlFor={noteId} className="text-xs text-text-2">
-                        anything to add?
+                        {freeText ? 'what happened?' : 'anything to add?'}
                     </label>
                     <textarea
                         id={noteId}
@@ -114,7 +129,8 @@ export default function FlagSheet({
                         onChange={(event) => setNote(event.target.value)}
                         maxLength={MAX_NOTE_LENGTH}
                         rows={3}
-                        placeholder="optional"
+                        required={freeText}
+                        placeholder={freeText ? 'tell temari' : 'optional'}
                         className="focus-ring w-full rounded-sm border border-border-strong bg-card px-3 py-2 text-sm text-foreground placeholder:text-text-3"
                     />
                 </div>
@@ -124,7 +140,7 @@ export default function FlagSheet({
                         tone="sky"
                         size="sm"
                         className="min-h-11"
-                        disabled={reason === null || sending}
+                        disabled={!canSend}
                     >
                         send
                     </PillButton>

@@ -77,6 +77,24 @@ function expand() {
 }
 
 describe('WeekDayRow', () => {
+    it('scrolls itself into view when it is the day that was asked for', () => {
+        const scrollIntoView = vi.fn();
+        Element.prototype.scrollIntoView = scrollIntoView;
+
+        renderRow({ focused: true });
+
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' });
+    });
+
+    it('stays put when another day was asked for', () => {
+        const scrollIntoView = vi.fn();
+        Element.prototype.scrollIntoView = scrollIntoView;
+
+        renderRow();
+
+        expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+
     it('summarises the day without expanding it', () => {
         renderRow();
 

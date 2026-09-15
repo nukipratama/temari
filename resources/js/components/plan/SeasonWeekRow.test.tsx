@@ -115,6 +115,18 @@ describe('SeasonWeekRow', () => {
         expect(screen.getByText('Volume this week')).toBeInTheDocument();
     });
 
+    it('opens a past week holding the day that was asked for', () => {
+        renderRow({ focusDay: '2026-06-16' });
+
+        expect(screen.getByText('Volume that week')).toBeInTheDocument();
+    });
+
+    it('leaves a week closed when the day asked for is not in it', () => {
+        renderRow({ focusDay: '2026-07-01' });
+
+        expect(screen.queryByText('Volume that week')).not.toBeInTheDocument();
+    });
+
     it('leaves every other week closed', () => {
         renderRow({ week: week({ type: 'history' }) });
 
