@@ -362,7 +362,7 @@ it('requestDeferred creates a Pending row and never dispatches', function (): vo
 it('requestDeferred leaves an existing Done row untouched', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     $row = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
-    $this->service->markDone($row, 'last week recap');
+    $this->service->markDone($row, 'last week recap', ServedBy::Llm);
 
     $again = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
@@ -910,7 +910,7 @@ it('markDone records content and generated_at', function (): void {
         'discriminator' => '2026-05-18',
     ]);
 
-    $this->service->markDone($row, 'final narrative');
+    $this->service->markDone($row, 'final narrative', ServedBy::Llm);
 
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Done)
@@ -933,8 +933,8 @@ it('markDone stores a content fingerprint when given, and leaves it null otherwi
         'discriminator' => '2026-05-18',
     ]);
 
-    $this->service->markDone($withFingerprint, 'story', fingerprint: 'abc123');
-    $this->service->markDone($without, 'headline');
+    $this->service->markDone($withFingerprint, 'story', ServedBy::Llm, fingerprint: 'abc123');
+    $this->service->markDone($without, 'headline', ServedBy::Llm);
 
     expect($withFingerprint->fresh()->content_fingerprint)->toBe('abc123')
         ->and($without->fresh()->content_fingerprint)->toBeNull();
@@ -949,7 +949,7 @@ it('markDone uses supplied generatedAt when given', function (): void {
     ]);
 
     $past = Carbon::now()->subHours(2);
-    $this->service->markDone($row, 'demo content', $past);
+    $this->service->markDone($row, 'demo content', ServedBy::Llm, $past);
 
     $fresh = $row->fresh();
     expect($fresh->generated_at->toIso8601String())->toBe($past->toIso8601String());
@@ -1253,7 +1253,7 @@ it('markDone fans out a notification for a notifiable, wired type', function ():
         'discriminator' => null,
     ]);
 
-    $this->service->markDone($row, 'Run story.');
+    $this->service->markDone($row, 'Run story.', ServedBy::Llm);
 
     Notification::assertSentTo(
         $user,
@@ -1266,7 +1266,7 @@ it('markDone does not notify for a non-notifiable type', function (): void {
     Notification::fake();
     $row = Analysis::factory()->create(['analysis_type' => AnalysisType::BriefingMascotVoice]);
 
-    $this->service->markDone($row, 'Halo!');
+    $this->service->markDone($row, 'Halo!', ServedBy::Llm);
 
     Notification::assertNothingSent();
 });
@@ -1286,7 +1286,7 @@ it('markDone does not notify under withoutDispatching (demo seed)', function ():
     ]);
 
     $this->service->withoutDispatching(function () use ($row): void {
-        $this->service->markDone($row, 'Rekap seed.');
+        $this->service->markDone($row, 'Rekap seed.', ServedBy::Llm);
     });
 
     Notification::assertNothingSent();
@@ -1301,7 +1301,7 @@ it('markDone does not start the re-trigger cooldown under withoutDispatching (de
     ]);
 
     $this->service->withoutDispatching(function () use ($row): void {
-        $this->service->markDone($row, 'Seed content.');
+        $this->service->markDone($row, 'Seed content.', ServedBy::Llm);
     });
 
     $fresh = $row->fresh();
@@ -1395,7 +1395,7 @@ it('markDone reaches the inbox alone when Telegram is unconfigured', function ()
         'discriminator' => null,
     ]);
 
-    $this->service->markDone($row, 'Rekap.');
+    $this->service->markDone($row, 'Rekap.', ServedBy::Llm);
 
     Notification::assertSentTo(
         $user,
@@ -1584,12 +1584,17 @@ it('keeps withoutDispatching suppressing after the memo is already warm', functi
 
 // ── served_by: which producer wrote the content on the row ────────────
 
-it('marks a normal completion as LLM-served', function (): void {
-    $row = Analysis::factory()->queued()->create();
+it('stamps the producer the caller states, and has no default to fall back on', function (): void {
+    $llm = Analysis::factory()->queued()->create(['discriminator' => '2026-05-18']);
+    $ruleBased = Analysis::factory()->queued()->create(['discriminator' => '2026-05-19']);
 
-    $this->service->markDone($row, 'narrated');
+    $this->service->markDone($llm, 'narrated', ServedBy::Llm);
+    $this->service->markDone($ruleBased, 'filled', ServedBy::RuleBased);
 
-    expect($row->fresh()->served_by)->toBe(ServedBy::Llm);
+    expect($llm->fresh()->served_by)->toBe(ServedBy::Llm)
+        ->and($ruleBased->fresh()->served_by)->toBe(ServedBy::RuleBased)
+        ->and(new ReflectionMethod(AnalysisService::class, 'markDone')->getParameters()[2]->isOptional())
+        ->toBeFalse();
 });
 
 it('marks a rule-based trigger as rule-based', function (): void {
@@ -1621,7 +1626,7 @@ it('keeps the previous narration when a done row is re-narrated', function (): v
         'served_by' => ServedBy::RuleBased,
     ]);
 
-    $this->service->markDone($row, 'second');
+    $this->service->markDone($row, 'second', ServedBy::Llm);
 
     $version = AnalysisVersion::query()->sole();
 
@@ -1635,7 +1640,7 @@ it('keeps the previous narration when a done row is re-narrated', function (): v
 it('writes no version for a first narration, which supersedes nothing', function (): void {
     $row = Analysis::factory()->queued()->create();
 
-    $this->service->markDone($row, 'first');
+    $this->service->markDone($row, 'first', ServedBy::Llm);
 
     expect(AnalysisVersion::query()->count())->toBe(0);
 });
@@ -1644,7 +1649,7 @@ it('supersedes the flag filed against the narration a re-narration replaces', fu
     $row = Analysis::factory()->done('first')->create();
     $flag = Feedback::factory()->onNarration($row->id)->create();
 
-    $this->service->markDone($row, 'second');
+    $this->service->markDone($row, 'second', ServedBy::Llm);
 
     expect($flag->fresh()->superseded_at)->not->toBeNull();
 });
@@ -1654,7 +1659,7 @@ it('leaves a flag on another subject alone when a narration is replaced', functi
     $otherNarration = Feedback::factory()->onNarration($row->id + 1)->create();
     $planDay = Feedback::factory()->onPlanDay($row->id)->create();
 
-    $this->service->markDone($row, 'second');
+    $this->service->markDone($row, 'second', ServedBy::Llm);
 
     expect($otherNarration->fresh()->superseded_at)->toBeNull()
         ->and($planDay->fresh()->superseded_at)->toBeNull();
@@ -1664,7 +1669,7 @@ it('leaves the flag standing on a first narration, which replaces nothing', func
     $row = Analysis::factory()->queued()->create();
     $flag = Feedback::factory()->onNarration($row->id)->create();
 
-    $this->service->markDone($row, 'first');
+    $this->service->markDone($row, 'first', ServedBy::Llm);
 
     expect($flag->fresh()->superseded_at)->toBeNull();
 });

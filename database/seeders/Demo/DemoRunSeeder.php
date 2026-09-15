@@ -32,6 +32,7 @@ use App\Services\AI\RecapPeriod;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\AI\RunQuestion\RunQuestionSeeds;
 use App\Services\AI\RunQuestion\RunQuestionTopic;
+use App\Services\AI\ServedBy;
 use App\Services\Geo\PolylineEncoder;
 use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PaceCalculator;
@@ -347,7 +348,7 @@ class DemoRunSeeder
         $demoGeneratedAt = Carbon::now()->subHours(2);
 
         foreach ($rows as $row) {
-            $this->analysisService->markDone($row, $this->filler->fillFor($row), $demoGeneratedAt);
+            $this->analysisService->markDone($row, $this->filler->fillFor($row), ServedBy::RuleBased, $demoGeneratedAt);
         }
 
         return $rows->count();
@@ -916,6 +917,7 @@ class DemoRunSeeder
             $row->update([
                 'status' => $status,
                 'content' => null,
+                'served_by' => null,
                 'generated_at' => null,
                 'error' => $status === AnalysisStatus::Failed ? 'Seeded edge state for the audits.' : null,
                 'attempts' => $status === AnalysisStatus::Failed ? Analysis::MAX_SELF_HEAL_ATTEMPTS : 0,

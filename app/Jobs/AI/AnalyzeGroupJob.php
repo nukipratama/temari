@@ -91,7 +91,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 
         try {
             $fingerprint = $this->fingerprintFor($subject);
-            $this->finalizePending($pending, $service, $this->generateAll($subject), $fingerprint);
+            $this->finalizePending($pending, $service, $this->generateAll($subject), ServedBy::Llm, $fingerprint);
             $this->afterGroupDone($service);
         } catch (ContentFilterException) {
             // Even the continuity-stripped retry content-filtered. Fill every
@@ -101,8 +101,8 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
                 $pending,
                 $service,
                 $this->ruleBasedPayload($pending),
-                $fingerprint,
                 ServedBy::RuleBased,
+                $fingerprint,
             );
             Log::info('narrator.ai.content_filter_fallback', [
                 'kind' => static::subjectType(),
@@ -183,12 +183,12 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         Collection $pending,
         AnalysisService $service,
         array $payload,
+        ServedBy $servedBy,
         ?string $fingerprint = null,
-        ServedBy $servedBy = ServedBy::Llm,
     ): void {
         DB::transaction(function () use ($pending, $payload, $service, $fingerprint, $servedBy): void {
             foreach ($pending as $key => $row) {
-                $service->markDone($row, $payload[$key], fingerprint: $fingerprint, servedBy: $servedBy);
+                $service->markDone($row, $payload[$key], $servedBy, fingerprint: $fingerprint);
             }
         });
     }

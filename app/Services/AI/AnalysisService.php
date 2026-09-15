@@ -226,9 +226,9 @@ class AnalysisService
     public function markDone(
         Analysis $row,
         string $content,
+        ServedBy $servedBy,
         ?Carbon $generatedAt = null,
         ?string $fingerprint = null,
-        ServedBy $servedBy = ServedBy::Llm,
     ): void {
         $this->archivePreviousVersion($row);
         $this->supersedeFeedback($row);
@@ -816,7 +816,7 @@ class AnalysisService
             $this->markDone(
                 $row,
                 app(RuleBasedNarrationFiller::class)->fillFor($row),
-                servedBy: ServedBy::RuleBased,
+                ServedBy::RuleBased,
             );
         });
     }

@@ -50,7 +50,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
                 $row->id,
                 fn (): string => $this->generateContent($row),
             );
-            $service->markDone($row, $content, fingerprint: $this->fingerprintFor($row));
+            $service->markDone($row, $content, ServedBy::Llm, fingerprint: $this->fingerprintFor($row));
             $this->afterDone($row, $service);
         } catch (ObsoleteAnalysisException $e) {
             // The subject is gone for good, so the row describes nothing. Left
@@ -72,7 +72,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             $service->markDone(
                 $row,
                 app(RuleBasedNarrationFiller::class)->fillFor($row),
-                servedBy: ServedBy::RuleBased,
+                ServedBy::RuleBased,
             );
             Log::info('narrator.ai.content_filter_fallback', [
                 'kind' => $row->analysis_type->value,
