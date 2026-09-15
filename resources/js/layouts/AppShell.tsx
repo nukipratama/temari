@@ -12,7 +12,6 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileTopBar from '@/components/MobileTopBar';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
-import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
 import useViewTransitions from '@/hooks/useViewTransitions';
 import { cn } from '@/lib/cn';
@@ -23,7 +22,6 @@ interface AppShellProps {
 }
 
 export default function AppShell({ children }: Readonly<AppShellProps>) {
-    useSwipeBack();
     useSystemTheme();
     useViewTransitions();
     const { component } = usePage<SharedProps>();
