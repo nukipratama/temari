@@ -93,6 +93,60 @@ describe('FlagSheet', () => {
         expect(onSent).toHaveBeenCalled();
     });
 
+    it('offers a something else chip that holds send until the note says what happened', () => {
+        renderSheet();
+
+        fireEvent.click(screen.getByRole('button', { name: 'something else' }));
+
+        expect(screen.getByRole('button', { name: 'send' })).toBeDisabled();
+
+        fireEvent.change(screen.getByRole('textbox'), {
+            target: { value: '   ' },
+        });
+
+        expect(screen.getByRole('button', { name: 'send' })).toBeDisabled();
+
+        fireEvent.change(screen.getByRole('textbox'), {
+            target: { value: 'the pace is from a different race' },
+        });
+
+        expect(screen.getByRole('button', { name: 'send' })).toBeEnabled();
+    });
+
+    it('posts something else as a note with no reason', () => {
+        renderSheet();
+
+        fireEvent.click(screen.getByRole('button', { name: 'something else' }));
+        fireEvent.change(screen.getByRole('textbox'), {
+            target: { value: 'the pace is from a different race' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'send' }));
+
+        expect(router.post).toHaveBeenCalledWith(
+            '/feedback',
+            {
+                subject_type: 'plan_day',
+                subject_id: 12,
+                reason: null,
+                note: 'the pace is from a different race',
+            },
+            expect.objectContaining({ preserveScroll: true }),
+        );
+    });
+
+    it('keeps the note optional behind a named reason', () => {
+        renderSheet();
+
+        fireEvent.click(screen.getByRole('button', { name: 'too hard' }));
+        fireEvent.click(screen.getByRole('button', { name: 'send' }));
+
+        expect(router.post).toHaveBeenCalledWith(
+            '/feedback',
+            expect.objectContaining({ reason: 'too_hard', note: '' }),
+            expect.anything(),
+        );
+    });
+
     it('closes on never mind without posting', () => {
         const { onOpenChange } = renderSheet();
 

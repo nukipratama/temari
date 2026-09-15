@@ -15,6 +15,9 @@ use Illuminate\Validation\Rule;
  * the controller so a foreign subject id 403s instead of getting a validation
  * redirect; an unrecognised subject type falls through to the rules below so it
  * still reads as a 422 rather than a permission problem.
+ *
+ * A flag carries a reason or a note: the sheet's "something else" chip sends no
+ * reason, so the note is what is left to say what went wrong.
  */
 class StoreFeedbackRequest extends FormRequest
 {
@@ -39,8 +42,8 @@ class StoreFeedbackRequest extends FormRequest
         return [
             'subject_type' => ['required', Rule::enum(FeedbackSubject::class)],
             'subject_id' => ['required', 'integer', 'min:1'],
-            'reason' => ['required', Rule::in(FeedbackReason::valuesFor($this->subjectType()))],
-            'note' => ['nullable', 'string', 'max:'.Feedback::MAX_NOTE_LENGTH],
+            'reason' => ['nullable', Rule::in(FeedbackReason::valuesFor($this->subjectType()))],
+            'note' => ['required_without:reason', 'nullable', 'string', 'max:'.Feedback::MAX_NOTE_LENGTH],
         ];
     }
 
@@ -51,9 +54,11 @@ class StoreFeedbackRequest extends FormRequest
         return is_string($value) ? FeedbackSubject::tryFrom($value) : null;
     }
 
-    public function reason(): FeedbackReason
+    public function reason(): ?FeedbackReason
     {
-        return FeedbackReason::from((string) $this->validated('reason'));
+        $reason = $this->validated('reason');
+
+        return is_string($reason) ? FeedbackReason::from($reason) : null;
     }
 
     public function subject(): FeedbackSubject
