@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\AI;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
@@ -26,10 +27,7 @@ class RecentlyActiveUsers
      */
     public function __invoke(): Collection
     {
-        return User::query()
-            ->notDemo()
-            ->where('last_seen_at', '>=', Carbon::today()->subDays(self::ACTIVE_WINDOW_DAYS))
-            ->get();
+        return $this->query()->get();
     }
 
     /**
@@ -37,6 +35,16 @@ class RecentlyActiveUsers
      */
     public function ids(): array
     {
-        return array_values($this->__invoke()->map(fn (User $user): int => $user->id)->all());
+        return array_values($this->query()->pluck('id')->map(fn (mixed $id): int => (int) $id)->all());
+    }
+
+    /**
+     * @return Builder<User>
+     */
+    private function query(): Builder
+    {
+        return User::query()
+            ->notDemo()
+            ->where('last_seen_at', '>=', Carbon::today()->subDays(self::ACTIVE_WINDOW_DAYS));
     }
 }

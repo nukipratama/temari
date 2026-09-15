@@ -44,7 +44,7 @@ class RegeneratePlanCommand extends Command
             ->when($userId !== null, fn ($query) => $query->where('id', (int) $userId))
             ->cursor();
 
-        $narratableIds = $activeUsers->ids();
+        $narratable = array_flip($activeUsers->ids());
 
         $count = 0;
         $failed = 0;
@@ -56,7 +56,7 @@ class RegeneratePlanCommand extends Command
             try {
                 $periodizer->regenerate($user);
 
-                if (in_array($user->id, $narratableIds, true)) {
+                if (isset($narratable[$user->id])) {
                     $narrationRequester->requestForCurrentWeek($user, $today);
                 }
 

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
-use App\Models\Activity;
-use App\Models\StravaConnection;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
@@ -27,8 +25,10 @@ use Illuminate\Support\Carbon;
  */
 class HistoryNarrationGate
 {
-    public function __construct(private readonly BackfillAgeGate $ages)
-    {
+    public function __construct(
+        private readonly BackfillAgeGate $ages,
+        private readonly HydrationBacklog $backlog,
+    ) {
     }
 
     public function isHistorical(User $user, ?Carbon $startedAt): bool
@@ -37,9 +37,9 @@ class HistoryNarrationGate
             return false;
         }
 
-        $connectedAt = StravaConnection::query()->where('user_id', $user->id)->value('created_at');
+        $connectedAt = $this->backlog->connectedAt($user->id);
 
-        return $connectedAt !== null && $startedAt->lt(Carbon::parse($connectedAt));
+        return $connectedAt !== null && $startedAt->lt($connectedAt);
     }
 
     /**
@@ -54,10 +54,7 @@ class HistoryNarrationGate
             return false;
         }
 
-        return Activity::query()
-            ->awaitingHydration()
-            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
-            ->where('activities.user_id', $user->id)
+        return $this->backlog->awaitingHydration([$user->id])
             ->where('activity_details.start_date_local', '<', $startedAt)
             ->where('activity_details.start_date_local', '>=', $this->ages->cutoff())
             ->exists();
