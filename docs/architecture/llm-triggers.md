@@ -316,7 +316,7 @@ inline in its `toolbox()` method.
 
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
-| `RunSummaryTool` · `get_run_summary` | `started_at_local`, `distance_km`, `moving_time_sec`, `pace_sec_per_km`, `avg_hr`, `max_hr`, `avg_cadence_spm`, `cadence_drop_spm` | `ActivityNarrationContext`, `PaceCalculator`; cadence drop from the stored `stream_summary` |
+| `RunSummaryTool` · `get_run_summary` | `started_at_local`, `distance_km`, `elapsed_time_sec`, `elapsed_time_formatted`, `pace_sec_per_km`, `pace_formatted`, `avg_hr`, `max_hr`, `avg_cadence_spm`, `cadence_drop_spm` | `ActivityNarrationContext`, `PaceCalculator`; cadence drop from the stored `stream_summary` |
 | `KmSplitsTool` · `get_km_splits` | `per_km` (sampled rows), `omitted_km`, `fastest_km`, `slowest_km`, `finish_partial`, `negative_split`, `pace_consistency` | stored `stream_summary` via `StreamSummary`; label from `PaceConsistency` |
 | `LapsTool` · `get_laps` | `lap_count`, `laps`, `fastest_lap`, `slowest_lap`, `rep_count`, `recovery_sec`, `pause_count`, `paused_laps` | `StreamSummary::laps()`, `KmSplitBuilder`, `PaceCalculator`, `IntervalDetector` |
 | `HrZonesTool` · `get_hr_zones` | `zone_pct`, `time_in_zone_min`, `trimp`, `hr_drift_bpm`, `intensity_label` | stored `stream_summary` via `StreamSummary`; the label thresholds in-tool |

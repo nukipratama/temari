@@ -24,7 +24,7 @@ path: it is the product premise and a Strava platform requirement at once.
 
 [ComparableRun](app/Services/Run/Story/ComparableRun.php) projects an
 `ActivityDetail` onto the fields `/athlete/activities` already returns: distance,
-moving time, pace, average HR, elevation gain, plus the clock time and month
+elapsed time, pace, average HR, elevation gain, plus the clock time and month
 derived from `start_date_local`. Nothing in the matching path touches streams,
 splits, `stream_summary`, TRIMP or weather, so a run still queued for lazy
 hydration is a valid candidate on **both** sides of a comparison. See
