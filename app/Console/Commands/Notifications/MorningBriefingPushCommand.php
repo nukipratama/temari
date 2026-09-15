@@ -30,7 +30,7 @@ class MorningBriefingPushCommand extends Command
         $today = $now->toDateString();
 
         $users = User::query()
-            ->where($router->scopePushReachable(...))
+            ->where($router->scopeReachable(...))
             ->whereDoesntHave(
                 'notificationPreference',
                 fn (Builder $preference): Builder => $preference->where('notifications_enabled', false),

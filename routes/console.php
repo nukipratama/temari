@@ -138,6 +138,9 @@ $alertOnFailure(Schedule::command('ai:self-heal')->hourly()->withoutOverlapping(
 // See docs/decisions/kickoff-catch-up-is-upsert-only.md.
 $alertOnFailure(Schedule::command('ai:catch-up')->hourly()->withoutOverlapping(55)->onOneServer(), 'ai:catch-up');
 
+// 21:00: today's spend per athlete and against both ceilings, pushed to every admin.
+$alertOnFailure(Schedule::command('ai:spend-digest')->dailyAt('21:00')->withoutOverlapping(10)->onOneServer(), 'ai:spend-digest');
+
 // 02:20 daily: prune failed_jobs older than 7 days. Most entries are superseded
 // dupes of the same Analysis rows (which are the real source of truth), so the
 // table just bloats and reads as an alarming unexplained count during triage.

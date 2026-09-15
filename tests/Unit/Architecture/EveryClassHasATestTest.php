@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
 use App\Http\Controllers\Notifications\Concerns\PushesAnalysisNotification;
 use App\Jobs\Telegram\Concerns\RevokesConnectionOnPermanentFailure;
+use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Events\ActivityIngested;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\AI\ContentFilterEvent;
@@ -76,6 +77,7 @@ it('has a test class for every concrete app class', function (): void {
         PushesAnalysisNotification::class, // trait, exercised via the three Send*NotificationControllerTest suites
         RevokesConnectionOnPermanentFailure::class, // trait, exercised via TelegramChannelTest
         ConfirmsPermanentRemoval::class, // trait, exercised via RemoveAthleteCommandTest + UserRemoveCommandTest
+        AppendsUnreadBadge::class, // trait, exercised via the five push-notification test suites
     ];
 
     $testedBasenames = collect(File::allFiles(base_path('tests')))

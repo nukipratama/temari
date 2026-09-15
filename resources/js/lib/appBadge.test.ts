@@ -1,23 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { syncAppBadgeOnVisible } from './appBadge';
+import {
+    syncAppBadge,
+    syncAppBadgeOnVisible,
+    unreadCountFromProps,
+} from './appBadge';
 
 function setVisibility(state: DocumentVisibilityState) {
     Object.defineProperty(document, 'visibilityState', {
         value: state,
         configurable: true,
-    });
-}
-
-function stubServiceWorker(notifications: unknown[]) {
-    Object.defineProperty(navigator, 'serviceWorker', {
-        value: {
-            ready: Promise.resolve({
-                getNotifications: vi.fn().mockResolvedValue(notifications),
-            }),
-        },
-        configurable: true,
-        writable: true,
     });
 }
 
@@ -38,40 +30,56 @@ function stubBadge() {
 }
 
 afterEach(() => {
-    Reflect.deleteProperty(navigator, 'serviceWorker');
     Reflect.deleteProperty(navigator, 'setAppBadge');
     Reflect.deleteProperty(navigator, 'clearAppBadge');
     vi.restoreAllMocks();
 });
 
-describe('syncAppBadgeOnVisible', () => {
-    it('sets the badge to the tray count when visible', async () => {
-        setVisibility('visible');
-        stubServiceWorker([{}, {}, {}]);
+describe('syncAppBadge', () => {
+    it('sets the badge to the inbox unread count', async () => {
         const { setAppBadge } = stubBadge();
 
-        syncAppBadgeOnVisible();
+        syncAppBadge(3);
 
         await vi.waitFor(() => expect(setAppBadge).toHaveBeenCalledWith(3));
     });
 
-    it('clears the badge when the tray is empty', async () => {
-        setVisibility('visible');
-        stubServiceWorker([]);
+    it('clears the badge once the inbox is read', async () => {
         const { setAppBadge, clearAppBadge } = stubBadge();
 
-        syncAppBadgeOnVisible();
+        syncAppBadge(2);
+        syncAppBadge(0);
 
         await vi.waitFor(() => expect(clearAppBadge).toHaveBeenCalled());
-        expect(setAppBadge).not.toHaveBeenCalled();
+        expect(setAppBadge).toHaveBeenCalledTimes(1);
     });
 
-    // Opening the app never wipes the tray: the badge only re-syncs, so a hidden
-    // page must not touch it at all.
+    it('does nothing when the Badging API is unavailable', () => {
+        expect(() => syncAppBadge(1)).not.toThrow();
+    });
+});
+
+describe('syncAppBadgeOnVisible', () => {
+    it('re-applies the last known unread count when the page becomes visible', async () => {
+        setVisibility('visible');
+        const { setAppBadge } = stubBadge();
+
+        syncAppBadge(4);
+        setAppBadge.mockClear();
+
+        syncAppBadgeOnVisible();
+        document.dispatchEvent(new Event('visibilitychange'));
+
+        await vi.waitFor(() => expect(setAppBadge).toHaveBeenCalledWith(4));
+    });
+
     it('does nothing while the page is hidden', async () => {
-        setVisibility('hidden');
-        stubServiceWorker([{}]);
         const { setAppBadge, clearAppBadge } = stubBadge();
+
+        syncAppBadge(1);
+        setAppBadge.mockClear();
+        clearAppBadge.mockClear();
+        setVisibility('hidden');
 
         syncAppBadgeOnVisible();
 
@@ -80,21 +88,32 @@ describe('syncAppBadgeOnVisible', () => {
         expect(clearAppBadge).not.toHaveBeenCalled();
     });
 
-    it('re-syncs when the page becomes visible again', async () => {
+    // Registration must not itself apply a stale default: app.tsx calls this
+    // before the real unread count is known from the first Inertia page, and an
+    // eager apply here would clear a genuinely non-zero badge until that lands.
+    it('does not apply anything at registration time, only on a later event', async () => {
         setVisibility('visible');
-        stubServiceWorker([{}, {}]);
-        const { setAppBadge } = stubBadge();
+        const { setAppBadge, clearAppBadge } = stubBadge();
+
+        syncAppBadge(5);
+        setAppBadge.mockClear();
+        clearAppBadge.mockClear();
 
         syncAppBadgeOnVisible();
-        document.dispatchEvent(new Event('visibilitychange'));
 
-        await vi.waitFor(() => expect(setAppBadge).toHaveBeenCalledWith(2));
+        await Promise.resolve();
+        expect(setAppBadge).not.toHaveBeenCalled();
+        expect(clearAppBadge).not.toHaveBeenCalled();
+    });
+});
+
+describe('unreadCountFromProps', () => {
+    it('reads the unreadNotifications prop', () => {
+        expect(unreadCountFromProps({ unreadNotifications: 5 })).toBe(5);
     });
 
-    it('does nothing when the Badging API is unavailable', () => {
-        setVisibility('visible');
-        stubServiceWorker([{}]);
-
-        expect(() => syncAppBadgeOnVisible()).not.toThrow();
+    it('defaults to 0 when the prop is absent or not a number', () => {
+        expect(unreadCountFromProps({})).toBe(0);
+        expect(unreadCountFromProps({ unreadNotifications: '5' })).toBe(0);
     });
 });

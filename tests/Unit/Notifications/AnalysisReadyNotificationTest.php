@@ -6,6 +6,7 @@ use App\Enums\NotificationKind;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\InboxNotification;
 use App\Models\NotificationPreference;
 use App\Models\RunCard;
 use App\Models\TelegramConnection;
@@ -235,7 +236,7 @@ it('builds a web push message with the dynamic title, body, tap-through url, and
 
     expect($payload['title'])->toContain('run is in.')
         ->and($payload['body'])->toContain('Pace konsisten.')
-        ->and($payload['data'])->toBe(['url' => route('activities.show', $analysis->subject_id)])
+        ->and($payload['data'])->toBe(['url' => route('activities.show', $analysis->subject_id), 'unread' => 0])
         ->and($message->getOptions())->toBe(['urgency' => 'high']);
 });
 
@@ -355,4 +356,14 @@ it('sends on the surviving channel when only one is muted', function (): void {
     NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
 
     expect(viaFor(postRunAnalysis($user), $user->fresh()))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
+});
+
+// The app-icon badge counts inbox rows, so the push carries the count the
+// service worker should show rather than leaving it to count its own tray.
+it('carries the inbox unread count for the app-icon badge', function (): void {
+    $user = User::factory()->create();
+    InboxNotification::factory()->for($user)->count(3)->create();
+    $notification = new AnalysisReadyNotification(postRunAnalysis($user));
+
+    expect($notification->toWebPush($user, $notification)->toArray()['data']['unread'])->toBe(3);
 });

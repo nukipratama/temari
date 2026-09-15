@@ -51,7 +51,7 @@ athlete argument, so it gates callers that hold none — `pauseReason()`, the /p
 restores, deliberately: an athlete exhausting their own slice is ordinary operation, the whole
 app stopping is not.
 
-**4. A trip pushes one maintainer alert.** [`totalCeilingReached()`](app/Services/AI/MaintainerAlerter.php#L191) names
+**4. A trip pushes one maintainer alert.** [`totalCeilingReached()`](app/Services/AI/MaintainerAlerter.php#L203) names
 the spend, the ceiling and how many athletes are degraded, behind a one-hour cooldown so a
 ceiling that stays tripped alerts once per window rather than once per gated dispatch. The
 per-athlete ceiling stays silent.

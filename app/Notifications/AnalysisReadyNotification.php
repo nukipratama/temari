@@ -10,6 +10,7 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
+use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
@@ -34,6 +35,7 @@ use NotificationChannels\WebPush\WebPushMessage;
  */
 class AnalysisReadyNotification extends Notification implements ShouldQueue
 {
+    use AppendsUnreadBadge;
     use Queueable;
 
     public int $tries = 3;
@@ -95,7 +97,7 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
             ->title($presenter->title($this->analysis))
             ->body(trim((string) $this->analysis->content))
             ->icon('/icon-192.png')
-            ->data(['url' => $presenter->url($this->analysis)])
+            ->data($this->withUnreadBadge(['url' => $presenter->url($this->analysis)], $notifiable->id))
             // High urgency so the push isn't deferred by the OS in Low Power Mode.
             ->options(['urgency' => 'high']);
     }

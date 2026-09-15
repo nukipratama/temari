@@ -97,5 +97,5 @@ it('builds a web push carrying the same reconnect link', function (): void {
     $payload = $message->toArray();
 
     expect($payload['title'])->toBe('Strava stopped syncing')
-        ->and($payload['data'])->toBe(['url' => route('profile')]);
+        ->and($payload['data'])->toBe(['url' => route('profile'), 'unread' => 0]);
 });
