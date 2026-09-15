@@ -183,7 +183,7 @@ describe('WeekPlanWidget', () => {
             <WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />,
         );
 
-        expect(screen.getByText('4.2k')).toBeInTheDocument();
+        expect(screen.getByText('4.2 km')).toBeInTheDocument();
         expect(
             container.querySelector('[title^="Done"] [data-icon]'),
         ).toHaveClass('text-leaf-ink');
@@ -200,7 +200,9 @@ describe('WeekPlanWidget', () => {
         );
 
         expect(
-            container.querySelector('li[title="Partial · planned 8k · 62%"]'),
+            container.querySelector(
+                'li[title="Partial · planned 8.0 km · 62%"]',
+            ),
         ).toBeInTheDocument();
     });
 
@@ -212,9 +214,9 @@ describe('WeekPlanWidget', () => {
         );
         render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
 
-        expect(screen.getByText('9.4k')).toHaveClass('text-leaf-ink');
-        expect(screen.getByText('of 8k')).toBeInTheDocument();
-        expect(screen.getAllByText('8k')).toHaveLength(6);
+        expect(screen.getByText('9.4 km')).toHaveClass('text-leaf-ink');
+        expect(screen.getByText('of 8.0')).toBeInTheDocument();
+        expect(screen.getAllByText('8.0 km')).toHaveLength(6);
     });
 
     it('leaves a run rest day showing the actual alone, with nothing to be "of"', () => {
@@ -231,7 +233,7 @@ describe('WeekPlanWidget', () => {
         );
         render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
 
-        expect(screen.getByText('4.2k')).toBeInTheDocument();
+        expect(screen.getByText('4.2 km')).toBeInTheDocument();
         expect(screen.queryByText(/^of /)).not.toBeInTheDocument();
     });
 
@@ -243,6 +245,39 @@ describe('WeekPlanWidget', () => {
             screen.getByRole('link', { name: 'see the plan' }),
         ).toHaveAttribute('href', '/plan');
         expect(screen.queryByText(/today ·/)).not.toBeInTheDocument();
+    });
+
+    it('states every day distance to one decimal, never a bare integer with a k', () => {
+        const days = MON_TO_SUN.map((date) =>
+            date === '2026-01-05'
+                ? day({
+                      date,
+                      status: 'done',
+                      distance_km: 9.14,
+                      actual_km: 5,
+                  })
+                : day({ date }),
+        );
+        render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
+
+        expect(screen.getByText('5.0 km')).toBeInTheDocument();
+        expect(screen.getByText('of 9.1')).toBeInTheDocument();
+        expect(screen.queryByText('5k')).not.toBeInTheDocument();
+        expect(screen.queryByText('of 9.1k')).not.toBeInTheDocument();
+    });
+
+    it('links each day into the plan at that day', () => {
+        const days = MON_TO_SUN.map((date) => day({ date }));
+        render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
+
+        expect(screen.getByRole('link', { name: /^Mon ·/ })).toHaveAttribute(
+            'href',
+            '/plan?day=2026-01-05',
+        );
+        expect(screen.getByRole('link', { name: /^Sun ·/ })).toHaveAttribute(
+            'href',
+            '/plan?day=2026-01-11',
+        );
     });
 
     it('lays out the ring, km and trimp figures as three sibling columns', async () => {
@@ -268,6 +303,6 @@ describe('WeekPlanWidget', () => {
         expect(
             screen.getAllByText(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/),
         ).toHaveLength(7);
-        expect(container.querySelectorAll('li.ring-inset')).toHaveLength(1);
+        expect(container.querySelectorAll('li a.ring-inset')).toHaveLength(1);
     });
 });
