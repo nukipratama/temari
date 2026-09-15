@@ -78,6 +78,20 @@ class BackfillAgeGate
         };
     }
 
+    /**
+     * The start date of the run a per-activity subject belongs to, or null for
+     * a subject that is not one run.
+     */
+    public function runDateForSubject(AnalysisType $type, int $subjectId): ?Carbon
+    {
+        return match ($type) {
+            AnalysisType::CardFlavor => $this->runDateForCard($subjectId),
+            AnalysisType::PostRunSpeech,
+            AnalysisType::RunInsight => $this->runDate($subjectId),
+            default => null,
+        };
+    }
+
     private function runDateForCard(int $cardId): ?Carbon
     {
         $activityId = RunCard::query()->whereKey($cardId)->value('activity_id');

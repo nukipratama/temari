@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\IngestState;
 use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Requests\TriggerAnalysisRequest;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
@@ -14,6 +15,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\RunnerProfile;
 use App\Models\RunCard;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
@@ -21,6 +23,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\SummaryRecomputer;
 use Illuminate\Auth\Access\AuthorizationException;
 use App\Support\Config\AppConfig;
@@ -927,7 +930,51 @@ it('throws Unauthenticated when the request has no user (defensive guard)', func
         app(SummaryRecomputer::class),
         app(ChainResolver::class),
         app(BackfillAgeGate::class),
+        app(HistoryNarrationGate::class),
         'briefing_mascot_voice',
         1,
     ))->toThrow(AuthorizationException::class, 'Unauthenticated');
+});
+
+/**
+ * Pre-connect history is filled rule-based on ingest (#905); the LLM read is
+ * this trigger, and it waits for the rest of the window to hydrate.
+ */
+function historicalRun(User $user, string $startedAt, IngestState $state = IngestState::Detailed): Activity
+{
+    $activity = Activity::factory()->for($user)->create([
+        'ingest_state' => $state,
+        'analyzed_at' => $state === IngestState::Detailed ? Carbon::now() : null,
+    ]);
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse($startedAt)]);
+
+    return $activity;
+}
+
+it('refuses an on-demand read of a historical run while an older run in the window is unhydrated', function (): void {
+    Carbon::setTestNow('2026-09-15 09:00:00');
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::parse('2026-09-14 12:00:00')]);
+    historicalRun($user, '2026-08-01 06:00:00', IngestState::Summary);
+    $clicked = historicalRun($user, '2026-08-20 06:00:00');
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/post_run_speech/{$clicked->id}/trigger")
+        ->assertStatus(409);
+
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+});
+
+it('reads a historical run on demand once the window has hydrated', function (): void {
+    Carbon::setTestNow('2026-09-15 09:00:00');
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::parse('2026-09-14 12:00:00')]);
+    historicalRun($user, '2026-08-01 06:00:00');
+    $clicked = historicalRun($user, '2026-08-20 06:00:00');
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/post_run_speech/{$clicked->id}/trigger")
+        ->assertSuccessful();
+
+    Bus::assertDispatched(AnalyzeActivityJob::class);
 });
