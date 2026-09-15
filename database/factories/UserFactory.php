@@ -44,6 +44,11 @@ class UserFactory extends Factory
         return $this->state(['onboarded_at' => null]);
     }
 
+    public function seenToday(): static
+    {
+        return $this->state(['last_seen_at' => now()]);
+    }
+
     public function admin(): static
     {
         return $this->state(['is_admin' => true]);

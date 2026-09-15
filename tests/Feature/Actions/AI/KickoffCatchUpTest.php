@@ -29,7 +29,7 @@ afterEach(function (): void {
 
 function activeAthlete(bool $demo = false): User
 {
-    $user = $demo ? User::factory()->demo()->create() : User::factory()->create();
+    $user = $demo ? User::factory()->demo()->seenToday()->create() : User::factory()->seenToday()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()->subDay()]);
 

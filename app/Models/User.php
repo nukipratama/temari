@@ -26,6 +26,7 @@ use Override;
  * @property bool $is_admin
  * @property Carbon|null $onboarded_at
  * @property Carbon|null $backfilled_at
+ * @property Carbon|null $last_seen_at
  */
 // `is_admin` is deliberately NOT fillable: it is a privilege flag granted only
 // via the `user:set-admin` command, never through mass assignment.
@@ -65,6 +66,7 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'onboarded_at' => 'datetime',
             'backfilled_at' => 'datetime',
+            'last_seen_at' => 'datetime',
         ];
     }
 

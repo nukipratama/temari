@@ -16,9 +16,7 @@ uses(RefreshDatabase::class);
 it('dispatches the requested range for every active user', function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
 
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
+    $user = User::factory()->seenToday()->create();
 
     $requestCalls = [];
     $service = Mockery::mock(AnalysisService::class);
@@ -53,9 +51,7 @@ it('rejects a range outside AnalysisType::TREND_READ_RANGES', function (): void 
 it('skips the demo user even with recent activity', function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
 
-    $demo = User::factory()->demo()->create();
-    $activity = Activity::factory()->for($demo)->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
+    User::factory()->demo()->seenToday()->create();
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('request');
@@ -68,12 +64,12 @@ it('skips the demo user even with recent activity', function (): void {
     Carbon::setTestNow();
 });
 
-it('skips a user with no run in the active window', function (): void {
+it('skips a user who has not opened the app in the active window, however recently they ran', function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
 
-    $user = User::factory()->create();
+    $user = User::factory()->create(['last_seen_at' => Carbon::today()->subDays(30)]);
     $activity = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()->subDays(30)]);
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('request');
@@ -89,9 +85,7 @@ it('skips a user with no run in the active window', function (): void {
 it('dispatches each of the three real ranges with its own discriminator', function (string $range): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
 
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
+    $user = User::factory()->seenToday()->create();
 
     $requestCalls = [];
     $service = Mockery::mock(AnalysisService::class);
