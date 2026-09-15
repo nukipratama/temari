@@ -15,6 +15,7 @@ function row(overrides: Partial<FeedbackFlagRow> = {}): FeedbackFlagRow {
         subject_url: '/plan',
         reason: 'wrong day',
         note: null,
+        superseded: false,
         ...overrides,
     };
 }
@@ -35,6 +36,12 @@ describe('DevtoolsFeedback', () => {
             'href',
             '/plan',
         );
+    });
+
+    it('marks a flag whose narration has since been replaced', () => {
+        render(<DevtoolsFeedback rows={[row({ superseded: true })]} />);
+
+        expect(screen.getByText('superseded')).toBeInTheDocument();
     });
 
     it('draws the subject as plain text when it has no url', () => {

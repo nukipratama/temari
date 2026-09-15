@@ -31,9 +31,11 @@ it('casts the subject columns and the timestamp', function (): void {
         'subject_type' => 'narration',
         'subject_id' => '42',
         'reason' => 'tone_off',
+        'superseded_at' => '2026-09-16 08:00:00',
     ]);
 
-    expect($feedback->user_id)->toBeInt()->toBe(3)
+    expect($feedback->superseded_at)->toBeInstanceOf(Carbon::class)
+        ->and($feedback->user_id)->toBeInt()->toBe(3)
         ->and($feedback->subject_type)->toBe(FeedbackSubject::Narration)
         ->and($feedback->subject_id)->toBeInt()->toBe(42)
         ->and($feedback->reason)->toBe(FeedbackReason::ToneOff);

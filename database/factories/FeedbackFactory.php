@@ -26,6 +26,7 @@ class FeedbackFactory extends Factory
             'subject_id' => 1,
             'reason' => FeedbackReason::WrongDay,
             'note' => null,
+            'superseded_at' => null,
             'created_at' => now(),
         ];
     }
@@ -37,6 +38,11 @@ class FeedbackFactory extends Factory
             'subject_id' => $subjectId,
             'reason' => FeedbackReason::FactsWrong,
         ]);
+    }
+
+    public function superseded(): self
+    {
+        return $this->state(fn (): array => ['superseded_at' => now()]);
     }
 
     public function onPlanDay(int $subjectId): self

@@ -60,7 +60,9 @@ export default function NarrationRow({
                 {row.flag !== null && (
                     <Chip tone="neutral" className="text-ember-ink">
                         <Flag aria-hidden className="h-3 w-3" />
-                        flagged
+                        {row.flag.superseded
+                            ? 'flagged (superseded)'
+                            : 'flagged'}
                         {row.flag.reason !== null ? `: ${row.flag.reason}` : ''}
                     </Chip>
                 )}

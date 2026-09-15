@@ -14,7 +14,9 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Lists the flags runners have filed via "flag this as wrong", newest first.
+ * Lists the flags runners have filed via "flag this as wrong", newest first,
+ * including the ones a re-narration has superseded: the note is the signal, and
+ * it outlives the text it was about.
  * Read-only: there is no admin action here, see docs/features/feedback.md.
  */
 class DevtoolsFeedbackController extends Controller
@@ -45,7 +47,7 @@ class DevtoolsFeedbackController extends Controller
 
     /**
      * @param  Collection<int, Analysis>  $analyses
-     * @return array{id:int, created_at:string, created_at_full:string, runner:string, subject_label:string, subject_url:string|null, reason:string|null, note:string|null}
+     * @return array{id:int, created_at:string, created_at_full:string, runner:string, subject_label:string, subject_url:string|null, reason:string|null, note:string|null, superseded:bool}
      */
     private function rowPayload(Feedback $row, Collection $analyses, AnalysisMessagePresenter $presenter): array
     {
@@ -65,6 +67,7 @@ class DevtoolsFeedbackController extends Controller
             'subject_url' => $url,
             'reason' => $row->reason === null ? null : str_replace('_', ' ', $row->reason->value),
             'note' => $row->note,
+            'superseded' => $row->superseded_at !== null,
         ];
     }
 

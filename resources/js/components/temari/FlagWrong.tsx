@@ -59,36 +59,26 @@ export default function FlagWrong({
     const tone = onSky ? 'text-ink-on-sky' : 'text-text-3';
     const box = compact ? COMPACT_BUTTON_CLASS : ICON_BUTTON_CLASS;
 
-    if (flagged || sent) {
-        return (
-            <span
-                aria-label="flagged"
-                title="flagged"
-                className={cn(box, tone)}
-            >
-                <Icon icon={Flag} className="size-5 fill-current" aria-hidden />
-            </span>
-        );
-    }
-
     return (
         <>
-            <button
-                type="button"
-                aria-label={label}
-                title={label}
-                onClick={() => {
-                    setAsked(true);
-                    setOpen(true);
-                }}
-                className={cn(
-                    box,
-                    'focus-ring pressable transition-colors hover:text-foreground',
-                    tone,
-                )}
-            >
-                <Icon icon={Flag} className="size-5" aria-hidden />
-            </button>
+            {!flagged && !sent && (
+                <button
+                    type="button"
+                    aria-label={label}
+                    title={label}
+                    onClick={() => {
+                        setAsked(true);
+                        setOpen(true);
+                    }}
+                    className={cn(
+                        box,
+                        'focus-ring pressable transition-colors hover:text-foreground',
+                        tone,
+                    )}
+                >
+                    <Icon icon={Flag} className="size-5" aria-hidden />
+                </button>
+            )}
             {asked && (
                 <Suspense fallback={null}>
                     <FlagSheet

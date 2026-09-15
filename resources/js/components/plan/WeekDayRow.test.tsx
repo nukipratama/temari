@@ -454,10 +454,10 @@ describe('WeekDayRow', () => {
         expect(flag.parentElement).toBe(trigger.parentElement);
     });
 
-    it('draws an inert flagged icon on a day already flagged', () => {
+    it('draws no flag at all on a day already flagged', () => {
         renderRow({ day: day({ flagged: true }) });
 
-        expect(screen.getByLabelText('flagged')).toBeInTheDocument();
+        expect(screen.queryByLabelText('flagged')).toBeNull();
         expect(
             screen.queryByRole('button', { name: 'flag this day' }),
         ).toBeNull();

@@ -15,6 +15,7 @@ export interface FeedbackFlagRow {
     subject_url: string | null;
     reason: string | null;
     note: string | null;
+    superseded: boolean;
 }
 
 const COLUMNS = ['when', 'runner', 'subject', 'reason', 'note'];
@@ -92,7 +93,14 @@ function FeedbackCells({ row }: Readonly<{ row: FeedbackFlagRow }>) {
                     row.subject_label
                 )}
             </Td>
-            <Td>{row.reason ?? '—'}</Td>
+            <Td>
+                {row.reason ?? '—'}
+                {row.superseded && (
+                    <span className="block text-label-micro text-text-3">
+                        superseded
+                    </span>
+                )}
+            </Td>
             <td
                 className="max-w-[40ch] whitespace-normal px-5 py-3 text-text-2"
                 title={row.note ?? undefined}

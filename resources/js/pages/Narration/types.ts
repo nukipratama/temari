@@ -178,6 +178,7 @@ export interface NarrationFlag {
     reason: string | null;
     note: string | null;
     at: string | null;
+    superseded: boolean;
 }
 
 export interface NarrationRow {

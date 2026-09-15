@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use Closure;
+use App\Enums\FeedbackSubject;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeGroupJob;
@@ -12,6 +13,7 @@ use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\AnalysisVersion;
+use App\Models\Feedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Notifications\AnalysisReadyNotification;
@@ -229,6 +231,7 @@ class AnalysisService
         ServedBy $servedBy = ServedBy::Llm,
     ): void {
         $this->archivePreviousVersion($row);
+        $this->supersedeFeedback($row);
 
         $row->update([
             'status' => AnalysisStatus::Done,
@@ -284,6 +287,25 @@ class AnalysisService
             'served_by' => $row->served_by,
             'generated_at' => $row->generated_at,
         ]);
+    }
+
+    /**
+     * Retire the flags filed against the narration this row is about to lose,
+     * so the athlete's "this is wrong" stops standing against text that has
+     * been replaced and the control comes back for the new one. A row with no
+     * content has never been narrated, so nothing has been flagged yet.
+     */
+    private function supersedeFeedback(Analysis $row): void
+    {
+        if ($row->content === null) {
+            return;
+        }
+
+        Feedback::query()
+            ->where('subject_type', FeedbackSubject::Narration)
+            ->where('subject_id', $row->id)
+            ->whereNull('superseded_at')
+            ->update(['superseded_at' => Carbon::now()]);
     }
 
     public function markFailed(Analysis $row, string $error): void
