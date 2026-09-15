@@ -1,14 +1,12 @@
 /**
- * Re-sync the PWA app-icon badge to the notification tray whenever the app
- * becomes visible.
+ * The PWA app-icon badge, which counts the in-app inbox's unread rows — the
+ * same number the bell shows, so the icon and the app never disagree.
  *
- * The service worker keeps the badge live as pushes arrive and as notifications
- * are tapped or swiped ({@see public/sw.js}). This covers the one case it can't:
- * on iOS the `notificationclose` event never fires, so a swiped-away
- * notification leaves a stale count until the app is next opened. Reading the
- * same `getNotifications()` tray the worker does, on `visibilitychange`, makes
- * the count correct again. It never clears the badge on its own and never
- * dismisses a notification — the tray is the single source of truth.
+ * {@see syncAppBadge} is called with the `unreadNotifications` shared prop on
+ * every Inertia visit, which is also what clears the badge the moment the inbox
+ * is read. {@see syncAppBadgeOnVisible} re-applies the last count when the app
+ * comes back into view, for the iOS case where a swiped-away notification
+ * leaves the service worker's own count stale ({@see public/sw.js}).
  *
  * Fire-and-forget, matching {@see registerServiceWorker}: any absent API or
  * rejected promise degrades silently.
@@ -18,33 +16,42 @@ type BadgeNavigator = Navigator & {
     clearAppBadge?: () => Promise<void>;
 };
 
-export function syncAppBadgeOnVisible(): void {
-    if (
-        typeof navigator === 'undefined' ||
-        !('serviceWorker' in navigator) ||
-        !('setAppBadge' in navigator)
-    ) {
+let lastKnownUnread = 0;
+
+function apply(count: number): void {
+    if (typeof navigator === 'undefined' || !('setAppBadge' in navigator)) {
         return;
     }
 
     const badgeNavigator = navigator as BadgeNavigator;
+    const applied =
+        count > 0
+            ? badgeNavigator.setAppBadge?.(count)
+            : badgeNavigator.clearAppBadge?.();
 
+    void applied?.catch(() => undefined);
+}
+
+export function syncAppBadge(unread: number): void {
+    lastKnownUnread = unread;
+    apply(unread);
+}
+
+export function syncAppBadgeOnVisible(): void {
     const sync = (): void => {
         if (document.visibilityState !== 'visible') {
             return;
         }
 
-        void navigator.serviceWorker.ready
-            .then((registration) => registration.getNotifications())
-            .then((notifications) =>
-                notifications.length > 0
-                    ? badgeNavigator.setAppBadge?.(notifications.length)
-                    : badgeNavigator.clearAppBadge?.(),
-            )
-            .catch(() => undefined);
+        apply(lastKnownUnread);
     };
 
     document.addEventListener('visibilitychange', sync);
     globalThis.addEventListener('focus', sync);
-    sync();
+}
+
+/** Reads the `unreadNotifications` shared prop off an Inertia page, defaulting to 0 when absent or malformed. */
+export function unreadCountFromProps(props: Record<string, unknown>): number {
+    const unread = props.unreadNotifications;
+    return typeof unread === 'number' ? unread : 0;
 }

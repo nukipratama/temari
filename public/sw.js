@@ -21,12 +21,16 @@
 const OFFLINE_CACHE = 'temari-offline-v7';
 const OFFLINE_URL = '/offline.html';
 
+// Inbox unread count from the last push. The badge counts inbox rows, so the
+// tray is only the fallback before this worker has seen a push.
+let lastKnownUnread = null;
+
 async function syncBadge() {
     if (!('setAppBadge' in self.navigator)) {
         return;
     }
 
-    const count = (await self.registration.getNotifications()).length;
+    const count = lastKnownUnread ?? (await self.registration.getNotifications()).length;
 
     try {
         if (count > 0) {
@@ -89,6 +93,10 @@ self.addEventListener('push', (event) => {
         payload = event.data.json();
     } catch {
         payload = { title: 'Temari', body: event.data.text() };
+    }
+
+    if (typeof payload.data?.unread === 'number') {
+        lastKnownUnread = payload.data.unread;
     }
 
     event.waitUntil(

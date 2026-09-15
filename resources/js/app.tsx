@@ -1,10 +1,14 @@
 import type { ComponentType } from 'react';
 
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, router } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
 
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { syncAppBadgeOnVisible } from '@/lib/appBadge';
+import {
+    syncAppBadge,
+    syncAppBadgeOnVisible,
+    unreadCountFromProps,
+} from '@/lib/appBadge';
 import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
 import { registerServiceWorker } from '@/lib/registerServiceWorker';
 
@@ -14,6 +18,12 @@ const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'Temari';
 // fallback page. See lib/registerServiceWorker.ts.
 registerServiceWorker();
 syncAppBadgeOnVisible();
+
+// The app-icon badge follows the inbox: every visit ships the unread count, so
+// reading the inbox clears the badge on its next partial reload.
+router.on('navigate', (event) => {
+    syncAppBadge(unreadCountFromProps(event.detail.page.props));
+});
 
 installGlobalErrorReporting();
 
@@ -78,6 +88,7 @@ void createInertiaApp({
                 <App {...props} />
             </ErrorBoundary>,
         );
+        syncAppBadge(unreadCountFromProps(props.initialPage.props));
         warmTabChunks();
     },
     // No progress bar at all. Deferred props paint a shell immediately and the

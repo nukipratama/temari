@@ -16,6 +16,8 @@ code_refs:
 
 **Status:** Accepted (decided 2026-09-10)
 
+> **The "Push only" sub-decision below is superseded (noted 2026-09-16) by [[the-briefing-also-goes-to-telegram]].** The briefing now routes to every outbound channel, so `ChannelRouter::pushOnly()` is `outboundOnly()` and the sweep selects with `scopeReachable()`. Everything else here — the median-start bucket, the fifteen-minute sweep, that it sends and never generates, and the one claim per athlete per day — is unchanged.
+
 ## Context
 
 `ai:daily-briefing` narrates every active athlete's briefing at 00:01
@@ -57,8 +59,8 @@ nothing, and its cost is one indexed row read per athlete per matching bucket.
 
 **Push only, and idempotent on the briefing row.** The briefing is already on the dashboard, so an
 inbox row of it would be a record of nothing new; what this adds is the timing, which is exactly
-what a lock screen is for. `ChannelRouter::pushOnly()`
-([ChannelRouter](../../app/Services/Notifications/ChannelRouter.php#L79)) is the routing answer, and
+what a lock screen is for. `ChannelRouter::outboundOnly()`
+([ChannelRouter](../../app/Services/Notifications/ChannelRouter.php#L73)) is the routing answer, and
 `MorningBriefingNotification::deliveryKey()` returns the briefing's id, so the shared
 per-(analysis, channel) claim ([[inbox-is-an-always-on-channel]]) is already one claim per athlete
 per day. No new claim table.

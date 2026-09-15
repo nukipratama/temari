@@ -11,6 +11,7 @@ use App\Models\WeeklySnapshot;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Notifications\StravaDisconnectedNotification;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\Run\Ingest\SummaryIngest;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -33,13 +34,14 @@ beforeEach(function (): void {
     $this->client->shouldReceive('rateLimitRemaining')->andReturn(['15min' => 200, 'daily' => 2000]);
 });
 
-function orchestrator(ActivityFetcher|MockInterface $fetcher): SyncOrchestrator
+function orchestrator(ActivityFetcher|MockInterface $fetcher, ?MaintainerAlerter $alerter = null): SyncOrchestrator
 {
     return new SyncOrchestrator(
         $fetcher,
         test()->client,
         app(SummaryIngest::class),
         app(WeeklyAggregator::class),
+        $alerter ?? app(MaintainerAlerter::class),
     );
 }
 
@@ -315,4 +317,36 @@ it('does not sync a single activity for a revoked connection', function (): void
 
     expect(orchestrator($fetcher)->syncSingleActivity($user, 9_003))->toBeFalse();
     Queue::assertNothingPushed();
+});
+
+// Strava's budget is per client app, so every athlete's sync reports the same
+// shared window; the alerter owns the threshold and the per-window dedupe.
+it('offers the shared 15-minute read budget to the maintainer alerter after a sync', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('stravaBudgetLow')->once()->with(200, StravaClient::RATE_LIMIT_15MIN_MAX);
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([10]));
+
+    orchestrator($fetcher, $alerter)->syncUser($user);
+});
+
+// An exhausted budget is exactly what a failing sync tends to mean, so the
+// report reads the live limiter rather than the headroom the log row keeps.
+it('offers the shared budget after a failed sync too', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('stravaBudgetLow')->once()->with(200, StravaClient::RATE_LIMIT_15MIN_MAX);
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldReceive('fetchNewSummaries')->andThrow(new RuntimeException('boom'));
+
+    expect(fn () => orchestrator($fetcher, $alerter)->syncUser($user))->toThrow(RuntimeException::class);
+
+    expect(StravaSyncLog::query()->where('user_id', $user->id)->value('rate_limit_15min_remaining'))->toBeNull();
 });

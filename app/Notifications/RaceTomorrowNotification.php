@@ -9,6 +9,7 @@ use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
+use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
@@ -29,6 +30,7 @@ use NotificationChannels\WebPush\WebPushMessage;
  */
 class RaceTomorrowNotification extends Notification implements ShouldQueue
 {
+    use AppendsUnreadBadge;
     use Queueable;
 
     public int $tries = 3;
@@ -73,7 +75,7 @@ class RaceTomorrowNotification extends Notification implements ShouldQueue
             ->title($this->title())
             ->body($this->body($notifiable))
             ->icon('/icon-192.png')
-            ->data(['url' => route('race')])
+            ->data($this->withUnreadBadge(['url' => route('race')], $notifiable->id))
             ->options(['urgency' => 'high']);
     }
 

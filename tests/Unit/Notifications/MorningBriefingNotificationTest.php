@@ -7,6 +7,7 @@ use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
+use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\MorningBriefingNotification;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -39,24 +40,33 @@ function subscribedUser(): User
     return $user;
 }
 
-it('routes to web push alone', function (): void {
+it('routes to web push alone when Telegram is not connected', function (): void {
     $user = subscribedUser();
 
     expect(new MorningBriefingNotification(briefingFor($user))->via($user))
         ->toBe([IdempotentWebPushChannel::class]);
 });
 
-// Deliberately not the inbox and not Telegram: the briefing is already on the
-// dashboard, so what this notification adds is the timing, not a second record.
-it('never reaches the inbox or Telegram', function (): void {
+// Deliberately not the inbox: the briefing is already on the dashboard, so a
+// second record of it there would be noise. Telegram is an interruption timed
+// to the moment, which is exactly what this notification is for.
+it('reaches Telegram as well as push, never the inbox', function (): void {
     $user = subscribedUser();
     TelegramConnection::factory()->for($user)->create();
 
-    expect(new MorningBriefingNotification(briefingFor($user))->via($user))
-        ->toBe([IdempotentWebPushChannel::class]);
+    expect(new MorningBriefingNotification(briefingFor($user))->via($user->fresh()))
+        ->toBe([TelegramChannel::class, IdempotentWebPushChannel::class]);
 });
 
-it('sends nothing to an athlete with no push subscription', function (): void {
+it('reaches a Telegram-only athlete', function (): void {
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create();
+
+    expect(new MorningBriefingNotification(briefingFor($user))->via($user->fresh()))
+        ->toBe([TelegramChannel::class]);
+});
+
+it('sends nothing to an athlete with no channel wired', function (): void {
     $user = User::factory()->create();
 
     expect(new MorningBriefingNotification(briefingFor($user))->via($user))->toBe([]);
@@ -71,9 +81,21 @@ it('sends nothing once the master switch is off', function (): void {
 
 it('sends nothing to the demo identity', function (): void {
     $user = subscribedUser();
+    TelegramConnection::factory()->for($user)->create();
     $user->update(['is_demo' => true]);
 
-    expect(new MorningBriefingNotification(briefingFor($user))->via($user))->toBe([]);
+    expect(new MorningBriefingNotification(briefingFor($user))->via($user->fresh()))->toBe([]);
+});
+
+it('carries the briefing content to Telegram, keyed on the same briefing row', function (): void {
+    $user = subscribedUser();
+    $briefing = briefingFor($user);
+
+    $message = new MorningBriefingNotification($briefing)->toTelegram($user);
+
+    expect($message->text)->toContain('easy 5k, nothing clever.')
+        ->and($message->text)->toContain(route('dashboard'))
+        ->and($message->deliveryKey)->toBe($briefing->id);
 });
 
 it('carries the briefing content, trimmed, and opens the dashboard', function (): void {

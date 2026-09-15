@@ -6,6 +6,7 @@ namespace App\Notifications;
 
 use App\Enums\NotificationKind;
 use App\Models\User;
+use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
@@ -23,6 +24,7 @@ use NotificationChannels\WebPush\WebPushMessage;
  */
 class StreakReminderNotification extends Notification implements ShouldQueue
 {
+    use AppendsUnreadBadge;
     use Queueable;
 
     public int $tries = 3;
@@ -66,7 +68,7 @@ class StreakReminderNotification extends Notification implements ShouldQueue
             ->title($this->title())
             ->body($this->body())
             ->icon('/icon-192.png')
-            ->data(['url' => route('dashboard')])
+            ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable->id))
             // High urgency: the nudge is time-boxed to the rest of the week, so
             // the OS deferring it under Low Power Mode would defeat the point.
             ->options(['urgency' => 'high']);
