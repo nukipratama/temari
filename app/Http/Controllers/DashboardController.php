@@ -45,11 +45,12 @@ class DashboardController extends Controller
         // runs on first paint.
         return Inertia::render('Home', [
             'briefing' => fn (): BriefingResult => $briefingComposer->compose($user, $today),
-            'snapshot' => fn (): ?WeeklySnapshot => $trailingWeeks(
-                $user->id,
-                $today->copy()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-                1,
-            )->first(),
+            'snapshot' => function () use ($user, $today, $trailingWeeks): ?WeeklySnapshot {
+                $weekEnding = $today->copy()->endOfWeek(Carbon::SUNDAY)->toDateString();
+
+                return $trailingWeeks($user->id, $weekEnding, 1)
+                    ->first(fn (WeeklySnapshot $row): bool => $row->week_ending->toDateString() === $weekEnding);
+            },
             'hasRuns' => fn (): bool => ActivityDetail::query()->forUser($user->id)->exists(),
             'pastYouTrend' => fn (): array => $pastYouTrend->payload($user, $today),
             'weekPlan' => fn (): ?array => $weekPlanBuilder->forUser($user, $today),
