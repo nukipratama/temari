@@ -146,6 +146,11 @@ it('applies the multi-week Build ramp, not an isolated week-1 multiplier', funct
     $user = User::factory()->create();
     $currentWeekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
 
+    // A race goal, so the arc is not self-scaled — a self-scaled Build phase
+    // holds flat at 1.0 by design and would never exercise the ramp this test
+    // is about.
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-11-01', 'distance_m' => 10_000]);
+
     // 3 trailing Build weeks + the current (4th) Build week.
     for ($w = 3; $w >= 0; $w--) {
         seedWeekOfSessions($user, $currentWeekStart->copy()->subWeeks($w), PlanPhase::Build);

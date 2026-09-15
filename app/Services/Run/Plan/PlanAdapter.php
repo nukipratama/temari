@@ -276,10 +276,8 @@ final readonly class PlanAdapter
      * A null line means that arm is not being counted on this pass, so the
      * caller can ask about one kind of day without the other answering too.
      *
-     * The two lines carry different units on purpose: this class states its
-     * own thresholds as fractions, while the decoupling line comes from
-     * {@see DecouplingBands}, which is percent throughout and shared with
-     * surfaces outside the plan engine. The parameter names say which is which.
+     * The two lines carry different units: this class's thresholds are
+     * fractions, while {@see DecouplingBands}'s decoupling line stays percent.
      */
     private static function ranHarderThanWritten(SessionType $type, StreamSummary $summary, ?float $easyShareLine, ?float $decouplingPctLine): bool
     {

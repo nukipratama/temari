@@ -93,10 +93,8 @@ final class SegmentGenerator
      * training: it asks for the race distance, untouched by the volume
      * multiplier, because the event is whatever length it is.
      *
-     * The one place the long-run ceilings bind on a PRESCRIPTION rather than
-     * on the baseline they are derived from. Every session type below is a
-     * fraction of the same `$effectiveLong`, so bounding it here bounds the
-     * whole day, and there is exactly one evaluation point to keep honest.
+     * The ceilings bind here, on the prescription every session type derives
+     * `$effectiveLong` from, rather than on the baseline alone.
      *
      * @param  float  $longRunCapKm  {@see TrainingBaseline}'s `long_run_cap_km`
      * @param  ?float  $raceDistanceM  the active {@see \App\Models\RaceGoal}'s distance, required only on a `Race` day

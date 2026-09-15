@@ -37,13 +37,7 @@ final class VolumeRedistributor
      */
     public const float MAX_SCALE = 1.35;
 
-    /**
-     * Floor on how far banked volume may shrink the days that remain.
-     * Reducing is deliberately harder than adding: an athlete who ran more
-     * than the menu asked for could previously have the rest of the week
-     * scaled to nothing, which turns one good day into an unplanned rest
-     * block. The asymmetry against {@see self::MAX_SCALE} is the point.
-     */
+    /** Floor on how far banked volume may shrink the days that remain, asymmetric with {@see self::MAX_SCALE}. */
     public const float MIN_SCALE = 0.7;
 
     /**

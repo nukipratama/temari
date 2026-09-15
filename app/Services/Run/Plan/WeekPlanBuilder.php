@@ -297,11 +297,10 @@ final class WeekPlanBuilder
     /**
      * The adapter's verdict resizes the week's quality block: race-pace
      * feedback moves it either way, a week run harder than it was written
-     * only ever drops one. Base, Deload and Taper
-     * are exempt in both directions: none exists to carry quality work,
-     * a taper's whole job is arriving fresh, and Base is defined as
-     * predominantly easy with at most one threshold session, which a second
-     * appended Tempo made it harder than Build. Adding is further gated on
+     * only ever drops one. Base, Deload and Taper are exempt in both
+     * directions: none exists to carry quality work, a taper's whole job is
+     * arriving fresh, and Base is defined as predominantly easy with at most
+     * one threshold session. Adding is further gated on
      * the week having enough sessions to absorb it, so a 3-day week never
      * turns into two-thirds quality.
      *
@@ -354,10 +353,7 @@ final class WeekPlanBuilder
     }
 
     /**
-     * The stimulus the week has least of. An added day was always a Tempo, so
-     * a build week already holding tempo + interval got a SECOND tempo —
-     * doubling the stimulus it had most of. A tie means the week is balanced
-     * and there is nothing to even out, so it falls back to what the phase
+     * The stimulus the week has least of; a tie falls back to what the phase
      * picks when it only gets one quality day.
      *
      * @param  list<array{session_type: SessionType}>  $slots

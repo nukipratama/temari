@@ -156,7 +156,7 @@ final class PlanPageAssembler
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
         );
 
-        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
+        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek, $baselineData['self_scaled']);
         $primaryEasyDateByWeek = $sessionsByWeek->map(fn (Collection $weekSessions): ?string => PlanRenderer::primaryEasyDate($weekSessions));
 
         $currentWeekKey = $currentWeekStart->toDateString();
@@ -251,7 +251,7 @@ final class PlanPageAssembler
      * for those dates rather than the whole range.
      *
      * @param  Collection<int, PlannedSession>  $sessions
-     * @param  array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float}  $baselineData
+     * @param  array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, self_scaled: bool}  $baselineData
      * @param  array<string, float>  $multiplierByWeek
      * @param  Collection<string, string|null>  $primaryEasyDateByWeek
      * @return array<string, PlannedSessionStatus>

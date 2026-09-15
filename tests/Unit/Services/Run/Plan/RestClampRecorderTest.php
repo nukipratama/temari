@@ -147,6 +147,7 @@ it('records the eased distance the render itself would show, not a fixed formula
     [, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(
         PlannedSession::query()->where('user_id', $user->id)->orderBy('date')->get()
             ->groupBy(fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString()),
+        selfScaled: true,
     );
 
     $longRunKm = app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'];

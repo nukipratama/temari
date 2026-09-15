@@ -62,7 +62,9 @@ final readonly class CurrentWeekPlanBuilder
             return null;
         }
 
-        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
+        $baselineData = $this->baseline->forUser($user, $today);
+
+        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek, $baselineData['self_scaled']);
         $currentWeekPhase = $phaseByWeek->get($currentWeekKey);
         if ($currentWeekPhase === null) {
             // Built from the same grouping as $currentWeekSessions; this only guards the type.
@@ -70,7 +72,6 @@ final readonly class CurrentWeekPlanBuilder
         }
         $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
 
-        $baselineData = $this->baseline->forUser($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
         $ceiling = ReadinessCeiling::from(
             BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today))->readinessCeiling,

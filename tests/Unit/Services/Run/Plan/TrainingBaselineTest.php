@@ -377,3 +377,12 @@ it('never prescribes a long run past the race band however long the arc is', fun
         ))->toBeLessThanOrEqual(20.0);
     }
 });
+
+it('reports self_scaled true with no active race and false with one', function (): void {
+    $withoutRace = User::factory()->create();
+    $withRace = User::factory()->create();
+    RaceGoal::factory()->for($withRace)->create(['distance_m' => 10_000, 'race_date' => '2027-08-09']);
+
+    expect($this->baseline->forUser($withoutRace, Carbon::today())['self_scaled'])->toBeTrue()
+        ->and($this->baseline->forUser($withRace, Carbon::today())['self_scaled'])->toBeFalse();
+});

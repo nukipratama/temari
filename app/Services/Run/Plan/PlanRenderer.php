@@ -49,10 +49,17 @@ final class PlanRenderer
      * Model-bound generics and Support Collection's own generics aren't
      * covariant either way.
      *
+     * `$selfScaled` only matters for the recompute fallback below: a stamped
+     * week already carries the multiplier it was actually generated with, so
+     * a self-scaled arc's flat ramp only needs re-deriving here for a week old
+     * enough to predate {@see PlannedSession::$volume_multiplier} being
+     * stamped at all — otherwise this would re-apply the race-arc ramp
+     * {@see TrainingBaseline}'s `self_scaled` flag exists to hold at 1.0.
+     *
      * @param  Collection<string, mixed>  $sessionsByWeek
      * @return array{0: Collection<string, PlanPhase>, 1: array<string, float>}
      */
-    public static function weekPhasesAndMultipliers(Collection $sessionsByWeek): array
+    public static function weekPhasesAndMultipliers(Collection $sessionsByWeek, bool $selfScaled): array
     {
         $rowByWeek = $sessionsByWeek->map(fn ($weekSessions): PlannedSession => self::weekRow($weekSessions))->sortKeys();
 
@@ -73,7 +80,7 @@ final class PlanRenderer
             ? $stamped
             : array_combine(
                 $phaseByWeek->keys()->all(),
-                PhaseSchedule::volumeMultipliers(array_values($phaseByWeek->values()->all())),
+                PhaseSchedule::volumeMultipliers(array_values($phaseByWeek->values()->all()), $selfScaled),
             );
 
         return [$phaseByWeek, $multiplierByWeek];
@@ -136,12 +143,12 @@ final class PlanRenderer
      * @param  Collection<int, PlannedSession>  $sessions
      * @return array<string, float>  Y-m-d => core km
      */
-    public static function plannedKmByDate(Collection $sessions, float $longRunBaselineKm, float $longRunCapKm): array
+    public static function plannedKmByDate(Collection $sessions, float $longRunBaselineKm, float $longRunCapKm, bool $selfScaled): array
     {
         $sessionsByWeek = $sessions->groupBy(
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
         );
-        [, $multiplierByWeek] = self::weekPhasesAndMultipliers($sessionsByWeek);
+        [, $multiplierByWeek] = self::weekPhasesAndMultipliers($sessionsByWeek, $selfScaled);
         $primaryEasyDateByWeek = $sessionsByWeek->map(
             fn (Collection $weekSessions): ?string => self::primaryEasyDate($weekSessions),
         );
@@ -169,7 +176,7 @@ final class PlanRenderer
      * Still the plain, unredistributed figure: no {@see VolumeRedistributor}
      * scale reaches this.
      */
-    public static function coreKmForSession(PlannedSession $session, float $longRunBaselineKm, float $longRunCapKm): float
+    public static function coreKmForSession(PlannedSession $session, float $longRunBaselineKm, float $longRunCapKm, bool $selfScaled): float
     {
         $weekStart = $session->date->copy()->startOfWeek(Carbon::MONDAY);
         $weekSessions = PlannedSession::query()
@@ -177,7 +184,7 @@ final class PlanRenderer
             ->whereBetween('date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
             ->get();
 
-        return self::plannedKmByDate($weekSessions, $longRunBaselineKm, $longRunCapKm)[$session->date->toDateString()]
+        return self::plannedKmByDate($weekSessions, $longRunBaselineKm, $longRunCapKm, $selfScaled)[$session->date->toDateString()]
             ?? SegmentGenerator::coreKmFor($session->session_type, false, $longRunBaselineKm, 1.0, $longRunCapKm, self::raceDistanceOf($session));
     }
 

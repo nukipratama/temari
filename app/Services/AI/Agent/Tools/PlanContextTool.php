@@ -74,10 +74,11 @@ final class PlanContextTool extends UserTool
         $baselineData = $this->baseline->forUser($this->user, $this->asOf);
         $longRunBaselineKm = $baselineData['long_run_km'];
         $longRunCapKm = $baselineData['long_run_cap_km'];
+        $selfScaled = $baselineData['self_scaled'];
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($this->user, $this->asOf)) ?? [];
 
         return [
-            'days' => $sessions->map(function (PlannedSession $session) use ($paces, $longRunBaselineKm, $longRunCapKm): array {
+            'days' => $sessions->map(function (PlannedSession $session) use ($paces, $longRunBaselineKm, $longRunCapKm, $selfScaled): array {
                 $targetPaceSec = self::targetPaceSec($session, $paces);
 
                 return [
@@ -86,7 +87,7 @@ final class PlanContextTool extends UserTool
                     'phase' => $session->phase->value,
                     'distance_km' => $session->prescribed_km !== null
                         ? round($session->prescribed_km, 1)
-                        : PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm),
+                        : PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm, $selfScaled),
                     'target_pace_sec' => $targetPaceSec,
                     'target_pace_formatted' => $targetPaceSec === null
                         ? null

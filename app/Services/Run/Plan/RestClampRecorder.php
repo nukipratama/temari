@@ -48,7 +48,7 @@ final readonly class RestClampRecorder
      * hardcoded 1.0 would only agree with the render by coincidence, in the
      * one phase where the ramp has not moved off it yet.
      */
-    private function volumeMultiplierFor(User $user, Carbon $today): float
+    private function volumeMultiplierFor(User $user, Carbon $today, bool $selfScaled): float
     {
         $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
 
@@ -68,7 +68,7 @@ final readonly class RestClampRecorder
         $sessionsByWeek = $sessions->groupBy(
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
         );
-        [, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
+        [, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek, $selfScaled);
 
         return $multiplierByWeek[$currentWeekStart->toDateString()] ?? 1.0;
     }
@@ -127,7 +127,7 @@ final readonly class RestClampRecorder
             $session->phase,
             $session->race_distance_m === null ? null : (float) $session->race_distance_m,
             (float) $baselineData['long_run_km'],
-            $this->volumeMultiplierFor($user, $today),
+            $this->volumeMultiplierFor($user, $today, $baselineData['self_scaled']),
             (float) $baselineData['long_run_cap_km'],
             null,
             $ceiling,

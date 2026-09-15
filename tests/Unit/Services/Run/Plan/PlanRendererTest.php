@@ -32,7 +32,7 @@ it('weekPhasesAndMultipliers reads each week\'s phase off its rows', function ()
         '2026-08-10' => collect(PlannedSession::factory()->count(2)->make(['phase' => PlanPhase::Build])),
     ]);
 
-    [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
+    [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek, selfScaled: false);
 
     expect($phaseByWeek->get('2026-08-03'))->toBe(PlanPhase::Base)
         ->and($phaseByWeek->get('2026-08-10'))->toBe(PlanPhase::Build)
@@ -47,7 +47,7 @@ it('weekPhasesAndMultipliers ramps a multi-week Build block relative to its own 
         '2026-08-17' => collect(PlannedSession::factory()->count(2)->make(['phase' => PlanPhase::Build])),
     ]);
 
-    [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
+    [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek, selfScaled: false);
 
     expect($multiplierByWeek['2026-08-03'])->toBe(1.0)
         ->and($multiplierByWeek['2026-08-10'])->toBeGreaterThan($multiplierByWeek['2026-08-03'])
@@ -75,6 +75,7 @@ it('weekPhasesAndMultipliers reads a week\'s phase and multiplier off the same r
 
     [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(
         collect(['2026-08-03' => collect([$stalePinned, ...$fresh])]),
+        selfScaled: false,
     );
 
     expect($phaseByWeek->get('2026-08-03'))->toBe(PlanPhase::Deload)
@@ -98,6 +99,7 @@ it('weekPhasesAndMultipliers lets a mid-week regeneration decide the week even w
 
     [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(
         collect(['2026-08-03' => collect([...$fresh, ...$stale])]),
+        selfScaled: false,
     );
 
     expect($phaseByWeek->get('2026-08-03'))->toBe(PlanPhase::Deload)
@@ -124,7 +126,7 @@ it('weekPhasesAndMultipliers skips a stale pinned last day and reads a fully pin
     [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(collect([
         '2026-08-03' => collect([$stalePinnedSunday, $freshSaturday]),
         '2026-08-10' => $allPinned,
-    ]));
+    ]), selfScaled: false);
 
     expect($phaseByWeek->get('2026-08-03'))->toBe(PlanPhase::Deload)
         ->and($multiplierByWeek['2026-08-03'])->toBe(0.65)
@@ -139,10 +141,23 @@ it('weekPhasesAndMultipliers falls back to the phase-sequence recompute when a w
     [, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(collect([
         '2026-08-03' => collect([$stamped]),
         '2026-08-10' => collect([$unstamped]),
-    ]));
+    ]), selfScaled: false);
 
     expect($multiplierByWeek['2026-08-03'])->toBe(1.0)
         ->and($multiplierByWeek['2026-08-10'])->toBe(1.075);
+});
+
+it('weekPhasesAndMultipliers holds a self-scaled arc flat when its recompute fallback triggers', function (): void {
+    $stamped = PlannedSession::factory()->make(['phase' => PlanPhase::Build, 'volume_multiplier' => 1.0]);
+    $unstamped = PlannedSession::factory()->make(['phase' => PlanPhase::Build, 'volume_multiplier' => null]);
+
+    [, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers(collect([
+        '2026-08-03' => collect([$stamped]),
+        '2026-08-10' => collect([$unstamped]),
+    ]), selfScaled: true);
+
+    expect($multiplierByWeek['2026-08-03'])->toBe(1.0)
+        ->and($multiplierByWeek['2026-08-10'])->toBe(1.0);
 });
 
 it('dayPayload generates segments fresh from the stored session when there is no clamp', function (): void {
@@ -565,7 +580,7 @@ it('coreKmForSession scales by its own week\'s stamped multiplier, not a flat 1.
         'volume_multiplier' => 1.3,
     ]);
 
-    expect(PlanRenderer::coreKmForSession($session, 20.0, INF))->toBe(round(20.0 * 1.3, 1));
+    expect(PlanRenderer::coreKmForSession($session, 20.0, INF, selfScaled: false))->toBe(round(20.0 * 1.3, 1));
 });
 
 it('coreKmForSession sizes the week\'s primary easy day at the medium fraction, a later one at the short fraction', function (): void {
@@ -581,9 +596,9 @@ it('coreKmForSession sizes the week\'s primary easy day at the medium fraction, 
         'volume_multiplier' => 1.0,
     ]);
 
-    expect(PlanRenderer::coreKmForSession($primaryEasy, 20.0, INF))
+    expect(PlanRenderer::coreKmForSession($primaryEasy, 20.0, INF, selfScaled: false))
         ->toBe(SegmentGenerator::coreKmFor(SessionType::Easy, true, 20.0, 1.0, INF))
-        ->and(PlanRenderer::coreKmForSession($laterEasy, 20.0, INF))
+        ->and(PlanRenderer::coreKmForSession($laterEasy, 20.0, INF, selfScaled: false))
         ->toBe(SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0, INF));
 });
 

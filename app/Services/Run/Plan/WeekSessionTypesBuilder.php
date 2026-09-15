@@ -51,9 +51,9 @@ final readonly class WeekSessionTypesBuilder
             return [];
         }
 
-        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
-        $multiplier = $multiplierByWeek[$weekKey] ?? 1.0;
         $baselineData = $this->baseline->forUser($user, $today);
+        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek, $baselineData['self_scaled']);
+        $multiplier = $multiplierByWeek[$weekKey] ?? 1.0;
         $longRunKm = $baselineData['long_run_km'];
         $longRunCapKm = $baselineData['long_run_cap_km'];
         $primaryEasyDate = PlanRenderer::primaryEasyDate($week);

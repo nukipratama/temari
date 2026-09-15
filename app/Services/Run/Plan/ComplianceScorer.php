@@ -68,7 +68,8 @@ final readonly class ComplianceScorer
             $baselineData = $longRunKmByDate[$date] ??= $this->baseline->forUser($user, $row->date);
             $longRunKm = (float) $baselineData['long_run_km'];
             $capKm = (float) $baselineData['long_run_cap_km'];
-            $byDate = $kmByBaseline["{$longRunKm}:{$capKm}"] ??= PlanRenderer::plannedKmByDate($contextRows, $longRunKm, $capKm);
+            $selfScaled = $baselineData['self_scaled'];
+            $byDate = $kmByBaseline["{$longRunKm}:{$capKm}:{$selfScaled}"] ??= PlanRenderer::plannedKmByDate($contextRows, $longRunKm, $capKm, $selfScaled);
             if (array_key_exists($date, $byDate)) {
                 // The eased distance wins where one was recorded: an athlete
                 // told at 00:01 to run 3.6 instead of the 5.9 on the board is

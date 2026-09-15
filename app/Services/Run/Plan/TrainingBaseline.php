@@ -159,7 +159,7 @@ final readonly class TrainingBaseline
     }
 
     /**
-     * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float}
+     * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, self_scaled: bool}
      */
     public function forUser(User $user, Carbon $asOf): array
     {
@@ -182,13 +182,15 @@ final readonly class TrainingBaseline
         $season = $this->seasonFor($user, $asOf);
         $weeklyVolumeKm = $season->anchor_weekly_volume_km ?? $this->weeklyVolumeKm($weeks, $seed);
 
-        $longRunCapKm = $this->longRunCapKm($user, $weeklyVolumeKm, $asOf);
+        $race = ($this->activeRace)($user->id);
+        $longRunCapKm = $this->longRunCapKm($race, $weeklyVolumeKm, $user, $asOf);
 
         return [
             'sessions_per_week' => $sessionsPerWeek,
             'weekly_volume_km' => $weeklyVolumeKm,
-            'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm, $asOf, $season, $longRunCapKm),
+            'long_run_km' => $this->longRunKm($race, $weeklyVolumeKm, $season, $longRunCapKm),
             'long_run_cap_km' => $longRunCapKm,
+            'self_scaled' => $race === null,
         ];
     }
 
@@ -270,11 +272,11 @@ final readonly class TrainingBaseline
     /**
      * Volume decides the long run, not the other way round.
      */
-    private function longRunKm(User $user, float $weeklyVolumeKm, Carbon $asOf, ?Season $season, float $capKm): float
+    private function longRunKm(?RaceGoal $race, float $weeklyVolumeKm, ?Season $season, float $capKm): float
     {
         $derived = max(
             $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm),
-            $this->raceDistanceFloorKm(($this->activeRace)($user->id), $season),
+            $this->raceDistanceFloorKm($race, $season),
         );
 
         return max(round(min($derived, $capKm), 1), self::MIN_LONG_RUN_KM);
@@ -283,17 +285,14 @@ final readonly class TrainingBaseline
     /**
      * The ceiling on any single long run, whichever of the three binds
      * tightest: the race-distance band, time on feet, and half the week.
-     *
-     * Exported rather than kept private because capping the BASELINE alone
-     * left the ceilings bypassed — {@see SegmentGenerator::coreKmFor()}
-     * multiplies that baseline by the week's own volume multiplier afterwards,
-     * which walked a 52-week 10K arc up to a 31.1 km long run. The same figure
-     * now bounds the prescription at its single evaluation point.
+     * Returned by {@see self::forUser()} because capping the baseline alone
+     * left {@see SegmentGenerator::coreKmFor()}'s volume-multiplied
+     * prescription unbounded.
      */
-    private function longRunCapKm(User $user, float $weeklyVolumeKm, Carbon $asOf): float
+    private function longRunCapKm(?RaceGoal $race, float $weeklyVolumeKm, User $user, Carbon $asOf): float
     {
         return max(self::MIN_LONG_RUN_KM, min(
-            self::raceBandCapKm(($this->activeRace)($user->id)),
+            self::raceBandCapKm($race),
             $this->timeCapKm($user, $asOf),
             $weeklyVolumeKm * self::MAX_LONG_RUN_SHARE_OF_WEEK,
         ));
@@ -311,12 +310,9 @@ final readonly class TrainingBaseline
      * too flat to hold a ramp simply gets a smaller step — 0.0 when there is
      * no race, no season, or a marathon-distance goal.
      *
-     * Only a Build or Peak week can be that ramp's high-water mark. Taper and
-     * Deload multipliers are reductions, so dividing by one INFLATED the
-     * baseline: an arc close enough to race day to be all taper divided by
-     * 0.55 and asked for a bigger long run than a full arc does. An arc
-     * holding neither Build nor Peak has no ramp to arrive along, so it gets
-     * no floor at all.
+     * Only Build and Peak multipliers count as the ramp's high-water mark;
+     * Taper and Deload are reductions and would inflate the floor if divided
+     * into. An arc holding neither phase gets no floor at all.
      */
     private function raceDistanceFloorKm(?RaceGoal $race, ?Season $season): float
     {
@@ -330,10 +326,12 @@ final readonly class TrainingBaseline
         );
 
         $multipliers = PhaseSchedule::volumeMultipliers($phases);
-        $rampMultipliers = array_values(array_intersect_key(
-            $multipliers,
-            array_filter($phases, static fn (PlanPhase $phase): bool => in_array($phase, [PlanPhase::Build, PlanPhase::Peak], true)),
-        ));
+        $rampMultipliers = [];
+        foreach ($phases as $i => $phase) {
+            if (in_array($phase, [PlanPhase::Build, PlanPhase::Peak], true)) {
+                $rampMultipliers[] = $multipliers[$i];
+            }
+        }
         if ($rampMultipliers === []) {
             return 0.0;
         }

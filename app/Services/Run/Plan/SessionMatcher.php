@@ -39,12 +39,7 @@ final readonly class SessionMatcher
     /** At or above this fraction the athlete ran significantly more than prescribed. */
     public const float OVERREACHED_FRACTION = 1.30;
 
-    /**
-     * Share of a long run's prescription one single run has to carry for the
-     * day to read `done`. The day's runs still add up — the volume genuinely
-     * happened — but a long run's training effect is continuity, and three
-     * short outings are time on feet, not a long run.
-     */
+    /** Share of a long run's prescription one single run must carry for the day to read `done`. */
     public const float LONG_RUN_SINGLE_RUN_FRACTION = 0.70;
 
     public function __construct(
@@ -124,11 +119,9 @@ final readonly class SessionMatcher
      * by the hours left in it. See
      * `docs/decisions/today-credits-when-earned.md`.
      *
-     * `$longestRunKm` is supplied only on a `Long` day, where clearing the km
-     * bar is necessary but not sufficient: the day still reads `partial`
-     * unless one run carried {@see self::LONG_RUN_SINGLE_RUN_FRACTION} of the
-     * ask. The score keeps the honest ratio either way, since the volume was
-     * genuinely covered.
+     * `$longestRunKm`, supplied only on a `Long` day, can downgrade a
+     * cleared-km day to `partial` when no single run carried
+     * {@see self::LONG_RUN_SINGLE_RUN_FRACTION} of the ask.
      *
      * @return array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}
      */

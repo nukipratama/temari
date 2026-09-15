@@ -151,7 +151,7 @@ it('measures a day against the baseline as it stood that day, not against today\
     app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-20'));
 
     $asOf = app(TrainingBaseline::class)->forUser($user, Carbon::parse('2026-08-05'))['long_run_km'];
-    $expected = PlanRenderer::plannedKmByDate(PlannedSession::query()->where('user_id', $user->id)->get(), $asOf, INF)['2026-08-05'];
+    $expected = PlanRenderer::plannedKmByDate(PlannedSession::query()->where('user_id', $user->id)->get(), $asOf, INF, selfScaled: true)['2026-08-05'];
 
     expect($row->refresh()->prescribed_km)->toBe($expected);
 });
