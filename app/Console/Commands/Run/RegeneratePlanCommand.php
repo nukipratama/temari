@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Run;
 
+use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\User;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
@@ -21,15 +22,19 @@ use App\Services\AI\NarrationOrigin;
  * `routes/console.php`). The regenerate itself is deterministic and free —
  * it runs for every user, demo included, same as before. Requesting fresh
  * day/week/season plan narration for the week it just wrote is real LLM
- * cost, though, so that part is skipped for the demo user (`notDemo()`) —
- * see `docs/features/plan-periodizer.md`.
+ * cost, though, so that part is skipped for the demo user and for anyone who
+ * has not opened the app inside {@see RecentlyActiveUsers::ACTIVE_WINDOW_DAYS}
+ * — see `docs/features/plan-periodizer.md`.
  */
 #[Signature('plan:regenerate {--user= : Limit to one user id}')]
 #[Description('Regenerate every user\'s periodized plan today-forward')]
 class RegeneratePlanCommand extends Command
 {
-    public function handle(Periodizer $periodizer, PlanNarrationRequester $narrationRequester): int
-    {
+    public function handle(
+        Periodizer $periodizer,
+        PlanNarrationRequester $narrationRequester,
+        RecentlyActiveUsers $activeUsers,
+    ): int {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
         $userId = $this->option('user');
@@ -38,6 +43,8 @@ class RegeneratePlanCommand extends Command
         $users = User::query()
             ->when($userId !== null, fn ($query) => $query->where('id', (int) $userId))
             ->cursor();
+
+        $narratable = array_flip($activeUsers->ids());
 
         $count = 0;
         $failed = 0;
@@ -49,7 +56,7 @@ class RegeneratePlanCommand extends Command
             try {
                 $periodizer->regenerate($user);
 
-                if ($user->is_demo === false) {
+                if (isset($narratable[$user->id])) {
                     $narrationRequester->requestForCurrentWeek($user, $today);
                 }
 

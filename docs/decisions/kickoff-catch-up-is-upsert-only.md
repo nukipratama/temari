@@ -17,6 +17,12 @@ code_refs:
 **Status:** Accepted (documented 2026-09-09). Extends [[bounded-self-heal-and-dead-letter]], which
 covers the fill side; nothing it decided changes.
 
+> **Fact update, 2026-09-15.** The decision and its reasoning stand unchanged. "Dormant" below no
+> longer means "logged no run recently": `RecentlyActiveUsers` now reads `users.last_seen_at`, so an
+> athlete is dormant when they have not opened the app inside the window, however recently they ran.
+> The sweep still inherits whatever that shared scan returns. See
+> [[narration-follows-the-athlete-not-the-run]].
+
 > **2026-09-10:** "a row's existence is decided by a single scheduled minute" no longer holds for
 > `BriefingMascotVoice`. Onboarding stages today's briefing at signup and the first-connect backfill
 > re-requests it, both through
@@ -70,7 +76,7 @@ rows and does nothing else**.
 There is no skip flag in this codebase. A day or week is skipped by the kickoff's own gates, and the
 sweep inherits every one of them by reusing the same code:
 
-- **a dormant athlete** — no run inside `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS`, so no briefing or
+- **a dormant athlete** — outside `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS`, so no briefing or
   profile voice was ever owed;
 - **the demo account** — `notDemo()` on both scans;
 - **a runless or still-open week** — `runs > 0` and `week_ending <= RecapPeriod::lastClosedWeekEnding()`

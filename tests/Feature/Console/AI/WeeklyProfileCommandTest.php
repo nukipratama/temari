@@ -23,8 +23,7 @@ it('refreshes the Temari note voice once, week-keyed and invalidate:false, for a
     // Monday 2026-05-18, ISO week 2026-W21.
     Carbon::setTestNow('2026-05-18 00:05:00');
 
-    $user = User::factory()->create();
-    ranOn($user, Carbon::now());
+    $user = User::factory()->seenToday()->create();
 
     $captured = [];
     $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
@@ -50,10 +49,8 @@ it('refreshes the Temari note voice once, week-keyed and invalidate:false, for a
 it('excludes the demo user so it never auto-bills the weekly profile LLM', function (): void {
     Carbon::setTestNow('2026-05-18 00:05:00');
 
-    $real = User::factory()->create();
-    ranOn($real, Carbon::now());
-    $demo = User::factory()->demo()->create();
-    ranOn($demo, Carbon::now());
+    $real = User::factory()->seenToday()->create();
+    $demo = User::factory()->demo()->seenToday()->create();
 
     $captured = [];
     $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
@@ -69,11 +66,10 @@ it('excludes the demo user so it never auto-bills the weekly profile LLM', funct
     Carbon::setTestNow();
 });
 
-it('skips a user who has not run in the last 7 days', function (): void {
+it('skips a user who has not opened the app in the last 7 days', function (): void {
     Carbon::setTestNow('2026-05-18 00:05:00');
 
-    $stale = User::factory()->create();
-    ranOn($stale, Carbon::now()->subDays(10));
+    User::factory()->create(['last_seen_at' => Carbon::now()->subDays(10)]);
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('request');
@@ -86,14 +82,13 @@ it('skips a user who has not run in the last 7 days', function (): void {
     Carbon::setTestNow();
 });
 
-it('skips a just-connected athlete whose whole backfilled history is old', function (): void {
-    // The backfill stamps analyzed_at across the imported history, so an
-    // analyzed_at window reads a dormant account as a week of activity.
+it('skips an athlete who is running but not opening the app', function (): void {
+    // A run syncs itself in without anyone looking, so run recency says nothing
+    // about whether the voice this bills for will ever be read.
     Carbon::setTestNow('2026-05-18 00:05:00');
 
-    $dormant = User::factory()->create();
-    ranOn($dormant, Carbon::now()->subDays(60));
-    ranOn($dormant, Carbon::now()->subDays(400));
+    $dormant = User::factory()->create(['last_seen_at' => Carbon::now()->subDays(10)]);
+    ranOn($dormant, Carbon::now());
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('request');

@@ -35,7 +35,11 @@ block, before cutting one, and before trying to explain a spend spike.
 
 Every call funnels through one chokepoint —
 [`StructuredChatCaller`](../../app/Services/AI/StructuredChatCaller.php#L29). If a code path does
-not reach it, it does not cost money.
+not reach it, it does not cost money. That is enforced, not merely intended:
+[`LlmCallBoundaryTest`](../../tests/Unit/Architecture/LlmCallBoundaryTest.php#L78) fails the
+structure group if any class outside it builds an OpenAI client, reaches `AzureOpenAIClient`, or
+reaches the `AgentLoop` transport it owns — the three ways a call could be made with no ceiling,
+no breaker and no metering row behind it.
 
 **This note is a gate, not a diary.**
 [`LlmInventoryDocTest`](../../tests/Unit/Architecture/LlmInventoryDocTest.php#L44) fails the
@@ -67,6 +71,12 @@ nothing records `unknown` rather than a guess.
 Derived from [routes/console.php](../../routes/console.php), which is the only authority — a
 scheduled command missing from this table is a bug in this table.
 
+Every narration cadence below draws its athletes from
+[`RecentlyActiveUsers`](../../app/Actions/AI/RecentlyActiveUsers.php), which reads
+`users.last_seen_at`: narration is spent on an athlete who opened the app in the last 7 days, demo
+excluded. Plan rows, metrics, compliance and snapshots are deterministic and keep running for
+everyone. See [[narration-follows-the-athlete-not-the-run]].
+
 | when | command | what it dispatches |
 |---|---|---|
 | daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L39) | one `BriefingMascotVoice` per active non-demo user |
@@ -82,10 +92,11 @@ scheduled command missing from this table is a bug in this table.
 | hourly | [`ai:catch-up`](../../routes/console.php#L127) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
-but the command then calls
-[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L163) for every non-demo
-user, touching up to nine rows: `PlanDayVoice` ×7, `PlanWeekVoice`, and `PlanSeasonVoice`. It is the
-largest scheduled spend in the app, which is why it is also the only one that checks before it bills.
+and it still runs for every athlete. The narration half then calls
+[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L163) for each
+recently-active athlete, touching up to nine rows: `PlanDayVoice` ×7, `PlanWeekVoice`, and
+`PlanSeasonVoice`. It is the largest scheduled spend in the app, which is why it is also the one
+that checks hardest before it bills.
 
 **A brand-new account also gets today's briefing on the day it signs up.** `BriefingMascotVoice`
 is keyed by the day, and the only thing that used to stage it was the 00:01 kickoff, so an account
@@ -142,7 +153,8 @@ and spends nothing. See [[demo-user-billing-exclusion]].
 
 [`DispatchPostRunAnalysis::handle()`](../../app/Listeners/DispatchPostRunAnalysis.php#L41) is queued
 on `ActivityIngested` and is where most per-run spend originates. In order: `CardFlavor`, then the
-grouped `PostRunSpeech` + `RunInsight` pair, then `BriefingMascotVoice` (invalidated only when the
+grouped `PostRunSpeech` + `RunInsight` pair — both filled rule-based instead, with no dispatch, when
+the run is older than the backfill cap or predates the athlete's Strava connect — then `BriefingMascotVoice` (invalidated only when the
 run is today's), then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
 never re-bills. `WeeklyRecap` and `MonthlyRecap` rows are **staged `Pending` and not narrated here** —
 the scheduled commands above narrate them once the window closes, which is why a pending recap row
@@ -152,7 +164,7 @@ is not a backlog. See [[deferred-recap-windowing]].
 
 - [`AnalysisController::trigger()`](../../app/Http/Controllers/Api/AnalysisController.php#L26) — the
   per-block "Reread". Gated in a fixed order: ownership, an open recap window, cooldown, demo,
-  backfill age, paused generation, then chain resumption. Each gate is described under
+  backfill age, unfinished history hydration, paused generation, then chain resumption. Each gate is described under
   *What stops a call*.
 - [`RunQuestionController::store()`](../../app/Http/Controllers/Api/RunQuestionController.php#L53) —
   the scoped run Q&A. **The one AI surface that is not an `Analysis` row**: one run holds many
@@ -236,6 +248,11 @@ Three more limits:
   the ingest fan-out, [`blocksManualTrigger()`](../../app/Services/AI/BackfillAgeGate.php#L51) for
   the button. It is exhaustive per type — chained and recap types are exempt, because they resume a
   chain rather than narrate old material. See [[twelve-week-narration-cutoff]].
+- **The history gate.** A run that started before the athlete's Strava connect is filled rule-based
+  on ingest and narrated by a model only when they ask for it on that run's page, and only once
+  every older run inside the backfill window has hydrated —
+  [`HistoryNarrationGate`](../../app/Services/AI/HistoryNarrationGate.php#L28), which refuses the
+  trigger with 409 until then. See [[history-narrates-on-demand]].
 - **Cooldown and idempotency are two different defences for the same goal.** The
   [900s cooldown](../../app/Support/Cooldown.php#L32) stops a human clicking twice, at the
   controller, before a job exists. The `Done` check at the top of
@@ -485,6 +502,9 @@ all of them one-offs worth knowing before the day:
   through `BackfillAgeGate` exactly as a first-time backfill would, so only the last twelve weeks are
   narrated by a model. That is the gate working as designed ([[twelve-week-narration-cutoff]]), not a
   failure to fix on the day.
+- **And the last twelve weeks come back rule-based too, until asked for.** Every re-synced run
+  predates the new Strava connection, so the whole import is history: it hydrates in full and
+  narrates on demand, one run at a time ([[history-narrates-on-demand]]).
 - **The backfill is staggered, not bursty.** `ai.backfill_stagger_seconds` spaces successive cascades
   6 minutes apart per user, so a large re-sync spreads over hours rather than firehosing Azure.
 - **The daily cost ceiling still applies.** If the narratable slice of the re-sync exceeds it, the
@@ -498,4 +518,5 @@ all of them one-offs worth knowing before the day:
 - [[azure-openai-routing]] — which model each kind routes to.
 - [[bounded-self-heal-and-dead-letter]] · [[cost-ceiling-degrades-to-rule-based]] ·
   [[twelve-week-narration-cutoff]] · [[demo-user-billing-exclusion]] ·
-  [[scoped-run-qa-not-an-analysis-row]].
+  [[scoped-run-qa-not-an-analysis-row]] · [[narration-follows-the-athlete-not-the-run]] ·
+  [[history-narrates-on-demand]].

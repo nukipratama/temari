@@ -20,9 +20,7 @@ it('dispatches the briefing group for each active user, and nothing else', funct
     Carbon::setTestNow('2026-05-11 12:00:00');
     $today = Carbon::today()->toDateString();
 
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
+    $user = User::factory()->seenToday()->create();
 
     $briefingGroupCalls = [];
 
@@ -53,11 +51,8 @@ it('dispatches the briefing group for each active user, and nothing else', funct
 it('skips the demo user even with recent analyzed activity', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
 
-    $real = User::factory()->create();
-    $realActivity = Activity::factory()->for($real)->analyzed()->create(['analyzed_at' => Carbon::today()->subDays(1)]);
-    ActivityDetail::factory()->for($realActivity)->create(['start_date_local' => Carbon::today()->subDays(1)]);
-    $demo = User::factory()->demo()->create();
-    Activity::factory()->for($demo)->create(['analyzed_at' => Carbon::today()->subDays(1)]);
+    User::factory()->seenToday()->create();
+    User::factory()->demo()->seenToday()->create();
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('requestBriefing')->once()->andReturn(new Analysis());
@@ -78,9 +73,7 @@ it('a second same-day run never re-bills a Done row', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
     $today = Carbon::today()->toDateString();
 
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create(['analyzed_at' => Carbon::today()->subDays(2)]);
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()->subDays(2)]);
+    $user = User::factory()->seenToday()->create();
 
     // Simulate the earlier (00:01) run having already completed the mascot voice.
     Analysis::factory()->done('temari note yesterday')->create([
@@ -111,11 +104,10 @@ it('a second same-day run never re-bills a Done row', function (): void {
     Carbon::setTestNow();
 });
 
-it('reports zero active users when no analyzed activities are recent', function (): void {
+it('reports zero active users when nobody has opened the app recently', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
 
-    $user = User::factory()->create();
-    Activity::factory()->for($user)->create(['analyzed_at' => Carbon::today()->subDays(15)]);
+    User::factory()->create(['last_seen_at' => Carbon::today()->subDays(15)]);
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('requestBriefing');
@@ -129,17 +121,14 @@ it('reports zero active users when no analyzed activities are recent', function 
     Carbon::setTestNow();
 });
 
-it('skips a just-connected athlete whose whole backfilled history is old', function (): void {
-    // Every imported run is stamped analyzed_at = now by the backfill, so an
-    // analyzed_at window would brief a dormant account daily for a week about a
-    // decade-old history. The run's own date is what "active" means.
+it('skips an athlete who is running but not opening the app', function (): void {
+    // A run syncs itself in without anyone looking, so run recency says nothing
+    // about whether the briefing this bills for will ever be read.
     Carbon::setTestNow('2026-05-11 12:00:00');
 
-    $dormant = User::factory()->create();
-    foreach ([60, 400, 900] as $daysAgo) {
-        $activity = Activity::factory()->for($dormant)->analyzed()->create(['analyzed_at' => Carbon::now()]);
-        ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subDays($daysAgo)]);
-    }
+    $dormant = User::factory()->create(['last_seen_at' => Carbon::today()->subDays(15)]);
+    $activity = Activity::factory()->for($dormant)->analyzed()->create(['analyzed_at' => Carbon::now()]);
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
 
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('requestBriefing');
