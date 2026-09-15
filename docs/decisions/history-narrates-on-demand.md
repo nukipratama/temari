@@ -65,6 +65,8 @@ is bounded by the drain reaching the older end of the window.
   error path covers it without a new affordance.
 - The gate is per athlete and per run: a run with nothing older than it left to hydrate reads
   immediately, even mid-drain.
+- The first run after the connect reads a rule-based `prev_narrative` for its chain continuity,
+  because that is what the run before it now holds. One link, once per athlete.
 - An athlete whose Strava connection row is gone has no anchor, so nothing of theirs is historical.
   Runs only exist because a connection ingested them, and revocation keeps the row.
 

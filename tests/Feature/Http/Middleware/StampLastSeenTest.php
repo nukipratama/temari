@@ -65,3 +65,12 @@ it('leaves the demo identity unstamped', function (): void {
 it('is a no-op for a guest', function (): void {
     stampFor(null);
 })->throwsNoExceptions();
+
+it('is wired into the web group, so a real page view stamps', function (): void {
+    Carbon::setTestNow('2026-09-15 08:00:00');
+    $user = User::factory()->create(['last_seen_at' => null]);
+
+    $this->actingAs($user)->get('/ai-use')->assertSuccessful();
+
+    expect($user->fresh()->last_seen_at?->toDateTimeString())->toBe('2026-09-15 08:00:00');
+});
