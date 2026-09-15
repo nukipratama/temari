@@ -45,6 +45,7 @@ it('renders with rows, newest first, linking a plan day and a resolvable narrati
             ->where('rows.0.subject_url', route('activities.show', $analysis->subject_id))
             ->where('rows.1.id', $older->id)
             ->where('rows.1.subject_label', 'plan day')
+            ->where('rows.0.superseded', false)
             ->where('rows.1.subject_url', route('plan')),
         );
 });

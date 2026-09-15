@@ -184,6 +184,7 @@ describe('narrations', function (): void {
             'subject_id' => $block->id,
             'reason' => FeedbackReason::FactsWrong,
             'note' => 'that never happened',
+            'superseded_at' => now(),
         ]);
 
         $row = athleteReport()->narrations($user->id, null, null, null)['rows'][0];
@@ -191,7 +192,8 @@ describe('narrations', function (): void {
         expect($row['version_count'])->toBe(2)
             ->and($row['previous_content'])->toBe('the middle take')
             ->and($row['flag']['reason'])->toBe(FeedbackReason::FactsWrong->value)
-            ->and($row['flag']['note'])->toBe('that never happened');
+            ->and($row['flag']['note'])->toBe('that never happened')
+            ->and($row['flag']['superseded'])->toBeTrue();
     });
 });
 

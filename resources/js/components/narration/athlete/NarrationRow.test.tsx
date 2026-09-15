@@ -119,7 +119,12 @@ describe('NarrationRow', () => {
         ).not.toBeInTheDocument();
 
         renderRow({
-            flag: { reason: 'facts_wrong', note: 'never happened', at: null },
+            flag: {
+                reason: 'facts_wrong',
+                note: 'never happened',
+                at: null,
+                superseded: false,
+            },
         });
 
         expect(screen.getByText(/flagged: facts_wrong/)).toBeInTheDocument();
@@ -133,9 +138,24 @@ describe('NarrationRow', () => {
         ).toBeInTheDocument();
     });
 
+    it('says so when the flag is about text a re-narration already replaced', () => {
+        renderRow({
+            flag: {
+                reason: 'facts_wrong',
+                note: null,
+                at: null,
+                superseded: true,
+            },
+        });
+
+        expect(
+            screen.getByText(/flagged \(superseded\): facts_wrong/),
+        ).toBeInTheDocument();
+    });
+
     it('refuses the replay in place once the cap is reached', () => {
         renderRow(
-            { flag: { reason: null, note: null, at: null } },
+            { flag: { reason: null, note: null, at: null, superseded: false } },
             { cap: 0.5, spent_today: 0.5, cap_reached: true },
         );
 
