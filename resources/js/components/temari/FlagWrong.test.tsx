@@ -68,7 +68,7 @@ describe('FlagWrong', () => {
         ).toBeInTheDocument();
     });
 
-    it('posts the chosen reason, then goes inert', async () => {
+    it('posts the chosen reason, then takes the control away', async () => {
         renderFlag();
         await openSheet();
 
@@ -87,7 +87,7 @@ describe('FlagWrong', () => {
         expect(
             screen.queryByRole('button', { name: 'flag this day' }),
         ).toBeNull();
-        expect(screen.getByLabelText('flagged')).toBeInTheDocument();
+        expect(screen.queryByLabelText('flagged')).toBeNull();
     });
 
     it('closes the sheet on never mind without posting', async () => {
@@ -110,10 +110,9 @@ describe('FlagWrong', () => {
         expect(control).not.toHaveClass('size-11');
     });
 
-    it('renders an inert flagged icon when the server says it is already flagged', () => {
-        renderFlag({ flagged: true });
+    it('renders nothing when the server says it is already flagged', () => {
+        const { container } = renderFlag({ flagged: true });
 
-        expect(screen.getByLabelText('flagged')).toBeInTheDocument();
-        expect(screen.queryByRole('button')).toBeNull();
+        expect(container).toBeEmptyDOMElement();
     });
 });

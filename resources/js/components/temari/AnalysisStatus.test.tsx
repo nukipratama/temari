@@ -601,7 +601,7 @@ describe('AnalysisStatus', () => {
         ).toContain('justify-end');
     });
 
-    it('draws an inert flagged icon on a read already flagged', () => {
+    it('draws no flag at all on a read already flagged', () => {
         render(
             <AnalysisStatus
                 analysis={payload({
@@ -613,7 +613,7 @@ describe('AnalysisStatus', () => {
             />,
         );
 
-        expect(screen.getByLabelText('flagged')).toBeInTheDocument();
+        expect(screen.queryByLabelText('flagged')).toBeNull();
         expect(
             screen.queryByRole('button', { name: 'flag this read' }),
         ).toBeNull();

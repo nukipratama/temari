@@ -44,6 +44,14 @@ it('tells a flagged subject from an unflagged one, and keeps the subjects apart'
         ->and($action(FeedbackSubject::Narration, 5))->toBeFalse();
 });
 
+it('ignores a flag the narration it was about has outlived', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+    Feedback::factory()->for($user)->onNarration(5)->superseded()->create();
+
+    expect(new ResolveFlaggedSubjectsAction()(FeedbackSubject::Narration, 5))->toBeFalse();
+});
+
 it('ignores another athlete flags', function (): void {
     $stranger = User::factory()->create();
     flagRow($stranger, FeedbackSubject::PlanDay, 5);

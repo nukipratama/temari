@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Enums\FeedbackSubject;
 use App\Models\AI\Analysis;
+use App\Models\Feedback;
 use App\Models\User;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -209,4 +211,30 @@ it('reads today\'s row and the first-read flag in a single query', function (): 
     app(BriefingComposer::class)->compose($user, $asOf);
 
     expect($briefingReads)->toBe(1);
+});
+
+it('reports the briefing voice as flagged once this athlete has flagged it', function (): void {
+    $user = User::factory()->create();
+    $asOf = Carbon::parse('2026-05-18');
+
+    $row = Analysis::factory()->done('read.')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => $asOf->toDateString(),
+    ]);
+
+    $this->actingAs($user);
+
+    expect(app(BriefingComposer::class)->compose($user, $asOf)->mascotVoice['flagged'])->toBeFalse();
+
+    Feedback::query()->create([
+        'user_id' => $user->id,
+        'subject_type' => FeedbackSubject::Narration,
+        'subject_id' => $row->id,
+    ]);
+
+    app()->forgetScopedInstances();
+
+    expect(app(BriefingComposer::class)->compose($user, $asOf)->mascotVoice['flagged'])->toBeTrue();
 });

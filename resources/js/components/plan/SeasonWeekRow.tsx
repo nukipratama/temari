@@ -72,6 +72,7 @@ export default function SeasonWeekRow({
     focus,
     narration,
     dayNarration,
+    focusDay = null,
     onMove,
     onSkip,
 }: Readonly<{
@@ -86,12 +87,17 @@ export default function SeasonWeekRow({
     focus: { headline: string; detail: string } | null;
     narration: AnalysisPayload | null;
     dayNarration: Record<string, AnalysisPayload>;
+    /** The day the visitor arrived asking for, from `/plan?day=`. */
+    focusDay?: string | null;
     onMove: (day: PlanDay, toDate: string) => void;
     onSkip: (day: PlanDay) => void;
 }>) {
     const isCurrent = week.type === 'current';
     const adherence = detail === null ? null : computeAdherence(detail.days);
     const raceWeek = isRaceWeek(week.week_start, raceDate);
+    const holdsFocusDay =
+        focusDay !== null &&
+        (detail?.days.some((day) => day.date === focusDay) ?? false);
 
     return (
         <div className="flex gap-3">
@@ -133,7 +139,7 @@ export default function SeasonWeekRow({
                     </div>
                 ) : (
                     <Collapsible
-                        defaultOpen={isCurrent}
+                        defaultOpen={isCurrent || holdsFocusDay}
                         className={cn(
                             cardVariants({ padding: 'none' }),
                             'overflow-hidden',
@@ -202,6 +208,7 @@ export default function SeasonWeekRow({
                                         narration={
                                             dayNarration[day.date] ?? null
                                         }
+                                        focused={day.date === focusDay}
                                         onMove={(toDate) => onMove(day, toDate)}
                                         onSkip={() => onSkip(day)}
                                     />

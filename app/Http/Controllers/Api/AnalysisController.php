@@ -14,6 +14,7 @@ use App\Services\AI\AnalysisSubjectAuthorizer;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\SummaryRecomputer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +28,7 @@ class AnalysisController extends Controller
         SummaryRecomputer $summaries,
         ChainResolver $chains,
         BackfillAgeGate $ages,
+        HistoryNarrationGate $history,
         string $type,
         int $subjectId,
     ): JsonResponse {
@@ -65,6 +67,11 @@ class AnalysisController extends Controller
                 $subjectId,
                 $discriminator,
             );
+        }
+
+        if ($history->awaitsHydration($user, $analysisType, $subjectId)) {
+            return $this->payload($existing, $analysisType, $subjectId, $discriminator)
+                ->setStatusCode(409);
         }
 
         // Asked about this athlete: a manual re-read is theirs to pay for, so

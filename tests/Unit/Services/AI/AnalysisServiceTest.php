@@ -13,6 +13,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\AI\AnalysisVersion;
 use App\Models\AI\TokenUsage;
+use App\Models\Feedback;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -1679,6 +1680,35 @@ it('writes no version for a first narration, which supersedes nothing', function
     $this->service->markDone($row, 'first');
 
     expect(AnalysisVersion::query()->count())->toBe(0);
+});
+
+it('supersedes the flag filed against the narration a re-narration replaces', function (): void {
+    $row = Analysis::factory()->done('first')->create();
+    $flag = Feedback::factory()->onNarration($row->id)->create();
+
+    $this->service->markDone($row, 'second');
+
+    expect($flag->fresh()->superseded_at)->not->toBeNull();
+});
+
+it('leaves a flag on another subject alone when a narration is replaced', function (): void {
+    $row = Analysis::factory()->done('first')->create();
+    $otherNarration = Feedback::factory()->onNarration($row->id + 1)->create();
+    $planDay = Feedback::factory()->onPlanDay($row->id)->create();
+
+    $this->service->markDone($row, 'second');
+
+    expect($otherNarration->fresh()->superseded_at)->toBeNull()
+        ->and($planDay->fresh()->superseded_at)->toBeNull();
+});
+
+it('leaves the flag standing on a first narration, which replaces nothing', function (): void {
+    $row = Analysis::factory()->queued()->create();
+    $flag = Feedback::factory()->onNarration($row->id)->create();
+
+    $this->service->markDone($row, 'first');
+
+    expect($flag->fresh()->superseded_at)->toBeNull();
 });
 
 // ── replay: its own app-wide cap, never the athlete's slice ───────────

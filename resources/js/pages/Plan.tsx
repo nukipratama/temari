@@ -57,6 +57,15 @@ interface PlanProps {
     regenerateCooldownSeconds?: number | null;
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The day Home's week card asked for, when it asked for a readable one. */
+function requestedDay(): string | null {
+    const day = new URLSearchParams(window.location.search).get('day');
+
+    return day !== null && ISO_DATE.test(day) ? day : null;
+}
+
 const PLAN_NARRATION_DEFAULT: PlanNarration = {
     days: {},
     week: null,
@@ -78,6 +87,7 @@ export default function Plan({
 }: Readonly<PlanProps>) {
     const [regenerating, setRegenerating] = useState(false);
     const today = todayLocalIso();
+    const [focusDay] = useState(requestedDay);
     const regenerateCooldown = useCooldownCountdown(regenerateCooldownSeconds);
     const regenerateCooling = regenerateCooldown > 0;
 
@@ -208,6 +218,7 @@ export default function Plan({
                                     weekFocus={adaptation}
                                     weekNarration={planNarration.week}
                                     dayNarration={planNarration.days}
+                                    focusDay={focusDay}
                                     onMove={moveSession}
                                     onSkip={skipSession}
                                 />

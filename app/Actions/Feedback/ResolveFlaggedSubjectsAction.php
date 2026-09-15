@@ -9,7 +9,9 @@ use App\Models\Feedback;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Everything the current athlete has already flagged, read once per request.
+ * Everything the current athlete has already flagged and not yet had replaced,
+ * read once per request. A flag whose narration was re-narrated is superseded
+ * and no longer stands against the block.
  *
  * Bound `scoped()` in AppServiceProvider: a plan week ships 7 day payloads and
  * a page can draw a dozen narration blocks, each of which needs to know whether
@@ -41,7 +43,12 @@ class ResolveFlaggedSubjectsAction
         }
 
         $flags = [];
-        foreach (Feedback::query()->where('user_id', $userId)->get(['subject_type', 'subject_id']) as $row) {
+        $rows = Feedback::query()
+            ->where('user_id', $userId)
+            ->whereNull('superseded_at')
+            ->get(['subject_type', 'subject_id']);
+
+        foreach ($rows as $row) {
             $flags[$row->subject_type->value.':'.$row->subject_id] = true;
         }
 

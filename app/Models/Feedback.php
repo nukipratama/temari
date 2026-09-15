@@ -19,12 +19,17 @@ use Override;
  * the owner in tinker; there is no admin surface and nothing reads it at
  * runtime, so the row only ever needs when it was written.
  *
+ * `superseded_at` marks a flag whose narration has since been re-narrated: the
+ * text it was about is gone, so it no longer stands against the block, while
+ * the reason and note stay readable in devtools.
+ *
  * @property int $id
  * @property int $user_id
  * @property FeedbackSubject $subject_type
  * @property int $subject_id
  * @property FeedbackReason|null $reason
  * @property string|null $note
+ * @property Carbon|null $superseded_at
  * @property Carbon|null $created_at
  */
 #[Fillable([
@@ -33,6 +38,7 @@ use Override;
     'subject_id',
     'reason',
     'note',
+    'superseded_at',
 ])]
 class Feedback extends Model
 {
@@ -66,6 +72,7 @@ class Feedback extends Model
             'subject_type' => FeedbackSubject::class,
             'subject_id' => 'integer',
             'reason' => FeedbackReason::class,
+            'superseded_at' => 'datetime',
             'created_at' => 'datetime',
         ];
     }

@@ -244,7 +244,8 @@ export default function OnboardingIndex({
         setStep('goal');
     };
 
-    const goBackSubStep = () => setSubIndex((i) => Math.max(0, i - 1));
+    const goBackFromPreferences = () =>
+        subIndex > 0 ? setSubIndex(subIndex - 1) : setStep('connected');
 
     const chooseExperience = (value: ExperienceLevel) => {
         setExperienceLevel(value);
@@ -270,11 +271,6 @@ export default function OnboardingIndex({
     const chooseGoalType = (value: GoalType) => {
         setGoalType(value);
         advancePastGoalQuestion(sessionsPerWeek);
-    };
-
-    const chooseLongRunDay = (offset: number) => {
-        setLongRunDay(offset);
-        setStep('goal');
     };
 
     const skipDaysQuestion = () => {
@@ -395,23 +391,7 @@ export default function OnboardingIndex({
                 ) : step === 'preferences' ? (
                     <div key={`preferences-${subIndex}`} className="reveal">
                         <div className="mb-5 flex h-11 items-center justify-between">
-                            {subIndex > 0 ? (
-                                <button
-                                    type="button"
-                                    onClick={goBackSubStep}
-                                    aria-label="Back"
-                                    className="focus-ring flex size-11 flex-none items-center justify-center rounded-full bg-muted text-foreground shadow-e1"
-                                >
-                                    <Icon
-                                        icon={ChevronLeft}
-                                        width={18}
-                                        height={18}
-                                        aria-hidden
-                                    />
-                                </button>
-                            ) : (
-                                <span />
-                            )}
+                            <BackButton onClick={goBackFromPreferences} />
                             <PillButton tone="ghost" onClick={skipPreferences}>
                                 skip for now
                             </PillButton>
@@ -548,15 +528,27 @@ export default function OnboardingIndex({
                                                     key={day.offset}
                                                     label={day.label}
                                                     active
+                                                    longRun={
+                                                        longRunDay ===
+                                                        day.offset
+                                                    }
                                                     flagCandidate
                                                     onClick={() =>
-                                                        chooseLongRunDay(
+                                                        setLongRunDay(
                                                             day.offset,
                                                         )
                                                     }
                                                 />
                                             ))}
                                         />
+                                        <PillButton
+                                            tone="horizon"
+                                            disabled={longRunDay === null}
+                                            onClick={() => setStep('goal')}
+                                            className="mt-3 w-full justify-center"
+                                        >
+                                            continue
+                                        </PillButton>
                                     </div>
                                 )}
 
@@ -566,6 +558,11 @@ export default function OnboardingIndex({
                     </div>
                 ) : step === 'goal' ? (
                     <div key="goal" className="reveal">
+                        <div className="mb-5 flex h-11 items-center">
+                            <BackButton
+                                onClick={() => setStep('preferences')}
+                            />
+                        </div>
                         {prefsSummary !== '' && (
                             <p className="mb-3 narration">
                                 Got it: {prefsSummary}.
@@ -768,19 +765,7 @@ export default function OnboardingIndex({
                 ) : (
                     <div key="nudge" className="reveal">
                         <div className="mb-5 flex h-11 items-center justify-between">
-                            <button
-                                type="button"
-                                onClick={() => setStep('goal')}
-                                aria-label="Back"
-                                className="focus-ring flex size-11 flex-none items-center justify-center rounded-full bg-muted text-foreground shadow-e1"
-                            >
-                                <Icon
-                                    icon={ChevronLeft}
-                                    width={18}
-                                    height={18}
-                                    aria-hidden
-                                />
-                            </button>
+                            <BackButton onClick={() => setStep('goal')} />
                             <PillButton
                                 tone="ghost"
                                 disabled={processing}
@@ -833,6 +818,20 @@ export default function OnboardingIndex({
                 )}
             </PageContainer>
         </>
+    );
+}
+
+/** The step header's back control, the same size and tone on every step. */
+function BackButton({ onClick }: Readonly<{ onClick: () => void }>) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label="Back"
+            className="focus-ring flex size-11 flex-none items-center justify-center rounded-full bg-muted text-foreground shadow-e1"
+        >
+            <Icon icon={ChevronLeft} width={18} height={18} aria-hidden />
+        </button>
     );
 }
 

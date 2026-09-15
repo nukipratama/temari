@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Models\Activity;
-use App\Models\StravaConnection;
 use App\Models\WeeklySnapshot;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -29,6 +28,10 @@ use Illuminate\Support\Facades\Log;
  */
 class RecapHydrationReadiness
 {
+    public function __construct(private readonly HydrationBacklog $backlog)
+    {
+    }
+
     /**
      * The subset of $snapshots whose week may be narrated now. Weeks still
      * awaiting hydration inside the grace window are dropped; past it they are
@@ -47,7 +50,7 @@ class RecapHydrationReadiness
         $userIds = $snapshots->pluck('user_id')->map(fn (mixed $id): int => (int) $id)->unique()->values()->all();
 
         $awaiting = $this->weeksAwaitingHydration($userIds);
-        $connectedAt = $this->connectedAt($userIds);
+        $connectedAt = $this->backlog->connectedAtFor($userIds);
         $now = Carbon::now();
 
         /** @var Collection<int, WeeklySnapshot> $ready */
@@ -111,10 +114,7 @@ class RecapHydrationReadiness
      */
     private function weeksAwaitingHydration(array $userIds): array
     {
-        return Activity::query()
-            ->awaitingHydration()
-            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
-            ->whereIn('activities.user_id', $userIds)
+        return $this->backlog->awaitingHydration($userIds)
             ->get(['activities.user_id', 'activity_details.start_date_local'])
             ->mapWithKeys(fn (Activity $activity): array => [
                 $this->key(
@@ -124,19 +124,6 @@ class RecapHydrationReadiness
                         ->toDateString(),
                 ) => true,
             ])
-            ->all();
-    }
-
-    /**
-     * @param  list<int>  $userIds
-     * @return array<int, Carbon>
-     */
-    private function connectedAt(array $userIds): array
-    {
-        return StravaConnection::query()
-            ->whereIn('user_id', $userIds)
-            ->pluck('created_at', 'user_id')
-            ->map(fn (mixed $at): Carbon => Carbon::parse($at))
             ->all();
     }
 

@@ -17,6 +17,12 @@ code_refs:
 **Status:** Accepted (documented 2026-09-09). Extends [[bounded-self-heal-and-dead-letter]], which
 covers the fill side; nothing it decided changes.
 
+> **Fact update, 2026-09-15.** The decision and its reasoning stand unchanged. "Dormant" below no
+> longer means "logged no run recently": `RecentlyActiveUsers` now reads `users.last_seen_at`, so an
+> athlete is dormant when they have not opened the app inside the window, however recently they ran.
+> The sweep still inherits whatever that shared scan returns. See
+> [[narration-follows-the-athlete-not-the-run]].
+
 > **2026-09-10:** "a row's existence is decided by a single scheduled minute" no longer holds for
 > `BriefingMascotVoice`. Onboarding stages today's briefing at signup and the first-connect backfill
 > re-requests it, both through
@@ -46,8 +52,8 @@ rows and does nothing else**.
 
 - **It runs the kickoffs' own creation code**, under
   [`AnalysisService::withoutDispatching()`](../../app/Services/AI/AnalysisService.php#L64). Dispatch
-  suppression short-circuits [`blockingReason`](../../app/Services/AI/AnalysisService.php#L697),
-  which reduces `dispatchRow` to its `firstOrCreate` in [`upsertRow`](../../app/Services/AI/AnalysisService.php#L409): a missing row is created `Pending`, an
+  suppression short-circuits [`blockingReason`](../../app/Services/AI/AnalysisService.php#L749),
+  which reduces `dispatchRow` to its `firstOrCreate` in [`upsertRow`](../../app/Services/AI/AnalysisService.php#L431): a missing row is created `Pending`, an
   existing row of any status is untouched, and no job is queued. The eligibility rules are not
   restated — the athlete scan is the shared [RecentlyActiveUsers](../../app/Actions/AI/RecentlyActiveUsers.php)
   the two commands now also use, and the recap sweep is
@@ -70,7 +76,7 @@ rows and does nothing else**.
 There is no skip flag in this codebase. A day or week is skipped by the kickoff's own gates, and the
 sweep inherits every one of them by reusing the same code:
 
-- **a dormant athlete** — no run inside `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS`, so no briefing or
+- **a dormant athlete** — outside `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS`, so no briefing or
   profile voice was ever owed;
 - **the demo account** — `notDemo()` on both scans;
 - **a runless or still-open week** — `runs > 0` and `week_ending <= RecapPeriod::lastClosedWeekEnding()`

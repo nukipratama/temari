@@ -129,16 +129,56 @@ it('rejects a reason that does not belong to the subject', function (): void {
     expect(Feedback::query()->count())->toBe(0);
 });
 
-it('rejects a flag with no reason at all', function (): void {
+it('rejects a flag with neither a reason nor a note', function (): void {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $day = PlannedSession::factory()->for($user)->create();
 
     $this->actingAs($user)
         ->from(route('plan'))
         ->post(route('feedback.store'), ['subject_type' => 'plan_day', 'subject_id' => $day->id])
-        ->assertSessionHasErrors('reason');
+        ->assertSessionHasErrors('note');
 
     expect(Feedback::query()->count())->toBe(0);
+});
+
+it('records a something else flag as a note with no reason', function (): void {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $day = PlannedSession::factory()->for($user)->create();
+
+    $this->actingAs($user)
+        ->from(route('plan'))
+        ->post(route('feedback.store'), [
+            'subject_type' => 'plan_day',
+            'subject_id' => $day->id,
+            'reason' => null,
+            'note' => 'the warm-up is longer than the session',
+        ])
+        ->assertRedirect(route('plan'));
+
+    $feedback = Feedback::query()->sole();
+
+    expect($feedback->reason)->toBeNull()
+        ->and($feedback->note)->toBe('the warm-up is longer than the session');
+});
+
+it('lets the athlete flag a subject again once the flag was superseded', function (): void {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $day = PlannedSession::factory()->for($user)->create();
+    Feedback::factory()->for($user)->onPlanDay($day->id)->superseded()->create([
+        'reason' => FeedbackReason::TooHard,
+        'note' => 'about the old one',
+    ]);
+
+    $this->actingAs($user)
+        ->from(route('plan'))
+        ->post(route('feedback.store'), [...flagPayload($day, 'about the new one'), 'reason' => 'too_easy'])
+        ->assertRedirect(route('plan'));
+
+    $feedback = Feedback::query()->sole();
+
+    expect($feedback->superseded_at)->toBeNull()
+        ->and($feedback->reason)->toBe(FeedbackReason::TooEasy)
+        ->and($feedback->note)->toBe('about the new one');
 });
 
 it('lands a second flag on the row already there', function (): void {

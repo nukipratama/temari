@@ -322,7 +322,7 @@ class AthleteNarrationReport
 
     /**
      * @param  list<int>  $ids
-     * @return array<int, array{reason:string|null, note:string|null, at:string|null}>
+     * @return array<int, array{reason:string|null, note:string|null, at:string|null, superseded:bool}>
      */
     private function flagsByAnalysis(array $ids): array
     {
@@ -342,6 +342,7 @@ class AthleteNarrationReport
                 'reason' => $row->reason?->value,
                 'note' => $row->note,
                 'at' => $row->created_at?->toIso8601String(),
+                'superseded' => $row->superseded_at !== null,
             ];
         }
 

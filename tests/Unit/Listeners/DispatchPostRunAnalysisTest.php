@@ -17,12 +17,14 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
+use App\Models\StravaConnection;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Actions\AI\StaggerBackfillAction;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\RestClampRecorder;
@@ -573,6 +575,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         $weekly,
         app(StaggerBackfillAction::class),
         app(BackfillAgeGate::class),
+        app(HistoryNarrationGate::class),
         app(RestClampRecorder::class),
         app(PlanNarrationRequester::class),
         app(ComplianceScorer::class),
@@ -622,4 +625,40 @@ it('leaves an older day blurb alone when the ingest is a backfill', function ():
         ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
         ->where('discriminator', '2026-05-10')
         ->exists())->toBeFalse();
+});
+
+it('fills a pre-connect run rule-based and dispatches no LLM job for it', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $activity = analyzedActivity('2026-05-20 06:00:00');
+    StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-06-09 12:00:00')]);
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    fire($activity);
+
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+    Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
+
+    $groupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->get();
+    expect($groupRows)->toHaveCount(2)
+        ->and($groupRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue();
+
+    $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
+    expect($cardRow->status)->toBe(AnalysisStatus::Done)
+        ->and($cardRow->content)->toBeString()->not->toBeEmpty();
+
+    Carbon::setTestNow();
+});
+
+it('still narrates a run logged after the Strava connect', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $activity = analyzedActivity('2026-06-10 06:00:00');
+    StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-05-01 12:00:00')]);
+    RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeActivityJob::class);
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class);
+
+    Carbon::setTestNow();
 });

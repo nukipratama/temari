@@ -16,6 +16,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
@@ -38,6 +39,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly StaggerBackfillAction $staggerBackfill,
         private readonly BackfillAgeGate $ageGate,
+        private readonly HistoryNarrationGate $history,
         private readonly RestClampRecorder $restClampRecorder,
         private readonly PlanNarrationRequester $planNarration,
         private readonly ComplianceScorer $complianceScorer,
@@ -55,7 +57,8 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         $user = $activity->user;
         $detail = $activity->detail;
-        $tooOld = $this->ageGate->isTooOld($detail->start_date_local);
+        $ruleBased = $this->ageGate->isTooOld($detail->start_date_local)
+            || $this->history->isHistorical($user, $detail->start_date_local);
 
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
@@ -66,9 +69,9 @@ class DispatchPostRunAnalysis implements ShouldQueue
             $this->complianceScorer->creditIfEarned($user, $detail->start_date_local, Carbon::today());
         }
 
-        $this->requestCardFlavor($activity, $tooOld, $delaySec);
+        $this->requestCardFlavor($activity, $ruleBased, $delaySec);
 
-        $this->dispatchActivityGroup($activity, $isBackfill, $tooOld, $delaySec);
+        $this->dispatchActivityGroup($activity, $isBackfill, $ruleBased, $delaySec);
 
         // Daily cadence: when the ingested run is today's, refresh the whole
         // daily AI set so each block narrates with every run done so far today.
@@ -136,14 +139,14 @@ class DispatchPostRunAnalysis implements ShouldQueue
         }
     }
 
-    private function requestCardFlavor(Activity $activity, bool $tooOld, int $delaySec): void
+    private function requestCardFlavor(Activity $activity, bool $ruleBased, int $delaySec): void
     {
         $card = $activity->runCard;
         if ($card === null) {
             return;
         }
 
-        if ($tooOld) {
+        if ($ruleBased) {
             $this->analysisService->requestRuleBased(
                 subjectOrType: RunCard::class,
                 subjectId: $card->id,
@@ -181,6 +184,10 @@ class DispatchPostRunAnalysis implements ShouldQueue
     }
 
     /**
+     * A run the athlete did before they signed up, like one past the backfill
+     * age cap, is filled deterministically here and narrated by the LLM only if
+     * they open it — see {@see HistoryNarrationGate}.
+     *
      * Backfilled (old) runs stage their narration group Pending and let the
      * chain narrate them one activity at a time, oldest first: each ingest
      * stages its own group, and the kickoff dispatches the user's earliest
@@ -199,9 +206,9 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * state branch) is reserved for the common case: the chain is already
      * caught up.
      */
-    private function dispatchActivityGroup(Activity $activity, bool $isBackfill, bool $tooOld, int $delaySec): void
+    private function dispatchActivityGroup(Activity $activity, bool $isBackfill, bool $ruleBased, int $delaySec): void
     {
-        if ($tooOld) {
+        if ($ruleBased) {
             $this->analysisService->requestActivityGroupRuleBased($activity);
 
             return;

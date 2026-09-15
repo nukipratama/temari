@@ -42,7 +42,7 @@ const BILLING = [
     'strava:hydrate-backlog' => 'where(is_demo, false) on the user scan, and DetailHydrator refuses a demo run again per activity',
     'streak:remind' => 'where(is_demo, false) inside the command',
     'race:remind' => 'notDemo() on the race scan inside the command',
-    'plan:regenerate' => 'is_demo === false gates the plan-narration request only; the regenerate itself stays free and still runs for demo',
+    'plan:regenerate' => 'RecentlyActiveUsers gates the plan-narration request only; the regenerate itself stays free and still runs for demo',
 ];
 
 /**
@@ -114,11 +114,11 @@ it('reads the demo exclusion straight out of each billing command source', funct
     'ai:weekly-profile' => ['ai:weekly-profile', 'app/Console/Commands/AI/WeeklyProfileCommand.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
     'ai:catch-up' => ['ai:catch-up', 'app/Console/Commands/AI/CatchUpCommand.php', 'app/Actions/AI/KickoffCatchUp.php', 'app/Actions/AI/RecentlyActiveUsers.php', 'app/Actions/AI/KickoffWeeklyRecaps.php'],
     'ai:monthly-recap' => ['ai:monthly-recap', 'app/Console/Commands/AI/MonthlyRecapCommand.php', 'app/Actions/AI/KickoffMonthlyRecaps.php'],
-    'ai:trend-read' => ['ai:trend-read', 'app/Console/Commands/AI/TrendReadCommand.php'],
+    'ai:trend-read' => ['ai:trend-read', 'app/Console/Commands/AI/TrendReadCommand.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
     'strava:sync' => ['strava:sync', 'app/Console/Commands/Strava/SyncCommand.php'],
     'strava:sync-zones' => ['strava:sync-zones', 'app/Console/Commands/Strava/SyncZonesCommand.php'],
     'strava:ingest' => ['strava:ingest', 'app/Console/Commands/Strava/IngestCommand.php'],
     'streak:remind' => ['streak:remind', 'app/Console/Commands/Gamification/StreakRemindCommand.php'],
     'race:remind' => ['race:remind', 'app/Console/Commands/Run/RaceRemindCommand.php'],
-    'plan:regenerate' => ['plan:regenerate', 'app/Console/Commands/Run/RegeneratePlanCommand.php'],
+    'plan:regenerate' => ['plan:regenerate', 'app/Console/Commands/Run/RegeneratePlanCommand.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
 ]);

@@ -66,10 +66,32 @@ it('accepts only the reasons the subject owns', function (string $subjectType, s
     'a reason the enum does not name' => ['plan_day', 'too_wet', true],
 ]);
 
-it('requires a reason', function (): void {
+it('requires a note when no reason is given', function (): void {
     $data = ['subject_type' => 'plan_day', 'subject_id' => 3];
 
     expect(Validator::make($data, feedbackRules($data))->fails())->toBeTrue();
+});
+
+it('refuses a reason-less flag whose note is only whitespace', function (): void {
+    $data = ['subject_type' => 'plan_day', 'subject_id' => 3, 'reason' => null, 'note' => '   '];
+
+    expect(Validator::make($data, feedbackRules($data))->fails())->toBeTrue();
+});
+
+it('accepts a something else flag, which carries its note instead of a reason', function (): void {
+    $data = ['subject_type' => 'plan_day', 'subject_id' => 3, 'reason' => null, 'note' => 'the pace is from another race'];
+
+    expect(Validator::make($data, feedbackRules($data))->fails())->toBeFalse();
+});
+
+it('reads a missing reason back as null', function (): void {
+    $request = feedbackRequest(
+        ['subject_type' => 'plan_day', 'subject_id' => 3, 'note' => 'none of these fit'],
+        User::factory()->create(),
+    );
+    $request->setValidator(Validator::make($request->all(), $request->rules()));
+
+    expect($request->reason())->toBeNull();
 });
 
 it('reads the chosen reason back as its enum case', function (): void {
