@@ -64,7 +64,7 @@ export default function CostChart({
                 <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                     <label
                         htmlFor="athlete-filter"
-                        className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-text-2"
+                        className="flex max-w-full flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-text-2"
                     >
                         athlete
                         <select
@@ -77,7 +77,7 @@ export default function CostChart({
                                         : Number(e.target.value),
                                 )
                             }
-                            className="focus-ring rounded-xl border border-border bg-muted px-3 py-2 text-sm font-medium text-foreground focus:border-leaf"
+                            className="focus-ring w-full rounded-xl border border-border bg-muted px-3 py-2 text-sm font-medium text-foreground focus:border-leaf"
                         >
                             <option value="">All athletes</option>
                             {athletes.map((row) => (
@@ -149,7 +149,7 @@ export default function CostChart({
                             {days.map((day) => (
                                 <div
                                     key={day.day}
-                                    className="flex-1 text-center"
+                                    className="min-w-0 flex-1 text-center"
                                 >
                                     <span
                                         className="text-meta block truncate"

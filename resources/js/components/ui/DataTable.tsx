@@ -1,4 +1,11 @@
-import type { ReactNode } from 'react';
+import {
+    type ReactNode,
+    type RefObject,
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from 'react';
 
 import type { IconComponent } from '@/components/ui/Icon';
 
@@ -32,6 +39,9 @@ export default function DataTable<T>({
     renderRow,
     emptyState,
 }: Readonly<DataTableProps<T>>) {
+    const scrollerRef = useRef<HTMLDivElement>(null);
+    const moreToTheRight = useMoreToTheRight(scrollerRef, rows);
+
     return (
         <section className="mt-10">
             <SectionHeading
@@ -45,7 +55,10 @@ export default function DataTable<T>({
                 emptyState
             ) : (
                 <div className="relative mt-4">
-                    <Card className="overflow-x-auto bg-popover py-0 scrollbar-thin-fine">
+                    <Card
+                        ref={scrollerRef}
+                        className="overflow-x-auto bg-popover py-0 scrollbar-thin-fine"
+                    >
                         <table
                             className="w-full text-sm tabular-nums"
                             style={{ minWidth }}
@@ -74,17 +87,56 @@ export default function DataTable<T>({
                             </tbody>
                         </table>
                     </Card>
-                    {/* Scroll hint for narrow viewports. Must be a sibling of the
-                        overflow-x-auto card, not a descendant — a descendant scrolls away
-                        with the table content instead of staying pinned to the visible edge. */}
-                    <div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-popover to-transparent"
-                    />
+                    {/* A sibling of the overflow-x-auto card, not a descendant: a descendant
+                        scrolls away with the table instead of staying pinned to the edge. */}
+                    {moreToTheRight && (
+                        <div
+                            aria-hidden
+                            data-testid="table-scroll-hint"
+                            className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-popover to-transparent"
+                        />
+                    )}
                 </div>
             )}
         </section>
     );
+}
+
+/**
+ * ResizeObserver delivers once on observe(), which is what takes the initial
+ * measurement without a synchronous setState in the effect.
+ */
+function useMoreToTheRight(
+    scrollerRef: RefObject<HTMLDivElement | null>,
+    rows: readonly unknown[],
+): boolean {
+    const [moreToTheRight, setMoreToTheRight] = useState(false);
+
+    const measure = useCallback(() => {
+        const node = scrollerRef.current;
+        setMoreToTheRight(
+            node !== null &&
+                node.scrollWidth - node.clientWidth - node.scrollLeft > 1,
+        );
+    }, [scrollerRef]);
+
+    useEffect(() => {
+        const node = scrollerRef.current;
+        if (node === null) {
+            return;
+        }
+
+        node.addEventListener('scroll', measure, { passive: true });
+        const observer = new ResizeObserver(measure);
+        observer.observe(node);
+
+        return () => {
+            node.removeEventListener('scroll', measure);
+            observer.disconnect();
+        };
+    }, [measure, scrollerRef, rows]);
+
+    return moreToTheRight;
 }
 
 export function Td({
