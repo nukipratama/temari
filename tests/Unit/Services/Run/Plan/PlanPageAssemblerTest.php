@@ -6,6 +6,8 @@ use App\Enums\AdaptationReason;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
+use App\Enums\SessionType;
+use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
@@ -129,4 +131,38 @@ it('counts only analyzed activities toward the week already run', function (): v
     $method = new ReflectionMethod(PlanPageAssembler::class, 'completedKmInRange');
 
     expect($method->invoke($this->assembler, $user, $from, $to))->toBe(8.0);
+});
+
+/**
+ * A plan generated mid-week only stores rows from that day on, so its week
+ * target sums three days while the completed figure was subtracted from the
+ * calendar Monday — everything the athlete ran before the plan existed was
+ * deducted from a target that never included it. The measured result was an
+ * easy day of 1 km and a long run of 1.6.
+ */
+it('measures the week already run from the first planned day, not the calendar Monday', function (): void {
+    Carbon::setTestNow('2026-08-14 08:00:00'); // Friday
+    $user = assemblerAthlete();
+
+    foreach ([['2026-08-14', SessionType::Easy], ['2026-08-15', SessionType::Tempo], ['2026-08-16', SessionType::Long]] as [$date, $type]) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $date,
+            'session_type' => $type,
+            'volume_multiplier' => 1.0,
+        ]);
+    }
+
+    // Monday to Thursday, before the plan existed.
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-08-11 07:00'),
+        'distance' => 12_400.0,
+    ]);
+
+    $days = collect($this->assembler->weeks($user, Carbon::today()))
+        ->firstOrFail(fn (array $week): bool => $week['type'] === 'current')['days'];
+
+    $sunday = collect($days)->firstOrFail(fn (array $day): bool => $day['date'] === '2026-08-16');
+
+    expect($sunday['distance_km'])->toBe($sunday['asked_km']);
 });

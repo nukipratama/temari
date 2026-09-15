@@ -159,7 +159,7 @@ final readonly class TrainingBaseline
     }
 
     /**
-     * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float}
+     * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, self_scaled: bool}
      */
     public function forUser(User $user, Carbon $asOf): array
     {
@@ -182,10 +182,15 @@ final readonly class TrainingBaseline
         $season = $this->seasonFor($user, $asOf);
         $weeklyVolumeKm = $season->anchor_weekly_volume_km ?? $this->weeklyVolumeKm($weeks, $seed);
 
+        $race = ($this->activeRace)($user->id);
+        $longRunCapKm = $this->longRunCapKm($race, $weeklyVolumeKm, $user, $asOf);
+
         return [
             'sessions_per_week' => $sessionsPerWeek,
             'weekly_volume_km' => $weeklyVolumeKm,
-            'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm, $asOf, $season),
+            'long_run_km' => $this->longRunKm($race, $weeklyVolumeKm, $season, $longRunCapKm),
+            'long_run_cap_km' => $longRunCapKm,
+            'self_scaled' => $race === null,
         ];
     }
 
@@ -265,26 +270,32 @@ final readonly class TrainingBaseline
     }
 
     /**
-     * Volume decides the long run, not the other way round. Both ceilings are
-     * applied and the tighter one wins: a race-distance band, and time on feet.
+     * Volume decides the long run, not the other way round.
      */
-    private function longRunKm(User $user, float $weeklyVolumeKm, Carbon $asOf, ?Season $season): float
+    private function longRunKm(?RaceGoal $race, float $weeklyVolumeKm, ?Season $season, float $capKm): float
     {
-        $race = ($this->activeRace)($user->id);
-
         $derived = max(
             $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm),
             $this->raceDistanceFloorKm($race, $season),
         );
 
-        $capped = min(
-            $derived,
+        return max(round(min($derived, $capKm), 1), self::MIN_LONG_RUN_KM);
+    }
+
+    /**
+     * The ceiling on any single long run, whichever of the three binds
+     * tightest: the race-distance band, time on feet, and half the week.
+     * Returned by {@see self::forUser()} because capping the baseline alone
+     * left {@see SegmentGenerator::coreKmFor()}'s volume-multiplied
+     * prescription unbounded.
+     */
+    private function longRunCapKm(?RaceGoal $race, float $weeklyVolumeKm, User $user, Carbon $asOf): float
+    {
+        return max(self::MIN_LONG_RUN_KM, min(
             self::raceBandCapKm($race),
             $this->timeCapKm($user, $asOf),
             $weeklyVolumeKm * self::MAX_LONG_RUN_SHARE_OF_WEEK,
-        );
-
-        return max(round($capped, 1), self::MIN_LONG_RUN_KM);
+        ));
     }
 
     /**
@@ -298,6 +309,10 @@ final readonly class TrainingBaseline
      * ramp, not by being handed a 10% jump in week one. An arc too short or
      * too flat to hold a ramp simply gets a smaller step — 0.0 when there is
      * no race, no season, or a marathon-distance goal.
+     *
+     * Only Build and Peak multipliers count as the ramp's high-water mark;
+     * Taper and Deload are reductions and would inflate the floor if divided
+     * into. An arc holding neither phase gets no floor at all.
      */
     private function raceDistanceFloorKm(?RaceGoal $race, ?Season $season): float
     {
@@ -311,11 +326,17 @@ final readonly class TrainingBaseline
         );
 
         $multipliers = PhaseSchedule::volumeMultipliers($phases);
-        if ($multipliers === []) {
+        $rampMultipliers = [];
+        foreach ($phases as $i => $phase) {
+            if (in_array($phase, [PlanPhase::Build, PlanPhase::Peak], true)) {
+                $rampMultipliers[] = $multipliers[$i];
+            }
+        }
+        if ($rampMultipliers === []) {
             return 0.0;
         }
 
-        return ceil((float) $race->distance_m / 1000.0 / max($multipliers) * 10) / 10;
+        return ceil((float) $race->distance_m / 1000.0 / max($rampMultipliers) * 10) / 10;
     }
 
     private static function longRunShare(float $weeklyVolumeKm): float

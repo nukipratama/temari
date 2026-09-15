@@ -41,17 +41,17 @@ final readonly class PlanAdapter
     /** Below this much CTL the strain ratio is noise, not signal. */
     public const float MIN_CTL_FOR_STRAIN = 10.0;
 
-    /** Below this average per-day compliance score, last week counts as a re-entry, not a catch-up. */
-    public const int MISSED_WEEK_ADHERENCE = 50;
+    /** Below this share of the week's prescription completed, last week counts as a re-entry, not a catch-up. */
+    public const float MISSED_WEEK_ADHERENCE = 0.50;
 
-    /** Share of an easy day's moving time above Z2 that stops it being an easy day. */
-    public const float EASY_DAY_HARD_SHARE = 20.0;
+    /** Share of an easy day's time above Z2 that stops it being an easy day. */
+    public const float EASY_DAY_HARD_SHARE = 0.20;
 
     /** One ragged day is a bad morning. This many is how the week was run. */
     public const int RAGGED_DAYS_MIN = 2;
 
     /** Twice the easy-day line: a day this far past it speaks for the week on its own. */
-    public const float EGREGIOUS_EASY_DAY_HARD_SHARE = 40.0;
+    public const float EGREGIOUS_EASY_DAY_HARD_SHARE = 0.40;
 
     /**
      * Egregiously decoupled days before the week counts as run too hard.
@@ -151,7 +151,7 @@ final readonly class PlanAdapter
         if (self::strainIsExcessive($strain, $ctl)) {
             return AdaptationReason::HighStrain;
         }
-        if ($adherencePct < self::MISSED_WEEK_ADHERENCE) {
+        if ($adherencePct / 100 < self::MISSED_WEEK_ADHERENCE) {
             return AdaptationReason::MissedWeek;
         }
         if ($egregiousEasyDays >= 1
@@ -275,12 +275,15 @@ final readonly class PlanAdapter
     /**
      * A null line means that arm is not being counted on this pass, so the
      * caller can ask about one kind of day without the other answering too.
+     *
+     * The two lines carry different units: this class's thresholds are
+     * fractions, while {@see DecouplingBands}'s decoupling line stays percent.
      */
-    private static function ranHarderThanWritten(SessionType $type, StreamSummary $summary, ?float $easyLine, ?float $decouplingLine): bool
+    private static function ranHarderThanWritten(SessionType $type, StreamSummary $summary, ?float $easyShareLine, ?float $decouplingPctLine): bool
     {
         return match ($type) {
-            SessionType::Easy => $easyLine !== null && $summary->hardZoneShare() > $easyLine,
-            SessionType::Long, SessionType::Tempo, SessionType::Interval => $decouplingLine !== null && ($summary->decouplingPct() ?? 0.0) > $decouplingLine,
+            SessionType::Easy => $easyShareLine !== null && $summary->hardZoneShare() / 100 > $easyShareLine,
+            SessionType::Long, SessionType::Tempo, SessionType::Interval => $decouplingPctLine !== null && ($summary->decouplingPct() ?? 0.0) > $decouplingPctLine,
             SessionType::Rest, SessionType::Race => false,
         };
     }

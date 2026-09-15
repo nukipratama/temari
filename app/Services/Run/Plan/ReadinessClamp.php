@@ -34,6 +34,7 @@ final class ReadinessClamp
         ?float $raceDistanceM,
         float $longRunBaselineKm,
         float $volumeMultiplier,
+        float $longRunCapKm,
         ?array $paces,
         ReadinessCeiling $ceiling,
     ): ?array {
@@ -61,9 +62,10 @@ final class ReadinessClamp
                     $sessionType === SessionType::Long,
                     $longRunBaselineKm,
                     $volumeMultiplier,
+                    $longRunCapKm,
                     $paces,
                 ),
-                'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, $sessionType === SessionType::Long, $longRunBaselineKm, $volumeMultiplier),
+                'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, $sessionType === SessionType::Long, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm),
                 'note' => self::easyOnlyNote($sessionType),
             ],
             // Only reachable for Tempo/Interval (their requiredRank alone
@@ -71,8 +73,8 @@ final class ReadinessClamp
             // to Easy, since a Long day never needs more than ModerateOk.
             ReadinessCeiling::ModerateOk => [
                 'session_type' => SessionType::Easy,
-                'segments' => SegmentGenerator::easyEquivalentOf($sessionType, $longRunBaselineKm, $volumeMultiplier, $paces),
-                'core_km' => SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier),
+                'segments' => SegmentGenerator::easyEquivalentOf($sessionType, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, $paces),
+                'core_km' => SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm),
                 'note' => self::moderateOkNote(),
             ],
             ReadinessCeiling::QualityOk => null, // unreachable: nothing requires more than QualityOk
@@ -179,27 +181,6 @@ final class ReadinessClamp
         return match ($original) {
             SessionType::Long => "Long runs ask a lot of a tired body, today scales back to a shorter easy one.",
             default => "Quality work waits until you're fresher, today's the easy version instead.",
-        };
-    }
-
-    /**
-     * What the step-down means once the day is already credited.
-     *
-     * `Readiness::assess()` caps to `EasyOnly` on `ranToday` alone, so finishing
-     * the session is itself what produces the clamp on it — the note above then
-     * reads as a verdict on work already done. It never was one: the ceiling is
-     * about what the body has left, so on a credited day this is guidance for a
-     * SECOND outing, and says so. Only `Rest` and `Easy` are reachable here,
-     * because `ranToday` caps the ceiling at `EasyOnly` before anything else
-     * gets a say.
-     *
-     * @param  SessionType  $clampedTo  what the ceiling allows, not what was asked
-     */
-    public static function secondSessionNote(SessionType $clampedTo): string
-    {
-        return match ($clampedTo) {
-            SessionType::Rest => "You've already run today and you're carrying a lot, so leave it there.",
-            default => "You've already run today, so anything else stays easy.",
         };
     }
 }

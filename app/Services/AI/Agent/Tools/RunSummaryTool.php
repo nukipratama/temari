@@ -21,8 +21,8 @@ final class RunSummaryTool extends ActivityTool
     {
         return "This session's core numbers: when the run was, distance, duration, pace, average "
             .'and max HR, cadence, and cadence_drop_spm (how much step rate fell from the first half '
-            .'to the second). moving_time_formatted (h:mm:ss) and pace_formatted (mm:ss/km) are the '
-            .'only forms to quote -- matches what the app shows; moving_time_sec and pace_sec_per_km '
+            .'to the second). elapsed_time_formatted (h:mm:ss) and pace_formatted (mm:ss/km) are the '
+            .'only forms to quote -- matches what the app shows; elapsed_time_sec and pace_sec_per_km '
             .'are raw seconds, for judging size, never for quoting. Start here.';
     }
 
@@ -30,15 +30,15 @@ final class RunSummaryTool extends ActivityTool
     public function handle(array $arguments): array
     {
         $shared = ActivityNarrationContext::fromDetail($this->detail);
-        $paceSecPerKm = PaceCalculator::secPerKm($shared->distanceMeters, $this->detail->moving_time);
+        $paceSecPerKm = PaceCalculator::secPerKm($shared->distanceMeters, $this->detail->elapsed_time);
 
         return [
             'started_at_local' => $this->detail->start_date_local?->toDateTimeString(),
             'distance_km' => $shared->distanceKm(DistanceFormatter::COPY),
-            'moving_time_sec' => $this->detail->moving_time,
-            'moving_time_formatted' => $this->detail->moving_time === null
+            'elapsed_time_sec' => $this->detail->elapsed_time,
+            'elapsed_time_formatted' => $this->detail->elapsed_time === null
                 ? null
-                : DurationFormatter::hms($this->detail->moving_time),
+                : DurationFormatter::hms($this->detail->elapsed_time),
             'pace_sec_per_km' => $paceSecPerKm !== null ? round($paceSecPerKm, 1) : null,
             'pace_formatted' => $paceSecPerKm !== null ? PaceFormatter::format($paceSecPerKm) : null,
             'avg_hr' => $this->detail->average_heartrate,

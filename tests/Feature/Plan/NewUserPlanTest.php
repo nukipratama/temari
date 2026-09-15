@@ -27,6 +27,7 @@ function connectedRunner(): User
             'start_date_local' => Carbon::today()->subDays($i * 2),
             'distance' => 7_000,
             'moving_time' => 2_400,
+            'elapsed_time' => 2_400,
             'trimp_edwards' => 60.0,
         ]);
     }

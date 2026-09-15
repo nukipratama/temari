@@ -105,7 +105,7 @@ class DetectActivityMilestonesAction
             $milestones[] = $distanceMilestone;
         }
 
-        $paceFloat = PaceCalculator::secPerKm((float) $distanceMeters, $detail->moving_time);
+        $paceFloat = PaceCalculator::secPerKm((float) $distanceMeters, $detail->elapsed_time);
         if ($paceFloat !== null) {
             $paceMilestone = $this->firstEverPace($activity, $detail, $paceFloat);
             if ($paceMilestone !== null) {
@@ -182,8 +182,8 @@ class DetectActivityMilestonesAction
             ->where('start_date_local', '<', $detail->start_date_local)
             ->whereNotNull('distance')
             ->where('distance', '>', 0)
-            ->whereNotNull('moving_time')
-            ->whereRaw('moving_time / (distance / 1000) <= ?', [$thresholdMatched])
+            ->whereNotNull('elapsed_time')
+            ->whereRaw('elapsed_time / (distance / 1000) <= ?', [$thresholdMatched])
             ->exists();
 
         if ($existed) {

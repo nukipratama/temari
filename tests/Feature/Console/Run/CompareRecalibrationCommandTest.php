@@ -23,6 +23,7 @@ function runWithStaleSummary(User $user): Activity
         'start_date_local' => Carbon::today(),
         'distance' => 5000.0,
         'moving_time' => 1500,
+        'elapsed_time' => 1500,
         'stream_summary' => ['pace_variability_sec' => 95.3, 'negative_split' => true],
     ]);
     ActivityStream::factory()->for($activity)->create();

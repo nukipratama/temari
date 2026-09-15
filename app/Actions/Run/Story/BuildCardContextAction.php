@@ -112,6 +112,7 @@ final readonly class BuildCardContextAction
             isPrimaryEasy: false,
             longRunBaselineKm: 0.0,
             volumeMultiplier: 1.0,
+            longRunCapKm: 0.0,
             paces: null,
         );
         $mainSegment = collect($segments)->first(

@@ -118,11 +118,13 @@ it('credits a past day whose completed distance met the prescribed km', function
     // bigger, Medium-fraction target) — see SegmentGenerator::coreKmFor().
     // Log exactly the prescribed km: unambiguously Done (100%), nowhere near
     // either the Partial floor or the Overreached ceiling.
+    $baselineData = app(TrainingBaseline::class)->forUser($user, Carbon::today());
     $mondayTargetKm = SegmentGenerator::coreKmFor(
         SessionType::Easy,
         true,
-        app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'],
+        $baselineData['long_run_km'],
         1.0,
+        $baselineData['long_run_cap_km'],
     );
     $monday = $weekStart->copy();
     $activity = Activity::factory()->for($user)->create();
@@ -144,6 +146,11 @@ it('applies the multi-week Build ramp, not an isolated week-1 multiplier', funct
     $user = User::factory()->create();
     $currentWeekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
 
+    // A race goal, so the arc is not self-scaled — a self-scaled Build phase
+    // holds flat at 1.0 by design and would never exercise the ramp this test
+    // is about.
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-11-01', 'distance_m' => 10_000]);
+
     // 3 trailing Build weeks + the current (4th) Build week.
     for ($w = 3; $w >= 0; $w--) {
         seedWeekOfSessions($user, $currentWeekStart->copy()->subWeeks($w), PlanPhase::Build);
@@ -160,13 +167,13 @@ it('applies the multi-week Build ramp, not an isolated week-1 multiplier', funct
     $longRunKm = app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'];
     $rampedMultiplier = 1.075 ** 3;
     $rampedTotalKm = round(
-        SegmentGenerator::coreKmFor(SessionType::Easy, true, $longRunKm, $rampedMultiplier)
-        + SegmentGenerator::coreKmFor(SessionType::Easy, false, $longRunKm, $rampedMultiplier) * 6,
+        SegmentGenerator::coreKmFor(SessionType::Easy, true, $longRunKm, $rampedMultiplier, INF)
+        + SegmentGenerator::coreKmFor(SessionType::Easy, false, $longRunKm, $rampedMultiplier, INF) * 6,
         1,
     );
     $unrampedTotalKm = round(
-        SegmentGenerator::coreKmFor(SessionType::Easy, true, $longRunKm, 1.0)
-        + SegmentGenerator::coreKmFor(SessionType::Easy, false, $longRunKm, 1.0) * 6,
+        SegmentGenerator::coreKmFor(SessionType::Easy, true, $longRunKm, 1.0, INF)
+        + SegmentGenerator::coreKmFor(SessionType::Easy, false, $longRunKm, 1.0, INF) * 6,
         1,
     );
 

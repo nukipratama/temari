@@ -93,6 +93,10 @@ final class SegmentGenerator
      * training: it asks for the race distance, untouched by the volume
      * multiplier, because the event is whatever length it is.
      *
+     * The ceilings bind here, on the prescription every session type derives
+     * `$effectiveLong` from, rather than on the baseline alone.
+     *
+     * @param  float  $longRunCapKm  {@see TrainingBaseline}'s `long_run_cap_km`
      * @param  ?float  $raceDistanceM  the active {@see \App\Models\RaceGoal}'s distance, required only on a `Race` day
      */
     public static function coreKmFor(
@@ -100,6 +104,7 @@ final class SegmentGenerator
         bool $isPrimaryEasy,
         float $longRunBaselineKm,
         float $volumeMultiplier,
+        float $longRunCapKm,
         ?float $raceDistanceM = null,
     ): float {
         if ($sessionType === SessionType::Rest) {
@@ -110,7 +115,7 @@ final class SegmentGenerator
             return round(($raceDistanceM ?? 0.0) / 1000.0, 1);
         }
 
-        $effectiveLong = $longRunBaselineKm * $volumeMultiplier;
+        $effectiveLong = min($longRunBaselineKm * $volumeMultiplier, $longRunCapKm);
 
         return match ($sessionType) {
             SessionType::Long => round($effectiveLong, 1),
@@ -133,7 +138,7 @@ final class SegmentGenerator
      *
      * @param  list<SessionSegment>  $segments
      */
-    public static function prescribedKm(array $segments): ?float
+    public static function segmentSumKm(array $segments): ?float
     {
         if ($segments === []) {
             return null;
@@ -158,6 +163,7 @@ final class SegmentGenerator
      *
      * @param  ?float  $raceDistanceM  the active {@see \App\Models\RaceGoal}'s distance, or null in self-scaled mode
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces  seconds per kilometre; null when the athlete has no VDOT estimate yet
+     * @param  float  $longRunCapKm  {@see TrainingBaseline}'s `long_run_cap_km`
      * @param  float  $volumeScale  from {@see VolumeRedistributor} — 1.0 outside a redistributed week
      * @param  ?int  $raceGoalTimeSec  the active race's `goal_time_sec`, which is what a `Race` day is run at
      * @return list<SessionSegment>
@@ -169,6 +175,7 @@ final class SegmentGenerator
         bool $isPrimaryEasy,
         float $longRunBaselineKm,
         float $volumeMultiplier,
+        float $longRunCapKm,
         ?array $paces,
         float $volumeScale = 1.0,
         ?int $raceGoalTimeSec = null,
@@ -182,10 +189,10 @@ final class SegmentGenerator
         // The race is the distance it is: a redistributed week may scale the
         // training around it, never the event itself.
         if ($sessionType === SessionType::Race) {
-            return self::raceSegments(self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $raceDistanceM), $isMarathonDistance, $paces, $raceGoalTimeSec);
+            return self::raceSegments(self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, $raceDistanceM), $isMarathonDistance, $paces, $raceGoalTimeSec);
         }
 
-        $coreKm = self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier) * $volumeScale;
+        $coreKm = self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm) * $volumeScale;
 
         return match ($sessionType) {
             SessionType::Easy => [self::block(SegmentKey::Main, $coreKm, PaceBand::Easy, $paces)],
@@ -237,9 +244,9 @@ final class SegmentGenerator
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @return list<SessionSegment>
      */
-    public static function easyEquivalentOf(SessionType $originalType, float $longRunBaselineKm, float $volumeMultiplier, ?array $paces): array
+    public static function easyEquivalentOf(SessionType $originalType, float $longRunBaselineKm, float $volumeMultiplier, float $longRunCapKm, ?array $paces): array
     {
-        $km = self::coreKmFor($originalType, isPrimaryEasy: false, longRunBaselineKm: $longRunBaselineKm, volumeMultiplier: $volumeMultiplier);
+        $km = self::coreKmFor($originalType, isPrimaryEasy: false, longRunBaselineKm: $longRunBaselineKm, volumeMultiplier: $volumeMultiplier, longRunCapKm: $longRunCapKm);
 
         return [self::block(SegmentKey::Main, $km, PaceBand::Easy, $paces)];
     }

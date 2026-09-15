@@ -22,7 +22,7 @@ class WeeklyAggregator
 
     /**
      * The only ActivityDetail columns the weekly roll-up reads: the week filter
-     * and daily TRIMP map need the date, upsertWeek sums distance/moving_time,
+     * and daily TRIMP map need the date, upsertWeek sums distance/elapsed_time,
      * and averageDecoupling reads `stream_summary`. Everything else on the table
      * (notably the `splits_metric` and `laps` blobs) would be a year of JSON
      * pulled per ingest for nothing.
@@ -34,7 +34,7 @@ class WeeklyAggregator
         'activity_details.activity_id',
         'activity_details.start_date_local',
         'activity_details.distance',
-        'activity_details.moving_time',
+        'activity_details.elapsed_time',
         'activity_details.trimp_edwards',
         'activity_details.stream_summary',
     ];
@@ -197,7 +197,7 @@ class WeeklyAggregator
 
         $distanceKm = DistanceFormatter::km((float) $weekDetails->sum('distance'));
         $runs = $weekDetails->count();
-        $movingTimeSec = (int) round((float) $weekDetails->sum('moving_time'));
+        $elapsedTimeSec = (int) round((float) $weekDetails->sum('elapsed_time'));
         $avgDecoupling = $this->averageDecoupling($weekDetails);
 
         // For the in-progress week, measure ATL/CTL as-of today rather than the
@@ -215,7 +215,7 @@ class WeeklyAggregator
             [
                 'distance_km' => $distanceKm,
                 'runs' => $runs,
-                'moving_time_sec' => $movingTimeSec,
+                'elapsed_time_sec' => $elapsedTimeSec,
                 'weekly_trimp' => $summary['weekly_trimp'] ?? null,
                 'atl_7d' => $summary['atl_7d'] ?? null,
                 'ctl_42d' => $summary['ctl_42d'] ?? null,

@@ -57,6 +57,7 @@ it('aggregates multiple runs on the same day into one cell with weighted HR', fu
             'start_date_local' => Carbon::create(2026, 5, 15),
             'distance' => $dist,
             'moving_time' => $mt,
+            'elapsed_time' => $mt,
             'average_heartrate' => $hr,
             'trimp_edwards' => 20.0,
         ]);
@@ -80,6 +81,7 @@ it('links a single-run day to its activity and attaches the mood', function (): 
         'start_date_local' => Carbon::create(2026, 5, 10),
         'distance' => 5_000,
         'moving_time' => 1_500,
+        'elapsed_time' => 1_500,
         'average_heartrate' => 150,
     ]);
     StoryLine::factory()->for($activity)->create([

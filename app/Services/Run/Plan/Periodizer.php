@@ -79,7 +79,7 @@ final readonly class Periodizer
             // SeasonSummaryBuilder draws is the one the athlete trains.
             : $this->phaseSchedule->selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($inputs->seasonEnd) + 1), $inputs->seasonOpensWithRecovery);
 
-        $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $inputs->currentWeekStart(), $inputs->adaptation['deload']);
+        $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $inputs->currentWeekStart(), $inputs->adaptation['deload'], $inputs->isSelfScaled());
 
         $rows = [];
         foreach ($weeks as $week) {
@@ -174,7 +174,7 @@ final readonly class Periodizer
      * @param  list<array{week_start: Carbon, phase: PlanPhase}>  $arc
      * @return list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>
      */
-    private static function sliceFromCurrentWeek(array $arc, Carbon $arcStart, Carbon $currentWeekStart, bool $deload): array
+    private static function sliceFromCurrentWeek(array $arc, Carbon $arcStart, Carbon $currentWeekStart, bool $deload, bool $selfScaled): array
     {
         if ($arc === []) {
             return [];
@@ -186,7 +186,7 @@ final readonly class Periodizer
         if ($deload && $phases[$offset] !== PlanPhase::Taper) {
             $phases[$offset] = PlanPhase::Deload;
         }
-        $multipliers = PhaseSchedule::volumeMultipliers($phases);
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, $selfScaled);
 
         $weeks = [];
         foreach (array_slice($arc, $offset, self::HORIZON_WEEKS, preserve_keys: true) as $index => $week) {

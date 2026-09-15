@@ -212,6 +212,7 @@ it('returns null when the current activity has no distance', function (): void {
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 0,
         'moving_time' => 1800,
+        'elapsed_time' => 1800,
         'start_date_local' => Carbon::today(),
     ]);
 
@@ -224,6 +225,7 @@ it('returns null when the current activity has no start_date_local', function ()
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5_000,
         'moving_time' => 1_800,
+        'elapsed_time' => 1_800,
         'start_date_local' => null,
     ]);
 
@@ -308,7 +310,7 @@ function matcherRun(
         activityId: $activityId,
         startedAt: Carbon::parse($date),
         distanceM: $distanceM,
-        movingTimeSec: (int) round($paceSecPerKm * $distanceM / 1000),
+        elapsedTimeSec: (int) round($paceSecPerKm * $distanceM / 1000),
         paceSecPerKm: $paceSecPerKm,
         averageHeartrate: $hr,
         elevationGainM: $elevationM,

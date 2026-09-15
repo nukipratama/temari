@@ -199,3 +199,42 @@ it('floors a race already run at a single taper week instead of throwing', funct
             ->and($weeks[0]['phase'])->toBe(PlanPhase::Taper);
     }
 });
+
+it('volumeMultipliers caps the compounding build ramp at 1.4', function (): void {
+    $arc = new PhaseSchedule()->forRace(
+        Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY),
+        Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY)->addWeeks(51),
+        10_000.0,
+    );
+
+    $multipliers = PhaseSchedule::volumeMultipliers(
+        array_map(fn (array $w): PlanPhase => $w['phase'], $arc),
+    );
+
+    expect(max($multipliers))->toBeLessThanOrEqual(1.4);
+});
+
+it('volumeMultipliers leaves a 12-week block untouched by the ramp cap', function (): void {
+    $arc = new PhaseSchedule()->forRace(
+        Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY),
+        Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY)->addWeeks(11),
+        10_000.0,
+    );
+
+    $multipliers = PhaseSchedule::volumeMultipliers(
+        array_map(fn (array $w): PlanPhase => $w['phase'], $arc),
+    );
+
+    expect(max($multipliers))->toEqualWithDelta(1.1556, 0.001);
+});
+
+it('holds a self-scaled arc at 1.0 outside its deload dips', function (): void {
+    $arc = new PhaseSchedule()->selfScaled(Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY), 30);
+
+    $phases = array_map(fn (array $w): PlanPhase => $w['phase'], $arc);
+    $multipliers = PhaseSchedule::volumeMultipliers($phases, selfScaled: true);
+
+    foreach ($phases as $index => $phase) {
+        expect($multipliers[$index])->toEqualWithDelta($phase === PlanPhase::Deload ? 0.65 : 1.0, 0.0001);
+    }
+});

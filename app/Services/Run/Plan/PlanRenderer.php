@@ -32,6 +32,16 @@ use LogicException;
 final class PlanRenderer
 {
     /**
+     * Trailing weeks every caller of {@see self::weekPhasesAndMultipliers()}
+     * must load around the weeks it actually wants. The recompute fallback
+     * reads a week's Build ramp off its neighbours, so a window shorter than
+     * this reads a week deep in a ramp as an isolated week 1. Declared once
+     * here rather than per caller: nothing enforced that two copies stayed
+     * equal.
+     */
+    public const int HISTORY_WEEKS = 3;
+
+    /**
      * $sessionsByWeek is keyed by week_start (Y-m-d), any order, each value
      * itself a Collection<int, PlannedSession> — the value type is left as
      * `mixed` rather than nested-Collection-typed, since groupBy()'s
@@ -39,10 +49,17 @@ final class PlanRenderer
      * Model-bound generics and Support Collection's own generics aren't
      * covariant either way.
      *
+     * `$selfScaled` only matters for the recompute fallback below: a stamped
+     * week already carries the multiplier it was actually generated with, so
+     * a self-scaled arc's flat ramp only needs re-deriving here for a week old
+     * enough to predate {@see PlannedSession::$volume_multiplier} being
+     * stamped at all — otherwise this would re-apply the race-arc ramp
+     * {@see TrainingBaseline}'s `self_scaled` flag exists to hold at 1.0.
+     *
      * @param  Collection<string, mixed>  $sessionsByWeek
      * @return array{0: Collection<string, PlanPhase>, 1: array<string, float>}
      */
-    public static function weekPhasesAndMultipliers(Collection $sessionsByWeek): array
+    public static function weekPhasesAndMultipliers(Collection $sessionsByWeek, bool $selfScaled): array
     {
         $rowByWeek = $sessionsByWeek->map(fn ($weekSessions): PlannedSession => self::weekRow($weekSessions))->sortKeys();
 
@@ -63,7 +80,7 @@ final class PlanRenderer
             ? $stamped
             : array_combine(
                 $phaseByWeek->keys()->all(),
-                PhaseSchedule::volumeMultipliers(array_values($phaseByWeek->values()->all())),
+                PhaseSchedule::volumeMultipliers(array_values($phaseByWeek->values()->all()), $selfScaled),
             );
 
         return [$phaseByWeek, $multiplierByWeek];
@@ -126,12 +143,12 @@ final class PlanRenderer
      * @param  Collection<int, PlannedSession>  $sessions
      * @return array<string, float>  Y-m-d => core km
      */
-    public static function plannedKmByDate(Collection $sessions, float $longRunBaselineKm): array
+    public static function plannedKmByDate(Collection $sessions, float $longRunBaselineKm, float $longRunCapKm, bool $selfScaled): array
     {
         $sessionsByWeek = $sessions->groupBy(
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
         );
-        [, $multiplierByWeek] = self::weekPhasesAndMultipliers($sessionsByWeek);
+        [, $multiplierByWeek] = self::weekPhasesAndMultipliers($sessionsByWeek, $selfScaled);
         $primaryEasyDateByWeek = $sessionsByWeek->map(
             fn (Collection $weekSessions): ?string => self::primaryEasyDate($weekSessions),
         );
@@ -144,6 +161,7 @@ final class PlanRenderer
                 $s->date->toDateString() === $primaryEasyDateByWeek->get($weekKey),
                 $longRunBaselineKm,
                 $multiplierByWeek[$weekKey] ?? 1.0,
+                $longRunCapKm,
                 self::raceDistanceOf($s),
             );
         }
@@ -158,7 +176,7 @@ final class PlanRenderer
      * Still the plain, unredistributed figure: no {@see VolumeRedistributor}
      * scale reaches this.
      */
-    public static function coreKmForSession(PlannedSession $session, float $longRunBaselineKm): float
+    public static function coreKmForSession(PlannedSession $session, float $longRunBaselineKm, float $longRunCapKm, bool $selfScaled): float
     {
         $weekStart = $session->date->copy()->startOfWeek(Carbon::MONDAY);
         $weekSessions = PlannedSession::query()
@@ -166,8 +184,8 @@ final class PlanRenderer
             ->whereBetween('date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
             ->get();
 
-        return self::plannedKmByDate($weekSessions, $longRunBaselineKm)[$session->date->toDateString()]
-            ?? SegmentGenerator::coreKmFor($session->session_type, false, $longRunBaselineKm, 1.0, self::raceDistanceOf($session));
+        return self::plannedKmByDate($weekSessions, $longRunBaselineKm, $longRunCapKm, $selfScaled)[$session->date->toDateString()]
+            ?? SegmentGenerator::coreKmFor($session->session_type, false, $longRunBaselineKm, 1.0, $longRunCapKm, self::raceDistanceOf($session));
     }
 
     /**
@@ -186,11 +204,12 @@ final class PlanRenderer
         bool $isPrimaryEasy,
         float $longRunKm,
         float $multiplier,
+        float $longRunCapKm,
         ?float $raceDistanceM,
         float $volumeScale = 1.0,
     ): float {
-        return SegmentGenerator::prescribedKm($segments)
-            ?? round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $raceDistanceM) * $volumeScale, 1);
+        return SegmentGenerator::segmentSumKm($segments)
+            ?? round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM) * $volumeScale, 1);
     }
 
     /**
@@ -211,6 +230,7 @@ final class PlanRenderer
         bool $isPrimaryEasy,
         float $longRunKm,
         float $multiplier,
+        float $longRunCapKm,
         ?array $paces,
         PlannedSessionStatus $status,
         ?array $activity = null,
@@ -231,6 +251,7 @@ final class PlanRenderer
             $isPrimaryEasy,
             $longRunKm,
             $multiplier,
+            $longRunCapKm,
             $paces,
             $volumeScale,
             $raceGoalTimeSec,
@@ -241,6 +262,7 @@ final class PlanRenderer
             $isPrimaryEasy,
             $longRunKm,
             $multiplier,
+            $longRunCapKm,
             $raceDistanceM,
             $volumeScale,
         );
@@ -248,7 +270,7 @@ final class PlanRenderer
         // the day's own narration is sized from (see PlanDayTool). Exposed so
         // the Plan page can say why `distance_km` moved, rather than the two
         // screens just disagreeing with no explanation.
-        $askedKm = SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $raceDistanceM);
+        $askedKm = SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM);
 
         return [
             'id' => $s->id,
@@ -264,7 +286,8 @@ final class PlanRenderer
             'compliance_score' => $s->compliance_score,
             'prescribed_km' => $s->prescribed_km,
             'ran_anyway' => $s->ran_anyway,
-            'clamp' => $isToday && $clamp !== null ? self::clampPayload($clamp, $clampVoice, $status->isCredited()) : null,
+            'clamp' => $isToday && $clamp !== null && ! $status->isCredited() ? self::clampPayload($clamp, $clampVoice) : null,
+            'credit_note' => self::creditNote($sessionType, $status, $askedKm, $activity),
             'actual_km' => $activity['km'] ?? null,
             'activities' => $activity['runs'] ?? [],
             'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
@@ -292,17 +315,14 @@ final class PlanRenderer
      * skeleton on a block that must always say something, and a paused or
      * cost-capped day still reads correctly.
      *
-     * Once the day is credited the block is guidance for a SECOND outing
-     * rather than a step-down from the one already run, so it carries its own
-     * label and note and the narrated voice is dropped: that line was written
-     * for the forecast and re-narrating it would bill an LLM call from a GET.
-     * Both surfaces read `label` rather than hardcoding one, which is the
-     * property this class exists to guarantee.
+     * A credited day carries no clamp at all: the day is over, and the block
+     * that once offered a second menu is replaced by what the day actually
+     * came to. See `docs/decisions/a-credited-day-shows-its-result.md`.
      *
      * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string} $clamp
      * @return array{session_type: string, distance_km: float, pace_sec_per_km: int|null, note: string, label: string}
      */
-    private static function clampPayload(array $clamp, ?string $voice, bool $credited): array
+    private static function clampPayload(array $clamp, ?string $voice): array
     {
         $core = null;
         foreach ($clamp['segments'] as $segment) {
@@ -317,10 +337,29 @@ final class PlanRenderer
             'session_type' => $clamp['session_type']->value,
             'distance_km' => $clamp['core_km'],
             'pace_sec_per_km' => $core?->paceSecPerKm,
-            'note' => $credited
-                ? ReadinessClamp::secondSessionNote($clamp['session_type'])
-                : ($voice ?? $clamp['note']),
-            'label' => $credited ? 'anything else today' : 'eased today',
+            'note' => $voice ?? $clamp['note'],
+            'label' => 'eased today',
         ];
+    }
+
+    /**
+     * Why a long day that covered its distance still reads `partial`: the
+     * volume arrived in pieces. Only that case has something to explain —
+     * every other verdict is already said by its own numbers.
+     *
+     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null}>}|null  $activity
+     */
+    private static function creditNote(SessionType $sessionType, PlannedSessionStatus $status, float $askedKm, ?array $activity): ?string
+    {
+        if ($sessionType !== SessionType::Long || $status !== PlannedSessionStatus::Partial || $activity === null || $askedKm <= 0.0) {
+            return null;
+        }
+
+        $longestKm = max(array_map(static fn (array $run): float => $run['km'], $activity['runs']) ?: [0.0]);
+        if ($activity['km'] < $askedKm * SessionMatcher::DONE_FRACTION || SessionMatcher::oneRunCarriedTheLongDay($askedKm, $longestKm)) {
+            return null;
+        }
+
+        return 'the distance was there, but not in one run. a long day is time on feet in one go.';
     }
 }

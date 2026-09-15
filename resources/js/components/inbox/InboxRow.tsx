@@ -79,7 +79,7 @@ function statsFor(item: InboxItem): { label: string; value: string }[] {
     const stats = [
         { label: 'Distance', value: `${formatKm(item.distance_m, 1)} km` },
     ];
-    const pace = paceSecPerKm(item.moving_time_s, item.distance_m);
+    const pace = paceSecPerKm(item.elapsed_time_s, item.distance_m);
     if (pace !== null) {
         stats.push({ label: 'Pace', value: `${formatPace(pace)}/km` });
     }

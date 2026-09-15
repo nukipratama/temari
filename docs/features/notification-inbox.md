@@ -124,7 +124,7 @@ stay non-navigable; nothing backfills them, since the payload is the record of w
 A row's rarity badge, when it carries one, is read straight out of the stored payload
 ([InboxController](../../app/Http/Controllers/InboxController.php#L104)); the read-side lookup that
 rated an unlock row against the unlock catalog went with the catalog. A **post-run** row carries its
-run's distance and moving time, looked up over the whole window in one query
+run's distance and elapsed time, looked up over the whole window in one query
 ([InboxController](../../app/Http/Controllers/InboxController.php#L122)), which is what the row's
 distance/pace stat chips render.
 

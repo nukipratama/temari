@@ -679,6 +679,7 @@ it('recomputeSummary refreshes a single activity from stored streams using curre
         'start_date_local' => Carbon::parse('2026-05-10 06:30:00'),
         'distance' => 5000,
         'moving_time' => 1800,
+        'elapsed_time' => 1800,
         'splits_metric' => [],
     ]);
     ActivityStream::query()->create([
@@ -726,6 +727,7 @@ it('recomputeSummary can skip the forward snapshot rebuild for batch callers', f
         'start_date_local' => Carbon::parse('2026-05-10 06:30:00'),
         'distance' => 5000,
         'moving_time' => 1800,
+        'elapsed_time' => 1800,
     ]);
     ActivityStream::query()->create([
         'activity_id' => $activity->id,

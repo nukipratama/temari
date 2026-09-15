@@ -399,6 +399,25 @@ describe('mondayOf / sundayOf / isoDateLocal', () => {
         expect(isoDateLocal(monday)).toBe('2026-06-01');
     });
 
+    // The PHP half of this pair lives in
+    // tests/Unit/Services/Run/Plan/PlanRendererTest.php and asserts the same
+    // table through Carbon's startOfWeek(MONDAY). Nothing else held the two
+    // implementations of "which Monday does this date belong to" together.
+    it.each([
+        ['2026-01-01', '2025-12-29'],
+        ['2027-01-03', '2026-12-28'],
+        ['2028-02-29', '2028-02-28'],
+        ['2026-03-08', '2026-03-02'],
+        ['2026-11-01', '2026-10-26'],
+        ['2026-10-04', '2026-09-28'],
+        ['2026-12-31', '2026-12-28'],
+    ])(
+        'mondayOf(%s) buckets to %s, matching the PHP side',
+        (date, expected) => {
+            expect(isoDateLocal(mondayOf(date))).toBe(expected);
+        },
+    );
+
     it('sundayOf advances the given Monday by six days', () => {
         const sunday = sundayOf(new Date(2026, 4, 18));
         expect(isoDateLocal(sunday)).toBe('2026-05-24');

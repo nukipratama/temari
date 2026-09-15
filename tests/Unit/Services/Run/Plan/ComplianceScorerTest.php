@@ -151,7 +151,7 @@ it('measures a day against the baseline as it stood that day, not against today\
     app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-20'));
 
     $asOf = app(TrainingBaseline::class)->forUser($user, Carbon::parse('2026-08-05'))['long_run_km'];
-    $expected = PlanRenderer::plannedKmByDate(PlannedSession::query()->where('user_id', $user->id)->get(), $asOf)['2026-08-05'];
+    $expected = PlanRenderer::plannedKmByDate(PlannedSession::query()->where('user_id', $user->id)->get(), $asOf, INF, selfScaled: true)['2026-08-05'];
 
     expect($row->refresh()->prescribed_km)->toBe($expected);
 });
@@ -207,4 +207,42 @@ it('grades an unclamped day against the stored session exactly as before', funct
     expect($row->refresh()->clamped_km)->toBeNull()
         ->and($row->prescribed_km)->not->toBe(3.6)
         ->and($row->prescribed_km)->toBeGreaterThan(0.0);
+});
+
+/**
+ * The eased distance is the one the athlete was actually told to run, so the
+ * long day's single-run rule has to measure against that rather than against
+ * the un-eased session it replaced.
+ */
+it('applies the long day single-run rule to the eased distance, not the stored one', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', [
+        'session_type' => SessionType::Long,
+        'clamped_km' => 4.0,
+    ]);
+    scorerRun($user, '2026-08-05', 4.0);
+
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-05'));
+
+    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Done)
+        ->and($row->prescribed_km)->toBe(4.0);
+});
+
+/**
+ * A readiness clamp that downgraded the day to a full rest makes it excused,
+ * and no crediting rule may reach past that into a verdict.
+ */
+it('leaves a rest-clamped day excused however the day was actually run', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', [
+        'session_type' => SessionType::Long,
+        'rest_clamped_at' => Carbon::parse('2026-08-05 00:01:00'),
+    ]);
+    scorerRun($user, '2026-08-05', 2.0);
+    scorerRun($user, '2026-08-05', 2.0);
+
+    $verdicts = app(ComplianceScorer::class)->verdictsFor($user, PlannedSession::query()->whereKey($row->id)->get(), Carbon::parse('2026-08-20'));
+
+    expect($verdicts['2026-08-05']['status'])->toBe(PlannedSessionStatus::Skip)
+        ->and($verdicts['2026-08-05']['score'])->toBeNull();
 });

@@ -24,9 +24,6 @@ use Illuminate\Support\Carbon;
  */
 final readonly class ComplianceScorer
 {
-    /** Trailing weeks fetched around the rows being judged, so the phase ramp is visible. */
-    public const int HISTORY_WEEKS = 3;
-
     public function __construct(
         private SessionMatcher $sessionMatcher,
         private TrainingBaseline $baseline,
@@ -49,7 +46,7 @@ final readonly class ComplianceScorer
             return [];
         }
 
-        $rangeStart = $first->date->copy()->startOfWeek(Carbon::MONDAY)->subWeeks(self::HISTORY_WEEKS);
+        $rangeStart = $first->date->copy()->startOfWeek(Carbon::MONDAY)->subWeeks(PlanRenderer::HISTORY_WEEKS);
         // A run's own local date can read a calendar day ahead of the server's,
         // for an athlete east of the app's timezone just after their midnight.
         $rangeEnd = $rows->pluck('date')->max();
@@ -68,8 +65,11 @@ final readonly class ComplianceScorer
         $plannedKmByDate = [];
         foreach ($rows as $row) {
             $date = $row->date->toDateString();
-            $longRunKm = $longRunKmByDate[$date] ??= (float) $this->baseline->forUser($user, $row->date)['long_run_km'];
-            $byDate = $kmByBaseline[(string) $longRunKm] ??= PlanRenderer::plannedKmByDate($contextRows, $longRunKm);
+            $baselineData = $longRunKmByDate[$date] ??= $this->baseline->forUser($user, $row->date);
+            $longRunKm = (float) $baselineData['long_run_km'];
+            $capKm = (float) $baselineData['long_run_cap_km'];
+            $selfScaled = $baselineData['self_scaled'];
+            $byDate = $kmByBaseline["{$longRunKm}:{$capKm}:{$selfScaled}"] ??= PlanRenderer::plannedKmByDate($contextRows, $longRunKm, $capKm, $selfScaled);
             if (array_key_exists($date, $byDate)) {
                 // The eased distance wins where one was recorded: an athlete
                 // told at 00:01 to run 3.6 instead of the 5.9 on the board is

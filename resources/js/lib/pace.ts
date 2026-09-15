@@ -17,12 +17,11 @@ export function formatKm(
 }
 
 export function paceSecPerKm(
-    movingTimeSec: number | null | undefined,
+    seconds: number | null | undefined,
     distanceM: number | null | undefined,
 ): number | null {
-    if (movingTimeSec == null || distanceM == null || distanceM <= 0)
-        return null;
-    return movingTimeSec / (distanceM / 1000);
+    if (seconds == null || distanceM == null || distanceM <= 0) return null;
+    return seconds / (distanceM / 1000);
 }
 
 // Full words: "2 hr 30 min" / "30 min 10 sec" / "45 sec". Seconds show only

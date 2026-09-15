@@ -84,8 +84,8 @@ final class InboxController extends Controller
     }
 
     /**
-     * @param  array<int, array{distance_m: float|null, moving_time_s: int|null}>  $runStats
-     * @return array{id: int, kind: string, title: string, body: string|null, created_at: string|null, read_at: string|null, url: string|null, run_card_id: int|null, rarity: string|null, distance_m: float|null, moving_time_s: int|null}
+     * @param  array<int, array{distance_m: float|null, elapsed_time_s: int|null}>  $runStats
+     * @return array{id: int, kind: string, title: string, body: string|null, created_at: string|null, read_at: string|null, url: string|null, run_card_id: int|null, rarity: string|null, distance_m: float|null, elapsed_time_s: int|null}
      */
     private function present(InboxNotification $row, array $runStats): array
     {
@@ -106,7 +106,7 @@ final class InboxController extends Controller
             'run_card_id' => self::intOrNull($payload['run_card_id'] ?? null),
             'rarity' => self::stringOrNull($payload['rarity'] ?? null),
             'distance_m' => $stats['distance_m'] ?? null,
-            'moving_time_s' => $stats['moving_time_s'] ?? null,
+            'elapsed_time_s' => $stats['elapsed_time_s'] ?? null,
         ];
     }
 
@@ -115,7 +115,7 @@ final class InboxController extends Controller
      * one query over the whole window rather than a lookup per row.
      *
      * @param  Collection<int, InboxNotification>  $rows
-     * @return array<int, array{distance_m: float|null, moving_time_s: int|null}>
+     * @return array<int, array{distance_m: float|null, elapsed_time_s: int|null}>
      */
     private function runStatsFor(Collection $rows): array
     {
@@ -132,11 +132,11 @@ final class InboxController extends Controller
 
         return ActivityDetail::query()
             ->whereIn('activity_id', $activityIds)
-            ->get(['activity_id', 'distance', 'moving_time'])
+            ->get(['activity_id', 'distance', 'elapsed_time'])
             ->keyBy('activity_id')
             ->map(fn (ActivityDetail $detail): array => [
                 'distance_m' => $detail->distance,
-                'moving_time_s' => $detail->moving_time,
+                'elapsed_time_s' => $detail->elapsed_time,
             ])
             ->all();
     }

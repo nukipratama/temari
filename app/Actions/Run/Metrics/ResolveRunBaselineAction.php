@@ -65,7 +65,7 @@ class ResolveRunBaselineAction
                 $excludeActivityId !== null,
                 fn ($query) => $query->where('activity_id', '!=', $excludeActivityId),
             )
-            ->get(['activity_id', 'distance', 'moving_time', 'average_heartrate', 'trimp_edwards', 'stream_summary']);
+            ->get(['activity_id', 'distance', 'elapsed_time', 'average_heartrate', 'trimp_edwards', 'stream_summary']);
 
         if ($details->isEmpty()) {
             return null;
@@ -78,9 +78,9 @@ class ResolveRunBaselineAction
         $trimpValues = [];
 
         foreach ($details as $detail) {
-            if ($detail->distance !== null && $detail->moving_time !== null && $detail->moving_time > 0) {
+            if ($detail->distance !== null && $detail->elapsed_time !== null && $detail->elapsed_time > 0) {
                 $totalDistance += $detail->distance;
-                $totalTime += $detail->moving_time;
+                $totalTime += $detail->elapsed_time;
             }
             if ($detail->average_heartrate !== null) {
                 $hrValues[] = (float) $detail->average_heartrate;

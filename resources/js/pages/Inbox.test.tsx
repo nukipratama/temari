@@ -20,7 +20,7 @@ const item = (overrides: Partial<InboxItem> = {}): InboxItem => ({
     run_card_id: null,
     rarity: null,
     distance_m: null,
-    moving_time_s: null,
+    elapsed_time_s: null,
     ...overrides,
 });
 

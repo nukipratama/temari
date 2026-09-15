@@ -64,6 +64,7 @@ function agentToolFixture(): array
         'start_date_local' => Carbon::today(),
         'distance' => 5000.0,
         'moving_time' => 1500,
+        'elapsed_time' => 1500,
     ]);
 
     return ['activity' => $activity, 'detail' => $detail];
@@ -113,8 +114,8 @@ it('reads the run basics, doubling the one-leg cadence Strava stores', function 
 
     expect(new RunSummaryTool($a, $d->fresh())->handle([]))->toMatchArray([
         'distance_km' => 5.0,
-        'moving_time_sec' => 1500,
-        'moving_time_formatted' => '25:00',
+        'elapsed_time_sec' => 1500,
+        'elapsed_time_formatted' => '25:00',
         'pace_formatted' => '5:00',
         'avg_hr' => 155.0,
         'max_hr' => 178,
@@ -124,11 +125,11 @@ it('reads the run basics, doubling the one-leg cadence Strava stores', function 
 
 it('formats a sub-4:00 pace and a past-hour duration the same way the app shows them', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
-    $d->update(['distance' => 42195.0, 'moving_time' => 9000]); // marathon, 3:33/km, 2:30:00
+    $d->update(['distance' => 42195.0, 'moving_time' => 9000, 'elapsed_time' => 9000]); // marathon, 3:33/km, 2:30:00
 
     $reading = new RunSummaryTool($a, $d->fresh())->handle([]);
 
-    expect($reading['moving_time_formatted'])->toBe('2:30:00')
+    expect($reading['elapsed_time_formatted'])->toBe('2:30:00')
         ->and($reading['pace_formatted'])->toBe('3:33');
 });
 
@@ -535,6 +536,7 @@ it('reads the 28-day baseline and the load state from a prior run', function ():
         'start_date_local' => Carbon::today()->subDays(5),
         'distance' => 10000.0,
         'moving_time' => 3600, // 6:00/km
+        'elapsed_time' => 3600,
         'average_heartrate' => 150.0,
         'trimp_edwards' => 80.0,
         'stream_summary' => ['decoupling_pct' => 6.0, 'time_in_zone_min' => ['Z2' => 40]],
@@ -615,6 +617,7 @@ it('reads a comparable past run of the same user, signed so faster reads positiv
         'start_date_local' => Carbon::today()->subDays(30),
         'distance' => 5000.0,
         'moving_time' => 1560, // 5:12/km, slower than the current 5:00/km
+        'elapsed_time' => 1560,
         'weather_temp_c' => null,
     ]);
 
@@ -756,6 +759,7 @@ it('compares the runner latest run against a similar one of their own', function
         'start_date_local' => Carbon::today()->subDays(30),
         'distance' => 5000.0,
         'moving_time' => 1560,
+        'elapsed_time' => 1560,
         'weather_temp_c' => null,
     ]);
 

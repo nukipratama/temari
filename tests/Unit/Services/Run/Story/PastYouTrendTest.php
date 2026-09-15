@@ -15,7 +15,7 @@ function trendComparison(): PastYouComparison
         activityId: $id,
         startedAt: Carbon::parse($date.' 06:00:00'),
         distanceM: 10_000.0,
-        movingTimeSec: (int) round($pace * 10),
+        elapsedTimeSec: (int) round($pace * 10),
         paceSecPerKm: $pace,
         averageHeartrate: 155.0,
         elevationGainM: 50.0,

@@ -170,7 +170,7 @@ it('snaps a hand-typed window size up to the page step and caps it', function ()
 it('carries distance and moving time for a post-run row', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($activity)->create(['distance' => 6400.5, 'moving_time' => 1868]);
+    ActivityDetail::factory()->for($activity)->create(['distance' => 6400.5, 'moving_time' => 1868, 'elapsed_time' => 1868]);
     InboxNotification::factory()->for($user)->create([
         'kind' => NotificationKind::PostRun,
         'payload' => ['activity_id' => $activity->id],
@@ -179,7 +179,7 @@ it('carries distance and moving time for a post-run row', function (): void {
     $row = inboxRows($this->actingAs($user))[0];
 
     expect($row['distance_m'])->toBe(6400.5)
-        ->and($row['moving_time_s'])->toBe(1868);
+        ->and($row['elapsed_time_s'])->toBe(1868);
 });
 
 it('leaves a recap row without run stats', function (): void {
@@ -192,5 +192,5 @@ it('leaves a recap row without run stats', function (): void {
     $row = inboxRows($this->actingAs($user))[0];
 
     expect($row['distance_m'])->toBeNull()
-        ->and($row['moving_time_s'])->toBeNull();
+        ->and($row['elapsed_time_s'])->toBeNull();
 });

@@ -135,7 +135,7 @@ final class PlanPageAssembler
     public function weeks(User $user, Carbon $today): array
     {
         $currentWeekStart = $this->currentWeekStart($today);
-        $rangeStart = $currentWeekStart->copy()->subWeeks(CurrentWeekPlanBuilder::HISTORY_WEEKS);
+        $rangeStart = $currentWeekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS);
         $rangeEnd = $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6);
 
         $sessions = PlannedSession::query()
@@ -156,7 +156,7 @@ final class PlanPageAssembler
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
         );
 
-        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
+        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek, $baselineData['self_scaled']);
         $primaryEasyDateByWeek = $sessionsByWeek->map(fn (Collection $weekSessions): ?string => PlanRenderer::primaryEasyDate($weekSessions));
 
         $currentWeekKey = $currentWeekStart->toDateString();
@@ -173,6 +173,7 @@ final class PlanPageAssembler
                 $raceDistanceM,
                 $baselineData['long_run_km'],
                 $multiplierByWeek[$currentWeekKey] ?? 1.0,
+                $baselineData['long_run_cap_km'],
                 $paces,
                 $ceiling,
             )
@@ -189,6 +190,7 @@ final class PlanPageAssembler
             $currentWeekStart,
             $baselineData['long_run_km'],
             $multiplierByWeek[$currentWeekKey] ?? 1.0,
+            $baselineData['long_run_cap_km'],
             $primaryEasyDateByWeek->get($currentWeekKey),
             $todaySession,
             $clamp,
@@ -218,6 +220,7 @@ final class PlanPageAssembler
                     $s->date->toDateString() === $primaryEasyDate,
                     $baselineData['long_run_km'],
                     $multiplierByWeek[$weekStartKey] ?? 1.0,
+                    $baselineData['long_run_cap_km'],
                     $paces,
                     $fallbackStatuses[$s->date->toDateString()] ?? $s->status,
                     $activityByDate[$s->date->toDateString()] ?? null,
@@ -248,7 +251,7 @@ final class PlanPageAssembler
      * for those dates rather than the whole range.
      *
      * @param  Collection<int, PlannedSession>  $sessions
-     * @param  array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float}  $baselineData
+     * @param  array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, self_scaled: bool}  $baselineData
      * @param  array<string, float>  $multiplierByWeek
      * @param  Collection<string, string|null>  $primaryEasyDateByWeek
      * @return array<string, PlannedSessionStatus>
@@ -278,6 +281,7 @@ final class PlanPageAssembler
                 $date === $primaryEasyDateByWeek->get($weekKey),
                 $baselineData['long_run_km'],
                 $multiplierByWeek[$weekKey] ?? 1.0,
+                $baselineData['long_run_cap_km'],
                 $s->race_distance_m === null ? null : (float) $s->race_distance_m,
             );
             $staleExcused[$date] = $s->isExcused();
@@ -303,6 +307,7 @@ final class PlanPageAssembler
         Carbon $currentWeekStart,
         float $longRunKm,
         float $multiplier,
+        float $longRunCapKm,
         ?string $primaryEasyDate,
         ?PlannedSession $todaySession,
         ?array $clamp,
@@ -316,10 +321,17 @@ final class PlanPageAssembler
             $s->date->toDateString() === $primaryEasyDate,
             $longRunKm,
             $multiplier,
+            $longRunCapKm,
         );
 
         $weekTargetKm = $currentWeekSessions->sum($kmFor);
-        $completedKm = $this->completedKmInRange($user, $currentWeekStart, $today->copy()->subDay());
+        // The target sums the days the plan actually stored, so the completed
+        // figure has to start where they do. A plan generated mid-week holds
+        // no rows for the days before it, and deducting those days' running
+        // from a target that never asked for them left the rest of the week
+        // at a fraction of its prescription.
+        $planStart = $currentWeekSessions->min(fn (PlannedSession $s): string => $s->date->toDateString());
+        $completedKm = $this->completedKmInRange($user, Carbon::parse($planStart), $today->copy()->subDay());
         $pinnedKm = $currentWeekSessions->filter(fn (PlannedSession $s): bool => $s->pinned)->sum($kmFor);
 
         $todayFixedKm = 0.0;

@@ -236,6 +236,11 @@ export default function WeekDayRow({
                         plannedKm={day.distance_km}
                     />
                 )}
+                {day.credit_note && (
+                    <p className="mt-2 text-xs italic text-text-2">
+                        {day.credit_note}
+                    </p>
+                )}
                 <SessionBarGraph segments={day.segments} />
                 {day.activities.length > 0 && (
                     <div className="mt-3 flex min-w-0 flex-col gap-2">

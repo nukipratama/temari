@@ -70,7 +70,7 @@ final class WeekTotalsTool extends NoArgumentTool
     {
         return PaceCalculator::secPerKm(
             $snapshot->distance_km === null ? null : $snapshot->distance_km * 1000,
-            $snapshot->moving_time_sec,
+            $snapshot->elapsed_time_sec,
         );
     }
 }

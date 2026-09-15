@@ -110,7 +110,7 @@ it('leaves the backfilled history visible, summary-only and honestly unscored', 
 
     expect($detail->distance)->toBe(8_000.0)
         ->and($detail->average_heartrate)->toBe(150.0)
-        ->and($detail->paceSecPerKm())->toBe(337.5)
+        ->and($detail->paceSecPerKm())->toBe(350.0) // elapsed 2800 over 8 km, not moving 2700
         ->and($detail->trimp_edwards)->toBeNull()
         ->and($detail->stream_summary)->toBeNull();
 });

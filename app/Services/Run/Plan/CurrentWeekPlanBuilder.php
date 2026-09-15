@@ -29,9 +29,6 @@ use LogicException;
  */
 final readonly class CurrentWeekPlanBuilder
 {
-    /** The trailing window both this builder and PlanPageAssembler read, so the week they share resolves to one multiplier. */
-    public const int HISTORY_WEEKS = 3;
-
     public function __construct(
         private TrainingBaseline $baseline,
         private TrainingLoad $trainingLoad,
@@ -51,7 +48,7 @@ final readonly class CurrentWeekPlanBuilder
     {
         $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
         $currentWeekKey = $currentWeekStart->toDateString();
-        $rangeStart = $currentWeekStart->copy()->subWeeks(self::HISTORY_WEEKS);
+        $rangeStart = $currentWeekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS);
         $rangeEnd = $currentWeekStart->copy()->addDays(6);
 
         $sessions = ($this->plannedSessions)($user->id, $rangeStart->toDateString(), $rangeEnd->toDateString());
@@ -65,7 +62,9 @@ final readonly class CurrentWeekPlanBuilder
             return null;
         }
 
-        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
+        $baselineData = $this->baseline->forUser($user, $today);
+
+        [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek, $baselineData['self_scaled']);
         $currentWeekPhase = $phaseByWeek->get($currentWeekKey);
         if ($currentWeekPhase === null) {
             // Built from the same grouping as $currentWeekSessions; this only guards the type.
@@ -73,7 +72,6 @@ final readonly class CurrentWeekPlanBuilder
         }
         $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
 
-        $baselineData = $this->baseline->forUser($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
         $ceiling = ReadinessCeiling::from(
             BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today))->readinessCeiling,
@@ -89,6 +87,7 @@ final readonly class CurrentWeekPlanBuilder
                 $s->date->toDateString() === $primaryEasyDate,
                 $baselineData['long_run_km'],
                 $currentWeekMultiplier,
+                $baselineData['long_run_cap_km'],
                 $s->race_distance_m === null ? null : (float) $s->race_distance_m,
             );
         }
@@ -123,6 +122,7 @@ final readonly class CurrentWeekPlanBuilder
                 $raceDistanceM,
                 $baselineData['long_run_km'],
                 $currentWeekMultiplier,
+                $baselineData['long_run_cap_km'],
                 $paces,
                 $ceiling,
             )
@@ -140,6 +140,7 @@ final readonly class CurrentWeekPlanBuilder
             $s->date->toDateString() === $primaryEasyDate,
             $baselineData['long_run_km'],
             $currentWeekMultiplier,
+            $baselineData['long_run_cap_km'],
             $paces,
             $resolvedStatuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
             $activityByDate[$s->date->toDateString()] ?? null,
