@@ -108,6 +108,14 @@ reserve_slot_for() {
   printf '%s\n' "$slot" > "${worktree}/${SLOT_FILE}"
 }
 
+slot_lock_is_stale() {
+  local slot_dir="$1"
+  local owner=""
+
+  [ ! -f "${slot_dir}/path" ] || owner="$(<"${slot_dir}/path")"
+  [ -n "$owner" ] && [ ! -e "$owner" ]
+}
+
 ALLOCATED_SLOT=""
 allocate_slot_for() {
   local worktree="$1"
@@ -120,7 +128,7 @@ allocate_slot_for() {
   mkdir -p "$locks_dir"
   while true; do
     slot_dir="${locks_dir}/slot-${slot}"
-    if mkdir "$slot_dir" 2>/dev/null; then
+    if mkdir "$slot_dir" 2>/dev/null || slot_lock_is_stale "$slot_dir"; then
       if printf '%s\n' "$worktree" > "${slot_dir}/path" &&
         printf '%s\n' "$branch" > "${slot_dir}/branch"; then
         ALLOCATED_SLOT="$slot"
@@ -160,6 +168,7 @@ setup_impl() {
   [ -f .env ] || cp .env.example .env
   [ -f .env.testing ] || cp .env.testing.example .env.testing
 
+  set_env_var .env COMPOSE_PROJECT_NAME "temari-slot${slot}"
   set_env_var .env APP_PORT "$app_port"
   set_env_var .env VITE_PORT "$vite_port"
   set_env_var .env APP_URL "http://localhost:${app_port}"
@@ -242,6 +251,10 @@ compose_project_name() {
   (cd "$1" && docker compose config --format json 2>/dev/null | jq -r '.name // empty')
 }
 
+normalise_project_name() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-' | sed -E 's/^[_-]+//'
+}
+
 remove_project_volumes() {
   local project="$1"
   local volume
@@ -265,6 +278,8 @@ clean_slot_data() {
   local test_redis_db=$((30 + slot))
   local test_schemas
   local schema
+  local service
+  local index
 
   [ -f "${worktree}/.env" ] || return
 
@@ -275,20 +290,31 @@ clean_slot_data() {
       docker compose -f compose.shared-services.yml --project-directory "$(dirname "$common_dir")" "$@"
     }
 
-    [ -n "$(shared ps --status running -q mysql)" ]
-    [ -n "$(shared ps --status running -q redis)" ]
-    [ -n "$(shared ps --status running -q mysql-test)" ]
-    [ -n "$(shared ps --status running -q redis-test)" ]
+    for service in mysql redis mysql-test redis-test; do
+      [ -n "$(shared ps --status running -q "$service")" ] || {
+        fail "shared service ${service} is not running"
+        return 1
+      }
+    done
 
     shared exec -T mysql mysql -uroot -p"${DB_PASSWORD}" \
-      -e "DROP DATABASE IF EXISTS \`${db_schema}\`; DROP DATABASE IF EXISTS \`${db_analytics_schema}\`;"
+      -e "DROP DATABASE IF EXISTS \`${db_schema}\`; DROP DATABASE IF EXISTS \`${db_analytics_schema}\`;" || {
+      fail "could not drop ${db_schema} on the shared MySQL"
+      return 1
+    }
 
     test_schemas="$(shared exec -T mysql-test mysql -uroot -p"${DB_PASSWORD}" -Nse \
-      "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${test_db_schema}' OR SCHEMA_NAME LIKE '${test_db_schema}\\_test\\_%';")"
+      "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${test_db_schema}' OR SCHEMA_NAME LIKE '${test_db_schema}\\_test\\_%';")" || {
+      fail "could not list ${test_db_schema} schemas on the shared test MySQL"
+      return 1
+    }
     for schema in $test_schemas; do
       case "$schema" in
         "$test_db_schema"|"${test_db_schema}_test_"*)
-          shared exec -T mysql-test mysql -uroot -p"${DB_PASSWORD}" -e "DROP DATABASE IF EXISTS \`${schema}\`;"
+          shared exec -T mysql-test mysql -uroot -p"${DB_PASSWORD}" -e "DROP DATABASE IF EXISTS \`${schema}\`;" || {
+            fail "could not drop ${schema} on the shared test MySQL"
+            return 1
+          }
           ;;
         *)
           fail "refusing unexpected test schema ${schema}"
@@ -297,10 +323,16 @@ clean_slot_data() {
       esac
     done
 
-    shared exec -T redis redis-cli -n "$redis_base" FLUSHDB >/dev/null
-    shared exec -T redis redis-cli -n "$((redis_base + 1))" FLUSHDB >/dev/null
-    shared exec -T redis redis-cli -n "$((redis_base + 2))" FLUSHDB >/dev/null
-    shared exec -T redis-test redis-cli -n "$test_redis_db" FLUSHDB >/dev/null
+    for index in "$redis_base" "$((redis_base + 1))" "$((redis_base + 2))"; do
+      shared exec -T redis redis-cli -n "$index" FLUSHDB >/dev/null || {
+        fail "could not flush shared Redis index ${index}"
+        return 1
+      }
+    done
+    shared exec -T redis-test redis-cli -n "$test_redis_db" FLUSHDB >/dev/null || {
+      fail "could not flush shared test Redis index ${test_redis_db}"
+      return 1
+    }
   )
 }
 
@@ -317,6 +349,7 @@ remove_impl() {
   local git_dir
   local common_dir
   local temari_common_dir
+  local main_checkout
   local slot
   local slot_dir
   local owner=""
@@ -347,6 +380,12 @@ remove_impl() {
   temari_common_dir="$(git_common_dir_for "$CHECKOUT_DIR")"
   [ "$common_dir" -ef "$temari_common_dir" ] || {
     fail "${worktree} does not belong to this Temari repository"
+    return
+  }
+
+  main_checkout="$(dirname "$common_dir")"
+  { [ -d "$main_checkout" ] && is_main_checkout "$main_checkout"; } || {
+    fail "could not resolve the main checkout from ${common_dir}"
     return
   }
 
@@ -390,10 +429,10 @@ remove_impl() {
     return
   fi
 
-  git worktree remove "$worktree" --force >&2
+  git -C "$main_checkout" worktree remove "$worktree" --force >&2
   if [ -n "$generated_branch" ] &&
-    git show-ref --verify --quiet "refs/heads/${generated_branch}"; then
-    git branch -D -- "$generated_branch" >&2 || branch_delete_status=$?
+    git -C "$main_checkout" show-ref --verify --quiet "refs/heads/${generated_branch}"; then
+    git -C "$main_checkout" branch -D -- "$generated_branch" >&2 || branch_delete_status=$?
   fi
   release_slot "$slot_dir"
 
@@ -412,6 +451,8 @@ create_cmd() {
   local target
   local branch
   local base_commit
+  local main_project
+  local reused_slot=""
 
   [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || {
     fail "name must use only letters, numbers, dots, underscores, and hyphens"
@@ -426,6 +467,13 @@ create_cmd() {
     return
   }
 
+  main_project="$(compose_project_name "$main_dir" || true)"
+  [ -n "$main_project" ] || main_project="$(basename "$main_dir")"
+  if [ "$(normalise_project_name "$name")" = "$(normalise_project_name "$main_project")" ]; then
+    fail "name ${name} shares the main checkout's Compose project ${main_project}; pick another name"
+    return
+  fi
+
   common_dir="$(git_common_dir_for "$main_dir")"
   target="${main_dir}/.claude/worktrees/${name}"
   branch="worktree-${name}"
@@ -434,10 +482,16 @@ create_cmd() {
     return
   }
 
-  [ ! -e "$target" ] || {
-    fail "${target} already exists"
+  if [ -e "$target" ]; then
+    [ ! -f "${target}/${SLOT_FILE}" ] || reused_slot="$(<"${target}/${SLOT_FILE}")"
+    is_positive_integer "$reused_slot" || {
+      fail "${target} already exists"
+      return
+    }
+    TEMARI_WORKTREE_SETUP_DIR="$target" "$SCRIPT_PATH" setup "$reused_slot" >&2 || return 1
+    printf '%s\n' "$target"
     return
-  }
+  fi
   if git -C "$main_dir" show-ref --verify --quiet "refs/heads/${branch}"; then
     fail "branch ${branch} already exists"
     return

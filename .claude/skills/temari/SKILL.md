@@ -9,6 +9,21 @@ This is the canonical full skill shared by agents. Source-of-truth docs are gene
 kept honest by `tests/Unit/Architecture/DesignTokenDocsTest.php` (palette/type docs) — link to
 them rather than re-copying, since copies drift.
 
+## Tracking
+
+Work items, agent briefs and decisions live in GitHub issues and the
+[kanban board](https://github.com/users/nukipratama/projects/1) — not in local files. Find them with
+`gh issue list --label wave:*` and read the brief with `gh issue view <n>`; the decision log is issue
+#916. A card moves Ready → In progress on dispatch → In review when its PR opens → Done on merge, and
+every PR carries `Closes #<n>`. `.planning/` is gitignored scratch space only.
+
+Labels: `wave:tooling` / `wave:bugs` / `wave:engine-1` / `wave:engine-2` / `wave:refine` for the
+programme wave, `design-round` for design rounds, `area:*` for the subsystem, and `decision` for the
+log.
+
+The repository is public, so issue and PR text never carries athlete ids, emails, hostnames or
+per-athlete costs — describe them instead of pasting them.
+
 ## Codebase map
 
 Backend logic is split by domain under `app/Services/`:
@@ -287,10 +302,10 @@ clean checkout selects nothing and exits 0. Cost of getting that wrong: it found
 
 ## Parallel worktrees & stacked PRs
 
-Running several implementation agents concurrently, each in its own `git worktree`, is safe — Compose
-derives its project name (containers/network/volumes) from the checkout's **directory basename**,
-and `compose.yaml` has no hardcoded `name:`/`COMPOSE_PROJECT_NAME`, so every worktree already gets
-its own isolated `app` container for free. `mysql`/`redis`/`mysql_test`/`redis_test` are never
+Running several implementation agents concurrently, each in its own `git worktree`, is safe — setup
+pins each worktree's Compose project to `temari-slot<N>`, so every worktree gets its own isolated
+`app` container, network and volumes, and none of them can resolve to the main checkout's `temari`
+project (`create` also refuses a name that would). `mysql`/`redis`/`mysql_test`/`redis_test` are never
 published to the host at all (only reached via `sail mysql`/`sail artisan tinker`/`docker exec`),
 so the only real collision on the main checkout is **fixed host ports**
 (`.env.example`'s `APP_PORT`/`VITE_PORT`), which two worktrees would both try to bind off an
@@ -302,15 +317,16 @@ Worktrees don't each get their own MySQL/Redis, though — see "Shared services"
 Use the worktree creation and lifecycle guidance in [AGENTS.md](../../../AGENTS.md). This section
 records the environment invariants that every worktree setup must preserve.
 
-Slot numbering is a formula (`scripts/worktree-setup.sh`), not a fixed table, so there's no cap on
-worktree count: `APP_PORT = 7000 + slot*10 + 1`, `VITE_PORT = +2` (main stays 7001/7002, slot 1 is
-7011/7012, slot 2 is 7021/7022, and so on). The script writes an untracked `compose.override.yaml`
-mounting the shared git dir so TIA works and joining the shared-services network, brings the shared
-stack and this worktree's `app` up, fixes cache-volume ownership, then bootstraps the app:
-`composer install`, `key:generate`, and **both** migration sets. Every step is guarded or
-idempotent, so re-running the script (`./scripts/worktree-setup.sh <slot>`) after a failure is
-safe — this is also how to run it manually instead of via the hook. `vendor/` is empty when it
-starts, so it uses plain `docker compose exec` for all of it; `./vendor/bin/sail` works for
+Slot numbering is a formula (`scripts/worktree`), not a fixed table, and `create` picks the slot —
+never hand-pick one: `APP_PORT = 7000 + slot*10 + 1`, `VITE_PORT = +2` (main stays 7001/7002, slot 1
+is 7011/7012, slot 2 is 7021/7022, and so on), `COMPOSE_PROJECT_NAME = temari-slot<N>`. The real
+ceiling is the shared Redis `--databases 256`: dev takes indices `slot*3..+2`, so slot 84 is the last
+one that fits. Setup writes an untracked `compose.override.yaml` mounting the shared git dir so TIA
+works and joining the shared-services network, brings the shared stack and this worktree's `app` up,
+fixes cache-volume ownership, then bootstraps the app: `composer install`, `key:generate`, and
+**both** migration sets. Every step is guarded or idempotent, so re-running `scripts/worktree create
+<name>` after a failure reuses the existing worktree and resumes setup. `vendor/` is empty when it
+starts, so setup uses plain `docker compose exec` for all of it; `./vendor/bin/sail` works for
 everything afterwards.
 
 ### Shared services
@@ -401,9 +417,9 @@ git's auto-generated one.
 
 **One fresh-worktree gotcha**, not concurrency-specific: if several worktrees cold-install at the
 same moment, one can occasionally fail mid-extraction on a transient bind-mount visibility race —
-just re-run `worktree-setup.sh`, which resumes rather than redoing. (The old `MissingAppKeyException`
-gotcha is gone: the script generates the key itself, and only when `APP_KEY` is unset, so a re-run
-never rotates it out from under a live session.)
+just re-run `scripts/worktree create <name>`, which resumes rather than redoing. (The old
+`MissingAppKeyException` gotcha is gone: the script generates the key itself, and only when `APP_KEY`
+is unset, so a re-run never rotates it out from under a live session.)
 
 The Docker image (`temari/dev`) and its build cache are shared across worktrees on purpose (plain
 local tag, not project-scoped) — only pass `--build` again if a worktree's slice actually touches
