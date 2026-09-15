@@ -15,6 +15,7 @@ function runSeedDetail(array $streamSummary = [], array $attributes = []): Activ
         'weather_temp_c' => null,
         'distance' => 8000.0,
         'moving_time' => 2400,
+        'elapsed_time' => 2400,
         ...$attributes,
     ]);
 

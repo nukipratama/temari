@@ -578,6 +578,7 @@ it('awards speedster badge when pace is under 5:00/km', function (): void {
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5_000,
         'moving_time' => 1_400,
+        'elapsed_time' => 1_400,
         'start_date_local' => Carbon::parse('2026-05-10 10:00:00'),
         'weather_temp_c' => 25,
         'weather_rain_detected' => false,

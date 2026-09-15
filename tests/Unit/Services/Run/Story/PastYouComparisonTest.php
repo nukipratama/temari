@@ -14,7 +14,7 @@ function comparisonRun(string $date, float $paceSecPerKm, ?float $hr, int $activ
         activityId: $activityId,
         startedAt: Carbon::parse($date.' 06:00:00'),
         distanceM: 10_000.0,
-        movingTimeSec: (int) round($paceSecPerKm * 10),
+        elapsedTimeSec: (int) round($paceSecPerKm * 10),
         paceSecPerKm: $paceSecPerKm,
         averageHeartrate: $hr,
         elevationGainM: 50.0,

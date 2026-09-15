@@ -17,6 +17,7 @@ function answerDetail(array $streamSummary = [], array $attributes = []): Activi
         'average_cadence' => null,
         'distance' => 8000.0,
         'moving_time' => 2400,
+        'elapsed_time' => 2400,
         ...$attributes,
     ]);
 

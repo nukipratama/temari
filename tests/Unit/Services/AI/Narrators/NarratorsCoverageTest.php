@@ -132,6 +132,7 @@ function postRunFixture(): array
         'start_date_local' => Carbon::today(),
         'distance' => 5000.0,
         'moving_time' => 1500,
+        'elapsed_time' => 1500,
     ]);
 
     return ['activity' => $activity, 'detail' => $detail];
@@ -218,6 +219,7 @@ function priorActivityWithDoneAnalysis(User $user, AnalysisType $kind, string $c
         'start_date_local' => Carbon::parse($startDate),
         'distance' => 4000.0,
         'moving_time' => 1200,
+        'elapsed_time' => 1200,
     ]);
     Analysis::factory()->done($content)->create([
         'subject_type' => Activity::class,
@@ -608,10 +610,10 @@ it('WeeklyRecapNarrator throws on non-JSON', function (): void {
 it('WeekTotalsTool reads the previous week deltas when a prior snapshot exists', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-10', 'distance_km' => 20.0, 'runs' => 3, 'moving_time_sec' => 7200,
+        'week_ending' => '2026-05-10', 'distance_km' => 20.0, 'runs' => 3, 'elapsed_time_sec' => 7200,
     ]);
     $current = WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-17', 'distance_km' => 28.0, 'runs' => 4, 'moving_time_sec' => 9600,
+        'week_ending' => '2026-05-17', 'distance_km' => 28.0, 'runs' => 4, 'elapsed_time_sec' => 9600,
     ]);
 
     $context = new WeekTotalsTool($current)->handle([]);
@@ -638,7 +640,7 @@ it('WeeklyRecapNarrator leaves previous-week deltas null on the first week', fun
 it('WeekTotalsTool formats a sub-4:00 average pace the same way the app shows it', function (): void {
     $user = User::factory()->create();
     $current = WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-17', 'distance_km' => 10.0, 'moving_time_sec' => 2320, // 3:52/km
+        'week_ending' => '2026-05-17', 'distance_km' => 10.0, 'elapsed_time_sec' => 2320, // 3:52/km
     ]);
 
     expect(new WeekTotalsTool($current)->handle([])['pace_formatted'])->toBe('3:52');
@@ -945,6 +947,7 @@ function cardFixture(): RunCard
         'start_date_local' => Carbon::today(),
         'distance' => 5000.0,
         'moving_time' => 1500,
+        'elapsed_time' => 1500,
     ]);
 
     return RunCard::factory()->create([

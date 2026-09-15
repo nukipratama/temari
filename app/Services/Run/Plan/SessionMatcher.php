@@ -193,7 +193,7 @@ final readonly class SessionMatcher
             ->whereNotNull('activity_details.start_date_local')
             ->whereBetween('activity_details.start_date_local', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
             ->orderBy('activity_details.start_date_local')
-            ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.moving_time']);
+            ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.elapsed_time']);
 
         $byDate = [];
         foreach ($rows as $row) {
@@ -207,7 +207,7 @@ final readonly class SessionMatcher
             $byDate[$date]['runs'][] = [
                 'id' => (int) $row->activity_id,
                 'km' => $km,
-                'seconds' => $row->moving_time,
+                'seconds' => $row->elapsed_time,
             ];
         }
 

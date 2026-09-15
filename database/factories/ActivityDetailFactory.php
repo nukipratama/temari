@@ -18,6 +18,10 @@ class ActivityDetailFactory extends Factory
      */
     public function definition(): array
     {
+        // Elapsed matches moving by default: pace and every displayed duration
+        // read elapsed, so a random gap between the two made a fixture's own
+        // pace assertions depend on the seed. A test that cares about stoppage
+        // time sets both explicitly.
         $movingTime = fake()->numberBetween(1800, 4200);
 
         return [
@@ -26,7 +30,7 @@ class ActivityDetailFactory extends Factory
             'start_date_local' => fake()->dateTimeBetween('-3 months', 'now'),
             'distance' => fake()->randomFloat(1, 3000, 12000),
             'moving_time' => $movingTime,
-            'elapsed_time' => $movingTime + fake()->numberBetween(0, 300),
+            'elapsed_time' => $movingTime,
             'average_speed' => fake()->randomFloat(2, 2.4, 3.4),
             'total_elevation_gain' => fake()->randomFloat(1, 0, 100),
             'has_heartrate' => true,

@@ -294,12 +294,14 @@ it('returns every run of a two-session day, each with its own distance and time'
         'start_date_local' => Carbon::today()->setTime(6, 0),
         'distance' => 5000,
         'moving_time' => 1380,
+        'elapsed_time' => 1380,
     ]);
     $evening = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($evening)->create([
         'start_date_local' => Carbon::today()->setTime(18, 0),
         'distance' => 7000,
         'moving_time' => 3300,
+        'elapsed_time' => 3300,
     ]);
 
     $response = $this->actingAs($user)

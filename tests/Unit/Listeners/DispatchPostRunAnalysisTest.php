@@ -62,6 +62,7 @@ function analyzedActivity(string $startDate = '2026-05-10 06:30:00', ?int $userI
         'start_date_local' => Carbon::parse($startDate),
         'distance' => 5000.0,
         'moving_time' => 1500,
+        'elapsed_time' => 1500,
     ]);
 
     return $activity;
@@ -553,6 +554,7 @@ it('skips weekly and monthly staging when the activity has no start_date_local',
         'start_date_local' => null,
         'distance' => 5000.0,
         'moving_time' => 1500,
+        'elapsed_time' => 1500,
     ]);
 
     fire($activity);

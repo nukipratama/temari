@@ -16,6 +16,7 @@ function comparableRow(array $attributes = [], IngestState $ingestState = Ingest
         'start_date_local' => '2026-06-15 06:30:00',
         'distance' => 10_000.0,
         'moving_time' => 3_000,
+        'elapsed_time' => 3_000,
         'average_heartrate' => 155.0,
         'total_elevation_gain' => 120.0,
         'ingest_state' => $ingestState->value,
@@ -28,18 +29,18 @@ it('projects a query row onto the summary-only fields', function (): void {
     expect($run)->not->toBeNull()
         ->and($run->activityId)->toBe(7)
         ->and($run->distanceM)->toBe(10_000.0)
-        ->and($run->movingTimeSec)->toBe(3_000)
+        ->and($run->elapsedTimeSec)->toBe(3_000)
         ->and($run->paceSecPerKm)->toBe(300.0)
         ->and($run->averageHeartrate)->toBe(155.0)
         ->and($run->elevationGainM)->toBe(120.0)
         ->and($run->ingestState)->toBe(IngestState::Summary);
 });
 
-it('returns null when distance, moving time or start date is unusable', function (array $attributes): void {
+it('returns null when distance, elapsed time or start date is unusable', function (array $attributes): void {
     expect(ComparableRun::fromRow(comparableRow($attributes, IngestState::Detailed)))->toBeNull();
 })->with([
     'no distance' => [['distance' => 0.0]],
-    'no moving time' => [['moving_time' => 0]],
+    'no elapsed time' => [['elapsed_time' => 0]],
     'no start date' => [['start_date_local' => null]],
 ]);
 

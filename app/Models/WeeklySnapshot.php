@@ -21,7 +21,7 @@ use Override;
  * @property Carbon $week_ending
  * @property float|null $distance_km
  * @property int|null $runs
- * @property int|null $moving_time_sec
+ * @property int|null $elapsed_time_sec
  * @property float|null $weekly_trimp
  * @property float|null $atl_7d
  * @property float|null $ctl_42d
@@ -37,7 +37,7 @@ use Override;
     'week_ending',
     'distance_km',
     'runs',
-    'moving_time_sec',
+    'elapsed_time_sec',
     'weekly_trimp',
     'atl_7d',
     'ctl_42d',
@@ -175,7 +175,7 @@ class WeeklySnapshot extends Model
             'week_ending' => 'date:Y-m-d',
             'distance_km' => 'float',
             'runs' => 'integer',
-            'moving_time_sec' => 'integer',
+            'elapsed_time_sec' => 'integer',
             'weekly_trimp' => 'float',
             'atl_7d' => 'float',
             'ctl_42d' => 'float',

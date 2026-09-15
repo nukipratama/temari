@@ -495,6 +495,7 @@ it('aggregates multiple runs on the same day into one cell', function (): void {
             'start_date_local' => Carbon::create(2026, 5, 15),
             'distance' => $distance,
             'moving_time' => (int) ($distance / 1000 * 360),
+            'elapsed_time' => (int) ($distance / 1000 * 360),
             'average_heartrate' => 150,
             'trimp_edwards' => 20.0,
         ]);

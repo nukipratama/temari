@@ -25,6 +25,7 @@ it('casts numeric, boolean, datetime, and json columns', function (): void {
         'start_date_local' => '2026-04-26 16:20:08',
         'distance' => '10001.23',
         'moving_time' => '3600',
+        'elapsed_time' => '3600',
         'has_heartrate' => 1,
         'weather_rain_detected' => 0,
         'weather_temp_c' => '30',
@@ -77,9 +78,15 @@ it('cascades deletion from activity', function (): void {
     expect(ActivityDetail::query()->find($detail->id))->toBeNull();
 });
 
-it('paceSecPerKm computes pace and returns null for a zero-distance run', function (): void {
-    $normal = ActivityDetail::factory()->make(['activity_id' => 1, 'distance' => 5000.0, 'moving_time' => 1500]);
-    $zeroDistance = ActivityDetail::factory()->make(['activity_id' => 1, 'distance' => 0.0, 'moving_time' => 1500]);
+/**
+ * Every duration the athlete is shown is elapsed time, so the pace beside it
+ * has to be computed on the same clock. Moving-time pace is the industry
+ * convention, but a screen that pairs an elapsed duration with a moving pace
+ * is quoting two different runs.
+ */
+it('paceSecPerKm computes pace on elapsed time and returns null for a zero-distance run', function (): void {
+    $normal = ActivityDetail::factory()->make(['activity_id' => 1, 'distance' => 5000.0, 'moving_time' => 1200, 'elapsed_time' => 1500]);
+    $zeroDistance = ActivityDetail::factory()->make(['activity_id' => 1, 'distance' => 0.0, 'elapsed_time' => 1500]);
 
     expect($normal->paceSecPerKm())->toBe(300.0)
         ->and($zeroDistance->paceSecPerKm())->toBeNull();

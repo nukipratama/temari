@@ -22,6 +22,7 @@ function buildActivity(User $user, string $startDate, int $distanceM, ?int $movi
         'start_date_local' => $startDate,
         'distance' => $distanceM,
         'moving_time' => $movingSec ?? max(1, (int) round($distanceM / 1000 * 360)),
+        'elapsed_time' => $movingSec ?? max(1, (int) round($distanceM / 1000 * 360)),
     ]);
 
     return [$activity, $detail];
@@ -34,6 +35,7 @@ it('returns empty list when start_date_local is missing', function (): void {
         'start_date_local' => null,
         'distance' => 5000,
         'moving_time' => 1800,
+        'elapsed_time' => 1800,
     ]);
 
     $milestones = ($this->detector)($activity, $detail);

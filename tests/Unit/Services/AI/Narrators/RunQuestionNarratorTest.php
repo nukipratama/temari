@@ -48,6 +48,7 @@ function runQuestionFixture(?User $user = null, float $distance = 8000.0, ?array
         'start_date_local' => Carbon::parse('2026-05-18 06:00:00'),
         'distance' => $distance,
         'moving_time' => 2400,
+        'elapsed_time' => 2400,
         'stream_summary' => $streamSummary,
     ]);
 

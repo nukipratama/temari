@@ -102,7 +102,7 @@ it('awards first_timer when the context says this is the first run ever', functi
 });
 
 it('awards speedster under 5 minutes per km', function (): void {
-    $detail = badgeDetail(['weather_temp_c' => 25, 'distance' => 5_000.0, 'moving_time' => 1_200]);
+    $detail = badgeDetail(['weather_temp_c' => 25, 'distance' => 5_000.0, 'moving_time' => 1_200, 'elapsed_time' => 1_200]);
 
     expect(badgesFor($detail))->toContain('speedster');
 });

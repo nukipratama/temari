@@ -122,7 +122,7 @@ final class MaterialFingerprint
 
         return [
             'distance' => self::bucket($detail->distance, 10),   // nearest 10 m
-            'moving_time' => $detail->moving_time,
+            'elapsed_time' => $detail->elapsed_time,
             'avg_hr' => self::bucket($detail->average_heartrate),
             'max_hr' => $detail->max_heartrate,
             'avg_cadence' => self::bucket($detail->average_cadence),

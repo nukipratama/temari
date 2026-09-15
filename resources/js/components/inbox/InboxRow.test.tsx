@@ -17,7 +17,7 @@ const item = (overrides: Partial<InboxItem> = {}): InboxItem => ({
     run_card_id: null,
     rarity: null,
     distance_m: null,
-    moving_time_s: null,
+    elapsed_time_s: null,
     ...overrides,
 });
 
@@ -133,7 +133,7 @@ describe('InboxRow', () => {
     });
 
     it('draws distance and pace chips on a post-run row', () => {
-        renderRow({ kind: 'post_run', distance_m: 6400, moving_time_s: 1868 });
+        renderRow({ kind: 'post_run', distance_m: 6400, elapsed_time_s: 1868 });
 
         expect(screen.getByText('6.4 km')).toBeInTheDocument();
         expect(screen.getByText('Distance')).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe('InboxRow', () => {
     });
 
     it('drops the pace chip when the run carries no moving time', () => {
-        renderRow({ kind: 'post_run', distance_m: 6400, moving_time_s: null });
+        renderRow({ kind: 'post_run', distance_m: 6400, elapsed_time_s: null });
 
         expect(screen.getByText('6.4 km')).toBeInTheDocument();
         expect(screen.queryByText('Pace')).not.toBeInTheDocument();
@@ -152,7 +152,7 @@ describe('InboxRow', () => {
         renderRow({
             kind: 'weekly_recap',
             distance_m: 6400,
-            moving_time_s: 1868,
+            elapsed_time_s: 1868,
         });
 
         expect(screen.queryByText('Distance')).not.toBeInTheDocument();

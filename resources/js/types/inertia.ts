@@ -61,7 +61,7 @@ export interface InboxItem {
     rarity: Rarity | null;
     /** Post-run rows only: the stat chips the prototype's row draws. */
     distance_m: number | null;
-    moving_time_s: number | null;
+    elapsed_time_s: number | null;
 }
 
 /**
@@ -442,7 +442,7 @@ export interface WeeklySnapshot {
     week_ending: string;
     runs: number | null;
     distance_km: number | null;
-    moving_time_sec?: number | null;
+    elapsed_time_sec?: number | null;
     weekly_trimp: number | null;
     ctl_42d: number | null;
     atl_7d: number | null;

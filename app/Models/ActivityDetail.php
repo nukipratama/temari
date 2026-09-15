@@ -135,11 +135,16 @@ class ActivityDetail extends Model
     }
 
     /**
-     * Pace in seconds per kilometre. Null when distance or time is missing/zero.
+     * Pace in seconds per kilometre, on ELAPSED time. Null when distance or
+     * time is missing/zero.
+     *
+     * Moving-time pace is the industry convention, but every duration this app
+     * shows is elapsed, and a pace on a different clock from the duration
+     * beside it describes a run the athlete did not do.
      */
     public function paceSecPerKm(): ?float
     {
-        return PaceCalculator::secPerKm($this->distance, $this->moving_time);
+        return PaceCalculator::secPerKm($this->distance, $this->elapsed_time);
     }
 
     /**

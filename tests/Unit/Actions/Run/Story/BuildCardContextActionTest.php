@@ -231,6 +231,7 @@ it('flags qualitySessionPaceMet when the run beats its planned tempo pace', func
     ]);
     [$activity, $detail] = cardContextSubject($user, [
         'moving_time' => 1_000, // 5km in 1000s = 200 sec/km, fast enough to beat threshold pace
+        'elapsed_time' => 1_000,
     ]);
 
     expect(cardContextFor($activity, $detail)->qualitySessionPaceMet)->toBeTrue();
@@ -245,6 +246,7 @@ it('does not flag qualitySessionPaceMet when the run misses its planned tempo pa
     ]);
     [$activity, $detail] = cardContextSubject($user, [
         'moving_time' => 3_000, // 5km in 3000s = 600 sec/km, far slower than threshold pace
+        'elapsed_time' => 3_000,
     ]);
 
     expect(cardContextFor($activity, $detail)->qualitySessionPaceMet)->toBeFalse();
@@ -265,7 +267,7 @@ it('does not flag qualitySessionPaceMet for a planned easy or rest session, only
         'date' => '2026-05-15',
         'session_type' => SessionType::Easy,
     ]);
-    [$activity, $detail] = cardContextSubject($user, ['moving_time' => 1_000]);
+    [$activity, $detail] = cardContextSubject($user, ['moving_time' => 1_000, 'elapsed_time' => 1_000]);
 
     expect(cardContextFor($activity, $detail)->qualitySessionPaceMet)->toBeFalse();
 });
@@ -284,4 +286,30 @@ it('resolves the whole history in three queries when no planned session exists f
     cardContextFor($activity, $detail);
 
     expect($queries)->toBe(3);
+});
+
+/**
+ * The compliance pace comparison has to read the same clock the athlete is
+ * shown. A run that only clears its target once stoppage time is discounted
+ * did not hit the pace the card reports.
+ */
+it('judges the planned pace on elapsed time, the basis every surface displays', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['max_hr' => 193, 'resting_hr' => 50]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => PrCategory::Km5,
+        'value_sec' => 1_200,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-05-15',
+        'session_type' => SessionType::Tempo,
+    ]);
+    // 5 km moving in 1000 s clears threshold pace; standing around for another
+    // 1500 s means the run the athlete is shown did not.
+    [$activity, $detail] = cardContextSubject($user, [
+        'moving_time' => 1_000,
+        'elapsed_time' => 2_500,
+    ]);
+
+    expect(cardContextFor($activity, $detail)->qualitySessionPaceMet)->toBeFalse();
 });

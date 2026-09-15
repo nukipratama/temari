@@ -92,7 +92,7 @@ class PastYouMatcher
         $distanceLo = $currentDistance - self::DISTANCE_TOLERANCE_M;
         $distanceHi = $currentDistance + self::DISTANCE_TOLERANCE_M;
 
-        $paceExpr = '(activity_details.moving_time * 1000.0 / activity_details.distance)';
+        $paceExpr = '(activity_details.elapsed_time * 1000.0 / activity_details.distance)';
 
         /** @var Collection<int, ActivityDetail> $candidates */
         $candidates = Activity::analyzedJoinConstraint(
@@ -104,8 +104,8 @@ class PastYouMatcher
             ->where('activity_details.start_date_local', '>=', $maxDate)
             ->whereBetween('activity_details.distance', [$distanceLo, $distanceHi])
             ->whereNotNull('activity_details.start_date_local')
-            ->whereNotNull('activity_details.moving_time')
-            ->where('activity_details.moving_time', '>', 0)
+            ->whereNotNull('activity_details.elapsed_time')
+            ->where('activity_details.elapsed_time', '>', 0)
             ->where('activity_details.distance', '>', 0)
             ->when(
                 $band === self::BAND_RECOVERY,
@@ -129,7 +129,7 @@ class PastYouMatcher
         $currentKm = $currentDistance / 1000;
 
         foreach ($candidates as $past) {
-            // The SQL above filters distance > 0 AND moving_time > 0, so
+            // The SQL above filters distance > 0 AND elapsed_time > 0, so
             // paceSecPerKm cannot return null here — assert narrows for PHPStan.
             $pastPace = $past->paceSecPerKm();
             assert($pastPace !== null);

@@ -347,3 +347,23 @@ it('records a run on an excused day without letting it score against the athlete
         'ran_anyway' => true,
     ]);
 });
+
+/**
+ * The duration beside a run on the plan row is elapsed time, the same basis
+ * the run's own pace and every other surface reads.
+ */
+it('reports each run duration on elapsed time', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->create([
+        'activity_id' => $activity->id,
+        'start_date_local' => Carbon::parse('2026-08-03 06:00:00'),
+        'distance' => 10_000.0,
+        'moving_time' => 3_000,
+        'elapsed_time' => 3_600,
+    ]);
+
+    $byDate = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-03'), Carbon::parse('2026-08-03'));
+
+    expect($byDate['2026-08-03']['runs'][0]['seconds'])->toBe(3_600);
+});

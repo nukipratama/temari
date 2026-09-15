@@ -37,6 +37,7 @@ function backfillSeed(string $startDate, ?int $userId = null): Activity
         'start_date_local' => Carbon::parse($startDate),
         'distance' => 5000.0,
         'moving_time' => 1500,
+        'elapsed_time' => 1500,
     ]);
 
     return $activity;

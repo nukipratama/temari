@@ -20,7 +20,7 @@ final readonly class ComparableRun
         public int $activityId,
         public Carbon $startedAt,
         public float $distanceM,
-        public int $movingTimeSec,
+        public int $elapsedTimeSec,
         public float $paceSecPerKm,
         public ?float $averageHeartrate,
         public ?float $elevationGainM,
@@ -30,7 +30,7 @@ final readonly class ComparableRun
 
     /**
      * Built from a plain query record — `activity_id`, `start_date_local`,
-     * `distance`, `moving_time`, `average_heartrate`, `total_elevation_gain`
+     * `distance`, `elapsed_time`, `average_heartrate`, `total_elevation_gain`
      * and the owning activity's `ingest_state` — so a year of history can be
      * read without hydrating a model per run.
      *
@@ -39,11 +39,11 @@ final readonly class ComparableRun
     public static function fromRow(array $row): ?self
     {
         $distance = (float) ($row['distance'] ?? 0);
-        $movingTime = (int) ($row['moving_time'] ?? 0);
-        $pace = PaceCalculator::secPerKm($distance, $movingTime);
+        $elapsedTime = (int) ($row['elapsed_time'] ?? 0);
+        $pace = PaceCalculator::secPerKm($distance, $elapsedTime);
         $startedAt = $row['start_date_local'] ?? null;
 
-        if ($pace === null || ! is_string($startedAt) || $distance <= 0.0 || $movingTime <= 0) {
+        if ($pace === null || ! is_string($startedAt) || $distance <= 0.0 || $elapsedTime <= 0) {
             return null;
         }
 
@@ -51,7 +51,7 @@ final readonly class ComparableRun
             activityId: (int) $row['activity_id'],
             startedAt: Carbon::parse($startedAt),
             distanceM: $distance,
-            movingTimeSec: $movingTime,
+            elapsedTimeSec: $elapsedTime,
             paceSecPerKm: $pace,
             averageHeartrate: isset($row['average_heartrate']) ? (float) $row['average_heartrate'] : null,
             elevationGainM: isset($row['total_elevation_gain']) ? (float) $row['total_elevation_gain'] : null,

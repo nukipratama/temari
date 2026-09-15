@@ -32,6 +32,7 @@ function runFor(User $user, array $detail = []): Activity
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 8000.0,
         'moving_time' => 2400,
+        'elapsed_time' => 2400,
         'weather_temp_c' => 26,
         'stream_summary' => null,
         ...$detail,

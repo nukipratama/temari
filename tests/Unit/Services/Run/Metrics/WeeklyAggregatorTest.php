@@ -50,6 +50,7 @@ it('upserts one snapshot per ISO week from first run through today', function ()
         ActivityDetail::factory()->for($activity)->create([
             'distance' => 8000,
             'moving_time' => 2400,
+            'elapsed_time' => 2400,
             'trimp_edwards' => 60.0,
             'start_date_local' => Carbon::today()->subDays($daysAgo),
             'stream_summary' => ['decoupling_pct' => 3.0],
@@ -72,6 +73,7 @@ it('aggregates distance, runs, and avg decoupling per week', function (): void {
         ActivityDetail::factory()->for($activity)->create([
             'distance' => $cfg['distance'],
             'moving_time' => 1800,
+            'elapsed_time' => 1800,
             'trimp_edwards' => 50.0,
             'start_date_local' => $weekEnding->copy()->subDays(2),
             'stream_summary' => ['decoupling_pct' => $cfg['dec']],
@@ -95,6 +97,7 @@ it('writes null avg_decoupling when no runs in the week have decoupling_pct', fu
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 5000,
         'moving_time' => 1500,
+        'elapsed_time' => 1500,
         'trimp_edwards' => 40.0,
         'start_date_local' => Carbon::today(),
         'stream_summary' => ['time_in_zone_min' => ['Z2' => 25]],
@@ -115,6 +118,7 @@ it('writes no weekly decoupling average when a single run is all there is to ave
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 21000,
         'moving_time' => 7200,
+        'elapsed_time' => 7200,
         'trimp_edwards' => 180.0,
         'start_date_local' => Carbon::today(),
         'stream_summary' => ['decoupling_pct' => 12.4],
@@ -136,6 +140,7 @@ it('leaves load unknown, not zero, when no run scored a TRIMP', function (): voi
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 5000,
         'moving_time' => 1500,
+        'elapsed_time' => 1500,
         'trimp_edwards' => null,
         'start_date_local' => Carbon::today(),
     ]);
@@ -166,6 +171,7 @@ it('persists a scored, a rest and an unscored week as three different facts', fu
         ActivityDetail::factory()->for($activity)->create([
             'distance' => 8000,
             'moving_time' => 2400,
+            'elapsed_time' => 2400,
             'trimp_edwards' => $trimp,
             'start_date_local' => $day,
         ]);
@@ -210,6 +216,7 @@ it('is idempotent — re-running upserts the same week without duplicating', fun
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 7000,
         'moving_time' => 2000,
+        'elapsed_time' => 2000,
         'trimp_edwards' => 55.0,
         'start_date_local' => Carbon::today()->subDays(3),
     ]);
@@ -229,6 +236,7 @@ it('rebuildForWeekOf rebuilds only the snapshot covering the given date', functi
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 6000,
         'moving_time' => 1800,
+        'elapsed_time' => 1800,
         'trimp_edwards' => 50.0,
         'start_date_local' => Carbon::today()->subDays(2),
     ]);
@@ -275,6 +283,7 @@ it('rebuildForWeekOf computes the converged CTL, not the too-low windowed value'
         ActivityDetail::factory()->for($activity)->create([
             'distance' => 8000,
             'moving_time' => 2400,
+            'elapsed_time' => 2400,
             'trimp_edwards' => 80.0,
             'start_date_local' => $weekEnding->copy()->subDays(199 - $i),
         ]);
@@ -293,6 +302,7 @@ it('rebuildForwardFrom rebuilds every week from the anchor through today', funct
         ActivityDetail::factory()->for($activity)->create([
             'distance' => 8000,
             'moving_time' => 2400,
+            'elapsed_time' => 2400,
             'trimp_edwards' => 60.0,
             'start_date_local' => Carbon::today()->subDays($daysAgo),
         ]);
@@ -312,6 +322,7 @@ it('rebuildForwardFrom propagates a backdated activity forward into later weeks 
         ActivityDetail::factory()->for($activity)->create([
             'distance' => 6000,
             'moving_time' => 1800,
+            'elapsed_time' => 1800,
             'trimp_edwards' => 40.0,
             'start_date_local' => Carbon::today()->subDays(34 - $i),
         ]);
@@ -330,6 +341,7 @@ it('rebuildForwardFrom propagates a backdated activity forward into later weeks 
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 20000,
         'moving_time' => 7200,
+        'elapsed_time' => 7200,
         'trimp_edwards' => 300.0,
         'start_date_local' => $backdate,
     ]);
@@ -355,6 +367,7 @@ it('measures the in-progress week CTL as-of today, not the future Sunday', funct
         ActivityDetail::factory()->for($activity)->create([
             'distance' => 8000,
             'moving_time' => 2400,
+            'elapsed_time' => 2400,
             'trimp_edwards' => 80.0,
             'start_date_local' => Carbon::today()->subDays(199 - $i),
         ]);
@@ -373,6 +386,7 @@ it('rebuildForwardFrom returns the anchor week snapshot', function (): void {
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 8000,
         'moving_time' => 2400,
+        'elapsed_time' => 2400,
         'trimp_edwards' => 80.0,
         'start_date_local' => $anchor,
     ]);
@@ -390,6 +404,7 @@ it('projects only the columns the roll-up reads, never the whole detail row', fu
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 8000,
         'moving_time' => 2400,
+        'elapsed_time' => 2400,
         'trimp_edwards' => 80.0,
         'start_date_local' => Carbon::today()->subDays(7),
         'stream_summary' => ['decoupling_pct' => 3.0],
@@ -421,6 +436,7 @@ it('still computes decoupling and sums from the narrowed projection', function (
         ActivityDetail::factory()->for($activity)->create([
             'distance' => $cfg['dist'],
             'moving_time' => 2400,
+            'elapsed_time' => 2400,
             'trimp_edwards' => 60.0,
             'start_date_local' => Carbon::today(),
             'stream_summary' => ['decoupling_pct' => $cfg['dec']],
@@ -433,7 +449,7 @@ it('still computes decoupling and sums from the narrowed projection', function (
     expect($snapshot)->not->toBeNull()
         ->and((float) $snapshot->distance_km)->toBe(14.0)
         ->and($snapshot->runs)->toBe(2)
-        ->and($snapshot->moving_time_sec)->toBe(4800)
+        ->and($snapshot->elapsed_time_sec)->toBe(4800)
         ->and($snapshot->avg_decoupling)->toBe(4.0);
 });
 
@@ -443,6 +459,7 @@ it('drops the caches derived from the history it just rebuilt', function (string
     ActivityDetail::factory()->for($activity)->create([
         'distance' => 8000,
         'moving_time' => 2400,
+        'elapsed_time' => 2400,
         'trimp_edwards' => 60.0,
         'start_date_local' => Carbon::today(),
     ]);

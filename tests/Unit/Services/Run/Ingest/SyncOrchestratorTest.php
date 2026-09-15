@@ -59,6 +59,7 @@ function summaryResult(array $ids, int $apiCalls = 1): array
             'start_date_local' => '2026-05-10T06:00:00Z',
             'distance' => 5_000.0,
             'moving_time' => 1_800,
+            'elapsed_time' => 1_800,
         ], $ids),
         'api_calls' => $apiCalls,
     ];

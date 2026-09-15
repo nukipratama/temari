@@ -37,7 +37,7 @@ class BuildCalendarCellsAction
                 'activities.id as activity_id',
                 'activity_details.start_date_local',
                 'activity_details.distance',
-                'activity_details.moving_time',
+                'activity_details.elapsed_time',
                 'activity_details.average_heartrate',
                 'activity_details.trimp_edwards',
             ])
@@ -90,7 +90,7 @@ class BuildCalendarCellsAction
         }
 
         $totalDistance = (float) $rows->sum(fn ($r) => (float) ($r->distance ?? 0));
-        $totalMoving = (float) $rows->sum(fn ($r) => (float) ($r->moving_time ?? 0));
+        $totalElapsed = (float) $rows->sum(fn ($r) => (float) ($r->elapsed_time ?? 0));
         // A summary-only run has no TRIMP; counting it as zero would render an
         // honest unknown as a genuine zero-effort day.
         $scored = $rows->filter(fn ($r): bool => $r->trimp_edwards !== null);
@@ -100,9 +100,9 @@ class BuildCalendarCellsAction
         $hrWeighted = 0.0;
         $hrWeight = 0.0;
         foreach ($rows as $r) {
-            if ($r->average_heartrate !== null && $r->moving_time !== null && $r->moving_time > 0) {
-                $hrWeighted += (float) $r->average_heartrate * (float) $r->moving_time;
-                $hrWeight += (float) $r->moving_time;
+            if ($r->average_heartrate !== null && $r->elapsed_time !== null && $r->elapsed_time > 0) {
+                $hrWeighted += (float) $r->average_heartrate * (float) $r->elapsed_time;
+                $hrWeight += (float) $r->elapsed_time;
             }
         }
 
@@ -110,7 +110,7 @@ class BuildCalendarCellsAction
         $primary = $rows->first();
         $primaryId = (int) $primary->getAttribute('activity_id');
 
-        $paceSecPerKm = PaceCalculator::secPerKm($totalDistance, $totalMoving);
+        $paceSecPerKm = PaceCalculator::secPerKm($totalDistance, $totalElapsed);
 
         return [
             ...$base,

@@ -223,7 +223,7 @@ class PastYouTrendBuilder
                     'activity_details.activity_id',
                     'activity_details.start_date_local',
                     'activity_details.distance',
-                    'activity_details.moving_time',
+                    'activity_details.elapsed_time',
                     'activity_details.average_heartrate',
                     'activity_details.total_elevation_gain',
                     'activities.ingest_state',
@@ -235,7 +235,7 @@ class PastYouTrendBuilder
             ->where('activity_details.start_date_local', '>=', $anchor->copy()
                 ->subDays(self::WINDOW_DAYS + PastYouMatcher::MAX_GAP_DAYS)->startOfDay())
             ->where('activity_details.distance', '>', 0)
-            ->where('activity_details.moving_time', '>', 0)
+            ->where('activity_details.elapsed_time', '>', 0)
             ->orderByDesc('activity_details.start_date_local')
             ->limit(self::HISTORY_BACKSTOP_ROWS)
             ->toBase()

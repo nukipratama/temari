@@ -27,7 +27,7 @@ function logFloorWeek(User $user, string $weekEnding, float $km): void
         'week_ending' => $weekEnding,
         'distance_km' => $km,
         'runs' => 4,
-        'moving_time_sec' => (int) round($km * 360),
+        'elapsed_time_sec' => (int) round($km * 360),
         'weekly_trimp' => 300.0,
         'atl_7d' => 70.0,
         'ctl_42d' => 75.0,

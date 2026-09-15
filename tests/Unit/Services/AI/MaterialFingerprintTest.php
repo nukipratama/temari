@@ -23,6 +23,7 @@ function fingerprintActivity(array $detail = [], ?string $mood = null): Activity
     ActivityDetail::factory()->for($activity)->create(array_merge([
         'distance' => 5000.0,
         'moving_time' => 1500,
+        'elapsed_time' => 1500,
         'average_heartrate' => 150.0,
         'stream_summary' => ['time_in_zone_pct' => ['Z2' => 80, 'Z3' => 20], 'decoupling_pct' => 6.0],
     ], $detail));
