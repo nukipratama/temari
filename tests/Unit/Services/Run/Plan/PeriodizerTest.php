@@ -303,10 +303,18 @@ it('lets the race projection move prescribed quality work in both directions', f
             'distance_km' => 60.0,
         ]);
     }
-    RaceGoal::factory()->for($user)->create([
+    $race = RaceGoal::factory()->for($user)->create([
         'race_date' => Carbon::today()->addWeeks(12)->toDateString(),
         'distance_m' => 21_097,
         'goal_time_sec' => 6000,
+    ]);
+    // The arc opened eight weeks ago, so the current week is a Build one:
+    // Base carries at most one threshold session whatever the adapter says.
+    Season::factory()->for($user)->create([
+        'race_goal_id' => $race->id,
+        'starts_at' => Carbon::today()->subWeeks(8)->startOfWeek(Carbon::MONDAY)->toDateString(),
+        'ends_at' => $race->race_date->toDateString(),
+        'anchor_weekly_volume_km' => 60.0,
     ]);
 
     regenerateWithProjectedFinish($user, 7200.0);

@@ -135,6 +135,8 @@ final class WeekPlanBuilder
             $qualityDelta,
             count($qualityPool),
             $keepsAQualitySession,
+            $selfScaled,
+            $projectedRaceSeconds,
         );
         $qualityOffsets = array_flip(self::spreadOffsets($qualityPool, count($qualitySlots)));
 
@@ -295,9 +297,11 @@ final class WeekPlanBuilder
     /**
      * The adapter's verdict resizes the week's quality block: race-pace
      * feedback moves it either way, a week run harder than it was written
-     * only ever drops one. Deload and Taper
-     * are exempt in both directions: neither exists to carry quality work,
-     * and a taper's whole job is arriving fresh. Adding is further gated on
+     * only ever drops one. Base, Deload and Taper
+     * are exempt in both directions: none exists to carry quality work,
+     * a taper's whole job is arriving fresh, and Base is defined as
+     * predominantly easy with at most one threshold session, which a second
+     * appended Tempo made it harder than Build. Adding is further gated on
      * the week having enough sessions to absorb it, so a 3-day week never
      * turns into two-thirds quality.
      *
@@ -316,9 +320,9 @@ final class WeekPlanBuilder
      * @param  list<array{session_type: SessionType}>  $slots
      * @return list<array{session_type: SessionType}>
      */
-    private static function withQualityDelta(array $slots, PlanPhase $phase, int $sessionsPerWeek, int $qualityDelta, int $qualityPoolSize, bool $keepsAQualitySession): array
+    private static function withQualityDelta(array $slots, PlanPhase $phase, int $sessionsPerWeek, int $qualityDelta, int $qualityPoolSize, bool $keepsAQualitySession, bool $selfScaled, ?float $projectedRaceSeconds): array
     {
-        if ($qualityDelta === 0 || in_array($phase, [PlanPhase::Deload, PlanPhase::Taper], true)) {
+        if ($qualityDelta === 0 || in_array($phase, [PlanPhase::Base, PlanPhase::Deload, PlanPhase::Taper], true)) {
             return $slots;
         }
 
@@ -341,10 +345,34 @@ final class WeekPlanBuilder
             return $slots;
         }
 
-        return [
-            ...$slots,
-            ...array_fill(0, $target - count($slots), ['session_type' => SessionType::Tempo]),
-        ];
+        $added = [];
+        for ($i = count($slots); $i < $target; $i++) {
+            $added[] = ['session_type' => self::leastRepresentedQualityType([...$slots, ...$added], $phase, $selfScaled, $projectedRaceSeconds)];
+        }
+
+        return [...$slots, ...$added];
+    }
+
+    /**
+     * The stimulus the week has least of. An added day was always a Tempo, so
+     * a build week already holding tempo + interval got a SECOND tempo —
+     * doubling the stimulus it had most of. A tie means the week is balanced
+     * and there is nothing to even out, so it falls back to what the phase
+     * picks when it only gets one quality day.
+     *
+     * @param  list<array{session_type: SessionType}>  $slots
+     */
+    private static function leastRepresentedQualityType(array $slots, PlanPhase $phase, bool $selfScaled, ?float $projectedRaceSeconds): SessionType
+    {
+        $types = array_column($slots, 'session_type');
+        $tempo = count(array_filter($types, static fn (SessionType $type): bool => $type === SessionType::Tempo));
+        $interval = count($types) - $tempo;
+
+        return match (true) {
+            $tempo < $interval => SessionType::Tempo,
+            $interval < $tempo => SessionType::Interval,
+            default => self::singleQualityType($phase, $selfScaled, $projectedRaceSeconds),
+        };
     }
 
     /**

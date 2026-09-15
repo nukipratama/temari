@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
+use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\WeekPlanBuilder;
 use Illuminate\Support\Carbon;
+
+const WEEK_PACES = ['easy' => 380, 'marathon' => 320, 'threshold' => 292, 'interval' => 268];
 
 beforeEach(function (): void {
     $this->builder = new WeekPlanBuilder();
@@ -159,9 +163,17 @@ it('drops a quality session when race-pace feedback asks for less', function ():
 });
 
 it('drops the week to zero quality when asked for less than it already carries', function (): void {
-    $rows = $this->builder->build($this->monday, PlanPhase::Base, 4, [], null, false, null, -1);
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, false, null, -1);
 
     expect(qualityCount($rows))->toBe(0);
+});
+
+it('leaves a Base week the one quality day its phase defines, in either direction', function (): void {
+    $eased = $this->builder->build($this->monday, PlanPhase::Base, 4, [], null, false, null, -1);
+    $pushed = $this->builder->build($this->monday, PlanPhase::Base, 5, [], null, false, null, 1);
+
+    expect(qualityCount($eased))->toBe(1)
+        ->and(qualityCount($pushed))->toBe(1);
 });
 
 it('refuses to add a quality session to a week too short to absorb it', function (): void {
@@ -396,4 +408,62 @@ it('leaves a week the race does not fall in completely alone', function (): void
 
     expect($withRace)->toBe($without)
         ->and($withRace)->not->toContain(SessionType::Race);
+});
+
+/**
+ * Base is documented as "predominantly easy, at most one threshold session",
+ * but only Deload and Taper were exempt from the quality delta, so a
+ * `behind_race_pace` verdict appended a second Tempo and made Base harder
+ * than Build: 8.0 km hard of 26.8 (30%) against Build's 6.1 of 24.9 (24%).
+ */
+it('holds Base at one quality session even when the adapter asks for more', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Base, 5, [], 10_000.0, false, null, 1);
+
+    $quality = array_filter(
+        array_column($rows, 'session_type'),
+        fn (SessionType $type): bool => in_array($type, [SessionType::Tempo, SessionType::Interval], true),
+    );
+
+    expect($quality)->toHaveCount(1);
+});
+
+it('keeps a Base week under a fifth of its volume at threshold or faster', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Base, 5, [], 10_000.0, false, null, 1);
+
+    $weekKm = 0.0;
+    $hardKm = 0.0;
+    foreach ($rows as $row) {
+        foreach (SegmentGenerator::generate($row['session_type'], PlanPhase::Base, 10_000.0, false, 9.1, 1.0, INF, WEEK_PACES) as $segment) {
+            $weekKm += $segment->km ?? 0.0;
+            if (in_array($segment->paceLabel, [PaceBand::Threshold, PaceBand::Interval], true)) {
+                $hardKm += $segment->km ?? 0.0;
+            }
+        }
+    }
+
+    expect($hardKm / $weekKm)->toBeLessThan(0.20);
+});
+
+/**
+ * A build week already carrying tempo + interval used to be handed a SECOND
+ * tempo, doubling the stimulus it had most of instead of the one it had least.
+ */
+it('alternates the stimulus when the adapter adds a quality day', function (): void {
+    $qualityOf = fn (int $sessions, float $projectedRaceSeconds): array => array_count_values(array_map(
+        fn (SessionType $type): string => $type->value,
+        array_filter(
+            array_column(
+                $this->builder->build($this->monday, PlanPhase::Build, $sessions, [], 10_000.0, false, null, 1, projectedRaceSeconds: $projectedRaceSeconds),
+                'session_type',
+            ),
+            fn (SessionType $type): bool => in_array($type, [SessionType::Tempo, SessionType::Interval], true),
+        ),
+    ));
+
+    // One of each already, so the tie falls back to what the phase would pick
+    // for a single quality day — Interval for a 35-minute 10K.
+    expect($qualityOf(6, 35 * 60.0))->toBe(['tempo' => 1, 'interval' => 2])
+        // A slow projection puts the lone slot on Tempo, so the added day is
+        // the stimulus the week does not have.
+        ->and($qualityOf(4, 75 * 60.0))->toBe(['tempo' => 1, 'interval' => 1]);
 });

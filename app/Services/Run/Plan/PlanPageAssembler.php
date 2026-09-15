@@ -325,7 +325,13 @@ final class PlanPageAssembler
         );
 
         $weekTargetKm = $currentWeekSessions->sum($kmFor);
-        $completedKm = $this->completedKmInRange($user, $currentWeekStart, $today->copy()->subDay());
+        // The target sums the days the plan actually stored, so the completed
+        // figure has to start where they do. A plan generated mid-week holds
+        // no rows for the days before it, and deducting those days' running
+        // from a target that never asked for them left the rest of the week
+        // at a fraction of its prescription.
+        $planStart = $currentWeekSessions->min(fn (PlannedSession $s): string => $s->date->toDateString());
+        $completedKm = $this->completedKmInRange($user, Carbon::parse($planStart), $today->copy()->subDay());
         $pinnedKm = $currentWeekSessions->filter(fn (PlannedSession $s): bool => $s->pinned)->sum($kmFor);
 
         $todayFixedKm = 0.0;
