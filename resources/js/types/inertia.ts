@@ -366,9 +366,8 @@ export interface PlanDayClamp {
     distance_km: number;
     pace_sec_per_km: number | null;
     note: string;
-    /** "eased today" before the day is run, "anything else today" once it is
-     *  credited — from `PlanRenderer::clampPayload()`, so Plan and Home cannot
-     *  disagree about what the step-down is for. */
+    /** From `PlanRenderer::clampPayload()`, so Plan and Home cannot disagree
+     *  about what the step-down is for. A credited day ships no clamp at all. */
     label: string;
 }
 
@@ -408,8 +407,12 @@ export interface WeekPlanDay {
     /** Today's readiness step-down, when one applies — a modification shown
      *  *beside* the day's own prescription, never in place of it. The fields
      *  above stay the stored session, which is what the narrator describes and
-     *  `SessionMatcher` grades. Null on every other day. */
+     *  `SessionMatcher` grades. Null on every other day, and null once today
+     *  is credited: a finished day shows what it came to, not a second menu. */
     clamp: PlanDayClamp | null;
+    /** Why a long day that covered its distance still reads `partial` — it
+     *  arrived in pieces rather than in one run. Null on every other day. */
+    credit_note: string | null;
     /** Total km actually run that day — null when nothing was logged. */
     actual_km: number | null;
     /** Every run logged that day, oldest first — a day can hold more than one,

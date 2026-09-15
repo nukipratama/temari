@@ -13,7 +13,6 @@ use App\Models\User;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\PlanRenderer;
-use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\SessionSegment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -397,19 +396,16 @@ function tempoSessionWithEasyClamp(Carbon $today, string $note): array
 
 /**
  * `Readiness::assess()` caps to EasyOnly on `ranToday` alone, so finishing the
- * session is itself what clamps it. Left alone the card reads "today backs off
- * to easy" beside a DONE badge, as a verdict on work already done. It is
- * guidance for a second outing, and once credited it says so.
+ * session is itself what clamps it. The block used to become a menu for a
+ * second outing; a finished day now just states what it came to.
  */
-it('dayPayload turns the clamp into second-session guidance once the day is credited', function (PlannedSessionStatus $status): void {
+it('dayPayload drops the clamp entirely once the day is credited', function (PlannedSessionStatus $status): void {
     $today = Carbon::parse('2026-08-10');
     [$session, $clamp] = tempoSessionWithEasyClamp($today, 'Quality work waits until you are fresher.');
 
     $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, $status);
 
-    expect($payload['clamp']['label'])->toBe('anything else today')
-        ->and($payload['clamp']['note'])->toBe(ReadinessClamp::secondSessionNote(SessionType::Easy))
-        ->and($payload['clamp']['distance_km'])->toBe($clamp['core_km']);
+    expect($payload['clamp'])->toBeNull();
 })->with([
     PlannedSessionStatus::Done,
     PlannedSessionStatus::Partial,
@@ -440,21 +436,49 @@ it('dayPayload keeps the forecast wording on a day not yet credited', function (
     PlannedSessionStatus::Skip,
 ]);
 
-/**
- * The narrated clamp line was written for the forecast, so it cannot stand once
- * the day is done. Re-narrating instead would bill an LLM call from a GET, which
- * `readiness-clamp-is-advisory.md` rules out.
- */
-it('dayPayload drops the narrated clamp voice once the day is credited', function (): void {
+it('dayPayload narrates the clamp on a day still to be run', function (): void {
     $today = Carbon::parse('2026-08-10');
     [$session, $clamp] = tempoSessionWithEasyClamp($today, 'Templated floor.');
     $voice = 'a heavy stretch is catching up, so today backs off to easy.';
 
-    $credited = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done, null, $voice);
     $pending = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned, null, $voice);
 
-    expect($credited['clamp']['note'])->not->toBe($voice)
-        ->and($pending['clamp']['note'])->toBe($voice);
+    expect($pending['clamp']['note'])->toBe($voice);
+});
+
+/**
+ * A long day whose distance arrived in pieces reads `partial` despite the
+ * volume being there, so the row says why rather than leaving the athlete to
+ * work it out from a 100% score beside a partial badge.
+ */
+it('dayPayload explains a long day that covered its distance in pieces', function (): void {
+    $today = Carbon::parse('2026-08-10');
+    $session = PlannedSession::factory()->create([
+        'session_type' => SessionType::Long,
+        'phase' => PlanPhase::Build,
+        'date' => $today,
+    ]);
+    $inPieces = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 10.0, 'seconds' => 3000], ['id' => 2, 'km' => 10.0, 'seconds' => 3000]]];
+    $inOne = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 18.0, 'seconds' => 5400], ['id' => 2, 'km' => 2.0, 'seconds' => 600]]];
+
+    $render = fn (array $activity, PlannedSessionStatus $status): ?string => PlanRenderer::dayPayload(
+        $session,
+        $today,
+        null,
+        [],
+        null,
+        false,
+        20.0,
+        1.0,
+        INF,
+        RENDERER_PACES,
+        $status,
+        $activity,
+    )['credit_note'];
+
+    expect($render($inPieces, PlannedSessionStatus::Partial))->toContain('not in one run')
+        ->and($render($inOne, PlannedSessionStatus::Done))->toBeNull()
+        ->and($render($inPieces, PlannedSessionStatus::Done))->toBeNull();
 });
 
 it('dayPayload reports whether this athlete has flagged the day', function (): void {

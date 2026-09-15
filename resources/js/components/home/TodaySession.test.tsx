@@ -57,6 +57,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         ran_anyway: false,
         prescribed_km: null,
         clamp: null,
+        credit_note: null,
         actual_km: null,
         activities: [],
         ...overrides,
@@ -231,8 +232,8 @@ describe('TodaySession', () => {
                         session_type: 'easy',
                         distance_km: 5.9,
                         pace_sec_per_km: 450,
-                        note: "You've already run today, so anything else stays easy.",
-                        label: 'anything else today',
+                        note: 'Quality work waits until you are fresher.',
+                        label: 'eased today',
                     },
                 })}
             />,
@@ -241,11 +242,11 @@ describe('TodaySession', () => {
         expect(
             screen.getByText('long run · 15 km · 6:00/km'),
         ).toBeInTheDocument();
-        expect(screen.getByText('anything else today')).toBeInTheDocument();
+        expect(screen.getByText('eased today')).toBeInTheDocument();
         expect(screen.getByText('easy · 5.9 km · 7:30/km')).toBeInTheDocument();
 
         const note = screen.getByText(
-            "You've already run today, so anything else stays easy.",
+            'Quality work waits until you are fresher.',
         );
         expect(note).toBeInTheDocument();
         expect(note).toHaveClass('text-text-2');

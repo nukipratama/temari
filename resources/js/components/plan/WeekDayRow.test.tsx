@@ -32,6 +32,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         prescribed_km: null,
         clamp: null,
+        credit_note: null,
         actual_km: null,
         activities: [],
         flagged: false,
@@ -394,15 +395,32 @@ describe('WeekDayRow', () => {
                     session_type: 'easy',
                     distance_km: 3.6,
                     pace_sec_per_km: 450,
-                    note: "You've already run today, so anything else stays easy.",
-                    label: 'anything else today',
+                    note: 'Quality work waits until you are fresher.',
+                    label: 'stepped down',
                 },
             }),
         });
         expand();
 
-        expect(screen.getByText('anything else today')).toBeInTheDocument();
+        expect(screen.getByText('stepped down')).toBeInTheDocument();
         expect(screen.queryByText('eased today')).not.toBeInTheDocument();
+    });
+
+    /** A finished day states what it came to; the second-menu prompt is gone,
+     *  and the server ships no clamp once the day is credited. */
+    it('explains a long day whose distance arrived in pieces', () => {
+        renderRow({
+            day: day({
+                date: TODAY,
+                status: 'partial',
+                clamp: null,
+                credit_note:
+                    'the distance was there, but not in one run. a long day is time on feet in one go.',
+            }),
+        });
+        expand();
+
+        expect(screen.getByText(/not in one run/)).toBeInTheDocument();
     });
 
     it('shows no step-down on a day the clamp did not touch', () => {

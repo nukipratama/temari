@@ -22,6 +22,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         prescribed_km: null,
         clamp: null,
+        credit_note: null,
         actual_km: 8,
         activities: [],
         ...overrides,

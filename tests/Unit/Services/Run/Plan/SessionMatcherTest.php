@@ -210,7 +210,7 @@ function prescribe(User $user, string $date, SessionType $type): void
     ]);
 }
 
-it('credits a long run day from its longest run, not from the day adding up', function (): void {
+it('withholds done from a long day nothing single ran most of', function (): void {
     $user = User::factory()->create();
     prescribe($user, '2026-08-03', SessionType::Long);
     logRun($user, '2026-08-03', 6.0);
@@ -233,12 +233,12 @@ it('still sums the day everywhere a long run was not what was asked for', functi
 });
 
 /**
- * A long run's training effect is continuity, so its day is credited from the
- * single longest run — a shakeout logged alongside it must not count toward the
- * ask. Narration reads this same figure, so the rule lives here rather than at
- * each call site, where the two would drift.
+ * A quality day is one effort, so it is credited from its best single run;
+ * everything else, a long run included, counts the volume the day actually
+ * accumulated. Narration reads this same figure, so the rule lives here
+ * rather than at each call site, where the two would drift.
  */
-it('credits a long day from its longest run and every other day from the total', function (SessionType $type, float $expected): void {
+it('credits a quality day from its best run and every other day from the total', function (SessionType $type, float $expected): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
@@ -255,7 +255,9 @@ it('credits a long day from its longest run and every other day from the total',
 
     expect(app(SessionMatcher::class)->creditedKmFor($session))->toBe($expected);
 })->with([
-    [SessionType::Long, 18.0],
+    [SessionType::Tempo, 18.0],
+    [SessionType::Interval, 18.0],
+    [SessionType::Long, 23.0],
     [SessionType::Easy, 23.0],
 ]);
 
@@ -267,4 +269,81 @@ it('credits nothing on a day with no runs at all', function (): void {
     ]);
 
     expect(app(SessionMatcher::class)->creditedKmFor($session))->toBeNull();
+});
+
+/**
+ * A quality session is one effort. Two easy 5 km outings on a tempo day are
+ * not a 10 km tempo, so the day is credited from its best single run rather
+ * than from what the two add up to.
+ */
+it('credits a quality day from its best single run rather than the day adding up', function (SessionType $type): void {
+    $user = User::factory()->create();
+    prescribe($user, '2026-08-03', $type);
+    logRun($user, '2026-08-03', 5.0);
+    logRun($user, '2026-08-03', 5.0);
+
+    $statuses = app(SessionMatcher::class)->statuses($user, ['2026-08-03' => 10.0], [], Carbon::parse('2026-08-10'));
+
+    expect($statuses['2026-08-03'])->toBe(PlannedSessionStatus::Partial);
+})->with([[SessionType::Tempo], [SessionType::Interval]]);
+
+/**
+ * The volume genuinely accumulated, so the day counts it; the training effect
+ * of a long run is continuity, so the day only reads `done` when one run
+ * carried most of it.
+ */
+it('sums a long day but withholds done unless one run carried 70% of the ask', function (): void {
+    $user = User::factory()->create();
+    prescribe($user, '2026-08-03', SessionType::Long);
+    logRun($user, '2026-08-03', 6.0);
+    logRun($user, '2026-08-03', 6.0);
+
+    $split = app(SessionMatcher::class)->scoreRange($user, ['2026-08-03' => 12.0], [], Carbon::parse('2026-08-10'));
+
+    // The volume is all there, so the score says so; the status does not.
+    expect($split['2026-08-03']['status'])->toBe(PlannedSessionStatus::Partial)
+        ->and($split['2026-08-03']['score'])->toBe(100);
+});
+
+it('reads a long day as done once one run carried 70% of the ask', function (): void {
+    $user = User::factory()->create();
+    prescribe($user, '2026-08-03', SessionType::Long);
+    logRun($user, '2026-08-03', 9.0);
+    logRun($user, '2026-08-03', 3.0);
+
+    $statuses = app(SessionMatcher::class)->statuses($user, ['2026-08-03' => 12.0], [], Carbon::parse('2026-08-10'));
+
+    expect($statuses['2026-08-03'])->toBe(PlannedSessionStatus::Done);
+});
+
+/**
+ * The readiness clamp writes `rest_clamped_at`, and an excused day is never
+ * graded whatever crediting rule the session type would otherwise apply.
+ */
+it('leaves a rest-clamped day excused rather than missed under every crediting rule', function (SessionType $type): void {
+    $user = User::factory()->create();
+    prescribe($user, '2026-08-03', $type);
+
+    $statuses = app(SessionMatcher::class)->statuses(
+        $user,
+        ['2026-08-03' => 12.0],
+        ['2026-08-03' => true],
+        Carbon::parse('2026-08-10'),
+    );
+
+    expect($statuses['2026-08-03'])->toBe(PlannedSessionStatus::Skip);
+})->with([[SessionType::Long], [SessionType::Tempo], [SessionType::Easy]]);
+
+it('records a run on an excused day without letting it score against the athlete', function (): void {
+    $user = User::factory()->create();
+    prescribe($user, '2026-08-03', SessionType::Rest);
+    logRun($user, '2026-08-03', 4.0);
+
+    $verdicts = app(SessionMatcher::class)->scoreRange($user, ['2026-08-03' => 0.0], [], Carbon::parse('2026-08-10'));
+
+    expect($verdicts['2026-08-03'])->toBe([
+        'status' => PlannedSessionStatus::Done,
+        'score' => null,
+        'ran_anyway' => true,
+    ]);
 });

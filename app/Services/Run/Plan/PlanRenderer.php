@@ -279,7 +279,8 @@ final class PlanRenderer
             'compliance_score' => $s->compliance_score,
             'prescribed_km' => $s->prescribed_km,
             'ran_anyway' => $s->ran_anyway,
-            'clamp' => $isToday && $clamp !== null ? self::clampPayload($clamp, $clampVoice, $status->isCredited()) : null,
+            'clamp' => $isToday && $clamp !== null && ! $status->isCredited() ? self::clampPayload($clamp, $clampVoice) : null,
+            'credit_note' => self::creditNote($sessionType, $status, $askedKm, $activity),
             'actual_km' => $activity['km'] ?? null,
             'activities' => $activity['runs'] ?? [],
             'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
@@ -307,17 +308,14 @@ final class PlanRenderer
      * skeleton on a block that must always say something, and a paused or
      * cost-capped day still reads correctly.
      *
-     * Once the day is credited the block is guidance for a SECOND outing
-     * rather than a step-down from the one already run, so it carries its own
-     * label and note and the narrated voice is dropped: that line was written
-     * for the forecast and re-narrating it would bill an LLM call from a GET.
-     * Both surfaces read `label` rather than hardcoding one, which is the
-     * property this class exists to guarantee.
+     * A credited day carries no clamp at all: the day is over, and the block
+     * that once offered a second menu is replaced by what the day actually
+     * came to. See `docs/decisions/a-credited-day-shows-its-result.md`.
      *
      * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string} $clamp
      * @return array{session_type: string, distance_km: float, pace_sec_per_km: int|null, note: string, label: string}
      */
-    private static function clampPayload(array $clamp, ?string $voice, bool $credited): array
+    private static function clampPayload(array $clamp, ?string $voice): array
     {
         $core = null;
         foreach ($clamp['segments'] as $segment) {
@@ -332,10 +330,29 @@ final class PlanRenderer
             'session_type' => $clamp['session_type']->value,
             'distance_km' => $clamp['core_km'],
             'pace_sec_per_km' => $core?->paceSecPerKm,
-            'note' => $credited
-                ? ReadinessClamp::secondSessionNote($clamp['session_type'])
-                : ($voice ?? $clamp['note']),
-            'label' => $credited ? 'anything else today' : 'eased today',
+            'note' => $voice ?? $clamp['note'],
+            'label' => 'eased today',
         ];
+    }
+
+    /**
+     * Why a long day that covered its distance still reads `partial`: the
+     * volume arrived in pieces. Only that case has something to explain —
+     * every other verdict is already said by its own numbers.
+     *
+     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null}>}|null  $activity
+     */
+    private static function creditNote(SessionType $sessionType, PlannedSessionStatus $status, float $askedKm, ?array $activity): ?string
+    {
+        if ($sessionType !== SessionType::Long || $status !== PlannedSessionStatus::Partial || $activity === null || $askedKm <= 0.0) {
+            return null;
+        }
+
+        $longestKm = max(array_map(static fn (array $run): float => $run['km'], $activity['runs']) ?: [0.0]);
+        if ($activity['km'] < $askedKm * SessionMatcher::DONE_FRACTION || SessionMatcher::oneRunCarriedTheLongDay($askedKm, $longestKm)) {
+            return null;
+        }
+
+        return 'the distance was there, but not in one run. a long day is time on feet in one go.';
     }
 }

@@ -39,6 +39,14 @@ final readonly class SessionMatcher
     /** At or above this fraction the athlete ran significantly more than prescribed. */
     public const float OVERREACHED_FRACTION = 1.30;
 
+    /**
+     * Share of a long run's prescription one single run has to carry for the
+     * day to read `done`. The day's runs still add up — the volume genuinely
+     * happened — but a long run's training effect is continuity, and three
+     * short outings are time on feet, not a long run.
+     */
+    public const float LONG_RUN_SINGLE_RUN_FRACTION = 0.70;
+
     public function __construct(
         private ResolvePlannedSessionsAction $plannedSessions,
     ) {
@@ -81,16 +89,19 @@ final readonly class SessionMatcher
         }
 
         $completed = $this->completedKmByDate($user, $plannedKmByDate);
-        $longRunDates = $this->longRunDates($user, array_keys($plannedKmByDate));
+        $typeByDate = $this->sessionTypesByDate($user, array_keys($plannedKmByDate));
         $results = [];
         foreach ($plannedKmByDate as $date => $plannedKm) {
             $isPast = Carbon::parse($date)->lt($today);
             $day = $completed[$date] ?? ['sum' => 0.0, 'longest' => 0.0];
-            // A long run's training effect is continuity, so its day is
-            // credited from its single longest run. Everywhere else the day's
-            // runs add up, because easy volume genuinely does.
-            $completedKm = ($longRunDates[$date] ?? false) ? $day['longest'] : $day['sum'];
-            $results[$date] = self::scoreFor($plannedKm, $completedKm, $isPast, $excusedByDate[$date] ?? false);
+            $type = $typeByDate[$date] ?? null;
+            $results[$date] = self::scoreFor(
+                $plannedKm,
+                self::creditedKm($type, $day),
+                $isPast,
+                $excusedByDate[$date] ?? false,
+                $type === SessionType::Long ? $day['longest'] : null,
+            );
         }
 
         return $results;
@@ -113,9 +124,15 @@ final readonly class SessionMatcher
      * by the hours left in it. See
      * `docs/decisions/today-credits-when-earned.md`.
      *
+     * `$longestRunKm` is supplied only on a `Long` day, where clearing the km
+     * bar is necessary but not sufficient: the day still reads `partial`
+     * unless one run carried {@see self::LONG_RUN_SINGLE_RUN_FRACTION} of the
+     * ask. The score keeps the honest ratio either way, since the volume was
+     * genuinely covered.
+     *
      * @return array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}
      */
-    public static function scoreFor(float $plannedKm, float $completedKm, bool $isPast, bool $excused): array
+    public static function scoreFor(float $plannedKm, float $completedKm, bool $isPast, bool $excused, ?float $longestRunKm = null): array
     {
         if ($excused) {
             return $isPast ? self::verdict(PlannedSessionStatus::Skip) : self::verdict(PlannedSessionStatus::Planned);
@@ -133,6 +150,10 @@ final readonly class SessionMatcher
             $ratio >= self::PARTIAL_FRACTION => PlannedSessionStatus::Partial,
             default => PlannedSessionStatus::Missed,
         };
+
+        if ($longestRunKm !== null && ! self::oneRunCarriedTheLongDay($plannedKm, $longestRunKm) && $status !== PlannedSessionStatus::Missed) {
+            $status = PlannedSessionStatus::Partial;
+        }
 
         if (! $isPast && ! $status->isCredited()) {
             return self::verdict(PlannedSessionStatus::Planned);
@@ -193,10 +214,30 @@ final readonly class SessionMatcher
         return $byDate;
     }
 
+    /** Whether a long day's biggest single run covered enough of the ask to count as one. */
+    public static function oneRunCarriedTheLongDay(float $plannedKm, float $longestRunKm): bool
+    {
+        return $longestRunKm >= $plannedKm * self::LONG_RUN_SINGLE_RUN_FRACTION;
+    }
+
+    /**
+     * The km a day is credited with. A quality day is one effort, so it counts
+     * its best single run; everything else counts what the day added up to,
+     * because that volume genuinely accumulated.
+     *
+     * @param  array{sum: float, longest: float}  $day
+     */
+    private static function creditedKm(?SessionType $type, array $day): float
+    {
+        return match ($type) {
+            SessionType::Tempo, SessionType::Interval => $day['longest'],
+            default => $day['sum'],
+        };
+    }
+
     /**
      * The km a single day is credited with, by the same rule
-     * {@see self::scoreRange()} grades it on: a `Long` day counts its single
-     * longest run, everything else counts the day's total. Null when nothing
+     * {@see self::scoreRange()} grades it on. Null when nothing
      * was logged.
      *
      * Exists so a caller that wants the credited figure — narration reading
@@ -212,7 +253,7 @@ final readonly class SessionMatcher
             return null;
         }
 
-        return $session->session_type === SessionType::Long ? $day['longest'] : $day['sum'];
+        return self::creditedKm($session->session_type, $day);
     }
 
     /**
@@ -253,19 +294,18 @@ final readonly class SessionMatcher
     }
 
     /**
-     * Which of these dates prescribed a long run. Read here rather than
+     * What each of these dates actually prescribed. Read here rather than
      * passed in, so the three callers that build `$plannedKmByDate` cannot
-     * drift out of step with it.
+     * drift out of step with the crediting rule.
      *
      * @param  non-empty-list<string>  $dates
-     * @return array<string, bool>
+     * @return array<string, SessionType>
      */
-    private function longRunDates(User $user, array $dates): array
+    private function sessionTypesByDate(User $user, array $dates): array
     {
         return ($this->plannedSessions)($user->id, min($dates), max($dates))
-            ->filter(fn (PlannedSession $session): bool => $session->session_type === SessionType::Long
-                && in_array($session->date->toDateString(), $dates, true))
-            ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => true])
+            ->filter(fn (PlannedSession $session): bool => in_array($session->date->toDateString(), $dates, true))
+            ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => $session->session_type])
             ->all();
     }
 }
