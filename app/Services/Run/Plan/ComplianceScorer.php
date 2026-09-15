@@ -24,9 +24,6 @@ use Illuminate\Support\Carbon;
  */
 final readonly class ComplianceScorer
 {
-    /** Trailing weeks fetched around the rows being judged, so the phase ramp is visible. */
-    public const int HISTORY_WEEKS = 3;
-
     public function __construct(
         private SessionMatcher $sessionMatcher,
         private TrainingBaseline $baseline,
@@ -49,7 +46,7 @@ final readonly class ComplianceScorer
             return [];
         }
 
-        $rangeStart = $first->date->copy()->startOfWeek(Carbon::MONDAY)->subWeeks(self::HISTORY_WEEKS);
+        $rangeStart = $first->date->copy()->startOfWeek(Carbon::MONDAY)->subWeeks(PlanRenderer::HISTORY_WEEKS);
         // A run's own local date can read a calendar day ahead of the server's,
         // for an athlete east of the app's timezone just after their midnight.
         $rangeEnd = $rows->pluck('date')->max();

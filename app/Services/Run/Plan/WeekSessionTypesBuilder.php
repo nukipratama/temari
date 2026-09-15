@@ -38,7 +38,7 @@ final readonly class WeekSessionTypesBuilder
 
         $sessions = ($this->plannedSessions)(
             $user->id,
-            $weekStart->copy()->subWeeks(CurrentWeekPlanBuilder::HISTORY_WEEKS)->toDateString(),
+            $weekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS)->toDateString(),
             $weekStart->copy()->addDays(6)->toDateString(),
         );
 

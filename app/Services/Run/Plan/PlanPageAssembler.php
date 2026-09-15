@@ -135,7 +135,7 @@ final class PlanPageAssembler
     public function weeks(User $user, Carbon $today): array
     {
         $currentWeekStart = $this->currentWeekStart($today);
-        $rangeStart = $currentWeekStart->copy()->subWeeks(CurrentWeekPlanBuilder::HISTORY_WEEKS);
+        $rangeStart = $currentWeekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS);
         $rangeEnd = $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6);
 
         $sessions = PlannedSession::query()

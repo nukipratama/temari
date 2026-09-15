@@ -19,7 +19,13 @@ namespace App\Services\Run\Plan;
  * mutates stored rows.
  *
  * Redistribution is capped at {@see self::MAX_SCALE}: past that the week's
- * remaining volume is written off rather than crammed.
+ * remaining volume is written off rather than crammed. It is floored at
+ * {@see self::MIN_SCALE} in the other direction, so a week run ahead of its
+ * own menu still leaves real sessions on the days that remain.
+ *
+ * Nothing here crosses a week boundary: an over-run reshapes only the days
+ * left in the week it happened in, and the following week is built from its
+ * own arc position.
  */
 final class VolumeRedistributor
 {
@@ -30,6 +36,15 @@ final class VolumeRedistributor
      * prevent; volume past this cap is dropped rather than carried.
      */
     public const float MAX_SCALE = 1.35;
+
+    /**
+     * Floor on how far banked volume may shrink the days that remain.
+     * Reducing is deliberately harder than adding: an athlete who ran more
+     * than the menu asked for could previously have the rest of the week
+     * scaled to nothing, which turns one good day into an unplanned rest
+     * block. The asymmetry against {@see self::MAX_SCALE} is the point.
+     */
+    public const float MIN_SCALE = 0.7;
 
     /**
      * @param  array<string, float>  $eligibleDaysKm  date => original core km, for the week's remaining unpinned non-past training days
@@ -47,7 +62,7 @@ final class VolumeRedistributor
             return [];
         }
 
-        $scale = min(self::MAX_SCALE, max(0.0, $remainingTargetKm) / $originalTotalKm);
+        $scale = min(self::MAX_SCALE, max(self::MIN_SCALE, max(0.0, $remainingTargetKm) / $originalTotalKm));
 
         return array_fill_keys(array_keys($trainingDaysKm), $scale);
     }

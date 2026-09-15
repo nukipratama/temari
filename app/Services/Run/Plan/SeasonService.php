@@ -63,7 +63,7 @@ final readonly class SeasonService
     ) {
     }
 
-    public function ensureCurrent(User $user, ?Carbon $today = null): Season
+    public function ensureCurrent(User $user, Carbon $today): Season
     {
         [$today, $race, $current] = $this->currentContext($user, $today);
 
@@ -127,7 +127,7 @@ final readonly class SeasonService
      * a consumer (like the Profile page) that must not trigger the same
      * creation side effects a Plan page load does.
      */
-    public function peekCurrent(User $user, ?Carbon $today = null): ?Season
+    public function peekCurrent(User $user, Carbon $today): ?Season
     {
         [$today, $race, $current] = $this->currentContext($user, $today);
 
@@ -137,9 +137,9 @@ final readonly class SeasonService
     /**
      * @return array{0: Carbon, 1: ?RaceGoal, 2: ?Season}
      */
-    private function currentContext(User $user, ?Carbon $today): array
+    private function currentContext(User $user, Carbon $today): array
     {
-        $today = ($today ?? Carbon::today())->copy()->startOfDay();
+        $today = $today->copy()->startOfDay();
         $race = ($this->activeRace)($user->id);
         $current = $this->season->latest($user->id);
 

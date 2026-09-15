@@ -29,9 +29,6 @@ use LogicException;
  */
 final readonly class CurrentWeekPlanBuilder
 {
-    /** The trailing window both this builder and PlanPageAssembler read, so the week they share resolves to one multiplier. */
-    public const int HISTORY_WEEKS = 3;
-
     public function __construct(
         private TrainingBaseline $baseline,
         private TrainingLoad $trainingLoad,
@@ -51,7 +48,7 @@ final readonly class CurrentWeekPlanBuilder
     {
         $currentWeekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
         $currentWeekKey = $currentWeekStart->toDateString();
-        $rangeStart = $currentWeekStart->copy()->subWeeks(self::HISTORY_WEEKS);
+        $rangeStart = $currentWeekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS);
         $rangeEnd = $currentWeekStart->copy()->addDays(6);
 
         $sessions = ($this->plannedSessions)($user->id, $rangeStart->toDateString(), $rangeEnd->toDateString());

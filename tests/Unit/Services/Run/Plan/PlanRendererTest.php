@@ -10,6 +10,8 @@ use App\Enums\SessionType;
 use App\Models\Feedback;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Services\Run\Plan\ComplianceScorer;
+use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SegmentGenerator;
@@ -504,7 +506,7 @@ it('sessionDistanceKm reports what the generated segments add up to', function (
     );
 
     expect(PlanRenderer::sessionDistanceKm($segments, SessionType::Easy, true, 20.0, 1.0, INF, null))
-        ->toBe(SegmentGenerator::prescribedKm($segments));
+        ->toBe(SegmentGenerator::segmentSumKm($segments));
 });
 
 // An Interval day's reps are fixed-duration, so without paces nothing has a
@@ -521,7 +523,7 @@ it('sessionDistanceKm falls back to the volume-scaled budget when no segment car
         null,
     );
 
-    expect(SegmentGenerator::prescribedKm($segments))->toBeNull();
+    expect(SegmentGenerator::segmentSumKm($segments))->toBeNull();
 
     $budget = SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0, INF, null);
 
@@ -559,4 +561,41 @@ it('coreKmForSession sizes the week\'s primary easy day at the medium fraction, 
         ->toBe(SegmentGenerator::coreKmFor(SessionType::Easy, true, 20.0, 1.0, INF))
         ->and(PlanRenderer::coreKmForSession($laterEasy, 20.0, INF))
         ->toBe(SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0, INF));
+});
+
+/**
+ * Two classes each declared their own `HISTORY_WEEKS = 3` for the same
+ * trailing window, with nothing keeping them equal. The window belongs to the
+ * recompute that needs it, so it is declared here and read from here.
+ */
+it('declares the trailing window once, where the ramp recompute needs it', function (): void {
+    $constants = [];
+    foreach ([CurrentWeekPlanBuilder::class, ComplianceScorer::class] as $class) {
+        $constants = [...$constants, ...array_keys(new ReflectionClass($class)->getConstants())];
+    }
+
+    expect($constants)->not->toContain('HISTORY_WEEKS')
+        ->and(PlanRenderer::HISTORY_WEEKS)->toBe(3);
+});
+
+/**
+ * `mondayOf` in resources/js/lib/pace.ts reimplements this bucketing in local
+ * wall-clock Date arithmetic. Nothing asserted the two agree, so this table is
+ * the PHP half of the pair — its twin lives in resources/js/lib/pace.test.ts
+ * and asserts the same dates map to the same Mondays.
+ */
+it('buckets cross-boundary dates into the same Monday the frontend does', function (): void {
+    $expected = [
+        '2026-01-01' => '2025-12-29', // year boundary, Thursday
+        '2027-01-03' => '2026-12-28', // year boundary, Sunday
+        '2028-02-29' => '2028-02-28', // leap day
+        '2026-03-08' => '2026-03-02', // northern DST start
+        '2026-11-01' => '2026-10-26', // northern DST end
+        '2026-10-04' => '2026-09-28', // southern DST start
+        '2026-12-31' => '2026-12-28',
+    ];
+
+    foreach ($expected as $date => $monday) {
+        expect(Carbon::parse($date)->startOfWeek(Carbon::MONDAY)->toDateString())->toBe($monday, $date);
+    }
 });

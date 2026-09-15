@@ -37,10 +37,27 @@ it('caps how far missed volume may inflate the days that remain', function (): v
         ->and(VolumeRedistributor::MAX_SCALE)->toBeLessThan(4.0);
 });
 
-it('never scales below zero when the target is negative', function (): void {
+it('never scales below the floor when the target is negative', function (): void {
     $result = VolumeRedistributor::redistribute(['2026-08-11' => 15.0], -10.0);
 
-    expect($result['2026-08-11'])->toBe(0.0);
+    expect($result['2026-08-11'])->toBe(VolumeRedistributor::MIN_SCALE);
+});
+
+/**
+ * Reducing is harder than adding: an athlete who banks the week's volume
+ * early should still be given a real session, not a token one. The scale-up
+ * cap stays where it was, so the two are deliberately asymmetric.
+ */
+it('never cuts the days that remain below 70% of what they would otherwise ask', function (): void {
+    $eligible = ['2026-08-13' => 10.0, '2026-08-16' => 14.0];
+
+    foreach ([0.0, 1.0, 5.0, 12.0] as $overrunRemainder) {
+        foreach (VolumeRedistributor::redistribute($eligible, $overrunRemainder) as $scale) {
+            expect($scale)->toBeGreaterThanOrEqual(0.7);
+        }
+    }
+
+    expect(VolumeRedistributor::MIN_SCALE)->toBeLessThan(VolumeRedistributor::MAX_SCALE);
 });
 
 it('excludes a rest day (zero km) from the scaled result while scaling the rest', function (): void {
@@ -49,5 +66,5 @@ it('excludes a rest day (zero km) from the scaled result while scaling the rest'
     $result = VolumeRedistributor::redistribute($eligible, 5.0);
 
     expect($result)->not->toHaveKey('2026-08-11')
-        ->and($result['2026-08-13'])->toBe(0.5);
+        ->and($result['2026-08-13'])->toBe(VolumeRedistributor::MIN_SCALE);
 });

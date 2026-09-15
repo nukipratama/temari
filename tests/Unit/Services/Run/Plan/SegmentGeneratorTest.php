@@ -245,12 +245,12 @@ it('rounds a session\'s segment distances so they add up to the figure on the ca
 it('reports what an Interval day actually asks for, which its budget cannot always be', function (): void {
     // A whole number of fixed-duration reps rarely lands on an arbitrary
     // kilometre budget: this is quantisation, not a rounding slip, and it is
-    // why prescribedKm() exists rather than the day reporting coreKmFor().
+    // why segmentSumKm() exists rather than the day reporting coreKmFor().
     $paces = ['easy' => 450, 'marathon' => 408, 'threshold' => 378, 'interval' => 354];
     $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Build, null, false, 9.1, 1.08, INF, $paces);
 
     $budget = round(SegmentGenerator::coreKmFor(SessionType::Interval, false, 9.1, 1.08, INF) * 1.0, 1);
-    $asked = SegmentGenerator::prescribedKm($segments);
+    $asked = SegmentGenerator::segmentSumKm($segments);
 
     expect($asked)->not->toBeNull()
         ->and($asked)->not->toBe($budget)
@@ -266,7 +266,7 @@ it('reports a Tempo and an Easy day at exactly their budget', function (): void 
                 foreach ([SessionType::Tempo, SessionType::Easy, SessionType::Long] as $type) {
                     $segments = SegmentGenerator::generate($type, $phase, $raceDistanceM, false, $longRunKm, 1.0, INF, PACES);
 
-                    expect(SegmentGenerator::prescribedKm($segments))
+                    expect(SegmentGenerator::segmentSumKm($segments))
                         ->toBe(SegmentGenerator::coreKmFor($type, false, $longRunKm, 1.0, INF), "{$type->value} in {$phase->value}, {$label}, at {$longRunKm}");
                 }
             }
@@ -277,8 +277,8 @@ it('reports a Tempo and an Easy day at exactly their budget', function (): void 
 it('reports no distance at all when no VDOT estimate can size the day', function (): void {
     $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, null, false, 16.0, 1.0, INF, null);
 
-    expect(SegmentGenerator::prescribedKm($segments))->toBeNull()
-        ->and(SegmentGenerator::prescribedKm([]))->toBeNull();
+    expect(SegmentGenerator::segmentSumKm($segments))->toBeNull()
+        ->and(SegmentGenerator::segmentSumKm([]))->toBeNull();
 });
 
 it('leaves a bookend\'s distance null when no VDOT estimate can size it', function (): void {
@@ -337,4 +337,16 @@ it('never scales a race by a redistributed week, since the event is the distance
     $scaled = SegmentGenerator::generate(SessionType::Race, PlanPhase::Taper, 10_000.0, false, 16.0, 1.0, INF, PACES, 0.5);
 
     expect($scaled[0]->km)->toBe($full[0]->km);
+});
+
+/**
+ * The old name `prescribedKm()` collided with `planned_sessions.prescribed_km`
+ * — a persisted compliance denominator written once by ComplianceScorer —
+ * while this only ever sums the segments it is handed.
+ */
+it('sums the segments it is given rather than reading a stored prescription', function (): void {
+    $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, null, false, 16.0, 1.0, INF, PACES);
+
+    expect(SegmentGenerator::segmentSumKm($segments))
+        ->toBe(round(array_sum(array_map(fn ($segment): float => $segment->km ?? 0.0, $segments)), 1));
 });

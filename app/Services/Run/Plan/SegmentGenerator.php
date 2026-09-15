@@ -140,7 +140,7 @@ final class SegmentGenerator
      *
      * @param  list<SessionSegment>  $segments
      */
-    public static function prescribedKm(array $segments): ?float
+    public static function segmentSumKm(array $segments): ?float
     {
         if ($segments === []) {
             return null;

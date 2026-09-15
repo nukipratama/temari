@@ -55,7 +55,7 @@ final readonly class RestClampRecorder
         $sessions = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [
-                $currentWeekStart->copy()->subWeeks(CurrentWeekPlanBuilder::HISTORY_WEEKS)->toDateString(),
+                $currentWeekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS)->toDateString(),
                 $currentWeekStart->copy()->addDays(6)->toDateString(),
             ])
             ->orderBy('date')

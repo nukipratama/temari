@@ -32,6 +32,16 @@ use LogicException;
 final class PlanRenderer
 {
     /**
+     * Trailing weeks every caller of {@see self::weekPhasesAndMultipliers()}
+     * must load around the weeks it actually wants. The recompute fallback
+     * reads a week's Build ramp off its neighbours, so a window shorter than
+     * this reads a week deep in a ramp as an isolated week 1. Declared once
+     * here rather than per caller: nothing enforced that two copies stayed
+     * equal.
+     */
+    public const int HISTORY_WEEKS = 3;
+
+    /**
      * $sessionsByWeek is keyed by week_start (Y-m-d), any order, each value
      * itself a Collection<int, PlannedSession> — the value type is left as
      * `mixed` rather than nested-Collection-typed, since groupBy()'s
@@ -191,7 +201,7 @@ final class PlanRenderer
         ?float $raceDistanceM,
         float $volumeScale = 1.0,
     ): float {
-        return SegmentGenerator::prescribedKm($segments)
+        return SegmentGenerator::segmentSumKm($segments)
             ?? round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM) * $volumeScale, 1);
     }
 
