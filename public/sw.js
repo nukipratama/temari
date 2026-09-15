@@ -21,10 +21,8 @@
 const OFFLINE_CACHE = 'temari-offline-v7';
 const OFFLINE_URL = '/offline.html';
 
-// The inbox unread count carried by the last push. The badge counts inbox rows,
-// not tray entries, so this is preferred over the tray whenever a push has told
-// us the real number; the tray is the fallback before the first push of a
-// worker's life.
+// Inbox unread count from the last push. The badge counts inbox rows, so the
+// tray is only the fallback before this worker has seen a push.
 let lastKnownUnread = null;
 
 async function syncBadge() {

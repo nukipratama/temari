@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\NotificationPreference;
+use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\MorningBriefingNotification;
 use App\Services\AI\AnalysisStatus;
@@ -129,6 +130,24 @@ it('skips yesterday\'s briefing rather than re-pushing it', function (): void {
     $this->artisan('briefing:morning-push')->assertSuccessful();
 
     Notification::assertNothingSent();
+});
+
+// The briefing reaches Telegram as well as the lock screen, so the sweep has to
+// select an athlete whose only wired channel is Telegram; a push-subscription
+// scope would queue nothing for them.
+it('pushes to a Telegram-only athlete in the bucket', function (): void {
+    Notification::fake();
+    config(['services.telegram.bot_token' => 'test-bot-token']);
+
+    $user = morningAthlete();
+    $user->pushSubscriptions()->delete();
+    TelegramConnection::factory()->for($user)->create();
+
+    $this->artisan('briefing:morning-push')
+        ->expectsOutputToContain('Pushed the morning briefing to 1 athletes.')
+        ->assertSuccessful();
+
+    Notification::assertSentTo($user, MorningBriefingNotification::class);
 });
 
 it('skips an athlete with no push subscription', function (): void {

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Enums\NotificationKind;
-use App\Models\InboxNotification;
 use App\Models\User;
+use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
@@ -28,6 +28,7 @@ use NotificationChannels\WebPush\WebPushMessage;
  */
 class StravaDisconnectedNotification extends Notification implements ShouldQueue
 {
+    use AppendsUnreadBadge;
     use Queueable;
 
     public int $tries = 3;
@@ -75,7 +76,7 @@ class StravaDisconnectedNotification extends Notification implements ShouldQueue
             ->title($this->title())
             ->body($this->body())
             ->icon('/icon-192.png')
-            ->data(['url' => $this->url(), 'unread' => InboxNotification::unreadCountFor($notifiable->id)]);
+            ->data($this->withUnreadBadge(['url' => $this->url()], $notifiable->id));
     }
 
     private function title(): string

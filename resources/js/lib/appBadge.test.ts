@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { syncAppBadge, syncAppBadgeOnVisible } from './appBadge';
+import {
+    syncAppBadge,
+    syncAppBadgeOnVisible,
+    unreadCountFromProps,
+} from './appBadge';
 
 function setVisibility(state: DocumentVisibilityState) {
     Object.defineProperty(document, 'visibilityState', {
@@ -82,5 +86,34 @@ describe('syncAppBadgeOnVisible', () => {
         await Promise.resolve();
         expect(setAppBadge).not.toHaveBeenCalled();
         expect(clearAppBadge).not.toHaveBeenCalled();
+    });
+
+    // Registration must not itself apply a stale default: app.tsx calls this
+    // before the real unread count is known from the first Inertia page, and an
+    // eager apply here would clear a genuinely non-zero badge until that lands.
+    it('does not apply anything at registration time, only on a later event', async () => {
+        setVisibility('visible');
+        const { setAppBadge, clearAppBadge } = stubBadge();
+
+        syncAppBadge(5);
+        setAppBadge.mockClear();
+        clearAppBadge.mockClear();
+
+        syncAppBadgeOnVisible();
+
+        await Promise.resolve();
+        expect(setAppBadge).not.toHaveBeenCalled();
+        expect(clearAppBadge).not.toHaveBeenCalled();
+    });
+});
+
+describe('unreadCountFromProps', () => {
+    it('reads the unreadNotifications prop', () => {
+        expect(unreadCountFromProps({ unreadNotifications: 5 })).toBe(5);
+    });
+
+    it('defaults to 0 when the prop is absent or not a number', () => {
+        expect(unreadCountFromProps({})).toBe(0);
+        expect(unreadCountFromProps({ unreadNotifications: '5' })).toBe(0);
     });
 });

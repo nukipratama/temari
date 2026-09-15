@@ -314,7 +314,7 @@ it('stravaBudgetLow warns when under a tenth of the shared 15-minute budget is l
         'Strava reads are nearly spent: 12 of 200 left in this 15-minute window. Background hydration backs off first.',
     );
 
-    app(MaintainerAlerter::class)->stravaBudgetLow(12);
+    app(MaintainerAlerter::class)->stravaBudgetLow(12, 200);
 });
 
 it('stravaBudgetLow stays quiet while the budget is healthy', function (): void {
@@ -323,7 +323,7 @@ it('stravaBudgetLow stays quiet while the budget is healthy', function (): void 
 
     $client->shouldNotReceive('sendMessage');
 
-    app(MaintainerAlerter::class)->stravaBudgetLow(20);
+    app(MaintainerAlerter::class)->stravaBudgetLow(20, 200);
 });
 
 // The Strava limit is per client app, so the dedupe key is global: every
@@ -336,11 +336,11 @@ it('stravaBudgetLow pushes once per 15-minute window, then again in the next one
 
     Carbon::setTestNow('2026-09-15 10:01:00');
     $alerter = app(MaintainerAlerter::class);
-    $alerter->stravaBudgetLow(5);
-    $alerter->stravaBudgetLow(4);
+    $alerter->stravaBudgetLow(5, 200);
+    $alerter->stravaBudgetLow(4, 200);
 
     Carbon::setTestNow('2026-09-15 10:16:00');
-    $alerter->stravaBudgetLow(3);
+    $alerter->stravaBudgetLow(3, 200);
 
     Carbon::setTestNow();
 });

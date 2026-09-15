@@ -34,13 +34,14 @@ beforeEach(function (): void {
     $this->client->shouldReceive('rateLimitRemaining')->andReturn(['15min' => 200, 'daily' => 2000]);
 });
 
-function orchestrator(ActivityFetcher|MockInterface $fetcher): SyncOrchestrator
+function orchestrator(ActivityFetcher|MockInterface $fetcher, ?MaintainerAlerter $alerter = null): SyncOrchestrator
 {
     return new SyncOrchestrator(
         $fetcher,
         test()->client,
         app(SummaryIngest::class),
         app(WeeklyAggregator::class),
+        $alerter ?? app(MaintainerAlerter::class),
     );
 }
 
@@ -325,11 +326,27 @@ it('offers the shared 15-minute read budget to the maintainer alerter after a sy
     StravaConnection::factory()->for($user)->create();
 
     $alerter = Mockery::mock(MaintainerAlerter::class);
-    app()->instance(MaintainerAlerter::class, $alerter);
-    $alerter->shouldReceive('stravaBudgetLow')->once()->with(200);
+    $alerter->shouldReceive('stravaBudgetLow')->once()->with(200, StravaClient::RATE_LIMIT_15MIN_MAX);
 
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([10]));
 
-    orchestrator($fetcher)->syncUser($user);
+    orchestrator($fetcher, $alerter)->syncUser($user);
+});
+
+// An exhausted budget is exactly what a failing sync tends to mean, so the
+// report reads the live limiter rather than the headroom the log row keeps.
+it('offers the shared budget after a failed sync too', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('stravaBudgetLow')->once()->with(200, StravaClient::RATE_LIMIT_15MIN_MAX);
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldReceive('fetchNewSummaries')->andThrow(new RuntimeException('boom'));
+
+    expect(fn () => orchestrator($fetcher, $alerter)->syncUser($user))->toThrow(RuntimeException::class);
+
+    expect(StravaSyncLog::query()->where('user_id', $user->id)->value('rate_limit_15min_remaining'))->toBeNull();
 });

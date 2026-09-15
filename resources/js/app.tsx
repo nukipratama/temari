@@ -4,7 +4,11 @@ import { createInertiaApp, router } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
 
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { syncAppBadge, syncAppBadgeOnVisible } from '@/lib/appBadge';
+import {
+    syncAppBadge,
+    syncAppBadgeOnVisible,
+    unreadCountFromProps,
+} from '@/lib/appBadge';
 import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
 import { registerServiceWorker } from '@/lib/registerServiceWorker';
 
@@ -15,15 +19,10 @@ const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'Temari';
 registerServiceWorker();
 syncAppBadgeOnVisible();
 
-function unreadFrom(props: Record<string, unknown>): number {
-    const unread = props.unreadNotifications;
-    return typeof unread === 'number' ? unread : 0;
-}
-
 // The app-icon badge follows the inbox: every visit ships the unread count, so
 // reading the inbox clears the badge on its next partial reload.
 router.on('navigate', (event) => {
-    syncAppBadge(unreadFrom(event.detail.page.props));
+    syncAppBadge(unreadCountFromProps(event.detail.page.props));
 });
 
 installGlobalErrorReporting();
@@ -89,7 +88,7 @@ void createInertiaApp({
                 <App {...props} />
             </ErrorBoundary>,
         );
-        syncAppBadge(unreadFrom(props.initialPage.props));
+        syncAppBadge(unreadCountFromProps(props.initialPage.props));
         warmTabChunks();
     },
     // No progress bar at all. Deferred props paint a shell immediately and the

@@ -32,6 +32,7 @@ class SyncOrchestrator
         private readonly StravaClient $client,
         private readonly SummaryIngest $summaryIngest,
         private readonly WeeklyAggregator $weeklyAggregator,
+        private readonly MaintainerAlerter $alerter,
         private readonly ?AppConfig $config = null,
     ) {
     }
@@ -195,14 +196,14 @@ class SyncOrchestrator
 
     private function logSync(int $userId, string $status, int $activitiesSynced, int $apiCalls = 0, ?string $error = null): void
     {
-        // Rate-limit headroom is only meaningful after a successful API call.
-        $remaining = $error === null ? $this->client->rateLimitRemaining() : null;
+        $remaining = $this->client->rateLimitRemaining();
 
-        StravaSyncLog::log($userId, $status, $activitiesSynced, $apiCalls, $error, $remaining);
+        // Rate-limit headroom is only meaningful on the log row after a successful
+        // API call; the shared budget itself is worth reporting either way, and an
+        // exhausted one is exactly what an errored sync tends to mean.
+        StravaSyncLog::log($userId, $status, $activitiesSynced, $apiCalls, $error, $error === null ? $remaining : null);
 
-        if ($remaining !== null) {
-            app(MaintainerAlerter::class)->stravaBudgetLow($remaining['15min']);
-        }
+        $this->alerter->stravaBudgetLow($remaining['15min'], StravaClient::RATE_LIMIT_15MIN_MAX);
     }
 
     /**

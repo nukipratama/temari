@@ -83,7 +83,7 @@ A missing preference row still means all-on for both axes.
 
 Two Telegram paths deliberately bypass `ChannelRouter`, and the Settings copy says so rather than letting the toggle overclaim:
 
-- **Maintainer alerts** ([MaintainerAlerter](../../app/Services/AI/MaintainerAlerter.php)) — dead-lettered AI blocks and generation pause/resume transitions, sent straight to every `is_admin` user's chat. These are operational, not product, and the service is Telegram-only: honouring the mute would not reroute them, it would delete them, and the failure they exist to catch is the one you otherwise notice days late. Pinned by a test.
+- **Maintainer alerts** ([MaintainerAlerter](../../app/Services/AI/MaintainerAlerter.php)) — dead-lettered AI blocks, generation pause/resume transitions, the cost and rate-limit alerts ([[admin-cost-and-rate-limit-alerts]]), sent straight to every `is_admin` user's chat. These are operational, not product, and the service is Telegram-only: honouring the mute would not reroute them, it would delete them, and the failure they exist to catch is the one you otherwise notice days late. Pinned by a test.
 - **Bot replies** ([HandleTelegramUpdateJob](../../app/Jobs/Telegram/HandleTelegramUpdateJob.php)) — the responses to `/start` and `/stop`. Replying to a message the user just sent is not a notification, and muting it would make the bot look broken.
 
 Everything else routes through `ChannelRouter`.
@@ -92,7 +92,7 @@ Everything else routes through `ChannelRouter`.
 
 "Where can this user be reached" used to be answered in six places with three different answers — only `AnalysisReadyNotification` checked that a Telegram bot token was configured, so the other five would route to a channel that could not possibly send. [ChannelRouter](../../app/Services/Notifications/ChannelRouter.php) now owns it, and unifying them applied that check everywhere.
 
-It exposes both a per-user resolution and a **query scope**, because [StreakRemindCommand](../../app/Console/Commands/Gamification/StreakRemindCommand.php) selects users in bulk. Both answer the *outbound* question — `canReach()` is deliberately not `channelsFor() !== []`, which the always-on inbox would make trivially true — so a mute-aware scope still keeps the Saturday nudge to users it can reach in time. A test asserts the scope and the per-user check never disagree.
+It exposes both a per-user resolution and a **query scope**, because [StreakRemindCommand](../../app/Console/Commands/Gamification/StreakRemindCommand.php) and [MorningBriefingPushCommand](../../app/Console/Commands/Notifications/MorningBriefingPushCommand.php) select users in bulk. Both answer the *outbound* question — `canReach()` is deliberately not `channelsFor() !== []`, which the always-on inbox would make trivially true — so a mute-aware scope still keeps the Saturday nudge to users it can reach in time. A test asserts the scope and the per-user check never disagree.
 
 The shared Inertia props `telegramConnected` / `webPushSubscribed` route through it too, so they mean "wired **and** un-muted"; `unreadNotifications` sits alongside them and asks no reachability question, because the inbox always delivers. A muted channel would otherwise leave the manual send pill looking live while the send goes nowhere.
 

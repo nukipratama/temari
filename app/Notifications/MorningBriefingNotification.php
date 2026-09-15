@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\AI\Analysis;
-use App\Models\InboxNotification;
 use App\Models\User;
+use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
 use Illuminate\Bus\Queueable;
@@ -29,6 +29,7 @@ use NotificationChannels\WebPush\WebPushMessage;
  */
 class MorningBriefingNotification extends Notification implements ShouldQueue
 {
+    use AppendsUnreadBadge;
     use Queueable;
 
     public int $tries = 3;
@@ -59,7 +60,7 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
     {
         return new TelegramMessage(
             text: "your briefing for today\n\n".trim((string) $this->briefing->content)."\n\nOpen Temari: ".route('dashboard'),
-            deliveryKey: $this->briefing->id,
+            deliveryKey: $this->deliveryKey(),
         );
     }
 
@@ -69,7 +70,7 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
             ->title('your briefing for today')
             ->body(trim((string) $this->briefing->content))
             ->icon('/icon-192.png')
-            ->data(['url' => route('dashboard'), 'unread' => InboxNotification::unreadCountFor($notifiable->id)])
+            ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable->id))
             // High urgency: the whole point is landing at the moment they are
             // about to head out, which a deferred push misses entirely.
             ->options(['urgency' => 'high']);

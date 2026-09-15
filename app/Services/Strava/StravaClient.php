@@ -37,7 +37,7 @@ class StravaClient
     // (200 / 15min, 2000 / day), not the lower 100 / 1000 default the public
     // docs quote; they bind before the Overall limits (400 / 4000) because all
     // of our calls are reads.
-    private const int RATE_LIMIT_15MIN_MAX = 200;
+    public const int RATE_LIMIT_15MIN_MAX = 200;
 
     private const int RATE_LIMIT_15MIN_DECAY = 15 * 60;
 

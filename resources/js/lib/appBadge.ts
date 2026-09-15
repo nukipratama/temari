@@ -48,5 +48,10 @@ export function syncAppBadgeOnVisible(): void {
 
     document.addEventListener('visibilitychange', sync);
     globalThis.addEventListener('focus', sync);
-    sync();
+}
+
+/** Reads the `unreadNotifications` shared prop off an Inertia page, defaulting to 0 when absent or malformed. */
+export function unreadCountFromProps(props: Record<string, unknown>): number {
+    const unread = props.unreadNotifications;
+    return typeof unread === 'number' ? unread : 0;
 }

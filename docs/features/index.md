@@ -39,6 +39,7 @@ _Systems_
 - [[onboarding]] — first-connect wizard and the DB-backed gate
 - [[telegram-notifications]] — link a Telegram account, the master switch and channel mutes, post-run + weekly-recap push
 - [[notification-inbox]] — /inbox, the durable record of what Temari sent, with celebration replay
+- [[admin-cost-and-rate-limit-alerts]] — the maintainer-facing Telegram alerts for LLM spend and the shared Strava read budget
 - [[streak-reminders]] — Saturday nudges for at-risk weekly streaks, on any wired channel
 - [[temari-mascot]] — the face and the brand mark, the app's whole identity art
 - [[feedback]] — "this is wrong" on a plan day or a narration, written to a table the owner reads in tinker

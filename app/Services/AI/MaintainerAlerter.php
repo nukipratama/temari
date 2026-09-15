@@ -58,9 +58,6 @@ class MaintainerAlerter
 
     private const string TOTAL_CEILING_WARNING_CACHE_KEY = 'ai.cost_ceiling.total_warning_cooldown';
 
-    /** Strava's per-client 15-minute read budget, the pool every athlete's sync shares. */
-    private const int STRAVA_15MIN_BUDGET = 200;
-
     private const float STRAVA_BUDGET_LOW_FRACTION = 0.1;
 
     private const int STRAVA_BUDGET_WINDOW_SECONDS = 900;
@@ -188,14 +185,14 @@ class MaintainerAlerter
      */
     public function meteringFailed(string $exceptionClass, ?int $userId, string $kind, ?string $model): void
     {
-        if (! Cache::add(self::METERING_ALERT_COOLDOWN_CACHE_KEY, true, self::METERING_ALERT_COOLDOWN_SECONDS)) {
-            return;
-        }
-
         $user = $userId !== null ? (string) $userId : 'unknown';
         $modelLabel = $model ?? 'unknown';
 
-        $this->broadcast("Token usage metering failed ({$exceptionClass}) for user {$user}, kind {$kind}, model {$modelLabel}. The cost ceiling is under-counting spend until this is fixed.");
+        $this->broadcastOnce(
+            self::METERING_ALERT_COOLDOWN_CACHE_KEY,
+            self::METERING_ALERT_COOLDOWN_SECONDS,
+            "Token usage metering failed ({$exceptionClass}) for user {$user}, kind {$kind}, model {$modelLabel}. The cost ceiling is under-counting spend until this is fixed.",
+        );
     }
 
     /**
@@ -205,18 +202,18 @@ class MaintainerAlerter
      */
     public function totalCeilingReached(float $todayCost, float $ceiling, int $athletes): void
     {
-        if (! Cache::add(self::TOTAL_CEILING_ALERT_COOLDOWN_CACHE_KEY, true, self::TOTAL_CEILING_ALERT_COOLDOWN_SECONDS)) {
-            return;
-        }
-
         $degraded = $athletes === 1 ? '1 athlete is' : "{$athletes} athletes are";
 
-        $this->broadcast(sprintf(
-            'App-wide AI spend passed the daily ceiling: $%.2f of $%.2f. %s now served rule-based until midnight.',
-            $todayCost,
-            $ceiling,
-            $degraded,
-        ));
+        $this->broadcastOnce(
+            self::TOTAL_CEILING_ALERT_COOLDOWN_CACHE_KEY,
+            self::TOTAL_CEILING_ALERT_COOLDOWN_SECONDS,
+            sprintf(
+                'App-wide AI spend passed the daily ceiling: $%.2f of $%.2f. %s now served rule-based until midnight.',
+                $todayCost,
+                $ceiling,
+                $degraded,
+            ),
+        );
     }
 
     /**
@@ -229,11 +226,7 @@ class MaintainerAlerter
     {
         $key = 'ai.cost_ceiling.user_alert:'.Carbon::today()->toDateString().':'.$userId;
 
-        if (! Cache::add($key, true, 86_400)) {
-            return;
-        }
-
-        $this->broadcast(sprintf(
+        $this->broadcastOnce($key, 86_400, sprintf(
             'Athlete %d passed their daily AI slice: $%.2f of $%.2f. Their narration is served rule-based until midnight.',
             $userId,
             $todayCost,
@@ -254,16 +247,16 @@ class MaintainerAlerter
             return;
         }
 
-        if (! Cache::add(self::TOTAL_CEILING_WARNING_CACHE_KEY, true, self::TOTAL_CEILING_WARNING_COOLDOWN_SECONDS)) {
-            return;
-        }
-
-        $this->broadcast(sprintf(
-            'App-wide AI spend is at $%.2f of the $%.2f daily ceiling (%d%%). Past it every athlete is served rule-based.',
-            $todayCost,
-            $ceiling,
-            (int) round($todayCost / $ceiling * 100),
-        ));
+        $this->broadcastOnce(
+            self::TOTAL_CEILING_WARNING_CACHE_KEY,
+            self::TOTAL_CEILING_WARNING_COOLDOWN_SECONDS,
+            sprintf(
+                'App-wide AI spend is at $%.2f of the $%.2f daily ceiling (%d%%). Past it every athlete is served rule-based.',
+                $todayCost,
+                $ceiling,
+                (int) round($todayCost / $ceiling * 100),
+            ),
+        );
     }
 
     /**
@@ -272,23 +265,19 @@ class MaintainerAlerter
      * threshold and the dedupe key are global: one push per window covers every
      * athlete's sync, and the next window may warn again.
      */
-    public function stravaBudgetLow(int $remaining): void
+    public function stravaBudgetLow(int $remaining, int $budget): void
     {
-        if ($remaining >= self::STRAVA_15MIN_BUDGET * self::STRAVA_BUDGET_LOW_FRACTION) {
+        if ($remaining >= $budget * self::STRAVA_BUDGET_LOW_FRACTION) {
             return;
         }
 
         $now = Carbon::now();
         $window = $now->format('Y-m-d-H').':'.intdiv($now->minute, 15);
 
-        if (! Cache::add('strava.rate_limit.budget_alert:'.$window, true, self::STRAVA_BUDGET_WINDOW_SECONDS)) {
-            return;
-        }
-
-        $this->broadcast(sprintf(
+        $this->broadcastOnce('strava.rate_limit.budget_alert:'.$window, self::STRAVA_BUDGET_WINDOW_SECONDS, sprintf(
             'Strava reads are nearly spent: %d of %d left in this 15-minute window. Background hydration backs off first.',
             $remaining,
-            self::STRAVA_15MIN_BUDGET,
+            $budget,
         ));
     }
 
@@ -341,6 +330,16 @@ class MaintainerAlerter
             null => 'Temari is narrating again, the pause is over.',
             default => "Temari stopped narrating: {$reason}.",
         };
+    }
+
+    /** Broadcasts $message the first time $key is claimed within $ttl seconds, and no-ops on every repeat until the window lapses. */
+    private function broadcastOnce(string $key, int $ttl, string $message): void
+    {
+        if (! Cache::add($key, true, $ttl)) {
+            return;
+        }
+
+        $this->broadcast($message);
     }
 
     /** Send $message to every admin's active Telegram chat; no-op when unconfigured. */
