@@ -266,3 +266,38 @@ it('reports the km it renders, so a clamped today cannot disagree with the headl
 
     Carbon::setTestNow();
 });
+
+/**
+ * A Saturday signup, backfill still landing: the first stored week holds Sat and
+ * Sun alone, and the runs behind it sit earlier in the same calendar week. The
+ * week card's own total covers those two rows and nothing else.
+ */
+it('totals the partial first week of a Saturday signup, not the runs behind it', function (): void {
+    Carbon::setTestNow('2026-05-16 09:00:00');
+    $user = User::factory()->create();
+
+    foreach (['2026-05-16', '2026-05-17'] as $date) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $date,
+            'phase' => PlanPhase::Base,
+            'session_type' => SessionType::Easy,
+        ]);
+    }
+    seedWeekOfSessions($user, Carbon::parse('2026-05-18'));
+
+    foreach (['2026-05-11', '2026-05-12', '2026-05-13'] as $date) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => Carbon::parse($date.' 06:00:00'),
+            'distance' => 10000,
+        ]);
+    }
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+
+    expect(array_column($result['days'], 'date'))->toBe(['2026-05-16', '2026-05-17'])
+        ->and($result['sessions_this_week'])->toBe(2)
+        ->and($result['planned_km_this_week'])->toBe(round(array_sum(array_column($result['days'], 'distance_km')), 1));
+
+    Carbon::setTestNow();
+});

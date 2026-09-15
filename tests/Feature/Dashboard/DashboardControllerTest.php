@@ -79,7 +79,7 @@ it('renders the week snapshot and flags the runs when the user has training-load
     }
 
     WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->toDateString(),
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
         'distance_km' => 35.0,
         'runs' => 4,
     ]);
@@ -89,7 +89,7 @@ it('renders the week snapshot and flags the runs when the user has training-load
         ->assertInertia(fn (Assert $page) => $page
             ->component('Home')
             ->missing('load')
-            ->has('snapshot')
+            ->where('snapshot.distance_km', 35)
             ->where('hasRuns', true));
 
     Carbon::setTestNow();
@@ -97,9 +97,10 @@ it('renders the week snapshot and flags the runs when the user has training-load
 
 /**
  * `snapshot` is a single row — `TrainingLoadCard` takes one `WeeklySnapshot | null`.
- * The read used to pull the newest twelve and throw eleven away.
+ * The read used to pull the newest twelve and throw eleven away. The row it
+ * keeps is the current week's own, never a trailing one.
  */
-it('reads the weekly snapshots once and shows the newest', function (): void {
+it('reads the weekly snapshots once and shows this week\'s', function (): void {
     $user = User::factory()->create();
 
     foreach (range(1, 14) as $weeksAgo) {
@@ -108,7 +109,8 @@ it('reads the weekly snapshots once and shows the newest', function (): void {
         ]);
     }
 
-    $newest = Carbon::today()->subWeek()->toDateString();
+    $thisWeek = Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString();
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => $thisWeek]);
 
     $queries = [];
     DB::listen(function ($query) use (&$queries): void {
@@ -118,7 +120,7 @@ it('reads the weekly snapshots once and shows the newest', function (): void {
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('snapshot.week_ending', $newest));
+            ->where('snapshot.week_ending', $thisWeek));
 
     // Narrowed to the hydrating read; the briefing runs its own projection
     // (`select week_ending ... and runs > ?`) over the same table.
@@ -201,7 +203,9 @@ it('still returns every dashboard prop on a full page load', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
-    WeeklySnapshot::factory()->for($user)->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+    ]);
 
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
@@ -377,4 +381,47 @@ it('tells Home this is the athlete\'s first briefing, until one has been narrate
 
     $this->actingAs($user)->get('/')
         ->assertInertia(fn (Assert $page) => $page->where('briefing.firstRead', false)->etc());
+});
+
+/**
+ * A Saturday signup whose backfill has written the weeks behind it but not the
+ * open one. The week card reads `snapshot.distance_km` as this week's actual
+ * against `weekPlan.planned_km_this_week`, so a trailing row would state a
+ * different week's total as this week's.
+ */
+it('ships no week snapshot while the current week has none yet', function (): void {
+    Carbon::setTestNow('2026-05-16 09:00:00');
+    $user = User::factory()->create();
+
+    foreach (['2026-05-10', '2026-05-03'] as $weekEnding) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => $weekEnding,
+            'distance_km' => 42.0,
+        ]);
+    }
+
+    foreach (['2026-05-16', '2026-05-17'] as $date) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $date,
+            'session_type' => SessionType::Easy,
+        ]);
+    }
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->where('snapshot', null));
+});
+
+it('ships the current week snapshot once the open week has one', function (): void {
+    Carbon::setTestNow('2026-05-16 09:00:00');
+    $user = User::factory()->create();
+
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'distance_km' => 42.0]);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'distance_km' => 12.0]);
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('snapshot.week_ending', '2026-05-17')
+            ->where('snapshot.distance_km', 12));
 });
