@@ -21,6 +21,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RecapPeriod;
+use App\Services\AI\ServedBy;
 use App\Services\Run\Plan\Periodizer;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -290,4 +291,21 @@ it('applies the edge states at most once across re-runs', function (): void {
     $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
 
     expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())->toBe($first);
+});
+
+it('stamps every seeded narration rule-based, never llm', function (): void {
+    $this->artisan('demo:seed')->assertSuccessful();
+
+    expect(Analysis::query()->where('served_by', ServedBy::Llm)->count())
+        ->toBe(0, 'The demo seed never calls the LLM, so no demo row may claim it did.')
+        ->and(Analysis::query()->where('served_by', ServedBy::RuleBased)->count())
+        ->toBeGreaterThan(0);
+});
+
+it('clears the producer on a row whose content the edge states blank', function (): void {
+    $this->artisan('demo:seed')->assertSuccessful();
+    $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
+
+    expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->whereNotNull('served_by')->count())
+        ->toBe(0);
 });
