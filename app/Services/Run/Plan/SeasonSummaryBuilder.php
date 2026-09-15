@@ -77,7 +77,7 @@ final readonly class SeasonSummaryBuilder
         }
 
         $phases = array_map(fn (array $w): PlanPhase => $w['phase'], $weeks);
-        $multipliers = PhaseSchedule::volumeMultipliers($phases);
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, $isSelfScaled);
         $baselineData = $this->baseline->forUser($user, $season->starts_at);
 
         $weekEndings = array_map(

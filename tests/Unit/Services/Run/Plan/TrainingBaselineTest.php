@@ -304,3 +304,41 @@ it('real logged behavior wins over an experience_level seed once any history exi
 
     expect($this->baseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(22.0);
 });
+
+/**
+ * The floor divides race distance by the biggest multiplier the arc reaches,
+ * to land the long run ON the race distance at the arc's own peak. A taper
+ * multiplier is a REDUCTION, so dividing by it inflated the baseline instead:
+ * an all-taper arc divided 10 km by its own taper figure and floored a 20
+ * km/week athlete at half their week, above what a full arc with a real ramp
+ * asks of them. Less runway must never buy a bigger long run.
+ */
+it('prescribes less for a race one week out than for one twelve weeks out', function (): void {
+    $withRaceOn = function (string $raceDate): float {
+        $user = User::factory()->create();
+        weeksOf($user, array_fill(0, 6, 20.0));
+        RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => $raceDate]);
+        Season::factory()->for($user)->create([
+            'anchor_weekly_volume_km' => 20.0,
+            'starts_at' => '2026-08-10',
+            'ends_at' => $raceDate,
+        ]);
+
+        return $this->baseline->forUser($user, Carbon::today())['long_run_km'];
+    };
+
+    expect($withRaceOn('2026-08-16'))->toBeLessThan($withRaceOn('2026-11-01'));
+});
+
+it('applies no race-distance floor on a taper-only arc with nothing to ramp', function (): void {
+    $user = User::factory()->create();
+    weeksOf($user, array_fill(0, 6, 26.0));
+    RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2026-08-16']);
+    Season::factory()->for($user)->create([
+        'anchor_weekly_volume_km' => 26.0,
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2026-08-16',
+    ]);
+
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.1);
+});

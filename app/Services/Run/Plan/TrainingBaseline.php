@@ -298,6 +298,13 @@ final readonly class TrainingBaseline
      * ramp, not by being handed a 10% jump in week one. An arc too short or
      * too flat to hold a ramp simply gets a smaller step — 0.0 when there is
      * no race, no season, or a marathon-distance goal.
+     *
+     * Only a Build or Peak week can be that ramp's high-water mark. Taper and
+     * Deload multipliers are reductions, so dividing by one INFLATED the
+     * baseline: an arc close enough to race day to be all taper divided by
+     * 0.55 and asked for a bigger long run than a full arc does. An arc
+     * holding neither Build nor Peak has no ramp to arrive along, so it gets
+     * no floor at all.
      */
     private function raceDistanceFloorKm(?RaceGoal $race, ?Season $season): float
     {
@@ -311,11 +318,15 @@ final readonly class TrainingBaseline
         );
 
         $multipliers = PhaseSchedule::volumeMultipliers($phases);
-        if ($multipliers === []) {
+        $rampMultipliers = array_values(array_intersect_key(
+            $multipliers,
+            array_filter($phases, static fn (PlanPhase $phase): bool => in_array($phase, [PlanPhase::Build, PlanPhase::Peak], true)),
+        ));
+        if ($rampMultipliers === []) {
             return 0.0;
         }
 
-        return ceil((float) $race->distance_m / 1000.0 / max($multipliers) * 10) / 10;
+        return ceil((float) $race->distance_m / 1000.0 / max($rampMultipliers) * 10) / 10;
     }
 
     private static function longRunShare(float $weeklyVolumeKm): float

@@ -204,7 +204,7 @@ final readonly class SeasonService
         $weekCount = count($weeks);
 
         $phases = array_map(fn (array $w): PlanPhase => $w['phase'], $weeks);
-        $multipliers = PhaseSchedule::volumeMultipliers($phases);
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, $race === null);
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
 
         $qualityTotal = 0;

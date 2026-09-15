@@ -45,6 +45,15 @@ final class PhaseSchedule
     /** Weekly compounding ramp during Build, the midpoint of the 5-10% "10% rule" range. */
     private const float BUILD_WEEKLY_RAMP = 1.075;
 
+    /**
+     * Ceiling on where the compounding {@see self::BUILD_WEEKLY_RAMP} may
+     * reach. The ramp is a weekly rate, not a destination, so an arc long
+     * enough kept multiplying it: 1.44 at 16 weeks, 1.54 at 20, 3.42 at 52.
+     * A season is a bounded block of training, and no block asks an athlete
+     * for 40% more than its own anchor.
+     */
+    private const float MAX_BUILD_MULTIPLIER = 1.4;
+
     /** Peak's long run sits slightly below Build's peak volume. */
     private const float PEAK_VOLUME_FRACTION = 0.92;
 
@@ -155,10 +164,16 @@ final class PhaseSchedule
      * (generation) or a sequence read back from stored rows (render), so a
      * render-time recompute never drifts from what was actually generated.
      *
+     * A `$selfScaled` arc has no deadline to ramp toward, so it holds flat at
+     * 1.0 and only dips for its deload weeks. Its baseline already tracks the
+     * athlete's real trailing volume, so ramping on top of it double-counted
+     * the same growth and prescribed 2.75x actual volume at 20 weeks, 4.91x at
+     * 30. See `docs/decisions/a-goalless-arc-does-not-ramp.md`.
+     *
      * @param  list<PlanPhase>  $phases
      * @return list<float>
      */
-    public static function volumeMultipliers(array $phases): array
+    public static function volumeMultipliers(array $phases, bool $selfScaled = false): array
     {
         $result = [];
         // The ramp counts BUILD WEEKS, not position within a contiguous run: a
@@ -176,12 +191,12 @@ final class PhaseSchedule
                 $runLength++;
             }
 
-            $buildLevel = $buildWeeks === 0 ? 1.0 : self::BUILD_WEEKLY_RAMP ** ($buildWeeks - 1);
+            $buildLevel = $buildWeeks === 0 ? 1.0 : self::rampLevel($buildWeeks - 1, $selfScaled);
 
             $curve = match ($phase) {
                 PlanPhase::Base => array_fill(0, $runLength, 1.0),
                 PlanPhase::Build => array_map(
-                    static fn (int $k): float => self::BUILD_WEEKLY_RAMP ** ($buildWeeks + $k),
+                    static fn (int $k): float => self::rampLevel($buildWeeks + $k, $selfScaled),
                     range(0, $runLength - 1),
                 ),
                 PlanPhase::Peak => array_fill(0, $runLength, $buildLevel * self::PEAK_VOLUME_FRACTION),
@@ -201,6 +216,14 @@ final class PhaseSchedule
         }
 
         return $result;
+    }
+
+    /** Where the ramp stands after `$buildWeeks` completed Build weeks. */
+    private static function rampLevel(int $buildWeeks, bool $selfScaled): float
+    {
+        return $selfScaled
+            ? 1.0
+            : min(self::MAX_BUILD_MULTIPLIER, self::BUILD_WEEKLY_RAMP ** $buildWeeks);
     }
 
     /**
