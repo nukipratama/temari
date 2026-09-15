@@ -112,6 +112,7 @@ final readonly class SeasonSummaryBuilder
                     $date === $primaryEasyDate,
                     $baselineData['long_run_km'],
                     $multiplier,
+                    $baselineData['long_run_cap_km'],
                     $raceDistanceM,
                 );
                 if ($row['session_type'] !== SessionType::Rest) {

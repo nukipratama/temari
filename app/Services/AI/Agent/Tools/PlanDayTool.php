@@ -59,7 +59,7 @@ final class PlanDayTool extends NoArgumentTool
     public function handle(array $arguments): array
     {
         $baselineData = $this->baseline->forUser($this->session->user, Carbon::today());
-        $coreKm = PlanRenderer::coreKmForSession($this->session, $baselineData['long_run_km']);
+        $coreKm = PlanRenderer::coreKmForSession($this->session, $baselineData['long_run_km'], $baselineData['long_run_cap_km']);
 
         // A readiness-eased day was told to run less, and that smaller figure is
         // what the card shows and what the athlete is being asked for. Reading

@@ -15,7 +15,7 @@ const CLAMP_MULTIPLIER = 1.0;
 
 function applyClamp(SessionType $type, ReadinessCeiling $ceiling): ?array
 {
-    return ReadinessClamp::apply($type, PlanPhase::Build, null, CLAMP_BASELINE_KM, CLAMP_MULTIPLIER, CLAMP_PACES, $ceiling);
+    return ReadinessClamp::apply($type, PlanPhase::Build, null, CLAMP_BASELINE_KM, CLAMP_MULTIPLIER, INF, CLAMP_PACES, $ceiling);
 }
 
 it('never clamps anything under the optimistic QualityOk ceiling', function (): void {
@@ -40,7 +40,7 @@ it('ModerateOk clamps quality work down to easy, at its own original size, but l
     expect(applyClamp(SessionType::Long, ReadinessCeiling::ModerateOk))->toBeNull();
 
     $clamp = applyClamp(SessionType::Tempo, ReadinessCeiling::ModerateOk);
-    $expectedSegments = SegmentGenerator::easyEquivalentOf(SessionType::Tempo, CLAMP_BASELINE_KM, CLAMP_MULTIPLIER, CLAMP_PACES);
+    $expectedSegments = SegmentGenerator::easyEquivalentOf(SessionType::Tempo, CLAMP_BASELINE_KM, CLAMP_MULTIPLIER, INF, CLAMP_PACES);
 
     expect($clamp['session_type'])->toBe(SessionType::Easy)
         ->and($clamp['segments'])->toEqual($expectedSegments)
@@ -51,7 +51,7 @@ it('ModerateOk clamps quality work down to easy, at its own original size, but l
 
 it('EasyOnly scales a long day down to a shorter easy run, sized Medium like the week\'s primary Easy day', function (): void {
     $clamp = applyClamp(SessionType::Long, ReadinessCeiling::EasyOnly);
-    $expectedSegments = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, true, CLAMP_BASELINE_KM, CLAMP_MULTIPLIER, CLAMP_PACES);
+    $expectedSegments = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, true, CLAMP_BASELINE_KM, CLAMP_MULTIPLIER, INF, CLAMP_PACES);
 
     expect($clamp['session_type'])->toBe(SessionType::Easy)
         ->and($clamp['segments'])->toEqual($expectedSegments);
@@ -59,7 +59,7 @@ it('EasyOnly scales a long day down to a shorter easy run, sized Medium like the
 
 it('EasyOnly scales quality work down to a short easy run', function (): void {
     $clamp = applyClamp(SessionType::Interval, ReadinessCeiling::EasyOnly);
-    $expectedSegments = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, CLAMP_BASELINE_KM, CLAMP_MULTIPLIER, CLAMP_PACES);
+    $expectedSegments = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, CLAMP_BASELINE_KM, CLAMP_MULTIPLIER, INF, CLAMP_PACES);
 
     expect($clamp['session_type'])->toBe(SessionType::Easy)
         ->and($clamp['segments'])->toEqual($expectedSegments);
@@ -104,7 +104,7 @@ it('clampsToRest only when the ceiling bottoms out and the session asks for more
 /** The predicate has to agree with what apply() would actually return. */
 it('clampsToRest agrees with apply for every session type at the Rest ceiling', function (): void {
     foreach (SessionType::cases() as $type) {
-        $clamped = ReadinessClamp::apply($type, PlanPhase::Base, null, 20.0, 1.0, null, ReadinessCeiling::Rest);
+        $clamped = ReadinessClamp::apply($type, PlanPhase::Base, null, 20.0, 1.0, INF, null, ReadinessCeiling::Rest);
 
         expect(ReadinessClamp::clampsToRest($type, ReadinessCeiling::Rest))
             ->toBe($clamped !== null && $clamped['session_type'] === SessionType::Rest);
@@ -138,6 +138,7 @@ it('never reuses the forecast wording for a credited day', function (): void {
         null,
         20.0,
         1.0,
+        INF,
         ['easy' => 450, 'marathon' => 400, 'threshold' => 344, 'interval' => 320],
         ReadinessCeiling::EasyOnly,
     );

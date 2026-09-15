@@ -161,6 +161,7 @@ it('dayPayload generates segments fresh from the stored session when there is no
         false,
         20.0,
         1.0,
+        INF,
         RENDERER_PACES,
         PlannedSessionStatus::Planned,
     );
@@ -181,21 +182,21 @@ it('dayPayload carries the clamp beside today\'s own prescription, never in plac
         'session_type' => SessionType::Long,
         'pinned' => false,
     ]);
-    $clampSegments = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 20.0, 1.0, RENDERER_PACES);
+    $clampSegments = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 20.0, 1.0, INF, RENDERER_PACES);
     $clamp = [
         'session_type' => SessionType::Easy,
         'segments' => $clampSegments,
-        'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0),
+        'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0, INF),
         'note' => 'Clamped for low readiness.',
     ];
 
-    $payload = PlanRenderer::dayPayload($todaySession, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $payload = PlanRenderer::dayPayload($todaySession, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     // The clamp is advisory: the stored Long is still what the narrator
     // describes and what SessionMatcher grades, so it stays the payload's
     // own session_type / segments / distance_km.
     expect($payload['session_type'])->toBe('long')
-        ->and($payload['distance_km'])->toBe(SegmentGenerator::coreKmFor(SessionType::Long, false, 20.0, 1.0))
+        ->and($payload['distance_km'])->toBe(SegmentGenerator::coreKmFor(SessionType::Long, false, 20.0, 1.0, INF))
         ->and($payload['clamp'])->toBe([
             'session_type' => 'easy',
             'distance_km' => $clamp['core_km'],
@@ -210,7 +211,7 @@ it('dayPayload carries the clamp beside today\'s own prescription, never in plac
         'session_type' => SessionType::Long,
         'pinned' => false,
     ]);
-    $unaffected = PlanRenderer::dayPayload($tomorrowSession, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $unaffected = PlanRenderer::dayPayload($tomorrowSession, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     expect($unaffected['session_type'])->toBe('long')
         ->and($unaffected['clamp'])->toBeNull();
@@ -224,8 +225,8 @@ it('dayPayload applies a redistributed volume scale for a non-today day', functi
         'pinned' => false,
     ]);
 
-    $unscaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, [], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
-    $scaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, ['2026-08-12' => 0.5], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $unscaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $scaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, ['2026-08-12' => 0.5], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     expect($scaled['distance_km'])->toBe(round($unscaled['distance_km'] * 0.5, 1));
 });
@@ -247,6 +248,7 @@ it('dayPayload prescribes race day at the athlete\'s goal pace', function (): vo
         false,
         20.0,
         1.0,
+        INF,
         RENDERER_PACES,
         PlannedSessionStatus::Planned,
         null,
@@ -272,6 +274,7 @@ it('dayPayload returns no segments and a null distance_km for a rest day', funct
         false,
         20.0,
         1.0,
+        INF,
         RENDERER_PACES,
         PlannedSessionStatus::Planned,
     );
@@ -283,7 +286,7 @@ it('dayPayload returns no segments and a null distance_km for a rest day', funct
 it('dayPayload still fills distance_km with no VDOT estimate yet — only segment minutes go null', function (): void {
     $session = PlannedSession::factory()->make(['date' => '2026-08-10', 'phase' => PlanPhase::Build, 'session_type' => SessionType::Easy]);
 
-    $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-01'), null, [], null, true, 20.0, 1.0, null, PlannedSessionStatus::Planned);
+    $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-01'), null, [], null, true, 20.0, 1.0, INF, null, PlannedSessionStatus::Planned);
 
     expect($payload['segments'][0]['minutes'])->toBeNull()
         ->and($payload['distance_km'])->toBe(13.0); // 20.0 * 0.65 (isPrimaryEasy=true), pace-independent
@@ -305,6 +308,7 @@ it('dayPayload reports an Interval day at what its reps add up to, not at its bu
         false,
         20.0,
         1.0,
+        INF,
         RENDERER_PACES,
         PlannedSessionStatus::Planned,
     );
@@ -333,11 +337,12 @@ it('dayPayload falls back to the budget when no VDOT estimate sizes the day', fu
         false,
         20.0,
         1.0,
+        INF,
         null,
         PlannedSessionStatus::Planned,
     );
 
-    expect($payload['distance_km'])->toBe(SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0));
+    expect($payload['distance_km'])->toBe(SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0, INF));
 });
 
 it('dayPayload puts the race on the card at its own distance, whatever the training baseline says', function (): void {
@@ -357,6 +362,7 @@ it('dayPayload puts the race on the card at its own distance, whatever the train
         false,
         20.0,
         1.0,
+        INF,
         RENDERER_PACES,
         PlannedSessionStatus::Planned,
     );
@@ -379,8 +385,8 @@ function tempoSessionWithEasyClamp(Carbon $today, string $note): array
     ]);
     $clamp = [
         'session_type' => SessionType::Easy,
-        'segments' => SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 20.0, 1.0, RENDERER_PACES),
-        'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0),
+        'segments' => SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, 20.0, 1.0, INF, RENDERER_PACES),
+        'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0, INF),
         'note' => $note,
     ];
 
@@ -397,7 +403,7 @@ it('dayPayload turns the clamp into second-session guidance once the day is cred
     $today = Carbon::parse('2026-08-10');
     [$session, $clamp] = tempoSessionWithEasyClamp($today, 'Quality work waits until you are fresher.');
 
-    $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, $status);
+    $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, $status);
 
     expect($payload['clamp']['label'])->toBe('anything else today')
         ->and($payload['clamp']['note'])->toBe(ReadinessClamp::secondSessionNote(SessionType::Easy))
@@ -422,7 +428,7 @@ it('dayPayload keeps the forecast wording on a day not yet credited', function (
     $today = Carbon::parse('2026-08-10');
     [$session, $clamp] = tempoSessionWithEasyClamp($today, 'Quality work waits until you are fresher.');
 
-    $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, $status);
+    $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, $status);
 
     expect($payload['clamp']['label'])->toBe('eased today')
         ->and($payload['clamp']['note'])->toBe('Quality work waits until you are fresher.');
@@ -442,8 +448,8 @@ it('dayPayload drops the narrated clamp voice once the day is credited', functio
     [$session, $clamp] = tempoSessionWithEasyClamp($today, 'Templated floor.');
     $voice = 'a heavy stretch is catching up, so today backs off to easy.';
 
-    $credited = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Done, null, $voice);
-    $pending = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, RENDERER_PACES, PlannedSessionStatus::Planned, null, $voice);
+    $credited = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done, null, $voice);
+    $pending = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned, null, $voice);
 
     expect($credited['clamp']['note'])->not->toBe($voice)
         ->and($pending['clamp']['note'])->toBe($voice);
@@ -466,6 +472,7 @@ it('dayPayload reports whether this athlete has flagged the day', function (): v
         true,
         20.0,
         1.0,
+        INF,
         RENDERER_PACES,
         PlannedSessionStatus::Planned,
     );
@@ -492,10 +499,11 @@ it('sessionDistanceKm reports what the generated segments add up to', function (
         true,
         20.0,
         1.0,
+        INF,
         RENDERER_PACES,
     );
 
-    expect(PlanRenderer::sessionDistanceKm($segments, SessionType::Easy, true, 20.0, 1.0, null))
+    expect(PlanRenderer::sessionDistanceKm($segments, SessionType::Easy, true, 20.0, 1.0, INF, null))
         ->toBe(SegmentGenerator::prescribedKm($segments));
 });
 
@@ -509,16 +517,17 @@ it('sessionDistanceKm falls back to the volume-scaled budget when no segment car
         false,
         20.0,
         1.0,
+        INF,
         null,
     );
 
     expect(SegmentGenerator::prescribedKm($segments))->toBeNull();
 
-    $budget = SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0, null);
+    $budget = SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0, INF, null);
 
-    expect(PlanRenderer::sessionDistanceKm($segments, SessionType::Interval, false, 20.0, 1.0, null))
+    expect(PlanRenderer::sessionDistanceKm($segments, SessionType::Interval, false, 20.0, 1.0, INF, null))
         ->toBe($budget)
-        ->and(PlanRenderer::sessionDistanceKm($segments, SessionType::Interval, false, 20.0, 1.0, null, 0.8))
+        ->and(PlanRenderer::sessionDistanceKm($segments, SessionType::Interval, false, 20.0, 1.0, INF, null, 0.8))
         ->toBe(round($budget * 0.8, 1));
 });
 
@@ -530,7 +539,7 @@ it('coreKmForSession scales by its own week\'s stamped multiplier, not a flat 1.
         'volume_multiplier' => 1.3,
     ]);
 
-    expect(PlanRenderer::coreKmForSession($session, 20.0))->toBe(round(20.0 * 1.3, 1));
+    expect(PlanRenderer::coreKmForSession($session, 20.0, INF))->toBe(round(20.0 * 1.3, 1));
 });
 
 it('coreKmForSession sizes the week\'s primary easy day at the medium fraction, a later one at the short fraction', function (): void {
@@ -546,8 +555,8 @@ it('coreKmForSession sizes the week\'s primary easy day at the medium fraction, 
         'volume_multiplier' => 1.0,
     ]);
 
-    expect(PlanRenderer::coreKmForSession($primaryEasy, 20.0))
-        ->toBe(SegmentGenerator::coreKmFor(SessionType::Easy, true, 20.0, 1.0))
-        ->and(PlanRenderer::coreKmForSession($laterEasy, 20.0))
-        ->toBe(SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0));
+    expect(PlanRenderer::coreKmForSession($primaryEasy, 20.0, INF))
+        ->toBe(SegmentGenerator::coreKmFor(SessionType::Easy, true, 20.0, 1.0, INF))
+        ->and(PlanRenderer::coreKmForSession($laterEasy, 20.0, INF))
+        ->toBe(SegmentGenerator::coreKmFor(SessionType::Easy, false, 20.0, 1.0, INF));
 });

@@ -42,11 +42,13 @@ it('scores a past week, crediting the day that met its target and marking the re
         'distance' => 20_000,
     ]);
 
+    $baselineData = app(TrainingBaseline::class)->forUser($user, Carbon::today());
     $mondayTargetKm = SegmentGenerator::coreKmFor(
         SessionType::Easy,
         true,
-        app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'],
+        $baselineData['long_run_km'],
         1.0,
+        $baselineData['long_run_cap_km'],
     );
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([

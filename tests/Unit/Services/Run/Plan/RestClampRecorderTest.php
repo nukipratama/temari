@@ -156,6 +156,7 @@ it('records the eased distance the render itself would show, not a fixed formula
         null,
         $longRunKm,
         $multiplierByWeek[$currentWeekKey] ?? 1.0,
+        INF,
         null,
         ReadinessCeiling::EasyOnly,
     );

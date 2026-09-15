@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Enums\ExperienceLevel;
+use App\Enums\PlanPhase;
+use App\Enums\SessionType;
+use App\Services\Run\Plan\SegmentGenerator;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\TrainingPreference;
@@ -341,4 +344,36 @@ it('applies no race-distance floor on a taper-only arc with nothing to ramp', fu
     ]);
 
     expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.1);
+});
+
+/**
+ * The long-run ceilings were applied to the baseline and the volume
+ * multiplier applied after, so the ramp walked straight through them: a
+ * 52-week-out 10K prescribed a 31.1 km long run and a 20.2 km tempo.
+ */
+it('never prescribes a long run past the race band however long the arc is', function (): void {
+    $user = User::factory()->create();
+    weeksOf($user, array_fill(0, 6, 60.0));
+    RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2027-08-09']);
+    Season::factory()->for($user)->create([
+        'anchor_weekly_volume_km' => 60.0,
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2027-08-09',
+    ]);
+
+    $baselineData = $this->baseline->forUser($user, Carbon::today());
+    $phases = array_map(
+        fn (array $week): PlanPhase => $week['phase'],
+        new PhaseSchedule()->forRace(Carbon::parse('2026-08-10'), Carbon::parse('2027-08-09'), 10_000.0),
+    );
+
+    foreach (PhaseSchedule::volumeMultipliers($phases) as $multiplier) {
+        expect(SegmentGenerator::coreKmFor(
+            SessionType::Long,
+            false,
+            $baselineData['long_run_km'],
+            $multiplier,
+            $baselineData['long_run_cap_km'],
+        ))->toBeLessThanOrEqual(20.0);
+    }
 });

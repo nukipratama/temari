@@ -34,6 +34,7 @@ final class ReadinessClamp
         ?float $raceDistanceM,
         float $longRunBaselineKm,
         float $volumeMultiplier,
+        float $longRunCapKm,
         ?array $paces,
         ReadinessCeiling $ceiling,
     ): ?array {
@@ -61,9 +62,10 @@ final class ReadinessClamp
                     $sessionType === SessionType::Long,
                     $longRunBaselineKm,
                     $volumeMultiplier,
+                    $longRunCapKm,
                     $paces,
                 ),
-                'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, $sessionType === SessionType::Long, $longRunBaselineKm, $volumeMultiplier),
+                'core_km' => SegmentGenerator::coreKmFor(SessionType::Easy, $sessionType === SessionType::Long, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm),
                 'note' => self::easyOnlyNote($sessionType),
             ],
             // Only reachable for Tempo/Interval (their requiredRank alone
@@ -71,8 +73,8 @@ final class ReadinessClamp
             // to Easy, since a Long day never needs more than ModerateOk.
             ReadinessCeiling::ModerateOk => [
                 'session_type' => SessionType::Easy,
-                'segments' => SegmentGenerator::easyEquivalentOf($sessionType, $longRunBaselineKm, $volumeMultiplier, $paces),
-                'core_km' => SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier),
+                'segments' => SegmentGenerator::easyEquivalentOf($sessionType, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, $paces),
+                'core_km' => SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm),
                 'note' => self::moderateOkNote(),
             ],
             ReadinessCeiling::QualityOk => null, // unreachable: nothing requires more than QualityOk

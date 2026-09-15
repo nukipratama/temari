@@ -170,7 +170,7 @@ it('redistributes a half-missed week into the days that remain, up to the cap', 
     // the redistribution scale is exactly what VolumeRedistributor should
     // produce — not just "bigger than before".
     $longRunKm = app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'];
-    $kmFor = fn (SessionType $type, bool $isPrimaryEasy) => SegmentGenerator::coreKmFor($type, $isPrimaryEasy, $longRunKm, 1.0);
+    $kmFor = fn (SessionType $type, bool $isPrimaryEasy) => SegmentGenerator::coreKmFor($type, $isPrimaryEasy, $longRunKm, 1.0, INF);
 
     $weekTargetKm = $kmFor(SessionType::Tempo, false) + $kmFor(SessionType::Easy, true)
         + $kmFor(SessionType::Easy, false) + $kmFor(SessionType::Long, false);

@@ -159,7 +159,7 @@ final readonly class TrainingBaseline
     }
 
     /**
-     * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float}
+     * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float}
      */
     public function forUser(User $user, Carbon $asOf): array
     {
@@ -182,10 +182,13 @@ final readonly class TrainingBaseline
         $season = $this->seasonFor($user, $asOf);
         $weeklyVolumeKm = $season->anchor_weekly_volume_km ?? $this->weeklyVolumeKm($weeks, $seed);
 
+        $longRunCapKm = $this->longRunCapKm($user, $weeklyVolumeKm, $asOf);
+
         return [
             'sessions_per_week' => $sessionsPerWeek,
             'weekly_volume_km' => $weeklyVolumeKm,
-            'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm, $asOf, $season),
+            'long_run_km' => $this->longRunKm($user, $weeklyVolumeKm, $asOf, $season, $longRunCapKm),
+            'long_run_cap_km' => $longRunCapKm,
         ];
     }
 
@@ -265,26 +268,35 @@ final readonly class TrainingBaseline
     }
 
     /**
-     * Volume decides the long run, not the other way round. Both ceilings are
-     * applied and the tighter one wins: a race-distance band, and time on feet.
+     * Volume decides the long run, not the other way round.
      */
-    private function longRunKm(User $user, float $weeklyVolumeKm, Carbon $asOf, ?Season $season): float
+    private function longRunKm(User $user, float $weeklyVolumeKm, Carbon $asOf, ?Season $season, float $capKm): float
     {
-        $race = ($this->activeRace)($user->id);
-
         $derived = max(
             $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm),
-            $this->raceDistanceFloorKm($race, $season),
+            $this->raceDistanceFloorKm(($this->activeRace)($user->id), $season),
         );
 
-        $capped = min(
-            $derived,
-            self::raceBandCapKm($race),
+        return max(round(min($derived, $capKm), 1), self::MIN_LONG_RUN_KM);
+    }
+
+    /**
+     * The ceiling on any single long run, whichever of the three binds
+     * tightest: the race-distance band, time on feet, and half the week.
+     *
+     * Exported rather than kept private because capping the BASELINE alone
+     * left the ceilings bypassed — {@see SegmentGenerator::coreKmFor()}
+     * multiplies that baseline by the week's own volume multiplier afterwards,
+     * which walked a 52-week 10K arc up to a 31.1 km long run. The same figure
+     * now bounds the prescription at its single evaluation point.
+     */
+    private function longRunCapKm(User $user, float $weeklyVolumeKm, Carbon $asOf): float
+    {
+        return max(self::MIN_LONG_RUN_KM, min(
+            self::raceBandCapKm(($this->activeRace)($user->id)),
             $this->timeCapKm($user, $asOf),
             $weeklyVolumeKm * self::MAX_LONG_RUN_SHARE_OF_WEEK,
-        );
-
-        return max(round($capped, 1), self::MIN_LONG_RUN_KM);
+        ));
     }
 
     /**

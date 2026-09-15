@@ -121,12 +121,14 @@ final readonly class RestClampRecorder
         // Tempo/Interval by the ORIGINAL session type, not by SessionType::Easy, and
         // its EasyOnly arm sizes a downgraded Long day by the primary-easy fraction —
         // two distinctions a hardcoded (Easy, isPrimaryEasy: false) call collapses.
+        $baselineData = $this->baseline->forUser($user, $today);
         $clamp = ReadinessClamp::apply(
             $session->session_type,
             $session->phase,
             $session->race_distance_m === null ? null : (float) $session->race_distance_m,
-            (float) $this->baseline->forUser($user, $today)['long_run_km'],
+            (float) $baselineData['long_run_km'],
             $this->volumeMultiplierFor($user, $today),
+            (float) $baselineData['long_run_cap_km'],
             null,
             $ceiling,
         );

@@ -89,6 +89,7 @@ final readonly class CurrentWeekPlanBuilder
                 $s->date->toDateString() === $primaryEasyDate,
                 $baselineData['long_run_km'],
                 $currentWeekMultiplier,
+                $baselineData['long_run_cap_km'],
                 $s->race_distance_m === null ? null : (float) $s->race_distance_m,
             );
         }
@@ -123,6 +124,7 @@ final readonly class CurrentWeekPlanBuilder
                 $raceDistanceM,
                 $baselineData['long_run_km'],
                 $currentWeekMultiplier,
+                $baselineData['long_run_cap_km'],
                 $paces,
                 $ceiling,
             )
@@ -140,6 +142,7 @@ final readonly class CurrentWeekPlanBuilder
             $s->date->toDateString() === $primaryEasyDate,
             $baselineData['long_run_km'],
             $currentWeekMultiplier,
+            $baselineData['long_run_cap_km'],
             $paces,
             $resolvedStatuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
             $activityByDate[$s->date->toDateString()] ?? null,

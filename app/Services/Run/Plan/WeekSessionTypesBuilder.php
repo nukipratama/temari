@@ -53,7 +53,9 @@ final readonly class WeekSessionTypesBuilder
 
         [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek);
         $multiplier = $multiplierByWeek[$weekKey] ?? 1.0;
-        $longRunKm = $this->baseline->forUser($user, $today)['long_run_km'];
+        $baselineData = $this->baseline->forUser($user, $today);
+        $longRunKm = $baselineData['long_run_km'];
+        $longRunCapKm = $baselineData['long_run_cap_km'];
         $primaryEasyDate = PlanRenderer::primaryEasyDate($week);
 
         return array_values($week
@@ -62,7 +64,7 @@ final readonly class WeekSessionTypesBuilder
             ->map(fn (PlannedSession $s): array => [
                 'weekday' => strtolower($s->date->format('D')),
                 'session_type' => $s->session_type->value,
-                'distance_km' => $this->distanceKm($s, $primaryEasyDate, $longRunKm, $multiplier, $paces, $activeRaceDistanceM),
+                'distance_km' => $this->distanceKm($s, $primaryEasyDate, $longRunKm, $longRunCapKm, $multiplier, $paces, $activeRaceDistanceM),
                 'is_today' => $s->date->isSameDay($today),
             ])
             ->all());
@@ -75,6 +77,7 @@ final readonly class WeekSessionTypesBuilder
         PlannedSession $session,
         ?string $primaryEasyDate,
         float $longRunKm,
+        float $longRunCapKm,
         float $multiplier,
         ?array $paces,
         ?float $activeRaceDistanceM,
@@ -89,6 +92,7 @@ final readonly class WeekSessionTypesBuilder
             $isPrimaryEasy,
             $longRunKm,
             $multiplier,
+            $longRunCapKm,
             $paces,
         );
 
@@ -98,6 +102,7 @@ final readonly class WeekSessionTypesBuilder
             $isPrimaryEasy,
             $longRunKm,
             $multiplier,
+            $longRunCapKm,
             $raceDistanceM,
         );
     }
