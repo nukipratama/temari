@@ -882,6 +882,10 @@ class AnalysisService
 
         $todayCost = $this->costCalculator->dailyCost($userId);
         if ($todayCost <= $ceiling) {
+            if ($appWide) {
+                $this->alerter->totalCeilingApproaching($todayCost, $ceiling);
+            }
+
             return $this->costCeilingMemo[$memoKey] = false;
         }
 
@@ -894,6 +898,8 @@ class AnalysisService
 
         if ($appWide) {
             $this->alerter->totalCeilingReached($todayCost, $ceiling, User::query()->notDemo()->count());
+        } elseif ($userId !== null) {
+            $this->alerter->userCeilingReached($userId, $todayCost, $ceiling);
         }
 
         return $this->costCeilingMemo[$memoKey] = true;

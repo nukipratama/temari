@@ -10,6 +10,7 @@ use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\Strava\ActivityFetcher;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
@@ -198,6 +199,10 @@ class SyncOrchestrator
         $remaining = $error === null ? $this->client->rateLimitRemaining() : null;
 
         StravaSyncLog::log($userId, $status, $activitiesSynced, $apiCalls, $error, $remaining);
+
+        if ($remaining !== null) {
+            app(MaintainerAlerter::class)->stravaBudgetLow($remaining['15min']);
+        }
     }
 
     /**

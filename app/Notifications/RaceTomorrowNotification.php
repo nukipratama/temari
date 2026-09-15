@@ -8,6 +8,7 @@ use App\Enums\NotificationKind;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\InboxNotification;
 use App\Models\User;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
@@ -73,7 +74,7 @@ class RaceTomorrowNotification extends Notification implements ShouldQueue
             ->title($this->title())
             ->body($this->body($notifiable))
             ->icon('/icon-192.png')
-            ->data(['url' => route('race')])
+            ->data(['url' => route('race'), 'unread' => InboxNotification::unreadCountFor($notifiable->id)])
             ->options(['urgency' => 'high']);
     }
 

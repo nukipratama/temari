@@ -8,6 +8,7 @@ use Throwable;
 use App\Enums\NotificationKind;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
+use App\Models\InboxNotification;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\Channels\TelegramChannel;
@@ -95,7 +96,7 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
             ->title($presenter->title($this->analysis))
             ->body(trim((string) $this->analysis->content))
             ->icon('/icon-192.png')
-            ->data(['url' => $presenter->url($this->analysis)])
+            ->data(['url' => $presenter->url($this->analysis), 'unread' => InboxNotification::unreadCountFor($notifiable->id)])
             // High urgency so the push isn't deferred by the OS in Low Power Mode.
             ->options(['urgency' => 'high']);
     }

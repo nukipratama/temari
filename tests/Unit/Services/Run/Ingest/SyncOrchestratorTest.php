@@ -11,6 +11,7 @@ use App\Models\WeeklySnapshot;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Notifications\StravaDisconnectedNotification;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\Run\Ingest\SummaryIngest;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -315,4 +316,20 @@ it('does not sync a single activity for a revoked connection', function (): void
 
     expect(orchestrator($fetcher)->syncSingleActivity($user, 9_003))->toBeFalse();
     Queue::assertNothingPushed();
+});
+
+// Strava's budget is per client app, so every athlete's sync reports the same
+// shared window; the alerter owns the threshold and the per-window dedupe.
+it('offers the shared 15-minute read budget to the maintainer alerter after a sync', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    app()->instance(MaintainerAlerter::class, $alerter);
+    $alerter->shouldReceive('stravaBudgetLow')->once()->with(200);
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([10]));
+
+    orchestrator($fetcher)->syncUser($user);
 });

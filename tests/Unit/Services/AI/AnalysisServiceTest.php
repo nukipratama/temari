@@ -817,6 +817,48 @@ it('pushes one maintainer alert naming the spend, the ceiling and the athletes d
     }
 });
 
+it('pushes a maintainer alert when an athlete passes their own slice', function (): void {
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+    $this->app->forgetInstance(AnalysisService::class);
+    $service = app(AnalysisService::class);
+
+    $snap = WeeklySnapshot::factory()->create();
+    breachTheCeilingFor($snap->user_id);
+
+    $alerter->shouldReceive('totalCeilingApproaching')->zeroOrMoreTimes();
+    $alerter->shouldReceive('userCeilingReached')->once()->with($snap->user_id, 2.5, 1.0);
+
+    $service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+});
+
+// The alerter owns the 80% threshold and the dedupe; the ceiling check only
+// hands it today's spend while there is still headroom.
+it('offers today\'s spend to the early-warning alert while under the app-wide ceiling', function (): void {
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+    $this->app->forgetInstance(AnalysisService::class);
+    $service = app(AnalysisService::class);
+
+    $snap = WeeklySnapshot::factory()->create();
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
+    config(['azure_openai.daily_cost_ceiling_total' => 5.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 4.00, 'output_per_1m' => 10.00]]]);
+    spend($snap->user_id, 1_000_000);
+
+    $alerter->shouldReceive('totalCeilingApproaching')->once()->with(4.0, 5.0);
+
+    $service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+});
+
 it('reports the app-wide ceiling as a genuine global pause', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     breachTheTotalCeilingWith($snap->user_id);

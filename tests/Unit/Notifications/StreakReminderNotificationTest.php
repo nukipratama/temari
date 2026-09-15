@@ -116,6 +116,6 @@ it('builds a web push carrying the same streak length and a tap-through url', fu
 
     expect($payload['title'])->toContain('3-week')
         ->and($payload['body'])->toContain("streak doesn't break")
-        ->and($payload['data'])->toBe(['url' => route('dashboard')])
+        ->and($payload['data'])->toBe(['url' => route('dashboard'), 'unread' => 0])
         ->and($message->getOptions())->toBe(['urgency' => 'high']);
 });

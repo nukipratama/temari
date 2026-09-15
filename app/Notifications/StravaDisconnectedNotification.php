@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Enums\NotificationKind;
+use App\Models\InboxNotification;
 use App\Models\User;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
@@ -74,7 +75,7 @@ class StravaDisconnectedNotification extends Notification implements ShouldQueue
             ->title($this->title())
             ->body($this->body())
             ->icon('/icon-192.png')
-            ->data(['url' => $this->url()]);
+            ->data(['url' => $this->url(), 'unread' => InboxNotification::unreadCountFor($notifiable->id)]);
     }
 
     private function title(): string

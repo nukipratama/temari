@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Enums\NotificationKind;
+use App\Models\InboxNotification;
 use App\Models\User;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
@@ -66,7 +67,7 @@ class StreakReminderNotification extends Notification implements ShouldQueue
             ->title($this->title())
             ->body($this->body())
             ->icon('/icon-192.png')
-            ->data(['url' => route('dashboard')])
+            ->data(['url' => route('dashboard'), 'unread' => InboxNotification::unreadCountFor($notifiable->id)])
             // High urgency: the nudge is time-boxed to the rest of the week, so
             // the OS deferring it under Low Power Mode would defeat the point.
             ->options(['urgency' => 'high']);

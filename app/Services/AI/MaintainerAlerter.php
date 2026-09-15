@@ -11,6 +11,7 @@ use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -49,6 +50,20 @@ class MaintainerAlerter
     private const int TOTAL_CEILING_ALERT_COOLDOWN_SECONDS = 3600;
 
     private const string TOTAL_CEILING_ALERT_COOLDOWN_CACHE_KEY = 'ai.cost_ceiling.total_alert_cooldown';
+
+    /** Share of the app-wide ceiling that turns today's spend into an early warning. */
+    private const float TOTAL_CEILING_WARNING_FRACTION = 0.8;
+
+    private const int TOTAL_CEILING_WARNING_COOLDOWN_SECONDS = 3600;
+
+    private const string TOTAL_CEILING_WARNING_CACHE_KEY = 'ai.cost_ceiling.total_warning_cooldown';
+
+    /** Strava's per-client 15-minute read budget, the pool every athlete's sync shares. */
+    private const int STRAVA_15MIN_BUDGET = 200;
+
+    private const float STRAVA_BUDGET_LOW_FRACTION = 0.1;
+
+    private const int STRAVA_BUDGET_WINDOW_SECONDS = 900;
 
     public function __construct(
         private readonly TelegramClient $telegram,
@@ -202,6 +217,118 @@ class MaintainerAlerter
             $ceiling,
             $degraded,
         ));
+    }
+
+    /**
+     * One athlete has spent their own daily slice, so their narration is served
+     * rule-based until midnight while everyone else is unaffected. Ordinary
+     * enough not to wake anyone, frequent enough to want the key dated: one push
+     * per athlete per day, not one per gated dispatch.
+     */
+    public function userCeilingReached(int $userId, float $todayCost, float $ceiling): void
+    {
+        $key = 'ai.cost_ceiling.user_alert:'.Carbon::today()->toDateString().':'.$userId;
+
+        if (! Cache::add($key, true, 86_400)) {
+            return;
+        }
+
+        $this->broadcast(sprintf(
+            'Athlete %d passed their daily AI slice: $%.2f of $%.2f. Their narration is served rule-based until midnight.',
+            $userId,
+            $todayCost,
+            $ceiling,
+        ));
+    }
+
+    /**
+     * Today's app-wide spend, offered on every gated dispatch while there is
+     * still headroom. The threshold and the cooldown live here so the ceiling
+     * check stays one call: a warning at
+     * {@see self::TOTAL_CEILING_WARNING_FRACTION} of the ceiling buys the time
+     * that {@see self::totalCeilingReached()} no longer has.
+     */
+    public function totalCeilingApproaching(float $todayCost, float $ceiling): void
+    {
+        if ($ceiling <= 0.0 || $todayCost < $ceiling * self::TOTAL_CEILING_WARNING_FRACTION) {
+            return;
+        }
+
+        if (! Cache::add(self::TOTAL_CEILING_WARNING_CACHE_KEY, true, self::TOTAL_CEILING_WARNING_COOLDOWN_SECONDS)) {
+            return;
+        }
+
+        $this->broadcast(sprintf(
+            'App-wide AI spend is at $%.2f of the $%.2f daily ceiling (%d%%). Past it every athlete is served rule-based.',
+            $todayCost,
+            $ceiling,
+            (int) round($todayCost / $ceiling * 100),
+        ));
+    }
+
+    /**
+     * The shared Strava read budget for the current 15-minute window is nearly
+     * spent. The limit is per client app rather than per athlete, so both the
+     * threshold and the dedupe key are global: one push per window covers every
+     * athlete's sync, and the next window may warn again.
+     */
+    public function stravaBudgetLow(int $remaining): void
+    {
+        if ($remaining >= self::STRAVA_15MIN_BUDGET * self::STRAVA_BUDGET_LOW_FRACTION) {
+            return;
+        }
+
+        $now = Carbon::now();
+        $window = $now->format('Y-m-d-H').':'.intdiv($now->minute, 15);
+
+        if (! Cache::add('strava.rate_limit.budget_alert:'.$window, true, self::STRAVA_BUDGET_WINDOW_SECONDS)) {
+            return;
+        }
+
+        $this->broadcast(sprintf(
+            'Strava reads are nearly spent: %d of %d left in this 15-minute window. Background hydration backs off first.',
+            $remaining,
+            self::STRAVA_15MIN_BUDGET,
+        ));
+    }
+
+    /**
+     * The evening spend digest: what today cost app-wide, what is left against
+     * each ceiling, and a line per athlete who spent anything. Sent once by
+     * {@see \App\Console\Commands\AI\SpendDigestCommand}, so no dedupe of its own.
+     *
+     * @param  list<array{userId: int, calls: int, tokens: int, cost: float}>  $rows
+     */
+    public function spendDigest(array $rows, float $todayCost, ?float $perUserCeiling, ?float $totalCeiling): void
+    {
+        $calls = array_sum(array_column($rows, 'calls'));
+        $tokens = array_sum(array_column($rows, 'tokens'));
+
+        $against = $totalCeiling === null ? '' : sprintf(' of $%.2f', $totalCeiling);
+
+        $headline = sprintf('AI spend today: $%.2f%s%s. ', $todayCost, $against, $this->headroom($todayCost, $totalCeiling))
+            .($rows === []
+                ? 'No athlete spent anything today.'
+                : sprintf('%d calls, %s tokens.', $calls, number_format($tokens)));
+
+        $lines = array_map(fn (array $row): string => sprintf(
+            '- athlete %d: %d calls, %s tokens, $%.2f%s',
+            $row['userId'],
+            $row['calls'],
+            number_format($row['tokens']),
+            $row['cost'],
+            $this->headroom($row['cost'], $perUserCeiling),
+        ), $rows);
+
+        $this->broadcast(implode("\n", [$headline, ...$lines]));
+    }
+
+    /** " ($4.58 left)", or nothing at all when that ceiling is unset. */
+    private function headroom(float $spent, ?float $ceiling): string
+    {
+        return $ceiling === null
+            ? ''
+            : sprintf(' ($%.2f left)', max(0.0, $ceiling - $spent));
     }
 
     private function pauseMessage(?string $reason): string
