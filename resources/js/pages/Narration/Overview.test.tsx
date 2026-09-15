@@ -178,6 +178,15 @@ describe('Narration overview page', () => {
         expect(screen.queryByLabelText('Close')).not.toBeInTheDocument();
     });
 
+    it('gives the operator tables the page width its own header already uses', () => {
+        const { container } = render(<Overview {...baseProps} />);
+
+        const column = container.querySelector('.reveal');
+
+        expect(column?.className).toContain('min-[1280px]:max-w-page');
+        expect(column?.className).not.toContain('max-w-column-wide');
+    });
+
     it('passes the budget currency down to every money figure', () => {
         render(
             <Overview

@@ -51,7 +51,7 @@ export default function DevtoolsFeedback({
                 </div>
             </header>
 
-            <PageContainer>
+            <PageContainer className="min-[900px]:max-w-page min-[1280px]:max-w-page 2xl:max-w-page-2xl">
                 <DataTable
                     icon={Flag}
                     title="flagged"

@@ -107,6 +107,23 @@ describe('CostChart', () => {
         expect(onSelect).toHaveBeenCalledWith(null);
     });
 
+    it('lets a day label shrink below its text rather than push past the card', () => {
+        renderChart();
+
+        const label = screen.getByTitle('sep 9');
+
+        expect(label.parentElement?.className).toContain('min-w-0');
+    });
+
+    it('keeps the athlete select inside the card whatever the names are', () => {
+        renderChart();
+
+        const select = screen.getByLabelText('athlete');
+
+        expect(select.className).toContain('w-full');
+        expect(select.parentElement?.className).toContain('max-w-full');
+    });
+
     it('falls back to an empty state when nothing billed in the range', () => {
         renderChart({ chart: { kinds: [], days: [] } });
 

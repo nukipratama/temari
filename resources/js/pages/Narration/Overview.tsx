@@ -76,7 +76,7 @@ export default function Overview({
                 </div>
             </header>
 
-            <PageContainer>
+            <PageContainer className="min-[900px]:max-w-page min-[1280px]:max-w-page 2xl:max-w-page-2xl">
                 {flashInfo && <FlashBanner message={flashInfo} />}
 
                 <UsageFilters
