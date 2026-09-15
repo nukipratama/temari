@@ -63,6 +63,10 @@ export default function FlagSheet({
     const [note, setNote] = useState('');
     const [sending, setSending] = useState(false);
 
+    const choices: { value: Choice; label: string }[] = [
+        ...REASONS[subjectType],
+        { value: SOMETHING_ELSE, label: 'something else' },
+    ];
     const freeText = choice === SOMETHING_ELSE;
     const canSend =
         choice !== null && (!freeText || note.trim() !== '') && !sending;
@@ -98,10 +102,7 @@ export default function FlagSheet({
         <Sheet open={open} onOpenChange={onOpenChange} title="something off?">
             <form onSubmit={submit} className="flex flex-col gap-4 pt-4">
                 <div className="flex flex-wrap gap-2">
-                    {[
-                        ...REASONS[subjectType],
-                        { value: SOMETHING_ELSE, label: 'something else' },
-                    ].map((option) => (
+                    {choices.map((option) => (
                         <button
                             key={option.value}
                             type="button"

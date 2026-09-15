@@ -11,9 +11,6 @@ import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
 import { formatKm, parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
 
-const kmFigure = (km: number | null): string =>
-    formatKm(km === null ? null : km * 1000, 1);
-
 const PHASE_LABEL: Record<string, string> = {
     base: 'base',
     build: 'build',
@@ -57,6 +54,9 @@ const STATUS_TONE: Record<string, string> = {
 
 const RING_SIZE = 60;
 const RING_STROKE = 6;
+
+const kmFigure = (km: number | null): string =>
+    formatKm(km === null ? null : km * 1000, 1);
 
 function weekdayAbbr(iso: string): string {
     const date = parseNaiveLocalDate(iso);

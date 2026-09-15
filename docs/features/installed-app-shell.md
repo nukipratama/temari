@@ -1,13 +1,12 @@
 ---
 title: Installed app shell
-description: What makes Temari feel native once it is on the iOS Home Screen — edge-to-edge status bar, launch image, top bar with back button, touch feel, edge-swipe back
+description: What makes Temari feel native once it is on the iOS Home Screen — edge-to-edge status bar, launch image, top bar with back button, touch feel
 tags: [feature, pwa]
 status: living
 reviewed: 2026-09-06
 code_refs:
   - resources/views/app.blade.php
   - public/manifest.webmanifest
-  - resources/js/hooks/useSwipeBack.ts
   - resources/js/components/MobileTopBar.tsx
   - resources/js/hooks/useBodyScrollLock.ts
   - resources/css/app.css
@@ -149,8 +148,7 @@ Two details worth keeping:
 
 - **Back is a real `<Link href>`, never `history.back()`.** A notification deep
   link opens `/activities/{id}` cold with nothing behind it, and `history.back()`
-  would strand the user or exit the app. [useSwipeBack](resources/js/hooks/useSwipeBack.ts)
-  remains the gesture equivalent.
+  would strand the user or exit the app.
 - **One back affordance, at every width.** The bar is no longer `lg:hidden`, so
   the in-page `BackLink` that used to cover desktop on pushed pages is gone —
   the topbar chevron is the only way out, on every viewport.
@@ -239,17 +237,11 @@ bar to collide with.
 
 ## Edge-swipe back
 
-Standalone has no back button, so a detail page would otherwise be a dead end.
-[useSwipeBack.ts#L43](resources/js/hooks/useSwipeBack.ts#L43), mounted once in
-`AppShell`, translates the content region with the finger from a left-edge touch
-and pops history past a distance or velocity threshold.
-
-It is armed **only** when running standalone on a coarse pointer
-([useSwipeBack.ts#L45](resources/js/hooks/useSwipeBack.ts#L45)); in a browser tab
-Safari's own edge swipe already exists and a second handler would fight it. It
-also bails when the gesture starts inside a horizontally scrollable element
-([useSwipeBack.ts#L18](resources/js/hooks/useSwipeBack.ts#L18)) — strips, charts
-and maps own their own sideways drags.
+There is none. A custom left-edge gesture shipped here and was removed: it drove
+the content region on two fixed timers that nothing coordinated with Inertia's
+page swap, so a committed swipe could leave the incoming page under a
+still-animating or already-cleared transform. The top-bar chevron is the only
+back affordance in standalone, which is why every pushed screen carries one.
 
 ## Touch feel
 
