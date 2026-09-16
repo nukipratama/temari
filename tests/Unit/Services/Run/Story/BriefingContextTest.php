@@ -33,7 +33,7 @@ it('returns nulls when the user has no snapshots or activities', function (): vo
         ->and($ctx->buildNudge)->toBeFalse();
 });
 
-it('pulls this-week and last-week snapshots aligned to Sunday week_ending', function (): void {
+it('pulls this-week snapshot and last-week real activity through the same weekday, aligned to Sunday week_ending', function (): void {
     $user = User::factory()->create();
     $asOf = Carbon::create(2026, 5, 21, 8); // Thursday in week ending 2026-05-24 (Sun)
 
@@ -48,14 +48,68 @@ it('pulls this-week and last-week snapshots aligned to Sunday week_ending', func
         'runs' => 2,
         'distance_km' => 15.0,
     ]);
+    // Last week (Mon 2026-05-11 - Sun 2026-05-17): a run on the Tuesday counts
+    // toward "through Thursday", a run on the following Saturday does not.
+    $tuesday = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($tuesday)->create([
+        'start_date_local' => Carbon::create(2026, 5, 12, 7),
+        'distance' => 8000.0,
+    ]);
+    $saturday = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($saturday)->create([
+        'start_date_local' => Carbon::create(2026, 5, 16, 7),
+        'distance' => 7000.0,
+    ]);
 
     $ctx = BriefingContext::forUser($user, $asOf);
 
     expect($ctx->thisWeekRuns)->toBe(4)
         ->and($ctx->thisWeekKm)->toBe(32.0)
-        ->and($ctx->lastWeekRuns)->toBe(2)
-        ->and($ctx->lastWeekKm)->toBe(15.0)
+        ->and($ctx->lastWeekRuns)->toBe(1)
+        ->and($ctx->lastWeekKm)->toBe(8.0)
         ->and($ctx->formStatus)->toBe('optimal');
+});
+
+it('does not compare a partial week against a full one, either in the numbers or the ramp', function (): void {
+    $user = User::factory()->create();
+    $asOf = Carbon::create(2026, 5, 19, 19); // Tuesday evening in week ending 2026-05-24 (Sun)
+
+    // This week so far: 1 run, 5.3 km (Monday + Tuesday).
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-24',
+        'runs' => 1,
+        'distance_km' => 5.3,
+    ]);
+    // Last week's FULL total looks like a collapse against 5.3 km / 1 run,
+    // but almost all of it happened after last week's own Tuesday.
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-17',
+        'runs' => 3,
+        'distance_km' => 17.4,
+    ]);
+    $mondayLastWeek = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($mondayLastWeek)->create([
+        'start_date_local' => Carbon::create(2026, 5, 11, 7),
+        'distance' => 5300.0,
+    ]);
+    $wednesdayLastWeek = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($wednesdayLastWeek)->create([
+        'start_date_local' => Carbon::create(2026, 5, 13, 7),
+        'distance' => 6000.0,
+    ]);
+    $saturdayLastWeek = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($saturdayLastWeek)->create([
+        'start_date_local' => Carbon::create(2026, 5, 16, 7),
+        'distance' => 6100.0,
+    ]);
+
+    $ctx = BriefingContext::forUser($user, $asOf);
+
+    // Last week through Tuesday was also 1 run / 5.3 km: like-for-like, flat.
+    expect($ctx->lastWeekRuns)->toBe(1)
+        ->and($ctx->lastWeekKm)->toBe(5.3)
+        ->and($ctx->volumeRampPct)->toBe(0.0)
+        ->and($ctx->volumeRampPct)->not->toBeLessThan(-15.0);
 });
 
 it('computes recovery hours from the most recent activity start', function (): void {
