@@ -132,9 +132,9 @@ final readonly class CurrentWeekPlanBuilder
             : null;
 
         $activityByDate = $this->sessionMatcher->activityByDate($user, $currentWeekStart, $today);
-        $clampVoice = $clamp === null && ($todaySession === null || ! EffectiveSession::isRecordedOn($todaySession))
-            ? null
-            : $this->planNarration->clampVoiceFor($user, $today);
+        $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $todaySession)
+            ? $this->planNarration->clampVoiceFor($user, $today)
+            : null;
 
         $days = $currentWeekSessions->map(fn (PlannedSession $s): array => PlanRenderer::dayPayload(
             $s,

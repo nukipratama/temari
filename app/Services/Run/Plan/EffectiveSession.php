@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
+use App\Services\Run\Metrics\ReadinessCeiling;
 
 /**
  * The session a day actually asks for, read off persisted state alone: a
@@ -44,15 +45,35 @@ final readonly class EffectiveSession
         return $session->rest_clamped_at !== null || $session->clamped_km !== null;
     }
 
+    /**
+     * Whether today's clamp voice is worth fetching: an advisory clamp, or a recorded ease.
+     *
+     * @param  array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null  $clamp
+     */
+    public static function clampVoiceNeeded(?array $clamp, ?PlannedSession $todaySession): bool
+    {
+        return $clamp !== null || ($todaySession !== null && self::isRecordedOn($todaySession));
+    }
+
     public function isEased(): bool
     {
         return $this->easedFromType !== null;
     }
 
-    /** The km the ease took off the day, zero when nothing was eased or only the intensity was. */
+    /** The km the ease took off the day, zero when nothing was eased. */
     public function easedAwayKm(): float
     {
-        return ($this->easedFromKm ?? $this->coreKm) - $this->coreKm;
+        return $this->isEased() ? $this->easedFromKm - $this->coreKm : 0.0;
+    }
+
+    /** The ceiling a recorded ease implies, for the templated note it falls back to. */
+    public function impliedCeiling(): ReadinessCeiling
+    {
+        return match (true) {
+            $this->sessionType === SessionType::Rest => ReadinessCeiling::Rest,
+            $this->distanceHeld() => ReadinessCeiling::ModerateOk,
+            default => ReadinessCeiling::EasyOnly,
+        };
     }
 
     /** Only the intensity came down: the eased run is as long as the session it replaced. */

@@ -548,6 +548,30 @@ it('dayPayload keeps the advisory step-down for a clamp that was never recorded'
 });
 
 /**
+ * `$clampVoice` is fetched for TODAY's date alone
+ * ({@see \App\Services\AI\PlanNarrationRequester::clampVoiceFor()}), but every
+ * day in the rendered range is built with the same value. A past eased day
+ * that is still uncredited must not borrow today's narration — it would name
+ * the wrong day's session.
+ */
+it('dayPayload never attaches todays clamp voice to a different, uncredited eased day', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    $pastDay = PlannedSession::factory()->make([
+        'date' => Carbon::parse('2026-09-10'),
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'pinned' => false,
+        'clamped_km' => 6.4,
+    ]);
+
+    $payload = PlanRenderer::dayPayload($pastDay, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Missed, null, "today's clamp voice, about a different day entirely.");
+
+    expect($payload['eased_from']['voice'])
+        ->toBe(ReadinessClamp::noteFor(SessionType::Tempo, ReadinessCeiling::EasyOnly))
+        ->not->toBe("today's clamp voice, about a different day entirely.");
+});
+
+/**
  * A long day whose distance arrived in pieces reads `partial` despite the
  * volume being there, so the row says why rather than leaving the athlete to
  * work it out from a 100% score beside a partial badge.

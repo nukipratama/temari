@@ -93,7 +93,7 @@ everyone. See [[narration-follows-the-athlete-not-the-run]].
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 and it still runs for every athlete. The narration half then calls
-[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L204) for each
+[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L205) for each
 recently-active athlete, touching up to nine rows: `PlanDayVoice` ×7, `PlanWeekVoice`, and
 `PlanSeasonVoice`. It is the largest scheduled spend in the app, which is why it is also the one
 that checks hardest before it bills.

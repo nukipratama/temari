@@ -11,7 +11,6 @@ use App\Enums\SessionType;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
-use App\Services\Run\Metrics\ReadinessCeiling;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use LogicException;
@@ -254,8 +253,7 @@ final class PlanRenderer
 
         if ($effective->isEased()) {
             $segments = $sessionType === SessionType::Rest ? [] : SegmentGenerator::easyBlock($effective->coreKm, $paces);
-            $askedKm = $effective->coreKm;
-            $distanceKm = $effective->coreKm;
+            $askedKm = $distanceKm = $effective->coreKm;
         } else {
             $segments = SegmentGenerator::generate(
                 $sessionType,
@@ -296,7 +294,7 @@ final class PlanRenderer
             'prescribed_km' => $s->prescribed_km,
             'ran_anyway' => $s->ran_anyway,
             'clamp' => $isToday && $clamp !== null && ! $effective->isEased() && ! $status->isCredited() ? self::clampPayload($clamp, $clampVoice) : null,
-            'eased_from' => $effective->isEased() ? self::easedFromPayload($effective, $status, $clampVoice) : null,
+            'eased_from' => $effective->isEased() ? self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null) : null,
             'credit_note' => self::creditNote($sessionType, $status, $askedKm, $activity),
             'actual_km' => $activity['km'] ?? null,
             'activities' => $activity['runs'] ?? [],
@@ -321,16 +319,12 @@ final class PlanRenderer
     private static function easedFromPayload(EffectiveSession $effective, PlannedSessionStatus $status, ?string $clampVoice): array
     {
         $original = $effective->easedFromType ?? $effective->sessionType;
-        $recordedCeiling = match (true) {
-            $effective->sessionType === SessionType::Rest => ReadinessCeiling::Rest,
-            $effective->distanceHeld() => ReadinessCeiling::ModerateOk,
-            default => ReadinessCeiling::EasyOnly,
-        };
+        $distanceHeld = $effective->distanceHeld();
 
         return [
             'session_type' => $original->value,
-            'distance_km' => $effective->distanceHeld() ? null : $effective->easedFromKm,
-            'voice' => $status->isCredited() ? null : $clampVoice ?? ReadinessClamp::noteFor($original, $recordedCeiling),
+            'distance_km' => $distanceHeld ? null : $effective->easedFromKm,
+            'voice' => $status->isCredited() ? null : $clampVoice ?? ReadinessClamp::noteFor($original, $effective->impliedCeiling()),
         ];
     }
 

@@ -181,9 +181,9 @@ final class PlanPageAssembler
 
         // Falls back to the clamp's own templated note when no line has landed
         // yet, so the step-down is never unexplained.
-        $clampVoice = $clamp === null && ($todaySession === null || ! EffectiveSession::isRecordedOn($todaySession))
-            ? null
-            : $this->narrationRequester->clampVoiceFor($user, $today);
+        $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $todaySession)
+            ? $this->narrationRequester->clampVoiceFor($user, $today)
+            : null;
 
         $volumeScaleByDate = $this->redistributeCurrentWeek(
             $user,

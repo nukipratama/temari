@@ -14,6 +14,7 @@ use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Support\Cooldown;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 
@@ -347,11 +348,9 @@ final readonly class PlanNarrationRequester
             ->get()
             ->keyBy('discriminator');
 
-        $expected = $this->expectedDayFingerprints($user, $today, $dates);
-        $voicedByClamp = PlannedSession::query()
-            ->where('user_id', $user->id)
-            ->whereIn('date', $dates)
-            ->get()
+        $sessions = $this->plannedSessionsFor($user, $dates);
+        $expected = self::fingerprintsFrom($sessions, $this->baseline->forUser($user, $today)['long_run_km']);
+        $voicedByClamp = $sessions
             ->filter(fn (PlannedSession $session): bool => EffectiveSession::isRecordedOn($session) && ! $session->status->isCredited())
             ->map(fn (PlannedSession $session): string => $session->date->toDateString())
             ->all();
@@ -433,10 +432,28 @@ final readonly class PlanNarrationRequester
     {
         $longRunKm = $this->baseline->forUser($user, $today)['long_run_km'];
 
+        return self::fingerprintsFrom($this->plannedSessionsFor($user, $dates), $longRunKm);
+    }
+
+    /**
+     * @param  list<string>  $dates
+     * @return Collection<int, PlannedSession>
+     */
+    private function plannedSessionsFor(User $user, array $dates): Collection
+    {
         return PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereIn('date', $dates)
-            ->get()
+            ->get();
+    }
+
+    /**
+     * @param  Collection<int, PlannedSession>  $sessions
+     * @return array<string, string>
+     */
+    private static function fingerprintsFrom(Collection $sessions, float $longRunKm): array
+    {
+        return $sessions
             ->mapWithKeys(fn (PlannedSession $session): array => [
                 $session->date->toDateString() => MaterialFingerprint::forPlannedSession($session, $longRunKm),
             ])
