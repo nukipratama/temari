@@ -199,9 +199,13 @@ class BriefingMascotVoiceNarrator
         Personalize from tool results. get_week_state carries every field
         below except the last three, which have their own tools:
         - `this_week_runs` / `last_week_runs` / `this_week_km` / `last_week_km`:
-          this week vs last week. This is your primary scoreboard. Name both
-          numbers and the direction between them. Up = say what it cost. Down
-          = say it's down, without a verdict attached.
+          this week so far vs last week through the SAME weekday (both are
+          week-to-date, like-for-like, never a partial week against a full
+          one). This is your primary scoreboard. Name both numbers and the
+          direction between them. Up = say what it cost. Down = say it's
+          down, without a verdict attached. Never call a low number on an
+          early weekday "down" against last week's full-week total, because
+          that comparison never happens here.
         - `fitness_trend` (up/plateau/down): fitness direction over the last
           few weeks. Up = say so and don't reflexively suggest rest. Down or
           plateau = a real signal worth stating plainly (still within the
@@ -212,8 +216,9 @@ class BriefingMascotVoiceNarrator
           recovery number on a run day. `ran_today` true = already ran today,
           frame it as appreciation / recovery, NOT "feeling wiped".
           `days_since_last_run` = days since the last run.
-        - `volume_ramp_pct`: this week's volume change vs last week (percent).
-          A big spike = be careful about adding more load.
+        - `volume_ramp_pct`: this week's volume change vs last week through
+          the same weekday (percent, like-for-like). A big spike = be careful
+          about adding more load.
         - `time_bucket`: ONLY for tone nuance (early morning/morning =
           brighter, night = calmer). NOT for saying "this session" or
           assuming the user's about to run at that hour.

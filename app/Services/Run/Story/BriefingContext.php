@@ -6,8 +6,11 @@ namespace App\Services\Run\Story;
 
 use NoDiscard;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\Readiness;
 use Illuminate\Support\Carbon;
 
@@ -30,8 +33,10 @@ final readonly class BriefingContext
 {
     public function __construct(
         public ?int $thisWeekRuns,
+        /** Last week's real runs through the same weekday $asOf falls on this week, not the full week. */
         public ?int $lastWeekRuns,
         public ?float $thisWeekKm,
+        /** Last week's real km through the same weekday $asOf falls on this week, not the full week. */
         public ?float $lastWeekKm,
         public ?int $recoveryHours,
         public bool $ranToday,
@@ -85,7 +90,9 @@ final readonly class BriefingContext
         }
 
         $recovery = RecoveryWindow::forUser($user, $asOf);
-        $volumeRampPct = self::volumeRampPct($thisWeek?->distance_km, $lastWeek?->distance_km);
+        $lastWeekStart = $lastWeekEnd->copy()->subDays(6)->startOfDay();
+        $lastWeekToDate = self::lastWeekToDate($user, $lastWeek, $lastWeekStart, $asOf);
+        $volumeRampPct = self::volumeRampPct($thisWeek?->distance_km, $lastWeekToDate['km']);
         $fitnessTrend = self::fitnessTrend($byDate);
 
         // Readiness keys off the live load when we have it (same numbers the LLM
@@ -113,9 +120,9 @@ final readonly class BriefingContext
 
         return new self(
             thisWeekRuns: $thisWeek?->runs,
-            lastWeekRuns: $lastWeek?->runs,
+            lastWeekRuns: $lastWeekToDate['runs'],
             thisWeekKm: $thisWeek?->distance_km,
-            lastWeekKm: $lastWeek?->distance_km,
+            lastWeekKm: $lastWeekToDate['km'],
             recoveryHours: $recovery->recoveryHours,
             ranToday: $recovery->ranToday,
             daysSinceLastRun: $recovery->daysSinceLastRun,
@@ -130,8 +137,42 @@ final readonly class BriefingContext
     }
 
     /**
-     * Week-over-week volume change as a percentage, rounded. Null when there is
-     * no prior-week baseline (or it was a zero-distance week) to compare against.
+     * Last week's real runs/km through the same weekday $asOf falls on this
+     * week, so a week-to-date figure is never compared against a full week.
+     * Null when there is no prior week at all (not even a zero one).
+     *
+     * @return array{runs: int|null, km: float|null}
+     */
+    private static function lastWeekToDate(User $user, ?WeeklySnapshot $lastWeek, Carbon $lastWeekStart, Carbon $asOf): array
+    {
+        if ($lastWeek === null) {
+            return ['runs' => null, 'km' => null];
+        }
+
+        $throughDate = $lastWeekStart->copy()->addDays($asOf->dayOfWeekIso - 1)->endOfDay();
+
+        $totals = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
+            ->where('activities.user_id', $user->id)
+            ->whereNotNull('activity_details.start_date_local')
+            ->where('activity_details.start_date_local', '>=', $lastWeekStart)
+            ->where('activity_details.start_date_local', '<=', $throughDate)
+            ->selectRaw('COUNT(*) as runs, COALESCE(SUM(activity_details.distance), 0) as total_distance')
+            ->first();
+
+        return [
+            'runs' => (int) ($totals->runs ?? 0),
+            'km' => DistanceFormatter::km((float) ($totals->total_distance ?? 0.0)),
+        ];
+    }
+
+    /**
+     * Week-over-week volume change as a percentage, rounded, both sides
+     * measured through the same weekday so a partial week is never compared
+     * against a full one; the same figure feeds {@see Readiness}'s ramp
+     * guardrail. Null when there is no prior-week baseline (or it was a
+     * zero-distance week) to compare against.
      */
     private static function volumeRampPct(?float $thisWeekKm, ?float $lastWeekKm): ?float
     {
