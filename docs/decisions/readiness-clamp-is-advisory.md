@@ -2,7 +2,8 @@
 title: The readiness clamp is advisory, not a replacement
 description: A clamped day renders as a marked step-down beside the session the plan asked for, which stays the thing narrated and graded.
 tags: [decision, run, plan]
-status: accepted
+status: superseded
+superseded_by: the-eased-session-leads
 reviewed: 2026-09-06
 code_refs:
   - app/Services/Run/Plan/ReadinessClamp.php
@@ -13,6 +14,8 @@ code_refs:
   - resources/js/components/plan/WeekDayRow.tsx
   - resources/js/components/home/WeekPlanWidget.tsx
 ---
+
+> **Superseded (2026-09-16) by [[the-eased-session-leads]].** A recorded ease is now the day's session: it leads the card, the week total sums it, and the narrator tools describe it, with the original as context. Only a clamp that was shown but never recorded keeps the advisory step-down described below.
 
 # The readiness clamp is advisory, not a replacement
 

@@ -10,6 +10,7 @@ use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
 use App\Services\Run\Plan\ClampNarrationContext;
+use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Support\Cooldown;
 use Illuminate\Support\Carbon;
@@ -347,11 +348,18 @@ final readonly class PlanNarrationRequester
             ->keyBy('discriminator');
 
         $expected = $this->expectedDayFingerprints($user, $today, $dates);
+        $voicedByClamp = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereIn('date', $dates)
+            ->get()
+            ->filter(fn (PlannedSession $session): bool => EffectiveSession::isRecordedOn($session) && ! $session->status->isCredited())
+            ->map(fn (PlannedSession $session): string => $session->date->toDateString())
+            ->all();
 
         $days = [];
         foreach ($dates as $date) {
             $row = $dayRows->get($date);
-            if (self::isUnbacked($row, $expected[$date] ?? null)) {
+            if (in_array($date, $voicedByClamp, true) || self::isUnbacked($row, $expected[$date] ?? null)) {
                 continue;
             }
 

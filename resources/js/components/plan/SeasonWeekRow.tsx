@@ -164,6 +164,8 @@ export default function SeasonWeekRow({
                                 </span>
                                 <span className="mt-0.5 block text-label-micro text-text-3">
                                     {Math.round(week.planned_km)} km target ·{' '}
+                                    {week.eased_from_km != null &&
+                                        `eased from ${Math.round(week.eased_from_km)} · `}
                                     {week.sessions} sessions
                                     {isCurrent && ' · this week'}
                                     {!isCurrent &&

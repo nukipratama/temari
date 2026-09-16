@@ -10,6 +10,7 @@ import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import {
     clampSummary,
+    easedFromLabel,
     kmLabel,
     paceLabel,
     SESSION_TYPE_LABEL,
@@ -67,10 +68,10 @@ function SessionVoice({
 
 /**
  * What today asks for, above the voice describing it: the session, its
- * distance and the pace it is run at, then the readiness step-down when one
- * applies. The step-down is a marked modification of the prescription rather
- * than a replacement of it, so both figures stand — see
- * `docs/decisions/readiness-clamp-is-advisory.md`.
+ * distance and the pace it is run at. A recorded ease is the session itself,
+ * with what it replaced and why beneath it; a step-down that was never
+ * recorded stays a marked modification beside the prescription. See
+ * `docs/decisions/the-eased-session-leads.md`.
  */
 function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
     const pace = paceLabel(day);
@@ -90,6 +91,19 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
             <p className="text-sm font-semibold text-foreground">
                 {parts.join(' · ')}
             </p>
+            {day.eased_from !== null && (
+                <div className="mt-2 border-l-2 border-border-strong pl-3">
+                    <p className="flex items-center gap-1.5 text-label-micro text-text-2">
+                        <Icon icon={ArrowDown} className="size-3" aria-hidden />
+                        {easedFromLabel(day.eased_from)}
+                    </p>
+                    {day.eased_from.voice !== null && (
+                        <p className="mt-1 text-sm leading-relaxed text-text-2">
+                            {day.eased_from.voice}
+                        </p>
+                    )}
+                </div>
+            )}
             {day.clamp !== null && (
                 <div className="mt-2 border-l-2 border-border-strong pl-3">
                     <p className="flex items-center gap-1.5 text-label-micro text-text-2">

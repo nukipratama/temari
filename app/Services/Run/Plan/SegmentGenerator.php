@@ -248,6 +248,15 @@ final class SegmentGenerator
     {
         $km = self::coreKmFor($originalType, isPrimaryEasy: false, longRunBaselineKm: $longRunBaselineKm, volumeMultiplier: $volumeMultiplier, longRunCapKm: $longRunCapKm);
 
+        return self::easyBlock($km, $paces);
+    }
+
+    /**
+     * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
+     * @return list<SessionSegment>
+     */
+    public static function easyBlock(float $km, ?array $paces): array
+    {
         return [self::block(SegmentKey::Main, $km, PaceBand::Easy, $paces)];
     }
 

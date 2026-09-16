@@ -26,6 +26,7 @@ import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import {
     clampSummary,
+    easedFromLabel,
     kmLabel,
     paceLabel,
     SESSION_TYPE_ICON,
@@ -184,6 +185,16 @@ export default function WeekDayRow({
                                 {pace !== null && ` · ${pace}`}
                             </span>
                         )}
+                        {day.eased_from && (
+                            <span className="mt-0.5 flex items-center gap-1 text-label-micro text-text-2">
+                                <Icon
+                                    icon={ArrowDown}
+                                    className="size-3"
+                                    aria-hidden
+                                />
+                                {easedFromLabel(day.eased_from)}
+                            </span>
+                        )}
                         {adjustedFrom !== null && (
                             <span className="mt-0.5 flex items-center gap-1 text-label-micro text-text-2">
                                 <Icon
@@ -228,8 +239,15 @@ export default function WeekDayRow({
                 />
             </div>
             <CollapsibleContent className="border-t border-border-strong px-4 py-3">
-                {narration && (
-                    <TemariTake analysis={narration} allowReanalyze={false} />
+                {day.eased_from?.voice ? (
+                    <p className="narration">{day.eased_from.voice}</p>
+                ) : (
+                    narration && (
+                        <TemariTake
+                            analysis={narration}
+                            allowReanalyze={false}
+                        />
+                    )
                 )}
                 {day.clamp && (
                     <ClampStepDown

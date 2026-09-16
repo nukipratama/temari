@@ -13,7 +13,7 @@ code_refs:
 
 # The clamp explains itself, in its own narration
 
-**Status:** Accepted (2026-09-07)
+**Status:** Accepted (2026-09-07). **Since 2026-09-16** this line is also an eased day's voice until the day is credited, and its prompt names the eased session as the day's session; see [[the-eased-session-leads]].
 
 ## Context
 

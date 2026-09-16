@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Models\PlannedSession;
+use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
@@ -21,12 +22,11 @@ use Illuminate\Support\Carbon;
  * ({@see PlanRenderer::coreKmForSession()}) — only the live per-day
  * redistribution is left out.
  *
- * A readiness-eased day is the exception, and the only figure here read
- * from the row: `clamped_km` is a decision already taken, recorded by
- * {@see \App\Services\Run\Plan\RestClampRecorder}, and it is what the card
- * shows. The clamp still never reaches
+ * A readiness-eased day is described as the session it became, read through
+ * {@see EffectiveSession} like every other surface, with the original named as
+ * context. The clamp still never reaches
  * {@see \App\Services\AI\MaterialFingerprint} — see
- * `docs/decisions/the-clamp-explains-itself.md`.
+ * `docs/decisions/the-eased-session-leads.md`.
  */
 final class PlanDayTool extends NoArgumentTool
 {
@@ -51,27 +51,28 @@ final class PlanDayTool extends NoArgumentTool
             .'carries how it went: status (done/partial/missed/overreached), completed_km, and '
             .'ran_anyway true when they ran a day they had excused. Those four are absent on a '
             .'day that has not been graded yet, which means it is still ahead of the athlete. '
-            .'eased true means readiness cut the day back: distance_km is the smaller figure the '
-            .'athlete was actually asked for, not the session it replaced.';
+            .'eased_from means readiness eased the day: session_type and distance_km are the eased '
+            .'session the athlete is actually doing, and eased_from names the session it replaced '
+            .'(with its distance only when that moved). Describe the eased session as the day, and '
+            .'the replaced one only as what it was eased from.';
     }
 
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
         $baselineData = $this->baseline->forUser($this->session->user, Carbon::today());
-        $coreKm = PlanRenderer::coreKmForSession($this->session, $baselineData['long_run_km'], $baselineData['long_run_cap_km'], $baselineData['self_scaled']);
-
-        // A readiness-eased day was told to run less, and that smaller figure is
-        // what the card shows and what the athlete is being asked for. Reading
-        // past it leaves the blurb describing a session that was called off.
-        $easedKm = $this->session->clamped_km;
+        $effective = EffectiveSession::of(
+            $this->session,
+            PlanRenderer::coreKmForSession($this->session, $baselineData['long_run_km'], $baselineData['long_run_cap_km'], $baselineData['self_scaled']),
+        );
+        $easedFrom = $effective->easedFromForNarration();
 
         return [
             'date' => $this->session->date->toDateString(),
-            'session_type' => $this->session->session_type->value,
+            'session_type' => $effective->sessionType->value,
             'phase' => $this->session->phase->value,
-            'distance_km' => $easedKm ?? $coreKm,
-            ...($easedKm === null ? [] : ['eased' => true]),
+            'distance_km' => $effective->coreKm,
+            ...($easedFrom === null ? [] : ['eased_from' => $easedFrom]),
             'skipped' => $this->session->skipped,
             // Absent rather than null on an ungraded day: a key that is always
             // there teaches the model the day is over even when it is not.

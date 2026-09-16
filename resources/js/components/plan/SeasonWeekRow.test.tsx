@@ -22,6 +22,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         prescribed_km: null,
         clamp: null,
+        eased_from: null,
         credit_note: null,
         actual_km: 8,
         activities: [],
@@ -94,6 +95,21 @@ describe('SeasonWeekRow', () => {
         expect(screen.getByText('jun 15–21')).toBeInTheDocument();
         expect(
             screen.getByText(/30 km target · 5 sessions/),
+        ).toBeInTheDocument();
+    });
+
+    it('heads an eased current week with the eased target and the original beside it', () => {
+        renderRow({
+            week: week({
+                type: 'current',
+                planned_km: 24.6,
+                eased_from_km: 26.9,
+            }),
+            detail: { ...DETAIL, type: 'current' },
+        });
+
+        expect(
+            screen.getByText(/25 km target · eased from 27 · 5 sessions/),
         ).toBeInTheDocument();
     });
 

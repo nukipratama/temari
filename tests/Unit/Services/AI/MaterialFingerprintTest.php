@@ -138,6 +138,29 @@ it('leaves a non-race day fingerprinted exactly as it was before race days exist
 });
 
 /**
+ * An eased day's voice before credit is the clamp line, so the clamp adds no
+ * key here: an untouched row keeps its digest, and easing a day re-bills nothing.
+ */
+it('keeps an eased day\'s digest identical to the untouched row\'s', function (): void {
+    $untouched = PlannedSession::factory()->make([
+        'session_type' => SessionType::Tempo,
+        'phase' => PlanPhase::Build,
+        'skipped' => false,
+        'race_distance_m' => null,
+    ]);
+    $pinned = hash('xxh128', (string) json_encode([
+        'long_run_km' => 16.0,
+        'phase' => 'build',
+        'session_type' => 'tempo',
+        'skipped' => false,
+    ]));
+
+    expect(MaterialFingerprint::forPlannedSession($untouched, 16.0))->toBe($pinned)
+        ->and(MaterialFingerprint::forPlannedSession($untouched->replicate()->forceFill(['clamped_km' => 3.6]), 16.0))->toBe($pinned)
+        ->and(MaterialFingerprint::forPlannedSession($untouched->replicate()->forceFill(['rest_clamped_at' => now()]), 16.0))->toBe($pinned);
+});
+
+/**
  * The day flipping to credited turns the blurb from a label into a read of what
  * happened, so it has to re-narrate once — and exactly once.
  */

@@ -41,7 +41,7 @@ still rendered it: [RestClampRecorder](../../app/Services/Run/Plan/RestClampReco
 wrote the outcome so compliance could grade the day the athlete was actually set, and that write is
 now also where they are told. Its guards make it the one place that fires once per athlete per day,
 so the row inherits that dedupe rather than adding its own, and a ceiling that recovers later does
-not delete what was already said. The clamp is advisory ([[readiness-clamp-is-advisory]]) and the
+not delete what was already said. A recorded ease is the day's session ([[the-eased-session-leads]]), not an alarm, and the
 briefing path records it at 00:01, so a lock screen is the wrong place for it — and
 `notifications_enabled`, which enumerates what it governs, does not name it either.
 

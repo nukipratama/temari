@@ -4,6 +4,7 @@ import type { IconComponent } from '@/components/ui/Icon';
 import type {
     AnalysisPayload,
     PlanDayClamp,
+    PlanDayEasedFrom,
     WeekPlanDay,
 } from '@/types/inertia';
 
@@ -31,6 +32,8 @@ export interface SeasonSummaryWeek {
     phase: string;
     type: 'history' | 'current' | 'lookahead';
     planned_km: number;
+    /** The current week's target before a recorded ease took km off it. */
+    eased_from_km?: number | null;
     actual_km: number | null;
     sessions: number;
 }
@@ -197,6 +200,16 @@ export function isRaceWeek(
         raceDateIso >= isoDateLocal(monday) &&
         raceDateIso <= isoDateLocal(sundayOf(monday))
     );
+}
+
+/** The session an eased day replaced, with its distance only when that moved. */
+export function easedFromLabel(easedFrom: PlanDayEasedFrom): string {
+    const session =
+        SESSION_TYPE_LABEL[easedFrom.session_type] ?? easedFrom.session_type;
+
+    return easedFrom.distance_km === null
+        ? `eased from ${session}`
+        : `eased from ${easedFrom.distance_km} km ${session}`;
 }
 
 /**

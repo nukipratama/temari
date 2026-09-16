@@ -115,6 +115,7 @@ const weekPlan: WeekPlan = {
     sessions_this_week: 5,
     phase: 'build',
     planned_km_this_week: 32,
+    planned_km_eased_from: null,
     credited_this_week: 2,
     days: [
         {
@@ -141,6 +142,7 @@ const weekPlan: WeekPlan = {
             ran_anyway: false,
             prescribed_km: null,
             clamp: null,
+            eased_from: null,
             credit_note: null,
             actual_km: null,
             activities: [],

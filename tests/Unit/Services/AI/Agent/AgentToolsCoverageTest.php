@@ -1005,6 +1005,56 @@ it('scales the fallback distance by the week\'s own volume multiplier', function
         ->not->toBe($flatOldReading);
 });
 
+/**
+ * The real case the briefing reads: a tempo eased to easy with its distance
+ * held is the easy run at easy pace, and tempo is only what it was eased from.
+ */
+it('reads a tempo day eased to easy as the easy run, at easy pace, tempo only as context', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+    $today = Carbon::today();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Tempo,
+    ]);
+    $baseline = app(TrainingBaseline::class)->forUser($user, $today);
+    $storedKm = PlanRenderer::coreKmForSession($session, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled']);
+    $session->update(['clamped_km' => $storedKm]);
+    $paces = app(TrainingPaceCalculator::class)->fromVdotResult(app(VdotEstimator::class)->estimate($user, $today));
+
+    $day = planContextTool($user, $today, $today)->handle([])['days'][0];
+
+    expect($day['session_type'])->toBe('easy')
+        ->and($day['distance_km'])->toBe($storedKm)
+        ->and($day['target_pace_sec'])->toBe($paces['easy'])
+        ->and($day['eased_from'])->toBe(['session_type' => 'tempo']);
+});
+
+it('reads a day eased to a shorter run at the eased distance, naming the original', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'clamped_km' => 1.0,
+    ]);
+
+    $day = planContextTool($user, $today, $today)->handle([])['days'][0];
+
+    expect($day['session_type'])->toBe('easy')
+        ->and($day['distance_km'])->toBe(1.0)
+        ->and($day['eased_from']['session_type'])->toBe('tempo')
+        ->and($day['eased_from']['distance_km'])->toBeGreaterThan(1.0);
+});
+
+it('leaves an un-eased day with no easing to explain', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    PlannedSession::factory()->for($user)->create(['date' => $today->toDateString(), 'session_type' => SessionType::Tempo]);
+
+    expect(planContextTool($user, $today, $today)->handle([])['days'][0])->not->toHaveKey('eased_from');
+});
+
 it('prefers the scored distance once the scorer has written one', function (): void {
     $user = User::factory()->create();
     $yesterday = Carbon::yesterday();

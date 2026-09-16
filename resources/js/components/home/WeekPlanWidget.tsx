@@ -259,6 +259,12 @@ export default function WeekPlanWidget({
                 </div>
                 <div className="flex flex-col items-center text-center">
                     <PlanFigure value={kmValue} label="km" />
+                    {weekPlan.planned_km_eased_from !== null && (
+                        <span className="font-mono text-[0.5625rem] text-text-2">
+                            eased from{' '}
+                            {weekPlan.planned_km_eased_from.toFixed(1)}
+                        </span>
+                    )}
                 </div>
                 <div className="flex flex-col items-center text-center">
                     <PlanFigure value={trimpValue} label="trimp" />

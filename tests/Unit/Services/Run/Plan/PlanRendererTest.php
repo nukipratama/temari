@@ -12,7 +12,9 @@ use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
+use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\SessionSegment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -459,6 +461,90 @@ it('dayPayload narrates the clamp on a day still to be run', function (): void {
     $pending = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned, null, $voice);
 
     expect($pending['clamp']['note'])->toBe($voice);
+});
+
+/**
+ * The real case: a tempo day eased to easy at 00:01 with its 6.4 km held. The
+ * row headlines the easy run the athlete was told to do, with tempo only as
+ * the context it was eased from, and no second step-down menu beside it.
+ */
+it('dayPayload headlines a tempo day eased to easy as the easy run, with tempo as context', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    [$session, $liveClamp] = tempoSessionWithEasyClamp($today, 'Templated floor.');
+    $session->forceFill(['clamped_km' => 6.4]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, $liveClamp, [], null, false, 9.8, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned, null, 'you ran hard yesterday, so today is an easy 6.4 instead of the tempo.');
+
+    expect($payload['session_type'])->toBe('easy')
+        ->and($payload['distance_km'])->toBe(6.4)
+        ->and($payload['asked_km'])->toBe(6.4)
+        ->and($payload['segments'])->toHaveCount(1)
+        ->and($payload['segments'][0]['key'])->toBe('main')
+        ->and($payload['segments'][0]['pace_sec_per_km'])->toBe(RENDERER_PACES['easy'])
+        ->and($payload['clamp'])->toBeNull()
+        ->and($payload['eased_from'])->toBe([
+            'session_type' => 'tempo',
+            'distance_km' => null,
+            'voice' => 'you ran hard yesterday, so today is an easy 6.4 instead of the tempo.',
+        ]);
+});
+
+it('dayPayload names the distance an eased day came down from when it moved', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    [$session] = tempoSessionWithEasyClamp($today, 'Templated floor.');
+    $session->forceFill(['clamped_km' => 3.6]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+
+    expect($payload['session_type'])->toBe('easy')
+        ->and($payload['distance_km'])->toBe(3.6)
+        ->and($payload['eased_from']['session_type'])->toBe('tempo')
+        ->and($payload['eased_from']['distance_km'])->toBe(13.0)
+        ->and($payload['eased_from']['voice'])->toBe(ReadinessClamp::noteFor(SessionType::Tempo, ReadinessCeiling::EasyOnly));
+});
+
+it('dayPayload reads a rest-clamped day as a rest day with the same context line', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Long,
+        'pinned' => false,
+        'rest_clamped_at' => $today->copy()->setTime(0, 1),
+    ]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+
+    expect($payload['session_type'])->toBe('rest')
+        ->and($payload['segments'])->toBe([])
+        ->and($payload['distance_km'])->toBe(0.0)
+        ->and($payload['eased_from'])->toBe([
+            'session_type' => 'long',
+            'distance_km' => 20.0,
+            'voice' => ReadinessClamp::noteFor(SessionType::Long, ReadinessCeiling::Rest),
+        ]);
+});
+
+it('dayPayload hands an eased day back to its own narration once it is credited', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    [$session] = tempoSessionWithEasyClamp($today, 'Templated floor.');
+    $session->forceFill(['clamped_km' => 3.6]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done, null, 'a clamp line');
+
+    expect($payload['session_type'])->toBe('easy')
+        ->and($payload['eased_from']['voice'])->toBeNull();
+});
+
+it('dayPayload keeps the advisory step-down for a clamp that was never recorded', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    [$session, $clamp] = tempoSessionWithEasyClamp($today, 'Templated floor.');
+
+    $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+
+    expect($payload['session_type'])->toBe('tempo')
+        ->and($payload['clamp'])->not->toBeNull()
+        ->and($payload['eased_from'])->toBeNull();
 });
 
 /**

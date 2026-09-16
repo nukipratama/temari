@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
@@ -53,7 +54,10 @@ final class PlanContextTool extends UserTool
             .'(raw seconds, for judging size, never for quoting). For days that have already been '
             .'graded it also returns how the athlete did: status (done/partial/missed/overreached/'
             .'planned), a compliance score out of 100, and ran_anyway true when they ran a day they '
-            .'had excused themselves from. skipped true means they excused the day. Call this to say '
+            .'had excused themselves from. skipped true means they excused the day. eased_from means '
+            .'readiness eased the day: session_type, distance_km and the pace are the eased session '
+            .'they are actually doing, and eased_from names the session it replaced (with its distance '
+            .'only when that moved), which is context, never the day itself. Call this to say '
             .'what was asked of them, not just what they did. An empty list means no plan covers '
             .'these days.';
     }
@@ -79,15 +83,21 @@ final class PlanContextTool extends UserTool
 
         return [
             'days' => $sessions->map(function (PlannedSession $session) use ($paces, $longRunBaselineKm, $longRunCapKm, $selfScaled): array {
-                $targetPaceSec = self::targetPaceSec($session, $paces);
+                $effective = EffectiveSession::of(
+                    $session,
+                    PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm, $selfScaled),
+                );
+                $targetPaceSec = self::targetPaceSec($session, $effective->sessionType, $paces);
+                $easedFrom = $effective->easedFromForNarration();
 
                 return [
                     'date' => $session->date->toDateString(),
-                    'session_type' => $session->session_type->value,
+                    'session_type' => $effective->sessionType->value,
                     'phase' => $session->phase->value,
                     'distance_km' => $session->prescribed_km !== null
                         ? round($session->prescribed_km, 1)
-                        : PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm, $selfScaled),
+                        : $effective->coreKm,
+                    ...($easedFrom === null ? [] : ['eased_from' => $easedFrom]),
                     'target_pace_sec' => $targetPaceSec,
                     'target_pace_formatted' => $targetPaceSec === null
                         ? null
@@ -107,9 +117,9 @@ final class PlanContextTool extends UserTool
      *
      * @param  array<string, int|null>  $paces  Empty until the athlete's PR history can estimate a VDOT.
      */
-    private static function targetPaceSec(PlannedSession $session, array $paces): ?int
+    private static function targetPaceSec(PlannedSession $session, SessionType $sessionType, array $paces): ?int
     {
-        return match ($session->session_type) {
+        return match ($sessionType) {
             SessionType::Easy, SessionType::Long => $paces['easy'] ?? null,
             SessionType::Tempo => $paces['threshold'] ?? null,
             SessionType::Interval => $paces['interval'] ?? null,

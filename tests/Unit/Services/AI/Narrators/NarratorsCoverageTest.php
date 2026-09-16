@@ -43,7 +43,9 @@ use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use App\Services\Run\Plan\SessionMatcher;
+use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
+use App\Services\AI\Narrators\PlanClampVoiceNarrator;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\RelativeEffort;
@@ -782,14 +784,51 @@ it('PlanDayTool asks for the eased distance on a clamped day, not the one it rep
         'phase' => 'build',
         'date' => Carbon::today()->toDateString(),
         'skipped' => false,
-        'clamped_km' => 3.6,
+        'clamped_km' => 1.2,
     ]);
 
     $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
 
-    // The card says 3.6 km. The blurb has to say 3.6 km too.
-    expect($context['distance_km'])->toBe(3.6)
-        ->and($context['eased'])->toBeTrue();
+    // The card says an easy 1.2 km. The blurb has to say an easy 1.2 km too.
+    expect($context['session_type'])->toBe('easy')
+        ->and($context['distance_km'])->toBe(1.2)
+        ->and($context['eased_from']['session_type'])->toBe('tempo')
+        ->and($context['eased_from']['distance_km'])->toBeGreaterThan(1.2);
+});
+
+/** The real case: a tempo eased to easy with the distance held names tempo as context only. */
+it('PlanDayTool describes a tempo eased to easy with its distance held as the easy run', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => 'tempo',
+        'phase' => 'build',
+        'date' => Carbon::today()->toDateString(),
+    ]);
+    $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
+    $storedKm = PlanRenderer::coreKmForSession($session, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled']);
+    $session->update(['clamped_km' => $storedKm]);
+
+    $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
+
+    expect($context['session_type'])->toBe('easy')
+        ->and($context['distance_km'])->toBe($storedKm)
+        ->and($context['eased_from'])->toBe(['session_type' => 'tempo']);
+});
+
+it('PlanDayTool describes a rest-clamped day as rest', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => 'long',
+        'phase' => 'build',
+        'date' => Carbon::today()->toDateString(),
+        'rest_clamped_at' => Carbon::today()->setTime(0, 1),
+    ]);
+
+    $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
+
+    expect($context['session_type'])->toBe('rest')
+        ->and($context['distance_km'])->toBe(0.0)
+        ->and($context['eased_from']['session_type'])->toBe('long');
 });
 
 it('PlanDayTool leaves an unclamped day with no easing to explain', function (): void {
@@ -803,7 +842,15 @@ it('PlanDayTool leaves an unclamped day with no easing to explain', function ():
 
     $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
 
-    expect($context)->not->toHaveKey('eased');
+    expect($context['session_type'])->toBe('tempo')
+        ->and($context)->not->toHaveKey('eased_from');
+});
+
+it('PlanClampVoiceNarrator names the eased session as the one being run today', function (): void {
+    $prompt = narratorPrompt(PlanClampVoiceNarrator::class);
+
+    expect($prompt)->toContain('stepped_down_to is the session the athlete is running today')
+        ->and($prompt)->not->toContain('SAY WHY, NOT WHAT');
 });
 
 it('PlanDayTool carries how the day went once it has been graded', function (): void {

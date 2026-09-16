@@ -8,6 +8,7 @@ import {
     SESSION_TYPE_LABEL,
     clampSummary,
     computeAdherence,
+    easedFromLabel,
     isRaceWeek,
     kmLabel,
     paceLabel,
@@ -147,6 +148,29 @@ describe('phasesOf', () => {
     });
 });
 
+describe('easedFromLabel', () => {
+    it('names the distance and session a day was eased from', () => {
+        expect(
+            easedFromLabel({
+                session_type: 'tempo',
+                distance_km: 5.9,
+                voice: null,
+            }),
+        ).toBe('eased from 5.9 km tempo');
+    });
+
+    /** Intensity-only: the distance did not move, so repeating it reads as a bug. */
+    it('names only the session when the distance was held', () => {
+        expect(
+            easedFromLabel({
+                session_type: 'tempo',
+                distance_km: null,
+                voice: null,
+            }),
+        ).toBe('eased from tempo');
+    });
+});
+
 describe('clampSummary', () => {
     it('names the eased session, its distance and its pace', () => {
         expect(
@@ -241,6 +265,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         prescribed_km: null,
         clamp: null,
+        eased_from: null,
         credit_note: null,
         actual_km: null,
         activities: [],
