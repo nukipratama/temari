@@ -96,6 +96,24 @@ describe('WeekDayRow', () => {
         expect(scrollIntoView).not.toHaveBeenCalled();
     });
 
+    it('opens already expanded when it is the day that was asked for', () => {
+        renderRow({ focused: true });
+
+        expect(screen.getByRole('button', { name: /tempo/i })).toHaveAttribute(
+            'aria-expanded',
+            'true',
+        );
+    });
+
+    it('leaves a day closed when it is not the one that was asked for', () => {
+        renderRow({ focused: false });
+
+        expect(screen.getByRole('button', { name: /tempo/i })).toHaveAttribute(
+            'aria-expanded',
+            'false',
+        );
+    });
+
     it('summarises the day without expanding it', () => {
         renderRow();
 
