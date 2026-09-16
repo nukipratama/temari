@@ -149,6 +149,7 @@ export default function WeekDayRow({
     return (
         <Collapsible
             ref={rowRef}
+            defaultOpen={focused}
             className={cn(
                 cardVariants({ padding: 'none' }),
                 'overflow-hidden',
