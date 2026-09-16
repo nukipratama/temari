@@ -81,7 +81,7 @@ final class PlanPageAssembler
     }
 
     /**
-     * @return list<array{week_start: string, phase: string, type: string, planned_km: float, actual_km: float|null, sessions: int}>
+     * @return list<array{week_start: string, phase: string, type: string, planned_km: float, eased_from_km: float|null, actual_km: float|null, sessions: int}>
      */
     public function seasonSummary(User $user, Carbon $today): array
     {
@@ -181,7 +181,9 @@ final class PlanPageAssembler
 
         // Falls back to the clamp's own templated note when no line has landed
         // yet, so the step-down is never unexplained.
-        $clampVoice = $clamp === null ? null : $this->narrationRequester->clampVoiceFor($user, $today);
+        $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $todaySession)
+            ? $this->narrationRequester->clampVoiceFor($user, $today)
+            : null;
 
         $volumeScaleByDate = $this->redistributeCurrentWeek(
             $user,
@@ -276,14 +278,14 @@ final class PlanPageAssembler
         foreach ($staleSessions as $s) {
             $date = $s->date->toDateString();
             $weekKey = $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
-            $stalePlannedKm[$date] = SegmentGenerator::coreKmFor(
+            $stalePlannedKm[$date] = EffectiveSession::of($s, SegmentGenerator::coreKmFor(
                 $s->session_type,
                 $date === $primaryEasyDateByWeek->get($weekKey),
                 $baselineData['long_run_km'],
                 $multiplierByWeek[$weekKey] ?? 1.0,
                 $baselineData['long_run_cap_km'],
                 $s->race_distance_m === null ? null : (float) $s->race_distance_m,
-            );
+            ))->coreKm;
             $staleExcused[$date] = $s->isExcused();
         }
 
@@ -316,13 +318,13 @@ final class PlanPageAssembler
             return [];
         }
 
-        $kmFor = fn (PlannedSession $s): float => SegmentGenerator::coreKmFor(
+        $kmFor = fn (PlannedSession $s): float => EffectiveSession::of($s, SegmentGenerator::coreKmFor(
             $s->session_type,
             $s->date->toDateString() === $primaryEasyDate,
             $longRunKm,
             $multiplier,
             $longRunCapKm,
-        );
+        ))->coreKm;
 
         $weekTargetKm = $currentWeekSessions->sum($kmFor);
         // The target sums the days the plan actually stored, so the completed
@@ -336,7 +338,7 @@ final class PlanPageAssembler
 
         $todayFixedKm = 0.0;
         if ($todaySession !== null && ! $todaySession->pinned) {
-            $todayFixedKm = $clamp !== null ? $clamp['core_km'] : $kmFor($todaySession);
+            $todayFixedKm = $clamp !== null && ! EffectiveSession::isRecordedOn($todaySession) ? $clamp['core_km'] : $kmFor($todaySession);
         }
 
         $eligibleDaysKm = [];

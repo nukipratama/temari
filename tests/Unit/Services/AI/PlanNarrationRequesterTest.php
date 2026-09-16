@@ -6,6 +6,9 @@ use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
 use App\Models\AI\Analysis;
+use App\Models\Feedback;
+use App\Services\AI\ServedBy;
+use App\Services\AI\AnalysisService;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\Season;
@@ -217,6 +220,46 @@ describe('payloadsForCurrentWeek', function (): void {
 
         expect($payloads['days'][$today]['content'])->toBe('long run today')
             ->and($payloads['week']['content'])->toBe('steady week');
+    });
+
+    /** Before credit an eased day speaks through its clamp line, never a blurb written for the session it replaced. */
+    it('holds back the day take of an eased day not yet credited', function (): void {
+        $user = User::factory()->create();
+        $session = PlannedSession::factory()->for($user)->create([
+            'date' => Carbon::today()->toDateString(),
+            'session_type' => SessionType::Tempo,
+            'status' => PlannedSessionStatus::Planned,
+        ]);
+        stampedDay($user, $session);
+        $session->update(['clamped_km' => 3.6]);
+
+        expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'])->toBe([]);
+    });
+
+    it('holds back the day take of a rest-clamped day not yet credited', function (): void {
+        $user = User::factory()->create();
+        $session = PlannedSession::factory()->for($user)->create([
+            'date' => Carbon::today()->toDateString(),
+            'session_type' => SessionType::Long,
+        ]);
+        stampedDay($user, $session);
+        $session->update(['rest_clamped_at' => Carbon::now()]);
+
+        expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'])->toBe([]);
+    });
+
+    it('hands an eased day back to its own take once it is credited', function (): void {
+        $user = User::factory()->create();
+        $today = Carbon::today()->toDateString();
+        $session = PlannedSession::factory()->for($user)->create([
+            'date' => $today,
+            'session_type' => SessionType::Tempo,
+            'clamped_km' => 3.6,
+            'status' => PlannedSessionStatus::Done,
+        ]);
+        stampedDay($user, $session);
+
+        expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'][$today]['content'])->toBe('already narrated');
     });
 });
 
@@ -579,6 +622,29 @@ describe('requestDayVoiceIfChanged', function (): void {
 
         expect($this->requester->requestDayVoiceIfChanged($user, $today->copy()))->toBeTrue();
         Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 1);
+    });
+
+    /** Crediting an eased day earns its one re-narration, and that replacement retires the flag on the old text. */
+    it('re-narrates an eased day once it is credited, superseding the flag on the text it replaces', function (): void {
+        $user = User::factory()->create();
+        $today = Carbon::today();
+        $session = PlannedSession::factory()->for($user)->create([
+            'date' => $today->toDateString(),
+            'session_type' => SessionType::Tempo,
+            'clamped_km' => 3.6,
+            'status' => PlannedSessionStatus::Planned,
+        ]);
+        $row = stampedDay($user, $session);
+        $flag = Feedback::factory()->onNarration($row->id)->create();
+
+        $session->forceFill(['status' => PlannedSessionStatus::Done])->save();
+
+        expect($this->requester->requestDayVoiceIfChanged($user, $today->copy()))->toBeTrue();
+        Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 1);
+
+        app(AnalysisService::class)->markDone($row->fresh(), 'an easy 3.6, done.', ServedBy::Llm);
+
+        expect($flag->fresh()->superseded_at)->not->toBeNull();
     });
 
     it('asks for nothing on a date the plan does not cover', function (): void {

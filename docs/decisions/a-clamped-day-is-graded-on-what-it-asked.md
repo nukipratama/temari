@@ -76,7 +76,8 @@ now says on a credited day.
   incoherent either way round.
 - **Rendering is untouched.** Only the scorer substitutes; `PlanRenderer` still leads with the
   stored session, so the week's headline km and the day cells still agree at the un-eased total,
-  as [[readiness-clamp-is-advisory]] settled.
+  as [[readiness-clamp-is-advisory]] settled. **Correction, 2026-09-16:** no longer true. The
+  recorded ease now leads every surface and the week total sums it; see [[the-eased-session-leads]].
 - **Write once, never cleared**, matching `rest_clamped_at`: readiness recovering later in the day
   does not un-tell the athlete to ease off, and the forgiving direction is the right one.
 - **A day the ceiling only dropped on after the first run keeps its original ask.** That is the

@@ -3,12 +3,16 @@
 declare(strict_types=1);
 
 use App\Enums\PlanPhase;
+use App\Enums\SessionType;
+use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -164,4 +168,48 @@ it('breaks a race-oriented season\'s ramp with recovery weeks, but never its pea
 
     expect($phases)->toContain(PlanPhase::Deload->value)
         ->and($peakOnwards)->not->toContain(PlanPhase::Deload->value);
+});
+
+function seasonSummaryTempoToday(User $user): array
+{
+    $row = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+    ]);
+    $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
+
+    return [$row, PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled'])];
+}
+
+it('takes an eased day off the current week\'s target and names the original', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create([
+        'race_goal_id' => null,
+        'starts_at' => '2026-08-03',
+        'ends_at' => '2026-10-26',
+    ]);
+    [$row, $storedKm] = seasonSummaryTempoToday($user);
+    $row->update(['clamped_km' => 1.0]);
+
+    $weeks = $this->builder->build($user, $season, Carbon::today());
+    $current = collect($weeks)->firstWhere('type', 'current');
+
+    expect($current['eased_from_km'])->not->toBeNull()
+        ->and($current['planned_km'])->toBe(round($current['eased_from_km'] - ($storedKm - 1.0), 1))
+        ->and($weeks[0]['eased_from_km'])->toBeNull()
+        ->and($weeks[2]['eased_from_km'])->toBeNull();
+});
+
+it('names nothing on a week whose eased day kept its distance', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create([
+        'race_goal_id' => null,
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2026-11-02',
+    ]);
+    [$row, $storedKm] = seasonSummaryTempoToday($user);
+    $row->update(['clamped_km' => $storedKm]);
+
+    expect($this->builder->build($user, $season, Carbon::today())[0]['eased_from_km'])->toBeNull();
 });

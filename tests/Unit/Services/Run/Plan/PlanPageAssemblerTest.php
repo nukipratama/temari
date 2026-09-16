@@ -14,6 +14,8 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanPageAssembler;
+use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -102,6 +104,31 @@ it('renders the generated weeks with the current one marked as such', function (
     expect($weeks)->not->toBeEmpty()
         ->and($current['week_start'])->toBe(Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString())
         ->and($current['days'])->toHaveCount(7);
+});
+
+/**
+ * The real case: a tempo day eased to easy at 00:01 with its distance held.
+ * The Plan row headlines the easy run the athlete was told to do.
+ */
+it('headlines a tempo day eased to easy on the Plan row, with tempo only as context', function (): void {
+    $user = assemblerAthlete();
+    $row = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Tempo,
+    ]);
+    $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
+    $storedKm = PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled']);
+    $row->update(['clamped_km' => $storedKm]);
+
+    $day = collect($this->assembler->weeks($user, Carbon::today()))
+        ->firstWhere('type', 'current')['days'][0];
+
+    expect($day['session_type'])->toBe('easy')
+        ->and($day['distance_km'])->toBe($storedKm)
+        ->and($day['clamp'])->toBeNull()
+        ->and($day['eased_from']['session_type'])->toBe('tempo')
+        ->and($day['eased_from']['distance_km'])->toBeNull()
+        ->and($day['eased_from']['voice'])->not->toBeNull();
 });
 
 it('reports the baseline session count the plan is built on', function (): void {

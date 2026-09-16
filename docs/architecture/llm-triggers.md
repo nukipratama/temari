@@ -93,7 +93,7 @@ everyone. See [[narration-follows-the-athlete-not-the-run]].
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 and it still runs for every athlete. The narration half then calls
-[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L163) for each
+[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L205) for each
 recently-active athlete, touching up to nine rows: `PlanDayVoice` ×7, `PlanWeekVoice`, and
 `PlanSeasonVoice`. It is the largest scheduled spend in the app, which is why it is also the one
 that checks hardest before it bills.
@@ -203,7 +203,7 @@ rendered somewhere a user can see — both directions matter, and only one of th
 | `profile_voice` | `ProfileVoiceNarrator` | synthetic user · ISO week | scheduled + ingest | `ProfileHero` |
 | `trend_read` | `TrendReadNarrator` | synthetic user+range · range | scheduled ×3 | `NarrationCard` on Trends |
 | `plan_day_voice` | `PlanDayVoiceNarrator` | synthetic user+day · `Y-m-d` | `plan:regenerate`, Plan page, first week | `WeekDayRow`, collapsed |
-| `plan_clamp_voice` | `PlanClampVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest listener, 00:01 briefing | today's step-down, on both surfaces |
+| `plan_clamp_voice` | `PlanClampVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest listener, 00:01 briefing | an eased day's voice before credit, or an unrecorded step-down, on both surfaces |
 | `plan_week_voice` | `PlanWeekVoiceNarrator` | `PlanAdaptation` · none | `plan:regenerate`, Plan page, first week | `SeasonWeekRow`, collapsed |
 | `plan_season_voice` | `PlanSeasonVoiceNarrator` | `Season` · none | `plan:regenerate`, Plan page, first week | `SeasonHeaderCard`, always visible |
 | *(not an Analysis row)* | `RunQuestionNarrator` | `RunQuestion` rows per activity | user | `AskAboutRun` on the run page |

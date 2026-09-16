@@ -57,6 +57,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         ran_anyway: false,
         prescribed_km: null,
         clamp: null,
+        eased_from: null,
         credit_note: null,
         actual_km: null,
         activities: [],
@@ -251,6 +252,41 @@ describe('TodaySession', () => {
         expect(note).toBeInTheDocument();
         expect(note).toHaveClass('text-text-2');
         expect(note).not.toHaveClass('italic');
+    });
+
+    /** The real case: a tempo eased to easy with its distance held leads as the easy run. */
+    it('leads with the eased session, the original only as context, and the clamp line as why', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    session_type: 'easy',
+                    distance_km: 6.4,
+                    segments: [
+                        {
+                            key: 'main',
+                            minutes: 43,
+                            zone: 'Z2',
+                            pace_label: 'easy',
+                            km: 6.4,
+                            pace_sec_per_km: 403,
+                        },
+                    ],
+                    eased_from: {
+                        session_type: 'tempo',
+                        distance_km: null,
+                        voice: 'you ran hard yesterday, so today runs easy.',
+                    },
+                })}
+            />,
+        );
+
+        expect(screen.getByText('easy · 6.4 km · 6:43/km')).toBeInTheDocument();
+        expect(screen.getByText('eased from tempo')).toBeInTheDocument();
+        expect(
+            screen.getByText('you ran hard yesterday, so today runs easy.'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('eased today')).not.toBeInTheDocument();
     });
 
     it('names a rest day with no distance or pace hung off it', () => {

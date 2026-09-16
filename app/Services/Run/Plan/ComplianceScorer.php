@@ -71,13 +71,7 @@ final readonly class ComplianceScorer
             $selfScaled = $baselineData['self_scaled'];
             $byDate = $kmByBaseline["{$longRunKm}:{$capKm}:{$selfScaled}"] ??= PlanRenderer::plannedKmByDate($contextRows, $longRunKm, $capKm, $selfScaled);
             if (array_key_exists($date, $byDate)) {
-                // The eased distance wins where one was recorded: an athlete
-                // told at 00:01 to run 3.6 instead of the 5.9 on the board is
-                // graded on what they were told, not on the session it
-                // replaced. Only the scorer substitutes it — PlanRenderer keeps
-                // the stored figure, so the week's headline km and the day
-                // cells still agree at the un-eased total.
-                $plannedKmByDate[$date] = $row->clamped_km ?? $byDate[$date];
+                $plannedKmByDate[$date] = EffectiveSession::of($row, $byDate[$date])->coreKm;
             }
         }
 

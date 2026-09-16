@@ -42,7 +42,7 @@ final readonly class CurrentWeekPlanBuilder
     }
 
     /**
-     * @return array{sessions_this_week: int, phase: string, planned_km_this_week: float, credited_this_week: int, days: array<int, array<string, mixed>>}|null
+     * @return array{sessions_this_week: int, phase: string, planned_km_this_week: float, planned_km_eased_from: float|null, credited_this_week: int, days: array<int, array<string, mixed>>}|null
      */
     public function forUser(User $user, Carbon $today): ?array
     {
@@ -81,15 +81,18 @@ final readonly class CurrentWeekPlanBuilder
         $primaryEasyDate = PlanRenderer::primaryEasyDate($currentWeekSessions);
 
         $plannedKmByDate = [];
+        $easedAwayKm = 0.0;
         foreach ($currentWeekSessions as $s) {
-            $plannedKmByDate[$s->date->toDateString()] = SegmentGenerator::coreKmFor(
+            $effective = EffectiveSession::of($s, SegmentGenerator::coreKmFor(
                 $s->session_type,
                 $s->date->toDateString() === $primaryEasyDate,
                 $baselineData['long_run_km'],
                 $currentWeekMultiplier,
                 $baselineData['long_run_cap_km'],
                 $s->race_distance_m === null ? null : (float) $s->race_distance_m,
-            );
+            ));
+            $plannedKmByDate[$s->date->toDateString()] = $effective->coreKm;
+            $easedAwayKm += $effective->easedAwayKm();
         }
 
         // Every past row should already carry its real status —
@@ -129,7 +132,9 @@ final readonly class CurrentWeekPlanBuilder
             : null;
 
         $activityByDate = $this->sessionMatcher->activityByDate($user, $currentWeekStart, $today);
-        $clampVoice = $clamp === null ? null : $this->planNarration->clampVoiceFor($user, $today);
+        $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $todaySession)
+            ? $this->planNarration->clampVoiceFor($user, $today)
+            : null;
 
         $days = $currentWeekSessions->map(fn (PlannedSession $s): array => PlanRenderer::dayPayload(
             $s,
@@ -158,10 +163,13 @@ final readonly class CurrentWeekPlanBuilder
             ->map(fn (PlannedSession $s): string => $s->date->toDateString())
             ->all();
 
+        $plannedKmThisWeek = round(array_sum(array_column($days, 'distance_km')), 1);
+
         return [
             'sessions_this_week' => count($trainingDates),
             'phase' => $currentWeekPhase->value,
-            'planned_km_this_week' => round(array_sum(array_column($days, 'distance_km')), 1),
+            'planned_km_this_week' => $plannedKmThisWeek,
+            'planned_km_eased_from' => round($easedAwayKm, 1) > 0.0 ? round($plannedKmThisWeek + $easedAwayKm, 1) : null,
             'credited_this_week' => count(array_filter(
                 array_intersect_key($resolvedStatuses, array_flip($trainingDates)),
                 static fn (PlannedSessionStatus $status): bool => $status->isCredited(),

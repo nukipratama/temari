@@ -60,7 +60,7 @@ final readonly class SeasonSummaryBuilder
     }
 
     /**
-     * @return list<array{week_start: string, phase: string, type: string, planned_km: float, actual_km: float|null, sessions: int}>
+     * @return list<array{week_start: string, phase: string, type: string, planned_km: float, eased_from_km: float|null, actual_km: float|null, sessions: int}>
      */
     public function build(User $user, Season $season, Carbon $today): array
     {
@@ -92,6 +92,7 @@ final readonly class SeasonSummaryBuilder
             ->all();
 
         $currentWeekKey = $today->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+        $easedAwayKm = $this->currentWeekEasedAwayKm($user, $today);
 
         $result = [];
         foreach ($weeks as $i => $week) {
@@ -120,17 +121,50 @@ final readonly class SeasonSummaryBuilder
                 }
             }
 
+            $eased = $weekStartKey === $currentWeekKey && round($easedAwayKm, 1) > 0.0;
+
             $result[] = [
                 'week_start' => $weekStartKey,
                 'phase' => $phase->value,
                 'type' => $weekStartKey < $currentWeekKey ? 'history' : ($weekStartKey === $currentWeekKey ? 'current' : 'lookahead'),
-                'planned_km' => round($plannedKm, 1),
+                'planned_km' => round($eased ? $plannedKm - $easedAwayKm : $plannedKm, 1),
+                'eased_from_km' => $eased ? round($plannedKm, 1) : null,
                 'actual_km' => $actualKmByWeekEnding[$weekEndingKey] ?? null,
                 'sessions' => $sessions,
             ];
         }
 
         return $result;
+    }
+
+    /**
+     * The km this week's recorded eases took off the stored sessions, sized the
+     * way the day rows are, so the forecast header moves by what the day cells moved.
+     */
+    private function currentWeekEasedAwayKm(User $user, Carbon $today): float
+    {
+        $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $rows = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [
+                $weekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS)->toDateString(),
+                $weekStart->copy()->addDays(6)->toDateString(),
+            ])
+            ->orderBy('date')
+            ->get();
+        $eased = $rows->filter(
+            fn (PlannedSession $row): bool => ! $row->date->lessThan($weekStart) && EffectiveSession::isRecordedOn($row),
+        );
+        if ($eased->isEmpty()) {
+            return 0.0;
+        }
+
+        $baselineData = $this->baseline->forUser($user, $today);
+        $storedKmByDate = PlanRenderer::plannedKmByDate($rows, $baselineData['long_run_km'], $baselineData['long_run_cap_km'], $baselineData['self_scaled']);
+
+        return $eased->sum(
+            fn (PlannedSession $row): float => EffectiveSession::of($row, $storedKmByDate[$row->date->toDateString()])->easedAwayKm(),
+        );
     }
 
     /**

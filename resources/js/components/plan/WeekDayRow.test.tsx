@@ -32,6 +32,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         prescribed_km: null,
         clamp: null,
+        eased_from: null,
         credit_note: null,
         actual_km: null,
         activities: [],
@@ -400,6 +401,53 @@ describe('WeekDayRow', () => {
         expect(
             screen.getByText('Eased off, you slept badly.'),
         ).toBeInTheDocument();
+    });
+
+    /**
+     * The real case: a tempo eased to easy with its distance held. The row
+     * headlines the easy run, tempo is only context, and before credit the
+     * clamp line is the day's voice rather than a blurb about the tempo.
+     */
+    it('headlines an eased day as the eased session, with the original as context', () => {
+        renderRow({
+            day: day({
+                date: TODAY,
+                session_type: 'easy',
+                distance_km: 6.4,
+                asked_km: 6.4,
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 43,
+                        zone: 'Z2',
+                        pace_label: 'easy',
+                        km: 6.4,
+                        pace_sec_per_km: 403,
+                    },
+                ],
+                eased_from: {
+                    session_type: 'tempo',
+                    distance_km: null,
+                    voice: 'legs are still carrying the weekend, so today runs easy.',
+                },
+            }),
+            narration: {
+                status: 'done',
+                content: 'tempo today, threshold blocks at 5:44.',
+            } as never,
+        });
+        fireEvent.click(screen.getByRole('button', { name: /easy/i }));
+
+        expect(screen.getByText('6.4 km · 6:43/km')).toBeInTheDocument();
+        expect(screen.getByText('eased from tempo')).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'legs are still carrying the weekend, so today runs easy.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText('tempo today, threshold blocks at 5:44.'),
+        ).not.toBeInTheDocument();
     });
 
     /** The server decides what the step-down is for; the row must not hardcode

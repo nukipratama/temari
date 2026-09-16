@@ -240,37 +240,44 @@ final class PlanRenderer
         $isToday = $s->date->isSameDay($today);
         $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
 
-        $sessionType = $s->session_type;
         // The row's own distance on race day, the active race's everywhere
         // else — where it only ever picks a pace band.
         $raceDistanceM = self::raceDistanceOf($s) ?? $raceDistanceM;
-        $segments = SegmentGenerator::generate(
-            $sessionType,
-            $s->phase,
-            $raceDistanceM,
-            $isPrimaryEasy,
-            $longRunKm,
-            $multiplier,
-            $longRunCapKm,
-            $paces,
-            $volumeScale,
-            $raceGoalTimeSec,
-        );
-        $distanceKm = self::sessionDistanceKm(
-            $segments,
-            $sessionType,
-            $isPrimaryEasy,
-            $longRunKm,
-            $multiplier,
-            $longRunCapKm,
-            $raceDistanceM,
-            $volumeScale,
-        );
         // The plain, unredistributed ask — what Home's widget shows and what
         // the day's own narration is sized from (see PlanDayTool). Exposed so
         // the Plan page can say why `distance_km` moved, rather than the two
         // screens just disagreeing with no explanation.
-        $askedKm = SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM);
+        $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM);
+        $effective = EffectiveSession::of($s, $askedKm);
+        $sessionType = $effective->sessionType;
+
+        if ($effective->isEased()) {
+            $segments = $sessionType === SessionType::Rest ? [] : SegmentGenerator::easyBlock($effective->coreKm, $paces);
+            $askedKm = $distanceKm = $effective->coreKm;
+        } else {
+            $segments = SegmentGenerator::generate(
+                $sessionType,
+                $s->phase,
+                $raceDistanceM,
+                $isPrimaryEasy,
+                $longRunKm,
+                $multiplier,
+                $longRunCapKm,
+                $paces,
+                $volumeScale,
+                $raceGoalTimeSec,
+            );
+            $distanceKm = self::sessionDistanceKm(
+                $segments,
+                $sessionType,
+                $isPrimaryEasy,
+                $longRunKm,
+                $multiplier,
+                $longRunCapKm,
+                $raceDistanceM,
+                $volumeScale,
+            );
+        }
 
         return [
             'id' => $s->id,
@@ -286,7 +293,8 @@ final class PlanRenderer
             'compliance_score' => $s->compliance_score,
             'prescribed_km' => $s->prescribed_km,
             'ran_anyway' => $s->ran_anyway,
-            'clamp' => $isToday && $clamp !== null && ! $status->isCredited() ? self::clampPayload($clamp, $clampVoice) : null,
+            'clamp' => $isToday && $clamp !== null && ! $effective->isEased() && ! $status->isCredited() ? self::clampPayload($clamp, $clampVoice) : null,
+            'eased_from' => $effective->isEased() ? self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null) : null,
             'credit_note' => self::creditNote($sessionType, $status, $askedKm, $activity),
             'actual_km' => $activity['km'] ?? null,
             'activities' => $activity['runs'] ?? [],
@@ -301,11 +309,32 @@ final class PlanRenderer
     }
 
     /**
-     * The clamp as a step-down *beside* the day's own prescription, never in
-     * place of it. The stored session stays the figure the card leads with,
-     * the narrator describes and {@see SessionMatcher} grades, so the eased
-     * version travels as its own object rather than overwriting those fields
-     * — see `docs/decisions/readiness-clamp-is-advisory.md`. Carries a single
+     * What an eased day was eased from, and before credit the line that is the
+     * day's voice: the narrated clamp explanation, or the templated note for
+     * the recorded outcome until one lands. A distance that did not move is
+     * left out, so an intensity-only ease names the session alone.
+     *
+     * @return array{session_type: string, distance_km: float|null, voice: string|null}
+     */
+    private static function easedFromPayload(EffectiveSession $effective, PlannedSessionStatus $status, ?string $clampVoice): array
+    {
+        $original = $effective->easedFromType ?? $effective->sessionType;
+        $distanceHeld = $effective->distanceHeld();
+
+        return [
+            'session_type' => $original->value,
+            'distance_km' => $distanceHeld ? null : $effective->easedFromKm,
+            'voice' => $status->isCredited() ? null : $clampVoice ?? ReadinessClamp::noteFor($original, $effective->impliedCeiling()),
+        ];
+    }
+
+    /**
+     * A clamp that was never recorded, as a step-down *beside* the day's own
+     * prescription, never in place of it. A recorded one is the day's session
+     * itself (see {@see EffectiveSession} and
+     * `docs/decisions/the-eased-session-leads.md`); this unrecorded one stays
+     * advisory, so the eased version travels as its own object rather than
+     * overwriting the stored fields. Carries a single
      * pace rather than the full segment list: the step-down is one line, and
      * only the core set's pace is ever shown on it.
      *

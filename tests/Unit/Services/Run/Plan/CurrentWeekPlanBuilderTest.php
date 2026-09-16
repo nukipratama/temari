@@ -10,6 +10,7 @@ use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
+use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -270,6 +271,78 @@ it('reports the km it renders, so a clamped today cannot disagree with the headl
 
     expect($result['planned_km_this_week'])
         ->toBe(round(array_sum(array_column($result['days'], 'distance_km')), 1));
+
+    Carbon::setTestNow();
+});
+
+/** @return array{0: PlannedSession, 1: float} today's row turned into a tempo, and its stored core km */
+function tempoToday(User $user): array
+{
+    $row = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->firstOrFail();
+    $row->update(['session_type' => SessionType::Tempo]);
+    $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
+
+    return [$row, PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled'])];
+}
+
+/**
+ * The real case: a tempo day eased to easy at 00:01 with its distance held.
+ * Home's week card headlines the easy run, with tempo only as context, and a
+ * week total that did not move carries no "eased from" beside it.
+ */
+it('headlines a tempo day eased to easy with its distance held, tempo only as context', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
+    [$row, $storedKm] = tempoToday($user);
+    $row->update(['clamped_km' => $storedKm]);
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
+
+    expect($today['session_type'])->toBe('easy')
+        ->and($today['distance_km'])->toBe($storedKm)
+        ->and($today['clamp'])->toBeNull()
+        ->and($today['eased_from']['session_type'])->toBe('tempo')
+        ->and($today['eased_from']['distance_km'])->toBeNull()
+        ->and($result['planned_km_eased_from'])->toBeNull();
+
+    Carbon::setTestNow();
+});
+
+it('totals the week at the eased distance and names the original beside it', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
+    [$row, $storedKm] = tempoToday($user);
+    $row->update(['clamped_km' => 1.0]);
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $total = round(array_sum(array_column($result['days'], 'distance_km')), 1);
+
+    expect($result['planned_km_this_week'])->toBe($total)
+        ->and($result['planned_km_eased_from'])->toBe(round($total + $storedKm - 1.0, 1));
+
+    Carbon::setTestNow();
+});
+
+/** Told 1 km, ran 1 km: the week card credits it rather than reading it short against the tempo. */
+it('credits an eased today run to its eased distance, so a compliant week never reads short', function (): void {
+    Carbon::setTestNow('2026-08-12 19:00:00');
+    $user = User::factory()->create();
+    seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
+    [$row] = tempoToday($user);
+    $row->update(['clamped_km' => 1.0]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'start_date_local' => Carbon::today()->setTime(17, 0),
+        'distance' => 1000,
+    ]);
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
+
+    expect($today['status'])->toBe('done')
+        ->and($today['distance_km'])->toBe(1.0);
 
     Carbon::setTestNow();
 });

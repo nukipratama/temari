@@ -52,6 +52,7 @@ function day(overrides: Partial<WeekPlanDay>): WeekPlanDay {
         ran_anyway: false,
         prescribed_km: null,
         clamp: null,
+        eased_from: null,
         credit_note: null,
         actual_km: null,
         activities: [],
@@ -67,6 +68,7 @@ function weekOf(
         sessions_this_week: 5,
         phase: 'build',
         planned_km_this_week: 32,
+        planned_km_eased_from: null,
         credited_this_week: 2,
         days,
         ...overrides,
@@ -97,6 +99,34 @@ describe('WeekPlanWidget', () => {
         expect(screen.getByText('km')).toBeInTheDocument();
         expect(screen.getByText('trimp')).toBeInTheDocument();
         expect(screen.getByText('build')).toBeInTheDocument();
+    });
+
+    it('totals an eased week at the eased km and names the original beside it', async () => {
+        const days = MON_TO_SUN.map((date) => day({ date, id: date.length }));
+        render(
+            <WeekPlanWidget
+                weekPlan={weekOf(days, {
+                    planned_km_this_week: 24.6,
+                    planned_km_eased_from: 26.9,
+                })}
+                snapshot={snapshot}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText('18.2 of 24.6')).toBeInTheDocument();
+        });
+        expect(screen.getByText('eased from 26.9')).toBeInTheDocument();
+    });
+
+    it('names no original on a week nothing eased', async () => {
+        const days = MON_TO_SUN.map((date) => day({ date, id: date.length }));
+        render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
+
+        await waitFor(() => {
+            expect(screen.getByText('18.2 of 32.0')).toBeInTheDocument();
+        });
+        expect(screen.queryByText(/eased from/)).not.toBeInTheDocument();
     });
 
     it('states a week with nothing run yet as a plain zero, not 0.0', async () => {

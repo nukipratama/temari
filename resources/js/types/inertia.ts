@@ -371,6 +371,15 @@ export interface PlanDayClamp {
     label: string;
 }
 
+/** What a readiness-eased day was eased from, from `PlanRenderer::easedFromPayload()`. */
+export interface PlanDayEasedFrom {
+    session_type: string;
+    /** Null when only the intensity came down and the distance held. */
+    distance_km: number | null;
+    /** The clamp line that is the day's voice until it is credited, then null. */
+    voice: string | null;
+}
+
 /** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
  *  it — the same shape Plan's own day rows use. */
 export interface WeekPlanDay {
@@ -404,12 +413,14 @@ export interface WeekPlanDay {
      *  until then — `distance_km` above is recomputed against current fitness
      *  and drifts away from it as the athlete's baseline moves. */
     prescribed_km: number | null;
-    /** Today's readiness step-down, when one applies — a modification shown
-     *  *beside* the day's own prescription, never in place of it. The fields
-     *  above stay the stored session, which is what the narrator describes and
-     *  `SessionMatcher` grades. Null on every other day, and null once today
+    /** Today's readiness step-down when one shows but was never recorded, a
+     *  modification *beside* the day's own prescription. Null on every other
+     *  day, on a day whose ease was recorded (see `eased_from`), and once today
      *  is credited: a finished day shows what it came to, not a second menu. */
     clamp: PlanDayClamp | null;
+    /** Set on a day whose ease was recorded: the fields above are then the
+     *  eased session, and this is the session it replaced. */
+    eased_from: PlanDayEasedFrom | null;
     /** Why a long day that covered its distance still reads `partial` — it
      *  arrived in pieces rather than in one run. Null on every other day. */
     credit_note: string | null;
@@ -431,6 +442,8 @@ export interface WeekPlan {
     sessions_this_week: number;
     phase: string;
     planned_km_this_week: number;
+    /** The week's total before a recorded ease took km off it, null when none did. */
+    planned_km_eased_from: number | null;
     credited_this_week: number;
     days: WeekPlanDay[];
 }
