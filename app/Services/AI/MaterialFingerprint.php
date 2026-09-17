@@ -90,6 +90,43 @@ final class MaterialFingerprint
     }
 
     /**
+     * The material a Trends range's read speaks to: {@see \App\Services\AI\Agent\Tools\TrendRangeTool}'s
+     * own output for the range, rounded to the granularity the narration
+     * actually reads at rather than the tool's raw precision — km to 1
+     * decimal, run counts as whole numbers, load/fitness/form (TRIMP, CTL,
+     * VDOT, monotony, strain) to whole numbers. A scheduled re-read only
+     * spends its cadence when one of those figures has actually moved.
+     *
+     * @param  array<string, mixed>  $totals  {@see \App\Services\AI\Agent\Tools\TrendRangeTool::handle()}'s return value.
+     */
+    public static function forTrendRead(array $totals): string
+    {
+        return self::digest([
+            'current' => self::roundedPeriod($totals['current']),
+            'comparison' => self::roundedPeriod($totals['comparison']),
+            'ctl_start' => self::bucket($totals['ctl_start']),
+            'ctl_end' => self::bucket($totals['ctl_end']),
+            'vdot_start' => self::bucket($totals['vdot_start']),
+            'vdot_end' => self::bucket($totals['vdot_end']),
+            'avg_monotony' => self::bucket($totals['avg_monotony']),
+            'avg_strain' => self::bucket($totals['avg_strain']),
+        ]);
+    }
+
+    /**
+     * @param  array{runs: int, distance_km: float, trimp_total: float|null}  $period
+     * @return array{runs: int, distance_km: float, trimp_total: int|null}
+     */
+    private static function roundedPeriod(array $period): array
+    {
+        return [
+            'runs' => $period['runs'],
+            'distance_km' => round($period['distance_km'], 1),
+            'trimp_total' => self::bucket($period['trimp_total']),
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $material
      */
     private static function digest(array $material): string

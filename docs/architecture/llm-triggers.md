@@ -129,9 +129,25 @@ its own cadence — `7d` and `30d` daily, `90d` every third day, `12mo` on Monda
 crons only reaches athletes who already existed when it last ran. A Friday signup therefore had no 90d
 read for up to three days and no 12mo read for up to seven, on exactly the days a new account forms its
 impression.
-`KickoffRecapsJob` requests all three once the backfill lands, skipping an athlete whose backfill found
+`KickoffRecapsJob` requests all four once the backfill lands, skipping an athlete whose backfill found
 no runs; `AnalysisService::request()` is idempotent, so the cron that comes round later finds them done
-and bills nothing.
+and bills nothing. The kickoff itself passes no `invalidate`: a `Done` row it finds here can only mean
+an earlier first-connect link already created it moments ago, never that the range's numbers have since
+moved, so a fingerprint check would only spend a lookup for no behaviour change.
+
+**A scheduled trend read re-bills only where the range's own numbers moved.**
+[`TrendReadCommand`](../../app/Console/Commands/AI/TrendReadCommand.php#L20) fingerprints
+[`TrendRangeTool`](../../app/Services/AI/Agent/Tools/TrendRangeTool.php)'s own output for that range
+via [`MaterialFingerprint::forTrendRead()`](../../app/Services/AI/MaterialFingerprint.php), rounded to
+the granularity the narration actually reads at — km to 1 decimal, run counts and every load/fitness/
+form figure (TRIMP, CTL, VDOT, monotony, strain) to whole numbers — and invalidates the stored row only
+when that digest has moved since [`AnalyzeTrendReadJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeTrendReadJob.php)
+last stamped it. Each range's cadence above still decides *when* the check runs; the fingerprint only
+decides whether that tick spends. A row with no stored fingerprint — every row generated before this
+landed — counts as **changed**, matching [`PlanNarrationRequester`](../../app/Services/AI/PlanNarrationRequester.php#L387)'s
+day-voice rule below rather than the opposite null-handling `DispatchPostRunAnalysis` uses for
+`PostRunSpeech`: each pre-existing Done read refreshes once on its next scheduled run, and the
+fingerprint gate takes over from there.
 
 **A day's own read re-bills only where the verdict actually changed.** It is requested separately
 from the season, by
