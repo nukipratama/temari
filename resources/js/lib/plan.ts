@@ -31,6 +31,8 @@ export interface PlanWeek {
 export interface SeasonSummaryWeek {
     week_start: string;
     phase: string;
+    /** `general` before the race block opens, `block` inside it; a self-scaled week is always `general`. */
+    zone: 'general' | 'block';
     type: 'history' | 'current' | 'lookahead';
     planned_km: number;
     /** The current week's target before a recorded ease took km off it. */

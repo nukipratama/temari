@@ -61,6 +61,7 @@ function summaryWeek(
     return {
         week_start: '2026-06-15',
         phase: 'base',
+        zone: 'block',
         type: 'current',
         planned_km: 34,
         actual_km: 20,
@@ -95,6 +96,8 @@ const BASE_PROPS: ComponentProps<typeof Plan> = {
         week_index: 1,
         total_weeks: 12,
         is_race_oriented: false,
+        block_opens_on: null,
+        under_ready_line: null,
     },
     seasonSummary: [summaryWeek()],
     seasonAdherencePct: 82,

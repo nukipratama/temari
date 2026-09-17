@@ -9,6 +9,7 @@ use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -186,6 +187,19 @@ it('never computes CTL growth for a race-oriented season', function (): void {
     ]);
 
     expect(ctxFor($user, $season)->ctlGrowth)->toBe(0.0);
+});
+
+it('reports the biggest week logged inside a race season as its peak weekly km', function (): void {
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString()]);
+    $season = seasonFor($user);
+    $season->update(['race_goal_id' => $race->id]);
+    foreach (['2026-08-02' => 60.0, '2026-08-09' => 32.0, '2026-08-16' => 45.5] as $weekEnding => $km) {
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => $weekEnding, 'distance_km' => $km]);
+    }
+    WeeklySnapshot::factory()->for(User::factory()->create())->create(['week_ending' => '2026-08-09', 'distance_km' => 90.0]);
+
+    expect(ctxFor($user, $season)->peakWeeklyKm)->toBe(45.5);
 });
 
 it('does not count a session against a not-yet-analyzed activity', function (): void {

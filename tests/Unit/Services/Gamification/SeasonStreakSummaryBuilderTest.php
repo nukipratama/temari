@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Gamification\SettleStreakRestTokensAction;
+use App\Models\RaceGoal;
 use App\Models\StreakRestToken;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -37,7 +38,16 @@ it('builds the same season payload PlanController used to build inline, given an
         ->toHaveKeys(['starts_at', 'ends_at', 'week_index', 'total_weeks', 'is_race_oriented', 'goals'])
         ->and($payload['week_index'])->toBe(1)
         ->and($payload['is_race_oriented'])->toBeFalse()
-        ->and($payload['goals'])->toHaveCount(5);
+        ->and($payload['goals'])->toHaveCount(5)
+        ->and($payload['block_opens_on'])->toBeNull();
+});
+
+it('carries the day a race season\'s block opens', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-13', 'distance_m' => 42_195]);
+    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+
+    expect($this->builder->seasonPayload($user, $season, Carbon::today())['block_opens_on'])->toBe('2026-10-26');
 });
 
 it('reports the weekly streak with its open week and no rest weeks held', function (): void {

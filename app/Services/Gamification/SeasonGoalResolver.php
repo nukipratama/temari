@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 use InvalidArgumentException;
 
 /**
- * Resolves a {@see Season}'s 5 {@see \App\Models\SeasonGoal} rows to live
+ * Resolves a {@see Season}'s {@see \App\Models\SeasonGoal} rows to live
  * `current` values by reading each goal's `metric` string against one
  * season's {@see SeasonGamificationContext}.
  */
@@ -61,6 +61,7 @@ readonly class SeasonGoalResolver
             'season_rest_honored' => $ctx->restHonored,
             'season_race_goal_met' => $ctx->raceGoalMet ? 1 : 0,
             'season_ctl_growth' => $ctx->ctlGrowth,
+            'season_peak_weekly_km' => $ctx->peakWeeklyKm,
             default => throw new InvalidArgumentException("Unknown season goal metric: {$metric}"),
         };
     }
