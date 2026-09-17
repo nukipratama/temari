@@ -35,6 +35,27 @@ const RACE_SEASON: SeasonSummaryWeek[] = [
     }),
 ];
 
+const GENERAL_ZONE_CURRENT: SeasonSummaryWeek[] = [
+    week({
+        week_start: '2026-05-25',
+        zone: 'general',
+        phase: 'build',
+        type: 'current',
+    }),
+    week({
+        week_start: '2026-06-01',
+        zone: 'general',
+        phase: 'deload',
+        type: 'lookahead',
+    }),
+    week({
+        week_start: '2026-06-08',
+        zone: 'block',
+        phase: 'base',
+        type: 'lookahead',
+    }),
+];
+
 function renderCard(
     overrides: Partial<Parameters<typeof SeasonHeaderCard>[0]> = {},
 ) {
@@ -99,6 +120,50 @@ describe('SeasonHeaderCard', () => {
         renderCard({ underReadyLine: null });
 
         expect(screen.queryByText(/tighter than/)).not.toBeInTheDocument();
+    });
+
+    it('draws the phase ribbon for a season with a race block', () => {
+        renderCard();
+
+        expect(
+            screen.getByRole('button', { name: 'build, current week' }),
+        ).toBeInTheDocument();
+    });
+
+    it('omits the phase ribbon for a season with no race block', () => {
+        renderCard({
+            weeks: RACE_SEASON.map((w) => ({ ...w, zone: 'general' })),
+        });
+
+        expect(
+            screen.queryByRole('button', { name: 'build' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'general fitness' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('names the general zone in the header, spanning only the general run, while the current week is in it', () => {
+        renderCard({
+            startsAt: '2026-05-25',
+            endsAt: '2026-08-10',
+            weeks: GENERAL_ZONE_CURRENT,
+        });
+
+        // Not the raw phase ('build'), and not the whole season's span
+        // ('2026-05-25 – 2026-08-10') — just the general run's own dates.
+        expect(
+            screen.getByText('general fitness · may 25 – jun 7'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/^build ·/)).not.toBeInTheDocument();
+    });
+
+    it('adds a "general fitness" legend entry first, filled while the current week is in it', () => {
+        renderCard({ weeks: GENERAL_ZONE_CURRENT });
+
+        expect(screen.getByText('general fitness')).toBeInTheDocument();
+        expect(screen.queryByText('build')).not.toBeInTheDocument();
+        expect(screen.queryByText('deload')).not.toBeInTheDocument();
     });
 
     it('renders Temari’s take when the season narration exists', () => {

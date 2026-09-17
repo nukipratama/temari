@@ -144,4 +144,57 @@ describe('SeasonTimeline', () => {
         // The second Build block is its own pass, not folded back into the first.
         expect(screen.getByText('Wk 3')).toBeInTheDocument();
     });
+
+    it('merges every general-zone week into one "general fitness" run, ignoring its alternating build/deload phase', () => {
+        renderTimeline({
+            weeks: [
+                week({
+                    week_start: '2026-06-15',
+                    zone: 'general',
+                    phase: 'build',
+                    type: 'current',
+                }),
+                week({
+                    week_start: '2026-06-22',
+                    zone: 'general',
+                    phase: 'deload',
+                    type: 'lookahead',
+                }),
+                week({
+                    week_start: '2026-06-29',
+                    zone: 'block',
+                    phase: 'base',
+                    type: 'lookahead',
+                }),
+            ],
+        });
+
+        expect(screen.getByText('general fitness phase')).toBeInTheDocument();
+        expect(screen.queryByText('build phase')).not.toBeInTheDocument();
+        expect(screen.queryByText('deload phase')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /1 week ahead/ }));
+        expect(screen.getByText('base phase')).toBeInTheDocument();
+    });
+
+    it('still says "deload week" on a real recovery week’s own card inside the general run', () => {
+        renderTimeline({
+            weeks: [
+                week({
+                    week_start: '2026-06-15',
+                    zone: 'general',
+                    phase: 'build',
+                    type: 'current',
+                }),
+                week({
+                    week_start: '2026-06-22',
+                    zone: 'general',
+                    phase: 'deload',
+                    type: 'lookahead',
+                }),
+            ],
+        });
+
+        expect(screen.getByText('deload week')).toBeInTheDocument();
+    });
 });

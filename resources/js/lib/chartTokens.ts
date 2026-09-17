@@ -104,16 +104,21 @@ export const HR_ZONE_LABELS: Record<HrZoneKey, string> = {
 
 /**
  * Periodization-phase fills for the Plan season summary (phase-progress bar,
- * week timeline). A validated-distinct (dataviz skill's `validate_palette.js`,
- * CVD ΔE >= 15 on every co-occurring pair) categorical hue per phase,
- * deliberately drawn away from `PALETTE.overloaded`/`gassed`/
+ * week timeline, phase ribbon). A validated-distinct (dataviz skill's
+ * `validate_palette.js`, CVD ΔE >= 15 on every co-occurring pair) categorical
+ * hue per phase, deliberately drawn away from `PALETTE.overloaded`/`gassed`/
  * `chill` — those three are already committed to per-run Mood colors
  * (see `lib/mood.ts`) and reusing one here for a phase would collide with
- * that existing meaning on the same page. `deload` only ever co-occurs with
- * `build` (self-scaled seasons only cycle those two — race-oriented seasons
- * only ever see `base`/`build`/`peak`/`taper`, see `App\Enums\PlanPhase`), so
- * its deliberately desaturated `stone` reads as "resting" without needing to
- * be hue-distinct from `peak`/`taper`, which it never shares a chart with.
+ * that existing meaning on the same page. `deload` used to only co-occur with
+ * `build`, back when a race season's block ran a single uninterrupted
+ * base/build/peak/taper sweep. Since
+ * `docs/decisions/the-block-opens-on-a-computed-date.md`, `PhaseSchedule`
+ * schedules a recovery week every fourth base/build week inside the block
+ * too, so a race season now shows `deload` both in its general zone (the
+ * self-scaled cycle before block open) and inside the block itself, next to
+ * `base`/`build`. Its deliberately desaturated `stone` still reads as
+ * "resting" against either neighbour without needing to be hue-distinct from
+ * `peak`/`taper`, which it never shares a chart with.
  */
 export const PHASE_COLORS = {
     base: PALETTE.leaf,
@@ -124,3 +129,14 @@ export const PHASE_COLORS = {
 } as const;
 
 export type PlanPhaseKey = keyof typeof PHASE_COLORS;
+
+/**
+ * A phase's fill, falling back to the same neutral fill the general zone's
+ * own band uses (`bg-muted`) for a key `PHASE_COLORS` doesn't cover — chiefly
+ * `plan.ts`'s `GENERAL_PHASE_KEY`, which the phase legend and ribbon both
+ * group every general-zone week under regardless of its own build/deload
+ * phase.
+ */
+export function phaseColor(phase: string): string {
+    return PHASE_COLORS[phase as PlanPhaseKey] ?? 'var(--color-muted)';
+}
