@@ -425,6 +425,7 @@ class DemoRunSeeder
                         'skipped' => false,
                         'status' => PlannedSessionStatus::Done,
                         'compliance_score' => null,
+                        'distance_score' => null,
                         'ran_anyway' => false,
                     ],
                 );
@@ -444,6 +445,7 @@ class DemoRunSeeder
                     'skipped' => $status === PlannedSessionStatus::Skip,
                     'status' => $status,
                     'compliance_score' => $scoreFor[$status->value] ?? null,
+                    'distance_score' => $scoreFor[$status->value] ?? null,
                     'ran_anyway' => false,
                 ],
             );

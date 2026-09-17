@@ -180,9 +180,11 @@ final readonly class PlanAdapter
     }
 
     /**
-     * Average of last week's persisted per-day `compliance_score`, each day
+     * Average of last week's persisted per-day `distance_score`, each day
      * capped at 100 before averaging (an overreached day shouldn't mask a
      * missed one — this is a "did you do enough" check, not a volume total).
+     * Distance alone, never the intent-widened `compliance_score`, so a week
+     * run too easily cannot read as a missed week and back the plan off.
      * Rest/still-`Planned`/`Skip` days are excluded entirely: rest asks for
      * nothing, an unscored row has no verdict yet, and a skipped day is
      * excused by definition. No scoreable days at all (first week ever, or
@@ -196,8 +198,8 @@ final readonly class PlanAdapter
             ->where('user_id', $user->id)
             ->whereBetween('date', [$previousStart->toDateString(), $previousEnd->toDateString()])
             ->whereNotIn('status', [PlannedSessionStatus::Planned, PlannedSessionStatus::Skip])
-            ->whereNotNull('compliance_score')
-            ->pluck('compliance_score');
+            ->whereNotNull('distance_score')
+            ->pluck('distance_score');
 
         if ($scores->isEmpty()) {
             return 100;

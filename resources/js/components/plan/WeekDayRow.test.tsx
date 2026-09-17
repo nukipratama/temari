@@ -175,6 +175,21 @@ describe('WeekDayRow', () => {
         expect(screen.getByText('partial · 60%')).toBeInTheDocument();
     });
 
+    it('says what a verdict means, distance and intent together', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                status: 'partial',
+                compliance_score: 84,
+            }),
+        });
+
+        expect(screen.getByText('partial · 84%')).toHaveAttribute(
+            'title',
+            'short on the distance, or the run missed what the session was for',
+        );
+    });
+
     it('reads an excused upcoming day as skipped before the scorer has run', () => {
         renderRow({ day: day({ skipped: true }) });
 

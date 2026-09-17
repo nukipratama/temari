@@ -187,6 +187,7 @@ it('reads last week\'s persisted compliance scores and the live signals to reach
             'session_type' => SessionType::Easy,
             'status' => PlannedSessionStatus::Missed,
             'compliance_score' => 0,
+            'distance_score' => 0,
         ]);
     }
 
@@ -204,6 +205,35 @@ it('reads last week\'s persisted compliance scores and the live signals to reach
     Carbon::setTestNow();
 });
 
+it('reads adherence on distance alone, so a week of intent misses at full distance is not a missed week', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    $weekStart = Carbon::parse('2026-08-10');
+
+    foreach (range(0, 4) as $offset) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $weekStart->copy()->subWeek()->addDays($offset)->toDateString(),
+            'phase' => PlanPhase::Build,
+            'session_type' => SessionType::Tempo,
+            'status' => PlannedSessionStatus::Partial,
+            'compliance_score' => 84,
+            'distance_score' => 100,
+        ]);
+    }
+
+    $trainingLoad = Mockery::mock(TrainingLoad::class);
+    $trainingLoad->shouldReceive('summary')->andReturn([
+        'monotony' => 1.1, 'strain' => 300.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
+    ]);
+
+    $decision = new PlanAdapter($trainingLoad, app(RiegelProjector::class))->forWeek($user, $weekStart, Carbon::parse('2026-08-10'), null);
+
+    expect($decision['adherence_pct'])->toBe(100)
+        ->and($decision['reason'])->not->toBe(AdaptationReason::MissedWeek);
+
+    Carbon::setTestNow();
+});
+
 it('averages last week\'s scores, capping an overreached day at 100 rather than letting it mask a miss', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
@@ -215,6 +245,7 @@ it('averages last week\'s scores, capping an overreached day at 100 rather than 
         'session_type' => SessionType::Easy,
         'status' => PlannedSessionStatus::Overreached,
         'compliance_score' => 180,
+        'distance_score' => 180,
     ]);
     PlannedSession::factory()->for($user)->create([
         'date' => $weekStart->copy()->subWeek()->addDay()->toDateString(),
@@ -222,6 +253,7 @@ it('averages last week\'s scores, capping an overreached day at 100 rather than 
         'session_type' => SessionType::Easy,
         'status' => PlannedSessionStatus::Missed,
         'compliance_score' => 0,
+        'distance_score' => 0,
     ]);
     // Excluded: still unscored (safety net, not proof of anything) and skipped (excused).
     PlannedSession::factory()->for($user)->create([
@@ -343,6 +375,7 @@ function planAdapterCreditedDay(User $user, string $date, SessionType $type): vo
         'session_type' => $type,
         'status' => PlannedSessionStatus::Done,
         'compliance_score' => 100,
+        'distance_score' => 100,
     ]);
 }
 

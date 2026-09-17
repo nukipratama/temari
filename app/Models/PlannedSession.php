@@ -53,6 +53,7 @@ use Override;
  * @property bool $skipped
  * @property PlannedSessionStatus $status
  * @property int|null $compliance_score
+ * @property int|null $distance_score
  * @property bool $ran_anyway
  * @property Carbon|null $rest_clamped_at
  * @property-read User $user
@@ -67,6 +68,7 @@ use Override;
     'skipped',
     'status',
     'compliance_score',
+    'distance_score',
     'prescribed_km',
     'clamped_km',
     'volume_multiplier',
@@ -157,6 +159,7 @@ class PlannedSession extends Model
             'skipped' => 'boolean',
             'status' => PlannedSessionStatus::class,
             'compliance_score' => 'integer',
+            'distance_score' => 'integer',
             'prescribed_km' => 'float',
             'clamped_km' => 'float',
             'volume_multiplier' => 'float',

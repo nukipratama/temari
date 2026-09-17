@@ -132,6 +132,16 @@ export const STATUS_LABEL: Record<string, string> = {
     skip: 'skipped',
 };
 
+/** What each verdict means: a day is graded on its distance and on the session's intent. */
+export const STATUS_MEANING: Record<string, string> = {
+    done: 'ran the distance and the session it asked for',
+    partial:
+        'short on the distance, or the run missed what the session was for',
+    missed: 'no run, or too little to count',
+    overreached: 'well past the distance, or ran harder than the session asked',
+    skip: 'excused, not graded',
+};
+
 /** Label colour per compliance verdict. `planned` reads as neutral and is unlabelled. */
 export const STATUS_TONE: Record<string, string> = {
     done: 'text-horizon-ink',
