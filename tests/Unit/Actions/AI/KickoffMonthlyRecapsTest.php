@@ -82,6 +82,19 @@ it('never dispatches for a demo user even when named directly', function (): voi
         ->and($captured)->toBeEmpty();
 });
 
+it('skips an athlete away from the app, even when named directly', function (): void {
+    $away = User::factory()->create(['last_seen_at' => Carbon::today()->subDays(8)]);
+    backfilledRunInMonth($away, '2026-05');
+    backfilledRunInMonth($away, '2025-01');
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffMonthlyRecaps::class)())->toBe(['dispatched' => 0, 'rule_based' => 0])
+        ->and(app(KickoffMonthlyRecaps::class)($away->id))->toBe(['dispatched' => 0, 'rule_based' => 0])
+        ->and($captured)->toBeEmpty();
+});
+
 it('fills a month past the backfill depth cap rule-based and narrates the rest, oldest first', function (): void {
     config()->set('ai.backfill_max_age_days', 84);
     config()->set('ai.backfill_stagger_seconds', 100);

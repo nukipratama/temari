@@ -15,6 +15,8 @@ code_refs:
   - app/Services/AI/AnalysisType.php
   - app/Services/AI/AnalysisService.php
   - database/seeders/Demo/DemoRunSeeder.php
+  - app/Services/AI/NarrationEligibility.php
+  - app/Jobs/AI/NarrateOnReturnJob.php
 ---
 
 # AI narration internals — context builders & the demo filler
@@ -97,6 +99,10 @@ No *dispatch* path reaches the filler any more: a paused or failing block stays 
 ### The demo seed path
 
 The demo seeder stages and fills all Analysis rows under [`AnalysisService::withoutDispatching()`](app/Services/AI/AnalysisService.php#L64), which suppresses every job dispatch ([DemoRunSeeder::seed](database/seeders/Demo/DemoRunSeeder.php#L117)). Rows are staged `Pending` inside that closure and then flat-filled afterward by walking them through the filler ([`backfillWithFiller`](database/seeders/Demo/DemoRunSeeder.php#L327)), so seeding spends zero LLM tokens. `trend_read` and the three `plan_*_voice` types are filled the same way but bypass that walk, going straight through `AnalysisService::requestRuleBased()`/`PlanNarrationRequester::ensureDemoFilled()` instead (`F7`, since neither has a demo-reachable dispatch path otherwise). The "Reread" button stays live for the demo, but its trigger is filled through the same filler rather than dispatched, so no demo click reaches Azure — see [[demo-triggers-served-rule-based]]. The demo user is also held out of billing schedulers — see [[demo-user-billing-exclusion]].
+
+### Beyond the demo
+
+The same filler serves real athletes wherever the LLM is not worth it: a run past the backfill age cap or before the Strava connect ([NarrationEligibility](app/Services/AI/NarrationEligibility.php)), a day past the cost ceiling, and on an athlete's return from a gap away from the app, every per-run row and recap still `Pending` that is older than what [NarrateOnReturnJob](app/Jobs/AI/NarrateOnReturnJob.php) sends to the LLM. Every such fill skips a `Done` row. See [[narration-spends-only-on-active-athletes]].
 
 ## See also
 

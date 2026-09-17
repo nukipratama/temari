@@ -14,6 +14,11 @@ code_refs:
 
 # Narration follows the athlete, not the run
 
+> **Superseded (2026-09-17) by [[narration-spends-only-on-active-athletes]].** The same
+> `last_seen_at` rule now also gates a synced run's narration, the recap kickoffs and self-heal, and
+> the first visit after a gap queues a catch-up. The consequence below that a dormant athlete's
+> narration is "one cadence away" on return is replaced by that catch-up.
+
 **Status:** Accepted (documented 2026-09-15)
 
 ## Context

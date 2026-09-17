@@ -257,12 +257,15 @@ class AnalysisService
         }
 
         // Fan out a notification for the notifiable types. Suppressed under
-        // withoutDispatching (demo seed); the notification's via() owns every guard
+        // withoutDispatching (demo seed) and for narration the athlete's return
+        // caught up on, which they are already in the app to read; the notification's via() owns every guard
         // (demo / recency / opt-in / channel wired) and the channel owns idempotency,
         // so a demo or opted-out user resolves to no channels at all while an
         // unwired one still gets the inbox record. afterCommit so the queued send
         // can't run before the row it reads is committed.
-        if (! $this->dispatchSuppressed && $this->eligibility->isNotifiable($row)) {
+        if (! $this->dispatchSuppressed
+            && $this->origin->current() !== AnalysisOrigin::Return
+            && $this->eligibility->isNotifiable($row)) {
             $this->eligibility->resolveUser($row)?->notify(
                 new AnalysisReadyNotification($row)->afterCommit(),
             );
