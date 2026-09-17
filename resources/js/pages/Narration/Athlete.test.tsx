@@ -14,7 +14,12 @@ function props(overrides: Partial<AthletePageProps> = {}): AthletePageProps {
         availableKinds: ['trend_read'],
         availableStatuses: ['done'],
         header: {
-            athlete: { id: 7, name: 'Dina', is_demo: false },
+            athlete: {
+                id: 7,
+                name: 'Dina',
+                is_demo: false,
+                strava_athlete_id: 555_444,
+            },
             currency: 'USD',
             today_spend: 0.25,
             ceiling: { value: 1, source: 'config' },
@@ -83,13 +88,25 @@ describe('Narration/Athlete', () => {
                 {...props({
                     header: {
                         ...props().header,
-                        athlete: { id: 7, name: 'Demo', is_demo: true },
+                        athlete: {
+                            id: 7,
+                            name: 'Demo',
+                            is_demo: true,
+                            strava_athlete_id: null,
+                        },
                     },
                 })}
             />,
         );
 
         expect(screen.getByText(/demo account/)).toBeInTheDocument();
+        expect(screen.queryByText(/Strava/)).not.toBeInTheDocument();
+    });
+
+    it('shows the athlete Strava id in the subtitle when connected', () => {
+        render(<Athlete {...props()} />);
+
+        expect(screen.getByText(/Strava 555444/)).toBeInTheDocument();
     });
 
     it('links each tab to its own query string', () => {

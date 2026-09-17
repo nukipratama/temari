@@ -204,7 +204,12 @@ export interface NarrationRow {
 }
 
 export interface AthleteHeaderData {
-    athlete: { id: number; name: string; is_demo: boolean };
+    athlete: {
+        id: number;
+        name: string;
+        is_demo: boolean;
+        strava_athlete_id: number | null;
+    };
     currency: string;
     today_spend: number;
     ceiling: { value: number | null; source: string };

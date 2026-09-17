@@ -7,7 +7,12 @@ import AthleteHeader from './AthleteHeader';
 
 function header(overrides: Partial<AthleteHeaderData> = {}): AthleteHeaderData {
     return {
-        athlete: { id: 7, name: 'Dina', is_demo: false },
+        athlete: {
+            id: 7,
+            name: 'Dina',
+            is_demo: false,
+            strava_athlete_id: 555_444,
+        },
         currency: 'USD',
         today_spend: 0.25,
         ceiling: { value: 1, source: 'config' },
