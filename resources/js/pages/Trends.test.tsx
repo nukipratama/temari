@@ -3,6 +3,8 @@ import type { ComponentProps } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import type { FitnessChartAnnotations } from '@/components/trends/panels/FitnessPanel';
+import type { TrendRange } from '@/components/trends/RangeToggle';
 import type {
     AnalysisPayload,
     BriefingResult,
@@ -15,7 +17,7 @@ import { setMockDeferred } from '@/test/setup';
 import Trends from './Trends';
 
 function narrationPayload(
-    discriminator: '30d' | '90d' | '12mo',
+    discriminator: TrendRange,
     content: string,
 ): AnalysisPayload {
     return {
@@ -30,7 +32,8 @@ function narrationPayload(
     };
 }
 
-const NARRATION = {
+const NARRATION: Record<TrendRange, AnalysisPayload> = {
+    '7d': narrationPayload('7d', 'This week.\n\nHolding the same rhythm.'),
     '30d': narrationPayload('30d', 'Last 30 days.\n\nFitness climbing.'),
     '90d': narrationPayload('90d', 'Last 90 days.\n\nSteady build.'),
     '12mo': narrationPayload('12mo', 'The full year.\n\nA long climb.'),
@@ -69,6 +72,17 @@ const load: TrainingLoad = {
     strain: 384,
 };
 
+/** A distinct strain per range, so a test can prove the load section actually
+ *  reads the selected window instead of a fixed one. */
+const LOAD: Record<TrendRange, TrainingLoad> = {
+    '7d': { ...load, strain: 100 },
+    '30d': { ...load, strain: 300 },
+    '90d': { ...load, strain: 900 },
+    '12mo': { ...load, strain: 1200 },
+};
+
+const NO_ANNOTATIONS: FitnessChartAnnotations = { deload: [], race: [] };
+
 const snapshot: WeeklySnapshot = {
     id: 1,
     user_id: 1,
@@ -87,7 +101,7 @@ const snapshot: WeeklySnapshot = {
 
 const BASE_PROPS: ComponentProps<typeof Trends> = {
     briefing,
-    load,
+    load: LOAD,
     snapshot,
     ctlTrend: [],
     badgeMilestones: [],
@@ -99,6 +113,7 @@ const BASE_PROPS: ComponentProps<typeof Trends> = {
         week_ends_on: '2026-08-30',
     },
     narration: NARRATION,
+    chartAnnotations: NO_ANNOTATIONS,
 };
 
 /** A year of daily points, so every range window has data to slice. */
@@ -123,13 +138,36 @@ describe('Trends', () => {
 
         const eyebrow = screen.getByText('load');
         expect(screen.getByText('Pumped')).toBeInTheDocument();
-        expect(screen.getByText('Condition · 7 days')).toBeInTheDocument();
+        // 30d is the range the page opens on, and the load section now
+        // follows it rather than staying fixed at 7 days.
+        expect(screen.getByText('Condition · 30 days')).toBeInTheDocument();
         expect(
             eyebrow.compareDocumentPosition(
                 screen.getByRole('group', { name: 'Time range' }),
             ) & Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
         expect(container).toContainElement(eyebrow);
+    });
+
+    it("follows the range toggle: load, Temari's read and the fitness panel all update together", () => {
+        render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
+
+        expect(screen.getByText('Condition · 30 days')).toBeInTheDocument();
+        expect(screen.getByText('300')).toBeInTheDocument();
+        expect(screen.getByText('Last 30 days.')).toBeInTheDocument();
+        expect(
+            screen.getByRole('img', { name: /over 30 days/ }),
+        ).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: '7 days' }));
+
+        expect(screen.getByText('Condition · 7 days')).toBeInTheDocument();
+        expect(screen.getByText('100')).toBeInTheDocument();
+        expect(screen.getByText('This week.')).toBeInTheDocument();
+        expect(screen.queryByText('Last 30 days.')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('img', { name: /over 7 days/ }),
+        ).toBeInTheDocument();
     });
 
     it('holds the load section back behind a skeleton until its props land', () => {
@@ -190,6 +228,7 @@ describe('Trends', () => {
             'ctlTrend',
             'badgeMilestones',
             'streak',
+            'chartAnnotations',
             'briefing',
             'load',
             'snapshot',

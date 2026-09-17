@@ -460,7 +460,7 @@ class DemoRunSeeder
     /**
      * trend_read has no per-user cadence command reachable from a seeder
      * (TrendReadCommand explicitly excludes demo users, matching the demo
-     * billing exclusion), so the demo's three range narrations are staged
+     * billing exclusion), so the demo's four range narrations are staged
      * and rule-based-filled here directly instead.
      */
     private function seedTrendRead(User $user): void

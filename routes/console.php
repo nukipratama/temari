@@ -111,9 +111,11 @@ $alertOnFailure(Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45')->wi
 
 // Trends tab's "Temari's read", one range at a time, tiered by how often
 // each range's own numbers actually move (not just to spread out cost):
-// 30d changes day to day, 90d barely moves over a few days, 12mo barely
-// moves over a week. Scheduled + cached like every other narrator — never
-// generated live per page view. See TREND_READ_RANGES.
+// 7d moves at least as fast as 30d day to day, so it shares 30d's daily
+// cadence rather than a slower tier of its own; 90d barely moves over a few
+// days, 12mo barely moves over a week. Scheduled + cached like every other
+// narrator — never generated live per page view. See TREND_READ_RANGES.
+$alertOnFailure(Schedule::command('ai:trend-read 7d')->dailyAt('06:00')->withoutOverlapping(20)->onOneServer(), 'ai:trend-read 7d');
 $alertOnFailure(Schedule::command('ai:trend-read 30d')->dailyAt('06:00')->withoutOverlapping(20)->onOneServer(), 'ai:trend-read 30d');
 // `*/3` on the day-of-month field, not an every-3-days interval: it resets
 // on the 1st, so the gap between runs is 1-2 days at each month boundary.

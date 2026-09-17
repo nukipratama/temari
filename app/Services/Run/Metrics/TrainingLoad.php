@@ -49,34 +49,38 @@ class TrainingLoad
     private const int SUMMARY_CACHE_SECONDS = 300;
 
     /**
+     * @param  int  $windowDays  the trailing window `weekly_trimp`/monotony/strain
+     *                           are computed over. ATL/CTL/form are EWMA time
+     *                           constants and never move with it.
      * @return array<string, mixed>|null
      */
-    public function summary(User $user, ?Carbon $asOf = null): ?array
+    public function summary(User $user, ?Carbon $asOf = null, int $windowDays = 7): ?array
     {
         $today = ($asOf ?? Carbon::today())->copy()->startOfDay();
-        $cacheKey = "training-load:{$user->id}:{$today->toDateString()}";
+        $cacheKey = "training-load:{$user->id}:{$today->toDateString()}:{$windowDays}";
 
-        return Cache::remember($cacheKey, self::SUMMARY_CACHE_SECONDS, function () use ($user, $today): ?array {
+        return Cache::remember($cacheKey, self::SUMMARY_CACHE_SECONDS, function () use ($user, $today, $windowDays): ?array {
             ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->loadDailyHistory($user, $today);
             if ($dailyTrimp === []) {
                 return null;
             }
 
-            return $this->summaryFromDailyMap($dailyTrimp, $runDays, $today);
+            return $this->summaryFromDailyMap($dailyTrimp, $runDays, $today, windowDays: $windowDays);
         });
     }
 
     /**
-     * $asOf anchors the week window (weekly_trimp / monotony / strain). $loadAsOf
-     * anchors the ATL/CTL roll and defaults to $asOf; callers pass an earlier
-     * date to measure fitness as-of a day that is not the week's end (e.g. the
-     * in-progress week, capped at today, so future days are not zero-filled).
+     * $asOf anchors the trailing window (weekly_trimp / monotony / strain,
+     * sized by $windowDays). $loadAsOf anchors the ATL/CTL roll and defaults to
+     * $asOf; callers pass an earlier date to measure fitness as-of a day that
+     * is not the window's end (e.g. the in-progress week, capped at today, so
+     * future days are not zero-filled).
      *
      * @param  array<string, float>  $dailyTrimp  scored days only
      * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
      * @return array<string, mixed>|null
      */
-    public function summaryFromDailyMap(array $dailyTrimp, array $runDays, Carbon $asOf, ?Carbon $loadAsOf = null): ?array
+    public function summaryFromDailyMap(array $dailyTrimp, array $runDays, Carbon $asOf, ?Carbon $loadAsOf = null, int $windowDays = 7): ?array
     {
         if ($dailyTrimp === []) {
             return null;
@@ -86,7 +90,7 @@ class TrainingLoad
         $loadDate = ($loadAsOf ?? $asOf)->copy()->startOfDay();
         [$atl, $ctl] = $this->rollLoads($dailyTrimp, $loadDate);
         $form = round($ctl - $atl, 1);
-        [$weeklyTrimp, $monotony, $strain] = $this->weekStats($dailyTrimp, $runDays, $weekAnchor);
+        [$weeklyTrimp, $monotony, $strain] = $this->weekStats($dailyTrimp, $runDays, $weekAnchor, $windowDays);
 
         return [
             'weekly_trimp' => $weeklyTrimp === null ? null : round($weeklyTrimp, 1),
@@ -141,10 +145,10 @@ class TrainingLoad
      * Bust the summary cache for a user so the next dashboard load sees fresh
      * ATL/CTL values. Called after activity ingest or deletion.
      */
-    public static function clearSummaryCache(User $user): void
+    public static function clearSummaryCache(User $user, int $windowDays = 7): void
     {
         $today = Carbon::today()->toDateString();
-        Cache::forget("training-load:{$user->id}:{$today}");
+        Cache::forget("training-load:{$user->id}:{$today}:{$windowDays}");
     }
 
     /**
@@ -276,20 +280,22 @@ class TrainingLoad
     }
 
     /**
-     * A week nobody ran scores an honest zero; a week whose runs all lack heart
-     * rate is unscorable and returns null, because "we have no reading" is a
-     * different fact from "you did nothing" and a zero would state the second.
+     * A window nobody ran scores an honest zero; a window whose runs all lack
+     * heart rate is unscorable and returns null, because "we have no reading"
+     * is a different fact from "you did nothing" and a zero would state the
+     * second.
      *
      * @param  array<string, float>  $dailyTrimp  scored days only
      * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
+     * @param  int  $windowDays  the trailing window size, ending on $today
      * @return array{0: float|null, 1: float|null, 2: float|null}  weekly_trimp, monotony, strain
      */
-    private function weekStats(array $dailyTrimp, array $runDays, Carbon $today): array
+    private function weekStats(array $dailyTrimp, array $runDays, Carbon $today, int $windowDays = 7): array
     {
         $week = [];
         $ranAtAll = false;
         $scoredAtAll = false;
-        for ($i = 6; $i >= 0; $i--) {
+        for ($i = $windowDays - 1; $i >= 0; $i--) {
             $date = $today->copy()->subDays($i)->toDateString();
             $week[] = $dailyTrimp[$date] ?? 0.0;
             $ranAtAll = $ranAtAll || isset($runDays[$date]);
@@ -304,8 +310,8 @@ class TrainingLoad
         if ($weekly <= 0) {
             return [0.0, 0.0, 0.0];
         }
-        $mean = $weekly / 7;
-        $variance = array_sum(array_map(fn (float $t): float => ($t - $mean) ** 2, $week)) / 7;
+        $mean = $weekly / $windowDays;
+        $variance = array_sum(array_map(fn (float $t): float => ($t - $mean) ** 2, $week)) / $windowDays;
         $sd = sqrt($variance);
 
         // Cap at 5.0 when sd≈0 (uniform-load week) instead of dividing by zero.

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import FitnessPanel, {
     fitnessVerdict,
     type BadgeMilestone,
+    type FitnessChartAnnotations,
     type FitnessTrendPoint,
     type StreakSummaryLike,
 } from './FitnessPanel';
@@ -14,11 +15,41 @@ type ChartData = {
     datasets: Array<{ label: string; data: number[] }>;
 };
 
+// Minimal shape of what FitnessPanel's options/plugins actually build —
+// loose enough to avoid depending on chart.js's own types in the test.
+type ChartOptionsLike = {
+    scales?: { x?: { display?: boolean; ticks?: { maxTicksLimit?: number } } };
+    plugins?: {
+        tooltip?: {
+            callbacks?: {
+                title?: (items: Array<{ dataIndex: number }>) => string;
+                label?: (item: {
+                    dataset: { label?: string };
+                    parsed: { y: number };
+                }) => string;
+            };
+        };
+    };
+};
+type ChartPluginLike = {
+    id: string;
+    afterDatasetsDraw?: (chart: unknown) => void;
+};
+
 let lastData: ChartData | null = null;
+let lastOptions: ChartOptionsLike | null = null;
+let lastPlugins: ChartPluginLike[] | null = null;
 
 vi.mock('react-chartjs-2', () => ({
-    Line: (props: { data: ChartData; ref?: Ref<unknown> }) => {
+    Line: (props: {
+        data: ChartData;
+        options?: ChartOptionsLike;
+        plugins?: ChartPluginLike[];
+        ref?: Ref<unknown>;
+    }) => {
         lastData = props.data;
+        lastOptions = props.options ?? null;
+        lastPlugins = props.plugins ?? null;
         useImperativeHandle(props.ref, () => ({ update: () => {} }));
         return createElement('div', { 'data-testid': 'line-chart' });
     },
@@ -69,6 +100,7 @@ describe('FitnessPanel', () => {
     });
 
     it.each([
+        ['7d', 7],
         ['30d', 30],
         ['90d', 90],
         ['12mo', 365],
@@ -89,7 +121,7 @@ describe('FitnessPanel', () => {
         },
     );
 
-    it('draws fitness solid and fatigue dashed, neither filled', async () => {
+    it('draws fatigue dashed behind the solid fitness line, so fitness stays on top', async () => {
         render(
             <FitnessPanel
                 trend={pointsOverDays(30)}
@@ -105,10 +137,133 @@ describe('FitnessPanel', () => {
             borderDash?: number[];
             fill?: boolean;
         }>;
-        expect(datasets.map((d) => d.label)).toEqual(['fitness', 'fatigue']);
-        expect(datasets[0].borderDash).toBeUndefined();
-        expect(datasets[1].borderDash).toEqual([3, 3]);
+        expect(datasets.map((d) => d.label)).toEqual(['fatigue', 'fitness']);
+        expect(datasets[0].borderDash).toEqual([3, 3]);
+        expect(datasets[1].borderDash).toBeUndefined();
         expect(datasets.every((d) => d.fill === false)).toBe(true);
+    });
+
+    describe('chart legibility', () => {
+        const trend = pointsOverDays(30);
+
+        it('shows a labelled, decluttered x-axis of real dates', async () => {
+            render(
+                <FitnessPanel
+                    trend={trend}
+                    milestones={[]}
+                    streak={NO_STREAK}
+                    range="30d"
+                />,
+            );
+
+            expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
+            expect(lastData!.labels).toHaveLength(30);
+            expect(lastData!.labels[0]).not.toBe('0');
+            expect(lastOptions!.scales?.x?.display).not.toBe(false);
+            expect(
+                lastOptions!.scales?.x?.ticks?.maxTicksLimit,
+            ).toBeGreaterThan(0);
+        });
+
+        it('names the series and the date in the tooltip, not a raw value', async () => {
+            render(
+                <FitnessPanel
+                    trend={trend}
+                    milestones={[]}
+                    streak={NO_STREAK}
+                    range="30d"
+                />,
+            );
+
+            expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
+            const callbacks = lastOptions!.plugins!.tooltip!.callbacks!;
+            expect(callbacks.title!([{ dataIndex: 0 }])).toBe('jan 1');
+            expect(
+                callbacks.label!({
+                    dataset: { label: 'fitness' },
+                    parsed: { y: 41.234 },
+                }),
+            ).toBe('fitness: 41');
+        });
+
+        it('draws no markers and no legend chip when nothing is annotated', async () => {
+            render(
+                <FitnessPanel
+                    trend={trend}
+                    milestones={[]}
+                    streak={NO_STREAK}
+                    range="30d"
+                />,
+            );
+
+            expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
+            expect(screen.queryByText('Deload week')).not.toBeInTheDocument();
+            expect(screen.queryByText('Race day')).not.toBeInTheDocument();
+        });
+
+        it('marks a deload week and a race day from the plan, and labels each in the legend', async () => {
+            const annotations: FitnessChartAnnotations = {
+                deload: ['2026-01-05'],
+                race: ['2026-01-20'],
+            };
+            render(
+                <FitnessPanel
+                    trend={trend}
+                    milestones={[]}
+                    streak={NO_STREAK}
+                    range="30d"
+                    annotations={annotations}
+                />,
+            );
+
+            expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
+            expect(screen.getByText('Deload week')).toBeInTheDocument();
+            expect(screen.getByText('Race day')).toBeInTheDocument();
+            expect(lastPlugins!.some((p) => p.id === 'trendMarkers')).toBe(
+                true,
+            );
+        });
+
+        it("mentions a race and a deload week in the chart's accessible summary", async () => {
+            const annotations: FitnessChartAnnotations = {
+                deload: ['2026-01-05'],
+                race: ['2026-01-20'],
+            };
+            render(
+                <FitnessPanel
+                    trend={trend}
+                    milestones={[]}
+                    streak={NO_STREAK}
+                    range="30d"
+                    annotations={annotations}
+                />,
+            );
+
+            expect(
+                screen.getByRole('img', {
+                    name: /Marked on the chart: a deload week and a race\./,
+                }),
+            ).toBeInTheDocument();
+        });
+
+        it('ignores an annotation date outside the selected window', async () => {
+            const annotations: FitnessChartAnnotations = {
+                deload: ['2099-01-01'],
+                race: [],
+            };
+            render(
+                <FitnessPanel
+                    trend={trend}
+                    milestones={[]}
+                    streak={NO_STREAK}
+                    range="30d"
+                    annotations={annotations}
+                />,
+            );
+
+            expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
+            expect(screen.queryByText('Deload week')).not.toBeInTheDocument();
+        });
     });
 
     it("shows the latest point's fitness, fatigue and form as stat tiles", async () => {

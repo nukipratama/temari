@@ -166,13 +166,22 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->where('status', 'done')->count())->toBe($creditedThisWeek)
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->where('status', 'done')->count())->toBe(1);
 
-    // F7: trend_read narrated for all three windows (30d/90d/12mo).
+    // F7: trend_read narrated for all four windows (7d/30d/90d/12mo).
     expect(Analysis::query()
         ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
         ->where('subject_id', $user->id)
         ->where('analysis_type', AnalysisType::TrendRead)
         ->where('status', 'done')
         ->count())->toBe(count(AnalysisType::TREND_READ_RANGES));
+
+    // The demo account never reaches Azure — every trend_read row, 7d
+    // included, is filled by the rule-based producer.
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::TrendRead)
+        ->where('discriminator', '7d')
+        ->value('served_by'))->toBe(ServedBy::RuleBased);
 
     // F7: the inbox is populated (today's post-run summary at minimum), not
     // the empty state R5 flagged.

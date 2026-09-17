@@ -13,8 +13,8 @@ use Illuminate\Console\Command;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 
-#[Signature('ai:trend-read {range : One of AnalysisType::TREND_READ_RANGES (30d/90d/12mo)}')]
-#[Description('Dispatch the Trends tab narration for one range (30d/90d/12mo), one cadence per range — see routes/console.php')]
+#[Signature('ai:trend-read {range : One of AnalysisType::TREND_READ_RANGES (7d/30d/90d/12mo)}')]
+#[Description('Dispatch the Trends tab narration for one range (7d/30d/90d/12mo), one cadence per range — see routes/console.php')]
 class TrendReadCommand extends Command
 {
     public function handle(AnalysisService $service, RecentlyActiveUsers $activeUsers): int

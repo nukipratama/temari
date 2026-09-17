@@ -182,7 +182,7 @@ it('ranges each period discriminator against the age cap, not against wall clock
     Carbon::setTestNow();
 });
 
-it('bounds TrendRead\'s discriminator to exactly the three ranges', function (string $range, bool $valid): void {
+it('bounds TrendRead\'s discriminator to exactly the four ranges', function (string $range, bool $valid): void {
     $result = Validator::make(
         ['discriminator' => $range],
         ['discriminator' => AnalysisType::TrendRead->discriminatorRules()],
@@ -190,9 +190,10 @@ it('bounds TrendRead\'s discriminator to exactly the three ranges', function (st
 
     expect($result->fails())->toBe(! $valid);
 })->with([
+    '7d' => ['7d', true],
     '30d' => ['30d', true],
     '90d' => ['90d', true],
     '12mo' => ['12mo', true],
-    '7d (not one of the three)' => ['7d', false],
+    '14d (not one of the four)' => ['14d', false],
     'empty' => ['', false],
 ]);

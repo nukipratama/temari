@@ -6,6 +6,7 @@ use App\Enums\AdaptationReason;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Models\Feedback;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -15,6 +16,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -406,6 +408,71 @@ it('leaves nothing behind when a near-term race shrinks the horizon, and refills
     $this->periodizer->regenerate($user);
 
     expect(PlannedSession::query()->where('user_id', $user->id)->max('date'))->toBe($selfScaledEnd);
+});
+
+it('carries a recorded easy clamp onto today\'s recreated row', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $today = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'clamped_km' => 3.6,
+    ]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    $fresh = PlannedSession::query()->where('user_id', $user->id)->where('date', Carbon::today()->toDateString())->firstOrFail();
+    expect($fresh->id)->not->toBe($today->id)
+        ->and($fresh->clamped_km)->toBe(3.6)
+        ->and($fresh->rest_clamped_at)->toBeNull();
+
+    $effective = EffectiveSession::of($fresh, 8.0);
+    expect($effective->sessionType)->toBe(SessionType::Easy)
+        ->and($effective->coreKm)->toBe(3.6);
+});
+
+it('carries a recorded rest clamp onto today\'s recreated row, keeping the day excused', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $today = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Long,
+        'rest_clamped_at' => Carbon::now(),
+    ]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    $fresh = PlannedSession::query()->where('user_id', $user->id)->where('date', Carbon::today()->toDateString())->firstOrFail();
+    expect($fresh->id)->not->toBe($today->id)
+        ->and($fresh->rest_clamped_at)->not->toBeNull()
+        ->and($fresh->isExcused())->toBeTrue();
+});
+
+it('deletes plan_day feedback for exactly the rows a regenerate deletes, keeping flags elsewhere', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+
+    $deletedRow = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDays(1)->toDateString(),
+    ]);
+    $pinnedRow = PlannedSession::factory()->for($user)->pinned()->create([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+    ]);
+    $gradedRow = PlannedSession::factory()->for($user)->scored()->create([
+        'date' => Carbon::today()->addDays(3)->toDateString(),
+    ]);
+
+    $deletedFlag = Feedback::factory()->for($user)->onPlanDay($deletedRow->id)->create();
+    $pinnedFlag = Feedback::factory()->for($user)->onPlanDay($pinnedRow->id)->create();
+    $gradedFlag = Feedback::factory()->for($user)->onPlanDay($gradedRow->id)->create();
+    $narrationFlag = Feedback::factory()->for($user)->onNarration(999)->create();
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    expect(Feedback::query()->find($deletedFlag->id))->toBeNull()
+        ->and(Feedback::query()->find($pinnedFlag->id))->not->toBeNull()
+        ->and(Feedback::query()->find($gradedFlag->id))->not->toBeNull()
+        ->and(Feedback::query()->find($narrationFlag->id))->not->toBeNull();
 });
 
 it('keeps today\'s row when the day has already been scored', function (): void {

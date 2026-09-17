@@ -12,19 +12,19 @@ use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
 /**
- * The range a Trends narration is about (30d/90d/12mo), read as of now.
+ * The range a Trends narration is about (7d/30d/90d/12mo), read as of now.
  *
- * For 30d/90d the comparison is against the immediately preceding period of
- * the same length. 12mo is different on purpose: comparing this year against
- * the year before it needs history most users don't have yet, so it instead
- * splits its own window in half and compares the second half against the
- * first — same shape (`current` vs `comparison`), different boundaries.
+ * For 7d/30d/90d the comparison is against the immediately preceding period
+ * of the same length. 12mo is different on purpose: comparing this year
+ * against the year before it needs history most users don't have yet, so it
+ * instead splits its own window in half and compares the second half against
+ * the first — same shape (`current` vs `comparison`), different boundaries.
  */
 final class TrendRangeTool extends NoArgumentTool
 {
     /** @var array<string, int> */
     /** Also read by narrators binding a second tool to the same window. */
-    public const array RANGE_DAYS = ['30d' => 30, '90d' => 90, '12mo' => 365];
+    public const array RANGE_DAYS = ['7d' => 7, '30d' => 30, '90d' => 90, '12mo' => 365];
 
     public function __construct(
         private readonly User $user,

@@ -238,6 +238,36 @@ it('reports zero weekly_trimp / monotony / strain on a fully rested current week
 
 });
 
+it('sizes weekly_trimp/monotony/strain to the requested window, not a fixed 7 days', function (): void {
+    $user = User::factory()->create();
+
+    // Steady 60 TRIMP/day for the last 30 days.
+    for ($i = 0; $i < 30; $i++) {
+        seedTrimpDay($user, 60.0, 29 - $i);
+    }
+
+    $sevenDay = $this->load->summary($user, windowDays: 7);
+    $thirtyDay = $this->load->summary($user, windowDays: 30);
+
+    expect($sevenDay['weekly_trimp'])->toEqualWithDelta(420.0, 0.5)
+        ->and($thirtyDay['weekly_trimp'])->toEqualWithDelta(1800.0, 0.5);
+});
+
+it('leaves ATL/CTL/form unchanged by the requested window, only the weekly figures move', function (): void {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 60; $i++) {
+        seedTrimpDay($user, 80.0, 59 - $i);
+    }
+
+    $sevenDay = $this->load->summary($user, windowDays: 7);
+    $ninetyDay = $this->load->summary($user, windowDays: 90);
+
+    expect($sevenDay['atl_7d'])->toBe($ninetyDay['atl_7d'])
+        ->and($sevenDay['ctl_42d'])->toBe($ninetyDay['ctl_42d'])
+        ->and($sevenDay['form'])->toBe($ninetyDay['form']);
+});
+
 it('only counts the requested user', function (): void {
     $userA = User::factory()->create();
     $userB = User::factory()->create();

@@ -3,10 +3,13 @@
 declare(strict_types=1);
 
 use App\Enums\Badge;
+use App\Enums\PlanPhase;
 use App\Enums\Rarity;
+use App\Enums\SessionType;
 use App\Models\AI\Analysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -51,6 +54,7 @@ it('paints the shell with every heavy block deferred', function (): void {
             ->missing('briefing')
             ->missing('load')
             ->missing('snapshot')
+            ->missing('chartAnnotations')
             ->etc());
 });
 
@@ -67,8 +71,32 @@ it('ships the load section props Home used to hold behind its stats disclosure',
         ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'briefing,load,snapshot'))
         ->assertSuccessful()
         ->assertJsonPath('props.briefing.mood', fn (mixed $mood): bool => is_string($mood))
-        ->assertJsonPath('props.load.ctl_42d', fn (mixed $ctl): bool => is_numeric($ctl))
+        ->assertJsonPath('props.load.7d.ctl_42d', fn (mixed $ctl): bool => is_numeric($ctl))
         ->assertJsonPath('props.snapshot.weekly_trimp', 280);
+});
+
+it('ships the load section as one entry per toggle range, following it instead of a fixed 7 days', function (): void {
+    $user = User::factory()->create();
+    // A run inside the 7-day window and three more only the 30-day window reaches.
+    foreach ([1, 10, 15, 20] as $daysAgo) {
+        $activity = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'trimp_edwards' => 60,
+            'start_date_local' => now()->subDays($daysAgo),
+        ]);
+    }
+
+    $response = $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'load'))
+        ->assertSuccessful();
+
+    $load = $response->json('props.load');
+
+    expect(array_keys($load))->toBe(['7d', '30d', '90d', '12mo'])
+        // Fitness/fatigue are EWMA time constants, unaffected by the window.
+        ->and($load['7d']['ctl_42d'])->toBe($load['12mo']['ctl_42d'])
+        // weekly_trimp is the trailing window total, so a wider window sums more.
+        ->and($load['30d']['weekly_trimp'])->toBeGreaterThan($load['7d']['weekly_trimp']);
 });
 
 it('never surfaces another user\'s week snapshot on the load section', function (): void {
@@ -113,11 +141,12 @@ it('never surfaces another user\'s training load', function (): void {
         ->assertJsonPath('props.ctlTrend', []);
 });
 
-it('passes a pending narration payload for all three ranges when none exist', function (): void {
+it('passes a pending narration payload for all four ranges when none exist', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'narration'))
+        ->assertJsonPath('props.narration.7d.status', 'pending')
         ->assertJsonPath('props.narration.30d.status', 'pending')
         ->assertJsonPath('props.narration.90d.status', 'pending')
         ->assertJsonPath('props.narration.12mo.status', 'pending');
@@ -140,6 +169,22 @@ it('passes the TrendRead analysis for each range as its own narration entry', fu
         ->assertJsonPath('props.narration.30d.discriminator', '30d')
         ->assertJsonPath('props.narration.90d.status', 'pending')
         ->assertJsonPath('props.narration.12mo.status', 'pending');
+});
+
+it('carries a 7d narration entry alongside the other three ranges', function (): void {
+    $user = User::factory()->create();
+    Analysis::factory()->done("Holding steady this week.\n\nNo real swing either way.")->create([
+        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::TrendRead,
+        'discriminator' => '7d',
+    ]);
+
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'narration'))
+        ->assertJsonPath('props.narration.7d.status', 'done')
+        ->assertJsonPath('props.narration.7d.content', "Holding steady this week.\n\nNo real swing either way.")
+        ->assertJsonPath('props.narration.7d.discriminator', '7d');
 });
 
 it('never surfaces another user\'s narration', function (): void {
@@ -200,6 +245,48 @@ it('reports a zero streak for a fresh user', function (): void {
     $this->actingAs($user)
         ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'streak'))
         ->assertJsonPath('props.streak.weeks', 0);
+});
+
+it('renders empty chart annotations for a user with no deload weeks or races', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'chartAnnotations'))
+        ->assertSuccessful()
+        ->assertJsonPath('props.chartAnnotations.deload', [])
+        ->assertJsonPath('props.chartAnnotations.race', []);
+});
+
+it('marks a deload week and a race day from the athlete\'s plan history', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => now()->subDays(10)->toDateString(),
+        'phase' => PlanPhase::Deload,
+        'session_type' => SessionType::Easy,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => now()->subDays(3)->toDateString(),
+        'phase' => PlanPhase::Peak,
+        'session_type' => SessionType::Race,
+    ]);
+
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'chartAnnotations'))
+        ->assertJsonPath('props.chartAnnotations.deload', [now()->subDays(10)->toDateString()])
+        ->assertJsonPath('props.chartAnnotations.race', [now()->subDays(3)->toDateString()]);
+});
+
+it('never surfaces another user\'s plan annotations', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    PlannedSession::factory()->for($other)->create([
+        'date' => now()->subDays(10)->toDateString(),
+        'phase' => PlanPhase::Deload,
+    ]);
+
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'chartAnnotations'))
+        ->assertJsonPath('props.chartAnnotations.deload', []);
 });
 
 it('reports the user\'s consecutive-week streak', function (): void {

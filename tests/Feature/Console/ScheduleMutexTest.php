@@ -112,6 +112,21 @@ it('runs the Strava drain and fallback poll on the cadences they were sized for'
 ]);
 
 /**
+ * 7d moves at least as fast as 30d day to day, so it was given 30d's own
+ * daily cadence rather than a slower tier — pin the two to the same
+ * expression so a re-tier of one is a deliberate, visible change to both.
+ */
+it('runs the 7d trend read on the same daily cadence as 30d', function (): void {
+    $sevenDay = scheduledEvent('ai:trend-read 7d');
+    $thirtyDay = scheduledEvent('ai:trend-read 30d');
+
+    expect($sevenDay)->not->toBeNull('ai:trend-read 7d is not scheduled')
+        ->and($thirtyDay)->not->toBeNull('ai:trend-read 30d is not scheduled')
+        ->and($sevenDay->expression)->toBe('0 6 * * *')
+        ->and($sevenDay->expression)->toBe($thirtyDay->expression);
+});
+
+/**
  * Exactly one scheduler container runs in prod (compose.prod.yaml), an
  * unstated invariant a second replica would silently break: nothing today
  * stops two schedulers from double-running a command or racing a shared
