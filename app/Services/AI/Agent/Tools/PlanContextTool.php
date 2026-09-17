@@ -57,9 +57,11 @@ final class PlanContextTool extends UserTool
             .'had excused themselves from. skipped true means they excused the day. eased_from means '
             .'readiness eased the day: session_type, distance_km and the pace are the eased session '
             .'they are actually doing, and eased_from names the session it replaced (with its distance '
-            .'only when that moved), which is context, never the day itself. Call this to say '
-            .'what was asked of them, not just what they did. An empty list means no plan covers '
-            .'these days.';
+            .'only when that moved), which is context, never the day itself. pace_eased_from means '
+            .'readiness eased the day\'s pace only: type and distance are unchanged, target_pace_sec/'
+            .'target_pace_formatted are already the eased (slower) pace, and pace_eased_from names the '
+            .'pace it replaced. Call this to say what was asked of them, not just what they did. An '
+            .'empty list means no plan covers these days.';
     }
 
     /** @return array<string, mixed> */
@@ -89,6 +91,10 @@ final class PlanContextTool extends UserTool
                 );
                 $targetPaceSec = self::targetPaceSec($session, $effective->sessionType, $paces);
                 $easedFrom = $effective->easedFromForNarration();
+                $paceEasedFromSec = $effective->isPaceEased() ? $targetPaceSec : null;
+                if ($effective->isPaceEased()) {
+                    $targetPaceSec = $effective->easedPaceSecPerKm;
+                }
 
                 return [
                     'date' => $session->date->toDateString(),
@@ -102,6 +108,10 @@ final class PlanContextTool extends UserTool
                     'target_pace_formatted' => $targetPaceSec === null
                         ? null
                         : PaceFormatter::format((float) $targetPaceSec),
+                    ...($paceEasedFromSec === null ? [] : ['pace_eased_from' => [
+                        'pace_sec' => $paceEasedFromSec,
+                        'pace_formatted' => PaceFormatter::format((float) $paceEasedFromSec),
+                    ]]),
                     'skipped' => $session->skipped,
                     'status' => $session->status->value,
                     'compliance_score' => $session->compliance_score,

@@ -124,14 +124,14 @@ final readonly class Periodizer
                 ->where('pinned', false)
                 ->where('status', PlannedSessionStatus::Planned)
                 ->whereBetween('date', [$inputs->today->toDateString(), $inputs->horizonEnd()->toDateString()])
-                ->get(['id', 'date', 'clamped_km', 'rest_clamped_at']);
+                ->get(['id', 'date', 'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km']);
 
             // Today's row may carry a readiness clamp {@see RestClampRecorder}
             // stamped earlier the same day. The athlete was already told about
             // it, and the clamp only ever subtracts — so it survives onto the
             // row that replaces it rather than vanishing with the delete.
             $carriedClamps = $toDelete
-                ->filter(fn (PlannedSession $s): bool => $s->clamped_km !== null || $s->rest_clamped_at !== null)
+                ->filter(fn (PlannedSession $s): bool => $s->clamped_km !== null || $s->rest_clamped_at !== null || $s->eased_pace_sec_per_km !== null)
                 ->keyBy(fn (PlannedSession $s): string => $s->date->toDateString());
 
             PlannedSession::query()
@@ -163,6 +163,7 @@ final readonly class Periodizer
                         'status' => PlannedSessionStatus::Planned,
                         'clamped_km' => $carriedClamp?->clamped_km,
                         'rest_clamped_at' => $carriedClamp?->rest_clamped_at,
+                        'eased_pace_sec_per_km' => $carriedClamp?->eased_pace_sec_per_km,
                     ],
                 );
             }

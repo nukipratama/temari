@@ -119,6 +119,33 @@ it('never clamps a race, at any ceiling: the goal race is not a session to be ta
     }
 });
 
+it('paceEaseApplies only for an Easy day at EasyOnly and a Long day at ModerateOk', function (): void {
+    foreach (SessionType::cases() as $type) {
+        foreach (ReadinessCeiling::cases() as $ceiling) {
+            $expected = ($type === SessionType::Easy && $ceiling === ReadinessCeiling::EasyOnly)
+                || ($type === SessionType::Long && $ceiling === ReadinessCeiling::ModerateOk);
+
+            expect(ReadinessClamp::paceEaseApplies($type, $ceiling))
+                ->toBe($expected, "{$type->value} under {$ceiling->value}");
+        }
+    }
+});
+
+/** One lever per day: apply() already downgrades every case paceEaseApplies() would otherwise also fire on. */
+it('paceEaseApplies never overlaps with a day apply() already clamps', function (): void {
+    foreach (SessionType::cases() as $type) {
+        foreach (ReadinessCeiling::cases() as $ceiling) {
+            if (ReadinessClamp::paceEaseApplies($type, $ceiling)) {
+                expect(applyClamp($type, $ceiling))->toBeNull();
+            }
+        }
+    }
+});
+
+it('paceEaseNote is a non-empty templated string', function (): void {
+    expect(ReadinessClamp::paceEaseNote())->toBeString()->not->toBe('');
+});
+
 // noteFor() is the same explanation apply() builds, reached without a segment
 // list. The pair only stays honest if every combination agrees, including which
 // ones have nothing to explain at all.

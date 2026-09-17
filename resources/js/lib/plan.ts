@@ -5,6 +5,7 @@ import type {
     AnalysisPayload,
     PlanDayClamp,
     PlanDayEasedFrom,
+    PlanDayPaceEasedFrom,
     WeekPlanDay,
 } from '@/types/inertia';
 
@@ -280,6 +281,24 @@ export function paceLabel(day: PlanDay): string | null {
     return core?.pace_sec_per_km == null
         ? null
         : `${formatPace(core.pace_sec_per_km)}/km`;
+}
+
+/**
+ * The pace-only step-down as one line: "6:00 → 6:15/km". The day's own
+ * segments already carry the slower (eased) pace, so this only supplies the
+ * pace it replaced — the arrow is the whole story, no session type or
+ * distance to name since neither moved.
+ */
+export function paceEaseLabel(
+    paceEasedFrom: PlanDayPaceEasedFrom,
+    day: PlanDay,
+): string | null {
+    const current = paceLabel(day);
+    if (paceEasedFrom.pace_sec_per_km == null || current === null) {
+        return null;
+    }
+
+    return `${formatPace(paceEasedFrom.pace_sec_per_km)} → ${current}`;
 }
 
 /** Whether a day's status counts toward the week's "showed up" total — mirrors `PlannedSessionStatus::isCredited()`. */

@@ -6,6 +6,8 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Models\PlannedSession;
 use App\Services\Run\Metrics\PaceFormatter;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
@@ -44,6 +46,8 @@ final class PlanDayTool extends NoArgumentTool
     public function __construct(
         private readonly PlannedSession $session,
         private readonly TrainingBaseline $baseline,
+        private readonly VdotEstimator $vdotEstimator,
+        private readonly TrainingPaceCalculator $paceCalculator,
         /** Km actually run on this date, or null while nothing has been logged. */
         private readonly ?float $completedKm = null,
     ) {
@@ -70,7 +74,9 @@ final class PlanDayTool extends NoArgumentTool
             .'judge. eased_from means readiness eased the day: session_type and distance_km are the '
             .'eased session the athlete is actually doing, and eased_from names the session it '
             .'replaced (with its distance only when that moved). Describe the eased session as the '
-            .'day, and the replaced one only as what it was eased from.';
+            .'day, and the replaced one only as what it was eased from. pace_sec/pace_formatted are '
+            .'present only when readiness eased the day\'s pace only: they are the eased (slower) '
+            .'pace the athlete is actually running, and pace_eased_from names the pace it replaced.';
     }
 
     /** @return array<string, mixed> */
@@ -82,6 +88,20 @@ final class PlanDayTool extends NoArgumentTool
             PlanRenderer::coreKmForSession($this->session, $baselineData['long_run_km'], $baselineData['long_run_cap_km'], $baselineData['self_scaled']),
         );
         $easedFrom = $effective->easedFromForNarration();
+        $paceFields = [];
+        if ($effective->isPaceEased()) {
+            $paceFields['pace_sec'] = $effective->easedPaceSecPerKm;
+            $paceFields['pace_formatted'] = PaceFormatter::format((float) $effective->easedPaceSecPerKm);
+            $originalPaceSec = $this->paceCalculator->fromVdotResult(
+                $this->vdotEstimator->estimate($this->session->user, Carbon::today())
+            )['easy'] ?? null;
+            if ($originalPaceSec !== null) {
+                $paceFields['pace_eased_from'] = [
+                    'pace_sec' => $originalPaceSec,
+                    'pace_formatted' => PaceFormatter::format((float) $originalPaceSec),
+                ];
+            }
+        }
 
         return [
             'date' => $this->session->date->toDateString(),
@@ -89,6 +109,7 @@ final class PlanDayTool extends NoArgumentTool
             'phase' => $this->session->phase->value,
             'distance_km' => $effective->coreKm,
             ...($easedFrom === null ? [] : ['eased_from' => $easedFrom]),
+            ...$paceFields,
             'skipped' => $this->session->skipped,
             // Absent rather than null on an ungraded day: a key that is always
             // there teaches the model the day is over even when it is not.

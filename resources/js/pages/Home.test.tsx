@@ -143,6 +143,7 @@ const weekPlan: WeekPlan = {
             prescribed_km: null,
             clamp: null,
             eased_from: null,
+            pace_eased_from: null,
             credit_note: null,
             ran_pace_sec_per_km: null,
             actual_km: null,

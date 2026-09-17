@@ -54,3 +54,22 @@ it('falls back to the single anchor when no quality anchor is supplied', functio
     expect($calculator->fromVdotResult(['vdot' => 30.0]))
         ->toBe($calculator->fromVdot(30.0));
 });
+
+it('exposes the easy band\'s slow end without moving the averaged easy figure', function (): void {
+    $paces = $this->calculator->fromVdot(29.0);
+
+    expect($this->calculator->easySlowEndSecPerKm(29.0))
+        ->toBeInt()
+        ->toBeGreaterThan($paces['easy']);
+});
+
+it('produces a faster slow-end pace for a higher VDOT (monotonic)', function (): void {
+    expect($this->calculator->easySlowEndSecPerKm(45.0))
+        ->toBeLessThan($this->calculator->easySlowEndSecPerKm(29.0));
+});
+
+it('easySlowEndFromVdotResult mirrors easySlowEndSecPerKm off a VdotEstimator result', function (): void {
+    expect($this->calculator->easySlowEndFromVdotResult(['vdot' => 30.0]))
+        ->toBe($this->calculator->easySlowEndSecPerKm(30.0))
+        ->and($this->calculator->easySlowEndFromVdotResult(null))->toBeNull();
+});

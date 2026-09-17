@@ -10,13 +10,16 @@ use App\Models\User;
 use App\Notifications\DayClampedNotification;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Support\Carbon;
 
 /**
  * Records the clamp outcomes that have to outlive the render: a today
- * downgraded to a full rest, and the eased distance a lighter downgrade asked
- * for instead.
+ * downgraded to a full rest, the eased distance a lighter downgrade asked for
+ * instead, and — on a day that already clears the ceiling but only just — the
+ * eased pace {@see ReadinessClamp::paceEaseApplies()} asks for.
  *
  * {@see ReadinessClamp} is otherwise deliberately render-only, and that works
  * because every other consumer recomputes it. Compliance cannot — it runs the
@@ -36,6 +39,8 @@ final readonly class RestClampRecorder
     public function __construct(
         private TrainingLoad $trainingLoad,
         private TrainingBaseline $baseline,
+        private VdotEstimator $vdotEstimator,
+        private TrainingPaceCalculator $paceCalculator,
     ) {
     }
 
@@ -82,7 +87,8 @@ final readonly class RestClampRecorder
 
         // A pinned row is exempt from the clamp at render time too, so it must
         // not be excused by one here either.
-        if ($session === null || $session->pinned || $session->rest_clamped_at !== null || $session->clamped_km !== null) {
+        if ($session === null || $session->pinned || $session->rest_clamped_at !== null
+            || $session->clamped_km !== null || $session->eased_pace_sec_per_km !== null) {
             return false;
         }
 
@@ -132,14 +138,30 @@ final readonly class RestClampRecorder
             null,
             $ceiling,
         );
-        if ($clamp === null) {
-            return false;
+        if ($clamp !== null) {
+            $session->update(['clamped_km' => $clamp['core_km']]);
+            $this->tell($user, $today, $clamp['session_type'], $session->session_type, $ceiling);
+
+            return true;
         }
 
-        $session->update(['clamped_km' => $clamp['core_km']]);
-        $this->tell($user, $today, $clamp['session_type'], $session->session_type, $ceiling);
+        // The one lever `apply()` leaves untouched: an Easy day at EasyOnly or
+        // a Long day at ModerateOk already clears the ceiling, but only just.
+        // Type and distance stay; only the pace comes down, rule-based only —
+        // no notification, no `plan_clamp_voice` request (see
+        // `ReadinessClamp::paceEaseApplies()`).
+        if (ReadinessClamp::paceEaseApplies($session->session_type, $ceiling)) {
+            $easedPace = $this->paceCalculator->easySlowEndFromVdotResult($this->vdotEstimator->estimate($user, $today));
+            if ($easedPace === null) {
+                return false;
+            }
 
-        return true;
+            $session->update(['eased_pace_sec_per_km' => $easedPace]);
+
+            return true;
+        }
+
+        return false;
     }
 
     /**

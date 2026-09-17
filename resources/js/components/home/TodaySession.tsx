@@ -14,6 +14,7 @@ import {
     easedFromLabel,
     isCreditedStatus,
     kmLabel,
+    paceEaseLabel,
     paceLabel,
     SESSION_TYPE_LABEL,
 } from '@/lib/plan';
@@ -109,6 +110,19 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
                     {day.eased_from.voice !== null && (
                         <p className="mt-1 text-sm leading-relaxed text-text-2">
                             {day.eased_from.voice}
+                        </p>
+                    )}
+                </div>
+            )}
+            {day.pace_eased_from !== null && (
+                <div className="mt-2 border-l-2 border-border-strong pl-3">
+                    <p className="flex items-center gap-1.5 text-label-micro text-text-2">
+                        <Icon icon={ArrowDown} className="size-3" aria-hidden />
+                        eased pace · {paceEaseLabel(day.pace_eased_from, day)}
+                    </p>
+                    {day.pace_eased_from.voice !== null && (
+                        <p className="mt-1 text-sm leading-relaxed text-text-2">
+                            {day.pace_eased_from.voice}
                         </p>
                     )}
                 </div>

@@ -550,6 +550,92 @@ it('dayPayload keeps the advisory step-down for a clamp that was never recorded'
         ->and($payload['eased_from'])->toBeNull();
 });
 
+/** The one lever apply() leaves alone: type and distance never move for a pace ease. */
+it('dayPayload runs a pace-eased Easy day at the recorded slow end, keeping type and distance', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Easy,
+        'pinned' => false,
+        'eased_pace_sec_per_km' => 400,
+    ]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+
+    expect($payload['session_type'])->toBe('easy')
+        ->and($payload['distance_km'])->toBe(8.0)
+        ->and($payload['asked_km'])->toBe(8.0)
+        ->and($payload['segments'])->toHaveCount(1)
+        ->and($payload['segments'][0]['pace_sec_per_km'])->toBe(400)
+        ->and($payload['eased_from'])->toBeNull()
+        ->and($payload['pace_eased_from'])->toBe([
+            'pace_sec_per_km' => RENDERER_PACES['easy'],
+            'voice' => ReadinessClamp::paceEaseNote(),
+        ]);
+});
+
+/**
+ * A marathon-pace long run (Peak/Taper, marathon-distance goal) normally runs
+ * at marathon pace — the pace ease overrides even that, to the easy slow end,
+ * not to a slowed-down marathon pace.
+ */
+it('dayPayload overrides even a marathon-pace long run to the eased slow end', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Peak,
+        'session_type' => SessionType::Long,
+        'pinned' => false,
+        'eased_pace_sec_per_km' => 410,
+    ]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], 42_195.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+
+    expect($payload['session_type'])->toBe('long')
+        ->and($payload['segments'][0]['pace_sec_per_km'])->toBe(410)
+        ->and($payload['pace_eased_from'])->toBe([
+            'pace_sec_per_km' => RENDERER_PACES['marathon'],
+            'voice' => ReadinessClamp::paceEaseNote(),
+        ]);
+});
+
+it('dayPayload keeps a pace ease\'s pace once credited, but drops the voice', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Easy,
+        'pinned' => false,
+        'eased_pace_sec_per_km' => 400,
+    ]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done);
+
+    expect($payload['segments'][0]['pace_sec_per_km'])->toBe(400)
+        ->and($payload['pace_eased_from']['pace_sec_per_km'])->toBe(RENDERER_PACES['easy'])
+        ->and($payload['pace_eased_from']['voice'])->toBeNull();
+});
+
+it('dayPayload leaves a pace-eased day paceless with no VDOT estimate, and still names the ease', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Easy,
+        'pinned' => false,
+        'eased_pace_sec_per_km' => 400,
+    ]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, null, PlannedSessionStatus::Planned);
+
+    expect($payload['segments'][0]['pace_sec_per_km'])->toBeNull()
+        ->and($payload['pace_eased_from'])->toBe([
+            'pace_sec_per_km' => null,
+            'voice' => ReadinessClamp::paceEaseNote(),
+        ]);
+});
+
 /**
  * `$clampVoice` is fetched for TODAY's date alone
  * ({@see \App\Services\AI\PlanNarrationRequester::clampVoiceFor()}), but every

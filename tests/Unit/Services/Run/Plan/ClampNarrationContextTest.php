@@ -72,6 +72,24 @@ it('resolves nothing when the day already fits under the ceiling', function (): 
     expect(resolveClamp($user))->toBeNull();
 });
 
+/**
+ * The pace-only ease is rule-based only (see `RestClampRecorder`) and never
+ * requests `plan_clamp_voice`: an Easy day at EasyOnly already fits under the
+ * ceiling as far as this resolver is concerned, the same as the untired case
+ * above.
+ */
+it('resolves nothing for the pace-ease boundary — an Easy day at an EasyOnly ceiling', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'form_status' => 'fatigued',
+        'monotony' => 1.0,
+    ]);
+    clampDay($user, 'easy');
+
+    expect(resolveClamp($user))->toBeNull();
+});
+
 /** The renderer exempts a pinned row from the clamp, so there is nothing to explain. */
 it('resolves nothing for a pinned day', function (): void {
     $user = tiredUser();
