@@ -21,10 +21,11 @@ use App\Services\AI\NarrationOrigin;
  * Weekly regeneration for every user's periodized plan (see
  * `routes/console.php`). The regenerate itself is deterministic and free —
  * it runs for every user, demo included, same as before. Requesting fresh
- * day/week/season plan narration for the week it just wrote is real LLM
- * cost, though, so that part is skipped for the demo user and for anyone who
- * has not opened the app inside {@see RecentlyActiveUsers::ACTIVE_WINDOW_DAYS}
- * — see `docs/features/plan-periodizer.md`.
+ * season plan narration for the week it just wrote is real LLM cost, though
+ * (a day's own read is requested separately, once it has a run — see #939),
+ * so that part is skipped for the demo user and for anyone who has not
+ * opened the app inside {@see RecentlyActiveUsers::ACTIVE_WINDOW_DAYS} — see
+ * `docs/features/plan-periodizer.md`.
  */
 #[Signature('plan:regenerate {--user= : Limit to one user id}')]
 #[Description('Regenerate every user\'s periodized plan today-forward')]

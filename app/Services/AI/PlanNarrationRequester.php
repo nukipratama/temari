@@ -9,7 +9,6 @@ use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
 use App\Services\Run\Plan\ClampNarrationContext;
-use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Support\Cooldown;
 use Illuminate\Support\Carbon;
@@ -17,11 +16,15 @@ use Illuminate\Support\Collection;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 
 /**
- * Requests fresh day/season plan narration for the current week, reads
- * it back for the Plan page, and rate-limits how often
- * {@see \App\Http\Controllers\PlanController::regenerate()} may run — a
- * manual regenerate re-narrates up to 8 rows (7 days, the season), so it
- * carries a real LLM cost per click.
+ * Requests fresh season narration for the current week and a day's read once
+ * it has been run, reads both back for the Plan page, and rate-limits how
+ * often {@see \App\Http\Controllers\PlanController::regenerate()} may run — a
+ * manual regenerate re-narrates the season, a real LLM cost per click.
+ *
+ * A day's own read is requested only from {@see self::requestDayVoiceIfChanged()}
+ * and {@see self::requestDayNarration()}, never from the week-wide requests
+ * here: ahead-of-time day narration was cut in #939, since a day with no run
+ * has nothing to read.
  *
  * The regenerate cooldown is a dedicated key, not {@see \App\Models\AI\Analysis::cooldownKey()}
  * reused: every narration row's own completion unconditionally starts its
@@ -63,8 +66,9 @@ final readonly class PlanNarrationRequester
     /**
      * Re-narrates one day's blurb when the day's own material has changed —
      * which, after {@see \App\Services\Run\Plan\ComplianceScorer::creditIfEarned()},
-     * means the day just flipped to credited and the line should now read what
-     * happened rather than announce what was coming.
+     * means the day just flipped to credited (or its intent verdict moved) and
+     * the line should now read what happened. A day nothing has credited yet
+     * asks for no read at all (#939: "no run, no section").
      *
      * Scoped to the single date rather than going through
      * {@see self::requestForCurrentWeek()}: that walks the whole week and would
@@ -79,9 +83,14 @@ final readonly class PlanNarrationRequester
     public function requestDayVoiceIfChanged(User $user, Carbon $date): bool
     {
         $key = $date->toDateString();
-        $expected = $this->expectedDayFingerprints($user, $date, [$key])[$key] ?? null;
+        $session = $this->plannedSessionsFor($user, [$key])->first();
+        if ($session === null || ! $session->status->isCredited()) {
+            return false;
+        }
 
-        if ($expected === null || $expected === $this->stampedDayFingerprints($user, [$key])[$key]) {
+        $longRunKm = $this->baseline->forUser($user, $date)['long_run_km'];
+        $expected = MaterialFingerprint::forPlannedSession($session, $longRunKm);
+        if ($expected === $this->stampedDayFingerprints($user, [$key])[$key]) {
             return false;
         }
 
@@ -177,64 +186,32 @@ final readonly class PlanNarrationRequester
     }
 
     /**
-     * Requests narration for every day of the current week and the current
-     * season.
-     *
-     * Day narration re-bills **only where the material actually changed**.
-     * This runs every Monday for every user, seven days at a time, and the
-     * periodizer frequently rewrites a week into something that reads
-     * identically — an unchanged session type, phase and prescribed distance
-     * produce the same blurb, so re-narrating it buys nothing. Each row carries
-     * a {@see MaterialFingerprint} of what it describes, stamped when it was
-     * narrated; a row whose fingerprint still matches is left alone.
-     *
-     * **A row with no stored fingerprint is treated as changed**, unlike the
-     * per-run equivalent in `DispatchPostRunAnalysis`, which treats an unstamped
-     * row as unchanged so shipping it never mass-invalidates history. The
-     * opposite is right here: only the rule-based paths leave the column null
-     * (a cost-capped or content-filtered day), and those must stay eligible for
-     * a real narration on the next sweep rather than keeping filler forever.
+     * Requests narration for the current season. Ahead-of-time day narration
+     * was cut (#939): a day's read is requested only once it has a run, from
+     * {@see self::requestDayVoiceIfChanged()} right after it is credited, so
+     * the Monday sweep and the manual regenerate button no longer touch
+     * `plan_day_voice` at all.
      *
      * Season narration relies on AnalysisService's own idempotency: an
      * unchanged season's already-Done content is left alone rather than re-billed.
      */
     public function requestForCurrentWeek(User $user, Carbon $today): void
     {
-        $this->requestWeek($user, $today, invalidateChanged: true);
+        $this->requestWeek($user);
     }
 
     /**
-     * The brand-new account's one narration of its first week, requested by
-     * whichever of two racers finishes second: onboarding once
-     * {@see \App\Models\User::$backfilled_at} is stamped, or the connect
-     * chain's last link once a plan exists. Nothing is ever invalidated, so
-     * the overlap where both fire re-bills nothing.
+     * The brand-new account's one narration of its first week — the season
+     * only, for the same reason {@see self::requestForCurrentWeek()} no
+     * longer touches any day: a first week has no run in it yet.
      */
     public function requestForFirstWeek(User $user, Carbon $today): void
     {
-        $this->requestWeek($user, $today, invalidateChanged: false);
+        $this->requestWeek($user);
     }
 
-    private function requestWeek(User $user, Carbon $today, bool $invalidateChanged): void
+    private function requestWeek(User $user): void
     {
-        $dates = $this->currentWeekDates($today);
-        $expected = $this->expectedDayFingerprints($user, $today, $dates);
-        $stamped = $this->stampedDayFingerprints($user, $dates);
-
-        foreach ($dates as $date) {
-            if (! isset($expected[$date])) {
-                continue;
-            }
-
-            $this->analysisService->request(
-                AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
-                $user->id,
-                AnalysisType::PlanDayVoice,
-                $date,
-                invalidate: $invalidateChanged && $stamped[$date] !== $expected[$date],
-            );
-        }
-
         $season = $this->currentSeason($user);
         if ($season !== null) {
             $this->analysisService->request(
@@ -254,10 +231,22 @@ final readonly class PlanNarrationRequester
      * same path the demo account's manual "Reread" already resolves through),
      * and `refillDone: false` so a row already filled on an earlier view is
      * left alone rather than rewritten on every page load.
+     *
+     * A day only gets a read once it has a run credited on it (#939), the same
+     * rule {@see self::requestDayVoiceIfChanged()} applies for a real athlete.
      */
     public function ensureDemoFilled(User $user, Carbon $today): void
     {
-        foreach ($this->currentWeekDates($today) as $date) {
+        $dates = $this->currentWeekDates($today);
+        $sessionsByDate = $this->plannedSessionsFor($user, $dates)
+            ->keyBy(fn (PlannedSession $session): string => $session->date->toDateString());
+
+        foreach ($dates as $date) {
+            $session = $sessionsByDate->get($date);
+            if ($session === null || ! $session->status->isCredited()) {
+                continue;
+            }
+
             $this->analysisService->requestRuleBased(
                 AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
                 $user->id,
@@ -299,6 +288,27 @@ final readonly class PlanNarrationRequester
         );
     }
 
+    /**
+     * A rule-based read for a past, credited day — never the LLM. Used by
+     * `plan:regrade-season` to backfill a read for every already-graded day
+     * of the current season in the same deploy-time step as the regrade
+     * itself, so history phrases #946's verdict instead of the ahead-of-time
+     * label it may have been narrated with before #939.
+     *
+     * `refillDone: true` deliberately overwrites whatever content a row
+     * already carries, ahead-of-time or otherwise: history is backfilled
+     * once, rule-based, and is never worth a further LLM call.
+     */
+    public function backfillRuleBasedRead(User $user, Carbon $date): void
+    {
+        $this->analysisService->requestRuleBased(
+            AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+            $user->id,
+            AnalysisType::PlanDayVoice,
+            $date->toDateString(),
+        );
+    }
+
     public function isWithinCurrentWeek(Carbon $date, Carbon $today): bool
     {
         $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
@@ -322,15 +332,20 @@ final readonly class PlanNarrationRequester
 
         $sessions = $this->plannedSessionsFor($user, $dates);
         $expected = self::fingerprintsFrom($sessions, $this->baseline->forUser($user, $today)['long_run_km']);
-        $voicedByClamp = $sessions
-            ->filter(fn (PlannedSession $session): bool => EffectiveSession::isRecordedOn($session) && ! $session->status->isCredited())
-            ->map(fn (PlannedSession $session): string => $session->date->toDateString())
-            ->all();
+        $sessionsByDate = $sessions->keyBy(fn (PlannedSession $session): string => $session->date->toDateString());
 
         $days = [];
         foreach ($dates as $date) {
+            // No run, no section (#939) — whether that's a day still ahead, an
+            // eased day still speaking through its own clamp line, a missed
+            // day, or an excused one, none of them has a read to show.
+            $session = $sessionsByDate->get($date);
+            if ($session === null || ! $session->status->isCredited()) {
+                continue;
+            }
+
             $row = $dayRows->get($date);
-            if (in_array($date, $voicedByClamp, true) || self::isUnbacked($row, $expected[$date] ?? null)) {
+            if (self::isUnbacked($row, $expected[$date] ?? null)) {
                 continue;
             }
 
@@ -379,21 +394,6 @@ final readonly class PlanNarrationRequester
             && $row->content_fingerprint !== null
             && $expectedFingerprint !== null
             && $row->content_fingerprint !== $expectedFingerprint;
-    }
-
-    /**
-     * The fingerprint each of `$dates` *should* carry right now — the same
-     * computation {@see self::requestForCurrentWeek()} invalidates against,
-     * read here so a stale blurb can be hidden rather than shown.
-     *
-     * @param  list<string>  $dates
-     * @return array<string, string>
-     */
-    private function expectedDayFingerprints(User $user, Carbon $today, array $dates): array
-    {
-        $longRunKm = $this->baseline->forUser($user, $today)['long_run_km'];
-
-        return self::fingerprintsFrom($this->plannedSessionsFor($user, $dates), $longRunKm);
     }
 
     /**

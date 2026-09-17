@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\PlannedSessionStatus;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -128,11 +129,16 @@ it('updating a session automatically pins it, so the next regeneration leaves it
         ->and($fresh->pinned)->toBeTrue();
 });
 
+/**
+ * A day already credited (a run logged on it) keeps its narration in sync
+ * with an edit — this is the one case a day edit still re-narrates, per #939.
+ */
 it('attributes an edit\'s re-narration to the athlete, so it re-arms the row\'s retry budget', function (): void {
     Bus::fake();
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
+        'status' => PlannedSessionStatus::Done,
     ]);
 
     $this->actingAs($user)->patch("/plan/sessions/{$session->id}", ['skipped' => true]);
@@ -141,6 +147,23 @@ it('attributes an edit\'s re-narration to the athlete, so it re-arms the row\'s 
         AnalyzePlanDayVoiceJob::class,
         fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
     );
+});
+
+/**
+ * #939: an edit almost always touches a day still ahead, which has no read
+ * to keep in sync — the day gets no narration request at all.
+ */
+it('requests no narration for an edit to a day that has not been credited', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+
+    $this->actingAs($user)->patch("/plan/sessions/{$session->id}", ['skipped' => true]);
+
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 });
 
 it('allows an explicit unpin alongside an edit', function (): void {

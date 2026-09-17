@@ -94,10 +94,11 @@ everyone. See [[narration-follows-the-athlete-not-the-run]].
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 and it still runs for every athlete. The narration half then calls
-[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L205) for each
-recently-active athlete, touching up to eight rows: `PlanDayVoice` ×7 and `PlanSeasonVoice`. It is
-the largest scheduled spend in the app, which is why it is also the one that checks hardest before
-it bills.
+[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L198) for each
+recently-active athlete, touching one row: `PlanSeasonVoice`. Ahead-of-time day narration was cut
+in #939 — a day's own read is requested separately, once it actually has a run, by
+[`requestDayVoiceIfChanged()`](../../app/Services/AI/PlanNarrationRequester.php#L83), called from
+the ingest listener right after the day is credited.
 
 **A brand-new account also gets today's briefing on the day it signs up.** `BriefingMascotVoice`
 is keyed by the day, and the only thing that used to stage it was the 00:01 kickoff, so an account
@@ -115,12 +116,13 @@ leaves a Done row alone, so without `invalidate: true` the first briefing would 
 about an account with no runs in it. The demo account reaches neither as an LLM call — both route
 through `shouldServeRuleBased()` to the filler, per [[demo-triggers-served-rule-based]].
 
-**A brand-new account narrates the same nine rows once, off-schedule.** Onboarding and the first-connect
+**A brand-new account narrates its season once, off-schedule.** Onboarding and the first-connect
 backfill chain race, and whichever finishes second calls
 [`requestForFirstWeek()`](../../app/Services/AI/PlanNarrationRequester.php) — onboarding when
 `users.backfilled_at` is already stamped, [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php)
-when a plan already exists. That path never invalidates, so the interleaving where both fire re-bills
-nothing.
+when a plan already exists. Since #939 that touches only `PlanSeasonVoice`: a first week has no run
+in it yet, so there is no day to narrate ahead of time. That path never invalidates, so the
+interleaving where both fire re-bills nothing.
 
 **The Trends reads are kicked from the same link, for a different reason.** Each range refreshes on
 its own cadence — `7d` and `30d` daily, `90d` every third day, `12mo` on Mondays — and each of those
@@ -131,14 +133,17 @@ impression.
 no runs; `AnalysisService::request()` is idempotent, so the cron that comes round later finds them done
 and bills nothing.
 
-**Those nine re-bill only where the material changed.** The periodizer frequently rewrites a week
-into something that reads identically — the same session type, phase and prescribed distance produce
-the same blurb — so each row carries a
-[`MaterialFingerprint`](../../app/Services/AI/MaterialFingerprint.php#L26) of what it describes,
-stamped by the job through
+**A day's own read re-bills only where the verdict actually changed.** It is requested separately
+from the season, by
+[`requestDayVoiceIfChanged()`](../../app/Services/AI/PlanNarrationRequester.php#L83) right after
+[`ComplianceScorer::creditIfEarned()`](../../app/Services/Run/Plan/ComplianceScorer.php#L182)
+credits the day, and only when the day is actually credited — a day still ahead asks for nothing.
+Each row carries a [`MaterialFingerprint`](../../app/Services/AI/MaterialFingerprint.php#L26) of
+what it describes, stamped by the job through
 [`AnalyzeRowJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeRowJob.php#L112), and an unchanged
-fingerprint means the row is left alone. `PlanSeasonVoice` needs no fingerprint; it relies on
-`AnalysisService`'s own idempotency.
+fingerprint means the row is left alone — so a second run the same day that does not move the
+verdict re-bills nothing. `PlanSeasonVoice` needs no fingerprint; it relies on `AnalysisService`'s
+own idempotency.
 
 A row with **no** stored fingerprint counts as changed — the inverse of the per-run rule in
 `DispatchPostRunAnalysis`, and deliberately so. Only the rule-based paths leave the column null (a
@@ -204,7 +209,7 @@ rendered somewhere a user can see — both directions matter, and only one of th
 | `monthly_recap` | `MonthlyRecapNarrator` | synthetic user+month · `Y-m` | staged at ingest, narrated 1st | calendar month card |
 | `profile_voice` | `ProfileVoiceNarrator` | synthetic user · ISO week | scheduled + ingest | `ProfileHero` |
 | `trend_read` | `TrendReadNarrator` | synthetic user+range · range | scheduled ×4 | `NarrationCard` on Trends |
-| `plan_day_voice` | `PlanDayVoiceNarrator` | synthetic user+day · `Y-m-d` | `plan:regenerate`, Plan page, first week | `WeekDayRow`, collapsed |
+| `plan_day_voice` | `PlanDayVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest, after scoring | `WeekDayRow`, collapsed, labelled "Temari's read" |
 | `plan_clamp_voice` | `PlanClampVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest listener, 00:01 briefing | an eased day's voice before credit, or an unrecorded step-down, on both surfaces |
 | `plan_season_voice` | `PlanSeasonVoiceNarrator` | `Season` · none | `plan:regenerate`, Plan page, first week | `SeasonHeaderCard`, always visible |
 | *(not an Analysis row)* | `RunQuestionNarrator` | `RunQuestion` rows per activity | user | `AskAboutRun` on the run page |
@@ -403,7 +408,7 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | `monthly_recap` | earns it | Same shape, same tightening. |
 | `profile_voice` | earns it | Once a week, four reads, genuinely synthetic. |
 | `trend_read` | earns it | 1 tool and a 4-step budget. Watch the cadence (×4 ranges) rather than the call. |
-| `plan_day_voice` | earns it | Budget aligned to 4, and the weekly sweep now re-bills only the days whose prescribed session actually changed. Still the largest scheduled spend by cadence, but no longer a blanket re-narration. |
+| `plan_day_voice` | earns it | Budget aligned to 4. Since #939 it is no longer scheduled at all — one call per run day, requested right after `ComplianceScorer::creditIfEarned()` scores it, phrasing #946's intent verdict rather than announcing the session ahead of time. |
 | `plan_season_voice` | earns it | Budget aligned to 4 and idempotent, so it neither re-bills nor over-runs. |
 | run Q&A | earns it | A free-form question about one run is exactly what rules cannot answer. |
 | `TemariPersona` | earns it | ~4,000 tokens on every turn, but it *is* the product, and the per-kind prompt cache already serves roughly half of it at a tenth of the rate. The largest available lever, and the last one to reach for. |
@@ -412,7 +417,7 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 
 - The two plan tools (`PlanDayTool`, `PlanSeasonTool`) each return one bound read with nothing for
   the model to decide. Handing the payload straight to the prompt would remove a tool round trip
-  per plan block, which is up to eight per user per week.
+  per plan block.
 - `PlanContextTool` is the one plan read bound to a *span* rather than a row, so a narrator with no
   `PlannedSession` in hand can still say what was prescribed. The four per-run narrators bind it to
   a single day, the date of the run they are describing; the weekly and monthly recaps bind it to
@@ -428,13 +433,14 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 **Cost ranking**, order only, from a structural proxy (tools × step budget × output cap × calls per
 active user per week). It ranks surfaces against each other; it is not a dollar figure:
 
-`run_insight` › `briefing_mascot_voice` › `post_run_speech` › run Q&A › `plan_day_voice` ›
-`card_flavor` › `profile_voice` › `trend_read` › `weekly_recap` ›
-`monthly_recap` › `plan_season_voice`
+`run_insight` › `briefing_mascot_voice` › `post_run_speech` › run Q&A › `card_flavor` ›
+`profile_voice` › `trend_read` › `weekly_recap` › `monthly_recap` › `plan_day_voice` ›
+`plan_season_voice`
 
-`plan_day_voice` led this list until 2026-09-04, on a weekly ×7 blanket re-narration. With the
-fingerprint check it now bills only on the days the periodizer actually moved, so its steady-state
-cost is a fraction of its worst case — and its worst case is unchanged.
+`plan_day_voice` led this list until 2026-09-04, on a weekly ×7 blanket re-narration, then dropped
+behind a fingerprint check that only re-billed the days the periodizer actually moved. #939 cut the
+schedule entirely: it is now one call per run day, requested after scoring, so its cadence tracks
+runs logged rather than weeks swept.
 
 ## Retired surfaces
 

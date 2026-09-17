@@ -55,8 +55,13 @@ final class MaterialFingerprint
             // day keeps the digest it already carries, so shipping this does not
             // re-narrate every athlete's whole week. The SCORE is deliberately
             // out — it moves with every run that lands, and the verdict is what
-            // changes the sentence.
-            ...($session->status->isCredited() ? ['status' => $session->status->value] : []),
+            // changes the sentence. The intent verdict rides along with status
+            // for the same reason: a second run that flips hit -> missed
+            // changes what the read says even when the distance status does not.
+            ...($session->status->isCredited() ? [
+                'status' => $session->status->value,
+                'intent_verdict' => $session->intent_verdict?->value,
+            ] : []),
         ]);
     }
 

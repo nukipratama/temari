@@ -7,15 +7,19 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\ComplianceScorer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
@@ -59,25 +63,67 @@ it('regrades the current season\'s past days on distance and intent', function (
     $row = regradeFastEasyDay($this->user, '2026-08-05', PlannedSessionStatus::Done);
 
     $this->artisan('plan:regrade-season')
-        ->expectsOutputToContain('Regraded 1 planned session(s) across 1 season(s).')
+        ->expectsOutputToContain('Regraded 1 planned session(s) across 1 season(s), backfilling 1 rule-based read(s).')
         ->assertSuccessful();
 
     expect($row->refresh()->status)->toBe(PlannedSessionStatus::Overreached)
         ->and($row->compliance_score)->toBe(100)
-        ->and($row->distance_score)->toBe(100);
+        ->and($row->distance_score)->toBe(100)
+        ->and($row->intent_verdict)->not->toBeNull();
 });
 
 it('changes nothing the second time it runs', function (): void {
     $row = regradeFastEasyDay($this->user, '2026-08-05', PlannedSessionStatus::Done);
     $this->artisan('plan:regrade-season')->assertSuccessful();
-    $first = $row->refresh()->only(['status', 'compliance_score', 'distance_score', 'prescribed_km', 'ran_anyway', 'updated_at']);
+    $first = $row->refresh()->only(['status', 'compliance_score', 'distance_score', 'intent_verdict', 'prescribed_km', 'ran_anyway', 'updated_at']);
 
     Carbon::setTestNow('2026-08-20 10:00:00');
     $this->artisan('plan:regrade-season')
-        ->expectsOutputToContain('Regraded 0 planned session(s) across 1 season(s).')
+        ->expectsOutputToContain('Regraded 0 planned session(s) across 1 season(s), backfilling 1 rule-based read(s).')
         ->assertSuccessful();
 
-    expect($row->refresh()->only(['status', 'compliance_score', 'distance_score', 'prescribed_km', 'ran_anyway', 'updated_at']))->toEqual($first);
+    expect($row->refresh()->only(['status', 'compliance_score', 'distance_score', 'intent_verdict', 'prescribed_km', 'ran_anyway', 'updated_at']))->toEqual($first);
+});
+
+/**
+ * The rule-based read is written without the LLM, in the same deploy-time
+ * step as the regrade itself — never bills, never queues a job.
+ */
+it('backfills a rule-based read for a credited day, never the LLM', function (): void {
+    Bus::fake();
+    $row = regradeFastEasyDay($this->user, '2026-08-05', PlannedSessionStatus::Done);
+
+    $this->artisan('plan:regrade-season')->assertSuccessful();
+
+    Bus::assertNothingDispatched();
+    $analysis = Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $this->user->id)
+        ->where('analysis_type', AnalysisType::PlanDayVoice)
+        ->where('discriminator', '2026-08-05')
+        ->firstOrFail();
+
+    expect($analysis->status)->toBe(AnalysisStatus::Done)
+        ->and($analysis->content)->toBeString()->not->toBeEmpty();
+});
+
+/** A day never credited has no run to read, so nothing is backfilled for it. */
+it('backfills no read for a day that was never credited', function (): void {
+    $row = PlannedSession::factory()->for($this->user)->create([
+        'date' => '2026-08-05',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Missed,
+        'compliance_score' => 0,
+    ]);
+
+    $this->artisan('plan:regrade-season')->assertSuccessful();
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $this->user->id)
+        ->where('discriminator', '2026-08-05')
+        ->exists())->toBeFalse();
 });
 
 it('leaves today and the days before the season alone', function (): void {
@@ -97,7 +143,7 @@ it('limits the pass to one athlete when asked', function (): void {
     $row = regradeFastEasyDay($this->user, '2026-08-05', PlannedSessionStatus::Done);
 
     $this->artisan('plan:regrade-season', ['--user' => $other->id])
-        ->expectsOutputToContain('Regraded 0 planned session(s) across 1 season(s).')
+        ->expectsOutputToContain('Regraded 0 planned session(s) across 1 season(s), backfilling 0 rule-based read(s).')
         ->assertSuccessful();
 
     expect($row->refresh()->status)->toBe(PlannedSessionStatus::Done);

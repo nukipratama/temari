@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\IntentVerdict;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -218,4 +219,46 @@ it('separates the credited verdicts from one another', function (): void {
     );
 
     expect(array_unique($digests))->toHaveCount(3);
+});
+
+/**
+ * A second run that flips the intent verdict (hit -> missed) changes what
+ * the read says even when the distance status does not move, so the read
+ * has to re-narrate on that too.
+ */
+it('re-fingerprints a credited day when only its intent verdict moves', function (): void {
+    $make = fn (IntentVerdict $verdict): PlannedSession => PlannedSession::factory()->make([
+        'session_type' => SessionType::Tempo,
+        'phase' => PlanPhase::Build,
+        'skipped' => false,
+        'race_distance_m' => null,
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => $verdict,
+    ]);
+
+    expect(MaterialFingerprint::forPlannedSession($make(IntentVerdict::Hit), 16.0))
+        ->not->toBe(MaterialFingerprint::forPlannedSession($make(IntentVerdict::Missed), 16.0));
+});
+
+/** An ungraded day's fingerprint never carries an intent verdict either. */
+it('does not include the intent verdict on an ungraded day', function (): void {
+    $planned = PlannedSession::factory()->make([
+        'session_type' => SessionType::Tempo,
+        'phase' => PlanPhase::Build,
+        'skipped' => false,
+        'race_distance_m' => null,
+        'status' => PlannedSessionStatus::Planned,
+        'intent_verdict' => null,
+    ]);
+    $sameButUnknownIntent = PlannedSession::factory()->make([
+        'session_type' => SessionType::Tempo,
+        'phase' => PlanPhase::Build,
+        'skipped' => false,
+        'race_distance_m' => null,
+        'status' => PlannedSessionStatus::Planned,
+        'intent_verdict' => IntentVerdict::Unknown,
+    ]);
+
+    expect(MaterialFingerprint::forPlannedSession($planned, 16.0))
+        ->toBe(MaterialFingerprint::forPlannedSession($sameButUnknownIntent, 16.0));
 });

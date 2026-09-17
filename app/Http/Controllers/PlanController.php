@@ -86,11 +86,11 @@ class PlanController extends Controller
         }
 
         $today = Carbon::today();
-        $touchedDates = [$plannedSession->date];
+        $touchedSessions = [$plannedSession];
 
         $occupant = $this->occupantOfMoveTarget($plannedSession, $attributes['date'] ?? null);
         if ($occupant !== null) {
-            $touchedDates[] = $occupant->date;
+            $touchedSessions[] = $occupant;
             $this->swapSessions($plannedSession, $occupant);
             unset($attributes['date']);
         }
@@ -98,13 +98,15 @@ class PlanController extends Controller
         $plannedSession->update($attributes);
 
         // Keep the day's narration in sync with the edit — otherwise it keeps
-        // describing whatever was prescribed before the skip/block/move.
-        // Only within the current week: that's the only window day narration
-        // is ever requested for in the first place.
+        // describing whatever was prescribed before the skip/block/move. Only
+        // within the current week (the only window day narration is ever
+        // requested for), and only once the day already has a run credited on
+        // it: an edit almost always touches a day still ahead, which has no
+        // read to keep in sync in the first place (#939: "no run, no section").
         if ($occupant !== null || $plannedSession->wasChanged(['session_type', 'skipped', 'date'])) {
-            foreach ($touchedDates as $date) {
-                if ($narrationRequester->isWithinCurrentWeek($date, $today)) {
-                    $narrationRequester->requestDayNarration($plannedSession->user_id, $date);
+            foreach ($touchedSessions as $session) {
+                if ($session->status->isCredited() && $narrationRequester->isWithinCurrentWeek($session->date, $today)) {
+                    $narrationRequester->requestDayNarration($session->user_id, $session->date);
                 }
             }
         }

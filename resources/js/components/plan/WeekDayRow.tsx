@@ -241,15 +241,23 @@ export default function WeekDayRow({
                 />
             </div>
             <CollapsibleContent className="border-t border-border-strong px-4 py-3">
-                {day.eased_from?.voice ? (
-                    <p className="narration">{day.eased_from.voice}</p>
-                ) : (
-                    narration && (
-                        <TemariTake
-                            analysis={narration}
-                            allowReanalyze={false}
+                {day.eased_from?.voice && (
+                    <p className="flex items-start gap-1.5 text-xs italic text-text-2">
+                        <Icon
+                            icon={ArrowDown}
+                            className="mt-0.5 size-3 flex-none"
+                            aria-hidden
                         />
-                    )
+                        {day.eased_from.voice}
+                    </p>
+                )}
+                {narration && (
+                    <TemariTake
+                        analysis={narration}
+                        label="Temari's read"
+                        allowReanalyze={false}
+                        className={day.eased_from?.voice ? 'mt-2' : undefined}
+                    />
                 )}
                 {day.clamp && (
                     <ClampStepDown

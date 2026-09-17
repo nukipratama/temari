@@ -613,6 +613,36 @@ it('re-narrates today plan day blurb once the run credits the day', function ():
         ->exists())->toBeTrue();
 });
 
+/**
+ * #939: a day not yet run has no read, and nothing requests one for it — a
+ * short run that lands but doesn't earn the day's credit asks for nothing.
+ */
+it('requests no plan day read for a run that does not credit the day', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+    $activity = Activity::factory()->create(['user_id' => $user->id, 'analyzed_at' => Carbon::now()]);
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->setTime(6, 30),
+        // Far too short to clear the 35% credit threshold against any
+        // plausible prescribed distance.
+        'distance' => 50.0,
+        'moving_time' => 20,
+        'elapsed_time' => 20,
+    ]);
+
+    fire($activity);
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $activity->user_id)
+        ->where('discriminator', Carbon::today()->toDateString())
+        ->exists())->toBeFalse();
+});
+
 /** Re-narrating a backfilled day would rewrite history at LLM prices. */
 it('leaves an older day blurb alone when the ingest is a backfill', function (): void {
     $activity = analyzedActivity('2026-05-10 06:30:00');

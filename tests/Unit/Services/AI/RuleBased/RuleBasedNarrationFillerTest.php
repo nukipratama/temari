@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\Badge;
+use App\Enums\IntentVerdict;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -290,25 +292,108 @@ it('weaves the snapshot real numbers into the weekly recap', function (): void {
         ->and($recap)->toContain('recovery next week');
 });
 
-it('narrates the day\'s prescribed session type', function (): void {
-    $session = PlannedSession::factory()->create(['session_type' => 'long', 'date' => '2026-05-18']);
+it('phrases an intent hit as the session doing its job', function (): void {
+    $session = PlannedSession::factory()->create([
+        'session_type' => 'tempo',
+        'date' => '2026-05-18',
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => IntentVerdict::Hit,
+    ]);
 
     $voice = app(RuleBasedNarrationFiller::class)->fillFor(
         fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
     );
 
-    expect($voice)->toMatch('/long run|the long one/');
+    expect($voice)->toMatch('/did what it was written for|right where the day asked you to be/');
 });
 
-it('narrates a skipped day as excused, not as its original session', function (): void {
-    $session = PlannedSession::factory()->create(['session_type' => 'tempo', 'date' => '2026-05-18', 'skipped' => true]);
+it('phrases an intent miss as the effort not showing up', function (): void {
+    $session = PlannedSession::factory()->create([
+        'session_type' => 'tempo',
+        'date' => '2026-05-18',
+        'status' => PlannedSessionStatus::Partial,
+        'intent_verdict' => IntentVerdict::Missed,
+    ]);
 
     $voice = app(RuleBasedNarrationFiller::class)->fillFor(
         fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
     );
 
-    expect($voice)->toMatch('/skipped|excused/')
-        ->and($voice)->not->toContain('tempo');
+    expect($voice)->toMatch('/never quite showed up|came in softer/');
+});
+
+it('phrases too-hard intent as harder than the day called for', function (): void {
+    $session = PlannedSession::factory()->create([
+        'session_type' => 'easy',
+        'date' => '2026-05-18',
+        'status' => PlannedSessionStatus::Overreached,
+        'intent_verdict' => IntentVerdict::TooHard,
+    ]);
+
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(
+        fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
+    );
+
+    expect($voice)->toMatch('/harder than the day called for|more effort than this one asked for/');
+});
+
+it('phrases an unknown intent as unreadable rather than guessing', function (): void {
+    $session = PlannedSession::factory()->create([
+        'session_type' => 'interval',
+        'date' => '2026-05-18',
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => IntentVerdict::Unknown,
+    ]);
+
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(
+        fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
+    );
+
+    expect($voice)->toMatch("/couldn't make out|not enough signal/");
+});
+
+it('phrases a rest day run anyway as worth a nod, with no intent claim', function (): void {
+    $session = PlannedSession::factory()->create([
+        'session_type' => 'rest',
+        'date' => '2026-05-18',
+        'status' => PlannedSessionStatus::Done,
+        'skipped' => true,
+        'ran_anyway' => true,
+    ]);
+
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(
+        fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
+    );
+
+    expect($voice)->toMatch('/anyway|off the hook/');
+});
+
+it('phrases a credited rest day with no intent claim', function (): void {
+    $session = PlannedSession::factory()->create([
+        'session_type' => 'rest',
+        'date' => '2026-05-18',
+        'status' => PlannedSessionStatus::Done,
+    ]);
+
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(
+        fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
+    );
+
+    expect($voice)->toMatch('/rest|day off/');
+});
+
+it('falls back to a generic line for a day that has not been credited', function (): void {
+    $session = PlannedSession::factory()->create([
+        'session_type' => 'tempo',
+        'date' => '2026-05-18',
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+
+    $voice = app(RuleBasedNarrationFiller::class)->fillFor(
+        fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
+    );
+
+    expect($voice)->toBe('logged.');
 });
 
 it('falls back to a generic line when no PlannedSession exists for the day', function (): void {
@@ -316,7 +401,7 @@ it('falls back to a generic line when no PlannedSession exists for the day', fun
         fillerRow(AnalysisType::PlanDayVoice, 999_999, '2026-05-18'),
     );
 
-    expect($voice)->toBe("today's plan.");
+    expect($voice)->toBe('logged.');
 });
 
 it('names the race for a race-oriented season', function (): void {

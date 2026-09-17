@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Models\PersonalRecord;
 use App\Models\RaceGoal;
 use App\Models\PlannedSession;
@@ -238,6 +239,10 @@ it('does nothing when there is no race to clear', function (): void {
     expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
+/**
+ * #939: setting a race re-narrates only the season, never any day — a freshly
+ * regenerated week has no run in it yet for a day's read to speak to.
+ */
 it('attributes a race save\'s re-narration to the athlete, so it re-arms the row\'s retry budget', function (): void {
     Bus::fake();
     Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
@@ -246,9 +251,10 @@ it('attributes a race save\'s re-narration to the athlete, so it re-arms the row
     $this->actingAs($user)->post('/race', racePayload())->assertSessionHasNoErrors();
 
     Bus::assertDispatched(
-        AnalyzePlanDayVoiceJob::class,
-        fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
+        AnalyzePlanSeasonVoiceJob::class,
+        fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
     );
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 
     Carbon::setTestNow();
 });
@@ -268,8 +274,8 @@ it('attributes a cleared race\'s re-narration to the athlete', function (): void
     $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
 
     Bus::assertDispatched(
-        AnalyzePlanDayVoiceJob::class,
-        fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
+        AnalyzePlanSeasonVoiceJob::class,
+        fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
     );
 
     Carbon::setTestNow();
