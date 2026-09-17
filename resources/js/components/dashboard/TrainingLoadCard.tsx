@@ -11,18 +11,22 @@ import MiniRow from '@/components/ui/MiniRow';
  * The prototype's "condition · 7 days" mini card, the other half of the pair
  * at the foot of Today's stats disclosure: fitness, fatigue and strain, with
  * a link out to the full read-out. Monotony is not on the prototype's card;
- * it survives as History's per-week alert.
+ * it survives as History's per-week alert. `windowLabel` names the strain
+ * total's own window, which on Trends follows the range toggle rather than
+ * staying fixed at 7 days.
  */
 export default function TrainingLoadCard({
     load,
     snapshot,
+    windowLabel,
 }: Readonly<{
     load: TrainingLoad | null;
     snapshot: WeeklySnapshot | null;
+    windowLabel: string;
 }>) {
     let scope = 'not enough data yet';
     if (snapshot !== null) {
-        scope = load === null ? 'no HR data yet' : '7 days';
+        scope = load === null ? 'no HR data yet' : windowLabel;
     }
 
     return (

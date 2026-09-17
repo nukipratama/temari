@@ -1,3 +1,5 @@
+import type { Plugin, TooltipItem } from 'chart.js';
+
 import { Medal } from 'lucide-react';
 import { Suspense, useMemo, useState } from 'react';
 
@@ -10,10 +12,10 @@ import Card from '@/components/ui/LegacyCard';
 import Skeleton from '@/components/ui/Skeleton';
 import { useCountUp } from '@/hooks/useCountUp';
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
-import { CHART_GROUND } from '@/lib/chartTokens';
+import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
-import { formatNaiveIdDate } from '@/lib/pace';
+import { formatNaiveIdDate, formatNaiveMonthDayId } from '@/lib/pace';
 import { badgeName, BADGE_ABILITY, RARITY_INK } from '@/lib/runcard';
 import { revealDelay } from '@/lib/styles';
 
@@ -51,15 +53,61 @@ interface PanelChip {
     detail: string;
 }
 
+export interface FitnessChartAnnotations {
+    /** Dates (Y-m-d) whose plan phase was a deload week. */
+    deload: ReadonlyArray<string>;
+    /** Dates (Y-m-d) of a race session. */
+    race: ReadonlyArray<string>;
+}
+
+const NO_ANNOTATIONS: FitnessChartAnnotations = { deload: [], race: [] };
+
 interface FitnessPanelProps {
     trend: ReadonlyArray<FitnessTrendPoint>;
     milestones: ReadonlyArray<BadgeMilestone>;
     streak: StreakSummaryLike;
     range: TrendRange;
+    annotations?: FitnessChartAnnotations;
     className?: string;
 }
 
+interface ChartMarker {
+    index: number;
+    kind: 'deload' | 'race';
+}
+
+/** Draws a vertical line per marker across the plot area — a deload week or a
+ *  race day, read off the plan rather than guessed from the fitness curve. */
+function markerPlugin(
+    markers: ReadonlyArray<ChartMarker>,
+    colors: { deload: string; race: string },
+): Plugin<'line'> {
+    return {
+        id: 'trendMarkers',
+        afterDatasetsDraw(chart) {
+            if (markers.length === 0) return;
+            const { ctx, chartArea, scales } = chart;
+            const xScale = scales.x;
+            if (!xScale || !chartArea) return;
+
+            ctx.save();
+            markers.forEach(({ index, kind }) => {
+                const x = xScale.getPixelForValue(index);
+                ctx.strokeStyle = kind === 'race' ? colors.race : colors.deload;
+                ctx.lineWidth = kind === 'race' ? 1.5 : 1;
+                ctx.setLineDash(kind === 'race' ? [] : [3, 2]);
+                ctx.beginPath();
+                ctx.moveTo(x, chartArea.top);
+                ctx.lineTo(x, chartArea.bottom);
+                ctx.stroke();
+            });
+            ctx.restore();
+        },
+    };
+}
+
 const RANGE_DAYS: Record<TrendRange, number> = {
+    '7d': 7,
     '30d': 30,
     '90d': 90,
     '12mo': 365,
@@ -116,6 +164,7 @@ export default function FitnessPanel({
     milestones,
     streak,
     range,
+    annotations = NO_ANNOTATIONS,
     className,
 }: Readonly<FitnessPanelProps>) {
     const [selected, setSelected] = useState<string | null>(null);
@@ -125,6 +174,33 @@ export default function FitnessPanel({
     const windowed = useMemo(
         () => trend.slice(-RANGE_DAYS[range]),
         [trend, range],
+    );
+
+    const markers = useMemo<ChartMarker[]>(() => {
+        const deload = new Set(annotations.deload);
+        const race = new Set(annotations.race);
+        const found: ChartMarker[] = [];
+        windowed.forEach((point, index) => {
+            if (race.has(point.date)) {
+                found.push({ index, kind: 'race' });
+            } else if (deload.has(point.date)) {
+                found.push({ index, kind: 'deload' });
+            }
+        });
+        return found;
+    }, [windowed, annotations]);
+
+    const hasDeloadMarker = markers.some((m) => m.kind === 'deload');
+    const hasRaceMarker = markers.some((m) => m.kind === 'race');
+
+    const chartPlugins = useMemo(
+        () => [
+            markerPlugin(markers, {
+                deload: PALETTE.stone,
+                race: PALETTE.ember,
+            }),
+        ],
+        [markers],
     );
 
     const chips = useMemo<PanelChip[]>(() => {
@@ -153,25 +229,19 @@ export default function FitnessPanel({
 
     const active = chips.find((c) => c.key === selected) ?? null;
 
+    // The compact "sep 10" form (no weekday) — legible as an x-axis tick,
+    // unlike formatNaiveIdDate's fuller "thursday, sep 10" used elsewhere.
     const labels = useMemo(
-        () => windowed.map((p) => formatNaiveIdDate(p.date, 'short')),
+        () => windowed.map((p) => formatNaiveMonthDayId(p.date)),
         [windowed],
     );
 
     const data = useMemo(
         () => ({
             labels,
+            // Fatigue drawn first so the fitness line — the one the headline
+            // and stat tiles are about — is never obscured where they cross.
             datasets: [
-                {
-                    label: 'fitness',
-                    data: windowed.map((p) => p.ctl),
-                    borderColor: ground.line,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.35,
-                    fill: false,
-                },
                 {
                     label: 'fatigue',
                     data: windowed.map((p) => p.atl),
@@ -179,6 +249,16 @@ export default function FitnessPanel({
                     backgroundColor: 'transparent',
                     borderWidth: 1.5,
                     borderDash: [3, 3],
+                    pointRadius: 0,
+                    tension: 0.35,
+                    fill: false,
+                },
+                {
+                    label: 'fitness',
+                    data: windowed.map((p) => p.ctl),
+                    borderColor: ground.line,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
                     pointRadius: 0,
                     tension: 0.35,
                     fill: false,
@@ -193,9 +273,33 @@ export default function FitnessPanel({
             responsive: true,
             maintainAspectRatio: false,
             animation: { duration: 900, easing: 'easeOutQuart' as const },
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: (items: TooltipItem<'line'>[]): string => {
+                            const point = windowed[items[0]?.dataIndex ?? -1];
+                            return point
+                                ? formatNaiveMonthDayId(point.date)
+                                : '';
+                        },
+                        label: (item: TooltipItem<'line'>): string =>
+                            `${item.dataset.label ?? ''}: ${Math.round(item.parsed.y ?? 0)}`,
+                    },
+                },
+            },
             scales: {
-                x: { display: false },
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        color: ground.tick,
+                        font: { size: 9 },
+                        maxRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 6,
+                    },
+                    border: { display: false },
+                },
                 y: {
                     grid: { color: ground.grid },
                     ticks: {
@@ -207,7 +311,7 @@ export default function FitnessPanel({
                 },
             },
         }),
-        [ground],
+        [ground, windowed],
     );
 
     const latest = windowed[windowed.length - 1];
@@ -224,7 +328,15 @@ export default function FitnessPanel({
         );
     }
 
-    const summarySentence = `Fitness ${windowed[0].ctl.toFixed(0)} to ${latest.ctl.toFixed(0)} over ${windowed.length} days, fatigue now ${latest.atl.toFixed(0)}.`;
+    const markerNote = [
+        hasDeloadMarker ? 'a deload week' : null,
+        hasRaceMarker ? 'a race' : null,
+    ].filter((note): note is string => note !== null);
+    const summarySentence =
+        `Fitness ${windowed[0].ctl.toFixed(0)} to ${latest.ctl.toFixed(0)} over ${windowed.length} days, fatigue now ${latest.atl.toFixed(0)}.` +
+        (markerNote.length > 0
+            ? ` Marked on the chart: ${markerNote.join(' and ')}.`
+            : '');
     const form = Math.round(formCount);
 
     return (
@@ -271,11 +383,15 @@ export default function FitnessPanel({
                 <Suspense
                     fallback={<Skeleton className="h-full w-full rounded-xl" />}
                 >
-                    <Line data={data} options={options} />
+                    <Line
+                        data={data}
+                        options={options}
+                        plugins={chartPlugins}
+                    />
                 </Suspense>
             </div>
 
-            <div className="mt-2.5 flex gap-3.5 text-label-micro text-text-2">
+            <div className="mt-2.5 flex flex-wrap gap-3.5 text-label-micro text-text-2">
                 <span className="inline-flex items-center gap-1.5">
                     <span
                         aria-hidden
@@ -292,6 +408,26 @@ export default function FitnessPanel({
                     />
                     Fatigue
                 </span>
+                {hasDeloadMarker && (
+                    <span className="inline-flex items-center gap-1.5">
+                        <span
+                            aria-hidden
+                            className="h-2.5 w-0 flex-none border-l-2 border-dotted"
+                            style={{ borderColor: PALETTE.stone }}
+                        />
+                        Deload week
+                    </span>
+                )}
+                {hasRaceMarker && (
+                    <span className="inline-flex items-center gap-1.5">
+                        <span
+                            aria-hidden
+                            className="h-2.5 w-0 flex-none border-l-2"
+                            style={{ borderColor: PALETTE.ember }}
+                        />
+                        Race day
+                    </span>
+                )}
             </div>
 
             {chips.length > 0 && (

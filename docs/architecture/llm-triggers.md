@@ -84,10 +84,11 @@ everyone. See [[narration-follows-the-athlete-not-the-run]].
 | Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L60) | `ProfileVoice`, keyed by ISO week |
 | **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php#L90) | **up to 9 rows per user — see below** |
 | 1st 05:45 | [`ai:monthly-recap`](../../routes/console.php#L98) | `MonthlyRecap`, oldest first |
-| daily 06:00 | [`ai:trend-read 30d`](../../routes/console.php#L105) | `TrendRead`, discriminator `30d` |
-| every 3rd day 06:00 | [`ai:trend-read 90d`](../../routes/console.php#L109) | discriminator `90d` |
-| Mon 06:00 | [`ai:trend-read 12mo`](../../routes/console.php#L110) | discriminator `12mo` |
-| first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | all three `trend_read` ranges at once |
+| daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php#L118) | `TrendRead`, discriminator `7d` |
+| daily 06:00 | [`ai:trend-read 30d`](../../routes/console.php#L119) | `TrendRead`, discriminator `30d` |
+| every 3rd day 06:00 | [`ai:trend-read 90d`](../../routes/console.php#L123) | discriminator `90d` |
+| Mon 06:00 | [`ai:trend-read 12mo`](../../routes/console.php#L124) | discriminator `12mo` |
+| first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | all four `trend_read` ranges at once |
 | hourly | [`ai:self-heal`](../../routes/console.php#L118) | recovery only — see origin 4 |
 | hourly | [`ai:catch-up`](../../routes/console.php#L127) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
@@ -122,9 +123,10 @@ when a plan already exists. That path never invalidates, so the interleaving whe
 nothing.
 
 **The Trends reads are kicked from the same link, for a different reason.** Each range refreshes on
-its own cadence — `30d` daily, `90d` every third day, `12mo` on Mondays — and each of those crons only
-reaches athletes who already existed when it last ran. A Friday signup therefore had no 90d read for up
-to three days and no 12mo read for up to seven, on exactly the days a new account forms its impression.
+its own cadence — `7d` and `30d` daily, `90d` every third day, `12mo` on Mondays — and each of those
+crons only reaches athletes who already existed when it last ran. A Friday signup therefore had no 90d
+read for up to three days and no 12mo read for up to seven, on exactly the days a new account forms its
+impression.
 `KickoffRecapsJob` requests all three once the backfill lands, skipping an athlete whose backfill found
 no runs; `AnalysisService::request()` is idempotent, so the cron that comes round later finds them done
 and bills nothing.
@@ -201,7 +203,7 @@ rendered somewhere a user can see — both directions matter, and only one of th
 | `weekly_recap` | `WeeklyRecapNarrator` | `WeeklySnapshot` · none | staged at ingest, narrated Mon | `WeekSection` and `CalendarWeekRow` |
 | `monthly_recap` | `MonthlyRecapNarrator` | synthetic user+month · `Y-m` | staged at ingest, narrated 1st | calendar month card |
 | `profile_voice` | `ProfileVoiceNarrator` | synthetic user · ISO week | scheduled + ingest | `ProfileHero` |
-| `trend_read` | `TrendReadNarrator` | synthetic user+range · range | scheduled ×3 | `NarrationCard` on Trends |
+| `trend_read` | `TrendReadNarrator` | synthetic user+range · range | scheduled ×4 | `NarrationCard` on Trends |
 | `plan_day_voice` | `PlanDayVoiceNarrator` | synthetic user+day · `Y-m-d` | `plan:regenerate`, Plan page, first week | `WeekDayRow`, collapsed |
 | `plan_clamp_voice` | `PlanClampVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest listener, 00:01 briefing | an eased day's voice before credit, or an unrecorded step-down, on both surfaces |
 | `plan_season_voice` | `PlanSeasonVoiceNarrator` | `Season` · none | `plan:regenerate`, Plan page, first week | `SeasonHeaderCard`, always visible |
@@ -400,7 +402,7 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | `weekly_recap` | earns it | Chained, reads a real snapshot, already tightened to 4 steps. |
 | `monthly_recap` | earns it | Same shape, same tightening. |
 | `profile_voice` | earns it | Once a week, four reads, genuinely synthetic. |
-| `trend_read` | earns it | 1 tool and a 4-step budget. Watch the cadence (×3 ranges) rather than the call. |
+| `trend_read` | earns it | 1 tool and a 4-step budget. Watch the cadence (×4 ranges) rather than the call. |
 | `plan_day_voice` | earns it | Budget aligned to 4, and the weekly sweep now re-bills only the days whose prescribed session actually changed. Still the largest scheduled spend by cadence, but no longer a blanket re-narration. |
 | `plan_season_voice` | earns it | Budget aligned to 4 and idempotent, so it neither re-bills nor over-runs. |
 | run Q&A | earns it | A free-form question about one run is exactly what rules cannot answer. |

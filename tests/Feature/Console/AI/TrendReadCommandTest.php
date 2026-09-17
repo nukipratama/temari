@@ -7,6 +7,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -43,8 +44,8 @@ it('dispatches the requested range for every active user', function (): void {
 });
 
 it('rejects a range outside AnalysisType::TREND_READ_RANGES', function (): void {
-    $this->artisan('ai:trend-read', ['range' => '7d'])
-        ->expectsOutputToContain('range must be one of: 30d, 90d, 12mo')
+    $this->artisan('ai:trend-read', ['range' => '14d'])
+        ->expectsOutputToContain('range must be one of: 7d, 30d, 90d, 12mo')
         ->assertFailed();
 });
 
@@ -82,7 +83,7 @@ it('skips a user who has not opened the app in the active window, however recent
     Carbon::setTestNow();
 });
 
-it('dispatches each of the three real ranges with its own discriminator', function (string $range): void {
+it('dispatches each real range with its own discriminator', function (string $range): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
 
     $user = User::factory()->seenToday()->create();
@@ -104,3 +105,25 @@ it('dispatches each of the three real ranges with its own discriminator', functi
 
     Carbon::setTestNow();
 })->with(AnalysisType::TREND_READ_RANGES);
+
+it('leaves an already-done 7d read untouched on the next cron run, never re-billing it', function (): void {
+    Carbon::setTestNow('2026-08-17 12:00:00');
+
+    $user = User::factory()->seenToday()->create();
+    $row = Analysis::factory()->done('holding steady this week')->create([
+        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::TrendRead,
+        'discriminator' => '7d',
+    ]);
+    $updatedAt = $row->updated_at;
+
+    $this->artisan('ai:trend-read', ['range' => '7d'])->assertSuccessful();
+
+    $row->refresh();
+    expect($row->status)->toBe(AnalysisStatus::Done)
+        ->and($row->content)->toBe('holding steady this week')
+        ->and($row->updated_at->eq($updatedAt))->toBeTrue();
+
+    Carbon::setTestNow();
+});
