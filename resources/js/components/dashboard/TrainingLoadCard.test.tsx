@@ -33,7 +33,13 @@ const snapshot: WeeklySnapshot = {
 
 describe('TrainingLoadCard', () => {
     it("renders the prototype's three condition rows with formatted values", () => {
-        render(<TrainingLoadCard load={load} snapshot={snapshot} />);
+        render(
+            <TrainingLoadCard
+                load={load}
+                snapshot={snapshot}
+                windowLabel="7 days"
+            />,
+        );
 
         ['fitness', 'fatigue', 'strain'].forEach((label) => {
             expect(screen.getByText(label)).toBeInTheDocument();
@@ -46,14 +52,26 @@ describe('TrainingLoadCard', () => {
     // The prototype's condition card draws fitness/fatigue/strain only.
     // Monotony survives as History's per-week alert.
     it('does not draw a monotony row', () => {
-        render(<TrainingLoadCard load={load} snapshot={snapshot} />);
+        render(
+            <TrainingLoadCard
+                load={load}
+                snapshot={snapshot}
+                windowLabel="7 days"
+            />,
+        );
 
         expect(screen.queryByText('monotony')).not.toBeInTheDocument();
         expect(screen.queryByText('1.20')).not.toBeInTheDocument();
     });
 
-    it('shows the "7 days" scope and a technical-detail link', () => {
-        render(<TrainingLoadCard load={load} snapshot={snapshot} />);
+    it('shows the given window label as its scope, and a technical-detail link', () => {
+        render(
+            <TrainingLoadCard
+                load={load}
+                snapshot={snapshot}
+                windowLabel="7 days"
+            />,
+        );
 
         expect(screen.getByText(/7 days/)).toBeInTheDocument();
         expect(
@@ -61,8 +79,27 @@ describe('TrainingLoadCard', () => {
         ).toHaveAttribute('href', '/history');
     });
 
+    it('follows the window label given, not a fixed 7 days', () => {
+        render(
+            <TrainingLoadCard
+                load={load}
+                snapshot={snapshot}
+                windowLabel="30 days"
+            />,
+        );
+
+        expect(screen.getByText('Condition · 30 days')).toBeInTheDocument();
+        expect(screen.queryByText(/7 days/)).not.toBeInTheDocument();
+    });
+
     it('falls back to em-dash values and "not enough data yet" when load and snapshot are null', () => {
-        render(<TrainingLoadCard load={null} snapshot={null} />);
+        render(
+            <TrainingLoadCard
+                load={null}
+                snapshot={null}
+                windowLabel="7 days"
+            />,
+        );
 
         expect(screen.getByText(/not enough data yet/)).toBeInTheDocument();
         expect(screen.getAllByText('—')).toHaveLength(3);
@@ -73,6 +110,7 @@ describe('TrainingLoadCard', () => {
             <TrainingLoadCard
                 load={{ ...load, weekly_trimp: null, strain: null }}
                 snapshot={snapshot}
+                windowLabel="7 days"
             />,
         );
 
@@ -83,7 +121,13 @@ describe('TrainingLoadCard', () => {
     });
 
     it('names the missing HR when a week of runs scored nothing at all', () => {
-        render(<TrainingLoadCard load={null} snapshot={snapshot} />);
+        render(
+            <TrainingLoadCard
+                load={null}
+                snapshot={snapshot}
+                windowLabel="7 days"
+            />,
+        );
 
         expect(screen.getByText(/no HR data yet/)).toBeInTheDocument();
         expect(

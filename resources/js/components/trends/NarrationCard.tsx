@@ -9,6 +9,10 @@ import Card from '@/components/ui/LegacyCard';
 
 interface NarrationCardProps {
     analysis: AnalysisPayload;
+    /** Shown under the headline when the read's own window differs from
+     *  whatever range is currently selected (e.g. the 7-day toggle position,
+     *  which borrows the 30-day read rather than going blank). */
+    note?: string;
     className?: string;
 }
 
@@ -27,6 +31,7 @@ function splitContent(content: string): { title: string; description: string } {
  *  italic lead and the paragraph behind it. */
 export default function NarrationCard({
     analysis,
+    note,
     className,
 }: Readonly<NarrationCardProps>) {
     return (
@@ -38,6 +43,9 @@ export default function NarrationCard({
                 <Icon icon={Sparkles} className="size-3" aria-hidden />
                 Temari&apos;s read
             </Eyebrow>
+            {note !== undefined && (
+                <p className="mb-1.5 text-xs text-text-2">{note}</p>
+            )}
             <AnalysisStatus
                 analysis={analysis}
                 inertiaReloadProps={['narration']}

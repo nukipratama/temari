@@ -465,7 +465,7 @@ it('drops the caches derived from the history it just rebuilt', function (string
     ]);
     $today = Carbon::today()->toDateString();
     Cache::put(PastYouTrendBuilder::cacheKey($user->id, $today), ['verdict' => 'stale']);
-    Cache::put("training-load:{$user->id}:{$today}", ['stale']);
+    Cache::put("training-load:{$user->id}:{$today}:7", ['stale']);
     Cache::put(UsualRunTime::cacheKey($user->id, $today), 999);
 
     match ($rebuild) {
@@ -475,6 +475,6 @@ it('drops the caches derived from the history it just rebuilt', function (string
     };
 
     expect(Cache::has(PastYouTrendBuilder::cacheKey($user->id, $today)))->toBeFalse()
-        ->and(Cache::has("training-load:{$user->id}:{$today}"))->toBeFalse()
+        ->and(Cache::has("training-load:{$user->id}:{$today}:7"))->toBeFalse()
         ->and(Cache::has(UsualRunTime::cacheKey($user->id, $today)))->toBeFalse();
 })->with(['rebuildFor', 'rebuildForWeekOf', 'rebuildForwardFrom']);

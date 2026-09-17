@@ -13,10 +13,14 @@ import VitalBars from '@/components/dashboard/VitalBars';
 import NarrationCard from '@/components/trends/NarrationCard';
 import FitnessPanel, {
     type BadgeMilestone,
+    type FitnessChartAnnotations,
     type FitnessTrendPoint,
     type StreakSummaryLike,
 } from '@/components/trends/panels/FitnessPanel';
-import RangeToggle, { type TrendRange } from '@/components/trends/RangeToggle';
+import RangeToggle, {
+    TREND_RANGE_LABELS,
+    type TrendRange,
+} from '@/components/trends/RangeToggle';
 import Eyebrow from '@/components/ui/Eyebrow';
 import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
@@ -28,22 +32,33 @@ import {
 } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 
+/** The three ranges Trends actually narrates on a schedule (see
+ *  AnalysisType::TREND_READ_RANGES). A 7-day read isn't generated — narrating
+ *  it too would mean a fourth scheduled LLM cadence, so 7d borrows the 30d
+ *  read instead of going blank; NarrationCard labels that explicitly. */
+type NarratedRange = Exclude<TrendRange, '7d'>;
+
+function narratedRangeFor(range: TrendRange): NarratedRange {
+    return range === '7d' ? '30d' : range;
+}
+
 interface TrendsProps {
     ctlTrend?: FitnessTrendPoint[];
     badgeMilestones?: BadgeMilestone[];
     streak?: StreakSummaryLike;
-    narration?: Record<TrendRange, AnalysisPayload>;
+    narration?: Record<NarratedRange, AnalysisPayload>;
     briefing?: BriefingResult;
-    load?: TrainingLoad | null;
+    load?: Record<TrendRange, TrainingLoad | null>;
     snapshot?: WeeklySnapshot | null;
+    chartAnnotations?: FitnessChartAnnotations;
 }
 
 /**
  * Trends, on the frozen prototype's `TrendsScreen`: the headline, the load
  * section (vitals and condition, which used to sit behind Home's stats
  * disclosure), the range tabs, Temari's read, and one fitness panel. The tabs
- * really select the window every block below them reads (P3) — the load
- * section sits above them and always reads the last 7 days.
+ * select the window every block below them reads (P3), load included — it
+ * used to always read the last 7 days regardless of the toggle.
  */
 export default function Trends({
     ctlTrend,
@@ -51,8 +66,9 @@ export default function Trends({
     streak,
     narration,
     briefing,
-    load = null,
+    load,
     snapshot = null,
+    chartAnnotations,
 }: Readonly<TrendsProps>) {
     const [range, setRange] = useState<TrendRange>('30d');
 
@@ -89,12 +105,13 @@ export default function Trends({
                                 <Card padding="panel">
                                     <VitalBars
                                         briefing={briefing!}
-                                        load={load}
+                                        load={load![range]}
                                     />
                                 </Card>
                                 <TrainingLoadCard
-                                    load={load}
+                                    load={load![range]}
                                     snapshot={snapshot}
+                                    windowLabel={TREND_RANGE_LABELS[range]}
                                 />
                             </div>
                         </section>
@@ -117,14 +134,24 @@ export default function Trends({
                 >
                     {() => (
                         <NarrationCard
-                            analysis={narration![range]}
+                            analysis={narration![narratedRangeFor(range)]}
+                            note={
+                                range === '7d'
+                                    ? 'reads the last 30 days — a 7-day read isn’t generated yet'
+                                    : undefined
+                            }
                             className="mt-4"
                         />
                     )}
                 </Deferred>
 
                 <Deferred
-                    data={['ctlTrend', 'badgeMilestones', 'streak']}
+                    data={[
+                        'ctlTrend',
+                        'badgeMilestones',
+                        'streak',
+                        'chartAnnotations',
+                    ]}
                     fallback={
                         <Card as="section" className="mt-4">
                             <SkeletonStats className="mt-3.5" />
@@ -138,6 +165,7 @@ export default function Trends({
                             milestones={badgeMilestones!}
                             streak={streak!}
                             range={range}
+                            annotations={chartAnnotations!}
                             className="mt-4"
                         />
                     )}

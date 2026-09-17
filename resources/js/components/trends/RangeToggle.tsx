@@ -1,15 +1,23 @@
 import { cn } from '@/lib/cn';
 
-export type TrendRange = '30d' | '90d' | '12mo';
+export type TrendRange = '7d' | '30d' | '90d' | '12mo';
 
 const TREND_RANGES: ReadonlyArray<{
     key: TrendRange;
     label: string;
 }> = [
+    { key: '7d', label: '7 days' },
     { key: '30d', label: '30 days' },
     { key: '90d', label: '90 days' },
     { key: '12mo', label: '12 months' },
 ];
+
+/** The toggle's own label per range, reused wherever a range needs to name
+ *  itself outside the toggle (the load section's scope line). */
+export const TREND_RANGE_LABELS: Record<TrendRange, string> =
+    Object.fromEntries(
+        TREND_RANGES.map((range) => [range.key, range.label]),
+    ) as Record<TrendRange, string>;
 
 interface RangeToggleProps {
     value: TrendRange;
