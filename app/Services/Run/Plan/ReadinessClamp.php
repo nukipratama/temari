@@ -50,9 +50,8 @@ final class ReadinessClamp
                 'core_km' => 0.0,
                 'note' => self::restNote($sessionType),
             ],
-            // Long is the one session type ModerateOk already clears (its own
-            // requiredRank), so this arm only ever downgrades Tempo/Interval —
-            // Long never reaches here.
+            // Long requires ModerateOk, so an EasyOnly ceiling — stricter than
+            // ModerateOk — does send a Long day through this arm too.
             ReadinessCeiling::EasyOnly => [
                 'session_type' => SessionType::Easy,
                 'segments' => SegmentGenerator::generate(
@@ -119,6 +118,31 @@ final class ReadinessClamp
             ReadinessCeiling::EasyOnly, ReadinessCeiling::ModerateOk => SessionType::Easy,
             ReadinessCeiling::QualityOk => null,
         };
+    }
+
+    /**
+     * The one pace-only lever: a session {@see self::apply()} leaves
+     * completely alone because it already clears the ceiling, but only
+     * just — an Easy day at an EasyOnly ceiling, or a Long day at
+     * ModerateOk (marathon-pace long runs included: type and distance stay,
+     * only the pace comes down). Never true on a day `apply()` already
+     * downgraded, since a session that needed MORE than the ceiling allows
+     * fails this exact-match check.
+     */
+    public static function paceEaseApplies(SessionType $sessionType, ReadinessCeiling $ceiling): bool
+    {
+        return ($sessionType === SessionType::Easy && $ceiling === ReadinessCeiling::EasyOnly)
+            || ($sessionType === SessionType::Long && $ceiling === ReadinessCeiling::ModerateOk);
+    }
+
+    /**
+     * The line a pace-only ease always carries — rule-based only, never
+     * narrated: unlike every other clamp outcome, this one requests no
+     * `plan_clamp_voice` and sends no notification. See {@see self::paceEaseApplies()}.
+     */
+    public static function paceEaseNote(): string
+    {
+        return "Your form's a little flat, so run this one at the easy end of your range.";
     }
 
     /**

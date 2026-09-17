@@ -435,6 +435,33 @@ it('carries a recorded easy clamp onto today\'s recreated row', function (): voi
         ->and($effective->coreKm)->toBe(3.6);
 });
 
+it('carries a recorded pace ease onto today\'s recreated row', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $today = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Long,
+        'eased_pace_sec_per_km' => 375,
+    ]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    $fresh = PlannedSession::query()->where('user_id', $user->id)->where('date', Carbon::today()->toDateString())->firstOrFail();
+    expect($fresh->id)->not->toBe($today->id)
+        ->and($fresh->eased_pace_sec_per_km)->toBe(375)
+        ->and($fresh->clamped_km)->toBeNull()
+        ->and($fresh->rest_clamped_at)->toBeNull();
+
+    // Unlike clamped_km/rest_clamped_at, a pace ease never overrides the
+    // session type it rides along on — EffectiveSession reads it back
+    // against whatever type the regenerated row actually carries.
+    $effective = EffectiveSession::of($fresh, 20.0);
+    expect($effective->sessionType)->toBe($fresh->session_type)
+        ->and($effective->coreKm)->toBe(20.0)
+        ->and($effective->isPaceEased())->toBeTrue()
+        ->and($effective->easedPaceSecPerKm)->toBe(375);
+});
+
 it('carries a recorded rest clamp onto today\'s recreated row, keeping the day excused', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);

@@ -11,9 +11,10 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 /**
  * The session a day actually asks for, read off persisted state alone: a
  * recorded rest clamp is a rest day, a recorded eased distance is an easy run
- * of that distance, and anything else is the stored session. The scorer, the
- * renderer, the week totals and the narrator tools all read this one rule.
- * See `docs/decisions/the-eased-session-leads.md`.
+ * of that distance, a recorded pace ease keeps the stored type and distance
+ * but runs at the easy band's slow end, and anything else is the stored
+ * session. The scorer, the renderer, the week totals and the narrator tools
+ * all read this one rule. See `docs/decisions/the-eased-session-leads.md`.
  */
 final readonly class EffectiveSession
 {
@@ -24,6 +25,7 @@ final readonly class EffectiveSession
         public float $coreKm,
         public ?SessionType $easedFromType = null,
         public ?float $easedFromKm = null,
+        public ?int $easedPaceSecPerKm = null,
     ) {
     }
 
@@ -35,6 +37,10 @@ final readonly class EffectiveSession
 
         if ($session->clamped_km !== null) {
             return new self(SessionType::Easy, $session->clamped_km, $session->session_type, $storedCoreKm);
+        }
+
+        if ($session->eased_pace_sec_per_km !== null) {
+            return new self($session->session_type, $storedCoreKm, easedPaceSecPerKm: $session->eased_pace_sec_per_km);
         }
 
         return new self($session->session_type, $storedCoreKm);
@@ -58,6 +64,12 @@ final readonly class EffectiveSession
     public function isEased(): bool
     {
         return $this->easedFromType !== null;
+    }
+
+    /** Type and distance stayed, only the pace came down — see {@see \App\Services\Run\Plan\ReadinessClamp::paceEaseApplies()}. */
+    public function isPaceEased(): bool
+    {
+        return $this->easedPaceSecPerKm !== null;
     }
 
     /** The km the ease took off the day, zero when nothing was eased. */

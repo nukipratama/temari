@@ -6,12 +6,15 @@ use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Notifications\DayClampedNotification;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\RestClampRecorder;
@@ -29,6 +32,26 @@ function bottomOutReadiness(User $user): void
         'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
         'form_status' => 'overreaching',
         'monotony' => 1.0,
+    ]);
+}
+
+/** The readiness state that caps the ceiling at EasyOnly without bottoming out further. */
+function easyOnlyReadiness(User $user): void
+{
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'form_status' => 'fatigued',
+        'monotony' => 1.0,
+    ]);
+}
+
+/** Enough PR history for a VDOT estimate, so the pace-ease branch has a pace to compute. */
+function givePaceHistory(User $user): void
+{
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1500,
+        'set_at' => Carbon::today()->subMonth()->toDateString(),
     ]);
 }
 
@@ -292,5 +315,102 @@ it('says nothing on a day that already fits under the ceiling', function (): voi
 
     app(RestClampRecorder::class)->record($user, Carbon::today());
 
+    Notification::assertNothingSent();
+});
+
+/** The one lever apply() leaves alone: an Easy day already clears EasyOnly, but only just. */
+it('records a pace ease on an Easy day at an EasyOnly ceiling', function (): void {
+    $user = User::factory()->create();
+    easyOnlyReadiness($user);
+    givePaceHistory($user);
+    $session = todaysSession($user, 'easy');
+
+    $expectedPace = app(TrainingPaceCalculator::class)->easySlowEndFromVdotResult(
+        app(VdotEstimator::class)->estimate($user, Carbon::today()),
+    );
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
+        ->and($session->fresh()->eased_pace_sec_per_km)->toBe($expectedPace)
+        ->and($session->fresh()->clamped_km)->toBeNull()
+        ->and($session->fresh()->rest_clamped_at)->toBeNull();
+});
+
+/** A Long day only needs ModerateOk clearance, which a data-less athlete already sits at. */
+it('records a pace ease on a Long day at a ModerateOk ceiling', function (): void {
+    $user = User::factory()->create();
+    givePaceHistory($user);
+    $session = todaysSession($user, 'long');
+
+    $expectedPace = app(TrainingPaceCalculator::class)->easySlowEndFromVdotResult(
+        app(VdotEstimator::class)->estimate($user, Carbon::today()),
+    );
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
+        ->and($session->fresh()->eased_pace_sec_per_km)->toBe($expectedPace)
+        ->and($session->fresh()->clamped_km)->toBeNull();
+});
+
+it('records no pace ease with no VDOT estimate to size one from', function (): void {
+    $user = User::factory()->create();
+    easyOnlyReadiness($user);
+    $session = todaysSession($user, 'easy');
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
+        ->and($session->fresh()->eased_pace_sec_per_km)->toBeNull();
+});
+
+/** Mirrors the same ranToday trap the eased-distance branch guards against. */
+it('records no pace ease once the athlete has already run today', function (): void {
+    $user = User::factory()->create();
+    givePaceHistory($user);
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'form_status' => 'fresh',
+        'monotony' => 1.0,
+    ]);
+    $session = todaysSession($user, 'easy');
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->setTime(7, 0),
+        'distance' => 5000.0,
+    ]);
+
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+
+    expect($session->fresh()->eased_pace_sec_per_km)->toBeNull();
+});
+
+it('never overwrites a recorded pace ease', function (): void {
+    $user = User::factory()->create();
+    easyOnlyReadiness($user);
+    givePaceHistory($user);
+    $session = todaysSession($user, 'easy');
+    $session->forceFill(['eased_pace_sec_per_km' => 400])->save();
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
+        ->and($session->fresh()->eased_pace_sec_per_km)->toBe(400);
+});
+
+/** One lever per day: a day apply() already downgraded never also gets a pace ease. */
+it('carries exactly one reduction — a downgraded day records no pace ease on top', function (): void {
+    $user = User::factory()->create();
+    givePaceHistory($user);
+    bottomOutReadiness($user);
+    $restClamped = todaysSession($user, 'interval');
+
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+
+    expect($restClamped->fresh()->rest_clamped_at)->not->toBeNull()
+        ->and($restClamped->fresh()->eased_pace_sec_per_km)->toBeNull();
+});
+
+it('sends no notification for a pace-only ease', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    easyOnlyReadiness($user);
+    givePaceHistory($user);
+    todaysSession($user, 'easy');
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue();
     Notification::assertNothingSent();
 });

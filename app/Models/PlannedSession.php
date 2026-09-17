@@ -48,6 +48,7 @@ use Override;
  * @property SessionType $session_type
  * @property float|null $prescribed_km
  * @property float|null $clamped_km
+ * @property int|null $eased_pace_sec_per_km
  * @property float|null $volume_multiplier
  * @property int|null $race_distance_m
  * @property bool $pinned
@@ -76,6 +77,7 @@ use Override;
     'intent_evidence',
     'prescribed_km',
     'clamped_km',
+    'eased_pace_sec_per_km',
     'volume_multiplier',
     'ran_anyway',
     'rest_clamped_at',
@@ -169,6 +171,7 @@ class PlannedSession extends Model
             'intent_evidence' => 'array',
             'prescribed_km' => 'float',
             'clamped_km' => 'float',
+            'eased_pace_sec_per_km' => 'integer',
             'volume_multiplier' => 'float',
             'ran_anyway' => 'boolean',
             'rest_clamped_at' => 'datetime',

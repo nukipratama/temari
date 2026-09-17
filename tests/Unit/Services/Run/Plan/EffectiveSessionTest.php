@@ -56,3 +56,36 @@ it('holds the distance when only the intensity was eased', function (): void {
 it('reads an un-eased session as holding nothing', function (): void {
     expect(EffectiveSession::of(effectiveRow(['session_type' => SessionType::Easy]), 4.0)->distanceHeld())->toBeFalse();
 });
+
+it('keeps the stored type and distance on a day only pace-eased, and exposes the eased pace', function (): void {
+    $effective = EffectiveSession::of(effectiveRow(['session_type' => SessionType::Long, 'eased_pace_sec_per_km' => 375]), 20.0);
+
+    expect($effective->sessionType)->toBe(SessionType::Long)
+        ->and($effective->coreKm)->toBe(20.0)
+        ->and($effective->isPaceEased())->toBeTrue()
+        ->and($effective->easedPaceSecPerKm)->toBe(375)
+        ->and($effective->isEased())->toBeFalse()
+        ->and($effective->easedFromType)->toBeNull()
+        ->and($effective->easedFromKm)->toBeNull();
+});
+
+it('reads a session with no pace ease recorded as not pace-eased', function (): void {
+    expect(EffectiveSession::of(effectiveRow(['session_type' => SessionType::Easy]), 4.0)->isPaceEased())->toBeFalse();
+});
+
+/** A rest clamp and a distance ease are each their own lever; a pace ease never rides along on top. */
+it('a rest clamp or a recorded distance ease takes priority over a pace ease field', function (): void {
+    $restClamped = EffectiveSession::of(effectiveRow([
+        'session_type' => SessionType::Long,
+        'rest_clamped_at' => Carbon::now(),
+        'eased_pace_sec_per_km' => 375,
+    ]), 20.0);
+    $distanceEased = EffectiveSession::of(effectiveRow([
+        'session_type' => SessionType::Tempo,
+        'clamped_km' => 3.6,
+        'eased_pace_sec_per_km' => 375,
+    ]), 5.9);
+
+    expect($restClamped->isPaceEased())->toBeFalse()
+        ->and($distanceEased->isPaceEased())->toBeFalse();
+});

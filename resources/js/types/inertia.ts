@@ -383,6 +383,16 @@ export interface PlanDayEasedFrom {
     voice: string | null;
 }
 
+/** The pace-only lever: an Easy day at an EasyOnly ceiling, or a Long day at
+ *  ModerateOk, keeps its type and distance but runs at the easy band's slow
+ *  end instead — `segments` above already carry that slower pace, and this
+ *  names the pace it replaced. Rule-based only: `voice` never comes from a
+ *  narrator, and is null once the day is credited. */
+export interface PlanDayPaceEasedFrom {
+    pace_sec_per_km: number | null;
+    voice: string | null;
+}
+
 /** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
  *  it — the same shape Plan's own day rows use. */
 export interface WeekPlanDay {
@@ -424,6 +434,10 @@ export interface WeekPlanDay {
     /** Set on a day whose ease was recorded: the fields above are then the
      *  eased session, and this is the session it replaced. */
     eased_from: PlanDayEasedFrom | null;
+    /** Set on a day the readiness clamp eased only in pace — type and
+     *  distance above are unchanged, and `segments`' pace is already the
+     *  slower one. */
+    pace_eased_from: PlanDayPaceEasedFrom | null;
     /** Why a long day that covered its distance still reads `partial` — it
      *  arrived in pieces rather than in one run. Null on every other day. */
     credit_note: string | null;

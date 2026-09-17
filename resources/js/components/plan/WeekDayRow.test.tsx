@@ -50,6 +50,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         prescribed_km: null,
         clamp: null,
         eased_from: null,
+        pace_eased_from: null,
         credit_note: null,
         ran_pace_sec_per_km: null,
         actual_km: null,
@@ -536,6 +537,74 @@ describe('WeekDayRow', () => {
         const readBlock = readLabel.parentElement!.parentElement!;
         expect(within(readBlock).queryByText(reason.textContent!)).toBeNull();
         expect(readBlock).not.toContainElement(reason);
+    });
+
+    /**
+     * A pace-only ease keeps type and distance — no "eased from" line, since
+     * neither moved — and shows the step-down as an arrow, since the day's
+     * own segments already carry the slower (eased) pace.
+     */
+    it('shows a pace-only ease as a pace arrow, with type and distance unchanged', () => {
+        renderRow({
+            day: day({
+                date: TODAY,
+                session_type: 'long',
+                distance_km: 20,
+                asked_km: 20,
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 133,
+                        zone: 'Z2',
+                        pace_label: 'easy',
+                        km: 20,
+                        pace_sec_per_km: 400,
+                    },
+                ],
+                pace_eased_from: {
+                    pace_sec_per_km: 360,
+                    voice: "your form's a little flat, so run this one at the easy end of your range.",
+                },
+            }),
+            narration: null,
+        });
+        fireEvent.click(screen.getByRole('button', { name: /long run/i }));
+
+        expect(screen.getByText('20 km · 6:40/km')).toBeInTheDocument();
+        expect(screen.getByText(/6:00 → 6:40\/km/)).toBeInTheDocument();
+        expect(
+            screen.queryByText('eased from long run'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "your form's a little flat, so run this one at the easy end of your range.",
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('drops the pace-ease voice, but keeps the pace arrow, once the day is credited', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                status: 'done',
+                session_type: 'long',
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 133,
+                        zone: 'Z2',
+                        pace_label: 'easy',
+                        km: 20,
+                        pace_sec_per_km: 400,
+                    },
+                ],
+                pace_eased_from: { pace_sec_per_km: 360, voice: null },
+            }),
+            narration: null,
+        });
+        fireEvent.click(screen.getByRole('button', { name: /long run/i }));
+
+        expect(screen.getByText(/6:00 → 6:40\/km/)).toBeInTheDocument();
     });
 
     /** The server decides what the step-down is for; the row must not hardcode

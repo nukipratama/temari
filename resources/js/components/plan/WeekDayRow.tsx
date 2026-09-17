@@ -30,6 +30,7 @@ import {
     easedFromLabel,
     isCreditedStatus,
     kmLabel,
+    paceEaseLabel,
     paceLabel,
     SESSION_TYPE_ICON,
     SESSION_TYPE_LABEL,
@@ -205,6 +206,17 @@ export default function WeekDayRow({
                                 {easedFromLabel(day.eased_from)}
                             </span>
                         )}
+                        {day.pace_eased_from && (
+                            <span className="mt-0.5 flex items-center gap-1 text-label-micro text-text-2">
+                                <Icon
+                                    icon={ArrowDown}
+                                    className="size-3"
+                                    aria-hidden
+                                />
+                                eased pace ·{' '}
+                                {paceEaseLabel(day.pace_eased_from, day)}
+                            </span>
+                        )}
                         {adjustedFrom !== null && (
                             <span className="mt-0.5 flex items-center gap-1 text-label-micro text-text-2">
                                 <Icon
@@ -260,12 +272,26 @@ export default function WeekDayRow({
                         {day.eased_from.voice}
                     </p>
                 )}
+                {day.pace_eased_from?.voice && (
+                    <p className="flex items-start gap-1.5 text-xs italic text-text-2">
+                        <Icon
+                            icon={ArrowDown}
+                            className="mt-0.5 size-3 flex-none"
+                            aria-hidden
+                        />
+                        {day.pace_eased_from.voice}
+                    </p>
+                )}
                 {narration && (
                     <TemariTake
                         analysis={narration}
                         label="Temari's read"
                         allowReanalyze={false}
-                        className={day.eased_from?.voice ? 'mt-2' : undefined}
+                        className={
+                            day.eased_from?.voice || day.pace_eased_from?.voice
+                                ? 'mt-2'
+                                : undefined
+                        }
                     />
                 )}
                 {day.clamp && (

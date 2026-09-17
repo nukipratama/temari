@@ -13,6 +13,7 @@ import {
     isCreditedStatus,
     isRaceWeek,
     kmLabel,
+    paceEaseLabel,
     paceLabel,
     phasesOf,
     volumeAdjustedFrom,
@@ -268,6 +269,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         prescribed_km: null,
         clamp: null,
         eased_from: null,
+        pace_eased_from: null,
         credit_note: null,
         ran_pace_sec_per_km: null,
         actual_km: null,
@@ -370,6 +372,47 @@ describe('paceLabel', () => {
         expect(paceLabel(planDay({ session_type: 'rest', segments: [] }))).toBe(
             null,
         );
+    });
+});
+
+describe('paceEaseLabel', () => {
+    it("shows the step-down as an arrow, from the original pace to the day's own (already eased) pace", () => {
+        expect(
+            paceEaseLabel({ pace_sec_per_km: 360, voice: null }, planDay()),
+        ).toBe('6:00 → 6:00/km');
+
+        expect(
+            paceEaseLabel(
+                { pace_sec_per_km: 360, voice: null },
+                planDay({
+                    segments: [
+                        {
+                            key: 'main',
+                            minutes: 50,
+                            zone: 'Z2',
+                            pace_label: 'easy',
+                            km: 5.2,
+                            pace_sec_per_km: 375,
+                        },
+                    ],
+                }),
+            ),
+        ).toBe('6:00 → 6:15/km');
+    });
+
+    it('has nothing to show without a recorded original pace', () => {
+        expect(
+            paceEaseLabel({ pace_sec_per_km: null, voice: null }, planDay()),
+        ).toBeNull();
+    });
+
+    it('has nothing to show when the day itself carries no pace', () => {
+        expect(
+            paceEaseLabel(
+                { pace_sec_per_km: 360, voice: null },
+                planDay({ session_type: 'rest', segments: [] }),
+            ),
+        ).toBeNull();
     });
 });
 

@@ -250,11 +250,37 @@ final class PlanRenderer
         $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM);
         $effective = EffectiveSession::of($s, $askedKm);
         $sessionType = $effective->sessionType;
+        $originalPaceSecPerKm = null;
 
         if ($effective->isEased()) {
             $segments = $sessionType === SessionType::Rest ? [] : SegmentGenerator::easyBlock($effective->coreKm, $paces);
             $askedKm = $distanceKm = $effective->coreKm;
         } else {
+            // A pace ease keeps type and distance, so generation runs exactly
+            // as it would have — the only change is 'easy'/'marathon' swapped
+            // for the recorded slow end, which is why type/distance never move.
+            $pacesForSegments = $paces;
+            if ($effective->easedPaceSecPerKm !== null && $paces !== null) {
+                $originalPaceSecPerKm = self::corePaceOf(SegmentGenerator::generate(
+                    $sessionType,
+                    $s->phase,
+                    $raceDistanceM,
+                    $isPrimaryEasy,
+                    $longRunKm,
+                    $multiplier,
+                    $longRunCapKm,
+                    $paces,
+                    $volumeScale,
+                    $raceGoalTimeSec,
+                ));
+                $pacesForSegments = [
+                    'easy' => $effective->easedPaceSecPerKm,
+                    'marathon' => $effective->easedPaceSecPerKm,
+                    'threshold' => $paces['threshold'],
+                    'interval' => $paces['interval'],
+                ];
+            }
+
             $segments = SegmentGenerator::generate(
                 $sessionType,
                 $s->phase,
@@ -263,7 +289,7 @@ final class PlanRenderer
                 $longRunKm,
                 $multiplier,
                 $longRunCapKm,
-                $paces,
+                $pacesForSegments,
                 $volumeScale,
                 $raceGoalTimeSec,
             );
@@ -295,6 +321,10 @@ final class PlanRenderer
             'ran_anyway' => $s->ran_anyway,
             'clamp' => $isToday && $clamp !== null && ! $effective->isEased() && ! $status->isCredited() ? self::clampPayload($clamp, $clampVoice) : null,
             'eased_from' => $effective->isEased() ? self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null) : null,
+            'pace_eased_from' => $effective->isPaceEased() ? [
+                'pace_sec_per_km' => $originalPaceSecPerKm,
+                'voice' => $status->isCredited() ? null : ReadinessClamp::paceEaseNote(),
+            ] : null,
             'credit_note' => self::creditNote($sessionType, $status, $askedKm, $activity),
             'ran_pace_sec_per_km' => $status->isCredited() && $sessionType !== SessionType::Rest
                 ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [])
@@ -359,22 +389,31 @@ final class PlanRenderer
      */
     private static function clampPayload(array $clamp, ?string $voice): array
     {
-        $core = null;
-        foreach ($clamp['segments'] as $segment) {
-            if (in_array($segment->key, [SegmentKey::Main, SegmentKey::Interval], true)) {
-                $core = $segment;
-
-                break;
-            }
-        }
-
         return [
             'session_type' => $clamp['session_type']->value,
             'distance_km' => $clamp['core_km'],
-            'pace_sec_per_km' => $core?->paceSecPerKm,
+            'pace_sec_per_km' => self::corePaceOf($clamp['segments']),
             'note' => $voice ?? $clamp['note'],
             'label' => 'eased today',
         ];
+    }
+
+    /**
+     * The pace of a session's core set — its Main block, or the shared pace
+     * every Interval rep runs at. Shared by every payload that shows a single
+     * pace figure for a whole session rather than its full segment breakdown.
+     *
+     * @param  list<SessionSegment>  $segments
+     */
+    private static function corePaceOf(array $segments): ?int
+    {
+        foreach ($segments as $segment) {
+            if (in_array($segment->key, [SegmentKey::Main, SegmentKey::Interval], true)) {
+                return $segment->paceSecPerKm;
+            }
+        }
+
+        return null;
     }
 
     /**
