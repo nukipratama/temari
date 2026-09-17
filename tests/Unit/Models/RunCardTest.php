@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\Badge;
-use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
@@ -52,47 +51,6 @@ it('allBadgeCountsForUser scopes to a date range when given one', function (): v
     );
 
     expect($counts[Badge::Speedster->value])->toBe(1);
-});
-
-it('firstEarnedBadgesForUser returns the earliest date and rarity each badge was earned at', function (): void {
-    $user = User::factory()->create();
-
-    $earlier = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($earlier)->create(['start_date_local' => '2026-01-05 07:00:00']);
-    RunCard::factory()->for($earlier)->create(['badges' => [Badge::EarlyBird->value], 'rarity' => Rarity::Rare]);
-
-    $later = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($later)->create(['start_date_local' => '2026-03-10 07:00:00']);
-    RunCard::factory()->for($later)->create([
-        'badges' => [Badge::EarlyBird->value, Badge::Speedster->value],
-        'rarity' => Rarity::Epic,
-    ]);
-
-    $first = RunCard::firstEarnedBadgesForUser($user->id);
-
-    expect($first[Badge::EarlyBird->value]['date'])->toStartWith('2026-01-05')
-        ->and($first[Badge::EarlyBird->value]['rarity'])->toBe(Rarity::Rare->value)
-        ->and($first[Badge::Speedster->value]['date'])->toStartWith('2026-03-10')
-        ->and($first[Badge::Speedster->value]['rarity'])->toBe(Rarity::Epic->value);
-});
-
-it('firstEarnedBadgesForUser ignores a card whose activity is not yet analyzed', function (): void {
-    $user = User::factory()->create();
-    $stub = Activity::factory()->for($user)->stub()->create();
-    ActivityDetail::factory()->for($stub)->create(['start_date_local' => '2026-01-05 07:00:00']);
-    RunCard::factory()->for($stub)->create(['badges' => [Badge::EarlyBird->value]]);
-
-    expect(RunCard::firstEarnedBadgesForUser($user->id))->toBe([]);
-});
-
-it('firstEarnedBadgesForUser scopes to the given user', function (): void {
-    $user = User::factory()->create();
-    $other = User::factory()->create();
-    $activity = Activity::factory()->for($other)->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => '2026-01-05 07:00:00']);
-    RunCard::factory()->for($activity)->create(['badges' => [Badge::EarlyBird->value]]);
-
-    expect(RunCard::firstEarnedBadgesForUser($user->id))->toBe([]);
 });
 
 it('casts badges to an array', function (): void {

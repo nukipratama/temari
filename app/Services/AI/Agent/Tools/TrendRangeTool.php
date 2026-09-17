@@ -12,19 +12,15 @@ use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
 /**
- * The range a Trends narration is about (7d/30d/90d/12mo), read as of now.
- *
- * For 7d/30d/90d the comparison is against the immediately preceding period
- * of the same length. 12mo is different on purpose: comparing this year
- * against the year before it needs history most users don't have yet, so it
- * instead splits its own window in half and compares the second half against
- * the first — same shape (`current` vs `comparison`), different boundaries.
+ * The range a Trends narration is about — just `7d` since #967 (was
+ * 7d/30d/90d/12mo), read as of now. The comparison is against the
+ * immediately preceding 7-day period.
  */
 final class TrendRangeTool extends NoArgumentTool
 {
     /** @var array<string, int> */
     /** Also read by narrators binding a second tool to the same window. */
-    public const array RANGE_DAYS = ['7d' => 7, '30d' => 30, '90d' => 90, '12mo' => 365];
+    public const array RANGE_DAYS = ['7d' => 7];
 
     public function __construct(
         private readonly User $user,
@@ -41,28 +37,21 @@ final class TrendRangeTool extends NoArgumentTool
     public function description(): string
     {
         return "The range you're reading: distance/runs/TRIMP for the current period and the "
-            .'comparison period (the same length before it, or, for the 12mo range only, the '
-            .'first half of this same window, since the second half is `current`), CTL at the '
-            .'start and end of the window, VDOT at the start and end (null if no history yet), '
-            .'and the average monotony/strain across the current period. weekly_trimp-derived '
-            .'fields are null where the underlying week is unscored, which is not the same as zero.';
+            .'comparison period (the same length before it), CTL at the start and end of the '
+            .'window, VDOT at the start and end (null if no history yet), and the average '
+            .'monotony/strain across the current period. weekly_trimp-derived fields are null '
+            .'where the underlying week is unscored, which is not the same as zero.';
     }
 
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
-        $days = self::RANGE_DAYS[$this->range] ?? self::RANGE_DAYS['30d'];
+        $days = self::RANGE_DAYS[$this->range];
         $today = Carbon::today();
 
-        if ($this->range === '12mo') {
-            $currentStart = $today->copy()->subDays((int) floor($days / 2) - 1);
-            $comparisonStart = $today->copy()->subDays($days - 1);
-            $comparisonEnd = $currentStart->copy()->subDay();
-        } else {
-            $currentStart = $today->copy()->subDays($days - 1);
-            $comparisonStart = $currentStart->copy()->subDays($days);
-            $comparisonEnd = $currentStart->copy()->subDay();
-        }
+        $currentStart = $today->copy()->subDays($days - 1);
+        $comparisonStart = $currentStart->copy()->subDays($days);
+        $comparisonEnd = $currentStart->copy()->subDay();
 
         $ctlSeries = $this->trainingLoad->ctlTrend($this->user, $days);
         $strainSeries = $this->trainingLoad->strainMonotonyTrend($this->user, $days);

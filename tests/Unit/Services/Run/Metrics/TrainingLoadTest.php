@@ -315,6 +315,21 @@ it('ctlTrend never returns more than the available history, even when asked for 
     expect($this->load->ctlTrend($user, 90))->toHaveCount(10);
 });
 
+it('ctlTrend stamps each day with formStatus, computed from that day\'s own atl/ctl', function (): void {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 30; $i++) {
+        seedTrimpDay($user, 80.0, 29 - $i);
+    }
+
+    $trend = $this->load->ctlTrend($user, 30);
+
+    foreach ($trend as $point) {
+        $form = round($point['ctl'] - $point['atl'], 1);
+        expect($point['form_status'])->toBe($this->load->formStatus($form, $point['ctl']));
+    }
+});
+
 it('tells a rest week, an unscored week and a scored week apart', function (): void {
     $user = User::factory()->create();
 

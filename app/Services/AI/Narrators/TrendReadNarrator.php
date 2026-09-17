@@ -135,7 +135,7 @@ class TrendReadNarrator
                     new PlanAdherenceTool(
                         $user,
                         Carbon::today(),
-                        Carbon::today()->subDays((TrendRangeTool::RANGE_DAYS[$range] ?? TrendRangeTool::RANGE_DAYS['7d']) - 1),
+                        Carbon::today()->subDays(TrendRangeTool::RANGE_DAYS[$range] - 1),
                     ),
                 ]),
                 maxSteps: 6,

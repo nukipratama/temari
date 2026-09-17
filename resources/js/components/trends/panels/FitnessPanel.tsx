@@ -7,7 +7,6 @@ import type { FormStatus } from '@/types/inertia';
 import Skeleton from '@/components/ui/Skeleton';
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
-import { formStatusFor } from '@/lib/formStatus';
 import { lazyIsland } from '@/lib/lazyIsland';
 import { formatNaiveMonthDayId } from '@/lib/pace';
 
@@ -20,6 +19,8 @@ export interface FitnessTrendPoint {
     date: string;
     atl: number;
     ctl: number;
+    /** TrainingLoad::formStatus() for this day, stamped server-side. */
+    form_status: FormStatus;
 }
 
 export interface FitnessChartAnnotations {
@@ -78,8 +79,7 @@ interface BandRun {
 function bandRuns(trend: ReadonlyArray<FitnessTrendPoint>): BandRun[] {
     const runs: BandRun[] = [];
     for (const point of trend) {
-        const bucket =
-            BAND_BUCKET[formStatusFor(point.ctl - point.atl, point.ctl)];
+        const bucket = BAND_BUCKET[point.form_status];
         const last = runs[runs.length - 1];
         if (last && last.bucket === bucket) {
             last.length += 1;
@@ -255,6 +255,12 @@ export default function FitnessPanel({
         [ground, trend],
     );
 
+    const runs = useMemo(() => bandRuns(trend), [trend]);
+    const bucketsPresent = useMemo(
+        () => Array.from(new Set(runs.map((r) => r.bucket))),
+        [runs],
+    );
+
     if (trend.length === 0) {
         return (
             <p className={className ?? 'text-sm text-text-2'}>
@@ -263,8 +269,6 @@ export default function FitnessPanel({
         );
     }
 
-    const runs = bandRuns(trend);
-    const bucketsPresent = Array.from(new Set(runs.map((r) => r.bucket)));
     const latest = trend[trend.length - 1];
 
     return (

@@ -2,13 +2,17 @@ import { RefreshCw, Sparkles } from 'lucide-react';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
-import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import AnalysisStatus, {
+    TRIGGER_CLASS,
+    triggerTone,
+} from '@/components/temari/AnalysisStatus';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import Skeleton from '@/components/ui/Skeleton';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
+import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 
 interface NarrationCardProps {
@@ -98,7 +102,7 @@ export default function NarrationCard({
                     type="button"
                     onClick={trigger}
                     disabled={pending || cooling}
-                    className="focus-ring pad-chip text-label-micro pressable inline-flex flex-none items-center gap-1 rounded-full bg-muted text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-60"
+                    className={cn(TRIGGER_CLASS, triggerTone(false))}
                 >
                     <Icon icon={RefreshCw} className="size-3" aria-hidden />
                     <span>

@@ -58,6 +58,7 @@ function yearOfTrend() {
         date: `2026-01-${String((i % 28) + 1).padStart(2, '0')}`,
         ctl: 40 + i * 0.05,
         atl: 30,
+        form_status: 'fresh' as const,
     }));
 }
 

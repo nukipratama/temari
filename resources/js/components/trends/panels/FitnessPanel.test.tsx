@@ -53,15 +53,15 @@ function pointsOverDays(
 ): FitnessTrendPoint[] {
     return Array.from({ length: days }, (_, i) => {
         const ctl = ctlStart + i * 0.1;
-        // A comfortably positive form gap by default ("fresh"), with a brief
-        // fatigue spike partway through ("overreaching") when dip is set —
+        // form_status is now a server-stamped field — "fresh" by default,
+        // with a brief "overreaching" spike partway through when dip is set,
         // so both ends of the band actually appear.
-        const atl =
-            dip && i > days / 2 && i < days / 2 + 5 ? ctl + 30 : ctl - 25;
+        const overreaching = dip && i > days / 2 && i < days / 2 + 5;
         return {
             date: `2026-01-${String((i % 28) + 1).padStart(2, '0')}`,
             ctl,
-            atl,
+            atl: ctl - 25,
+            form_status: overreaching ? 'overreaching' : 'fresh',
         };
     });
 }

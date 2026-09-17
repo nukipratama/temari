@@ -4,7 +4,6 @@ import type { FormStatus } from '@/types/inertia';
 
 import {
     formatSignedForm,
-    formStatusFor,
     formStatusLabel,
     formStatusMeaning,
     formStatusTone,
@@ -24,24 +23,6 @@ describe('formStatusLabel', () => {
     it('returns dash for null', () => {
         expect(formStatusLabel(null)).toBe('—');
     });
-});
-
-describe('formStatusFor', () => {
-    // Mirrors TrainingLoad::formStatus()'s threshold table.
-    it.each([
-        [30, 40, 'fresh'],
-        [10, 40, 'optimal'],
-        [-10, 40, 'optimal'],
-        [-20, 40, 'fatigued'],
-        [-50, 40, 'overreaching'],
-        [10, 10, 'fresh'], // low-CTL threshold (5) is tighter
-        [3, 10, 'optimal'],
-    ] satisfies Array<[number, number, FormStatus]>)(
-        'form %d at ctl %d → %s',
-        (form, ctl, status) => {
-            expect(formStatusFor(form, ctl)).toBe(status);
-        },
-    );
 });
 
 describe('formatSignedForm', () => {

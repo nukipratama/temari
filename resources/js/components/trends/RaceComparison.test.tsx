@@ -12,6 +12,7 @@ function series(ctls: number[]): FitnessTrendPoint[] {
         date: `2026-01-${String(i + 1).padStart(2, '0')}`,
         atl: ctl,
         ctl,
+        form_status: 'optimal',
     }));
 }
 

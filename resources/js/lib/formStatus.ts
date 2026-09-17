@@ -13,18 +13,6 @@ export function formStatusLabel(status: FormStatus | null): string {
     return status === null ? '—' : LABELS[status];
 }
 
-// Mirrors App\Services\Run\Metrics\TrainingLoad::formStatus() exactly, so a
-// day drawn on the /trends fitness chart buckets the same way the load
-// summary already does. `ctl` scales the threshold: the same raw form gap
-// means more for a beginner's fitness than a high-volume runner's.
-export function formStatusFor(form: number, ctl: number): FormStatus {
-    const threshold = ctl < 20 ? 5 : ctl <= 50 ? 15 : 20;
-    if (form > threshold) return 'fresh';
-    if (form > -threshold) return 'optimal';
-    if (form > -threshold * 2) return 'fatigued';
-    return 'overreaching';
-}
-
 // A one-line plain-language gloss of what the form status means, for the
 // vs-last-week comparison card — the jargon-accessibility rule for
 // training-load terms (see docs/voice-and-tone.md).

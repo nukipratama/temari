@@ -699,29 +699,29 @@ it('TrendReadNarrator joins title and description with a blank line on valid JSO
     $caller = fakeCaller(json_encode(['reading' => 'load', 'title' => 'Judul.', 'description' => 'Deskripsi.'], JSON_THROW_ON_ERROR));
     $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
 
-    expect($narrator->generate($user, '30d'))->toBe("Judul.\n\nDeskripsi.");
+    expect($narrator->generate($user, '7d'))->toBe("Judul.\n\nDeskripsi.");
 });
 
 it('TrendReadNarrator throws on missing title key', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller(json_encode(['description' => 'Deskripsi.'], JSON_THROW_ON_ERROR));
     $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
-    $narrator->generate($user, '30d');
+    $narrator->generate($user, '7d');
 })->throws(UnavailableException::class);
 
 it('TrendReadNarrator throws on non-JSON', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller('not json');
     $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
-    $narrator->generate($user, '30d');
+    $narrator->generate($user, '7d');
 })->throws(UnavailableException::class, 'non-JSON');
 
 it('TrendRangeTool exposes the current range on its own reading', function (): void {
     $user = User::factory()->create();
 
-    $context = new TrendRangeTool($user, '90d', app(TrainingLoad::class))->handle([]);
+    $context = new TrendRangeTool($user, '7d', app(TrainingLoad::class))->handle([]);
 
-    expect($context['range'])->toBe('90d');
+    expect($context['range'])->toBe('7d');
 });
 
 // ── WeatherTool ───────────────────────────────────────────────────────

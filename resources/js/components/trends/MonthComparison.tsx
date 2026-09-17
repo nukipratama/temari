@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import Card from '@/components/ui/LegacyCard';
 import { ctlDaysAgo, ctlNow, ctlPeak } from '@/lib/trends';
 
@@ -34,9 +36,9 @@ export default function MonthComparison({
     annotations,
     className,
 }: Readonly<MonthComparisonProps>) {
-    const now = ctlNow(trend);
-    const monthAgo = ctlDaysAgo(trend, DAYS_AGO);
-    const peak = ctlPeak(trend);
+    const now = useMemo(() => ctlNow(trend), [trend]);
+    const monthAgo = useMemo(() => ctlDaysAgo(trend, DAYS_AGO), [trend]);
+    const peak = useMemo(() => ctlPeak(trend), [trend]);
     const delta = now !== null && monthAgo !== null ? now - monthAgo : null;
 
     return (

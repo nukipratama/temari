@@ -1,8 +1,11 @@
 import { Link } from '@inertiajs/react';
+import { useMemo } from 'react';
 
 import type { ActiveRace, TrainingLoad } from '@/types/inertia';
 
+import { TRIGGER_CLASS, triggerTone } from '@/components/temari/AnalysisStatus';
 import Card from '@/components/ui/LegacyCard';
+import { cn } from '@/lib/cn';
 import { formStatusWord } from '@/lib/formStatus';
 import {
     daysUntilId,
@@ -38,8 +41,9 @@ export default function RaceComparison({
     load,
     className,
 }: Readonly<RaceComparisonProps>) {
-    const now = ctlNow(trend);
-    const peak = ctlPeak(trend);
+    const now = useMemo(() => ctlNow(trend), [trend]);
+    const peak = useMemo(() => ctlPeak(trend), [trend]);
+    const monthAgo = useMemo(() => ctlDaysAgo(trend, DAYS_AGO), [trend]);
 
     if (activeRace === null) {
         return (
@@ -74,7 +78,11 @@ export default function RaceComparison({
                     </div>
                     <Link
                         href="/race"
-                        className="focus-ring pressable pad-chip text-label-micro mt-3.5 inline-flex items-center gap-1 rounded-full bg-muted text-foreground transition-colors hover:bg-accent"
+                        className={cn(
+                            TRIGGER_CLASS,
+                            triggerTone(false),
+                            'mt-3.5',
+                        )}
                     >
                         set a race
                     </Link>
@@ -83,7 +91,6 @@ export default function RaceComparison({
         );
     }
 
-    const monthAgo = ctlDaysAgo(trend, DAYS_AGO);
     const daysOut = daysUntilId(activeRace.race_date);
     const weeksOut = Math.floor(daysOut / 7);
     const paceSec = paceSecPerKm(
