@@ -21,13 +21,14 @@ function getServerSnapshot(): boolean {
 }
 
 /**
- * Chart.js reads plain JS values, not CSS custom properties, so a chart's
- * colour choices can't just follow the `[data-theme]` cascade the way a
- * component's classes do — they need to know which ground is active and
- * recompute. `data-theme` only ever changes via `useSystemTheme`'s OS
- * listener today (there is no manual toggle yet — that's S11), but a
- * MutationObserver keeps this correct however it ends up changing.
+ * Some consumers read plain JS values, not CSS custom properties, so they
+ * can't just follow the `[data-theme]` cascade the way a component's
+ * classes do — they need to know which ground is active and recompute.
+ * Chart.js colour picks and Leaflet tile URLs are both this shape.
+ * `data-theme` can change via `useTheme`'s explicit toggle or
+ * `useSystemTheme`'s OS listener; a MutationObserver keeps this correct
+ * however it ends up changing.
  */
-export function useIsChartDark(): boolean {
+export function useIsDarkGround(): boolean {
     return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

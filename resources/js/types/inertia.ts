@@ -96,6 +96,8 @@ export interface SharedProps {
     unreadNotifications?: number;
     /** The public VAPID key the browser needs to subscribe to web push; '' when unconfigured. */
     webPushPublicKey?: string;
+    /** CARTO basemap tiles API key for the run map; '' falls back to plain OSM tiles. */
+    cartoApiKey?: string;
     /** True when the auth user's Strava connection is live but lacks the `profile:read_all` scope needed for HR-zone sync. */
     stravaZoneScopeMissing?: boolean;
     /** True when LLM narration is globally paused, so the UI can show a soft "Temari is resting" banner. */

@@ -14,6 +14,10 @@ return [
     |
     */
 
+    'carto' => [
+        'api_key' => env('CARTO_API_KEY'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
