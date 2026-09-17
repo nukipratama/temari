@@ -144,8 +144,10 @@ form figure (TRIMP, CTL, VDOT, monotony, strain) to whole numbers — and invali
 when that digest has moved since [`AnalyzeTrendReadJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeTrendReadJob.php)
 last stamped it. Each range's cadence above still decides *when* the check runs; the fingerprint only
 decides whether that tick spends. A row with no stored fingerprint — every row generated before this
-landed — counts as unchanged, the same null-handling `DispatchPostRunAnalysis` uses for `PostRunSpeech`:
-it never mass-invalidates existing history on deploy, only forward once a range's numbers move again.
+landed — counts as **changed**, matching [`PlanNarrationRequester`](../../app/Services/AI/PlanNarrationRequester.php#L387)'s
+day-voice rule below rather than the opposite null-handling `DispatchPostRunAnalysis` uses for
+`PostRunSpeech`: each pre-existing Done read refreshes once on its next scheduled run, and the
+fingerprint gate takes over from there.
 
 **A day's own read re-bills only where the verdict actually changed.** It is requested separately
 from the season, by

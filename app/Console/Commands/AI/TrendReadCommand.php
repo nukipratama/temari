@@ -55,9 +55,12 @@ class TrendReadCommand extends Command
      * Whether this range's numbers have moved since the stored read was
      * generated, so the cadence re-narrates only a range that changed rather
      * than every active athlete on every cron tick. A row with no stamped
-     * fingerprint (not yet Done, or Done before this feature shipped) counts
-     * as unchanged, matching {@see \App\Listeners\DispatchPostRunAnalysis::materialRefreshDue()} —
-     * this never mass-invalidates existing history, only forward from here.
+     * fingerprint (every row that existed before this gate shipped) counts as
+     * changed, matching {@see \App\Services\AI\PlanNarrationRequester}'s
+     * day-voice rule — the inverse of
+     * {@see \App\Listeners\DispatchPostRunAnalysis::materialRefreshDue()} —
+     * so each existing Done read refreshes once on its next scheduled run and
+     * the fingerprint gate takes over from there.
      */
     private function materialChanged(User $user, string $range, TrainingLoad $trainingLoad): bool
     {
@@ -65,8 +68,12 @@ class TrendReadCommand extends Command
             ->forSubject(AnalysisType::TrendRead->subjectType(), $user->id, AnalysisType::TrendRead, $range)
             ->first();
 
-        if ($row === null || $row->status !== AnalysisStatus::Done || $row->content_fingerprint === null) {
+        if ($row === null || $row->status !== AnalysisStatus::Done) {
             return false;
+        }
+
+        if ($row->content_fingerprint === null) {
+            return true;
         }
 
         $totals = new TrendRangeTool($user, $range, $trainingLoad)->handle([]);

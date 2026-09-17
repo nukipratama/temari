@@ -117,8 +117,9 @@ it('dispatches each real range with its own discriminator', function (string $ra
     Carbon::setTestNow();
 })->with(AnalysisType::TREND_READ_RANGES);
 
-it('leaves an already-done 7d read untouched on the next cron run, never re-billing it', function (): void {
+it('re-dispatches a done 7d read whose stored fingerprint is null, exactly once', function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
+    Bus::fake();
 
     $user = User::factory()->seenToday()->create();
     $row = Analysis::factory()->done('holding steady this week')->create([
@@ -127,14 +128,11 @@ it('leaves an already-done 7d read untouched on the next cron run, never re-bill
         'analysis_type' => AnalysisType::TrendRead,
         'discriminator' => '7d',
     ]);
-    $updatedAt = $row->updated_at;
 
     $this->artisan('ai:trend-read', ['range' => '7d'])->assertSuccessful();
 
-    $row->refresh();
-    expect($row->status)->toBe(AnalysisStatus::Done)
-        ->and($row->content)->toBe('holding steady this week')
-        ->and($row->updated_at->eq($updatedAt))->toBeTrue();
+    Bus::assertDispatchedTimes(AnalyzeTrendReadJob::class, 1);
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });
