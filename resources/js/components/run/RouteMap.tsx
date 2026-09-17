@@ -1,20 +1,26 @@
+import { usePage } from '@inertiajs/react';
 import polylineCodec from '@mapbox/polyline';
 import { latLngBounds } from 'leaflet';
 import { useMemo, useState } from 'react';
 import { MapContainer, Polyline, TileLayer } from 'react-leaflet';
+
+import type { SharedProps } from '@/types/inertia';
 
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { PALETTE } from '@/lib/chartTokens';
 // leaflet.css lives in resources/css/app.css (@import). Importing it here would race
 // the lazy-load and leave tiles unpositioned on first render.
 
-const TILE_ATTRIBUTION =
+const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_ATTRIBUTION =
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
 
-const LIGHT_FILTER =
-    '[&_.leaflet-tile-pane]:[filter:sepia(0.35)_saturate(0.85)_hue-rotate(-6deg)_brightness(1.04)_contrast(0.96)]';
-const DARK_FILTER =
-    '[&_.leaflet-tile-pane]:[filter:invert(1)_hue-rotate(180deg)_brightness(0.9)_contrast(0.95)_saturate(0.7)]';
+const CARTO_VOYAGER_URL =
+    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+const CARTO_DARK_MATTER_URL =
+    'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png';
+const CARTO_ATTRIBUTION =
+    '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
 
 interface RouteMapProps {
     polyline: string;
@@ -28,6 +34,7 @@ export default function RouteMap({
 }: Readonly<RouteMapProps>) {
     const [active, setActive] = useState(false);
     const isDark = useIsDarkGround();
+    const cartoApiKey = usePage<SharedProps>().props.cartoApiKey ?? '';
     const positions = useMemo<Array<[number, number]>>(
         () => polylineCodec.decode(polyline) as Array<[number, number]>,
         [polyline],
@@ -45,6 +52,14 @@ export default function RouteMap({
         ? `Run route map, ${distanceKm} km`
         : 'Run route map';
 
+    // Anonymous CARTO tiles now render an "API key required" watermark, so the
+    // CARTO style only applies once the owner has configured a key; empty
+    // falls back to plain OSM tiles rather than show that watermark.
+    const tileUrl = cartoApiKey
+        ? `${isDark ? CARTO_DARK_MATTER_URL : CARTO_VOYAGER_URL}?key=${cartoApiKey}`
+        : OSM_URL;
+    const tileAttribution = cartoApiKey ? CARTO_ATTRIBUTION : OSM_ATTRIBUTION;
+
     // `isolate` confines Leaflet's internal pane/control z-indexes (up to ~1000)
     // to this box so they don't paint over the fixed bottom nav. `role="img"` sits
     // on its own inner div (not this wrapper) — screen readers flatten a
@@ -52,11 +67,7 @@ export default function RouteMap({
     // the tap-to-activate button below from keyboard/AT users entirely.
     return (
         <div className="relative isolate overflow-hidden">
-            <div
-                role="img"
-                aria-label={mapLabel}
-                className={isDark ? DARK_FILTER : LIGHT_FILTER}
-            >
+            <div role="img" aria-label={mapLabel}>
                 <MapContainer
                     bounds={latLngBounds(positions)}
                     boundsOptions={{ padding: [20, 20] }}
@@ -64,14 +75,10 @@ export default function RouteMap({
                     style={{ height: '280px', width: '100%' }}
                     attributionControl
                 >
-                    {/* OSMF main tile server. *.basemaps.cartocdn.com's free Voyager/Dark
-                        Matter styles now return a watermarked "API key required" tile for
-                        anonymous requests (verified live) — theming is a CSS filter on
-                        this one source instead, sepia-warm on light and invert-based on
-                        dark, rather than a second tile vendor. */}
                     <TileLayer
-                        attribution={TILE_ATTRIBUTION}
-                        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution={tileAttribution}
+                        url={tileUrl}
+                        subdomains="abcd"
                         maxZoom={19}
                         eventHandlers={{
                             /* v8 ignore next 3 — fires only when the network/tile

@@ -2,6 +2,8 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { setMockPage } from '@/test/setup';
+
 vi.mock('react-leaflet', () => ({
     MapContainer: ({ children }: { children?: React.ReactNode }) => (
         <div data-testid="map-container">{children}</div>
@@ -91,36 +93,64 @@ describe('RouteMap', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('applies the warm sepia tile filter on the light ground', () => {
+    it('falls back to plain OSM tiles when no CARTO key is configured', () => {
         setTheme('light');
+        setMockPage({ cartoApiKey: '' });
         render(<RouteMap polyline="good" />);
-        const mapImg = screen.getByRole('img', { name: 'Run route map' });
-        expect(mapImg.className).toContain('sepia(0.35)');
-        expect(mapImg.className).not.toContain('invert(1)');
-        expect(
-            screen.getByTestId('tile-layer').getAttribute('data-attribution'),
-        ).toContain('OpenStreetMap');
+        const tile = screen.getByTestId('tile-layer');
+        expect(tile.getAttribute('data-url')).toBe(
+            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        );
+        expect(tile.getAttribute('data-attribution')).toContain(
+            'OpenStreetMap',
+        );
+        expect(tile.getAttribute('data-attribution')).not.toContain('CARTO');
     });
 
-    it('applies an invert-based dark tile filter on the dark ground', () => {
+    it('uses the CARTO Voyager tiles on the light ground when a key is configured', () => {
+        setTheme('light');
+        setMockPage({ cartoApiKey: 'test-key' });
+        render(<RouteMap polyline="good" />);
+        const tile = screen.getByTestId('tile-layer');
+        expect(tile.getAttribute('data-url')).toBe(
+            'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=test-key',
+        );
+        expect(tile.getAttribute('data-attribution')).toContain('CARTO');
+        expect(tile.getAttribute('data-attribution')).toContain(
+            'OpenStreetMap',
+        );
+    });
+
+    it('uses the CARTO Dark Matter tiles on the dark ground when a key is configured', () => {
         setTheme('dark');
+        setMockPage({ cartoApiKey: 'test-key' });
         render(<RouteMap polyline="good" />);
-        const mapImg = screen.getByRole('img', { name: 'Run route map' });
-        expect(mapImg.className).toContain('invert(1)');
-        expect(mapImg.className).not.toContain('sepia(0.35)');
-        expect(
-            screen.getByTestId('tile-layer').getAttribute('data-attribution'),
-        ).toContain('OpenStreetMap');
+        const tile = screen.getByTestId('tile-layer');
+        expect(tile.getAttribute('data-url')).toBe(
+            'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=test-key',
+        );
+        expect(tile.getAttribute('data-attribution')).toContain('CARTO');
+        expect(tile.getAttribute('data-attribution')).toContain(
+            'OpenStreetMap',
+        );
     });
 
-    it('flips the tile filter live when the ground changes while mounted', async () => {
+    it('flips the CARTO style live when the ground changes while mounted', async () => {
         setTheme('light');
+        setMockPage({ cartoApiKey: 'test-key' });
         render(<RouteMap polyline="good" />);
-        const mapImg = screen.getByRole('img', { name: 'Run route map' });
-        expect(mapImg.className).toContain('sepia(0.35)');
+        expect(screen.getByTestId('tile-layer').getAttribute('data-url')).toBe(
+            'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=test-key',
+        );
 
         act(() => setTheme('dark'));
 
-        await vi.waitFor(() => expect(mapImg.className).toContain('invert(1)'));
+        await vi.waitFor(() =>
+            expect(
+                screen.getByTestId('tile-layer').getAttribute('data-url'),
+            ).toBe(
+                'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=test-key',
+            ),
+        );
     });
 });
