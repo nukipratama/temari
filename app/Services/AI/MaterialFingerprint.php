@@ -83,6 +83,19 @@ final class MaterialFingerprint
         ]);
     }
 
+    /**
+     * What a season's blurb newly needs to react to: whether the athlete has
+     * held {@see \App\Services\Run\Plan\SustainedAheadOfRacePace} long enough
+     * that Temari should raise the goal. Everything else about a season's
+     * material (race, window, goals) is fixed at creation — a mode switch
+     * opens a new {@see \App\Models\Season} row rather than mutating this one
+     * — so that one boolean is the whole reason this fingerprint exists.
+     */
+    public static function forSeason(bool $sustainedAheadOfRacePace): string
+    {
+        return self::digest(['sustained_ahead_of_race_pace' => $sustainedAheadOfRacePace]);
+    }
+
     public static function forActivity(Activity $activity): string
     {
         $detail = $activity->detail;

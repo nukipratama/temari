@@ -18,6 +18,8 @@ use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Plan\SessionMatcher;
+use App\Services\Run\Plan\SustainedAheadOfRacePace;
+use Illuminate\Support\Carbon;
 
 /**
  * Rule-based content per AnalysisType. Reached in production, not only by the
@@ -37,8 +39,10 @@ use App\Services\Run\Plan\SessionMatcher;
  */
 final readonly class RuleBasedNarrationFiller
 {
-    public function __construct(private SessionMatcher $sessionMatcher)
-    {
+    public function __construct(
+        private SessionMatcher $sessionMatcher,
+        private SustainedAheadOfRacePace $sustainedAheadOfRacePace,
+    ) {
     }
 
     public function fillFor(Analysis $row): string
@@ -461,11 +465,19 @@ final readonly class RuleBasedNarrationFiller
         $race = $season->raceGoal;
         if ($race !== null) {
             $raceName = $race->name ?? 'the race';
+            $seed = $this->seedFor($row);
+
+            if ($this->sustainedAheadOfRacePace->forUser($season->user_id, Carbon::today()->startOfWeek(Carbon::MONDAY))) {
+                return $this->select([
+                    "building toward {$raceName}. you've been sitting inside your goal time for a couple of weeks now — that number might be worth revisiting.",
+                    "the arc that gets you to {$raceName}. your pace has held ahead of goal for a while, so the goal itself might be worth a second look.",
+                ], $seed);
+            }
 
             return $this->select([
                 "building toward {$raceName}.",
                 "the arc that gets you to {$raceName}.",
-            ], $this->seedFor($row));
+            ], $seed);
         }
 
         return $this->select([

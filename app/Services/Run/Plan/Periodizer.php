@@ -101,7 +101,6 @@ final readonly class Periodizer
                 $inputs->longRunDay,
                 $inputs->projectedRaceSeconds,
                 $inputs->raceDate,
-                $inputs->adaptation['reason']->keepsAQualitySession(),
             );
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier']];

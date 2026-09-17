@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\AdaptationReason;
 use App\Enums\Badge;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
@@ -9,6 +10,7 @@ use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\RunCard;
@@ -18,6 +20,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\RuleBased\RuleBasedRunInsights;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
@@ -411,6 +414,32 @@ it('names the race for a race-oriented season', function (): void {
     $voice = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id));
 
     expect($voice)->toContain('Jakarta Half');
+});
+
+it('mentions the goal only once sustained-ahead has actually held', function (): void {
+    $race = RaceGoal::factory()->create(['name' => 'Jakarta Half']);
+    $season = Season::factory()->create(['race_goal_id' => $race->id]);
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+
+    PlanAdaptation::factory()->for($season->user)->create([
+        'week_start' => $weekStart->toDateString(),
+        'reason' => AdaptationReason::AheadOfRacePace,
+    ]);
+
+    $notYetSustained = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id));
+    expect($notYetSustained)->not->toContain('worth revisiting')
+        ->and($notYetSustained)->not->toContain('second look');
+
+    PlanAdaptation::factory()->for($season->user)->create([
+        'week_start' => $weekStart->copy()->subWeek()->toDateString(),
+        'reason' => AdaptationReason::AheadOfRacePace,
+    ]);
+
+    $sustained = app(RuleBasedNarrationFiller::class)->fillFor(
+        fillerRow(AnalysisType::PlanSeasonVoice, $season->id, 'again'),
+    );
+    expect($sustained)->toContain('Jakarta Half')
+        ->and($sustained)->toMatch('/worth revisiting|second look/');
 });
 
 it('frames a self-scaled season as base-building, not a countdown', function (): void {

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\AdaptationReason;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Models\AI\Analysis;
@@ -85,7 +86,7 @@ it('requests season narration only when a Season exists', function (): void {
     );
 });
 
-it('leaves an already-Done day row untouched, and re-requests season narration', function (): void {
+it('leaves an already-Done day row untouched, and leaves an unchanged season row alone', function (): void {
     $user = User::factory()->create();
     $today = Carbon::today()->toDateString();
     PlannedSession::factory()->for($user)->create(['date' => $today, 'status' => PlannedSessionStatus::Done]);
@@ -96,11 +97,14 @@ it('leaves an already-Done day row untouched, and re-requests season narration',
         'discriminator' => $today,
     ]);
     $season = Season::factory()->for($user)->create();
+    // Stamped with the fingerprint of the current (not sustained-ahead) state,
+    // so this row is genuinely unchanged rather than merely never-fingerprinted.
     Analysis::factory()->done('season content')->create([
         'subject_type' => Season::class,
         'subject_id' => $season->id,
         'analysis_type' => AnalysisType::PlanSeasonVoice,
         'discriminator' => null,
+        'content_fingerprint' => MaterialFingerprint::forSeason(false),
     ]);
 
     $this->requester->requestForCurrentWeek($user, Carbon::today());
@@ -117,6 +121,62 @@ it('leaves an already-Done day row untouched, and re-requests season narration',
         ->and($seasonRow->status)->toBe(AnalysisStatus::Done) // idempotent: AnalysisService leaves it alone
         ->and($seasonRow->content)->toBe('season content');
     Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
+});
+
+/**
+ * #933: a Done season row from before the sustained-ahead signal existed
+ * carries no fingerprint at all. That reads as changed (same precedent as
+ * the trend-read fingerprint's own introduction), so every season re-narrates
+ * once rather than silently never mentioning a goal already held for weeks.
+ */
+it('re-narrates an already-Done season row once, the first time it carries no fingerprint', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create();
+    Analysis::factory()->done('season content')->create([
+        'subject_type' => Season::class,
+        'subject_id' => $season->id,
+        'analysis_type' => AnalysisType::PlanSeasonVoice,
+        'discriminator' => null,
+    ]);
+
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+
+    Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class);
+});
+
+/**
+ * #933: two consecutive AheadOfRacePace weeks flip the signal, which must
+ * invalidate an already-narrated, already-fingerprinted season row exactly
+ * once -- never on the way in, and never a second time once it has re-narrated.
+ */
+it('invalidates the season row exactly once when the sustained-ahead signal flips', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    Analysis::factory()->done('steady arc')->create([
+        'subject_type' => Season::class,
+        'subject_id' => $season->id,
+        'analysis_type' => AnalysisType::PlanSeasonVoice,
+        'discriminator' => null,
+        'content_fingerprint' => MaterialFingerprint::forSeason(false),
+    ]);
+
+    // Not sustained yet: one ahead week, no flip.
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => $weekStart->toDateString(),
+        'reason' => AdaptationReason::AheadOfRacePace,
+    ]);
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
+
+    // Sustained now: the second consecutive ahead week flips the fingerprint.
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => $weekStart->copy()->subWeek()->toDateString(),
+        'reason' => AdaptationReason::AheadOfRacePace,
+    ]);
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+    Bus::assertDispatchedTimes(AnalyzePlanSeasonVoiceJob::class, 1);
 });
 
 it('re-narrates a single day via requestDayNarration', function (): void {

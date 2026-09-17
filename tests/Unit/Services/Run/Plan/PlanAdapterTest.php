@@ -135,21 +135,27 @@ it('adds a quality session when the projection is behind the goal time', functio
         ->and($decision['deload'])->toBeFalse();
 });
 
-it('drops a quality session when the projection is already inside the goal time', function (): void {
+it('keeps the quality count when the projection is already inside the goal time', function (): void {
     $decision = decide(raceGapRatio: 0.9);
 
     expect($decision['reason'])->toBe(AdaptationReason::AheadOfRacePace)
-        ->and($decision['quality_delta'])->toBe(-1);
+        ->and($decision['quality_delta'])->toBe(0);
 });
 
-it('relaxes rather than removes the last quality session when the athlete is ahead of race pace', function (): void {
+it('still names the ahead-of-pace reason even though the plan does not change', function (): void {
     $ahead = decide(raceGapRatio: 0.9)['reason'];
 
-    expect($ahead->keepsAQualitySession())->toBeTrue()
-        ->and(AdaptationReason::RanTooHard->keepsAQualitySession())->toBeFalse()
-        ->and(AdaptationReason::BehindRacePace->keepsAQualitySession())->toBeFalse()
-        ->and($ahead->headline())->toBe('one quality session')
-        ->and($ahead->detail(100))->toContain('eased toward goal pace rather than dropped');
+    expect($ahead->headline())->toBe('ahead of pace')
+        ->and($ahead->detail(100))->toContain('not a reason to back off');
+});
+
+// Being ahead is fitness feedback, not a red flag: only the fatigue-driven
+// reasons still cost a quality session.
+it('still drops a quality session through the fatigue trigger even while ahead of race pace', function (): void {
+    $decision = decide(raggedDays: PlanAdapter::RAGGED_DAYS_MIN, raceGapRatio: 0.9);
+
+    expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
+        ->and($decision['quality_delta'])->toBe(-1);
 });
 
 it('holds steady inside the race-gap margin', function (): void {
