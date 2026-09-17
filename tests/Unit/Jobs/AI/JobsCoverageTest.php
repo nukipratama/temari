@@ -12,11 +12,9 @@ use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
-use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
-use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\Season;
@@ -31,7 +29,6 @@ use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PlanDayVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
-use App\Services\AI\Narrators\PlanWeekVoiceNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -272,26 +269,6 @@ it('AnalyzePlanDayVoiceJob deletes its row when no PlannedSession exists for tha
     // Not Failed: nothing can ever fill a day the plan does not contain, so the
     // row is obsolete rather than failed. See ObsoleteAnalysisException.
     expect($row->fresh())->toBeNull();
-});
-
-// ── AnalyzePlanWeekVoiceJob (row) ──────────────────────────────────────
-
-it('AnalyzePlanWeekVoiceJob returns voice', function (): void {
-    $user = User::factory()->create();
-    $adaptation = PlanAdaptation::factory()->for($user)->create();
-    mockNarrator(PlanWeekVoiceNarrator::class, 'steady week ahead.');
-
-    $row = rowOf(PlanAdaptation::class, $adaptation->id, AnalysisType::PlanWeekVoice);
-    new AnalyzePlanWeekVoiceJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->content)->toBe('steady week ahead.');
-});
-
-it('AnalyzePlanWeekVoiceJob throws when adaptation missing', function (): void {
-    $row = rowOf(PlanAdaptation::class, 99999, AnalysisType::PlanWeekVoice);
-    new AnalyzePlanWeekVoiceJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 // ── AnalyzePlanSeasonVoiceJob (row) ─────────────────────────────────────

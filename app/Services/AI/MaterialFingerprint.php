@@ -7,7 +7,6 @@ namespace App\Services\AI;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
-use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\StoryLine;
 use App\Enums\SessionType;
@@ -76,22 +75,6 @@ final class MaterialFingerprint
             'ceiling' => $ceiling->value,
             'clamped_to' => $clampedTo->value,
             'has_run_today' => $hasRunToday,
-        ]);
-    }
-
-    /**
-     * The material a week's plan blurb speaks to, mirroring
-     * {@see \App\Services\AI\Agent\Tools\PlanWeekTool}. `headline` and `detail`
-     * are derived from `reason` and `adherence_pct`, so fingerprinting those two
-     * covers them.
-     */
-    public static function forPlanAdaptation(PlanAdaptation $adaptation): string
-    {
-        return self::digest([
-            'reason' => $adaptation->reason->value,
-            'deload' => (bool) $adaptation->deload,
-            'quality_delta' => $adaptation->quality_delta,
-            'adherence_pct' => self::bucket($adaptation->adherence_pct),
         ]);
     }
 

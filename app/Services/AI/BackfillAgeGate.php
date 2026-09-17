@@ -73,7 +73,6 @@ class BackfillAgeGate
             // Same shape: plan narration is always about the current week or
             // season as of now, never a fixed past date to age out.
             AnalysisType::PlanDayVoice,
-            AnalysisType::PlanWeekVoice,
             AnalysisType::PlanSeasonVoice => false,
         };
     }
