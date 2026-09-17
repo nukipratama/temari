@@ -38,4 +38,12 @@ describe('TemariTake', () => {
             screen.queryByText('Base has been steady, no red flags.'),
         ).not.toBeInTheDocument();
     });
+
+    /** #939: the day row overrides the label to "Temari's read"; every other caller keeps the default. */
+    it('renders a custom label in place of the default', () => {
+        render(<TemariTake analysis={analysis()} label="Temari's read" />);
+
+        expect(screen.getByText("Temari's read")).toBeInTheDocument();
+        expect(screen.queryByText("Temari's take")).not.toBeInTheDocument();
+    });
 });

@@ -2,8 +2,25 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PlanDay } from '@/lib/plan';
+import type { AnalysisPayload } from '@/types/inertia';
 
 import WeekDayRow from './WeekDayRow';
+
+function narrationPayload(
+    overrides: Partial<AnalysisPayload> = {},
+): AnalysisPayload {
+    return {
+        id: 1,
+        status: 'done',
+        content: 'easy all the way, tempo block never happened.',
+        type: 'plan_day_voice',
+        is_zone_dependent: false,
+        subject_type: 'plan_day_voice_user_day',
+        subject_id: 1,
+        discriminator: '2026-06-18',
+        ...overrides,
+    } as AnalysisPayload;
+}
 
 const TODAY = '2026-06-17';
 
@@ -200,6 +217,25 @@ describe('WeekDayRow', () => {
         renderRow();
 
         expect(screen.queryByText('Done')).not.toBeInTheDocument();
+    });
+
+    /**
+     * #939: the day's take is labelled "Temari's read", not "Temari's take" —
+     * the backend only ever hands this row a `narration` payload once the
+     * day is credited (see PlanNarrationRequesterTest), so the row itself
+     * renders whatever it is given.
+     */
+    it("labels a credited day's narration as Temari's read once expanded", () => {
+        renderRow({
+            day: day({ status: 'done' }),
+            narration: narrationPayload(),
+        });
+        expand();
+
+        expect(screen.getByText("Temari's read")).toBeInTheDocument();
+        expect(
+            screen.getByText('easy all the way, tempo block never happened.'),
+        ).toBeInTheDocument();
     });
 
     it('offers move and skip on a day still ahead', () => {

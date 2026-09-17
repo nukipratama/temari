@@ -206,7 +206,11 @@ final readonly class ComplianceScorer
      * past day would drift away from the figure it was actually judged
      * against as fitness moved.
      *
-     * @param  array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool, distance_score?: int|null, prescribed_km?: float|null}  $verdict
+     * The intent verdict and its evidence are persisted here too, so a
+     * narrator reading this row later gets the exact verdict the grade used
+     * rather than recomputing one that could drift from it.
+     *
+     * @param  array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool, distance_score?: int|null, prescribed_km?: float|null, intent?: array{verdict: IntentVerdict, evidence: array<string, int|float|string>}|null}  $verdict
      */
     public static function applyVerdict(PlannedSession $row, array $verdict): void
     {
@@ -216,6 +220,8 @@ final readonly class ComplianceScorer
             'distance_score' => $verdict['distance_score'] ?? null,
             'prescribed_km' => $verdict['prescribed_km'] ?? null,
             'ran_anyway' => $verdict['ran_anyway'],
+            'intent_verdict' => $verdict['intent']['verdict'] ?? null,
+            'intent_evidence' => $verdict['intent']['evidence'] ?? null,
         ]);
     }
 }

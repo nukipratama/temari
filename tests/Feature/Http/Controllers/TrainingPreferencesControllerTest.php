@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\ExperienceLevel;
 use App\Enums\GoalType;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Models\TrainingPreference;
 use App\Models\PlannedSession;
 use App\Services\AI\AnalysisOrigin;
@@ -136,6 +137,10 @@ it('reshapes the plan onto the run days just saved', function (): void {
     Carbon::setTestNow();
 });
 
+/**
+ * #939: saving preferences re-narrates only the season, never any day — a
+ * freshly regenerated week has no run in it yet for a day's read to speak to.
+ */
 it('attributes a saved preference\'s re-narration to the athlete, so it re-arms the row\'s retry budget', function (): void {
     Bus::fake();
     Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
@@ -146,9 +151,10 @@ it('attributes a saved preference\'s re-narration to the athlete, so it re-arms 
         ->assertSessionHasNoErrors();
 
     Bus::assertDispatched(
-        AnalyzePlanDayVoiceJob::class,
-        fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
+        AnalyzePlanSeasonVoiceJob::class,
+        fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
     );
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 
     Carbon::setTestNow();
 });

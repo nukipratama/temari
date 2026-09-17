@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
+use App\Enums\IntentVerdict;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -54,6 +55,8 @@ use Override;
  * @property PlannedSessionStatus $status
  * @property int|null $compliance_score
  * @property int|null $distance_score
+ * @property IntentVerdict|null $intent_verdict
+ * @property array<string, int|float|string>|null $intent_evidence
  * @property bool $ran_anyway
  * @property Carbon|null $rest_clamped_at
  * @property-read User $user
@@ -69,6 +72,8 @@ use Override;
     'status',
     'compliance_score',
     'distance_score',
+    'intent_verdict',
+    'intent_evidence',
     'prescribed_km',
     'clamped_km',
     'volume_multiplier',
@@ -160,6 +165,8 @@ class PlannedSession extends Model
             'status' => PlannedSessionStatus::class,
             'compliance_score' => 'integer',
             'distance_score' => 'integer',
+            'intent_verdict' => IntentVerdict::class,
+            'intent_evidence' => 'array',
             'prescribed_km' => 'float',
             'clamped_km' => 'float',
             'volume_multiplier' => 'float',

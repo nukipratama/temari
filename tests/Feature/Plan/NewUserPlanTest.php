@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisType;
@@ -128,7 +129,9 @@ it('narrates the first week when the backfill has already landed', function (): 
         'goal_type' => 'consistent',
     ])->assertSessionHasNoErrors();
 
-    Bus::assertDispatched(AnalyzePlanDayVoiceJob::class);
+    // #939: the first week has no run in it yet, so only the season narrates.
+    Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class);
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 
     Carbon::setTestNow();
 });

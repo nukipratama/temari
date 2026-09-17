@@ -3,9 +3,11 @@ title: Plan — deterministic periodizer and the Plan tab
 description: The rules-only training periodizer that fills the Plan tab, its two modes, the render-time readiness clamp, and the render-time volume redistribution
 tags: [feature, run]
 status: living
-reviewed: 2026-09-09
+reviewed: 2026-09-17
 code_refs:
   - app/Services/Run/Plan/Periodizer.php
+  - app/Services/Run/Plan/SessionIntentJudge.php
+  - app/Enums/IntentVerdict.php
   - app/Services/Run/Plan/PlanInputs.php
   - app/Services/Run/Plan/PlanInputsGatherer.php
   - app/Services/Run/Plan/PlanPageAssembler.php
@@ -37,12 +39,17 @@ code_refs:
   - app/Services/Gamification/SeasonStreakSummaryBuilder.php
   - app/Services/Run/Plan/SeasonSummaryBuilder.php
   - app/Console/Commands/Run/RegeneratePlanCommand.php
+  - app/Console/Commands/Run/RegradeSeasonCommand.php
   - app/Services/AI/PlanNarrationRequester.php
   - app/Services/AI/Narrators/PlanDayVoiceNarrator.php
   - app/Services/AI/Narrators/PlanSeasonVoiceNarrator.php
+  - app/Services/AI/Agent/Tools/PlanDayTool.php
+  - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
   - app/Jobs/AI/AnalyzePlanDayVoiceJob.php
   - app/Jobs/AI/AnalyzePlanSeasonVoiceJob.php
   - resources/js/pages/Plan.tsx
+  - resources/js/components/plan/WeekDayRow.tsx
+  - resources/js/components/plan/TemariTake.tsx
 ---
 
 # Plan — deterministic periodizer and the Plan tab
@@ -105,7 +112,7 @@ This is the *within-the-day* half of the readiness reaction; the *within-the-wee
 
 Quality work (Tempo/Interval) needs the optimistic `QualityOk` ceiling; a Long day only needs `ModerateOk` (it's a volume day, not an intensity one); Easy needs the floor above `Rest`.
 
-**The day's blurb changes register once the day is credited, and re-narrates exactly once to do it.** Before the run, `plan_day_voice` labels the prescribed session (*"tempo day, about 5.9 km"*); after it, the same block is a coach's read of what happened (*"asked for 5.9, you ran 6 at tempo pace"*). [PlanDayTool](app/Services/AI/Agent/Tools/PlanDayTool.php) carries `status`, `completed_km` and `ran_anyway` **only** once the day is credited — absent rather than null, since a key that is always present teaches the model the day is over when it is not. The re-narration is driven by the existing fingerprint gate, not a new dispatch path: [MaterialFingerprint::forPlannedSession()](app/Services/AI/MaterialFingerprint.php) adds the `status` **conditionally**, the same trick `race_distance_m` uses, so an ungraded day keeps the digest it already carries and shipping this re-narrates nobody's week. The compliance *score* is deliberately excluded: it moves with every run that lands, while the verdict is what changes the sentence. [DispatchPostRunAnalysis](app/Listeners/DispatchPostRunAnalysis.php) calls [requestDayVoiceIfChanged()](app/Services/AI/PlanNarrationRequester.php) right after `creditIfEarned()`, guarded to today's runs like the clamp voice beside it. Two consequences: a backfilled day never rewrites history at LLM prices, and a second run the same day re-narrates **only if it moves the verdict** (`partial` -> `done`, `done` -> `overreached`) — a run that improves the score inside its own band asks for nothing, because the score is not in the digest. Bounded at three narrations a day by the three credited verdicts, and in practice one. That is the gated counterpart to `requestDayNarration()`, which invalidates unconditionally because a user edit *is* the change.
+**A day shows no read until it is credited, and re-narrates exactly once to earn it** (#939, "Temari's read", superseding the ahead-of-time `plan_day_voice` label this paragraph used to describe). Before a run lands the day shows no `plan_day_voice` block at all — no row, no request, no skeleton; once it is credited the block appears as a coach's read of what happened (*"asked for 5.9, you ran 6 at tempo pace"*), phrasing [SessionIntentJudge](app/Services/Run/Plan/SessionIntentJudge.php)'s verdict from [[a-day-is-graded-on-distance-and-intent]] rather than re-deciding it. [PlanDayTool](app/Services/AI/Agent/Tools/PlanDayTool.php) carries `status`, `completed_km`, `ran_anyway` and, when there was a session to judge, `intent`/`intent_evidence` **only** once the day is credited — absent rather than null, since a key that is always present teaches the model the day is over when it is not. The intent verdict is read straight off the `PlannedSession` row (`intent_verdict`/`intent_evidence`, written by [ComplianceScorer::applyVerdict()](app/Services/Run/Plan/ComplianceScorer.php)) rather than recomputed, so the read can never disagree with the grade. The re-narration is driven by the existing fingerprint gate: [MaterialFingerprint::forPlannedSession()](app/Services/AI/MaterialFingerprint.php) adds `status` and `intent_verdict` **conditionally**, the same trick `race_distance_m` uses, so an ungraded day keeps the digest it already carries and shipping this re-narrates nobody's week. The compliance *score* is deliberately excluded: it moves with every run that lands, while the verdict is what changes the sentence. [DispatchPostRunAnalysis](app/Listeners/DispatchPostRunAnalysis.php) calls [requestDayVoiceIfChanged()](app/Services/AI/PlanNarrationRequester.php) right after `creditIfEarned()`, guarded to today's runs like the clamp voice beside it, and only once the day is actually credited — this is the *only* site that ever dispatches `plan_day_voice` to the LLM. Two consequences: a backfilled day never rewrites history at LLM prices, and a second run the same day re-narrates **only if it moves the verdict or the intent** (`partial` -> `done`, `done` -> `overreached`, `hit` -> `missed`) — a run that improves the score inside its own band asks for nothing, because the score is not in the digest. That is the gated counterpart to `requestDayNarration()`, which invalidates unconditionally because a user edit *is* the change — though an edit only re-narrates when the touched day is itself already credited, since an edit almost always touches a day still ahead. Every past day of the current season gets the same read filled in rule-based, never the LLM, by `plan:regrade-season` — see "Plan narration" below.
 
 **Once the day is credited the step-down disappears.** [Readiness::assess()](app/Services/Run/Metrics/Readiness.php) caps to `EasyOnly` on `ranToday` alone, so finishing the session is itself what clamps it: a tempo run at 102% rendered beside *"today backs off to easy"*, which reads as though the athlete should have done less. It once became a menu for a second outing instead; nobody asked for one. [PlanRenderer::dayPayload()](app/Services/Run/Plan/PlanRenderer.php) now ships `clamp: null` on a credited day, and the day states its own result through `kmLabel` — the recorded prescription against what was run. The narrated `plan_clamp_voice` line goes with it: it was written for the forecast, and re-narrating would bill an LLM call from a GET. See [[a-credited-day-shows-its-result]].
 
@@ -186,15 +193,44 @@ collapsed "Temari's take"; the owner cut it 2026-09-17 (#947) since it added no 
 deterministic display didn't already carry. See [[llm-triggers]]'s Retired surfaces for what
 removing the `AnalysisType` case did to existing `plan_week_voice` rows.
 
-**Day narration covers only the current week's 7 days, never the full 12-week horizon.** `PlanDayVoice`'s subject is a synthetic `user_id` + `Y-m-d` discriminator key (mirroring `BriefingMascotVoice`'s own per-user-per-day shape), not the `PlannedSession` row's own id — that row's id is *not* stable across weekly regenerations (`Periodizer::regenerate()` deletes and recreates every unpinned future-date row), so keying on it would silently orphan a day's narration history every Monday even when the actual prescribed session never changed. Editing a day (`PlanController::update()`, skip or move) re-requests that day's narration — both days' narration, for a move — whenever the edited date falls within the current week, so the blurb never keeps describing a session the athlete just changed.
+**Day narration is a read, requested only once a day has a run — never ahead of time** (#939). A day
+not yet run, a missed day, or an excused day shows no `plan_day_voice` block and asks for no LLM
+call; a rest day run anyway still has a run, so it still gets one. `PlanDayVoice`'s subject is a
+synthetic `user_id` + `Y-m-d` discriminator key (mirroring `BriefingMascotVoice`'s own per-user-per-day
+shape), not the `PlannedSession` row's own id — that row's id is *not* stable across weekly
+regenerations (`Periodizer::regenerate()` deletes and recreates every unpinned future-date row), so
+keying on it would silently orphan a day's narration history every Monday even when the actual
+prescribed session never changed. Editing a day (`PlanController::update()`, skip or move) re-requests
+that day's narration only when the touched day is already credited — an edit almost always touches a
+day still ahead, which has no read to keep in sync in the first place.
 
 **Season narration attaches to `Season`**, requested on every dispatch but relying on `AnalysisService`'s own idempotency (an already-`Done`, unchanged season is left alone) rather than an explicit "did the season actually change" check.
 
-**Day narration re-bills only where the material actually changed.** The Monday sweep runs for every recently-active athlete, seven days at a time, and the periodizer frequently rewrites a week into something that reads identically — the same session type, phase and prescribed distance produce the same blurb. Each row is stamped with a [MaterialFingerprint](app/Services/AI/MaterialFingerprint.php) of what it describes (`forPlannedSession()` mirrors what [PlanDayTool](app/Services/AI/Agent/Tools/PlanDayTool.php) hands the model), written by the job through `AnalyzeRowJob::fingerprintFor()`, and [PlanNarrationRequester](app/Services/AI/PlanNarrationRequester.php) invalidates a row only when the fingerprint no longer matches. A row with **no** stored fingerprint counts as changed — the inverse of the per-run rule in `DispatchPostRunAnalysis`, deliberately: only the rule-based paths leave the column null (a cost-capped or content-filtered day), and those must stay eligible for a real narration rather than keeping filler forever. A manual edit through `PlanController::update()` still re-narrates unconditionally, since the athlete just changed that day on purpose.
+**A day's read re-bills only where the verdict actually changed.** It is requested from exactly one
+site — [DispatchPostRunAnalysis](app/Listeners/DispatchPostRunAnalysis.php) calling
+[`requestDayVoiceIfChanged()`](app/Services/AI/PlanNarrationRequester.php) right after
+`ComplianceScorer::creditIfEarned()` credits today's run — never from the Monday sweep or a
+regenerate, which touch only the season. Each row is stamped with a
+[MaterialFingerprint](app/Services/AI/MaterialFingerprint.php) of what it describes
+(`forPlannedSession()` mirrors what [PlanDayTool](app/Services/AI/Agent/Tools/PlanDayTool.php) hands
+the model, including the intent verdict), written by the job through `AnalyzeRowJob::fingerprintFor()`,
+and [PlanNarrationRequester](app/Services/AI/PlanNarrationRequester.php) invalidates a row only when
+the fingerprint no longer matches — so a second run the same day that does not move the verdict
+re-bills nothing. A manual edit through `PlanController::update()` still re-narrates unconditionally
+once the day is credited, since the athlete just changed that day on purpose.
 
-**Dispatched from `Periodizer::regenerate()`'s two callers, never from `Periodizer.php` itself** — [PlanController::regenerate()](app/Http/Controllers/PlanController.php) (manual) and [RegeneratePlanCommand](app/Console/Commands/Run/RegeneratePlanCommand.php) (the weekly cron), via [PlanNarrationRequester](app/Services/AI/PlanNarrationRequester.php). Literally dispatching narration inside `Periodizer.php` would contradict its own "no LLM call anywhere in this feature" heritage; keeping the requester one layer up preserves that boundary while still tying narration to the exact moment the underlying facts change. `RegeneratePlanCommand` narrates the week of every athlete [RecentlyActiveUsers](app/Actions/AI/RecentlyActiveUsers.php) returns — demo excluded, and only someone who opened the app inside the active window ([[narration-follows-the-athlete-not-the-run]]) — while the regenerate half stays exactly as free as before and still runs for everyone. The narration half is real per-user LLM cost, so it's classified `BILLING` in [DemoBillingExclusionTest](tests/Feature/Console/DemoBillingExclusionTest.php) even though the command's own regenerate call is unconditional. The demo account's own Plan page instead fills every block rule-based on view (`PlanNarrationRequester::ensureDemoFilled()`), the same path its manual "Reread" already resolves through, so it never shows a perpetually-Pending block.
+**Past days of the current season get the same read, rule-based, in one deploy-time step.**
+`plan:regrade-season` ([RegradeSeasonCommand](app/Console/Commands/Run/RegradeSeasonCommand.php))
+backfills a `plan_day_voice` row for every credited day it regrades via
+[`PlanNarrationRequester::backfillRuleBasedRead()`](app/Services/AI/PlanNarrationRequester.php),
+phrasing the same verdict [RuleBasedNarrationFiller::planDayVoice()](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php)
+uses for the demo account — never the LLM, and idempotent to re-run. The demo account's own Plan
+page fills a credited day's read the same rule-based way, through
+`PlanNarrationRequester::ensureDemoFilled()`, the path its manual "Reread" already resolves through.
 
-**The manual Regenerate button carries a real rate limit, unlike the button that predates this slice.** A full regenerate can dispatch up to 8 narration rows (7 days, the season) — real LLM cost per click — so `PlanController::regenerate()` now checks a dedicated one-hour cooldown (`PlanNarrationRequester::regenerateCooldownRemaining()`/`startRegenerateCooldown()`) before calling the periodizer, started immediately rather than waiting for the async narration jobs to finish (closing the queue-latency window where two rapid clicks could both slip through). It's a standalone `Cooldown` key, not `Analysis::cooldownKey()` reused — every narration row's own completion unconditionally starts its own shorter (15-minute) cooldown in `AnalysisService::markDone()`, so sharing the key would have this longer window silently overwritten within moments. The weekly cron starts the same cooldown after its own regenerate (so a manual click right after Monday's auto-run is still correctly rate-limited) but never checks it — the cron always runs.
+**Season narration is dispatched from `Periodizer::regenerate()`'s two callers, never from `Periodizer.php` itself** — [PlanController::regenerate()](app/Http/Controllers/PlanController.php) (manual) and [RegeneratePlanCommand](app/Console/Commands/Run/RegeneratePlanCommand.php) (the weekly cron), via [PlanNarrationRequester](app/Services/AI/PlanNarrationRequester.php). Literally dispatching narration inside `Periodizer.php` would contradict its own "no LLM call anywhere in this feature" heritage; keeping the requester one layer up preserves that boundary while still tying narration to the exact moment the underlying facts change. `RegeneratePlanCommand` narrates the season of every athlete [RecentlyActiveUsers](app/Actions/AI/RecentlyActiveUsers.php) returns — demo excluded, and only someone who opened the app inside the active window ([[narration-follows-the-athlete-not-the-run]]) — while the regenerate half stays exactly as free as before and still runs for everyone. The narration half is real per-user LLM cost, so it's classified `BILLING` in [DemoBillingExclusionTest](tests/Feature/Console/DemoBillingExclusionTest.php) even though the command's own regenerate call is unconditional.
+
+**The manual Regenerate button still carries a real rate limit.** A full regenerate dispatches the season narration row — real LLM cost per click — so `PlanController::regenerate()` checks a dedicated one-hour cooldown (`PlanNarrationRequester::regenerateCooldownRemaining()`/`startRegenerateCooldown()`) before calling the periodizer, started immediately rather than waiting for the async narration job to finish (closing the queue-latency window where two rapid clicks could both slip through). It's a standalone `Cooldown` key, not `Analysis::cooldownKey()` reused — every narration row's own completion unconditionally starts its own shorter (15-minute) cooldown in `AnalysisService::markDone()`, so sharing the key would have this longer window silently overwritten within moments. The weekly cron starts the same cooldown after its own regenerate (so a manual click right after Monday's auto-run is still correctly rate-limited) but never checks it — the cron always runs.
 
 ### No season track on the page
 

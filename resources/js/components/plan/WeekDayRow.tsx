@@ -247,6 +247,7 @@ export default function WeekDayRow({
                     narration && (
                         <TemariTake
                             analysis={narration}
+                            label="Temari's read"
                             allowReanalyze={false}
                         />
                     )

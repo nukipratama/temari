@@ -7,6 +7,7 @@ use App\Actions\AI\KickoffWeeklyRecaps;
 use App\Actions\AI\RequestTodaysBriefing;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\KickoffRecapsJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -74,7 +75,8 @@ it('stamps backfilled_at as the last link of the connect chain', function (): vo
     expect($user->fresh()->backfilled_at)->not->toBeNull();
 });
 
-it('narrates the first week when onboarding already wrote a plan', function (): void {
+/** #939: the first week has no run in it yet, so only the season narrates. */
+it('narrates the season, never a day, when onboarding already wrote a plan', function (): void {
     Bus::fake();
     $user = User::factory()->create();
     PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
@@ -82,10 +84,8 @@ it('narrates the first week when onboarding already wrote a plan', function (): 
 
     new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
 
-    Bus::assertDispatched(
-        AnalyzePlanDayVoiceJob::class,
-        fn (AnalyzePlanDayVoiceJob $job): bool => Analysis::query()->find($job->analysisId)?->subject_id === $user->id,
-    );
+    Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class);
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 });
 
 /**
@@ -106,8 +106,8 @@ it('re-sizes the plan against the history the backfill just landed', function ()
         ->toBeGreaterThan(1.0);
 });
 
-/** Narrating first would describe a week that is about to be replaced. */
-it('re-sizes before narrating, so the described week is the week that stands', function (): void {
+/** Narrating first would describe a season that is about to be replaced. */
+it('re-sizes before narrating, so the described season is the one that stands', function (): void {
     Bus::fake();
     Carbon::setTestNow(Carbon::parse('2026-09-07'));
     $user = User::factory()->create();
@@ -116,12 +116,6 @@ it('re-sizes before narrating, so the described week is the week that stands', f
 
     new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
 
-    $narrated = Analysis::query()
-        ->where('subject_id', $user->id)
-        ->where('analysis_type', AnalysisType::PlanDayVoice)
-        ->pluck('discriminator')
-        ->all();
-
     $plannedThisWeek = PlannedSession::query()
         ->where('user_id', $user->id)
         ->whereBetween('date', [Carbon::today(), Carbon::today()->endOfWeek(Carbon::SUNDAY)])
@@ -129,8 +123,11 @@ it('re-sizes before narrating, so the described week is the week that stands', f
         ->map(fn (Carbon $date): string => $date->toDateString())
         ->all();
 
-    expect($narrated)->toEqualCanonicalizing($plannedThisWeek)
-        ->and($plannedThisWeek)->not->toHaveCount(1);
+    // The single cold-start row is gone, replaced by a full re-sized week —
+    // proof the resize ran before the season (the only thing left to narrate)
+    // was requested.
+    expect($plannedThisWeek)->not->toHaveCount(1);
+    Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class);
 
     Carbon::setTestNow();
 });

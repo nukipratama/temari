@@ -34,7 +34,13 @@ beforeEach(function (): void {
 });
 afterEach(fn () => Carbon::setTestNow());
 
-it('requests narration for every planned day of the current week', function (): void {
+/**
+ * #939: ahead-of-time day narration was cut entirely. A day gets a read only
+ * once it has a run credited on it, requested separately by
+ * {@see PlanNarrationRequester::requestDayVoiceIfChanged()} — the week sweep
+ * never touches `plan_day_voice`, whatever the week's own planned sessions are.
+ */
+it('requests no day narration at all for the current week, whatever the week holds', function (): void {
     $user = User::factory()->create();
     $monday = Carbon::today()->startOfWeek(Carbon::MONDAY);
     foreach (range(0, 6) as $offset) {
@@ -43,26 +49,12 @@ it('requests narration for every planned day of the current week', function (): 
 
     $this->requester->requestForCurrentWeek($user, Carbon::today());
 
-    Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 7);
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
     expect(Analysis::query()
         ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
         ->where('subject_id', $user->id)
         ->where('analysis_type', AnalysisType::PlanDayVoice)
-        ->count())->toBe(7);
-});
-
-it('skips a day the plan prescribes nothing for, rather than requesting a narration with no material', function (): void {
-    $user = User::factory()->create();
-    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
-
-    $this->requester->requestForCurrentWeek($user, Carbon::today());
-
-    Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 1);
-    expect(Analysis::query()
-        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
-        ->where('subject_id', $user->id)
-        ->where('analysis_type', AnalysisType::PlanDayVoice)
-        ->pluck('discriminator')->all())->toBe([Carbon::today()->toDateString()]);
+        ->count())->toBe(0);
 });
 
 /**
@@ -93,10 +85,10 @@ it('requests season narration only when a Season exists', function (): void {
     );
 });
 
-it('invalidates an already-Done day row on the next request, but leaves season alone', function (): void {
+it('leaves an already-Done day row untouched, and re-requests season narration', function (): void {
     $user = User::factory()->create();
     $today = Carbon::today()->toDateString();
-    PlannedSession::factory()->for($user)->create(['date' => $today]);
+    PlannedSession::factory()->for($user)->create(['date' => $today, 'status' => PlannedSessionStatus::Done]);
     Analysis::factory()->done('yesterday\'s content')->create([
         'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
@@ -120,9 +112,11 @@ it('invalidates an already-Done day row on the next request, but leaves season a
         ->firstOrFail();
     $seasonRow = Analysis::query()->where('subject_type', Season::class)->where('subject_id', $season->id)->firstOrFail();
 
-    expect($dayRow->status)->toBe(AnalysisStatus::Queued) // invalidated, re-dispatched
-        ->and($seasonRow->status)->toBe(AnalysisStatus::Done) // left alone
+    expect($dayRow->status)->toBe(AnalysisStatus::Done) // never touched by the week sweep
+        ->and($dayRow->content)->toBe('yesterday\'s content')
+        ->and($seasonRow->status)->toBe(AnalysisStatus::Done) // idempotent: AnalysisService leaves it alone
         ->and($seasonRow->content)->toBe('season content');
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 });
 
 it('re-narrates a single day via requestDayNarration', function (): void {
@@ -204,9 +198,10 @@ describe('payloadsForCurrentWeek', function (): void {
         expect($payloads['season'])->toBeNull();
     });
 
-    it('returns the real content once rows exist', function (): void {
+    it('returns the real content once rows exist for a credited day', function (): void {
         $user = User::factory()->create();
         $today = Carbon::today()->toDateString();
+        PlannedSession::factory()->for($user)->create(['date' => $today, 'status' => PlannedSessionStatus::Done]);
         Analysis::factory()->done('long run today')->create([
             'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
             'subject_id' => $user->id,
@@ -217,6 +212,21 @@ describe('payloadsForCurrentWeek', function (): void {
         $payloads = $this->requester->payloadsForCurrentWeek($user, Carbon::today());
 
         expect($payloads['days'][$today]['content'])->toBe('long run today');
+    });
+
+    /** #939: no run, no section — a day still ahead shows no read, even with a stale row sitting under it. */
+    it('omits a day that has a row but has not been credited', function (): void {
+        $user = User::factory()->create();
+        $today = Carbon::today()->toDateString();
+        PlannedSession::factory()->for($user)->create(['date' => $today, 'status' => PlannedSessionStatus::Planned]);
+        Analysis::factory()->done('tempo work today.')->create([
+            'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::PlanDayVoice,
+            'discriminator' => $today,
+        ]);
+
+        expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'])->toBe([]);
     });
 
     /** Before credit an eased day speaks through its clamp line, never a blurb written for the session it replaced. */
@@ -263,7 +273,11 @@ describe('payloadsForCurrentWeek', function (): void {
 describe('ensureDemoFilled', function (): void {
     it('fills every block rule-based, without dispatching any job', function (): void {
         $user = User::factory()->create(['is_demo' => true]);
-        PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString(), 'session_type' => 'easy']);
+        PlannedSession::factory()->for($user)->create([
+            'date' => Carbon::today()->toDateString(),
+            'session_type' => 'easy',
+            'status' => PlannedSessionStatus::Done,
+        ]);
         $season = Season::factory()->for($user)->create();
 
         $this->requester->ensureDemoFilled($user, Carbon::today());
@@ -287,6 +301,7 @@ describe('ensureDemoFilled', function (): void {
     it('leaves an already-filled row alone on a second call', function (): void {
         $user = User::factory()->create(['is_demo' => true]);
         $today = Carbon::today()->toDateString();
+        PlannedSession::factory()->for($user)->create(['date' => $today, 'status' => PlannedSessionStatus::Done]);
         Analysis::factory()->done('original demo content')->create([
             'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
             'subject_id' => $user->id,
@@ -303,6 +318,22 @@ describe('ensureDemoFilled', function (): void {
             ->firstOrFail();
 
         expect($dayRow->content)->toBe('original demo content');
+    });
+
+    /** #939: no run, no section — the demo's Plan page shows no read for a day still ahead either. */
+    it('fills no day that has not been credited', function (): void {
+        $user = User::factory()->create(['is_demo' => true]);
+        PlannedSession::factory()->for($user)->create([
+            'date' => Carbon::today()->toDateString(),
+            'status' => PlannedSessionStatus::Planned,
+        ]);
+
+        $this->requester->ensureDemoFilled($user, Carbon::today());
+
+        expect(Analysis::query()
+            ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+            ->where('subject_id', $user->id)
+            ->exists())->toBeFalse();
     });
 });
 
@@ -323,20 +354,13 @@ function stampedDay(User $user, PlannedSession $session): Analysis
     ]);
 }
 
-it('leaves an unchanged day alone instead of re-billing it every Monday', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
-    $row = stampedDay($user, $session);
-
-    $this->requester->requestForCurrentWeek($user, Carbon::today());
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('already narrated')
-        // The other six days have no planned session, so they are skipped.
-        ->and(Bus::dispatched(AnalyzePlanDayVoiceJob::class))->toHaveCount(0);
-});
-
-it('re-narrates a day whose prescribed session changed', function (): void {
+/**
+ * #939: the week sweep's fingerprint-diffing behaviour moved onto
+ * {@see PlanNarrationRequester::requestDayVoiceIfChanged()} (tested in its own
+ * describe block below) — `requestForCurrentWeek()` never re-narrates a day
+ * any more, changed, excused, or filler alike.
+ */
+it('never re-narrates any day from the week sweep, whatever moved under it', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
@@ -344,46 +368,15 @@ it('re-narrates a day whose prescribed session changed', function (): void {
     ]);
     $row = stampedDay($user, $session);
 
-    // The periodizer rewrote the week: this day is now a tempo session, so the
-    // stored blurb describes something the athlete is no longer being asked to do.
+    // The periodizer rewrote the week: this day is now a tempo session, so a
+    // stale blurb describing it would previously have been the trigger.
     $session->update(['session_type' => SessionType::Tempo]);
 
     $this->requester->requestForCurrentWeek($user, Carbon::today());
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued)
-        ->and(Bus::dispatched(AnalyzePlanDayVoiceJob::class))->toHaveCount(1);
-});
-
-it('re-narrates a day the athlete has since excused themselves from', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'skipped' => false,
-    ]);
-    $row = stampedDay($user, $session);
-
-    $session->update(['skipped' => true]);
-
-    $this->requester->requestForCurrentWeek($user, Carbon::today());
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
-});
-
-it('re-narrates a day left rule-based, since a filler line is not a narration of the material', function (): void {
-    $user = User::factory()->create();
-    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
-    // A cost-capped day: marked Done with filler and never stamped.
-    $row = Analysis::factory()->done('filler line')->create([
-        'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::PlanDayVoice,
-        'discriminator' => Carbon::today()->toDateString(),
-        'content_fingerprint' => null,
-    ]);
-
-    $this->requester->requestForCurrentWeek($user, Carbon::today());
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->toBe('already narrated');
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 });
 
 describe('requestForCurrentWeekUnlessCoolingDown', function (): void {
@@ -402,19 +395,20 @@ describe('requestForCurrentWeekUnlessCoolingDown', function (): void {
      */
     it('does not block the uncooled request path', function (): void {
         $user = User::factory()->create();
-        PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
+        $season = Season::factory()->for($user)->create();
+        $seasonRows = fn () => Analysis::query()->where('subject_type', Season::class)->where('subject_id', $season->id)->count();
 
-        // Cooled down, so the guarded call is a no-op...
+        // The first call is cooled down, so a second guarded call is a no-op...
         $this->requester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
-        Analysis::query()->where('subject_id', $user->id)->delete();
+        Analysis::query()->where('subject_type', Season::class)->where('subject_id', $season->id)->delete();
         expect($this->requester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today()))->toBeFalse()
-            ->and(Analysis::query()->where('subject_id', $user->id)->count())->toBe(0);
+            ->and($seasonRows())->toBe(0);
 
         // ...while the direct path the button, the weekly job and onboarding
-        // use still writes rows.
+        // use still writes the season row.
         $this->requester->requestForCurrentWeek($user, Carbon::today());
 
-        expect(Analysis::query()->where('subject_id', $user->id)->count())->toBeGreaterThan(0);
+        expect($seasonRows())->toBeGreaterThan(0);
     });
 
     it('lets the window lapse', function (): void {
@@ -440,6 +434,7 @@ describe('stale plan-day takes', function (): void {
         PlannedSession::factory()->for($user)->create([
             'date' => $today,
             'session_type' => SessionType::Long,
+            'status' => PlannedSessionStatus::Done,
         ]);
         Analysis::factory()->done('long run today')->create([
             'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
@@ -459,6 +454,7 @@ describe('stale plan-day takes', function (): void {
         $session = PlannedSession::factory()->for($user)->create([
             'date' => $today,
             'session_type' => SessionType::Long,
+            'status' => PlannedSessionStatus::Done,
         ]);
         $longRunKm = app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'];
         Analysis::factory()->done('long run today')->create([
@@ -485,6 +481,7 @@ describe('stale plan-day takes', function (): void {
         PlannedSession::factory()->for($user)->create([
             'date' => $today,
             'session_type' => SessionType::Long,
+            'status' => PlannedSessionStatus::Done,
         ]);
         Analysis::factory()->done('rule-based take')->create([
             'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
@@ -502,7 +499,7 @@ describe('stale plan-day takes', function (): void {
     it('keeps a pending take, drifted or not, because a job is coming', function (): void {
         $user = User::factory()->create();
         $today = Carbon::today()->toDateString();
-        PlannedSession::factory()->for($user)->create(['date' => $today]);
+        PlannedSession::factory()->for($user)->create(['date' => $today, 'status' => PlannedSessionStatus::Done]);
         Analysis::factory()->create([
             'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
             'subject_id' => $user->id,
@@ -518,7 +515,12 @@ describe('stale plan-day takes', function (): void {
 });
 
 describe('requestForFirstWeek', function (): void {
-    it('narrates the day and season blocks of a brand-new account, and never plan_week_voice', function (): void {
+    /**
+     * #939: a brand-new account's first week has no run in it yet, so only
+     * the season narrates — a day's own read waits for
+     * {@see PlanNarrationRequester::requestDayVoiceIfChanged()}.
+     */
+    it('narrates only the season block of a brand-new account, and never plan_week_voice', function (): void {
         $user = User::factory()->create();
         PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
         PlanAdaptation::factory()->for($user)->create(['week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)]);
@@ -526,28 +528,9 @@ describe('requestForFirstWeek', function (): void {
 
         $this->requester->requestForFirstWeek($user, Carbon::today());
 
-        Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 1);
+        Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
         Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class);
         expect(DB::table('ai_analyses')->where('analysis_type', 'plan_week_voice')->count())->toBe(0);
-    });
-
-    /**
-     * Onboarding and the connect chain both call this, and the second one to
-     * arrive must cost nothing — even where the material has since drifted.
-     */
-    it('never invalidates a finished row, so the second racer bills nothing', function (): void {
-        $user = User::factory()->create();
-        $session = PlannedSession::factory()->for($user)->create([
-            'date' => Carbon::today()->toDateString(),
-            'session_type' => SessionType::Easy,
-        ]);
-        $row = stampedDay($user, $session);
-        $session->update(['session_type' => SessionType::Tempo]);
-
-        $this->requester->requestForFirstWeek($user, Carbon::today());
-
-        expect($row->fresh()->status)->toBe(AnalysisStatus::Done);
-        Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
     });
 });
 

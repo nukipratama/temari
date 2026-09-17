@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\RuleBased;
 
 use App\Enums\Badge;
+use App\Enums\IntentVerdict;
 use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -16,6 +17,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Services\Run\Plan\SessionMatcher;
 
 /**
  * Rule-based content per AnalysisType. Reached in production, not only by the
@@ -35,6 +37,10 @@ use App\Services\Run\Metrics\StreamSummary;
  */
 final readonly class RuleBasedNarrationFiller
 {
+    public function __construct(private SessionMatcher $sessionMatcher)
+    {
+    }
+
     public function fillFor(Analysis $row): string
     {
         $seed = $this->seedFor($row);
@@ -392,9 +398,11 @@ final readonly class RuleBasedNarrationFiller
     }
 
     /**
-     * Matches TrendReadNarrator's own title-then-description shape (joined by
-     * a blank line) so the frontend never has to special-case which pipeline
-     * produced a given block before splitting it.
+     * A read of a credited day, phrasing #946's intent verdict rather than
+     * describing the session ahead of time — see
+     * `docs/decisions/a-day-is-graded-on-distance-and-intent.md`. Only ever
+     * requested for a day that already has a run (no run, no section), but
+     * stays defensively safe on an uncredited row rather than crashing.
      */
     private function planDayVoice(Analysis $row): string
     {
@@ -402,28 +410,44 @@ final readonly class RuleBasedNarrationFiller
             ->where('user_id', $row->subject_id)
             ->where('date', $row->discriminator)
             ->first();
+        $seed = $this->seedFor($row);
 
-        if ($session === null) {
-            return "today's plan.";
+        if ($session === null || ! $session->status->isCredited()) {
+            return 'logged.';
         }
 
-        if ($session->skipped) {
+        $km = DecimalFormatter::decimal((float) ($this->sessionMatcher->creditedKmFor($session) ?? 0.0));
+
+        if ($session->ran_anyway) {
             return $this->select([
-                'skipped. next one is still on the schedule.',
-                'excused for today. picks back up next session.',
-            ], $this->seedFor($row));
+                "excused, and you ran it anyway. {$km}k.",
+                "already off the hook for this one, but {$km}k went in the log regardless.",
+            ], $seed);
         }
 
-        return match ($session->session_type) {
-            SessionType::Rest => $this->select(['rest. 🛌', 'a day off. nothing to log.'], $this->seedFor($row)),
-            SessionType::Long => $this->select([
-                "long run today. this is the one the week's built around.",
-                'the long one. settle in.',
-            ], $this->seedFor($row)),
-            SessionType::Tempo => $this->select(['tempo work today.', 'a tempo day on the calendar.'], $this->seedFor($row)),
-            SessionType::Interval => $this->select(['interval work today.', 'reps on the schedule.'], $this->seedFor($row)),
-            SessionType::Easy => $this->select(['easy day. nothing to prove, just log the miles.', 'an easy one today.'], $this->seedFor($row)),
-            SessionType::Race => $this->select(['race day. this is the one you trained for.', "race day. go and run it."], $this->seedFor($row)),
+        if (in_array($session->session_type, [SessionType::Rest, SessionType::Race], true)) {
+            return $session->session_type === SessionType::Rest
+                ? $this->select(['rest, and you took it. 🛌', 'a real day off. nothing to add.'], $seed)
+                : $this->select(['race day, logged.', 'the race is in the book.'], $seed);
+        }
+
+        return match ($session->intent_verdict) {
+            IntentVerdict::Hit => $this->select([
+                "{$km} km, and the session did what it was written for.",
+                "right where the day asked you to be. {$km} km.",
+            ], $seed),
+            IntentVerdict::Missed => $this->select([
+                "{$km} km is there, but the effort the day asked for never quite showed up.",
+                "logged at {$km} km, though the session itself came in softer than what was written.",
+            ], $seed),
+            IntentVerdict::TooHard => $this->select([
+                "{$km} km, harder than the day called for. the ground is covered either way.",
+                "more effort than this one asked for, at {$km} km.",
+            ], $seed),
+            default => $this->select([
+                "{$km} km done; couldn't make out the effort from this one.",
+                "not enough signal here to say how it went, only that {$km} km happened.",
+            ], $seed),
         };
     }
 

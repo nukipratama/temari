@@ -368,3 +368,33 @@ it('does not judge intent on a day that was never credited', function (): void {
         ->and($verdict['intent'])->toBeNull()
         ->and($verdict['distance_score'])->toBe(0);
 });
+
+/**
+ * The verdict a narrator reads later has to be exactly the one the grade
+ * used, so it is persisted rather than recomputed — see
+ * `docs/decisions/a-day-is-graded-on-distance-and-intent.md`.
+ */
+it('persists the intent verdict and its evidence beside the grade', function (): void {
+    $user = User::factory()->create();
+    $paces = scorerPaces($user, '2026-08-05');
+    $row = scorerDay($user, '2026-08-05');
+    $askedKm = (float) scorerVerdict($user, $row)['prescribed_km'];
+    scorerPacedRun($user, '2026-08-05', $askedKm, $paces['marathon'] - 20);
+
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-05'));
+
+    expect($row->refresh()->intent_verdict)->toBe(IntentVerdict::TooHard)
+        ->and($row->intent_evidence)->toBeArray()->not->toBeEmpty();
+});
+
+/** A day the day the plan never judges (no intent to fold in) persists none. */
+it('persists no intent verdict for a day never credited', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05');
+    scorerRun($user, '2026-08-05', 0.2);
+
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-05'));
+
+    expect($row->refresh()->intent_verdict)->toBeNull()
+        ->and($row->intent_evidence)->toBeNull();
+});

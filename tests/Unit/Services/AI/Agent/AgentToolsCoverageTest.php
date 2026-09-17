@@ -22,6 +22,7 @@ use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\TerrainTool;
 use App\Services\AI\Agent\Tools\TrainingLoadTool;
+use App\Enums\IntentVerdict;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Enums\PlannedSessionStatus;
@@ -916,6 +917,62 @@ it('scales today\'s reported distance by the week\'s own volume multiplier', fun
     expect($reading['distance_km'])
         ->toBe(round($longRunKm * 1.3, 1))
         ->not->toBe($flatOldReading);
+});
+
+/**
+ * The verdict a narrator reads has to be the exact one the grade persisted —
+ * see `docs/decisions/a-day-is-graded-on-distance-and-intent.md`.
+ */
+it('carries the persisted intent verdict and its evidence once the day is credited', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => SessionType::Tempo,
+        'date' => Carbon::today()->toDateString(),
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['target_pace_sec' => 300, 'window_pace_sec' => 295, 'basis' => 'pace'],
+    ]);
+    $baseline = app(TrainingBaseline::class);
+
+    $reading = new PlanDayTool($session, $baseline, completedKm: 5.9)->handle([]);
+
+    expect($reading['intent'])->toBe('hit')
+        ->and($reading['intent_evidence']['target_pace_formatted'])->toBe('5:00')
+        ->and($reading['intent_evidence']['window_pace_formatted'])->toBe('4:55');
+});
+
+/** unknown flags itself exactly like every other verdict, so the read can say so plainly. */
+it('flags an unknown intent verdict rather than omitting it', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => SessionType::Interval,
+        'date' => Carbon::today()->toDateString(),
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => IntentVerdict::Unknown,
+        'intent_evidence' => [],
+    ]);
+    $baseline = app(TrainingBaseline::class);
+
+    $reading = new PlanDayTool($session, $baseline, completedKm: 6.4)->handle([]);
+
+    expect($reading['intent'])->toBe('unknown');
+});
+
+/** No intent to judge (a rest/race day, or one never judged) carries no key at all. */
+it('omits intent entirely when the day was never judged', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => SessionType::Rest,
+        'date' => Carbon::today()->toDateString(),
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => null,
+    ]);
+    $baseline = app(TrainingBaseline::class);
+
+    $reading = new PlanDayTool($session, $baseline, completedKm: 0.0)->handle([]);
+
+    expect($reading)->not->toHaveKey('intent')
+        ->and($reading)->not->toHaveKey('intent_evidence');
 });
 
 // ── PlanContextTool ───────────────────────────────────────────────────

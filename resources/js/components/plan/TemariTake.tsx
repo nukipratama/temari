@@ -12,10 +12,13 @@ import { cn } from '@/lib/cn';
  */
 export default function TemariTake({
     analysis,
+    label = "Temari's take",
     allowReanalyze = true,
     className,
 }: Readonly<{
     analysis: AnalysisPayload;
+    /** The day row reads "Temari's read" instead — everywhere else keeps the default. */
+    label?: string;
     allowReanalyze?: boolean;
     className?: string;
 }>) {
@@ -23,7 +26,7 @@ export default function TemariTake({
         <div className={cn(className)}>
             <div className="flex items-center gap-1.5 text-horizon-ink">
                 <Icon icon={Sparkles} className="size-3.5" aria-hidden />
-                <span className="text-label-micro">Temari&apos;s take</span>
+                <span className="text-label-micro">{label}</span>
             </div>
             <div className="mt-1">
                 <AnalysisStatus
