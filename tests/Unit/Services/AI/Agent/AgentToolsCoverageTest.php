@@ -875,6 +875,11 @@ it('reads an empty mood mix when the runner has no story lines', function (): vo
 
 // ── PlanDayTool ───────────────────────────────────────────────────────
 
+function planDayTool(PlannedSession $session, TrainingBaseline $baseline, ?float $completedKm = null): PlanDayTool
+{
+    return new PlanDayTool($session, $baseline, app(VdotEstimator::class), app(TrainingPaceCalculator::class), $completedKm);
+}
+
 /**
  * Regression for a bug where the tool always read `isPrimaryEasy: false` and
  * `volumeMultiplier: 1.0`, so every easy day (and every week with a phase
@@ -893,8 +898,8 @@ it('sizes the week\'s primary easy day bigger than a later easy day', function (
     ]);
     $baseline = app(TrainingBaseline::class);
 
-    $primaryReading = new PlanDayTool($primaryEasy, $baseline)->handle([]);
-    $laterReading = new PlanDayTool($laterEasy, $baseline)->handle([]);
+    $primaryReading = planDayTool($primaryEasy, $baseline)->handle([]);
+    $laterReading = planDayTool($laterEasy, $baseline)->handle([]);
 
     expect($primaryReading['distance_km'])->toBeGreaterThan($laterReading['distance_km']);
 });
@@ -912,7 +917,7 @@ it('scales today\'s reported distance by the week\'s own volume multiplier', fun
     $longRunKm = $baseline->forUser($user, $today)['long_run_km'];
     $flatOldReading = round($longRunKm, 1); // the pre-fix figure: multiplier hardcoded to 1.0
 
-    $reading = new PlanDayTool($session, $baseline)->handle([]);
+    $reading = planDayTool($session, $baseline)->handle([]);
 
     expect($reading['distance_km'])
         ->toBe(round($longRunKm * 1.3, 1))
@@ -934,7 +939,7 @@ it('carries the persisted intent verdict and its evidence once the day is credit
     ]);
     $baseline = app(TrainingBaseline::class);
 
-    $reading = new PlanDayTool($session, $baseline, completedKm: 5.9)->handle([]);
+    $reading = planDayTool($session, $baseline, completedKm: 5.9)->handle([]);
 
     expect($reading['intent'])->toBe('hit')
         ->and($reading['intent_evidence']['target_pace_formatted'])->toBe('5:00')
@@ -953,7 +958,7 @@ it('flags an unknown intent verdict rather than omitting it', function (): void 
     ]);
     $baseline = app(TrainingBaseline::class);
 
-    $reading = new PlanDayTool($session, $baseline, completedKm: 6.4)->handle([]);
+    $reading = planDayTool($session, $baseline, completedKm: 6.4)->handle([]);
 
     expect($reading['intent'])->toBe('unknown');
 });
@@ -969,10 +974,47 @@ it('omits intent entirely when the day was never judged', function (): void {
     ]);
     $baseline = app(TrainingBaseline::class);
 
-    $reading = new PlanDayTool($session, $baseline, completedKm: 0.0)->handle([]);
+    $reading = planDayTool($session, $baseline, completedKm: 0.0)->handle([]);
 
     expect($reading)->not->toHaveKey('intent')
         ->and($reading)->not->toHaveKey('intent_evidence');
+});
+
+/** A pace-only ease is carried the same way `eased_from` names a type/distance ease. */
+it('carries the eased pace and the pace it replaced once readiness eases the day\'s pace only', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => SessionType::Easy,
+        'date' => Carbon::today()->toDateString(),
+        'eased_pace_sec_per_km' => 400,
+    ]);
+    $baseline = app(TrainingBaseline::class);
+    $easyPace = app(TrainingPaceCalculator::class)
+        ->fromVdotResult(app(VdotEstimator::class)->estimate($user, Carbon::today()))['easy'];
+
+    $reading = planDayTool($session, $baseline)->handle([]);
+
+    expect($reading['pace_sec'])->toBe(400)
+        ->and($reading['pace_formatted'])->toBe(PaceFormatter::format(400.0))
+        ->and($reading['pace_eased_from'])->toBe([
+            'pace_sec' => $easyPace,
+            'pace_formatted' => PaceFormatter::format((float) $easyPace),
+        ]);
+});
+
+it('carries no pace field at all on a day that was not pace-eased', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'session_type' => SessionType::Easy,
+        'date' => Carbon::today()->toDateString(),
+    ]);
+    $baseline = app(TrainingBaseline::class);
+
+    $reading = planDayTool($session, $baseline)->handle([]);
+
+    expect($reading)->not->toHaveKey('pace_sec')
+        ->and($reading)->not->toHaveKey('pace_eased_from');
 });
 
 // ── PlanContextTool ───────────────────────────────────────────────────
@@ -1110,6 +1152,39 @@ it('leaves an un-eased day with no easing to explain', function (): void {
     PlannedSession::factory()->for($user)->create(['date' => $today->toDateString(), 'session_type' => SessionType::Tempo]);
 
     expect(planContextTool($user, $today, $today)->handle([])['days'][0])->not->toHaveKey('eased_from');
+});
+
+/** A pace-only ease keeps session_type unchanged and swaps the target pace, naming what it replaced. */
+it('reads a pace-only ease as the eased pace, naming the pace it replaced', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+    $today = Carbon::today();
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Long,
+        'eased_pace_sec_per_km' => 400,
+    ]);
+    $easyPace = app(TrainingPaceCalculator::class)
+        ->fromVdotResult(app(VdotEstimator::class)->estimate($user, $today))['easy'];
+
+    $day = planContextTool($user, $today, $today)->handle([])['days'][0];
+
+    expect($day['session_type'])->toBe('long')
+        ->and($day['target_pace_sec'])->toBe(400)
+        ->and($day['target_pace_formatted'])->toBe(PaceFormatter::format(400.0))
+        ->and($day)->not->toHaveKey('eased_from')
+        ->and($day['pace_eased_from'])->toBe([
+            'pace_sec' => $easyPace,
+            'pace_formatted' => PaceFormatter::format((float) $easyPace),
+        ]);
+});
+
+it('leaves an un-pace-eased day with no pace easing to explain', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    PlannedSession::factory()->for($user)->create(['date' => $today->toDateString(), 'session_type' => SessionType::Easy]);
+
+    expect(planContextTool($user, $today, $today)->handle([])['days'][0])->not->toHaveKey('pace_eased_from');
 });
 
 it('prefers the scored distance once the scorer has written one', function (): void {

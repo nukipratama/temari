@@ -742,7 +742,7 @@ it('PlanDayVoiceNarrator returns voice on valid JSON', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create(['session_type' => 'tempo', 'date' => Carbon::today()->toDateString()]);
     $caller = fakeCaller(json_encode(['voice' => 'tempo work today.'], JSON_THROW_ON_ERROR));
-    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class), app(SessionMatcher::class));
+    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class), app(SessionMatcher::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
     expect($narrator->generate($session))->toBe('tempo work today.');
 });
 
@@ -750,7 +750,7 @@ it('PlanDayVoiceNarrator throws on missing voice key', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class), app(SessionMatcher::class));
+    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class), app(SessionMatcher::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
     $narrator->generate($session);
 })->throws(UnavailableException::class);
 
@@ -763,7 +763,7 @@ it('PlanDayTool reports the prescribed session, distance and skip state', functi
         'skipped' => false,
     ]);
 
-    $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
+    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($context['session_type'])->toBe('long')
         ->and($context['phase'])->toBe('build')
@@ -787,7 +787,7 @@ it('PlanDayTool asks for the eased distance on a clamped day, not the one it rep
         'clamped_km' => 1.2,
     ]);
 
-    $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
+    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     // The card says an easy 1.2 km. The blurb has to say an easy 1.2 km too.
     expect($context['session_type'])->toBe('easy')
@@ -808,7 +808,7 @@ it('PlanDayTool describes a tempo eased to easy with its distance held as the ea
     $storedKm = PlanRenderer::coreKmForSession($session, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled']);
     $session->update(['clamped_km' => $storedKm]);
 
-    $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
+    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($context['session_type'])->toBe('easy')
         ->and($context['distance_km'])->toBe($storedKm)
@@ -824,7 +824,7 @@ it('PlanDayTool describes a rest-clamped day as rest', function (): void {
         'rest_clamped_at' => Carbon::today()->setTime(0, 1),
     ]);
 
-    $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
+    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($context['session_type'])->toBe('rest')
         ->and($context['distance_km'])->toBe(0.0)
@@ -840,7 +840,7 @@ it('PlanDayTool leaves an unclamped day with no easing to explain', function ():
         'skipped' => false,
     ]);
 
-    $context = new PlanDayTool($session, app(TrainingBaseline::class))->handle([]);
+    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($context['session_type'])->toBe('tempo')
         ->and($context)->not->toHaveKey('eased_from');
@@ -864,7 +864,7 @@ it('PlanDayTool carries how the day went once it has been graded', function (): 
         'ran_anyway' => true,
     ]);
 
-    $context = new PlanDayTool($session, app(TrainingBaseline::class), 10.4)->handle([]);
+    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class), 10.4)->handle([]);
 
     expect($context['status'])->toBe('overreached')
         ->and($context['completed_km'])->toBe(10.4)

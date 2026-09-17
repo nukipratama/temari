@@ -142,7 +142,7 @@ final class ReadinessClamp
      */
     public static function paceEaseNote(): string
     {
-        return "Your form's a little flat, so run this one at the easy end of your range.";
+        return "your form's a little flat, so run this one at the easy end of your range.";
     }
 
     /**

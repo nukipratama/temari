@@ -9,6 +9,8 @@ use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\PlanDayTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\TrainingBaseline;
 
@@ -70,6 +72,8 @@ class PlanDayVoiceNarrator
         private readonly StructuredChatCaller $caller,
         private readonly TrainingBaseline $baseline,
         private readonly SessionMatcher $sessionMatcher,
+        private readonly VdotEstimator $vdotEstimator,
+        private readonly TrainingPaceCalculator $paceCalculator,
     ) {
     }
 
@@ -85,7 +89,7 @@ class PlanDayVoiceNarrator
                 temperature: 0.7,
                 userId: $session->user_id,
                 maxTokens: 300,
-                toolbox: new AgentToolbox([new PlanDayTool($session, $this->baseline, $this->completedKm($session))]),
+                toolbox: new AgentToolbox([new PlanDayTool($session, $this->baseline, $this->vdotEstimator, $this->paceCalculator, $this->completedKm($session))]),
                 maxSteps: 4,
             ),
         );

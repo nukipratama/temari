@@ -291,6 +291,69 @@ describe('TodaySession', () => {
         expect(screen.queryByText('eased today')).not.toBeInTheDocument();
     });
 
+    /** The eased pace already sits in the session line; the block below states the step-down and why. */
+    it('shows the eased pace in the session line, with the step-down and its note', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    session_type: 'long',
+                    distance_km: 20,
+                    segments: [
+                        {
+                            key: 'main',
+                            minutes: 133,
+                            zone: 'Z2',
+                            pace_label: 'easy',
+                            km: 20,
+                            pace_sec_per_km: 400,
+                        },
+                    ],
+                    pace_eased_from: {
+                        pace_sec_per_km: 360,
+                        voice: "your form's a little flat, so run this one at the easy end of your range.",
+                    },
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText('long run · 20 km · 6:40/km'),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/6:00 → 6:40\/km/)).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "your form's a little flat, so run this one at the easy end of your range.",
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('drops the pace-ease voice, but keeps the pace arrow, once the day is credited', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    status: 'done',
+                    session_type: 'long',
+                    distance_km: 20,
+                    segments: [
+                        {
+                            key: 'main',
+                            minutes: 133,
+                            zone: 'Z2',
+                            pace_label: 'easy',
+                            km: 20,
+                            pace_sec_per_km: 400,
+                        },
+                    ],
+                    pace_eased_from: { pace_sec_per_km: 360, voice: null },
+                })}
+            />,
+        );
+
+        expect(screen.getByText(/6:00 → 6:40\/km/)).toBeInTheDocument();
+    });
+
     it('names a rest day with no distance or pace hung off it', () => {
         render(
             <TodaySession
