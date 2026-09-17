@@ -125,6 +125,8 @@ export interface AnalysisPayload {
     retry_after_seconds?: number | null;
     /** This athlete has already flagged this narration as wrong. */
     flagged?: boolean;
+    /** Filled rule-based because the athlete was away when it would have narrated, not read by Temari yet. */
+    unread_while_away?: boolean;
 }
 
 export interface BriefingResult {

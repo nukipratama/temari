@@ -601,6 +601,67 @@ describe('AnalysisStatus', () => {
         ).toContain('justify-end');
     });
 
+    it('shows the away cue beside reread when the block was filled while the athlete was away', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    status: 'done',
+                    content: 'Halo',
+                    unread_while_away: true,
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText("temari hasn't read this one yet"),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /reread/ }).parentElement,
+        ).toBe(
+            screen.getByText("temari hasn't read this one yet").parentElement,
+        );
+    });
+
+    it.each([
+        ['a demo fill', {}],
+        ['a cost-ceiling degrade', {}],
+        ['a too-old backfill fill', {}],
+        ['a pre-connect fill', {}],
+    ])(
+        'shows no away cue for %s (unread_while_away not set)',
+        (_label, overrides) => {
+            render(
+                <AnalysisStatus
+                    analysis={payload({
+                        status: 'done',
+                        content: 'Halo',
+                        ...overrides,
+                    })}
+                />,
+            );
+
+            expect(
+                screen.queryByText("temari hasn't read this one yet"),
+            ).not.toBeInTheDocument();
+        },
+    );
+
+    it('shows no away cue once unread_while_away is explicitly false', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    status: 'done',
+                    content: 'Halo',
+                    unread_while_away: false,
+                })}
+            />,
+        );
+
+        expect(
+            screen.queryByText("temari hasn't read this one yet"),
+        ).not.toBeInTheDocument();
+    });
+
     it('draws no flag at all on a read already flagged', () => {
         render(
             <AnalysisStatus

@@ -8,6 +8,7 @@ use App\Models\AI\Analysis;
 use App\Models\Feedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Support\Cooldown;
@@ -85,6 +86,21 @@ it('toPayload returns retry_after_seconds null when row is null', function (): v
 
 it('payloadsForSubjects returns an empty array for no ids', function (): void {
     expect(Analysis::payloadsForSubjects('briefing_user_day', AnalysisType::WeeklyRecap, []))->toBe([]);
+});
+
+it('toPayload surfaces unread_while_away only for a row filled because the athlete was away', function (): void {
+    $away = Analysis::factory()->done('filled while away')->make(['rule_based_reason' => AnalysisOrigin::Return]);
+    $otherReason = Analysis::factory()->done('filled for the demo')->make();
+
+    expect(Analysis::toPayload($away, $away->analysis_type, $away->subject_type, $away->subject_id, $away->discriminator)['unread_while_away'])
+        ->toBeTrue()
+        ->and(Analysis::toPayload($otherReason, $otherReason->analysis_type, $otherReason->subject_type, $otherReason->subject_id, $otherReason->discriminator)['unread_while_away'])
+        ->toBeFalse();
+});
+
+it('toPayload reports unread_while_away false when there is no row', function (): void {
+    $payload = Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, 1);
+    expect($payload['unread_while_away'])->toBeFalse();
 });
 
 it('payloadsForSubjects keys payloads by subject id, falling back to a pending payload', function (): void {

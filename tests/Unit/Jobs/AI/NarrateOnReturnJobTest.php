@@ -80,6 +80,11 @@ function returnRowStatus(string $subjectType, int $subjectId, AnalysisType $type
     return Analysis::query()->forSubject($subjectType, $subjectId, $type, $discriminator)->firstOrFail()->status;
 }
 
+function returnRowReason(string $subjectType, int $subjectId, AnalysisType $type, ?string $discriminator = null): ?AnalysisOrigin
+{
+    return Analysis::query()->forSubject($subjectType, $subjectId, $type, $discriminator)->firstOrFail()->rule_based_reason;
+}
+
 function narrateOnReturn(User $user): void
 {
     app()->call([new NarrateOnReturnJob($user->id), 'handle']);
@@ -103,8 +108,12 @@ it('narrates the runs of the last seven days and fills older ones rule-based', f
     Bus::assertDispatchedTimes(AnalyzeCardFlavorJob::class, 1);
 
     $olderRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $older->id)->get();
-    expect($olderRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done && $row->served_by === ServedBy::RuleBased))->toBeTrue()
-        ->and(returnRowStatus(RunCard::class, $older->runCard->id, AnalysisType::CardFlavor))->toBe(AnalysisStatus::Done);
+    expect($olderRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done
+        && $row->served_by === ServedBy::RuleBased
+        && $row->rule_based_reason === AnalysisOrigin::Return))->toBeTrue()
+        ->and(returnRowStatus(RunCard::class, $older->runCard->id, AnalysisType::CardFlavor))->toBe(AnalysisStatus::Done)
+        ->and(Analysis::query()->forSubject(RunCard::class, $older->runCard->id, AnalysisType::CardFlavor)->firstOrFail()->rule_based_reason)
+        ->toBe(AnalysisOrigin::Return);
 });
 
 it('narrates the latest closed week and month and fills older missed recaps rule-based', function (): void {
@@ -128,7 +137,9 @@ it('narrates the latest closed week and month and fills older missed recaps rule
         ->and(returnRowStatus(WeeklySnapshot::class, $openWeek->id, AnalysisType::WeeklyRecap))->toBe(AnalysisStatus::Pending)
         ->and(returnRowStatus($monthly, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-05'))->toBe(AnalysisStatus::Queued)
         ->and(returnRowStatus($monthly, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-04'))->toBe(AnalysisStatus::Done)
-        ->and(returnRowStatus($monthly, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-06'))->toBe(AnalysisStatus::Pending);
+        ->and(returnRowStatus($monthly, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-06'))->toBe(AnalysisStatus::Pending)
+        ->and(returnRowReason(WeeklySnapshot::class, $olderWeek->id, AnalysisType::WeeklyRecap))->toBe(AnalysisOrigin::Return)
+        ->and(returnRowReason($monthly, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-04'))->toBe(AnalysisOrigin::Return);
 });
 
 it('leaves a failed older recap failed rather than hiding the fault behind filler', function (): void {
@@ -183,6 +194,21 @@ it('sends no notification for anything it narrates', function (): void {
     app(AnalysisService::class)->markDone($speech, 'Run story.', ServedBy::Llm);
 
     Notification::assertNothingSent();
+});
+
+it('clears the away reason once an away-filled row is re-served by the LLM', function (): void {
+    $older = runLeftPendingWhileAway($this->athlete, '2026-06-02 06:30:00');
+
+    narrateOnReturn($this->athlete);
+
+    $speech = Analysis::query()->forSubject(Activity::class, $older->id, AnalysisType::PostRunSpeech)->firstOrFail();
+    expect($speech->rule_based_reason)->toBe(AnalysisOrigin::Return);
+
+    app(AnalysisService::class)->markDone($speech, 'Read for real now.', ServedBy::Llm);
+
+    expect($speech->fresh())
+        ->served_by->toBe(ServedBy::Llm)
+        ->rule_based_reason->toBeNull();
 });
 
 it('does nothing for an athlete who no longer exists', function (): void {

@@ -168,6 +168,7 @@ export default function AnalysisStatus({
     const attempts = analysis.attempts ?? 0;
     const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
     const rateLimited = error === RATE_LIMITED_ERROR;
+    const unreadWhileAway = analysis.unread_while_away === true;
 
     if (effectiveStatus === 'done' && content !== null) {
         const cooling = cooldownRemaining > 0;
@@ -213,28 +214,42 @@ export default function AnalysisStatus({
                         )}
                     </div>
                 )}
-                {canRegenerate && (
-                    <button
-                        type="button"
-                        onClick={trigger}
-                        disabled={cooling || pending}
-                        aria-label={cooldownAriaLabel(
-                            cooldownRemaining,
-                            'reread',
+                {(unreadWhileAway || canRegenerate) && (
+                    <div className="flex items-center justify-end gap-2">
+                        {unreadWhileAway && (
+                            <span
+                                className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
+                            >
+                                temari hasn&apos;t read this one yet
+                            </span>
                         )}
-                        className={cn(TRIGGER_CLASS, triggerTone(onSky))}
-                    >
-                        <Icon
-                            icon={cooling ? Clock : RefreshCw}
-                            className="size-3"
-                            aria-hidden
-                        />
-                        <span>
-                            {cooling
-                                ? `next in ${formatDurationHMS(cooldownRemaining)}`
-                                : 'reread'}
-                        </span>
-                    </button>
+                        {canRegenerate && (
+                            <button
+                                type="button"
+                                onClick={trigger}
+                                disabled={cooling || pending}
+                                aria-label={cooldownAriaLabel(
+                                    cooldownRemaining,
+                                    'reread',
+                                )}
+                                className={cn(
+                                    TRIGGER_CLASS,
+                                    triggerTone(onSky),
+                                )}
+                            >
+                                <Icon
+                                    icon={cooling ? Clock : RefreshCw}
+                                    className="size-3"
+                                    aria-hidden
+                                />
+                                <span>
+                                    {cooling
+                                        ? `next in ${formatDurationHMS(cooldownRemaining)}`
+                                        : 'reread'}
+                                </span>
+                            </button>
+                        )}
+                    </div>
                 )}
                 {rateLimited && <RateLimitedNote onSky={onSky} />}
             </div>

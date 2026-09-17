@@ -3,7 +3,7 @@ title: AI narration internals — context builders & the demo filler
 description: How prompt signals are assembled (context builders) and how copy is produced without the LLM (demo seed + unconfigured env).
 tags: [architecture, ai]
 status: living
-reviewed: 2026-08-03
+reviewed: 2026-09-17
 code_refs:
   - app/Services/AI/Context/ActivityNarrationContext.php
   - app/Services/AI/Agent/AgentToolbox.php
@@ -17,6 +17,8 @@ code_refs:
   - database/seeders/Demo/DemoRunSeeder.php
   - app/Services/AI/NarrationEligibility.php
   - app/Jobs/AI/NarrateOnReturnJob.php
+  - app/Models/AI/Analysis.php
+  - resources/js/components/temari/AnalysisStatus.tsx
 ---
 
 # AI narration internals — context builders & the demo filler
@@ -103,6 +105,8 @@ The demo seeder stages and fills all Analysis rows under [`AnalysisService::with
 ### Beyond the demo
 
 The same filler serves real athletes wherever the LLM is not worth it: a run past the backfill age cap or before the Strava connect ([NarrationEligibility](app/Services/AI/NarrationEligibility.php)), a day past the cost ceiling, and on an athlete's return from a gap away from the app, every per-run row and recap still `Pending` that is older than what [NarrateOnReturnJob](app/Jobs/AI/NarrateOnReturnJob.php) sends to the LLM. Every such fill skips a `Done` row. See [[narration-spends-only-on-active-athletes]].
+
+[`Analysis::$served_by`](app/Models/AI/Analysis.php) says which producer wrote a row's content, not why the rule-based filler was the one to answer. [`Analysis::$rule_based_reason`](app/Models/AI/Analysis.php) records that: null for every reason above (demo, cost ceiling, backfill age cap, pre-connect, the content-filter fallback), and `AnalysisOrigin::Return` only for the return job's own catch-up calls ([`AnalysisService::markDone()`](app/Services/AI/AnalysisService.php)'s `ruleBasedReason` parameter, passed explicitly by [NarrateOnReturnJob](app/Jobs/AI/NarrateOnReturnJob.php) rather than read off the ambient `NarrationOrigin`, so a cost-ceiling degrade that happens to run mid-return-chain is never mistaken for an away-fill). It clears to null the moment a row is re-served, by either producer. [`Analysis::toPayload()`](app/Models/AI/Analysis.php) surfaces it as `unread_while_away`, and [AnalysisStatus.tsx](resources/js/components/temari/AnalysisStatus.tsx) renders a quiet cue beside the "reread" control for exactly that case.
 
 ## See also
 

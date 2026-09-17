@@ -1667,6 +1667,68 @@ it('marks a rule-based trigger as rule-based', function (): void {
     expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased);
 });
 
+// ── rule_based_reason: why (not merely that) a row was served rule-based ──
+
+it('leaves rule_based_reason null for a rule-based fill with no declared reason', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+
+    $row = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+
+    expect($row->fresh()->rule_based_reason)->toBeNull();
+});
+
+it('records the declared reason on a rule-based fill', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+
+    $row = $this->service->requestRuleBased(
+        WeeklySnapshot::class,
+        $snap->id,
+        AnalysisType::WeeklyRecap,
+        reason: AnalysisOrigin::Return,
+    );
+
+    expect($row->fresh()->rule_based_reason)->toBe(AnalysisOrigin::Return);
+});
+
+it('never records a reason for an LLM-served row, even if one is passed', function (): void {
+    $row = Analysis::factory()->queued()->create();
+
+    $this->service->markDone($row, 'narrated', ServedBy::Llm, ruleBasedReason: AnalysisOrigin::Return);
+
+    expect($row->fresh()->rule_based_reason)->toBeNull();
+});
+
+it('clears a stale rule_based_reason when the row is re-served by the LLM', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    $row = $this->service->requestRuleBased(
+        WeeklySnapshot::class,
+        $snap->id,
+        AnalysisType::WeeklyRecap,
+        reason: AnalysisOrigin::Return,
+    );
+    expect($row->fresh()->rule_based_reason)->toBe(AnalysisOrigin::Return);
+
+    $this->service->markDone($row, 'now narrated for real', ServedBy::Llm);
+
+    expect($row->fresh())
+        ->served_by->toBe(ServedBy::Llm)
+        ->rule_based_reason->toBeNull();
+});
+
+it('clears a stale rule_based_reason when re-served rule-based for a different reason', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    $row = $this->service->requestRuleBased(
+        WeeklySnapshot::class,
+        $snap->id,
+        AnalysisType::WeeklyRecap,
+        reason: AnalysisOrigin::Return,
+    );
+
+    $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+
+    expect($row->fresh()->rule_based_reason)->toBeNull();
+});
+
 it('marks a ceiling degrade as rule-based', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     breachTheCeilingFor($snap->user_id);

@@ -114,6 +114,13 @@ class AnalysisService
      * can legitimately already hold real, billed-for narration (e.g. a Strava
      * resync of an activity that aged past the backfill cap since it was first
      * narrated), which must never be silently clobbered with filler prose.
+     *
+     * $reason records why on the row itself ({@see Analysis::$rule_based_reason})
+     * beyond "some rule-based filler wrote this" — today only ever passed as
+     * {@see AnalysisOrigin::Return} by {@see \App\Jobs\AI\NarrateOnReturnJob}'s
+     * own catch-up calls, never left to whatever {@see NarrationOrigin} happens
+     * to be ambient, so a cost-ceiling degrade mid-return chain is never
+     * mistaken for an away-fill.
      */
     public function requestRuleBased(
         Model|string $subjectOrType,
@@ -121,6 +128,7 @@ class AnalysisService
         AnalysisType $type,
         ?string $discriminator = null,
         bool $refillDone = true,
+        ?AnalysisOrigin $reason = null,
     ): Analysis {
         $row = $this->requestDeferred($subjectOrType, $subjectId, $type, $discriminator);
 
@@ -128,7 +136,7 @@ class AnalysisService
             return $row;
         }
 
-        $this->fillRuleBased($row);
+        $this->fillRuleBased($row, $reason);
 
         return $row;
     }
@@ -170,10 +178,10 @@ class AnalysisService
      * activities past `ai.backfill_max_age_days`, the same loop shape as
      * {@see self::requestActivityGroupDeferred()}, filling instead of staging.
      */
-    public function requestActivityGroupRuleBased(Activity $activity): void
+    public function requestActivityGroupRuleBased(Activity $activity, ?AnalysisOrigin $reason = null): void
     {
         foreach (AnalyzeActivityJob::groupedTypes() as $type) {
-            $this->requestRuleBased(AnalyzeActivityJob::subjectType(), $activity->id, $type, refillDone: false);
+            $this->requestRuleBased(AnalyzeActivityJob::subjectType(), $activity->id, $type, refillDone: false, reason: $reason);
         }
     }
 
@@ -229,6 +237,7 @@ class AnalysisService
         ServedBy $servedBy,
         ?Carbon $generatedAt = null,
         ?string $fingerprint = null,
+        ?AnalysisOrigin $ruleBasedReason = null,
     ): void {
         $this->archivePreviousVersion($row);
         $this->supersedeFeedback($row);
@@ -238,6 +247,11 @@ class AnalysisService
             'content' => $content,
             'error' => null,
             'served_by' => $servedBy,
+            // Only a rule-based fill ever carries a reason, and only when its
+            // caller declares one (NarrateOnReturnJob's own catch-up calls); an
+            // LLM serve always clears it, so a Reread on an away-filled block
+            // drops the cue the moment it re-narrates.
+            'rule_based_reason' => $servedBy === ServedBy::RuleBased ? $ruleBasedReason : null,
             'generated_at' => $generatedAt ?? Carbon::now(),
             // Only per-run activity groups pass a fingerprint; write the existing
             // value back for other narration types (they don't drive a resync
@@ -813,13 +827,14 @@ class AnalysisService
         $this->ceilingLedger->recordDegradedFill();
     }
 
-    private function fillRuleBased(Analysis $row): void
+    private function fillRuleBased(Analysis $row, ?AnalysisOrigin $reason = null): void
     {
-        $this->withoutDispatching(function () use ($row): void {
+        $this->withoutDispatching(function () use ($row, $reason): void {
             $this->markDone(
                 $row,
                 app(RuleBasedNarrationFiller::class)->fillFor($row),
                 ServedBy::RuleBased,
+                ruleBasedReason: $reason,
             );
         });
     }
