@@ -4,15 +4,17 @@ import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
-import AthleteTable from '@/components/narration/AthleteTable';
-import CeilingHeader from '@/components/narration/CeilingHeader';
+import AthletesPanel from '@/components/narration/AthletesPanel';
 import CostChart from '@/components/narration/CostChart';
 import DeploymentTable from '@/components/narration/DeploymentTable';
+import FaultStrip from '@/components/narration/FaultStrip';
 import FlashBanner from '@/components/narration/FlashBanner';
 import KindTable from '@/components/narration/KindTable';
+import NarratorRanking from '@/components/narration/NarratorRanking';
 import OriginTable from '@/components/narration/OriginTable';
+import RuleBasedPanel from '@/components/narration/RuleBasedPanel';
+import TodayPanel from '@/components/narration/TodayPanel';
 import UsageFilters from '@/components/narration/UsageFilters';
-import UsageKpis from '@/components/narration/UsageKpis';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import { cn } from '@/lib/cn';
@@ -31,7 +33,6 @@ export default function Overview({
     origin,
     athlete,
     totals,
-    previousTotals,
     byKind,
     byDeployment,
     byOrigin,
@@ -105,37 +106,50 @@ export default function Overview({
 
                 {tab === 'overview' ? (
                     <>
-                        <CeilingHeader
-                            budget={budget}
-                            cappedToday={cappedToday}
-                            pauseReason={pauseReason}
-                        />
+                        <div className="mt-6">
+                            <FaultStrip
+                                pauseReason={pauseReason}
+                                budget={budget}
+                                cappedToday={cappedToday}
+                                athletes={athletes}
+                                contentFilter={contentFilter}
+                            />
+                        </div>
 
-                        <UsageKpis
-                            totals={totals}
-                            previousTotals={previousTotals}
-                            currency={currency}
-                            contentFilter={contentFilter}
-                        />
+                        <TodayPanel budget={budget} chart={chart} />
 
-                        <CostChart
-                            chart={chart}
-                            currency={currency}
-                            athletes={athletes}
-                            selected={athlete}
-                            onSelect={(next) =>
-                                navigate({
-                                    range,
-                                    from,
-                                    to,
-                                    kind,
-                                    origin,
-                                    athlete: next,
-                                })
-                            }
-                        />
+                        <section className="mt-10 grid items-start gap-5 lg:grid-cols-[1.35fr_1fr]">
+                            <CostChart
+                                chart={chart}
+                                currency={currency}
+                                athletes={athletes}
+                                selected={athlete}
+                                onSelect={(next) =>
+                                    navigate({
+                                        range,
+                                        from,
+                                        to,
+                                        kind,
+                                        origin,
+                                        athlete: next,
+                                    })
+                                }
+                            />
+                            <NarratorRanking
+                                chart={chart}
+                                byKind={byKind}
+                                currency={currency}
+                            />
+                        </section>
 
-                        <AthleteTable rows={athletes} currency={currency} />
+                        <AthletesPanel rows={athletes} currency={currency} />
+
+                        <RuleBasedPanel athletes={athletes} />
+
+                        <p className="mt-6 text-xs text-text-3">
+                            quality signals — flags, per-deployment and
+                            per-origin cost — live on the breakdown tab.
+                        </p>
                     </>
                 ) : (
                     <>

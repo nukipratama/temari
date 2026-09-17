@@ -218,6 +218,9 @@
                 ],
                 "resources/js/components/race/RaceGoalForm.tsx": [
                     "paper"
+                ],
+                "resources/js/components/narration/FaultStrip.tsx": [
+                    "paper"
                 ]
             },
             "text": [
@@ -226,10 +229,7 @@
         },
         "ember/0.15": {
             "over": {
-                "resources/js/components/narration/AthleteTable.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/narration/CeilingHeader.tsx": [
+                "resources/js/components/narration/AthletesPanel.tsx": [
                     "paper"
                 ],
                 "resources/js/components/home/EvidenceList.tsx": [
