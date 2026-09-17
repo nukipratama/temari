@@ -46,12 +46,12 @@ enum AnalysisType: string
     public const string PLAN_CLAMP_VOICE_SUBJECT_TYPE = 'plan_clamp_voice_user_day';
 
     /**
-     * The three windows Trends narrates. Not chained, not date-keyed — each is
+     * The four windows Trends narrates. Not chained, not date-keyed — each is
      * always "as of now", so the discriminator names the range, not a period.
      *
      * @var list<string>
      */
-    public const array TREND_READ_RANGES = ['30d', '90d', '12mo'];
+    public const array TREND_READ_RANGES = ['7d', '30d', '90d', '12mo'];
 
     /**
      * How far back a period-keyed discriminator may reach. Deliberately wider

@@ -17,7 +17,7 @@ import { setMockDeferred } from '@/test/setup';
 import Trends from './Trends';
 
 function narrationPayload(
-    discriminator: '30d' | '90d' | '12mo',
+    discriminator: TrendRange,
     content: string,
 ): AnalysisPayload {
     return {
@@ -32,7 +32,8 @@ function narrationPayload(
     };
 }
 
-const NARRATION = {
+const NARRATION: Record<TrendRange, AnalysisPayload> = {
+    '7d': narrationPayload('7d', 'This week.\n\nHolding the same rhythm.'),
     '30d': narrationPayload('30d', 'Last 30 days.\n\nFitness climbing.'),
     '90d': narrationPayload('90d', 'Last 90 days.\n\nSteady build.'),
     '12mo': narrationPayload('12mo', 'The full year.\n\nA long climb.'),
@@ -162,10 +163,8 @@ describe('Trends', () => {
 
         expect(screen.getByText('Condition · 7 days')).toBeInTheDocument();
         expect(screen.getByText('100')).toBeInTheDocument();
-        // No 7d narration is generated — it borrows the 30d read rather than
-        // going blank, labelled as such.
-        expect(screen.getByText('Last 30 days.')).toBeInTheDocument();
-        expect(screen.getByText(/reads the last 30 days/)).toBeInTheDocument();
+        expect(screen.getByText('This week.')).toBeInTheDocument();
+        expect(screen.queryByText('Last 30 days.')).not.toBeInTheDocument();
         expect(
             screen.getByRole('img', { name: /over 7 days/ }),
         ).toBeInTheDocument();

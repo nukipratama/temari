@@ -141,11 +141,12 @@ it('never surfaces another user\'s training load', function (): void {
         ->assertJsonPath('props.ctlTrend', []);
 });
 
-it('passes a pending narration payload for all three ranges when none exist', function (): void {
+it('passes a pending narration payload for all four ranges when none exist', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'narration'))
+        ->assertJsonPath('props.narration.7d.status', 'pending')
         ->assertJsonPath('props.narration.30d.status', 'pending')
         ->assertJsonPath('props.narration.90d.status', 'pending')
         ->assertJsonPath('props.narration.12mo.status', 'pending');
@@ -168,6 +169,22 @@ it('passes the TrendRead analysis for each range as its own narration entry', fu
         ->assertJsonPath('props.narration.30d.discriminator', '30d')
         ->assertJsonPath('props.narration.90d.status', 'pending')
         ->assertJsonPath('props.narration.12mo.status', 'pending');
+});
+
+it('carries a 7d narration entry alongside the other three ranges', function (): void {
+    $user = User::factory()->create();
+    Analysis::factory()->done("Holding steady this week.\n\nNo real swing either way.")->create([
+        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::TrendRead,
+        'discriminator' => '7d',
+    ]);
+
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'narration'))
+        ->assertJsonPath('props.narration.7d.status', 'done')
+        ->assertJsonPath('props.narration.7d.content', "Holding steady this week.\n\nNo real swing either way.")
+        ->assertJsonPath('props.narration.7d.discriminator', '7d');
 });
 
 it('never surfaces another user\'s narration', function (): void {

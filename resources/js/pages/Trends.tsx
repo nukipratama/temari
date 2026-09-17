@@ -32,21 +32,11 @@ import {
 } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 
-/** The three ranges Trends actually narrates on a schedule (see
- *  AnalysisType::TREND_READ_RANGES). A 7-day read isn't generated — narrating
- *  it too would mean a fourth scheduled LLM cadence, so 7d borrows the 30d
- *  read instead of going blank; NarrationCard labels that explicitly. */
-type NarratedRange = Exclude<TrendRange, '7d'>;
-
-function narratedRangeFor(range: TrendRange): NarratedRange {
-    return range === '7d' ? '30d' : range;
-}
-
 interface TrendsProps {
     ctlTrend?: FitnessTrendPoint[];
     badgeMilestones?: BadgeMilestone[];
     streak?: StreakSummaryLike;
-    narration?: Record<NarratedRange, AnalysisPayload>;
+    narration?: Record<TrendRange, AnalysisPayload>;
     briefing?: BriefingResult;
     load?: Record<TrendRange, TrainingLoad | null>;
     snapshot?: WeeklySnapshot | null;
@@ -134,12 +124,7 @@ export default function Trends({
                 >
                     {() => (
                         <NarrationCard
-                            analysis={narration![narratedRangeFor(range)]}
-                            note={
-                                range === '7d'
-                                    ? 'reads the last 30 days — a 7-day read isn’t generated yet'
-                                    : undefined
-                            }
+                            analysis={narration![range]}
                             className="mt-4"
                         />
                     )}

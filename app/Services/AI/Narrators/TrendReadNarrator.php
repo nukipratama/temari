@@ -15,8 +15,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * "Temari's read" on the Trends tab: one narrated take on the user's
- * training for a given range (30d/90d/12mo). Refreshed on a schedule (see
- * routes/console.php's three ai:trend-read entries), never generated live
+ * training for a given range (7d/30d/90d/12mo). Refreshed on a schedule (see
+ * routes/console.php's four ai:trend-read entries), never generated live
  * per page view — same never-bill-on-page-load rule every other narrator
  * in the app already follows.
  */
@@ -35,6 +35,8 @@ class TrendReadNarrator
 
         COMPARISON SHAPE depends on range, and this is the whole point of
         the reading:
+        - 7d: compare `current` (the last 7 days) against `comparison`
+          (the 7 days before that), read it as "the week before".
         - 30d: compare `current` (the last 30 days) against `comparison`
           (the 30 days before that), read it as "the month before".
         - 90d: same shape, `comparison` reads as "the quarter before".
