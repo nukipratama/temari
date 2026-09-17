@@ -42,7 +42,7 @@ class AthleteNarrationReport
 
     /**
      * @return array{
-     *     athlete: array{id:int, name:string, is_demo:bool},
+     *     athlete: array{id:int, name:string, is_demo:bool, strava_athlete_id:int|null},
      *     currency: string,
      *     today_spend: float,
      *     ceiling: array{value: float|null, source: string},
@@ -60,7 +60,12 @@ class AthleteNarrationReport
         $configured = config('azure_openai.daily_cost_ceiling_per_user');
 
         return [
-            'athlete' => ['id' => $athlete->id, 'name' => $athlete->name, 'is_demo' => $athlete->is_demo],
+            'athlete' => [
+                'id' => $athlete->id,
+                'name' => $athlete->name,
+                'is_demo' => $athlete->is_demo,
+                'strava_athlete_id' => $athlete->stravaConnection?->strava_athlete_id,
+            ],
             'currency' => 'USD',
             'today_spend' => $daily[$today->toDateString()] ?? 0.0,
             'ceiling' => [

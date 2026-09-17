@@ -9,6 +9,7 @@ use App\Models\AI\AnalysisVersion;
 use App\Models\AI\TokenUsage;
 use App\Models\Analytics\DevtoolsAction;
 use App\Models\Feedback;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisStatus;
@@ -82,7 +83,14 @@ describe('header', function (): void {
             ->and($header['forecast']['month_to_date'])->toBe(6.0)
             // 7-day spend $4.00 -> $0.5714/day over the 20 remaining days.
             ->and(round($header['forecast']['projected'], 2))->toBe(17.43)
-            ->and($header['athlete'])->toBe(['id' => $user->id, 'name' => $user->name, 'is_demo' => false]);
+            ->and($header['athlete'])->toBe(['id' => $user->id, 'name' => $user->name, 'is_demo' => false, 'strava_athlete_id' => null]);
+    });
+
+    it('carries the athlete\'s Strava id when a connection exists', function (): void {
+        $user = User::factory()->create();
+        StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 555_444]);
+
+        expect(athleteReport()->header($user)['athlete']['strava_athlete_id'])->toBe(555_444);
     });
 
     it('labels the ceiling as an override when one is set for today', function (): void {

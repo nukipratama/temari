@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Mockery\MockInterface;
+use App\Enums\StravaSyncSource;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -252,6 +253,45 @@ it('passes the --since lower bound through to the fetcher', function (): void {
         ->andReturn(summaryResult([]));
 
     orchestrator($fetcher)->syncUser($user, $since);
+});
+
+it('records the sync as poll by default', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([10]));
+
+    orchestrator($fetcher)->syncUser($user);
+
+    expect(StravaSyncLog::query()->where('user_id', $user->id)->value('source'))
+        ->toBe(StravaSyncSource::Poll);
+});
+
+it('records the sync source passed in for a manual trigger', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([10]));
+
+    orchestrator($fetcher)->syncUser($user, source: StravaSyncSource::Manual);
+
+    expect(StravaSyncLog::query()->where('user_id', $user->id)->value('source'))
+        ->toBe(StravaSyncSource::Manual);
+});
+
+it('records a single-activity sync as webhook by default', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldNotReceive('fetchNewSummaries');
+
+    orchestrator($fetcher)->syncSingleActivity($user, 9_005);
+
+    expect(StravaSyncLog::query()->where('user_id', $user->id)->value('source'))
+        ->toBe(StravaSyncSource::Webhook);
 });
 
 it('inserts and queues exactly one IngestActivityJob for a single webhook activity', function (): void {

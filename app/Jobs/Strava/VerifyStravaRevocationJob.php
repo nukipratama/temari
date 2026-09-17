@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Strava;
 
+use App\Enums\StravaSyncSource;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\StravaConnection;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
@@ -80,6 +81,7 @@ class VerifyStravaRevocationJob implements ShouldQueue
             $connection->user_id,
             'revoked',
             error: "Connection revoked via {$this->source}",
+            source: StravaSyncSource::Webhook,
         );
     }
 }

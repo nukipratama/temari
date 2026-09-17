@@ -50,6 +50,9 @@ export default function Athlete({
                         <p className="text-xs text-text-3">
                             narration, spend and stuck work for one athlete
                             {header.athlete.is_demo ? ' · demo account' : ''}
+                            {header.athlete.strava_athlete_id !== null
+                                ? ` · Strava ${header.athlete.strava_athlete_id}`
+                                : ''}
                         </p>
                     </div>
                     <a

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Analytics;
 
 use Override;
+use App\Enums\StravaSyncSource;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -13,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $user_id
  * @property string $status
+ * @property StravaSyncSource|null $source
  * @property int $activities_synced
  * @property int $api_calls_used
  * @property int|null $rate_limit_15min_remaining
@@ -20,7 +22,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $error_message
  * @property Carbon $synced_at
  */
-#[Fillable(['user_id', 'status', 'activities_synced', 'api_calls_used', 'rate_limit_15min_remaining', 'rate_limit_daily_remaining', 'error_message', 'synced_at'])]
+#[Fillable(['user_id', 'status', 'source', 'activities_synced', 'api_calls_used', 'rate_limit_15min_remaining', 'rate_limit_daily_remaining', 'error_message', 'synced_at'])]
 class StravaSyncLog extends Model
 {
     #[Override]
@@ -45,10 +47,12 @@ class StravaSyncLog extends Model
         int $apiCallsUsed = 0,
         ?string $error = null,
         ?array $rateLimits = null,
+        ?StravaSyncSource $source = null,
     ): self {
         return self::create([
             'user_id' => $userId,
             'status' => $status,
+            'source' => $source,
             'activities_synced' => $activitiesSynced,
             'api_calls_used' => $apiCallsUsed,
             'rate_limit_15min_remaining' => $rateLimits['15min'] ?? null,
@@ -64,6 +68,7 @@ class StravaSyncLog extends Model
     {
         return [
             'user_id' => 'integer',
+            'source' => StravaSyncSource::class,
             'activities_synced' => 'integer',
             'api_calls_used' => 'integer',
             'rate_limit_15min_remaining' => 'integer',

@@ -75,7 +75,7 @@ class AthleteOperations extends Card
     private function latestSyncs(): EloquentCollection
     {
         return StravaSyncLog::query()
-            ->select('user_id', 'status', 'synced_at', 'api_calls_used')
+            ->select('user_id', 'status', 'synced_at', 'source')
             ->whereIn(
                 'id',
                 fn (Builder $query): Builder => $query
@@ -88,10 +88,7 @@ class AthleteOperations extends Card
     }
 
     /**
-     * Which path delivered the last sync. Inferred, not recorded: the webhook
-     * push ingests one known activity and spends no list call, while the poll
-     * and a manual sync always spend at least one. An errored sync spends none
-     * either, so it stays unattributed.
+     * Which path delivered the last sync, as recorded by the writer.
      */
     private function syncPath(?StravaSyncLog $sync): ?string
     {
@@ -99,7 +96,7 @@ class AthleteOperations extends Card
             return null;
         }
 
-        return $sync->api_calls_used === 0 ? 'webhook' : 'poll';
+        return $sync->source?->value;
     }
 
     /**

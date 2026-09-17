@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Strava;
 
+use App\Enums\StravaSyncSource;
 use App\Models\User;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
@@ -53,7 +54,7 @@ class SyncActivitiesJob implements ShouldQueue
                 return;
             }
 
-            $orchestrator->syncUser($user);
+            $orchestrator->syncUser($user, source: StravaSyncSource::Manual);
         } catch (StravaRateLimitedException $e) {
             Log::warning('strava-sync rate-limited', [
                 'user_id' => $user->id,
