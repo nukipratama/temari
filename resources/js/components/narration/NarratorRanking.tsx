@@ -24,6 +24,8 @@ export default function NarratorRanking({
     byKind,
     currency,
 }: Readonly<NarratorRankingProps>) {
+    const callsByKind = new Map(byKind.map((row) => [row.kind, row.calls]));
+
     return (
         <div>
             <SectionHeading
@@ -42,9 +44,7 @@ export default function NarratorRanking({
                 ) : (
                     <ul>
                         {chart.kinds.map((kind, index) => {
-                            const calls =
-                                byKind.find((row) => row.kind === kind.kind)
-                                    ?.calls ?? null;
+                            const calls = callsByKind.get(kind.kind) ?? null;
 
                             return (
                                 <li

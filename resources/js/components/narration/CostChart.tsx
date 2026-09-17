@@ -30,9 +30,10 @@ export default function CostChart({
     onSelect,
 }: Readonly<CostChartProps>) {
     const { days, kinds } = chart;
-    const peak = Math.max(...days.map((d) => d.cost), 0);
-    const total = days.reduce((sum, d) => sum + d.cost, 0);
-    const medianCost = median(days.map((d) => d.cost));
+    const costs = days.map((d) => d.cost);
+    const peak = Math.max(...costs, 0);
+    const total = costs.reduce((sum, cost) => sum + cost, 0);
+    const medianCost = median(costs);
     const medianPct = peak > 0 ? (medianCost / peak) * 100 : 0;
 
     return (

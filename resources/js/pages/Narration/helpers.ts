@@ -157,6 +157,11 @@ export const FLAGGED_REASONS: ReadonlySet<keyof RuleBasedReasons> = new Set([
     'unattributed',
 ]);
 
+/** `${n} ${word}` with a trailing `s` unless n is exactly one. */
+export function plural(n: number, word: string): string {
+    return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
+
 export function median(values: readonly number[]): number {
     if (values.length === 0) {
         return 0;

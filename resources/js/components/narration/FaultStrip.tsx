@@ -10,7 +10,7 @@ import {
     RecoverAllButton,
     RetryFailedButton,
 } from '@/components/narration/actions';
-import { athleteLabel, PAUSE_LABEL } from '@/pages/Narration/helpers';
+import { athleteLabel, PAUSE_LABEL, plural } from '@/pages/Narration/helpers';
 
 interface FaultStripProps {
     pauseReason: string | null;
@@ -72,7 +72,7 @@ export default function FaultStrip({
                     className="h-2.5 w-2.5 shrink-0 rounded-full bg-ember"
                 />
                 <h2 className="font-serif text-lg text-ember-ink italic">
-                    {faults.length} thing{faults.length === 1 ? '' : 's'} need
+                    {plural(faults.length, 'thing')} need
                     {faults.length === 1 ? 's' : ''} you
                 </h2>
             </div>
@@ -133,7 +133,7 @@ function buildFaults(
             key: 'ceiling',
             head: 'app-wide ceiling tripped',
             value: `${budget.trippedAt.slice(11, 16)} today`,
-            body: `${budget.degradedFills} block${budget.degradedFills === 1 ? '' : 's'} served rule-based since.`,
+            body: `${plural(budget.degradedFills, 'block')} served rule-based since.`,
         });
     }
 
@@ -144,7 +144,7 @@ function buildFaults(
             .join(', ');
         faults.push({
             key: 'capped',
-            head: `${cappedToday} athlete${cappedToday === 1 ? '' : 's'} capped today`,
+            head: `${plural(cappedToday, 'athlete')} capped today`,
             value: who,
             body: 'their blocks are served rule-based until midnight.',
         });
@@ -160,7 +160,7 @@ function buildFaults(
     if (deadTotal > 0) {
         faults.push({
             key: 'dead',
-            head: `${deadTotal} dead-lettered block${deadTotal === 1 ? '' : 's'}`,
+            head: plural(deadTotal, 'dead-lettered block'),
             value: deadLettered
                 .map(
                     (athlete) =>
@@ -184,7 +184,7 @@ function buildFaults(
     if (contentFilter.trips > 0) {
         faults.push({
             key: 'filter',
-            head: `${contentFilter.trips} content-filter trip${contentFilter.trips === 1 ? '' : 's'}`,
+            head: plural(contentFilter.trips, 'content-filter trip'),
             value:
                 contentFilter.pct === null
                     ? 'no calls in range'

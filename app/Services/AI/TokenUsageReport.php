@@ -514,10 +514,6 @@ class TokenUsageReport
     {
         $windowStart = Carbon::today()->subDays(self::ATHLETE_WINDOW_DAYS - 1)->startOfDay();
         $spend = $this->athleteSpend($windowStart);
-        $served = $this->servedByCounts($from, $to);
-        $flags = $this->flagCounts($from, $to);
-        $deadLettered = $this->deadLetterCounts();
-        $configCeiling = config('azure_openai.daily_cost_ceiling_per_user');
 
         /** @var array<int, array{name:string|null, is_demo:bool, deleted:bool}> $identities */
         $identities = [];
@@ -528,6 +524,13 @@ class TokenUsageReport
                 'deleted' => false,
             ];
         }
+
+        $demoUserIds = array_keys(array_filter($identities, fn (array $identity): bool => $identity['is_demo']));
+        $served = $this->servedByCounts($from, $to, $demoUserIds);
+        $flags = $this->flagCounts($from, $to);
+        $deadLettered = $this->deadLetterCounts();
+        $configCeiling = config('azure_openai.daily_cost_ceiling_per_user');
+
         foreach ($spend as $userId => $entry) {
             $identities[$userId] ??= [
                 'name' => self::stringOrNull($entry['name']),
@@ -656,9 +659,12 @@ class TokenUsageReport
      * bucket comes straight off {@see \App\Models\AI\Analysis::$rule_based_reason},
      * with a null or not-yet-taxonomised value folded into `unattributed`.
      *
+     * @param  list<int>  $demoUserIds  Pre-resolved by the caller ({@see self::athletes()}), which
+     *                                  already fetches every user's `is_demo` flag for the identity
+     *                                  map, so this method does not re-query it.
      * @return array<int, array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, dead_letter:int, content_filter:int, unattributed:int}}>
      */
-    private function servedByCounts(Carbon $from, Carbon $to): array
+    private function servedByCounts(Carbon $from, Carbon $to, array $demoUserIds): array
     {
         $rows = Analysis::query()
             ->where('status', AnalysisStatus::Done)
@@ -666,7 +672,6 @@ class TokenUsageReport
             ->get(['id', 'subject_type', 'subject_id', 'served_by', 'rule_based_reason']);
 
         $owners = AnalysisSubjectMap::ownerIdsForRows($rows);
-        $demoUserIds = $this->demoUserIds();
 
         /** @var array<int, array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, dead_letter:int, content_filter:int, unattributed:int}}> $counts */
         $counts = [];
@@ -709,17 +714,6 @@ class TokenUsageReport
             'unknown' => 0,
             'reasons' => array_fill_keys(self::RULE_BASED_REASONS, 0),
         ];
-    }
-
-    /**
-     * @return list<int>
-     */
-    private function demoUserIds(): array
-    {
-        return array_values(User::query()->where('is_demo', true)
-            ->pluck('id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->all());
     }
 
     /**

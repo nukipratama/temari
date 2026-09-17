@@ -13,6 +13,7 @@ import {
     median,
     navigate,
     PAUSE_LABEL,
+    plural,
     presetHref,
     PRESETS,
     REASON_LABEL,
@@ -189,6 +190,17 @@ describe('day labels', () => {
 
     it('formats a day key as short weekday + day for the dense axis', () => {
         expect(formatDayLabelShort('2026-05-18')).toBe('18 mon');
+    });
+});
+
+describe('plural', () => {
+    it('keeps the noun singular for exactly one', () => {
+        expect(plural(1, 'athlete')).toBe('1 athlete');
+    });
+
+    it('adds an s for zero and for more than one', () => {
+        expect(plural(0, 'athlete')).toBe('0 athletes');
+        expect(plural(2, 'athlete')).toBe('2 athletes');
     });
 });
 
