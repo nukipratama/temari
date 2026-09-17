@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Models\Season;
+use App\Services\Run\Plan\SustainedAheadOfRacePace;
+use Illuminate\Support\Carbon;
 
 /**
  * The current training arc: race-oriented or self-scaled, its window, and
@@ -12,8 +14,10 @@ use App\Models\Season;
  */
 final class PlanSeasonTool extends NoArgumentTool
 {
-    public function __construct(private readonly Season $season)
-    {
+    public function __construct(
+        private readonly Season $season,
+        private readonly SustainedAheadOfRacePace $sustainedAheadOfRacePace,
+    ) {
     }
 
     public function name(): string
@@ -24,13 +28,15 @@ final class PlanSeasonTool extends NoArgumentTool
     public function description(): string
     {
         return 'This training arc: its start/end dates, whether it is building toward a named '
-            .'race or is self-scaled (no race set), and the season goals it is tracking.';
+            .'race or is self-scaled (no race set), the season goals it is tracking, and whether '
+            .'the athlete has been sustained ahead of race pace.';
     }
 
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
         $race = $this->season->raceGoal;
+        $currentWeekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
 
         return [
             'starts_at' => $this->season->starts_at->toDateString(),
@@ -44,6 +50,10 @@ final class PlanSeasonTool extends NoArgumentTool
                 'target' => $goal->target,
                 'unit' => $goal->unit,
             ])->all(),
+            // Held for SustainedAheadOfRacePace::SUSTAINED_WEEKS consecutive
+            // evaluated weeks — never true for a self-scaled season, which has
+            // no race pace to be ahead of.
+            'sustained_ahead_of_race_pace' => $this->sustainedAheadOfRacePace->forUser($this->season->user_id, $currentWeekStart),
         ];
     }
 }

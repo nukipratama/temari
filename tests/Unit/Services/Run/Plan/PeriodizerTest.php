@@ -319,16 +319,20 @@ it('lets the race projection move prescribed quality work in both directions', f
         'anchor_weekly_volume_km' => 60.0,
     ]);
 
+    regenerateWithProjectedFinish($user, 6100.0); // inside the margin: steady
+    $steady = currentWeekQualityCount($user);
+
     regenerateWithProjectedFinish($user, 7200.0);
     $behindGoal = currentWeekQualityCount($user);
 
     regenerateWithProjectedFinish($user, 5000.0);
     $aheadOfGoal = currentWeekQualityCount($user);
 
-    // Ahead of the goal time the week comes down to its last quality session
-    // and stops there, rather than to none at all.
-    expect($behindGoal)->toBeGreaterThan($aheadOfGoal)
-        ->and($aheadOfGoal)->toBe(1);
+    // #933: being ahead of the goal time no longer touches the quality block
+    // at all -- it stays exactly what the phase baseline already prescribes.
+    // Only falling behind still moves it, and only upward.
+    expect($behindGoal)->toBeGreaterThan($steady)
+        ->and($aheadOfGoal)->toBe($steady);
 });
 
 it('writes race day into the plan and stamps the distance onto the row', function (): void {

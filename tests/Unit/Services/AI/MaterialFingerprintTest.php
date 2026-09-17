@@ -349,3 +349,11 @@ it('keeps null figures null rather than bucketing them to zero', function (): vo
     expect(MaterialFingerprint::forTrendRead($totals))
         ->not->toBe(MaterialFingerprint::forTrendRead(trendTotals(['current' => ['runs' => 0, 'distance_km' => 0.0, 'trimp_total' => 0.0]])));
 });
+
+it('is stable while the sustained-ahead signal has not flipped', function (): void {
+    expect(MaterialFingerprint::forSeason(false))->toBe(MaterialFingerprint::forSeason(false));
+});
+
+it('changes the moment the sustained-ahead signal flips', function (): void {
+    expect(MaterialFingerprint::forSeason(false))->not->toBe(MaterialFingerprint::forSeason(true));
+});

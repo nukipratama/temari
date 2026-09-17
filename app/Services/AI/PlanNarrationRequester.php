@@ -9,6 +9,7 @@ use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
 use App\Services\Run\Plan\ClampNarrationContext;
+use App\Services\Run\Plan\SustainedAheadOfRacePace;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Support\Cooldown;
 use Illuminate\Support\Carbon;
@@ -47,6 +48,7 @@ final readonly class PlanNarrationRequester
         private TrainingBaseline $baseline,
         private ClampNarrationContext $clampContext,
         private ResolveSeasonAction $season,
+        private SustainedAheadOfRacePace $sustainedAheadOfRacePace,
     ) {
     }
 
@@ -197,7 +199,7 @@ final readonly class PlanNarrationRequester
      */
     public function requestForCurrentWeek(User $user, Carbon $today): void
     {
-        $this->requestWeek($user);
+        $this->requestWeek($user, $today);
     }
 
     /**
@@ -207,19 +209,37 @@ final readonly class PlanNarrationRequester
      */
     public function requestForFirstWeek(User $user, Carbon $today): void
     {
-        $this->requestWeek($user);
+        $this->requestWeek($user, $today);
     }
 
-    private function requestWeek(User $user): void
+    /**
+     * Requests the season row, invalidating only when
+     * {@see SustainedAheadOfRacePace} has flipped since the row's last
+     * fingerprint — everything else about a season's material is fixed at
+     * creation. A never-fingerprinted Done row (predating this signal) counts
+     * as changed, so every existing season re-narrates once rather than
+     * silently carrying a blurb that never had a chance to mention it.
+     */
+    private function requestWeek(User $user, Carbon $today): void
     {
         $season = $this->currentSeason($user);
-        if ($season !== null) {
-            $this->analysisService->request(
-                Season::class,
-                $season->id,
-                AnalysisType::PlanSeasonVoice,
-            );
+        if ($season === null) {
+            return;
         }
+
+        $expected = MaterialFingerprint::forSeason(
+            $this->sustainedAheadOfRacePace->forUser($user->id, $today->copy()->startOfWeek(Carbon::MONDAY)),
+        );
+        $stamped = Analysis::query()
+            ->forSubject(Season::class, $season->id, AnalysisType::PlanSeasonVoice)
+            ->value('content_fingerprint');
+
+        $this->analysisService->request(
+            Season::class,
+            $season->id,
+            AnalysisType::PlanSeasonVoice,
+            invalidate: $stamped !== $expected,
+        );
     }
 
     /**

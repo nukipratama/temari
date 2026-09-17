@@ -124,7 +124,7 @@ final readonly class PlanAdapter
             'deload' => $reason->isDeload(),
             'quality_delta' => match ($reason) {
                 AdaptationReason::BehindRacePace => 1,
-                AdaptationReason::RanTooHard, AdaptationReason::AheadOfRacePace => -1,
+                AdaptationReason::RanTooHard => -1,
                 default => 0,
             },
             'adherence_pct' => min(100, max(0, $adherencePct)),
