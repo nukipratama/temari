@@ -1,6 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { Clock, HeartPulse, RefreshCw } from 'lucide-react';
-import { type ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
@@ -169,6 +169,7 @@ export default function AnalysisStatus({
     const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
     const rateLimited = error === RATE_LIMITED_ERROR;
     const unreadWhileAway = analysis.unread_while_away === true;
+    const awayDescriptionId = useId();
 
     if (effectiveStatus === 'done' && content !== null) {
         const cooling = cooldownRemaining > 0;
@@ -214,41 +215,45 @@ export default function AnalysisStatus({
                         )}
                     </div>
                 )}
-                {(unreadWhileAway || canRegenerate) && (
+                {canRegenerate && (
                     <div className="flex items-center justify-end gap-2">
-                        {unreadWhileAway && (
-                            <span
-                                className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
-                            >
-                                temari hasn&apos;t read this one yet
+                        <button
+                            type="button"
+                            onClick={trigger}
+                            disabled={cooling || pending}
+                            aria-label={cooldownAriaLabel(
+                                cooldownRemaining,
+                                'reread',
+                            )}
+                            aria-describedby={
+                                unreadWhileAway ? awayDescriptionId : undefined
+                            }
+                            className={cn(
+                                TRIGGER_CLASS,
+                                triggerTone(onSky),
+                                unreadWhileAway &&
+                                    'ring-[1.5px] ring-horizon/45',
+                            )}
+                        >
+                            <Icon
+                                icon={cooling ? Clock : RefreshCw}
+                                className="size-3"
+                                aria-hidden
+                            />
+                            <span>
+                                {cooling
+                                    ? `next in ${formatDurationHMS(cooldownRemaining)}`
+                                    : 'reread'}
                             </span>
-                        )}
-                        {canRegenerate && (
-                            <button
-                                type="button"
-                                onClick={trigger}
-                                disabled={cooling || pending}
-                                aria-label={cooldownAriaLabel(
-                                    cooldownRemaining,
-                                    'reread',
-                                )}
-                                className={cn(
-                                    TRIGGER_CLASS,
-                                    triggerTone(onSky),
-                                )}
-                            >
-                                <Icon
-                                    icon={cooling ? Clock : RefreshCw}
-                                    className="size-3"
-                                    aria-hidden
-                                />
-                                <span>
-                                    {cooling
-                                        ? `next in ${formatDurationHMS(cooldownRemaining)}`
-                                        : 'reread'}
+                            {unreadWhileAway && (
+                                <span
+                                    id={awayDescriptionId}
+                                    className="sr-only"
+                                >
+                                    temari hasn&apos;t read this one yet
                                 </span>
-                            </button>
-                        )}
+                            )}
+                        </button>
                     </div>
                 )}
                 {rateLimited && <RateLimitedNote onSky={onSky} />}
