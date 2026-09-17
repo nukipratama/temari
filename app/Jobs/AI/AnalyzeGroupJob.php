@@ -7,6 +7,7 @@ namespace App\Jobs\AI;
 use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -103,6 +104,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
                 $this->ruleBasedPayload($pending),
                 ServedBy::RuleBased,
                 $fingerprint,
+                AnalysisOrigin::ContentFilter,
             );
             Log::info('narrator.ai.content_filter_fallback', [
                 'kind' => static::subjectType(),
@@ -185,10 +187,11 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         array $payload,
         ServedBy $servedBy,
         ?string $fingerprint = null,
+        ?AnalysisOrigin $ruleBasedReason = null,
     ): void {
-        DB::transaction(function () use ($pending, $payload, $service, $fingerprint, $servedBy): void {
+        DB::transaction(function () use ($pending, $payload, $service, $fingerprint, $servedBy, $ruleBasedReason): void {
             foreach ($pending as $key => $row) {
-                $service->markDone($row, $payload[$key], $servedBy, fingerprint: $fingerprint);
+                $service->markDone($row, $payload[$key], $servedBy, fingerprint: $fingerprint, ruleBasedReason: $ruleBasedReason);
             }
         });
     }

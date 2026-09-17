@@ -10,6 +10,7 @@ use App\Jobs\AI\AnalyzeRowJob;
 use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
 use App\Models\AI\TokenUsage;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -232,7 +233,9 @@ it('falls back to rule-based content (row Done) when generation content-filters'
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->not->toBeEmpty()
-        ->and($fresh->error)->toBeNull();
+        ->and($fresh->error)->toBeNull()
+        ->and($fresh->served_by)->toBe(ServedBy::RuleBased)
+        ->and($fresh->rule_based_reason)->toBe(AnalysisOrigin::ContentFilter);
 });
 
 it('records a content-filter event on fallback so the rate is queryable', function (): void {

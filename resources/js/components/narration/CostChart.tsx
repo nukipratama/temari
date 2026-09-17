@@ -2,6 +2,7 @@ import { ChartBar } from 'lucide-react';
 
 import type { AthleteRow, CostChart } from '@/pages/Narration/types';
 
+import { band } from '@/components/narration/chartBands';
 import EmptyState from '@/components/narration/EmptyState';
 import SectionHeading from '@/components/SectionHeading';
 import { Card } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import {
     formatCost,
     formatDayLabel,
     formatDayLabelShort,
+    median,
 } from '@/pages/Narration/helpers';
 
 interface CostChartProps {
@@ -20,26 +22,6 @@ interface CostChartProps {
     onSelect: (athlete: number | null) => void;
 }
 
-/**
- * Stack colours, in the chart's own order (most expensive kind first). Cycled
- * rather than mapped per kind: the set of kinds in range is open, and the
- * legend beside the chart is what names each band.
- */
-const BANDS = [
-    'bg-horizon',
-    'bg-leaf',
-    'bg-ember',
-    'bg-citrus',
-    'bg-rarity-rare',
-    'bg-mood-easy',
-    'bg-mood-wobbly',
-    'bg-mood-blazing',
-] as const;
-
-function band(index: number): string {
-    return BANDS[index % BANDS.length];
-}
-
 export default function CostChart({
     chart,
     currency,
@@ -48,11 +30,14 @@ export default function CostChart({
     onSelect,
 }: Readonly<CostChartProps>) {
     const { days, kinds } = chart;
-    const peak = Math.max(...days.map((d) => d.cost), 0);
-    const total = days.reduce((sum, d) => sum + d.cost, 0);
+    const costs = days.map((d) => d.cost);
+    const peak = Math.max(...costs, 0);
+    const total = costs.reduce((sum, cost) => sum + cost, 0);
+    const medianCost = median(costs);
+    const medianPct = peak > 0 ? (medianCost / peak) * 100 : 0;
 
     return (
-        <section className="mt-10">
+        <div>
             <SectionHeading
                 icon={ChartBar}
                 title="daily cost"
@@ -100,49 +85,70 @@ export default function CostChart({
                     <EmptyState />
                 ) : (
                     <>
-                        <div className="flex gap-1.5" style={{ height: 180 }}>
-                            {days.map((day) => (
-                                <div
-                                    key={day.day}
-                                    className="group relative flex flex-1 flex-col justify-end"
-                                    style={{ minWidth: 0 }}
-                                >
-                                    <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-popover px-3 py-2 text-xs opacity-0 shadow-e2 transition-opacity group-hover:opacity-100">
-                                        <div className="font-semibold text-foreground">
-                                            {formatDayLabel(day.day)}
-                                        </div>
-                                        <div className="text-text-2 tabular-nums">
-                                            {formatCost(day.cost, currency)}
-                                        </div>
-                                    </div>
-
+                        <div className="relative">
+                            <div
+                                className="flex gap-1.5"
+                                style={{ height: 180 }}
+                            >
+                                {days.map((day) => (
                                     <div
-                                        className="flex w-full flex-col-reverse overflow-hidden rounded-t-sm"
-                                        style={{
-                                            height: `${peak > 0 ? Math.max((day.cost / peak) * 100, 2) : 2}%`,
-                                        }}
-                                        aria-label={`${formatDayLabel(day.day)}: ${formatCost(day.cost, currency)}`}
+                                        key={day.day}
+                                        className="group relative flex flex-1 flex-col justify-end"
+                                        style={{ minWidth: 0 }}
                                     >
-                                        {kinds.map((kind, index) => {
-                                            const cost =
-                                                day.byKind[kind.kind] ?? 0;
-                                            if (cost <= 0 || day.cost <= 0) {
-                                                return null;
-                                            }
+                                        <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-popover px-3 py-2 text-xs opacity-0 shadow-e2 transition-opacity group-hover:opacity-100">
+                                            <div className="font-semibold text-foreground">
+                                                {formatDayLabel(day.day)}
+                                            </div>
+                                            <div className="text-text-2 tabular-nums">
+                                                {formatCost(day.cost, currency)}
+                                            </div>
+                                        </div>
 
-                                            return (
-                                                <div
-                                                    key={kind.kind}
-                                                    className={band(index)}
-                                                    style={{
-                                                        height: `${(cost / day.cost) * 100}%`,
-                                                    }}
-                                                />
-                                            );
-                                        })}
+                                        <div
+                                            className="flex w-full flex-col-reverse overflow-hidden rounded-t-sm"
+                                            style={{
+                                                height: `${peak > 0 ? Math.max((day.cost / peak) * 100, 2) : 2}%`,
+                                            }}
+                                            aria-label={`${formatDayLabel(day.day)}: ${formatCost(day.cost, currency)}`}
+                                        >
+                                            {kinds.map((kind, index) => {
+                                                const cost =
+                                                    day.byKind[kind.kind] ?? 0;
+                                                if (
+                                                    cost <= 0 ||
+                                                    day.cost <= 0
+                                                ) {
+                                                    return null;
+                                                }
+
+                                                return (
+                                                    <div
+                                                        key={kind.kind}
+                                                        className={band(index)}
+                                                        style={{
+                                                            height: `${(cost / day.cost) * 100}%`,
+                                                        }}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
                                     </div>
+                                ))}
+                            </div>
+
+                            {peak > 0 && (
+                                <div
+                                    aria-hidden
+                                    className="pointer-events-none absolute inset-x-0 border-t border-dashed border-border-strong"
+                                    style={{ bottom: `${medianPct}%` }}
+                                >
+                                    <span className="absolute left-0 -translate-y-full bg-popover pr-1 font-mono text-[0.625rem] text-text-3">
+                                        median day{' '}
+                                        {formatCost(medianCost, currency)}
+                                    </span>
                                 </div>
-                            ))}
+                            )}
                         </div>
 
                         <div className="mt-2 flex gap-1.5">
@@ -162,27 +168,9 @@ export default function CostChart({
                                 </div>
                             ))}
                         </div>
-
-                        <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
-                            {kinds.map((kind, index) => (
-                                <li
-                                    key={kind.kind}
-                                    className="flex items-center gap-1.5 text-xs text-text-2"
-                                >
-                                    <span
-                                        aria-hidden
-                                        className={`h-2.5 w-2.5 rounded-sm ${band(index)}`}
-                                    />
-                                    <span>{kind.label}</span>
-                                    <span className="font-mono text-text-3 tabular-nums">
-                                        {formatCost(kind.cost, currency)}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
                     </>
                 )}
             </Card>
-        </section>
+        </div>
     );
 }

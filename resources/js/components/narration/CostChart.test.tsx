@@ -36,7 +36,19 @@ const ATHLETE: AthleteRow = {
     ceiling_overridden: false,
     capped: false,
     sparkline: [{ day: '2026-09-10', cost: 0.2 }],
-    served: { llm: 3, rule_based: 1, unknown: 0 },
+    served: {
+        llm: 3,
+        rule_based: 1,
+        unknown: 0,
+        reasons: {
+            demo: 0,
+            capped: 0,
+            return: 0,
+            dead_letter: 0,
+            content_filter: 0,
+            unattributed: 1,
+        },
+    },
     flags: 0,
     dead_lettered: 0,
 };
@@ -61,11 +73,10 @@ describe('CostChart', () => {
         expect(screen.getByText('$0.50')).toBeInTheDocument();
     });
 
-    it('names each stacked band in the legend by its kind label', () => {
+    it('draws a dashed median line labelled with the median day cost', () => {
         renderChart();
 
-        expect(screen.getByText('Briefing')).toBeInTheDocument();
-        expect(screen.getByText('WeeklyRecap')).toBeInTheDocument();
+        expect(screen.getByText(/median day \$0\.25/)).toBeInTheDocument();
     });
 
     it('labels each day bar with its own cost', () => {
@@ -127,7 +138,6 @@ describe('CostChart', () => {
     it('falls back to an empty state when nothing billed in the range', () => {
         renderChart({ chart: { kinds: [], days: [] } });
 
-        expect(screen.queryByText('Briefing')).not.toBeInTheDocument();
         expect(
             screen.getByText('No token usage recorded in this range yet.'),
         ).toBeInTheDocument();
