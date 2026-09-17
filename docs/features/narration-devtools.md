@@ -1,9 +1,9 @@
 ---
 title: Narration devtools
-description: The ops-gated narration console — spend per athlete against their ceiling, a daily cost chart stacked by narrator, and the kind/deployment/origin breakdowns.
+description: The ops-gated narration console — a status board of faults, today's spend against its ceiling, a daily cost chart stacked by narrator, per-athlete rows, the rule-based ledger, and the kind/deployment/origin breakdowns.
 tags: [feature, ai]
 status: living
-reviewed: 2026-09-10
+reviewed: 2026-09-17
 code_refs:
   - app/Livewire/Pulse/NotificationDeliveryHealth.php
   - app/Livewire/Pulse/SelfHealAttempts.php
@@ -14,13 +14,17 @@ code_refs:
   - app/Http/Controllers/NarrationOverviewController.php
   - app/Services/AI/TokenUsageReport.php
   - app/Services/AI/CeilingOverride.php
-  - resources/js/components/dashboard/KpiTile.tsx
+  - app/Services/AI/AnalysisOrigin.php
   - resources/js/components/narration/UsageFilters.tsx
-  - resources/js/components/narration/UsageKpis.tsx
-  - resources/js/components/narration/CeilingHeader.tsx
+  - resources/js/components/narration/FaultStrip.tsx
+  - resources/js/components/narration/TodayPanel.tsx
+  - resources/js/components/narration/actions.tsx
   - app/Services/AI/CostCeilingLedger.php
   - resources/js/components/narration/CostChart.tsx
-  - resources/js/components/narration/AthleteTable.tsx
+  - resources/js/components/narration/NarratorRanking.tsx
+  - resources/js/components/narration/chartBands.ts
+  - resources/js/components/narration/AthletesPanel.tsx
+  - resources/js/components/narration/RuleBasedPanel.tsx
   - resources/js/components/narration/Sparkline.tsx
   - resources/js/components/narration/DeploymentTable.tsx
   - resources/js/components/narration/KindTable.tsx
@@ -43,16 +47,21 @@ code_refs:
 
 ## What it shows
 
-[Overview.tsx](../../resources/js/pages/Narration/Overview.tsx) is pure composition; each block below is its own component under [components/narration/](../../resources/js/components/narration/AthleteTable.tsx), and the shared formatting and payload shapes live in [helpers.ts](../../resources/js/pages/Narration/helpers.ts) / [types.ts](../../resources/js/pages/Narration/types.ts). The page has two tabs over one shared range filter.
+[Overview.tsx](../../resources/js/pages/Narration/Overview.tsx) is pure composition; each block below is its own component under [components/narration/](../../resources/js/components/narration/AthletesPanel.tsx), and the shared formatting and payload shapes live in [helpers.ts](../../resources/js/pages/Narration/helpers.ts) / [types.ts](../../resources/js/pages/Narration/types.ts). The page has two tabs over one shared range filter.
 
 ### The overview tab
 
-- A **ceiling strip** ([CeilingHeader](../../resources/js/components/narration/CeilingHeader.tsx)): today's app-wide spend against the enforced app-wide ceiling, how many athletes are already capped today, whether generation is running or paused (and why), and — once the ceiling has tripped today — the trip time plus how much was served rule-based as a result, recorded by [CostCeilingLedger](../../app/Services/AI/CostCeilingLedger.php). The one-shot **recover all** action lives here.
-- **KPI tiles** via [UsageKpis](../../resources/js/components/narration/UsageKpis.tsx) over [KpiTile](../../resources/js/components/dashboard/KpiTile.tsx) — tokens, estimated cost, prompt share, truncation rate and content-filter trips for the selected range.
-- A **daily cost chart** ([CostChart](../../resources/js/components/narration/CostChart.tsx)): one bar per day, stacked by the narrator kind that billed it, with an athlete filter that narrows the whole series to one athlete. Inline SVG-free stacked `div`s and a legend rather than a chart library — the page ships no charting dependency.
-- The **athlete table** ([AthleteTable](../../resources/js/components/narration/AthleteTable.tsx)), one row per athlete, non-demo first by 30-day spend and the demo account last and labelled. Per row: today / 7d / 30d dollars and calls, that athlete's own ceiling bar (honouring a today-only [CeilingOverride](../../app/Services/AI/CeilingOverride.php)), a 30-day [Sparkline](../../resources/js/components/narration/Sparkline.tsx), the LLM-vs-rule-based split of their Done narration in range, flags filed, and dead-lettered blocks. The name links to the per-athlete page at `/devtools/narration/athletes/{userId}`; a per-athlete **retry failed** button appears only where something is actually dead-lettered.
+Rebuilt as a status board (design round #929, direction A): faults first, then
+today's number, then who and what drove it, then the rule-based ledger.
+
+- A **fault region** ([FaultStrip](../../resources/js/components/narration/FaultStrip.tsx)): one tile per open fault — generation paused, an app-wide ceiling trip, athletes capped today, dead-lettered blocks, content-filter trips — each with the action that fixes it (the existing **recover all** / per-athlete **retry failed** buttons, factored into [actions.tsx](../../resources/js/components/narration/actions.tsx)). The whole region collapses to a single "nothing on fire" line when none of those are true, so the presence or absence of the block is the signal, not a chip to scan.
+- **Today** ([TodayPanel](../../resources/js/components/narration/TodayPanel.tsx), which absorbed the old CeilingHeader): today's app-wide spend at display size against the enforced app-wide ceiling, plus four labelled references beside it — the ceiling, the median day over the last 30, yesterday, and the busiest day before today — with no percentage composites. The capped-athlete count, the pause reason and the recover action moved to the fault region above, since those are faults rather than a reading of today.
+- **Who and what drove it**, side by side: the **daily cost chart** ([CostChart](../../resources/js/components/narration/CostChart.tsx), one bar per day stacked by the narrator kind that billed it, with an athlete filter that narrows the whole series to one athlete, and the same median drawn as a dashed reference line) beside a **ranked by-narrator list** ([NarratorRanking](../../resources/js/components/narration/NarratorRanking.tsx), cost *and* calls per kind, replacing the chart's own wrapping legend; both share their band colours via [chartBands.ts](../../resources/js/components/narration/chartBands.ts)). Below that, **athlete rows** ([AthletesPanel](../../resources/js/components/narration/AthletesPanel.tsx), one flex row per athlete rather than a table): name and tags, today against that athlete's own ceiling as a meter (honouring a today-only [CeilingOverride](../../app/Services/AI/CeilingOverride.php)), 7d, 30d, calls, and a 30-day [Sparkline](../../resources/js/components/narration/Sparkline.tsx). A deleted account collapses into a `<details>` rollup below the live rows instead of taking a full row. Flags and the dead-letter count are not columns here any more — a dead-lettered block is a fault (above), and flags are a quality signal (the breakdown tab).
+- The **rule-based ledger** ([RuleBasedPanel](../../resources/js/components/narration/RuleBasedPanel.tsx)), app-wide: one row per reason a block was served rule-based instead of by the LLM — `demo`, `capped`, `return`, `dead_letter`, `content_filter`, `unattributed` — with its count and which athletes contributed it, plus two anchors (how much pre-dates `served_by`, how much the LLM wrote). `content_filter`, `dead_letter` and `unattributed` render in ember: they are the reasons that should not be there.
 - The money columns and the sparkline are **fixed 30-day windows**, not the selected range, so "today against their ceiling" keeps meaning the same thing whatever range is chosen. The quality columns follow the range.
 - The producer split has three buckets, not two: `served_by` is null for every row narrated before the column shipped ([[narration-analytics-are-joinable]]), so **unknown** is its own number rather than being counted as rule-based.
+
+**Why a rule-based fill happened.** `ai_analyses.rule_based_reason` ([AnalysisOrigin](../../app/Services/AI/AnalysisOrigin.php), reused rather than a parallel enum) is written at every rule-based `markDone()` site this page reads from: the content-filter fallback in `AnalyzeRowJob`/`AnalyzeGroupJob` (`ContentFilter`), the cost-ceiling degrade path in `AnalysisService::degradeToRuleBased()` (`Capped`), `NarrateOnReturnJob`'s away-catch-up fills (`Return`), and `ai:relabel-demo-narration` (`Demo`). [TokenUsageReport::athletes()](../../app/Services/AI/TokenUsageReport.php) groups by it to build `served.reasons`; a demo athlete's rule-based fills always count as `demo` regardless of the stored column (derived from `is_demo`, since the demo account's narration is rule-based by design rather than by exception), and a null or not-yet-taxonomised value counts as `unattributed` — the same argument the pre-existing `unknown` bucket already makes for `served_by`. `dead_letter` is a defined reason with no writer yet; it renders (in ember, once real) the moment a future call site starts passing it.
 
 ### The breakdown tab
 

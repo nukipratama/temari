@@ -25,6 +25,7 @@ function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
     return {
         week_start: '2026-06-15',
         phase: 'base',
+        zone: 'block',
         type: 'history',
         planned_km: 30,
         actual_km: null,

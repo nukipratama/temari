@@ -10,6 +10,7 @@ function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
     return {
         week_start: '2026-06-15',
         phase: 'base',
+        zone: 'block',
         type: 'history',
         planned_km: 30,
         actual_km: null,
@@ -83,6 +84,21 @@ describe('SeasonHeaderCard', () => {
         expect(bars).toHaveLength(3);
         expect(bars[0]).toHaveStyle({ height: '35%' });
         expect(bars[2]).toHaveStyle({ height: '100%' });
+    });
+
+    it('states the under-ready line when the season carries one', () => {
+        const line =
+            "Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built.";
+
+        renderCard({ underReadyLine: line });
+
+        expect(screen.getByText(line)).toBeInTheDocument();
+    });
+
+    it('says nothing about readiness without the line', () => {
+        renderCard({ underReadyLine: null });
+
+        expect(screen.queryByText(/tighter than/)).not.toBeInTheDocument();
     });
 
     it('renders Temari’s take when the season narration exists', () => {

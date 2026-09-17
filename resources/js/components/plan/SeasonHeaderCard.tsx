@@ -40,6 +40,7 @@ export default function SeasonHeaderCard({
     adherencePct,
     weeks,
     narration,
+    underReadyLine = null,
 }: Readonly<{
     weekIndex: number;
     totalWeeks: number;
@@ -48,6 +49,8 @@ export default function SeasonHeaderCard({
     adherencePct: number | null;
     weeks: SeasonSummaryWeek[];
     narration: AnalysisPayload | null;
+    /** Served once, when the season opened with less than a full race block left. */
+    underReadyLine?: string | null;
 }>) {
     const phases = phasesOf(weeks);
     const currentPhase = weeks.find((w) => w.type === 'current')?.phase;
@@ -124,6 +127,10 @@ export default function SeasonHeaderCard({
                         );
                     })}
                 </div>
+            )}
+
+            {underReadyLine && (
+                <p className="mt-3 text-xs text-text-2">{underReadyLine}</p>
             )}
 
             {narration && <TemariTake analysis={narration} className="mt-3" />}

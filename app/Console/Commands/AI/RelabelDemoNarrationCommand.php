@@ -7,6 +7,7 @@ namespace App\Console\Commands\AI;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
 use App\Models\User;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\ServedBy;
 use Illuminate\Console\Attributes\Description;
@@ -51,7 +52,10 @@ class RelabelDemoNarrationCommand extends Command
 
         $relabelled = $mislabelled->isEmpty()
             ? 0
-            : Analysis::query()->whereIn('id', $mislabelled)->update(['served_by' => ServedBy::RuleBased]);
+            : Analysis::query()->whereIn('id', $mislabelled)->update([
+                'served_by' => ServedBy::RuleBased,
+                'rule_based_reason' => AnalysisOrigin::Demo,
+            ]);
 
         $this->info("Relabelled {$relabelled} demo rows from llm to rule_based.");
 

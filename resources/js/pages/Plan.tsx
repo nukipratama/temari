@@ -32,6 +32,9 @@ interface SeasonSummary {
     week_index: number;
     total_weeks: number;
     is_race_oriented: boolean;
+    /** Y-m-d Monday the race block opens, null for a season with no race. */
+    block_opens_on: string | null;
+    under_ready_line: string | null;
 }
 
 interface PlanAdaptation {
@@ -203,6 +206,7 @@ export default function Plan({
                                     adherencePct={seasonAdherencePct}
                                     weeks={seasonSummary}
                                     narration={planNarration.season}
+                                    underReadyLine={season.under_ready_line}
                                 />
                                 <SeasonTimeline
                                     weeks={seasonSummary}

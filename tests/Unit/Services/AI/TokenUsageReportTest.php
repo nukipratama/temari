@@ -447,7 +447,7 @@ it('reports a null content-filter share when the range has no calls', function (
 });
 
 /** A Done narration owned by $userId, narrated inside the report's range. */
-function seedDoneNarration(int $userId, ?ServedBy $servedBy, Carbon $when): void
+function seedDoneNarration(int $userId, ?ServedBy $servedBy, Carbon $when, ?AnalysisOrigin $reason = null): void
 {
     Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
@@ -457,6 +457,7 @@ function seedDoneNarration(int $userId, ?ServedBy $servedBy, Carbon $when): void
         'status' => AnalysisStatus::Done,
         'content' => 'narrated',
         'served_by' => $servedBy,
+        'rule_based_reason' => $reason,
         'generated_at' => $when,
     ]);
 }
@@ -539,7 +540,51 @@ it('splits done narration by its producer, counting a null served_by as unknown'
     [$from, $to] = $range();
     $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
 
-    expect($row['served'])->toBe(['llm' => 2, 'rule_based' => 1, 'unknown' => 1]);
+    expect($row['served'])->toBe([
+        'llm' => 2,
+        'rule_based' => 1,
+        'unknown' => 1,
+        'reasons' => ['demo' => 0, 'capped' => 0, 'return' => 0, 'dead_letter' => 0, 'content_filter' => 0, 'unattributed' => 1],
+    ]);
+});
+
+it('groups a rule-based fill by its stored reason', function () use ($range): void {
+    $alice = User::factory()->create();
+    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-11'), AnalysisOrigin::Capped);
+    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-12'), AnalysisOrigin::Return);
+    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-13'), AnalysisOrigin::DeadLetter);
+    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-14'), AnalysisOrigin::ContentFilter);
+    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-15'), null);
+
+    [$from, $to] = $range();
+    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
+
+    expect($row['served']['reasons'])->toBe([
+        'demo' => 0,
+        'capped' => 1,
+        'return' => 1,
+        'dead_letter' => 1,
+        'content_filter' => 1,
+        'unattributed' => 1,
+    ]);
+});
+
+it('counts every one of a demo athlete\'s rule-based fills as demo, whatever reason (if any) was stored', function () use ($range): void {
+    $demo = User::factory()->create(['is_demo' => true]);
+    seedDoneNarration($demo->id, ServedBy::RuleBased, Carbon::parse('2026-05-11'), null);
+    seedDoneNarration($demo->id, ServedBy::RuleBased, Carbon::parse('2026-05-12'), AnalysisOrigin::Capped);
+
+    [$from, $to] = $range();
+    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $demo->id);
+
+    expect($row['served']['reasons'])->toBe([
+        'demo' => 2,
+        'capped' => 0,
+        'return' => 0,
+        'dead_letter' => 0,
+        'content_filter' => 0,
+        'unattributed' => 0,
+    ]);
 });
 
 it('counts the flags an athlete filed in range', function () use ($range): void {

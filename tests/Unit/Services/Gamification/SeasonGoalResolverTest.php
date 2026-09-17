@@ -27,6 +27,7 @@ function seasonCtx(array $overrides = []): SeasonGamificationContext
         restHonored: $overrides['restHonored'] ?? 0,
         raceGoalMet: $overrides['raceGoalMet'] ?? false,
         ctlGrowth: $overrides['ctlGrowth'] ?? 0.0,
+        peakWeeklyKm: $overrides['peakWeeklyKm'] ?? 0.0,
     );
 }
 
@@ -38,6 +39,7 @@ it('resolves currentValue for every season metric', function (): void {
         'restHonored' => 3,
         'raceGoalMet' => true,
         'ctlGrowth' => 5.2,
+        'peakWeeklyKm' => 41.3,
     ]);
 
     expect($this->resolver->currentValue($ctx, 'season_sessions_completed'))->toBe(4)
@@ -45,7 +47,8 @@ it('resolves currentValue for every season metric', function (): void {
         ->and($this->resolver->currentValue($ctx, 'season_longest_long_run_km'))->toBe(15.5)
         ->and($this->resolver->currentValue($ctx, 'season_rest_honored'))->toBe(3)
         ->and($this->resolver->currentValue($ctx, 'season_race_goal_met'))->toBe(1)
-        ->and($this->resolver->currentValue($ctx, 'season_ctl_growth'))->toBe(5.2);
+        ->and($this->resolver->currentValue($ctx, 'season_ctl_growth'))->toBe(5.2)
+        ->and($this->resolver->currentValue($ctx, 'season_peak_weekly_km'))->toBe(41.3);
 });
 
 it('resolves season_race_goal_met to 0 when not met', function (): void {
