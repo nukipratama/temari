@@ -68,7 +68,6 @@ function requestedDay(): string | null {
 
 const PLAN_NARRATION_DEFAULT: PlanNarration = {
     days: {},
-    week: null,
     season: null,
 };
 
@@ -216,7 +215,6 @@ export default function Plan({
                                     today={today}
                                     raceDate={race?.race_date ?? null}
                                     weekFocus={adaptation}
-                                    weekNarration={planNarration.week}
                                     dayNarration={planNarration.days}
                                     focusDay={focusDay}
                                     onMove={moveSession}

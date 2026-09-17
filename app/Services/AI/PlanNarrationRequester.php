@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Models\AI\Analysis;
-use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
@@ -16,14 +15,13 @@ use App\Support\Cooldown;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use App\Actions\Run\Plan\ResolveSeasonAction;
-use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 
 /**
- * Requests fresh day/week/season plan narration for the current week, reads
+ * Requests fresh day/season plan narration for the current week, reads
  * it back for the Plan page, and rate-limits how often
  * {@see \App\Http\Controllers\PlanController::regenerate()} may run — a
- * manual regenerate re-narrates up to 9 rows (7 days, the week, the
- * season), so it carries a real LLM cost per click.
+ * manual regenerate re-narrates up to 8 rows (7 days, the season), so it
+ * carries a real LLM cost per click.
  *
  * The regenerate cooldown is a dedicated key, not {@see \App\Models\AI\Analysis::cooldownKey()}
  * reused: every narration row's own completion unconditionally starts its
@@ -46,7 +44,6 @@ final readonly class PlanNarrationRequester
         private TrainingBaseline $baseline,
         private ClampNarrationContext $clampContext,
         private ResolveSeasonAction $season,
-        private ResolveWeekAdaptationAction $weekAdaptation,
     ) {
     }
 
@@ -180,13 +177,12 @@ final readonly class PlanNarrationRequester
     }
 
     /**
-     * Requests narration for every day of the current week, the current
-     * week's adaptation verdict (if regenerate has run at least once), and
-     * the current season.
+     * Requests narration for every day of the current week and the current
+     * season.
      *
-     * Day and week narration re-bill **only where the material actually
-     * changed**. This runs every Monday for every user, seven days at a time,
-     * and the periodizer frequently rewrites a week into something that reads
+     * Day narration re-bills **only where the material actually changed**.
+     * This runs every Monday for every user, seven days at a time, and the
+     * periodizer frequently rewrites a week into something that reads
      * identically — an unchanged session type, phase and prescribed distance
      * produce the same blurb, so re-narrating it buys nothing. Each row carries
      * a {@see MaterialFingerprint} of what it describes, stamped when it was
@@ -239,20 +235,6 @@ final readonly class PlanNarrationRequester
             );
         }
 
-        $adaptation = $this->currentWeekAdaptation($user, $today);
-        if ($adaptation !== null) {
-            $stampedWeek = Analysis::query()
-                ->forSubject(PlanAdaptation::class, $adaptation->id, AnalysisType::PlanWeekVoice)
-                ->value('content_fingerprint');
-
-            $this->analysisService->request(
-                PlanAdaptation::class,
-                $adaptation->id,
-                AnalysisType::PlanWeekVoice,
-                invalidate: $invalidateChanged && $stampedWeek !== MaterialFingerprint::forPlanAdaptation($adaptation),
-            );
-        }
-
         $season = $this->currentSeason($user);
         if ($season !== null) {
             $this->analysisService->request(
@@ -281,16 +263,6 @@ final readonly class PlanNarrationRequester
                 $user->id,
                 AnalysisType::PlanDayVoice,
                 $date,
-                refillDone: false,
-            );
-        }
-
-        $adaptation = $this->currentWeekAdaptation($user, $today);
-        if ($adaptation !== null) {
-            $this->analysisService->requestRuleBased(
-                PlanAdaptation::class,
-                $adaptation->id,
-                AnalysisType::PlanWeekVoice,
                 refillDone: false,
             );
         }
@@ -335,7 +307,7 @@ final readonly class PlanNarrationRequester
     }
 
     /**
-     * @return array{days: array<string, array<string, mixed>>, week: array<string, mixed>|null, season: array<string, mixed>|null}
+     * @return array{days: array<string, array<string, mixed>>, season: array<string, mixed>|null}
      */
     public function payloadsForCurrentWeek(User $user, Carbon $today): array
     {
@@ -371,20 +343,9 @@ final readonly class PlanNarrationRequester
             );
         }
 
-        // A PlanAdaptation and a Season both exist from the first /plan load,
-        // so without this the week and season blocks promise a take nobody has
-        // queued — the same false hope the day loop above skips.
-        $adaptation = $this->currentWeekAdaptation($user, $today);
-        $weekRow = $adaptation === null
-            ? null
-            : Analysis::query()->forSubject(PlanAdaptation::class, $adaptation->id, AnalysisType::PlanWeekVoice)->first();
-        $week = $weekRow === null ? null : Analysis::toPayload(
-            $weekRow,
-            AnalysisType::PlanWeekVoice,
-            PlanAdaptation::class,
-            $adaptation->id,
-        );
-
+        // A Season exists from the first /plan load, so without this the
+        // season block promises a take nobody has queued — the same false
+        // hope the day loop above skips.
         $season = $this->currentSeason($user);
         $seasonRow = $season === null
             ? null
@@ -396,7 +357,7 @@ final readonly class PlanNarrationRequester
             $season->id,
         );
 
-        return ['days' => $days, 'week' => $week, 'season' => $seasonPayload];
+        return ['days' => $days, 'season' => $seasonPayload];
     }
 
     /**
@@ -491,13 +452,6 @@ final readonly class PlanNarrationRequester
             static fn (int $offset): string => $weekStart->copy()->addDays($offset)->toDateString(),
             range(0, 6),
         );
-    }
-
-    private function currentWeekAdaptation(User $user, Carbon $today): ?PlanAdaptation
-    {
-        $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
-
-        return ($this->weekAdaptation)($user->id, $weekStart->toDateString());
     }
 
     private function currentSeason(User $user): ?Season

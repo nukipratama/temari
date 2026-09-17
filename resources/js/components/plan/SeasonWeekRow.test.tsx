@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
-import type { AnalysisPayload } from '@/types/inertia';
 
 import SeasonWeekRow, { SeasonRailNode } from './SeasonWeekRow';
 
@@ -63,7 +62,6 @@ function renderRow(
             isLast={false}
             today="2026-06-20"
             focus={null}
-            narration={null}
             dayNarration={{}}
             onMove={vi.fn()}
             onSkip={vi.fn()}
@@ -158,26 +156,15 @@ describe('SeasonWeekRow', () => {
         expect(screen.getAllByText('easy')).toHaveLength(2);
     });
 
-    it('carries the week narration and the adaptation focus into the open week', () => {
+    it('carries the adaptation focus into the open week', () => {
         renderRow({
             week: week({ type: 'current' }),
             focus: {
                 headline: 'Holding the line.',
                 detail: 'Volume stays put this week.',
             },
-            narration: {
-                id: 1,
-                status: 'done',
-                content: 'Steady, no red flags.',
-                type: 'plan_week_voice',
-                is_zone_dependent: false,
-                subject_type: 'plan_adaptation',
-                subject_id: 1,
-                discriminator: null,
-            } as AnalysisPayload,
         });
 
-        expect(screen.getByText('Steady, no red flags.')).toBeInTheDocument();
         expect(screen.getByText('Holding the line.')).toBeInTheDocument();
         expect(
             screen.getByText('Volume stays put this week.'),

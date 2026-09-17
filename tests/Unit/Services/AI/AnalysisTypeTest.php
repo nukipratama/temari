@@ -7,9 +7,7 @@ use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
-use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
-use App\Models\PlanAdaptation;
 use App\Models\Season;
 use App\Services\AI\AnalysisType;
 use Illuminate\Support\Carbon;
@@ -28,7 +26,6 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
         'trend_read',
         'plan_day_voice',
         'plan_clamp_voice',
-        'plan_week_voice',
         'plan_season_voice',
     ], implode(' ', [
         'The AnalysisType case list changed. Update this list only after settling the call sites that',
@@ -58,11 +55,6 @@ it('maps TrendRead to its job + subject type', function (): void {
 it('maps PlanDayVoice to its job + subject type', function (): void {
     expect(AnalysisType::PlanDayVoice->jobClass())->toBe(AnalyzePlanDayVoiceJob::class)
         ->and(AnalysisType::PlanDayVoice->subjectType())->toBe(AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE);
-});
-
-it('maps PlanWeekVoice to its job + subject type', function (): void {
-    expect(AnalysisType::PlanWeekVoice->jobClass())->toBe(AnalyzePlanWeekVoiceJob::class)
-        ->and(AnalysisType::PlanWeekVoice->subjectType())->toBe(PlanAdaptation::class);
 });
 
 it('maps PlanSeasonVoice to its job + subject type', function (): void {
@@ -125,7 +117,6 @@ it('prohibits a discriminator on the types that key off subject_id alone', funct
     'run insight' => [AnalysisType::RunInsight],
     'weekly recap' => [AnalysisType::WeeklyRecap],
     'card flavor' => [AnalysisType::CardFlavor],
-    'plan week voice' => [AnalysisType::PlanWeekVoice],
     'plan season voice' => [AnalysisType::PlanSeasonVoice],
 ]);
 

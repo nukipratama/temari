@@ -182,7 +182,7 @@ always-on guideline ("LLM Integration" in AGENTS.md).
 Miss one and it fails loudly: `php artisan` breaks on enum match exhaustiveness (PHPStan), or
 the structure / coverage gates fail. **Model the shape on an existing sibling and mirror it** —
 per-user-per-day follows `TrendCaption`; per-activity follows `RunInsight*`; per-row-model
-follows `WeeklyRecap` / `CardFlavor` / `PlanWeekVoice`. Let `Name` = StudlyCase, `snake` = snake_case.
+follows `WeeklyRecap` / `CardFlavor` / `PlanSeasonVoice`. Let `Name` = StudlyCase, `snake` = snake_case.
 
 1. **Narrator** — `app/Services/AI/Narrators/{Name}Narrator.php`. Inject `StructuredChatCaller`;
    expose `generate(...)` returning the narrated string. Build `$context` from real metrics

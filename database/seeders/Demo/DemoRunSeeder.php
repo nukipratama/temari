@@ -451,10 +451,9 @@ class DemoRunSeeder
             );
         }
 
-        // Fills plan_day_voice (current week's 7 days) / plan_week_voice
-        // (this week's PlanAdaptation) / plan_season_voice (the active
-        // Season) rule-based, mirroring the demo Plan page's own "Reread"
-        // path — see PlanNarrationRequester::ensureDemoFilled's docblock.
+        // Fills plan_day_voice (current week's 7 days) / plan_season_voice
+        // (the active Season) rule-based, mirroring the demo Plan page's own
+        // "Reread" path — see PlanNarrationRequester::ensureDemoFilled's docblock.
         $this->planNarrationRequester->ensureDemoFilled($user, $today);
     }
 

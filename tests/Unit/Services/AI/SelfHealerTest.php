@@ -6,6 +6,7 @@ use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\PlanAdaptation;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -590,6 +591,33 @@ it('sweeps past a retired-type row left in flight instead of dying on the enum c
     expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
 
     expect(DB::table('ai_analyses')->where('analysis_type', 'trend_caption')->value('status'))
+        ->toBe(AnalysisStatus::Queued->value);
+});
+
+/**
+ * #947: `plan_week_voice` was never swept by any family here even while the
+ * type was live (no plan-family sweep exists), so nothing changes behind
+ * the retired case — this pins that a leftover row stays untouched rather
+ * than crashing the enum cast, same as any other retired type.
+ */
+it('sweeps past a leftover plan_week_voice row in flight instead of dying on the enum cast', function (): void {
+    $user = User::factory()->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create();
+    DB::table('ai_analyses')->insert([
+        'subject_type' => PlanAdaptation::class,
+        'subject_id' => $adaptation->id,
+        'analysis_type' => 'plan_week_voice',
+        'discriminator' => null,
+        'status' => AnalysisStatus::Queued->value,
+        'attempts' => 0,
+        'queued_at' => Carbon::now()->subDay(),
+        'created_at' => Carbon::now()->subDay(),
+        'updated_at' => Carbon::now()->subDay(),
+    ]);
+
+    expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
+
+    expect(DB::table('ai_analyses')->where('analysis_type', 'plan_week_voice')->value('status'))
         ->toBe(AnalysisStatus::Queued->value);
 });
 

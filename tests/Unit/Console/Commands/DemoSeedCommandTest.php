@@ -151,10 +151,9 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
             ->where('status', '!=', PlannedSessionStatus::Planned)
             ->count())->toBe(0);
 
-    // F7: plan narration filled rule-based for the current week (7 days),
-    // this week's adaptation, and the active season.
+    // F7: plan narration filled rule-based for the current week (7 days)
+    // and the active season.
     expect(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->where('status', 'done')->count())->toBe(7)
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanWeekVoice)->where('status', 'done')->count())->toBe(1)
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->where('status', 'done')->count())->toBe(1);
 
     // F7: trend_read narrated for all three windows (30d/90d/12mo).
@@ -245,7 +244,6 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     // duplicating rows for the plan/narration/inbox surfaces this slice adds.
     expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe($plannedSessionCount)
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->count())->toBe(7)
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanWeekVoice)->count())->toBe(1)
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->count())->toBe(1)
         ->and(Analysis::query()
             ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)

@@ -94,9 +94,9 @@ everyone. See [[narration-follows-the-athlete-not-the-run]].
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 and it still runs for every athlete. The narration half then calls
 [`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L205) for each
-recently-active athlete, touching up to nine rows: `PlanDayVoice` ×7, `PlanWeekVoice`, and
-`PlanSeasonVoice`. It is the largest scheduled spend in the app, which is why it is also the one
-that checks hardest before it bills.
+recently-active athlete, touching up to eight rows: `PlanDayVoice` ×7 and `PlanSeasonVoice`. It is
+the largest scheduled spend in the app, which is why it is also the one that checks hardest before
+it bills.
 
 **A brand-new account also gets today's briefing on the day it signs up.** `BriefingMascotVoice`
 is keyed by the day, and the only thing that used to stage it was the 00:01 kickoff, so an account
@@ -186,9 +186,9 @@ excluded from every sweep. Failed rows are bounded by
 `/devtools/narration` for a manual re-arm, which is itself a recovery-origin dispatch. See
 [[bounded-self-heal-and-dead-letter]].
 
-## The twelve surfaces
+## The eleven surfaces
 
-Eleven [`AnalysisType`](../../app/Services/AI/AnalysisType.php) cases plus the scoped run Q&A, which
+Ten [`AnalysisType`](../../app/Services/AI/AnalysisType.php) cases plus the scoped run Q&A, which
 is not an Analysis row. Every case is dispatched by at least one origin above, and every case is
 rendered somewhere a user can see — both directions matter, and only one of them used to be checked.
 
@@ -204,7 +204,6 @@ rendered somewhere a user can see — both directions matter, and only one of th
 | `trend_read` | `TrendReadNarrator` | synthetic user+range · range | scheduled ×3 | `NarrationCard` on Trends |
 | `plan_day_voice` | `PlanDayVoiceNarrator` | synthetic user+day · `Y-m-d` | `plan:regenerate`, Plan page, first week | `WeekDayRow`, collapsed |
 | `plan_clamp_voice` | `PlanClampVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest listener, 00:01 briefing | an eased day's voice before credit, or an unrecorded step-down, on both surfaces |
-| `plan_week_voice` | `PlanWeekVoiceNarrator` | `PlanAdaptation` · none | `plan:regenerate`, Plan page, first week | `SeasonWeekRow`, collapsed |
 | `plan_season_voice` | `PlanSeasonVoiceNarrator` | `Season` · none | `plan:regenerate`, Plan page, first week | `SeasonHeaderCard`, always visible |
 | *(not an Analysis row)* | `RunQuestionNarrator` | `RunQuestion` rows per activity | user | `AskAboutRun` on the run page |
 
@@ -282,7 +281,6 @@ drives everything below.
 | `TrendReadNarrator` | 2 | **6** | 1200 | 0.7 | `trend_read` |
 | `PlanDayVoiceNarrator` | 1 | **4** | 300 | 0.7 | `plan_day_voice` |
 | `PlanClampVoiceNarrator` | 1 | — | 200 | 0.7 | `plan_clamp_voice` |
-| `PlanWeekVoiceNarrator` | 1 | **4** | 400 | 0.7 | `plan_week_voice` |
 | `PlanSeasonVoiceNarrator` | 1 | **4** | 400 | 0.7 | `plan_season_voice` |
 
 Every kind has its own `azure_openai.narrators.*` override key, each defaulting to
@@ -349,7 +347,6 @@ inline in its `toolbox()` method.
 | `TrendRangeTool` · `get_trend_range_totals` | `range`, `current` and `comparison` (`runs`, `distance_km`, `trimp_total`), `ctl_start`, `ctl_end`, `vdot_start`, `vdot_end`, `avg_monotony`, `avg_strain` | `TrainingLoad::ctlTrend()` / `::strainMonotonyTrend()`, `TrendDailySnapshot` |
 | `CardIdentityTool` · `get_card_identity` | `rarity`, `rarity_label`, `special_move`, `badges` | stored `RunCard` attributes; labels from `Badge::promptLabelsFor()` |
 | `PlanDayTool` · `get_day_plan` | `date`, `session_type`, `phase`, `distance_km`, `skipped`; plus `status`, `completed_km`, `ran_anyway` once the day is credited | `TrainingBaseline`, `SegmentGenerator::coreKmFor()`, `SessionMatcher::activityByDate()` for the km actually run |
-| `PlanWeekTool` · `get_week_adaptation` | `week_start`, `reason`, `headline`, `detail`, `deload`, `quality_delta`, `adherence_pct` | stored `PlanAdaptation`, written by `PlanAdapter` |
 | `PlanSeasonTool` · `get_season` | `starts_at`, `ends_at`, `is_race_oriented`, `race_name`, `race_date`, `race_distance_m`, `goals` | stored `Season`, `RaceGoal` and `SeasonGoal` rows |
 | `PlanContextTool` · `get_planned_sessions` | `days[]` of `date`, `session_type`, `phase`, `distance_km`, `target_pace_sec`, `skipped`, `status`, `compliance_score`, `ran_anyway` | `PlannedSession` rows over the bound span; `SegmentGenerator::coreKmFor()` for days `ComplianceScorer` has not yet written `prescribed_km` on; `VdotEstimator` into `TrainingPaceCalculator` for the pace |
 | `PlanAdherenceTool` · `get_plan_adherence` | `from`, `through`, `prescribed`, `done`, `partial`, `missed`, `overreached`, `excused`, `ran_anyway`, `mean_compliance` | `PlannedSession` rows up to the as-of date, counted by `PlannedSessionStatus`; a null `from` means the athlete's whole history |
@@ -368,10 +365,9 @@ inline in its `toolbox()` method.
 | `MonthlyRecapNarrator` | `MonthTotalsTool`, `PlanContextTool` |
 | `TrendReadNarrator` | `TrendRangeTool`, `PlanAdherenceTool` |
 | `PlanDayVoiceNarrator` | `PlanDayTool` |
-| `PlanWeekVoiceNarrator` | `PlanWeekTool` |
 | `PlanSeasonVoiceNarrator` | `PlanSeasonTool` |
 
-Every one of the 27 tools is carried by at least one narrator; none is orphaned.
+Every one of the 26 tools is carried by at least one narrator; none is orphaned.
 
 ## The deterministic half
 
@@ -406,16 +402,15 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | `profile_voice` | earns it | Once a week, four reads, genuinely synthetic. |
 | `trend_read` | earns it | 1 tool and a 4-step budget. Watch the cadence (×3 ranges) rather than the call. |
 | `plan_day_voice` | earns it | Budget aligned to 4, and the weekly sweep now re-bills only the days whose prescribed session actually changed. Still the largest scheduled spend by cadence, but no longer a blanket re-narration. |
-| `plan_week_voice` | earns it | Budget aligned to 4, and re-billed only when the adaptation verdict itself changed. |
 | `plan_season_voice` | earns it | Budget aligned to 4 and idempotent, so it neither re-bills nor over-runs. |
 | run Q&A | earns it | A free-form question about one run is exactly what rules cannot answer. |
 | `TemariPersona` | earns it | ~4,000 tokens on every turn, but it *is* the product, and the per-kind prompt cache already serves roughly half of it at a tenth of the rate. The largest available lever, and the last one to reach for. |
 
 **Tool shortlist** — flagged rather than ruled, since only a handful are worth acting on:
 
-- The three plan tools (`PlanDayTool`, `PlanWeekTool`, `PlanSeasonTool`) each return one bound read
-  with nothing for the model to decide. Handing the payload straight to the prompt would remove a
-  tool round trip per plan block, which is up to nine per user per week.
+- The two plan tools (`PlanDayTool`, `PlanSeasonTool`) each return one bound read with nothing for
+  the model to decide. Handing the payload straight to the prompt would remove a tool round trip
+  per plan block, which is up to eight per user per week.
 - `PlanContextTool` is the one plan read bound to a *span* rather than a row, so a narrator with no
   `PlannedSession` in hand can still say what was prescribed. The four per-run narrators bind it to
   a single day, the date of the run they are describing; the weekly and monthly recaps bind it to
@@ -432,7 +427,7 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 active user per week). It ranks surfaces against each other; it is not a dollar figure:
 
 `run_insight` › `briefing_mascot_voice` › `post_run_speech` › run Q&A › `plan_day_voice` ›
-`card_flavor` › `profile_voice` › `trend_read` › `plan_week_voice` › `weekly_recap` ›
+`card_flavor` › `profile_voice` › `trend_read` › `weekly_recap` ›
 `monthly_recap` › `plan_season_voice`
 
 `plan_day_voice` led this list until 2026-09-04, on a weekly ×7 blanket re-narration. With the
@@ -440,6 +435,20 @@ fingerprint check it now bills only on the days the periodizer actually moved, s
 cost is a fraction of its worst case — and its worst case is unchanged.
 
 ## Retired surfaces
+
+**`plan_week_voice`** (cut 2026-09-17, #947). Ahead-of-time plan narration was decided against for
+the week-adaptation surface specifically: the week's headline/detail/deload/quality chips already
+say why the week looks the way it does, deterministically, off `PlanAdaptation` — the LLM line on
+top of it was rendered at `SeasonWeekRow`'s collapsed take, never load-bearing. The enum case,
+`PlanWeekVoiceNarrator`, `AnalyzePlanWeekVoiceJob`, its `PlanWeekTool`, the authorizer arm, the
+`BackfillAgeGate` arm, the rule-based arm, the routing key and the two `PlanNarrationRequester`
+dispatch sites (`requestWeek()`'s week block, `ensureDemoFilled()`'s week block) are all gone.
+`plan_day_voice` and `plan_season_voice` are unaffected. No pruning migration: existing
+`plan_week_voice` rows are left in the table exactly as `pr_context` was —
+[`KnownAnalysisTypeScope`](../../app/Models/Scopes/KnownAnalysisTypeScope.php#L26) excludes them
+from every normal query the moment the enum case is gone, so nothing renders, self-heals,
+dead-letters or re-requests them; `Analysis::toPayload()` is never reached for one because
+`PlanNarrationRequester::payloadsForCurrentWeek()` no longer looks for a week row at all.
 
 **`pr_context`** (cut 2026-09-04). Narrated once per beaten personal record on every ingest, resumed
 by self-heal, re-staged on activity delete — and **never rendered anywhere**. No controller built a

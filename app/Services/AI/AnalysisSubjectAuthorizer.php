@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Models\Activity;
-use App\Models\PlanAdaptation;
 use App\Models\RunCard;
 use App\Models\Season;
 use App\Models\User;
@@ -44,7 +43,6 @@ final class AnalysisSubjectAuthorizer
                 ->whereKey($subjectId)
                 ->forUser($user->id)
                 ->exists(),
-            AnalysisType::PlanWeekVoice => self::userOwns(PlanAdaptation::query(), $subjectId, $user->id),
             AnalysisType::PlanSeasonVoice => self::userOwns(Season::query(), $subjectId, $user->id),
         };
 
