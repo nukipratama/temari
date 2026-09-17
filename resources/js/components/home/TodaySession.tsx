@@ -10,7 +10,9 @@ import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import {
     clampSummary,
+    creditedPaceLabel,
     easedFromLabel,
+    isCreditedStatus,
     kmLabel,
     paceLabel,
     SESSION_TYPE_LABEL,
@@ -74,7 +76,9 @@ function SessionVoice({
  * `docs/decisions/the-eased-session-leads.md`.
  */
 function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
-    const pace = paceLabel(day);
+    const credited = isCreditedStatus(day.status);
+    const pace = credited ? null : paceLabel(day);
+    const creditedPace = credited ? creditedPaceLabel(day) : null;
     const parts = [SESSION_TYPE_LABEL[day.session_type] ?? day.session_type];
     if (day.session_type !== 'rest') {
         parts.push(kmLabel(day));
@@ -91,6 +95,11 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
             <p className="text-sm font-semibold text-foreground">
                 {parts.join(' · ')}
             </p>
+            {creditedPace !== null && (
+                <p className="mt-0.5 text-sm font-semibold text-foreground">
+                    {creditedPace}
+                </p>
+            )}
             {day.eased_from !== null && (
                 <div className="mt-2 border-l-2 border-border-strong pl-3">
                     <p className="flex items-center gap-1.5 text-label-micro text-text-2">

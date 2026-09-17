@@ -8,7 +8,9 @@ import {
     SESSION_TYPE_LABEL,
     clampSummary,
     computeAdherence,
+    creditedPaceLabel,
     easedFromLabel,
+    isCreditedStatus,
     isRaceWeek,
     kmLabel,
     paceLabel,
@@ -267,6 +269,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         clamp: null,
         eased_from: null,
         credit_note: null,
+        ran_pace_sec_per_km: null,
         actual_km: null,
         activities: [],
         ...overrides,
@@ -367,6 +370,58 @@ describe('paceLabel', () => {
         expect(paceLabel(planDay({ session_type: 'rest', segments: [] }))).toBe(
             null,
         );
+    });
+});
+
+describe('isCreditedStatus', () => {
+    it('credits done, partial and overreached', () => {
+        expect(isCreditedStatus('done')).toBe(true);
+        expect(isCreditedStatus('partial')).toBe(true);
+        expect(isCreditedStatus('overreached')).toBe(true);
+    });
+
+    it('does not credit planned, missed or skip', () => {
+        expect(isCreditedStatus('planned')).toBe(false);
+        expect(isCreditedStatus('missed')).toBe(false);
+        expect(isCreditedStatus('skip')).toBe(false);
+    });
+});
+
+describe('creditedPaceLabel', () => {
+    it('labels both figures once a credited run has one to show', () => {
+        expect(creditedPaceLabel(planDay({ ran_pace_sec_per_km: 403 }))).toBe(
+            'target 6:00/km · ran 6:43/km',
+        );
+    });
+
+    it('drops the target half on a day with no prescribed pace', () => {
+        expect(
+            creditedPaceLabel(
+                planDay({
+                    session_type: 'rest',
+                    segments: [],
+                    ran_pace_sec_per_km: 403,
+                }),
+            ),
+        ).toBe('ran 6:43/km');
+    });
+
+    it('drops the ran half when the credited runs carry no moving time', () => {
+        expect(creditedPaceLabel(planDay({ ran_pace_sec_per_km: null }))).toBe(
+            'target 6:00/km',
+        );
+    });
+
+    it('shows nothing when neither figure is available', () => {
+        expect(
+            creditedPaceLabel(
+                planDay({
+                    session_type: 'rest',
+                    segments: [],
+                    ran_pace_sec_per_km: null,
+                }),
+            ),
+        ).toBeNull();
     });
 });
 

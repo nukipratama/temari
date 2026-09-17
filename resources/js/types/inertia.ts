@@ -427,6 +427,11 @@ export interface WeekPlanDay {
     /** Why a long day that covered its distance still reads `partial` — it
      *  arrived in pieces rather than in one run. Null on every other day. */
     credit_note: string | null;
+    /** The credited runs' own pace — moving time over distance, the best
+     *  single run for Tempo/Interval, the day's total otherwise — from
+     *  `SessionMatcher::ranPaceSecPerKmFor()`. Null until the day is
+     *  credited, or when the credited runs carry no moving time. */
+    ran_pace_sec_per_km: number | null;
     /** Total km actually run that day — null when nothing was logged. */
     actual_km: number | null;
     /** Every run logged that day, oldest first — a day can hold more than one,

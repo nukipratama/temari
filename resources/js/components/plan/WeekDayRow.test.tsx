@@ -51,6 +51,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         clamp: null,
         eased_from: null,
         credit_note: null,
+        ran_pace_sec_per_km: null,
         actual_km: null,
         activities: [],
         flagged: false,
@@ -604,6 +605,81 @@ describe('WeekDayRow', () => {
         renderRow({ day: day({ prescribed_km: null, distance_km: 8 }) });
 
         expect(screen.getByText(/8 km/)).toBeInTheDocument();
+    });
+
+    /**
+     * #940: a graded day's prescribed pace used to sit right after "km run",
+     * reading as the run's own pace — the actual run averaged something
+     * else entirely. Once the day is credited, both figures show, each
+     * labelled with its own word.
+     */
+    it('labels both paces once the day has a credited run', () => {
+        renderRow({
+            day: day({
+                status: 'done',
+                prescribed_km: 6.4,
+                actual_km: 5.3,
+                ran_pace_sec_per_km: 403,
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 30,
+                        zone: 'Z4',
+                        pace_label: 'threshold',
+                        km: 5.2,
+                        pace_sec_per_km: 332,
+                    },
+                ],
+            }),
+        });
+
+        expect(
+            screen.getByText('6.4 km asked · 5.3 km run'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('target 5:32/km · ran 6:43/km'),
+        ).toBeInTheDocument();
+    });
+
+    it('shows the pace as before on a day still unrun', () => {
+        renderRow({
+            day: day({
+                status: 'planned',
+                prescribed_km: null,
+                ran_pace_sec_per_km: null,
+            }),
+        });
+
+        expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
+        expect(screen.queryByText(/target/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/ran \d+:\d+\/km/)).not.toBeInTheDocument();
+    });
+
+    it('never renders an unlabelled pace next to km run once the day is graded', () => {
+        renderRow({
+            day: day({
+                status: 'done',
+                prescribed_km: 6.4,
+                actual_km: 5.3,
+                ran_pace_sec_per_km: 403,
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 30,
+                        zone: 'Z4',
+                        pace_label: 'threshold',
+                        km: 5.2,
+                        pace_sec_per_km: 332,
+                    },
+                ],
+            }),
+        });
+
+        // The line stating what was asked and what was run carries no pace at
+        // all — the labelled figures render on their own line instead.
+        expect(screen.getByText(/km run/).textContent).not.toMatch(
+            /\d+:\d+\/km/,
+        );
     });
 
     it('offers one icon-only flag control without expanding the day', () => {

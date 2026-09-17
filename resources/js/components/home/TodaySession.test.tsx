@@ -59,6 +59,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         clamp: null,
         eased_from: null,
         credit_note: null,
+        ran_pace_sec_per_km: null,
         actual_km: null,
         activities: [],
         ...overrides,
@@ -304,7 +305,12 @@ describe('TodaySession', () => {
         expect(screen.getByText('rest')).toBeInTheDocument();
     });
 
-    it('states both figures once the day has been judged', () => {
+    /**
+     * #940: the prescribed pace used to sit right after "km run", reading as
+     * the run's own pace. Once the day is credited it shows on its own line,
+     * labelled beside the run's own credited pace.
+     */
+    it('states both figures once the day has been judged, with the pace labelled', () => {
         render(
             <TodaySession
                 briefing={briefing('Easy 6k.')}
@@ -314,12 +320,16 @@ describe('TodaySession', () => {
                     distance_km: 8,
                     prescribed_km: 6,
                     actual_km: 6.4,
+                    ran_pace_sec_per_km: 380,
                 })}
             />,
         );
 
         expect(
-            screen.getByText('easy · 6 km asked · 6.4 km run · 6:00/km'),
+            screen.getByText('easy · 6 km asked · 6.4 km run'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('target 6:00/km · ran 6:20/km'),
         ).toBeInTheDocument();
     });
 

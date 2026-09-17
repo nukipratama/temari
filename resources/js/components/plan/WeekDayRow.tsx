@@ -26,7 +26,9 @@ import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import {
     clampSummary,
+    creditedPaceLabel,
     easedFromLabel,
+    isCreditedStatus,
     kmLabel,
     paceLabel,
     SESSION_TYPE_ICON,
@@ -131,7 +133,9 @@ export default function WeekDayRow({
         }
     }, [focused]);
 
-    const pace = paceLabel(day);
+    const credited = isCreditedStatus(day.status);
+    const pace = credited ? null : paceLabel(day);
+    const creditedPace = credited ? creditedPaceLabel(day) : null;
     const isRest = day.session_type === 'rest';
     const ranAnyway = isRest && day.ran_anyway;
     const adjustedFrom = volumeAdjustedFrom(day);
@@ -184,6 +188,11 @@ export default function WeekDayRow({
                             <span className="mt-0.5 block text-xs text-text-2">
                                 {kmLabel(day)}
                                 {pace !== null && ` · ${pace}`}
+                            </span>
+                        )}
+                        {!isRest && creditedPace !== null && (
+                            <span className="mt-0.5 block text-xs text-text-2">
+                                {creditedPace}
                             </span>
                         )}
                         {day.eased_from && (

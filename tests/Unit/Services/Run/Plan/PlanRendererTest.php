@@ -7,6 +7,8 @@ use App\Enums\FeedbackSubject;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\Feedback;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -16,6 +18,7 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\SessionSegment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -747,4 +750,74 @@ it('buckets cross-boundary dates into the same Monday the frontend does', functi
     foreach ($expected as $date => $monday) {
         expect(Carbon::parse($date)->startOfWeek(Carbon::MONDAY)->toDateString())->toBe($monday, $date);
     }
+});
+
+/**
+ * The day payload's `ran_pace_sec_per_km` is computed over the identical
+ * runs `SessionMatcher::creditedKmFor()` grades the km with, not re-derived
+ * at the render site — a Tempo day is one effort, so it reads the best
+ * single run's own pace rather than blending in a second, unrelated run.
+ */
+it("dayPayload computes a Tempo day's ran pace from its best single run only", function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->make([
+        'date' => '2026-08-10',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+    ]);
+
+    $best = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($best)->create([
+        'start_date_local' => Carbon::parse('2026-08-10 07:00:00'),
+        'distance' => 18_000.0,
+        'moving_time' => 5_400,
+    ]);
+    $other = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($other)->create([
+        'start_date_local' => Carbon::parse('2026-08-10 17:00:00'),
+        'distance' => 5_000.0,
+        'moving_time' => 1_000,
+    ]);
+
+    $activity = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'))['2026-08-10'];
+
+    $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done, $activity);
+
+    // 5,400s over the 18km best run — the second, faster 5km run never enters a tempo's one-effort grade.
+    expect($payload['ran_pace_sec_per_km'])->toBe(300);
+});
+
+/**
+ * An Easy day sums what the whole day added up to — the same rule
+ * `SessionMatcher::creditedKmFor()` grades it with — so its ran pace divides
+ * the combined moving time by the combined distance rather than either run's
+ * own pace.
+ */
+it("dayPayload computes an Easy day's ran pace from the whole day, not one run", function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->make([
+        'date' => '2026-08-11',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Easy,
+    ]);
+
+    $morning = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($morning)->create([
+        'start_date_local' => Carbon::parse('2026-08-11 07:00:00'),
+        'distance' => 6_000.0,
+        'moving_time' => 1_800,
+    ]);
+    $evening = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($evening)->create([
+        'start_date_local' => Carbon::parse('2026-08-11 18:00:00'),
+        'distance' => 4_000.0,
+        'moving_time' => 1_600,
+    ]);
+
+    $activity = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-11'), Carbon::parse('2026-08-11'))['2026-08-11'];
+
+    $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-11'), null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done, $activity);
+
+    // 3,400s over the combined 10km — neither run's own pace (300 or 400 sec/km) on its own.
+    expect($payload['ran_pace_sec_per_km'])->toBe(340);
 });
