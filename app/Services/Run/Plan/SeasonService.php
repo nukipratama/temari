@@ -107,6 +107,7 @@ final readonly class SeasonService
             $endsAt = $race !== null
                 ? $race->race_date->toDateString()
                 : $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
+            $blockGoalsAppendedAt = $race !== null && self::blockHasOpened($race, $today) ? Carbon::now() : null;
 
             // A mode switch on the very same day the current season started
             // (no history accumulated yet) retargets that row in place,
@@ -118,6 +119,7 @@ final readonly class SeasonService
                     'race_goal_id' => $race?->id,
                     'anchor_weekly_volume_km' => $anchorKm,
                     'opens_with_recovery' => $opensWithRecovery,
+                    'block_goals_appended_at' => $blockGoalsAppendedAt,
                     'ends_at' => $endsAt,
                 ]);
                 SeasonGoal::query()->where('season_id', $current->id)->delete();
@@ -138,6 +140,7 @@ final readonly class SeasonService
                 'race_goal_id' => $race?->id,
                 'anchor_weekly_volume_km' => $anchorKm,
                 'opens_with_recovery' => $opensWithRecovery,
+                'block_goals_appended_at' => $blockGoalsAppendedAt,
                 'starts_at' => $today->toDateString(),
                 'ends_at' => $endsAt,
             ]);
@@ -281,6 +284,9 @@ final readonly class SeasonService
 
         if ($race === null) {
             $goals[] = $this->ctlGrowthGoal($user, $today);
+        } elseif (self::blockHasOpened($race, $today)) {
+            $goals[] = self::raceMarginGoal();
+            $goals[] = $this->peakWeeklyKmGoal($season, $race, $user);
         }
 
         foreach ($goals as $goal) {
@@ -288,10 +294,6 @@ final readonly class SeasonService
                 'season_id' => $season->id,
                 ...$goal,
             ]);
-        }
-
-        if ($race !== null) {
-            $this->appendBlockGoals($season, $race, $user, $today, array_column($goals, 'metric'));
         }
     }
 
@@ -308,9 +310,9 @@ final readonly class SeasonService
 
         $raceWeek = $race->race_date->copy()->startOfWeek(Carbon::MONDAY);
         $blockOpen = PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m);
-        $weeks = (int) $season->starts_at->copy()->startOfWeek(Carbon::MONDAY)->max($blockOpen)->diffInWeeks($raceWeek);
+        $weeks = (int) $season->starts_at->copy()->startOfWeek(Carbon::MONDAY)->max($blockOpen)->diffInWeeks($raceWeek) + 1;
 
-        if ($weeks < 1 || $weeks >= (int) $blockOpen->diffInWeeks($raceWeek)) {
+        if ($weeks >= (int) $blockOpen->diffInWeeks($raceWeek) + 1) {
             return null;
         }
 
@@ -331,19 +333,22 @@ final readonly class SeasonService
         return self::READINESS_LONG_RUN_MARATHON_KM;
     }
 
-    /**
-     * The race-specific goals, added the first time the season is read on or
-     * after block open rather than at creation.
-     *
-     * @param  list<string>|null  $existing  the season's goal metrics, when the caller has just written them
-     */
-    private function appendBlockGoals(Season $season, RaceGoal $race, User $user, Carbon $today, ?array $existing = null): void
+    private static function blockHasOpened(RaceGoal $race, Carbon $today): bool
     {
-        if ($today->lessThan(PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m))) {
+        return ! $today->lessThan(PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m));
+    }
+
+    /**
+     * The race-specific goals for a season opened before its block, added the
+     * first time it is read on or after block open and stamped so later reads skip the database.
+     */
+    private function appendBlockGoals(Season $season, RaceGoal $race, User $user, Carbon $today): void
+    {
+        if ($season->block_goals_appended_at !== null || ! self::blockHasOpened($race, $today)) {
             return;
         }
 
-        $existing ??= SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
+        $existing = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
 
         if (! in_array(self::RACE_MARGIN_METRIC, $existing, true)) {
             SeasonGoal::query()->create(['season_id' => $season->id, ...self::raceMarginGoal()]);
@@ -352,6 +357,8 @@ final readonly class SeasonService
         if (! in_array(self::PEAK_WEEKLY_KM_METRIC, $existing, true)) {
             SeasonGoal::query()->create(['season_id' => $season->id, ...$this->peakWeeklyKmGoal($season, $race, $user)]);
         }
+
+        $season->update(['block_goals_appended_at' => Carbon::now()]);
     }
 
     /**

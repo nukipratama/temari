@@ -239,14 +239,14 @@ it('holds a self-scaled arc at 1.0 outside its deload dips', function (): void {
     }
 });
 
-it('opens the block sixteen weeks before race week up to the half marathon and twenty beyond it', function (): void {
+it('opens a sixteen-week block ending on race week up to the half marathon, and a twenty-week one beyond it', function (): void {
     $raceDay = Carbon::parse('2027-03-20');
 
-    expect(PhaseSchedule::blockOpensOn($raceDay, 10_000.0)->toDateString())->toBe('2026-11-23')
-        ->and(PhaseSchedule::blockOpensOn($raceDay, 21_097.0)->toDateString())->toBe('2026-11-23')
-        ->and(PhaseSchedule::blockOpensOn($raceDay, 25_000.0)->toDateString())->toBe('2026-11-23')
-        ->and(PhaseSchedule::blockOpensOn($raceDay, 25_001.0)->toDateString())->toBe('2026-10-26')
-        ->and(PhaseSchedule::blockOpensOn($raceDay, 42_195.0)->toDateString())->toBe('2026-10-26');
+    expect(PhaseSchedule::blockOpensOn($raceDay, 10_000.0)->toDateString())->toBe('2026-11-30')
+        ->and(PhaseSchedule::blockOpensOn($raceDay, 21_097.0)->toDateString())->toBe('2026-11-30')
+        ->and(PhaseSchedule::blockOpensOn($raceDay, 25_000.0)->toDateString())->toBe('2026-11-30')
+        ->and(PhaseSchedule::blockOpensOn($raceDay, 25_001.0)->toDateString())->toBe('2026-11-02')
+        ->and(PhaseSchedule::blockOpensOn($raceDay, 42_195.0)->toDateString())->toBe('2026-11-02');
 });
 
 it('keeps a race twelve weeks out as one block, exactly the arc it always was', function (): void {
@@ -264,7 +264,7 @@ it('keeps a race twelve weeks out as one block, exactly the arc it always was', 
 
 it('runs the general cycle until block open and counts the race ramp from there', function (): void {
     $arcStart = Carbon::parse('2026-08-10');
-    $raceDay = $arcStart->copy()->addWeeks(30);
+    $raceDay = $arcStart->copy()->addWeeks(29);
     $blockOpen = PhaseSchedule::blockOpensOn($raceDay, 10_000.0);
 
     $arc = $this->schedule->forRace($arcStart, $raceDay, 10_000.0);
@@ -275,8 +275,8 @@ it('runs the general cycle until block open and counts the race ramp from there'
     $block = array_slice($arc, 14);
     $standaloneBlock = $this->schedule->forRace($blockOpen, $raceDay, 10_000.0);
 
-    // Sixteen block weeks run up to race week, which is the block's own last row.
-    expect(array_count_values($zones))->toBe([PhaseSchedule::ZONE_GENERAL => 14, PhaseSchedule::ZONE_BLOCK => 17])
+    expect(array_count_values($zones))->toBe([PhaseSchedule::ZONE_GENERAL => 14, PhaseSchedule::ZONE_BLOCK => 16])
+        ->and(end($arc)['week_start']->toDateString())->toBe($raceDay->toDateString())
         ->and($block[0]['week_start']->toDateString())->toBe($blockOpen->toDateString())
         ->and(array_column($general, 'phase'))->toBe(array_column($this->schedule->selfScaled($arcStart, 14), 'phase'))
         ->and(array_column($block, 'phase'))->toBe(array_column($standaloneBlock, 'phase'))
@@ -285,6 +285,13 @@ it('runs the general cycle until block open and counts the race ramp from there'
     foreach ($general as $i => $week) {
         expect($multipliers[$i])->toEqualWithDelta($week['phase'] === PlanPhase::Deload ? 0.65 : 1.0, 0.0001);
     }
+});
+
+it('refuses zones where a general week follows the block', function (): void {
+    expect(fn () => PhaseSchedule::volumeMultipliers(
+        [PlanPhase::Build, PlanPhase::Build, PlanPhase::Build],
+        zones: [PhaseSchedule::ZONE_GENERAL, PhaseSchedule::ZONE_BLOCK, PhaseSchedule::ZONE_GENERAL],
+    ))->toThrow(InvalidArgumentException::class);
 });
 
 it('marks every self-scaled week as general', function (): void {

@@ -395,7 +395,7 @@ it('paints the Plan shell inside its query budget', function (): void {
 
     $this->actingAs($user)->get('/plan')->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(26);
+    expect($queries)->toBeLessThanOrEqual(25);
 });
 
 it('resolves the deferred Plan props inside their query budget', function (): void {

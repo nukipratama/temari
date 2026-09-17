@@ -333,11 +333,11 @@ it('lets the race projection move prescribed quality work in both directions', f
         ]);
     }
     $race = RaceGoal::factory()->for($user)->create([
-        'race_date' => Carbon::today()->addWeeks(12)->toDateString(),
+        'race_date' => Carbon::today()->addWeeks(11)->toDateString(),
         'distance_m' => 21_097,
         'goal_time_sec' => 6000,
     ]);
-    // The arc opened eight weeks ago, so the current week is a Build one:
+    // The block opened four weeks ago, so the current week is a Build one:
     // Base carries at most one threshold session whatever the adapter says.
     Season::factory()->for($user)->create([
         'race_goal_id' => $race->id,

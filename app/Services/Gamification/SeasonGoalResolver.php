@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 use InvalidArgumentException;
 
 /**
- * Resolves a {@see Season}'s 5 {@see \App\Models\SeasonGoal} rows to live
+ * Resolves a {@see Season}'s {@see \App\Models\SeasonGoal} rows to live
  * `current` values by reading each goal's `metric` string against one
  * season's {@see SeasonGamificationContext}.
  */

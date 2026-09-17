@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Enums\PlanPhase;
 use Illuminate\Support\Carbon;
+use InvalidArgumentException;
 
 /**
  * Pure week-by-week phase allocation — the periodizer's phase-boundary math,
@@ -72,7 +73,7 @@ final class PhaseSchedule
 
     private const int SELF_SCALED_CYCLE_WEEKS = 4;
 
-    /** How many weeks before race week the specific block opens, up to and past the marathon threshold. */
+    /** How many weeks the race block holds, race week included, up to and past the marathon threshold. */
     private const int BLOCK_WEEKS = 16;
 
     private const int LONG_RACE_BLOCK_WEEKS = 20;
@@ -99,7 +100,7 @@ final class PhaseSchedule
     public static function blockOpensOn(Carbon $raceDate, float $raceDistanceM): Carbon
     {
         return $raceDate->copy()->startOfWeek(Carbon::MONDAY)->subWeeks(
-            $raceDistanceM <= self::MARATHON_THRESHOLD_DISTANCE_M ? self::BLOCK_WEEKS : self::LONG_RACE_BLOCK_WEEKS,
+            ($raceDistanceM <= self::MARATHON_THRESHOLD_DISTANCE_M ? self::BLOCK_WEEKS : self::LONG_RACE_BLOCK_WEEKS) - 1,
         );
     }
 
@@ -211,7 +212,13 @@ final class PhaseSchedule
      */
     public static function volumeMultipliers(array $phases, bool $selfScaled = false, array $zones = []): array
     {
-        $generalWeeks = count(array_keys($zones, self::ZONE_GENERAL, true));
+        $generalWeeks = 0;
+        while (($zones[$generalWeeks] ?? null) === self::ZONE_GENERAL) {
+            $generalWeeks++;
+        }
+        if (in_array(self::ZONE_GENERAL, array_slice($zones, $generalWeeks), true)) {
+            throw new InvalidArgumentException('General weeks must all precede the block.');
+        }
         if ($generalWeeks === 0 || $selfScaled) {
             return self::arcMultipliers($phases, $selfScaled);
         }

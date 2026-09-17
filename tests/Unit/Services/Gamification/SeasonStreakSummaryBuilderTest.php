@@ -47,7 +47,7 @@ it('carries the day a race season\'s block opens', function (): void {
     RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-13', 'distance_m' => 42_195]);
     $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
 
-    expect($this->builder->seasonPayload($user, $season, Carbon::today())['block_opens_on'])->toBe('2026-10-19');
+    expect($this->builder->seasonPayload($user, $season, Carbon::today())['block_opens_on'])->toBe('2026-10-26');
 });
 
 it('reports the weekly streak with its open week and no rest weeks held', function (): void {

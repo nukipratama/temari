@@ -69,7 +69,7 @@ it('ensures the season once even though three props ask for it', function (): vo
 
 it('carries the under-ready line on the first Plan visit of a short block, and not after', function (): void {
     $user = assemblerAthlete();
-    RaceGoal::factory()->for($user)->create(['race_date' => '2026-11-02', 'distance_m' => 10_000]);
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-26', 'distance_m' => 10_000]);
     $today = Carbon::today();
 
     expect($this->assembler->season($user, $today)['under_ready_line'])

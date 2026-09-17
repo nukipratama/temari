@@ -87,11 +87,11 @@ it('lays out a Base -> Build -> Peak -> Taper arc for a race-oriented season', f
 
 it('marks each week general before block open and block from it', function (): void {
     $user = User::factory()->create();
-    $race = RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-08', 'distance_m' => 10_000]);
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-01', 'distance_m' => 10_000]);
     $season = Season::factory()->for($user)->create([
         'race_goal_id' => $race->id,
         'starts_at' => '2026-08-10',
-        'ends_at' => '2027-03-08',
+        'ends_at' => '2027-03-01',
     ]);
     $selfScaled = Season::factory()->for(User::factory()->create())->create([
         'race_goal_id' => null,
@@ -101,7 +101,7 @@ it('marks each week general before block open and block from it', function (): v
 
     $weeks = $this->builder->build($user, $season, Carbon::today());
 
-    expect(array_count_values(array_column($weeks, 'zone')))->toBe(['general' => 14, 'block' => 17])
+    expect(array_count_values(array_column($weeks, 'zone')))->toBe(['general' => 14, 'block' => 16])
         ->and($weeks[13]['week_start'])->toBe('2026-11-09')
         ->and($weeks[14]['zone'])->toBe('block')
         ->and(array_unique(array_column($this->builder->build($selfScaled->user, $selfScaled, Carbon::today()), 'zone')))->toBe(['general']);

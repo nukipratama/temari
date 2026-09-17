@@ -1,6 +1,6 @@
 ---
 title: The race block opens on a computed date, inside one continuous season
-description: A race arc runs the general cycle until a block fixed by distance (16 weeks up to the half, 20 beyond) opens, and block open is a date the plan computes, never a season boundary.
+description: A race arc runs the general cycle until a block fixed by distance (16 weeks up to the half, 20 beyond, race week included) opens, and block open is a date the plan computes, never a season boundary.
 tags: [decision, run, plan, gamification]
 status: accepted
 reviewed: 2026-09-17
@@ -30,7 +30,7 @@ The first design, grilled on 2026-09-11, made the season *be* the block: the `Se
 
 ## Decision
 
-**The block length is fixed by distance, and the general phase takes whatever time is left.** Up to the marathon threshold `PhaseSchedule` already uses for tapers (25 km, so the half included), the block opens 16 weeks before race week. Past it, the block opens 20 weeks before. [PhaseSchedule::blockOpensOn()](app/Services/Run/Plan/PhaseSchedule.php) returns race week's Monday minus that many weeks, so the block holds those weeks plus race week itself. The athlete's volume never moves the block. It moves only how long the general phase runs, which follows from when the race was set.
+**The block length is fixed by distance, and the general phase takes whatever time is left.** Up to the marathon threshold `PhaseSchedule` already uses for tapers (25 km, so the half included), the block is 16 weeks long. Past it, the block is 20 weeks. Both counts include race week, so the block is always exactly the rows the phase ribbon shows: [PhaseSchedule::blockOpensOn()](app/Services/Run/Plan/PhaseSchedule.php) returns race week's Monday minus 15 or 19 weeks. The athlete's volume never moves the block. It moves only how long the general phase runs, which follows from when the race was set.
 
 **Block open is a computed date, never a row boundary.** [SeasonService::ensureCurrent()](app/Services/Run/Plan/SeasonService.php) still opens one season from goal-set to race day, and `starts_at`, `ends_at` and the frozen anchor from [[the-arc-is-anchored-once]] are unchanged. Nothing about the season row is created, closed or moved at block open.
 
@@ -42,11 +42,11 @@ The first design, grilled on 2026-09-11, made the season *be* the block: the `Se
 
 **Gamification: goals attach in two steps.**
 - *At creation*, a race season writes its general goals: sessions completed, rest days honoured, quality sessions, and a readiness goal. The readiness goal reuses `season_longest_long_run_km` with a target of 12 km for a 10K, 18 km for a half and 30 km for a marathon or longer, each capped by the athlete's own `long_run_cap_km`.
-- *On the first `ensureCurrent()` on or after block open*, the block goals are appended once, checked by metric. They are the race margin goal and `season_peak_weekly_km`. The target of `season_peak_weekly_km` is the biggest block week's planned km, summed by [SeasonSummaryBuilder::plannedWeeks()](app/Services/Run/Plan/SeasonSummaryBuilder.php). Its current value is the biggest [WeeklySnapshot](app/Models/WeeklySnapshot.php) week ending inside the season.
-- A race set inside its block gets both steps in the same call.
+- *On the first `ensureCurrent()` on or after block open*, the block goals are appended once, checked by metric, and `seasons.block_goals_appended_at` is stamped. `ensureCurrent()` reads that stamp before touching the database, so once the block goals exist the check costs no queries on later reads. They are the race margin goal and `season_peak_weekly_km`. The target of `season_peak_weekly_km` is the biggest block week's planned km, summed by [SeasonSummaryBuilder::plannedWeeks()](app/Services/Run/Plan/SeasonSummaryBuilder.php). Its current value is the biggest [WeeklySnapshot](app/Models/WeeklySnapshot.php) week ending inside the season.
+- A race set inside its block gets both steps in the same call, and its season row is written already stamped.
 - Goal-less seasons are unchanged: five goals at creation, including CTL growth.
 
-**Under-ready line.** When the season opened with less than a full block left before race week, the season card says so once. The copy is fixed, with the week count spelled out, for example "Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built." A full block says nothing, whatever the athlete's long run. There is no Analysis row and no LLM call: `seasons.under_ready_noted_at` is stamped as the line is served. Only the Plan page serves it, through [PlanPageAssembler](app/Services/Run/Plan/PlanPageAssembler.php). Profile and Trends read the same season payload and must not use the line up.
+**Under-ready line.** When the weeks from `max(season start, block open)` through race week, counted inclusively, are fewer than the full block, the season card says so once. That count is the number of block rows the ribbon shows, spelled out in fixed copy, for example "Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built." A full block says nothing, whatever the athlete's long run. There is no Analysis row and no LLM call: `seasons.under_ready_noted_at` is stamped as the line is served. Only the Plan page serves it, through [PlanPageAssembler](app/Services/Run/Plan/PlanPageAssembler.php). Profile and Trends read the same season payload and must not use the line up.
 
 **Summaries.** Each week from `SeasonSummaryBuilder::build()` carries its `zone`, and the season payload carries `block_opens_on`, so the phase ribbon can draw the two zones.
 

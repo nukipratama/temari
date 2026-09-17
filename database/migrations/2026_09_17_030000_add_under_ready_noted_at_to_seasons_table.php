@@ -11,13 +11,14 @@ return new class () extends Migration {
     {
         Schema::table('seasons', function (Blueprint $table): void {
             $table->timestamp('under_ready_noted_at')->nullable()->after('opens_with_recovery');
+            $table->timestamp('block_goals_appended_at')->nullable()->after('under_ready_noted_at');
         });
     }
 
     public function down(): void
     {
         Schema::table('seasons', function (Blueprint $table): void {
-            $table->dropColumn('under_ready_noted_at');
+            $table->dropColumn(['under_ready_noted_at', 'block_goals_appended_at']);
         });
     }
 };

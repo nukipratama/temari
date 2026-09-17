@@ -11,8 +11,10 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -235,13 +237,20 @@ it('appends the block goals once the block opens, and only once', function (): v
     RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-08', 'distance_m' => 10_000]);
     $season = $this->service->ensureCurrent($user, Carbon::today());
 
-    Carbon::setTestNow('2026-11-15 08:00:00');
+    Carbon::setTestNow('2026-11-22 08:00:00');
     $this->service->ensureCurrent($user, Carbon::today());
     expect(SeasonGoal::query()->where('season_id', $season->id)->count())->toBe(4);
 
-    Carbon::setTestNow('2026-11-16 08:00:00');
+    Carbon::setTestNow('2026-11-23 08:00:00');
     $this->service->ensureCurrent($user, Carbon::today());
+
+    $goalQueries = 0;
+    DB::listen(function (QueryExecuted $query) use (&$goalQueries): void {
+        $goalQueries += str_contains($query->sql, 'season_goals') ? 1 : 0;
+    });
     $this->service->ensureCurrent($user, Carbon::today());
+    expect($goalQueries)->toBe(0)
+        ->and($season->fresh()->block_goals_appended_at)->not->toBeNull();
 
     $metrics = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric');
     $peakWeekKm = collect(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season->fresh()))
@@ -255,23 +264,23 @@ it('appends the block goals once the block opens, and only once', function (): v
         ->toBe(round($peakWeekKm, 1));
 });
 
-it('serves the under-ready line once when the season opens inside a short block', function (int $weeksOut, int $distanceM, string $line): void {
+it('serves the under-ready line once, counting the block rows through race week', function (int $daysOut, int $distanceM, string $line): void {
     $user = User::factory()->create();
-    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks($weeksOut)->toDateString(), 'distance_m' => $distanceM]);
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addDays($daysOut)->toDateString(), 'distance_m' => $distanceM]);
     $season = $this->service->ensureCurrent($user, Carbon::today());
 
     expect($this->service->takeUnderReadyLine($season))->toBe($line)
         ->and($season->fresh()->under_ready_noted_at)->not->toBeNull()
         ->and($this->service->takeUnderReadyLine($season->fresh()))->toBeNull();
 })->with([
-    '10K twelve weeks out' => [12, 10_000, "Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built."],
-    'marathon eighteen weeks out' => [18, 42_195, "Eighteen weeks is tighter than I'd pick for this one, so we build what we can and race what we've built."],
-    'half one week out' => [1, 21_097, "One week is tighter than I'd pick for this one, so we build what we can and race what we've built."],
+    '10K with twelve rows to race week' => [77, 10_000, "Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built."],
+    'marathon with eighteen rows to race week' => [119, 42_195, "Eighteen weeks is tighter than I'd pick for this one, so we build what we can and race what we've built."],
+    'half raced in the season\'s first week' => [5, 21_097, "One week is tighter than I'd pick for this one, so we build what we can and race what we've built."],
 ]);
 
 it('says nothing about readiness for a full block or a season with no race', function (): void {
     $fullBlock = User::factory()->create();
-    RaceGoal::factory()->for($fullBlock)->create(['race_date' => Carbon::today()->addWeeks(16)->toDateString(), 'distance_m' => 10_000]);
+    RaceGoal::factory()->for($fullBlock)->create(['race_date' => Carbon::today()->addWeeks(15)->toDateString(), 'distance_m' => 10_000]);
     $farOut = User::factory()->create();
     RaceGoal::factory()->for($farOut)->create(['race_date' => Carbon::today()->addWeeks(30)->toDateString(), 'distance_m' => 42_195]);
 
