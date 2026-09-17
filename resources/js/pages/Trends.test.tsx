@@ -138,9 +138,8 @@ describe('Trends', () => {
 
         const eyebrow = screen.getByText('load');
         expect(screen.getByText('Pumped')).toBeInTheDocument();
-        // 30d is the range the page opens on, and the load section now
-        // follows it rather than staying fixed at 7 days.
-        expect(screen.getByText('Condition · 30 days')).toBeInTheDocument();
+        // 7d is the range the page opens on, and the load section follows it.
+        expect(screen.getByText('Condition · 7 days')).toBeInTheDocument();
         expect(
             eyebrow.compareDocumentPosition(
                 screen.getByRole('group', { name: 'Time range' }),
@@ -152,21 +151,21 @@ describe('Trends', () => {
     it("follows the range toggle: load, Temari's read and the fitness panel all update together", () => {
         render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
 
-        expect(screen.getByText('Condition · 30 days')).toBeInTheDocument();
-        expect(screen.getByText('300')).toBeInTheDocument();
-        expect(screen.getByText('Last 30 days.')).toBeInTheDocument();
-        expect(
-            screen.getByRole('img', { name: /over 30 days/ }),
-        ).toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole('button', { name: '7 days' }));
-
         expect(screen.getByText('Condition · 7 days')).toBeInTheDocument();
         expect(screen.getByText('100')).toBeInTheDocument();
         expect(screen.getByText('This week.')).toBeInTheDocument();
-        expect(screen.queryByText('Last 30 days.')).not.toBeInTheDocument();
         expect(
             screen.getByRole('img', { name: /over 7 days/ }),
+        ).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: '30 days' }));
+
+        expect(screen.getByText('Condition · 30 days')).toBeInTheDocument();
+        expect(screen.getByText('300')).toBeInTheDocument();
+        expect(screen.getByText('Last 30 days.')).toBeInTheDocument();
+        expect(screen.queryByText('This week.')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('img', { name: /over 30 days/ }),
         ).toBeInTheDocument();
     });
 
@@ -192,10 +191,10 @@ describe('Trends', () => {
         ).toBeInTheDocument();
     });
 
-    it('opens on the 30 day range, the one narrated daily', () => {
+    it('opens on the 7 day range, the one narrated daily', () => {
         render(<Trends {...BASE_PROPS} />);
 
-        expect(screen.getByText('Last 30 days.')).toBeInTheDocument();
+        expect(screen.getByText('This week.')).toBeInTheDocument();
         expect(screen.queryByText('The full year.')).not.toBeInTheDocument();
     });
 
@@ -205,14 +204,14 @@ describe('Trends', () => {
         fireEvent.click(screen.getByRole('button', { name: '12 months' }));
 
         expect(screen.getByText('The full year.')).toBeInTheDocument();
-        expect(screen.queryByText('Last 30 days.')).not.toBeInTheDocument();
+        expect(screen.queryByText('This week.')).not.toBeInTheDocument();
     });
 
     it('re-windows the fitness panel when the range toggle changes', () => {
         render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
 
         expect(
-            screen.getByRole('img', { name: /over 30 days/ }),
+            screen.getByRole('img', { name: /over 7 days/ }),
         ).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: '12 months' }));
@@ -251,9 +250,9 @@ describe('Trends', () => {
 
         render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
 
-        expect(screen.queryByText('Last 30 days.')).not.toBeInTheDocument();
+        expect(screen.queryByText('This week.')).not.toBeInTheDocument();
         expect(
-            screen.getByRole('img', { name: /over 30 days/ }),
+            screen.getByRole('img', { name: /over 7 days/ }),
         ).toBeInTheDocument();
     });
 

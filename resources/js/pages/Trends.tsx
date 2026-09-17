@@ -60,7 +60,7 @@ export default function Trends({
     snapshot = null,
     chartAnnotations,
 }: Readonly<TrendsProps>) {
-    const [range, setRange] = useState<TrendRange>('30d');
+    const [range, setRange] = useState<TrendRange>('7d');
 
     return (
         <>

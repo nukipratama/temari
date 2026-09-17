@@ -262,3 +262,90 @@ it('does not include the intent verdict on an ungraded day', function (): void {
     expect(MaterialFingerprint::forPlannedSession($planned, 16.0))
         ->toBe(MaterialFingerprint::forPlannedSession($sameButUnknownIntent, 16.0));
 });
+
+/**
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function trendTotals(array $overrides = []): array
+{
+    return array_merge([
+        'range' => '30d',
+        'current' => ['runs' => 5, 'distance_km' => 32.4, 'trimp_total' => 410.0],
+        'comparison' => ['runs' => 4, 'distance_km' => 28.0, 'trimp_total' => 360.0],
+        'ctl_start' => 38.0,
+        'ctl_end' => 45.0,
+        'vdot_start' => 42.0,
+        'vdot_end' => 43.0,
+        'avg_monotony' => 1.8,
+        'avg_strain' => 620.0,
+    ], $overrides);
+}
+
+it('is stable when the trend range totals do not change', function (): void {
+    $totals = trendTotals();
+
+    expect(MaterialFingerprint::forTrendRead($totals))->toBe(MaterialFingerprint::forTrendRead($totals));
+});
+
+it('ignores km jitter within the same 1-decimal bucket', function (): void {
+    $before = trendTotals(['current' => ['runs' => 5, 'distance_km' => 32.41, 'trimp_total' => 410.0]]);
+    $after = trendTotals(['current' => ['runs' => 5, 'distance_km' => 32.44, 'trimp_total' => 410.0]]);
+
+    expect(MaterialFingerprint::forTrendRead($before))->toBe(MaterialFingerprint::forTrendRead($after));
+});
+
+it('changes when km moves beyond the 1-decimal bucket', function (): void {
+    $before = trendTotals(['current' => ['runs' => 5, 'distance_km' => 32.3, 'trimp_total' => 410.0]]);
+    $after = trendTotals(['current' => ['runs' => 5, 'distance_km' => 32.9, 'trimp_total' => 410.0]]);
+
+    expect(MaterialFingerprint::forTrendRead($before))->not->toBe(MaterialFingerprint::forTrendRead($after));
+});
+
+it('changes when the run count moves', function (): void {
+    $before = trendTotals(['current' => ['runs' => 5, 'distance_km' => 32.4, 'trimp_total' => 410.0]]);
+    $after = trendTotals(['current' => ['runs' => 6, 'distance_km' => 32.4, 'trimp_total' => 410.0]]);
+
+    expect(MaterialFingerprint::forTrendRead($before))->not->toBe(MaterialFingerprint::forTrendRead($after));
+});
+
+it('ignores sub-integer jitter on load, fitness and shape figures', function (): void {
+    $before = trendTotals([
+        'current' => ['runs' => 5, 'distance_km' => 32.4, 'trimp_total' => 410.2],
+        'ctl_start' => 38.1,
+        'ctl_end' => 45.4,
+        'avg_monotony' => 1.8,
+        'avg_strain' => 620.3,
+    ]);
+    $after = trendTotals([
+        'current' => ['runs' => 5, 'distance_km' => 32.4, 'trimp_total' => 410.4],
+        'ctl_start' => 38.4,
+        'ctl_end' => 45.2,
+        'avg_monotony' => 1.6,
+        'avg_strain' => 620.4,
+    ]);
+
+    expect(MaterialFingerprint::forTrendRead($before))->toBe(MaterialFingerprint::forTrendRead($after));
+});
+
+it('changes when a load/fitness/shape figure crosses its whole-number bucket', function (): void {
+    $before = trendTotals(['ctl_end' => 45.2]);
+    $after = trendTotals(['ctl_end' => 46.1]);
+
+    expect(MaterialFingerprint::forTrendRead($before))->not->toBe(MaterialFingerprint::forTrendRead($after));
+});
+
+it('keeps null figures null rather than bucketing them to zero', function (): void {
+    $totals = trendTotals([
+        'current' => ['runs' => 0, 'distance_km' => 0.0, 'trimp_total' => null],
+        'ctl_start' => null,
+        'ctl_end' => null,
+        'vdot_start' => null,
+        'vdot_end' => null,
+        'avg_monotony' => null,
+        'avg_strain' => null,
+    ]);
+
+    expect(MaterialFingerprint::forTrendRead($totals))
+        ->not->toBe(MaterialFingerprint::forTrendRead(trendTotals(['current' => ['runs' => 0, 'distance_km' => 0.0, 'trimp_total' => 0.0]])));
+});
