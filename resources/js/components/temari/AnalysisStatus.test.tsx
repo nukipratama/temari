@@ -601,6 +601,66 @@ describe('AnalysisStatus', () => {
         ).toContain('justify-end');
     });
 
+    it('highlights reread with a horizon ring and an accessible description when the block was filled while the athlete was away', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    status: 'done',
+                    content: 'Halo',
+                    unread_while_away: true,
+                })}
+            />,
+        );
+
+        const button = screen.getByRole('button', { name: /reread/ });
+        expect(button.className).toContain('ring-[1.5px]');
+        expect(button.className).toContain('ring-horizon/45');
+
+        const description = screen.getByText("temari hasn't read this one yet");
+        expect(description).toHaveClass('sr-only');
+        expect(button.getAttribute('aria-describedby')).toBe(description.id);
+    });
+
+    it.each([
+        ['a demo fill', {}],
+        ['a cost-ceiling degrade', {}],
+        ['a too-old backfill fill', {}],
+        ['a pre-connect fill', {}],
+    ])(
+        'shows no ring or description on reread for %s (unread_while_away not set)',
+        (_label, overrides) => {
+            render(
+                <AnalysisStatus
+                    analysis={payload({
+                        status: 'done',
+                        content: 'Halo',
+                        ...overrides,
+                    })}
+                />,
+            );
+
+            const button = screen.getByRole('button', { name: /reread/ });
+            expect(button.className).not.toContain('ring-horizon');
+            expect(button.getAttribute('aria-describedby')).toBeNull();
+        },
+    );
+
+    it('shows no ring or description on reread once unread_while_away is explicitly false', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    status: 'done',
+                    content: 'Halo',
+                    unread_while_away: false,
+                })}
+            />,
+        );
+
+        const button = screen.getByRole('button', { name: /reread/ });
+        expect(button.className).not.toContain('ring-horizon');
+        expect(button.getAttribute('aria-describedby')).toBeNull();
+    });
+
     it('draws no flag at all on a read already flagged', () => {
         render(
             <AnalysisStatus

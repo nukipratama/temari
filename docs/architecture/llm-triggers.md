@@ -277,7 +277,7 @@ Three more limits:
 
 - **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L85) filters the AI kickoff commands
   and every `SelfHealer` sweep, and
-  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L665) serves a demo user's
+  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L682) serves a demo user's
   manual trigger from the filler *before* any pause check — so the public demo spends nothing while
   still feeling live. See [[demo-triggers-served-rule-based]].
 - **The backfill age gate**, [84 days](../../config/ai.php#L43). The only limit that gates automatic

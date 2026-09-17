@@ -32,7 +32,11 @@ use Illuminate\Support\Carbon;
  *
  * Every request is invalidate:false and every fill skips a Done row, so a second
  * run bills nothing. Stamped {@see AnalysisOrigin::Return}, which
- * {@see AnalysisService::markDone()} never notifies for.
+ * {@see AnalysisService::markDone()} never notifies for, and every one of this
+ * job's own rule-based fills is written with `reason: AnalysisOrigin::Return`
+ * ({@see Analysis::$rule_based_reason}), so the UI can cue "temari hasn't read
+ * this one yet" on exactly the blocks this job filled and no other rule-based
+ * reason.
  *
  * @see docs/decisions/narration-spends-only-on-active-athletes.md
  */
@@ -74,7 +78,7 @@ class NarrateOnReturnJob implements ShouldQueue
                 ->where('analysis_type', AnalysisType::PostRunSpeech)
                 ->where('status', AnalysisStatus::Pending))
             ->get()
-            ->each(fn (Activity $activity) => $service->requestActivityGroupRuleBased($activity));
+            ->each(fn (Activity $activity) => $service->requestActivityGroupRuleBased($activity, AnalysisOrigin::Return));
 
         $earliest = AnalyzeActivityJob::earliestPendingActivityForUser($user->id);
         if ($earliest !== null) {
@@ -98,7 +102,7 @@ class NarrateOnReturnJob implements ShouldQueue
             $cardId = (int) $row->subject_id;
 
             if (Carbon::parse($row->getAttribute('start_date_local'))->lt($windowStart)) {
-                $service->requestRuleBased(RunCard::class, $cardId, AnalysisType::CardFlavor, refillDone: false);
+                $service->requestRuleBased(RunCard::class, $cardId, AnalysisType::CardFlavor, refillDone: false, reason: AnalysisOrigin::Return);
 
                 continue;
             }
@@ -123,6 +127,7 @@ class NarrateOnReturnJob implements ShouldQueue
                 (int) $snapshot->id,
                 AnalysisType::WeeklyRecap,
                 refillDone: false,
+                reason: AnalysisOrigin::Return,
             ));
 
         $readiness->ready($pending()->where('week_ending', $lastClosed)->get())
@@ -147,7 +152,7 @@ class NarrateOnReturnJob implements ShouldQueue
 
         foreach ($months as $month) {
             if ($month < $lastClosed) {
-                $service->requestRuleBased(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $month, refillDone: false);
+                $service->requestRuleBased(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $month, refillDone: false, reason: AnalysisOrigin::Return);
 
                 continue;
             }

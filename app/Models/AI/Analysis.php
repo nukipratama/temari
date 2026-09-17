@@ -8,6 +8,7 @@ use App\Actions\Feedback\ResolveFlaggedSubjectsAction;
 use App\Enums\FeedbackSubject;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use App\Models\Scopes\KnownAnalysisTypeScope;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\ServedBy;
@@ -31,6 +32,7 @@ use Override;
  * @property string|null $content
  * @property string|null $content_fingerprint
  * @property ServedBy|null $served_by  Which producer wrote the current content; null while the row has never been Done.
+ * @property AnalysisOrigin|null $rule_based_reason  Why the rule-based filler wrote it; only ever Return today, null for every other rule-based reason and whenever served_by is Llm.
  * @property string|null $error
  * @property Carbon|null $generated_at
  * @property Carbon|null $queued_at
@@ -48,6 +50,7 @@ use Override;
     'content',
     'content_fingerprint',
     'served_by',
+    'rule_based_reason',
     'error',
     'generated_at',
     'queued_at',
@@ -89,6 +92,7 @@ class Analysis extends Model
             'analysis_type' => AnalysisType::class,
             'status' => AnalysisStatus::class,
             'served_by' => ServedBy::class,
+            'rule_based_reason' => AnalysisOrigin::class,
             'generated_at' => 'datetime',
             'queued_at' => 'datetime',
             'attempts' => 'integer',
@@ -287,6 +291,7 @@ class Analysis extends Model
      *     generated_at: string|null,
      *     retry_after_seconds: int|null,
      *     flagged: bool,
+     *     unread_while_away: bool,
      * }
      *
      * @param  array<string, int|null>|null  $cooldowns  Pre-resolved cooldowns keyed by {@see self::cooldownKey()}, so a list of rows costs one cache round trip instead of one per row.
@@ -312,6 +317,7 @@ class Analysis extends Model
             'generated_at' => $row?->generated_at?->toIso8601String(),
             'retry_after_seconds' => self::resolveCooldown($row, $cooldowns),
             'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::Narration, $row?->id),
+            'unread_while_away' => $row?->rule_based_reason === AnalysisOrigin::Return,
         ];
     }
 
