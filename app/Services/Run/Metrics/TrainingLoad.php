@@ -157,7 +157,7 @@ class TrainingLoad
      * (which only returns the final day's pair) — this exposes every day the
      * roll already computes along the way, not new computation.
      *
-     * @return list<array{date: string, atl: float, ctl: float}>
+     * @return list<array{date: string, atl: float, ctl: float, form_status: string}>
      */
     public function ctlTrend(User $user, int $days = 90, ?Carbon $asOf = null): array
     {
@@ -173,7 +173,13 @@ class TrainingLoad
         $trend = [];
         foreach ($series as $date => [$atl, $ctl]) {
             if ($date >= $cutoff) {
-                $trend[] = ['date' => $date, 'atl' => round($atl, 1), 'ctl' => round($ctl, 1)];
+                $form = round($ctl - $atl, 1);
+                $trend[] = [
+                    'date' => $date,
+                    'atl' => round($atl, 1),
+                    'ctl' => round($ctl, 1),
+                    'form_status' => $this->formStatus($form, $ctl),
+                ];
             }
         }
 

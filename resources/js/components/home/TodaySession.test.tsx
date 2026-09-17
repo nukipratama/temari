@@ -10,8 +10,6 @@ import TodaySession from './TodaySession';
 function briefing(content: string, status = 'done'): BriefingResult {
     return {
         vibeState: 'pumped',
-        vibeLabel: 'Pumped',
-        vibeEmoji: '💥',
         firstRead: false,
         mascotVoice: {
             id: 4,

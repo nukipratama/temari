@@ -112,19 +112,23 @@ it('runs the Strava drain and fallback poll on the cadences they were sized for'
 ]);
 
 /**
- * 7d moves at least as fast as 30d day to day, so it was given 30d's own
- * daily cadence rather than a slower tier — pin the two to the same
- * expression so a re-tier of one is a deliberate, visible change to both.
+ * The 30d/90d/12mo trend reads retired (#967) — this pins the one survivor's
+ * cadence so a future re-tier is a deliberate, visible change.
  */
-it('runs the 7d trend read on the same daily cadence as 30d', function (): void {
+it('runs the 7d trend read daily', function (): void {
     $sevenDay = scheduledEvent('ai:trend-read 7d');
-    $thirtyDay = scheduledEvent('ai:trend-read 30d');
 
     expect($sevenDay)->not->toBeNull('ai:trend-read 7d is not scheduled')
-        ->and($thirtyDay)->not->toBeNull('ai:trend-read 30d is not scheduled')
-        ->and($sevenDay->expression)->toBe('0 6 * * *')
-        ->and($sevenDay->expression)->toBe($thirtyDay->expression);
+        ->and($sevenDay->expression)->toBe('0 6 * * *');
 });
+
+it('no longer schedules the retired 30d/90d/12mo trend reads', function (string $command): void {
+    expect(scheduledEvent($command))->toBeNull("{$command} should no longer be scheduled");
+})->with([
+    'ai:trend-read 30d',
+    'ai:trend-read 90d',
+    'ai:trend-read 12mo',
+]);
 
 /**
  * Exactly one scheduler container runs in prod (compose.prod.yaml), an

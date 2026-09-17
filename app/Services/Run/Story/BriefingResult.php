@@ -27,8 +27,6 @@ final readonly class BriefingResult implements Arrayable
      */
     public function __construct(
         public string $vibeState,
-        public string $vibeLabel,
-        public string $vibeEmoji,
         public array $mascotVoice,
         /** No briefing has ever been narrated for this athlete, so a pending one says so instead of staying silent. */
         public bool $firstRead,
@@ -49,8 +47,6 @@ final readonly class BriefingResult implements Arrayable
     {
         return [
             'vibeState' => $this->vibeState,
-            'vibeLabel' => $this->vibeLabel,
-            'vibeEmoji' => $this->vibeEmoji,
             'mascotVoice' => $this->mascotVoice,
             'firstRead' => $this->firstRead,
             'recoveryLabel' => $this->recoveryLabel,

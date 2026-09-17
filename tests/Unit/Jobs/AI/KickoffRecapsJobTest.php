@@ -163,9 +163,8 @@ it('kicks every Trends range off the backfill, so a new account is not days behi
 
     new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
 
-    // Each range refreshes on its own cadence and every cron only reaches
-    // athletes who existed when it last ran, so without this a Friday signup
-    // waits up to three days for 90d and seven for 12mo.
+    // The 7d range's own cron only reaches athletes who existed when it last
+    // ran, so without this a Friday signup waits up to a day for its first read.
     $ranges = Analysis::query()
         ->where('subject_id', $user->id)
         ->where('analysis_type', AnalysisType::TrendRead)

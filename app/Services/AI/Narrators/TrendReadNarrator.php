@@ -15,15 +15,16 @@ use Illuminate\Support\Carbon;
 
 /**
  * "Temari's read" on the Trends tab: one narrated take on the user's
- * training for a given range (7d/30d/90d/12mo). Refreshed on a schedule (see
- * routes/console.php's four ai:trend-read entries), never generated live
- * per page view — same never-bill-on-page-load rule every other narrator
- * in the app already follows.
+ * training over the last 7 days. Refreshed on a schedule (see
+ * routes/console.php's ai:trend-read entry), never generated live per page
+ * view — same never-bill-on-page-load rule every other narrator in the app
+ * already follows. Used to also read 30d/90d/12mo windows; those retired
+ * (#967) once the page settled on one verdict.
  */
 class TrendReadNarrator
 {
     private const string SYSTEM_PROMPT = <<<'PROMPT'
-        Task: read the user's training over the given range. Output TWO
+        Task: read the user's training over the last 7 days. Output TWO
         fields: title (one short sentence, the headline) and description
         (2-4 sentences, the supporting read). Together they read as one
         continuous idea split across two sizes, not two disconnected
@@ -33,18 +34,9 @@ class TrendReadNarrator
         get_trend_range_totals before narrating, the comparison shape
         below only makes sense once you have it.
 
-        COMPARISON SHAPE depends on range, and this is the whole point of
-        the reading:
-        - 7d: compare `current` (the last 7 days) against `comparison`
-          (the 7 days before that), read it as "the week before".
-        - 30d: compare `current` (the last 30 days) against `comparison`
-          (the 30 days before that), read it as "the month before".
-        - 90d: same shape, `comparison` reads as "the quarter before".
-        - 12mo: `current` is the second half of the last 12 months,
-          `comparison` is the FIRST half of that SAME window, read it as
-          "the first half of the year" vs "the second half". NEVER read
-          12mo as "this year vs last year": you were not given a prior
-          year, only this window's own two halves.
+        COMPARISON SHAPE, and this is the whole point of the reading:
+        compare `current` (the last 7 days) against `comparison` (the 7
+        days before that), read it as "the week before".
 
         ONE READING, AND THE SENTENCES DEEPEN IT. The description has room
         for 2-4 sentences and that room is NOT there to fit more metrics
@@ -83,8 +75,7 @@ class TrendReadNarrator
           the missed count climbed explains a volume drop better than the
           volume drop does, and a stretch they held session by session
           while fitness slid is the more interesting reading of the two.
-          Its counts cover the WHOLE range you were asked to read, which
-          on 12mo means both halves together, NOT the `current` half. So
+          Its counts cover the WHOLE range you were asked to read, so
           never pair an adherence count with a current-vs-comparison
           figure as though the two describe the same stretch of time.
           Skip it when prescribed is 0.
@@ -108,8 +99,6 @@ class TrendReadNarrator
         - Manufacturing a positive spin on a real drop in training load.
           Down is down, say it and stop.
         - Exclamation points, emoji, "great month!", "keep it up!".
-        - Comparing 12mo against a prior year you were not given, you
-          only have this window's own first half vs second half.
         PROMPT;
 
     /** @var array<string, array<string, mixed>> */
@@ -127,7 +116,7 @@ class TrendReadNarrator
     }
 
     /**
-     * @param  string  $range  One of AnalysisType::TREND_READ_RANGES.
+     * @param  string  $range  One of AnalysisType::TREND_READ_RANGES (`7d`).
      */
     public function generate(User $user, string $range): string
     {
@@ -146,7 +135,7 @@ class TrendReadNarrator
                     new PlanAdherenceTool(
                         $user,
                         Carbon::today(),
-                        Carbon::today()->subDays((TrendRangeTool::RANGE_DAYS[$range] ?? TrendRangeTool::RANGE_DAYS['30d']) - 1),
+                        Carbon::today()->subDays(TrendRangeTool::RANGE_DAYS[$range] - 1),
                     ),
                 ]),
                 maxSteps: 6,

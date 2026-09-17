@@ -1,26 +1,20 @@
-import { Deferred, Head } from '@inertiajs/react';
-import { useState } from 'react';
+import { Deferred, Head, usePage } from '@inertiajs/react';
 
 import type {
+    FitnessChartAnnotations,
+    FitnessTrendPoint,
+} from '@/components/trends/panels/FitnessPanel';
+import type {
     AnalysisPayload,
-    BriefingResult,
+    SharedProps,
     TrainingLoad,
-    WeeklySnapshot,
+    WeekComparison as WeekComparisonPayload,
 } from '@/types/inertia';
 
-import TrainingLoadCard from '@/components/dashboard/TrainingLoadCard';
-import VitalBars from '@/components/dashboard/VitalBars';
+import MonthComparison from '@/components/trends/MonthComparison';
 import NarrationCard from '@/components/trends/NarrationCard';
-import FitnessPanel, {
-    type BadgeMilestone,
-    type FitnessChartAnnotations,
-    type FitnessTrendPoint,
-    type StreakSummaryLike,
-} from '@/components/trends/panels/FitnessPanel';
-import RangeToggle, {
-    TREND_RANGE_LABELS,
-    type TrendRange,
-} from '@/components/trends/RangeToggle';
+import RaceComparison from '@/components/trends/RaceComparison';
+import WeekComparison from '@/components/trends/WeekComparison';
 import Eyebrow from '@/components/ui/Eyebrow';
 import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
@@ -34,33 +28,30 @@ import { appLayout } from '@/layouts/appLayout';
 
 interface TrendsProps {
     ctlTrend?: FitnessTrendPoint[];
-    badgeMilestones?: BadgeMilestone[];
-    streak?: StreakSummaryLike;
-    narration?: Record<TrendRange, AnalysisPayload>;
-    briefing?: BriefingResult;
-    load?: Record<TrendRange, TrainingLoad | null>;
-    snapshot?: WeeklySnapshot | null;
+    narration?: AnalysisPayload;
+    weekComparison?: WeekComparisonPayload;
+    load?: TrainingLoad | null;
     chartAnnotations?: FitnessChartAnnotations;
 }
 
 /**
- * Trends, on the frozen prototype's `TrendsScreen`: the headline, the load
- * section (vitals and condition, which used to sit behind Home's stats
- * disclosure), the range tabs, Temari's read, and one fitness panel. The tabs
- * select the window every block below them reads (P3), load included — it
- * used to always read the last 7 days regardless of the toggle.
+ * Trends answers one question: "am I getting fitter, and at what cost?"
+ * Temari's 7-day verdict runs first — the only place a call is stated —
+ * then three stacked comparisons carry the evidence, in the order a runner
+ * would ask for it: vs last week, vs a month ago (the fitness chart lives
+ * here), then vs race day (or, with no race, vs the athlete's own year).
+ * Direction A of the #914 design round, filed as #967. Replaces the range
+ * toggle, badges and streak (profile and run pages keep those) and the ATL
+ * line.
  */
 export default function Trends({
     ctlTrend,
-    badgeMilestones,
-    streak,
     narration,
-    briefing,
+    weekComparison,
     load,
-    snapshot = null,
     chartAnnotations,
 }: Readonly<TrendsProps>) {
-    const [range, setRange] = useState<TrendRange>('7d');
+    const { activeRace } = usePage<SharedProps>().props;
 
     return (
         <>
@@ -70,49 +61,12 @@ export default function Trends({
                     Trends
                 </Eyebrow>
                 <PageHero size="quote-lg" italic className="mt-2">
-                    how things
+                    am I getting fitter,
                     <br />
-                    <em className="italic text-icon-accent">are going.</em>
+                    <em className="italic text-icon-accent">
+                        and at what cost?
+                    </em>
                 </PageHero>
-                <p className="mt-2 text-xs leading-relaxed text-text-2">
-                    A year of running, read as lines rather than a list.
-                </p>
-
-                <Deferred
-                    data={['briefing', 'load', 'snapshot']}
-                    fallback={
-                        <Card as="section" className="mt-4">
-                            <SkeletonStats className="mt-3.5" />
-                        </Card>
-                    }
-                >
-                    {() => (
-                        <section className="mt-4">
-                            <Eyebrow token="micro" className="text-foreground">
-                                load
-                            </Eyebrow>
-                            <div className="mt-2 grid gap-2 md:grid-cols-2">
-                                <Card padding="panel">
-                                    <VitalBars
-                                        briefing={briefing!}
-                                        load={load![range]}
-                                    />
-                                </Card>
-                                <TrainingLoadCard
-                                    load={load![range]}
-                                    snapshot={snapshot}
-                                    windowLabel={TREND_RANGE_LABELS[range]}
-                                />
-                            </div>
-                        </section>
-                    )}
-                </Deferred>
-
-                <RangeToggle
-                    value={range}
-                    onChange={setRange}
-                    className="mt-4"
-                />
 
                 <Deferred
                     data="narration"
@@ -123,35 +77,67 @@ export default function Trends({
                     }
                 >
                     {() => (
-                        <NarrationCard
-                            analysis={narration![range]}
-                            className="mt-4"
+                        <NarrationCard analysis={narration!} className="mt-4" />
+                    )}
+                </Deferred>
+
+                <Deferred
+                    data={['weekComparison', 'load']}
+                    fallback={
+                        <div className="mt-7">
+                            <div className="h-4 w-32 rounded bg-muted" />
+                            <Card as="section" className="mt-2.5">
+                                <SkeletonStats className="mt-1" />
+                            </Card>
+                        </div>
+                    }
+                >
+                    {() => (
+                        <WeekComparison
+                            weekComparison={weekComparison!}
+                            load={load ?? null}
+                            className="mt-7"
                         />
                     )}
                 </Deferred>
 
                 <Deferred
-                    data={[
-                        'ctlTrend',
-                        'badgeMilestones',
-                        'streak',
-                        'chartAnnotations',
-                    ]}
+                    data={['ctlTrend', 'chartAnnotations']}
                     fallback={
-                        <Card as="section" className="mt-4">
-                            <SkeletonStats className="mt-3.5" />
-                            <SkeletonChart className="mt-3.5 h-[168px]" />
-                        </Card>
+                        <div className="mt-7">
+                            <div className="h-4 w-32 rounded bg-muted" />
+                            <Card as="section" className="mt-2.5">
+                                <SkeletonChart className="mt-1 h-[168px]" />
+                            </Card>
+                        </div>
                     }
                 >
                     {() => (
-                        <FitnessPanel
+                        <MonthComparison
                             trend={ctlTrend!}
-                            milestones={badgeMilestones!}
-                            streak={streak!}
-                            range={range}
-                            annotations={chartAnnotations!}
-                            className="mt-4"
+                            annotations={chartAnnotations}
+                            className="mt-7"
+                        />
+                    )}
+                </Deferred>
+
+                <Deferred
+                    data={['ctlTrend', 'load']}
+                    fallback={
+                        <div className="mt-7">
+                            <div className="h-4 w-32 rounded bg-muted" />
+                            <Card as="section" className="mt-2.5">
+                                <SkeletonStats className="mt-1" />
+                            </Card>
+                        </div>
+                    }
+                >
+                    {() => (
+                        <RaceComparison
+                            activeRace={activeRace ?? null}
+                            trend={ctlTrend!}
+                            load={load ?? null}
+                            className="mt-7"
                         />
                     )}
                 </Deferred>

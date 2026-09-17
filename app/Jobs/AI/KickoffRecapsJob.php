@@ -73,12 +73,11 @@ class KickoffRecapsJob implements ShouldQueue
     }
 
     /**
-     * Each Trends range refreshes on its own cadence — `7d` and `30d` daily,
-     * `90d` every third day, `12mo` on Mondays — and every one of those crons
-     * only reaches athletes who already existed when it last ran. A Friday
-     * signup therefore had no 90d read for up to three days and no 12mo read
-     * for up to seven, on exactly the days a new account forms its impression
-     * of the app.
+     * The Trends read (just `7d` since #967, was `7d`/`30d`/`90d`/`12mo`)
+     * refreshes on its own daily cron, which only reaches athletes who
+     * already existed when it last ran. A Friday signup therefore waited up
+     * to a day for its first read, on exactly the day a new account forms
+     * its impression of the app.
      *
      * `AnalysisService::request()` is idempotent, so the cron that comes round
      * later finds these already done and bills nothing. Skipped entirely for an
