@@ -3,7 +3,7 @@ title: Dashboard
 description: The home page — today's session and the voice on it, this week's plan widget carrying the week's own numbers, then the Past You verdict and its evidence
 tags: [feature, dashboard]
 status: living
-reviewed: 2026-09-10
+reviewed: 2026-09-17
 code_refs:
   - resources/js/pages/Home.tsx
   - app/Http/Controllers/DashboardController.php
@@ -16,10 +16,6 @@ code_refs:
   - resources/js/components/home/NoPlanCard.tsx
   - resources/js/lib/verdict.ts
   - resources/js/lib/plan.ts
-  - resources/js/pages/Trends.tsx
-  - app/Http/Controllers/TrendsController.php
-  - resources/js/components/dashboard/VitalBars.tsx
-  - resources/js/components/dashboard/TrainingLoadCard.tsx
 ---
 
 # Dashboard
@@ -84,14 +80,11 @@ The whole briefing object is assembled server-side by [BriefingComposer::compose
 
 ## Where the deep stats went
 
-Home used to close on a `WeekStatsDisclosure` — a closed `Collapsible` holding a runs/km/TRIMP strip, the vital bars, and a last-run / condition pair. It is **deleted**. The week's own numbers fold into the plan card above (one card, planned against actual, rather than the same week stated twice), and the deep read moved to `/trends`, which is where someone goes to ask how training is going.
+Home used to close on a `WeekStatsDisclosure` — a closed `Collapsible` holding a runs/km/TRIMP strip, the vital bars, and a last-run / condition pair. It is **deleted**. The week's own numbers fold into the plan card above (one card, planned against actual, rather than the same week stated twice), and the deep read moved to `/trends`, which is where someone goes to ask how training is going — see [[trends]].
 
-[Trends](resources/js/pages/Trends.tsx) therefore opens with a `load` section directly under its hero, above the range tabs: [VitalBars](resources/js/components/dashboard/VitalBars.tsx) and [TrainingLoadCard](resources/js/components/dashboard/TrainingLoadCard.tsx) side by side on `md` and up, stacked below it. It follows the range toggle beneath it — the toggle also carries a `7d` position alongside `30d`/`90d`/`12mo` — rather than staying fixed at 7 days: [TrendsController](app/Http/Controllers/TrendsController.php) computes one [TrainingLoad::summary()](app/Services/Run/Metrics/TrainingLoad.php) per toggle position up front (`load` ships as one entry per range, the same "compute every window once" shape `narration` already used), and the page indexes into it by whichever range is selected. `TrainingLoad::summary()`'s `windowDays` parameter sizes only `weekly_trimp`/monotony/strain to that window; ATL/CTL/form are EWMA time constants and read the same at every range. `chartAnnotations` ships alongside `ctlTrend` — deload weeks and race days read off `PlannedSession` history — for the fitness chart's markers.
+`VitalBars`/`TrainingLoadCard` (the vibe/readiness/recovery bars and the fitness/fatigue/strain mini card that briefly lived on `/trends` under a range toggle) are **deleted**: #967 replaced that toggle-driven `load` section with three fixed comparisons, and nothing else read those two components. `pages/Home/helpers.ts` no longer carries `formatSignedForm` either — it moved to [resources/js/lib/formStatus.ts](resources/js/lib/formStatus.ts), Trends' own last reader.
 
-- [VitalBars](resources/js/components/dashboard/VitalBars.tsx) — three labelled bars: **Vibe** (the `vibeLabel` word, with `VIBE_SUB` glossing it), **Readiness** (`load.form` signed, with `formStatusLabel`) and **Recovery** (`recoveryHoursLabel` / streak / recovery label). Each rail is a real `role="meter"`, and a fatigued readiness or a non-positive recovery tone takes the citrus "watch" treatment. Renamed from `VitalChips` in `PS3`, when the 3-up gauge tiles became these bars.
-- [TrainingLoadCard](resources/js/components/dashboard/TrainingLoadCard.tsx) — fitness / fatigue / strain with a link to `/history`. Monotony is not on it; it survives as [[run-history]]'s per-week alert.
-
-`LastRunCard` went with the disclosure rather than moving: [[run-history]] and [[run-detail]] already answer "how was the last one", and Home's `load` prop lost its last reader with it. `pages/Home/helpers.ts` keeps `formatSignedForm`, still read by `VitalBars`.
+`LastRunCard` went with the disclosure rather than moving: [[run-history]] and [[run-detail]] already answer "how was the last one", and Home's `load` prop lost its last reader with it.
 
 `PP3` cut the featured-kartu panel (P29) — the prototype's Today screen draws no Kartu surface — and
 with it `briefing.featuredCardId` / `briefing.featuredKartuVoice`. `W2` then swept the

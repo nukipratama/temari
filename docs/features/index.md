@@ -24,8 +24,9 @@ _Pages_
 - [[legal-pages]] — the four public documents (terms, privacy, AI use, training disclaimer)
 - [[narration-devtools]] — narration spend + per-athlete overview (ops-gated)
 - [[narration-athlete-page]] — one athlete's narration: spend, per-block cost and tool trace, the operator actions, and flag-to-replay (ops-gated)
-- [[race-projection]] — Race, the goal race and fitted-Riegel finish-time projection, plus the 90-day fitness trend
+- [[race-projection]] — Race, the goal race and fitted-Riegel finish-time projection (the fitness trend chart moved to Trends)
 - [[plan-periodizer]] — Plan, the deterministic periodizer, readiness clamp, and volume redistribution
+- [[trends]] — Trends, Temari's 7-day verdict and the three comparisons behind it (vs last week, vs a month ago, vs race day)
 
 _Collection_
 - [[cards-collection]] — the Card's reveal + full view (rarities, badges, special moves); browsing/filtering by rarity is inline on [[run-history]]

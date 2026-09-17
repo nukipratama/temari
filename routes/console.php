@@ -109,19 +109,12 @@ Schedule::command('strava:sync-zones')->monthlyOn(1, '00:10')->withoutOverlappin
 // 1st of the month 05:45: same pattern for the monthly recap.
 $alertOnFailure(Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45')->withoutOverlapping(30)->onOneServer(), 'ai:monthly-recap');
 
-// Trends tab's "Temari's read", one range at a time, tiered by how often
-// each range's own numbers actually move (not just to spread out cost):
-// 7d moves at least as fast as 30d day to day, so it shares 30d's daily
-// cadence rather than a slower tier of its own; 90d barely moves over a few
-// days, 12mo barely moves over a week. Scheduled + cached like every other
-// narrator — never generated live per page view. See TREND_READ_RANGES.
+// Trends tab's "Temari's read" — one verdict, the 7-day window. Scheduled +
+// cached like every other narrator — never generated live per page view. See
+// TREND_READ_RANGES. Used to also cover 30d/90d/12mo; those retired (#967)
+// once the page settled on a single verdict, cutting three of the four
+// scheduled trend-read calls.
 $alertOnFailure(Schedule::command('ai:trend-read 7d')->dailyAt('06:00')->withoutOverlapping(20)->onOneServer(), 'ai:trend-read 7d');
-$alertOnFailure(Schedule::command('ai:trend-read 30d')->dailyAt('06:00')->withoutOverlapping(20)->onOneServer(), 'ai:trend-read 30d');
-// `*/3` on the day-of-month field, not an every-3-days interval: it resets
-// on the 1st, so the gap between runs is 1-2 days at each month boundary.
-// 3-day derivation: docs/architecture/scheduler.md.
-$alertOnFailure(Schedule::command('ai:trend-read 90d')->cron('0 6 */3 * *')->withoutOverlapping(20)->onOneServer(), 'ai:trend-read 90d');
-$alertOnFailure(Schedule::command('ai:trend-read 12mo')->weeklyOn(1, '06:00')->withoutOverlapping(20)->onOneServer(), 'ai:trend-read 12mo');
 
 // Hourly self-heal sweep: re-kicks the earliest stalled AI block per user
 // (weekly + monthly + per-activity chains, plus card/PR narration) — for

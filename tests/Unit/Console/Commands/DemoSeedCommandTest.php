@@ -167,7 +167,7 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->where('status', 'done')->count())->toBe($creditedThisWeek)
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->where('status', 'done')->count())->toBe(1);
 
-    // F7: trend_read narrated for all four windows (7d/30d/90d/12mo).
+    // F7: trend_read narrated for every live window (just 7d since #967).
     expect(Analysis::query()
         ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
         ->where('subject_id', $user->id)

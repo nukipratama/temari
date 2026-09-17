@@ -240,6 +240,9 @@
                 ],
                 "resources/js/components/history/WeeklyStatusChips.test.tsx": [
                     "paper"
+                ],
+                "resources/js/components/trends/WeekComparison.tsx": [
+                    "paper"
                 ]
             },
             "text": [
@@ -351,16 +354,6 @@
                 "icon-accent"
             ]
         },
-        "horizon/0.25": {
-            "over": {
-                "resources/js/components/trends/panels/FitnessPanel.tsx": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "foreground"
-            ]
-        },
         "horizon/0.35": {
             "text": []
         },
@@ -402,6 +395,9 @@
                     "paper"
                 ],
                 "resources/js/components/narration/athlete/VersionDiff.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/trends/WeekComparison.tsx": [
                     "paper"
                 ]
             },

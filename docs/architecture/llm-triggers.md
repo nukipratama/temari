@@ -84,11 +84,8 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 | Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L60) | `ProfileVoice`, keyed by ISO week |
 | **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php#L90) | **up to 9 rows per user — see below** |
 | 1st 05:45 | [`ai:monthly-recap`](../../routes/console.php#L98) | `MonthlyRecap`, oldest first |
-| daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php#L118) | `TrendRead`, discriminator `7d` |
-| daily 06:00 | [`ai:trend-read 30d`](../../routes/console.php#L119) | `TrendRead`, discriminator `30d` |
-| every 3rd day 06:00 | [`ai:trend-read 90d`](../../routes/console.php#L123) | discriminator `90d` |
-| Mon 06:00 | [`ai:trend-read 12mo`](../../routes/console.php#L124) | discriminator `12mo` |
-| first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | all four `trend_read` ranges at once |
+| daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php#L118) | `TrendRead`, discriminator `7d` — the only range since #967 |
+| first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | the `trend_read` row, so a new account isn't a day behind |
 | hourly | [`ai:self-heal`](../../routes/console.php#L118) | recovery only — see origin 4 |
 | hourly | [`ai:catch-up`](../../routes/console.php#L127) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
@@ -124,16 +121,15 @@ when a plan already exists. Since #939 that touches only `PlanSeasonVoice`: a fi
 in it yet, so there is no day to narrate ahead of time. That path never invalidates, so the
 interleaving where both fire re-bills nothing.
 
-**The Trends reads are kicked from the same link, for a different reason.** Each range refreshes on
-its own cadence — `7d` and `30d` daily, `90d` every third day, `12mo` on Mondays — and each of those
-crons only reaches athletes who already existed when it last ran. A Friday signup therefore had no 90d
-read for up to three days and no 12mo read for up to seven, on exactly the days a new account forms its
-impression.
-`KickoffRecapsJob` requests all four once the backfill lands, skipping an athlete whose backfill found
-no runs; `AnalysisService::request()` is idempotent, so the cron that comes round later finds them done
-and bills nothing. The kickoff itself passes no `invalidate`: a `Done` row it finds here can only mean
-an earlier first-connect link already created it moments ago, never that the range's numbers have since
-moved, so a fingerprint check would only spend a lookup for no behaviour change.
+**The Trends read is kicked from the same link, for a different reason.** Its own cron only reaches
+athletes who already existed when it last ran, so a Friday signup had no read at all for up to a day,
+on exactly the day a new account forms its impression. `KickoffRecapsJob` requests it once the backfill
+lands, skipping an athlete whose backfill found no runs; `AnalysisService::request()` is idempotent, so
+the cron that comes round later finds it done and bills nothing. The kickoff itself passes no
+`invalidate`: a `Done` row it finds here can only mean an earlier first-connect link already created it
+moments ago, never that the range's numbers have since moved, so a fingerprint check would only spend a
+lookup for no behaviour change. Used to kick all four `trend_read` ranges at once; `30d`/`90d`/`12mo`
+retired (#967).
 
 **A scheduled trend read re-bills only where the range's own numbers moved.**
 [`TrendReadCommand`](../../app/Console/Commands/AI/TrendReadCommand.php#L20) fingerprints
@@ -239,7 +235,7 @@ rendered somewhere a user can see — both directions matter, and only one of th
 | `weekly_recap` | `WeeklyRecapNarrator` | `WeeklySnapshot` · none | staged at ingest, narrated Mon | `WeekSection` and `CalendarWeekRow` |
 | `monthly_recap` | `MonthlyRecapNarrator` | synthetic user+month · `Y-m` | staged at ingest, narrated 1st | calendar month card |
 | `profile_voice` | `ProfileVoiceNarrator` | synthetic user · ISO week | scheduled + ingest | `ProfileHero` |
-| `trend_read` | `TrendReadNarrator` | synthetic user+range · range | scheduled ×4 | `NarrationCard` on Trends |
+| `trend_read` | `TrendReadNarrator` | synthetic user+range · `7d` | scheduled | `NarrationCard` on Trends |
 | `plan_day_voice` | `PlanDayVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest, after scoring | `WeekDayRow`, collapsed, labelled "Temari's read" |
 | `plan_clamp_voice` | `PlanClampVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest listener, 00:01 briefing | an eased day's voice before credit, or an unrecorded step-down, on both surfaces |
 | `plan_season_voice` | `PlanSeasonVoiceNarrator` | `Season` · none | `plan:regenerate`, Plan page, first week | `SeasonHeaderCard`, always visible |
@@ -438,7 +434,7 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | `weekly_recap` | earns it | Chained, reads a real snapshot, already tightened to 4 steps. |
 | `monthly_recap` | earns it | Same shape, same tightening. |
 | `profile_voice` | earns it | Once a week, four reads, genuinely synthetic. |
-| `trend_read` | earns it | 1 tool and a 4-step budget. Watch the cadence (×4 ranges) rather than the call. |
+| `trend_read` | earns it | 1 tool and a 4-step budget, one call per active athlete per day since `30d`/`90d`/`12mo` retired (#967). |
 | `plan_day_voice` | earns it | Budget aligned to 4. Since #939 it is no longer scheduled at all — one call per run day, requested right after `ComplianceScorer::creditIfEarned()` scores it, phrasing #946's intent verdict rather than announcing the session ahead of time. |
 | `plan_season_voice` | earns it | Budget aligned to 4 and idempotent, so it neither re-bills nor over-runs. |
 | run Q&A | earns it | A free-form question about one run is exactly what rules cannot answer. |
@@ -455,9 +451,10 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
   their own window.
 - `PlanAdherenceTool` is its aggregate counterpart, and the split is about payload shape rather
   than preference. `PlanContextTool` returns one entry per prescribed day (~178 bytes each), which
-  is right for a week or a month and wrong for a range measured in quarters: a 12-month trend read
-  would carry ~365 entries once plan history has accumulated that far. The trend read and the
-  profile voice ask about a shape, so they get counts, which are the same size at any span.
+  is right for a week or a month and wrong for a range measured in quarters — the trend read used
+  to cover ranges up to 12 months before `30d`/`90d`/`12mo` retired (#967), and would have carried
+  ~365 entries at that span. The trend read and the profile voice ask about a shape, so they get
+  counts, which are the same size at any span.
 - `RunInsightNarrator`'s three user-level tools are the ones to question first if its toolbox is
   narrowed.
 

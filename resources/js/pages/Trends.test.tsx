@@ -1,25 +1,16 @@
 import type { ComponentProps } from 'react';
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { FitnessChartAnnotations } from '@/components/trends/panels/FitnessPanel';
-import type { TrendRange } from '@/components/trends/RangeToggle';
-import type {
-    AnalysisPayload,
-    BriefingResult,
-    TrainingLoad,
-    WeeklySnapshot,
-} from '@/types/inertia';
+import type { AnalysisPayload, TrainingLoad } from '@/types/inertia';
 
-import { setMockDeferred } from '@/test/setup';
+import { setMockDeferred, setMockPage } from '@/test/setup';
 
 import Trends from './Trends';
 
-function narrationPayload(
-    discriminator: TrendRange,
-    content: string,
-): AnalysisPayload {
+function narrationPayload(content: string): AnalysisPayload {
     return {
         id: 1,
         status: 'done',
@@ -28,41 +19,15 @@ function narrationPayload(
         is_zone_dependent: true,
         subject_type: 'trend_read_user_range',
         subject_id: 1,
-        discriminator,
+        discriminator: '7d',
     };
 }
 
-const NARRATION: Record<TrendRange, AnalysisPayload> = {
-    '7d': narrationPayload('7d', 'This week.\n\nHolding the same rhythm.'),
-    '30d': narrationPayload('30d', 'Last 30 days.\n\nFitness climbing.'),
-    '90d': narrationPayload('90d', 'Last 90 days.\n\nSteady build.'),
-    '12mo': narrationPayload('12mo', 'The full year.\n\nA long climb.'),
-};
+const NARRATION = narrationPayload(
+    'holding steady this week.\n\nno real swing either way.',
+);
 
-const briefing: BriefingResult = {
-    vibeState: 'pumped',
-    vibeLabel: 'Pumped',
-    vibeEmoji: '💥',
-    firstRead: false,
-    mascotVoice: {
-        id: 4,
-        status: 'done',
-        content: 'Easy 6k.',
-        type: 'briefing_mascot_voice',
-        subject_type: 'briefing_user_day',
-        subject_id: 1,
-        discriminator: '2026-06-12',
-    },
-    recoveryLabel: 'Recovery: 41h',
-    recoveryTone: 'positive',
-    recoveryHoursLabel: '41h',
-    recoveryHours: 41,
-    streakLabel: 'Ran today',
-    sigilPattern: 'orct',
-    mood: 'blazing',
-};
-
-const load: TrainingLoad = {
+const LOAD: TrainingLoad = {
     form: -2.5,
     form_status: 'optimal',
     ctl_42d: 42,
@@ -72,56 +37,27 @@ const load: TrainingLoad = {
     strain: 384,
 };
 
-/** A distinct strain per range, so a test can prove the load section actually
- *  reads the selected window instead of a fixed one. */
-const LOAD: Record<TrendRange, TrainingLoad> = {
-    '7d': { ...load, strain: 100 },
-    '30d': { ...load, strain: 300 },
-    '90d': { ...load, strain: 900 },
-    '12mo': { ...load, strain: 1200 },
-};
-
 const NO_ANNOTATIONS: FitnessChartAnnotations = { deload: [], race: [] };
 
-const snapshot: WeeklySnapshot = {
-    id: 1,
-    user_id: 1,
-    week_ending: '2026-06-14',
-    runs: 4,
-    distance_km: 35.5,
-    weekly_trimp: 280,
-    ctl_42d: 42,
-    atl_7d: 44.5,
-    form: -2.5,
-    form_status: 'optimal',
-    avg_decoupling: 3.2,
-    monotony: 1.4,
-    strain: 392,
-};
-
 const BASE_PROPS: ComponentProps<typeof Trends> = {
-    briefing,
     load: LOAD,
-    snapshot,
     ctlTrend: [],
-    badgeMilestones: [],
-    streak: {
-        weeks: 0,
-        rest_weeks_held: 0,
-        rest_weeks_cap: 2,
-        ran_this_week: false,
-        week_ends_on: '2026-08-30',
+    weekComparison: {
+        this_week_km: 18.4,
+        last_week_km: 22.1,
+        this_week_runs: 3,
+        last_week_runs: 4,
     },
     narration: NARRATION,
     chartAnnotations: NO_ANNOTATIONS,
 };
 
-/** A year of daily points, so every range window has data to slice. */
+/** A year of daily points so the fitness chart has data to draw. */
 function yearOfTrend() {
     return Array.from({ length: 365 }, (_, i) => ({
         date: `2026-01-${String((i % 28) + 1).padStart(2, '0')}`,
         ctl: 40 + i * 0.05,
-        atl: 35,
+        atl: 30,
     }));
 }
 
@@ -129,150 +65,99 @@ describe('Trends', () => {
     it('renders the page headline', () => {
         render(<Trends {...BASE_PROPS} />);
 
-        expect(screen.getByText('how things')).toBeInTheDocument();
-        expect(screen.getByText('are going.')).toBeInTheDocument();
+        expect(screen.getByText('am I getting fitter,')).toBeInTheDocument();
+        expect(screen.getByText('and at what cost?')).toBeInTheDocument();
     });
 
-    it('renders the load section under the hero, above the range tabs', () => {
+    it('renders the verdict once narration lands, above the three comparisons', () => {
         const { container } = render(<Trends {...BASE_PROPS} />);
 
-        const eyebrow = screen.getByText('load');
-        expect(screen.getByText('Pumped')).toBeInTheDocument();
-        // 7d is the range the page opens on, and the load section follows it.
-        expect(screen.getByText('Condition · 7 days')).toBeInTheDocument();
+        const verdict = screen.getByText('holding steady this week.');
+        const weekSection = screen.getByText('vs last week');
+
         expect(
-            eyebrow.compareDocumentPosition(
-                screen.getByRole('group', { name: 'Time range' }),
-            ) & Node.DOCUMENT_POSITION_FOLLOWING,
+            verdict.compareDocumentPosition(weekSection) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
-        expect(container).toContainElement(eyebrow);
+        expect(container).toContainElement(verdict);
     });
 
-    it("follows the range toggle: load, Temari's read and the fitness panel all update together", () => {
+    it('renders all three comparisons in order: week, month, race', () => {
         render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
 
-        expect(screen.getByText('Condition · 7 days')).toBeInTheDocument();
-        expect(screen.getByText('100')).toBeInTheDocument();
-        expect(screen.getByText('This week.')).toBeInTheDocument();
-        expect(
-            screen.getByRole('img', { name: /over 7 days/ }),
-        ).toBeInTheDocument();
+        const headings = screen
+            .getAllByRole('heading', { level: 2 })
+            .map((h) => h.textContent);
 
-        fireEvent.click(screen.getByRole('button', { name: '30 days' }));
-
-        expect(screen.getByText('Condition · 30 days')).toBeInTheDocument();
-        expect(screen.getByText('300')).toBeInTheDocument();
-        expect(screen.getByText('Last 30 days.')).toBeInTheDocument();
-        expect(screen.queryByText('This week.')).not.toBeInTheDocument();
-        expect(
-            screen.getByRole('img', { name: /over 30 days/ }),
-        ).toBeInTheDocument();
+        expect(headings).toEqual([
+            'vs last week',
+            'vs a month ago',
+            'vs your own year',
+        ]);
     });
 
-    it('holds the load section back behind a skeleton until its props land', () => {
-        setMockDeferred(['briefing', 'load', 'snapshot']);
+    it('renders "vs race day" instead of "vs your own year" when a race is set', () => {
+        setMockPage({
+            activeRace: {
+                id: 1,
+                race_date: '2099-11-08',
+                distance_m: 10_000,
+                goal_time_sec: 3120,
+                name: 'Bandung 10K',
+            },
+        });
 
-        render(<Trends {...BASE_PROPS} />);
-
-        expect(screen.queryByText('load')).not.toBeInTheDocument();
-        expect(screen.queryByText('Pumped')).not.toBeInTheDocument();
-    });
-
-    it('renders exactly the four prototype blocks', () => {
-        render(<Trends {...BASE_PROPS} />);
-
-        expect(screen.getByText('Trends')).toBeInTheDocument();
-        expect(
-            screen.getByRole('group', { name: 'Time range' }),
-        ).toBeInTheDocument();
-        expect(screen.getByText("Temari's read")).toBeInTheDocument();
-        expect(
-            screen.getByText(/not enough training history yet/),
-        ).toBeInTheDocument();
-    });
-
-    it('opens on the 7 day range, the one narrated daily', () => {
-        render(<Trends {...BASE_PROPS} />);
-
-        expect(screen.getByText('This week.')).toBeInTheDocument();
-        expect(screen.queryByText('The full year.')).not.toBeInTheDocument();
-    });
-
-    it('switches the narration shown when the range toggle changes', () => {
-        render(<Trends {...BASE_PROPS} />);
-
-        fireEvent.click(screen.getByRole('button', { name: '12 months' }));
-
-        expect(screen.getByText('The full year.')).toBeInTheDocument();
-        expect(screen.queryByText('This week.')).not.toBeInTheDocument();
-    });
-
-    it('re-windows the fitness panel when the range toggle changes', () => {
         render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
 
-        expect(
-            screen.getByRole('img', { name: /over 7 days/ }),
-        ).toBeInTheDocument();
+        expect(screen.getByText('vs race day')).toBeInTheDocument();
+        expect(screen.queryByText('vs your own year')).not.toBeInTheDocument();
+    });
 
-        fireEvent.click(screen.getByRole('button', { name: '12 months' }));
+    it('shows the honest empty verdict card while narration is pending', () => {
+        render(
+            <Trends
+                {...BASE_PROPS}
+                narration={{
+                    id: null,
+                    status: 'pending',
+                    content: null,
+                    type: 'trend_read',
+                    subject_type: 'trend_read_user_range',
+                    subject_id: 1,
+                    discriminator: '7d',
+                }}
+            />,
+        );
 
+        expect(screen.getByText(/not written yet/)).toBeInTheDocument();
         expect(
-            screen.getByRole('img', { name: /over 365 days/ }),
+            screen.getByRole('button', { name: /try again/ }),
         ).toBeInTheDocument();
     });
 
-    it('shows skeletons for the deferred blocks until their props land', () => {
+    it('holds every block back behind a skeleton until its props land', () => {
         setMockDeferred([
             'narration',
-            'ctlTrend',
-            'badgeMilestones',
-            'streak',
-            'chartAnnotations',
-            'briefing',
+            'weekComparison',
             'load',
-            'snapshot',
+            'ctlTrend',
+            'chartAnnotations',
         ]);
 
         const { container } = render(<Trends />);
 
-        expect(screen.getByText('how things')).toBeInTheDocument();
-        expect(
-            screen.getByRole('group', { name: 'Time range' }),
-        ).toBeInTheDocument();
-        expect(screen.queryByText("Temari's read")).not.toBeInTheDocument();
+        expect(screen.getByText('am I getting fitter,')).toBeInTheDocument();
+        expect(screen.queryByText('vs last week')).not.toBeInTheDocument();
+        expect(screen.queryByText('vs a month ago')).not.toBeInTheDocument();
         expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
             0,
         );
     });
 
-    it('fills the fitness block in on its own once narration is still pending', () => {
-        setMockDeferred(['narration']);
+    it("states this week's km and runs against last week", () => {
+        render(<Trends {...BASE_PROPS} />);
 
-        render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
-
-        expect(screen.queryByText('This week.')).not.toBeInTheDocument();
-        expect(
-            screen.getByRole('img', { name: /over 7 days/ }),
-        ).toBeInTheDocument();
-    });
-
-    it('shows the week streak as a chip inside the fitness panel', () => {
-        render(
-            <Trends
-                {...BASE_PROPS}
-                ctlTrend={yearOfTrend()}
-                streak={{
-                    weeks: 6,
-                    rest_weeks_held: 0,
-                    rest_weeks_cap: 2,
-                    ran_this_week: true,
-                    week_ends_on: '2026-08-30',
-                }}
-            />,
-        );
-
-        expect(
-            screen.getByRole('button', { name: /6-week streak/ }),
-        ).toBeInTheDocument();
+        expect(screen.getByText('18.4')).toBeInTheDocument();
+        expect(screen.getByText('−3.7 km')).toBeInTheDocument();
     });
 });
