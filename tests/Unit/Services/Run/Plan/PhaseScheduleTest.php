@@ -238,3 +238,57 @@ it('holds a self-scaled arc at 1.0 outside its deload dips', function (): void {
         expect($multipliers[$index])->toEqualWithDelta($phase === PlanPhase::Deload ? 0.65 : 1.0, 0.0001);
     }
 });
+
+it('opens the block sixteen weeks before race week up to the half marathon and twenty beyond it', function (): void {
+    $raceDay = Carbon::parse('2027-03-20');
+
+    expect(PhaseSchedule::blockOpensOn($raceDay, 10_000.0)->toDateString())->toBe('2026-11-23')
+        ->and(PhaseSchedule::blockOpensOn($raceDay, 21_097.0)->toDateString())->toBe('2026-11-23')
+        ->and(PhaseSchedule::blockOpensOn($raceDay, 25_000.0)->toDateString())->toBe('2026-11-23')
+        ->and(PhaseSchedule::blockOpensOn($raceDay, 25_001.0)->toDateString())->toBe('2026-10-26')
+        ->and(PhaseSchedule::blockOpensOn($raceDay, 42_195.0)->toDateString())->toBe('2026-10-26');
+});
+
+it('keeps a race twelve weeks out as one block, exactly the arc it always was', function (): void {
+    $arcStart = Carbon::parse('2026-08-10');
+
+    $arc = $this->schedule->forRace($arcStart, $arcStart->copy()->addWeeks(12), 10_000.0);
+    $phases = array_column($arc, 'phase');
+
+    expect(array_map(fn (PlanPhase $p): string => $p->value, $phases))->toBe([
+        'base', 'base', 'base', 'deload', 'build', 'build', 'build', 'deload', 'build', 'peak', 'peak', 'peak', 'taper',
+    ])
+        ->and(array_unique(array_column($arc, 'zone')))->toBe([PhaseSchedule::ZONE_BLOCK])
+        ->and(PhaseSchedule::volumeMultipliers($phases, zones: array_column($arc, 'zone')))->toBe(PhaseSchedule::volumeMultipliers($phases));
+});
+
+it('runs the general cycle until block open and counts the race ramp from there', function (): void {
+    $arcStart = Carbon::parse('2026-08-10');
+    $raceDay = $arcStart->copy()->addWeeks(30);
+    $blockOpen = PhaseSchedule::blockOpensOn($raceDay, 10_000.0);
+
+    $arc = $this->schedule->forRace($arcStart, $raceDay, 10_000.0);
+    $zones = array_column($arc, 'zone');
+    $multipliers = PhaseSchedule::volumeMultipliers(array_column($arc, 'phase'), zones: $zones);
+
+    $general = array_slice($arc, 0, 14);
+    $block = array_slice($arc, 14);
+    $standaloneBlock = $this->schedule->forRace($blockOpen, $raceDay, 10_000.0);
+
+    // Sixteen block weeks run up to race week, which is the block's own last row.
+    expect(array_count_values($zones))->toBe([PhaseSchedule::ZONE_GENERAL => 14, PhaseSchedule::ZONE_BLOCK => 17])
+        ->and($block[0]['week_start']->toDateString())->toBe($blockOpen->toDateString())
+        ->and(array_column($general, 'phase'))->toBe(array_column($this->schedule->selfScaled($arcStart, 14), 'phase'))
+        ->and(array_column($block, 'phase'))->toBe(array_column($standaloneBlock, 'phase'))
+        ->and(array_slice($multipliers, 14))->toBe(PhaseSchedule::volumeMultipliers(array_column($standaloneBlock, 'phase')));
+
+    foreach ($general as $i => $week) {
+        expect($multipliers[$i])->toEqualWithDelta($week['phase'] === PlanPhase::Deload ? 0.65 : 1.0, 0.0001);
+    }
+});
+
+it('marks every self-scaled week as general', function (): void {
+    $arc = $this->schedule->selfScaled(Carbon::parse('2026-08-10'), 8);
+
+    expect(array_unique(array_column($arc, 'zone')))->toBe([PhaseSchedule::ZONE_GENERAL]);
+});

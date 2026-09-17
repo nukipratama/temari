@@ -310,9 +310,10 @@ final readonly class TrainingBaseline
      * too flat to hold a ramp simply gets a smaller step — 0.0 when there is
      * no race, no season, or a marathon-distance goal.
      *
-     * Only Build and Peak multipliers count as the ramp's high-water mark;
-     * Taper and Deload are reductions and would inflate the floor if divided
-     * into. An arc holding neither phase gets no floor at all.
+     * Only the block's Build and Peak multipliers count as the ramp's
+     * high-water mark; Taper and Deload are reductions and would inflate the
+     * floor if divided into, and a general week before block open holds flat.
+     * An arc holding neither phase gets no floor at all.
      */
     private function raceDistanceFloorKm(?RaceGoal $race, ?Season $season): float
     {
@@ -320,15 +321,14 @@ final readonly class TrainingBaseline
             return 0.0;
         }
 
-        $phases = array_map(
-            static fn (array $week): PlanPhase => $week['phase'],
-            $this->phaseSchedule->forRace($season->starts_at, $race->race_date, (float) $race->distance_m),
-        );
+        $weeks = $this->phaseSchedule->forRace($season->starts_at, $race->race_date, (float) $race->distance_m);
+        $phases = array_column($weeks, 'phase');
+        $zones = array_column($weeks, 'zone');
 
-        $multipliers = PhaseSchedule::volumeMultipliers($phases);
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, zones: $zones);
         $rampMultipliers = [];
         foreach ($phases as $i => $phase) {
-            if (in_array($phase, [PlanPhase::Build, PlanPhase::Peak], true)) {
+            if ($zones[$i] === PhaseSchedule::ZONE_BLOCK && in_array($phase, [PlanPhase::Build, PlanPhase::Peak], true)) {
                 $rampMultipliers[] = $multipliers[$i];
             }
         }

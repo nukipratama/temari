@@ -69,6 +69,33 @@ it('generates a race-oriented base/build/peak/taper progression when an active r
     expect($phases)->toContain('base', 'build', 'peak', 'taper');
 });
 
+it('holds a general week before block open flat instead of ramping it', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $race = RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addWeeks(20)->toDateString(),
+        'distance_m' => 10_000,
+    ]);
+    Season::factory()->for($user)->create([
+        'race_goal_id' => $race->id,
+        'anchor_weekly_volume_km' => 30.0,
+        'starts_at' => Carbon::today()->subWeeks(10)->toDateString(),
+        'ends_at' => $race->race_date->toDateString(),
+    ]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    // Week 11 of a 31-week arc: Build x1.156 when the ramp counted from the season start.
+    $multipliers = PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->whereBetween('date', ['2026-08-10', '2026-08-16'])
+        ->pluck('volume_multiplier')
+        ->unique()
+        ->values()
+        ->all();
+    expect($multipliers)->toBe([1.0]);
+});
+
 it('never overwrites a pinned row', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);

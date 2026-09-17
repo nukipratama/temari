@@ -172,6 +172,21 @@ it('floors the long run so the arc reaches the race distance at its own peak', f
     expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.4);
 });
 
+it('sizes the race floor off the block ramp alone, not the general weeks before it', function (): void {
+    $user = User::factory()->create();
+    weeksOf($user, array_fill(0, 6, 18.0));
+    RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2027-03-08']);
+    Season::factory()->for($user)->create([
+        'anchor_weekly_volume_km' => 18.0,
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2027-03-08',
+    ]);
+
+    // The 17-row block peaks at 1.075^4, so 10 km / 1.3355 rounds up to 7.5.
+    // Counting all thirty weeks would reach the 1.4 cap and floor at 7.2.
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(7.5);
+});
+
 it('leaves a marathon goal to its own coaching rather than flooring at race distance', function (): void {
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 26.0));

@@ -67,6 +67,16 @@ it('ensures the season once even though three props ask for it', function (): vo
     expect(Season::query()->where('user_id', $user->id)->count())->toBe(1);
 });
 
+it('carries the under-ready line on the first Plan visit of a short block, and not after', function (): void {
+    $user = assemblerAthlete();
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-11-02', 'distance_m' => 10_000]);
+    $today = Carbon::today();
+
+    expect($this->assembler->season($user, $today)['under_ready_line'])
+        ->toBe("Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built.")
+        ->and($this->assembler->season($user, $today)['under_ready_line'])->toBeNull();
+});
+
 it('has nothing to explain about a week the adapter never touched', function (): void {
     expect($this->assembler->adaptation(assemblerAthlete(), Carbon::today()))->toBeNull();
 });

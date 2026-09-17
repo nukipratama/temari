@@ -60,25 +60,11 @@ final readonly class SeasonSummaryBuilder
     }
 
     /**
-     * @return list<array{week_start: string, phase: string, type: string, planned_km: float, eased_from_km: float|null, actual_km: float|null, sessions: int}>
+     * @return list<array{week_start: string, phase: string, zone: string, type: string, planned_km: float, eased_from_km: float|null, actual_km: float|null, sessions: int}>
      */
     public function build(User $user, Season $season, Carbon $today): array
     {
-        $race = $season->raceGoal;
-        $isSelfScaled = $race === null;
-
-        if ($race !== null) {
-            $raceDistanceM = (float) $race->distance_m;
-            $weeks = $this->phaseSchedule->forRace($season->starts_at, $race->race_date, $raceDistanceM);
-        } else {
-            $raceDistanceM = null;
-            $totalWeeks = max(1, (int) $season->starts_at->diffInWeeks($season->ends_at) + 1);
-            $weeks = $this->phaseSchedule->selfScaled($season->starts_at, $totalWeeks, $season->opens_with_recovery);
-        }
-
-        $phases = array_map(fn (array $w): PlanPhase => $w['phase'], $weeks);
-        $multipliers = PhaseSchedule::volumeMultipliers($phases, $isSelfScaled);
-        $baselineData = $this->baseline->forUser($user, $season->starts_at);
+        $weeks = $this->plannedWeeks($user, $season);
 
         $weekEndings = array_map(
             fn (array $w): string => $w['week_start']->copy()->addDays(6)->toDateString(),
@@ -96,13 +82,51 @@ final readonly class SeasonSummaryBuilder
 
         $result = [];
         foreach ($weeks as $i => $week) {
-            $weekStart = $week['week_start'];
-            $weekStartKey = $weekStart->toDateString();
-            $weekEndingKey = $weekEndings[$i];
-            $phase = $week['phase'];
-            $multiplier = $multipliers[$i];
+            $weekStartKey = $week['week_start']->toDateString();
+            $plannedKm = $week['planned_km'];
+            $eased = $weekStartKey === $currentWeekKey && round($easedAwayKm, 1) > 0.0;
 
-            $dayRows = $this->weekPlanBuilder->build($weekStart, $phase, $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled, raceDate: $race?->race_date);
+            $result[] = [
+                'week_start' => $weekStartKey,
+                'phase' => $week['phase']->value,
+                'zone' => $week['zone'],
+                'type' => $weekStartKey < $currentWeekKey ? 'history' : ($weekStartKey === $currentWeekKey ? 'current' : 'lookahead'),
+                'planned_km' => round($eased ? $plannedKm - $easedAwayKm : $plannedKm, 1),
+                'eased_from_km' => $eased ? round($plannedKm, 1) : null,
+                'actual_km' => $actualKmByWeekEnding[$weekEndings[$i]] ?? null,
+                'sessions' => $week['sessions'],
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Every week of the season's arc with the km it prescribes, sized off the
+     * baseline as it stood at season start.
+     *
+     * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string, planned_km: float, sessions: int}>
+     */
+    public function plannedWeeks(User $user, Season $season): array
+    {
+        $race = $season->raceGoal;
+        $isSelfScaled = $race === null;
+
+        if ($race !== null) {
+            $raceDistanceM = (float) $race->distance_m;
+            $weeks = $this->phaseSchedule->forRace($season->starts_at, $race->race_date, $raceDistanceM);
+        } else {
+            $raceDistanceM = null;
+            $totalWeeks = max(1, (int) $season->starts_at->diffInWeeks($season->ends_at) + 1);
+            $weeks = $this->phaseSchedule->selfScaled($season->starts_at, $totalWeeks, $season->opens_with_recovery);
+        }
+
+        $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), $isSelfScaled, array_column($weeks, 'zone'));
+        $baselineData = $this->baseline->forUser($user, $season->starts_at);
+
+        $result = [];
+        foreach ($weeks as $i => $week) {
+            $dayRows = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled, raceDate: $race?->race_date);
             $primaryEasyDate = self::primaryEasyDate($dayRows);
 
             $plannedKm = 0.0;
@@ -112,7 +136,7 @@ final readonly class SeasonSummaryBuilder
                     $row['session_type'],
                     $date === $primaryEasyDate,
                     $baselineData['long_run_km'],
-                    $multiplier,
+                    $multipliers[$i],
                     $baselineData['long_run_cap_km'],
                     $raceDistanceM,
                 );
@@ -121,17 +145,7 @@ final readonly class SeasonSummaryBuilder
                 }
             }
 
-            $eased = $weekStartKey === $currentWeekKey && round($easedAwayKm, 1) > 0.0;
-
-            $result[] = [
-                'week_start' => $weekStartKey,
-                'phase' => $phase->value,
-                'type' => $weekStartKey < $currentWeekKey ? 'history' : ($weekStartKey === $currentWeekKey ? 'current' : 'lookahead'),
-                'planned_km' => round($eased ? $plannedKm - $easedAwayKm : $plannedKm, 1),
-                'eased_from_km' => $eased ? round($plannedKm, 1) : null,
-                'actual_km' => $actualKmByWeekEnding[$weekEndingKey] ?? null,
-                'sessions' => $sessions,
-            ];
+            $result[] = [...$week, 'planned_km' => $plannedKm, 'sessions' => $sessions];
         }
 
         return $result;

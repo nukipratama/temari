@@ -10,6 +10,7 @@ use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\SeasonService;
+use App\Services\Run\Plan\SeasonSummaryBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -99,7 +100,14 @@ it('retargets the season in place, rather than opening a duplicate row, when the
         ->and($season->race_goal_id)->toBe($race->id)
         ->and($season->ends_at->toDateString())->toBe($race->race_date->toDateString())
         ->and(Season::query()->where('user_id', $user->id)->count())->toBe(1)
-        ->and(SeasonGoal::query()->where('season_id', $season->id)->count())->toBe(5);
+        ->and(SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all())->toEqualCanonicalizing([
+            'season_sessions_completed',
+            'season_quality_completed',
+            'season_longest_long_run_km',
+            'season_rest_honored',
+            'season_race_goal_met',
+            'season_peak_weekly_km',
+        ]);
 });
 
 it('starts a new self-scaled season when the active race is cleared mid-season', function (): void {
@@ -186,4 +194,91 @@ it('respects an explicit sessions_per_week preference below the old behavioral f
     $sessionsGoal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_sessions_completed')->first();
 
     expect($sessionsGoal->target)->toBe(24.0); // 2 sessions/week * 12-week self-scaled horizon
+});
+
+function seasonServiceWeeks(User $user, float $km): void
+{
+    foreach (range(0, 5) as $i) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::today()->subWeeks($i)->toDateString(),
+            'runs' => 4,
+            'distance_km' => $km,
+        ]);
+    }
+}
+
+it('opens a race season far from its block with the general goals only', function (int $distanceM, float $weeklyKm, float $readinessKm): void {
+    $user = User::factory()->create();
+    seasonServiceWeeks($user, $weeklyKm);
+    RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-08', 'distance_m' => $distanceM]);
+
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $goals = SeasonGoal::query()->where('season_id', $season->id)->pluck('target', 'metric')->all();
+
+    expect(array_keys($goals))->toEqualCanonicalizing([
+        'season_sessions_completed',
+        'season_quality_completed',
+        'season_longest_long_run_km',
+        'season_rest_honored',
+    ])
+        ->and($goals['season_longest_long_run_km'])->toBe($readinessKm);
+})->with([
+    '10K' => [10_000, 40.0, 12.0],
+    'half' => [21_097, 40.0, 18.0],
+    'marathon' => [42_195, 80.0, 30.0],
+    '10K capped at half the week' => [10_000, 16.0, 8.0],
+]);
+
+it('appends the block goals once the block opens, and only once', function (): void {
+    $user = User::factory()->create();
+    seasonServiceWeeks($user, 30.0);
+    RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-08', 'distance_m' => 10_000]);
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+
+    Carbon::setTestNow('2026-11-15 08:00:00');
+    $this->service->ensureCurrent($user, Carbon::today());
+    expect(SeasonGoal::query()->where('season_id', $season->id)->count())->toBe(4);
+
+    Carbon::setTestNow('2026-11-16 08:00:00');
+    $this->service->ensureCurrent($user, Carbon::today());
+    $this->service->ensureCurrent($user, Carbon::today());
+
+    $metrics = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric');
+    $peakWeekKm = collect(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season->fresh()))
+        ->where('zone', 'block')
+        ->max('planned_km');
+
+    expect($metrics)->toHaveCount(6)
+        ->and($metrics->duplicates())->toBeEmpty()
+        ->and($metrics)->toContain('season_race_goal_met', 'season_peak_weekly_km')
+        ->and(SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_peak_weekly_km')->value('target'))
+        ->toBe(round($peakWeekKm, 1));
+});
+
+it('serves the under-ready line once when the season opens inside a short block', function (int $weeksOut, int $distanceM, string $line): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks($weeksOut)->toDateString(), 'distance_m' => $distanceM]);
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+
+    expect($this->service->takeUnderReadyLine($season))->toBe($line)
+        ->and($season->fresh()->under_ready_noted_at)->not->toBeNull()
+        ->and($this->service->takeUnderReadyLine($season->fresh()))->toBeNull();
+})->with([
+    '10K twelve weeks out' => [12, 10_000, "Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built."],
+    'marathon eighteen weeks out' => [18, 42_195, "Eighteen weeks is tighter than I'd pick for this one, so we build what we can and race what we've built."],
+    'half one week out' => [1, 21_097, "One week is tighter than I'd pick for this one, so we build what we can and race what we've built."],
+]);
+
+it('says nothing about readiness for a full block or a season with no race', function (): void {
+    $fullBlock = User::factory()->create();
+    RaceGoal::factory()->for($fullBlock)->create(['race_date' => Carbon::today()->addWeeks(16)->toDateString(), 'distance_m' => 10_000]);
+    $farOut = User::factory()->create();
+    RaceGoal::factory()->for($farOut)->create(['race_date' => Carbon::today()->addWeeks(30)->toDateString(), 'distance_m' => 42_195]);
+
+    foreach ([$fullBlock, $farOut, User::factory()->create()] as $user) {
+        $season = $this->service->ensureCurrent($user, Carbon::today());
+
+        expect($this->service->takeUnderReadyLine($season))->toBeNull()
+            ->and($season->fresh()->under_ready_noted_at)->toBeNull();
+    }
 });

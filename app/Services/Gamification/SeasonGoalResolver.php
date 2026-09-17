@@ -61,6 +61,7 @@ readonly class SeasonGoalResolver
             'season_rest_honored' => $ctx->restHonored,
             'season_race_goal_met' => $ctx->raceGoalMet ? 1 : 0,
             'season_ctl_growth' => $ctx->ctlGrowth,
+            'season_peak_weekly_km' => $ctx->peakWeeklyKm,
             default => throw new InvalidArgumentException("Unknown season goal metric: {$metric}"),
         };
     }

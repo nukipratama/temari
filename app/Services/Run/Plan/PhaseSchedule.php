@@ -72,6 +72,17 @@ final class PhaseSchedule
 
     private const int SELF_SCALED_CYCLE_WEEKS = 4;
 
+    /** How many weeks before race week the specific block opens, up to and past the marathon threshold. */
+    private const int BLOCK_WEEKS = 16;
+
+    private const int LONG_RACE_BLOCK_WEEKS = 20;
+
+    /** A week before block open, holding the self-scaled cycle. */
+    public const string ZONE_GENERAL = 'general';
+
+    /** A week inside the race block, periodized toward race day. */
+    public const string ZONE_BLOCK = 'block';
+
     public function taperWeeksForDistance(float $distanceM): int
     {
         return match (true) {
@@ -82,11 +93,41 @@ final class PhaseSchedule
     }
 
     /**
-     * @return list<array{week_start: Carbon, phase: PlanPhase}>
+     * The Monday the race block opens. A computed date, never a season boundary:
+     * see `docs/decisions/the-block-opens-on-a-computed-date.md`.
+     */
+    public static function blockOpensOn(Carbon $raceDate, float $raceDistanceM): Carbon
+    {
+        return $raceDate->copy()->startOfWeek(Carbon::MONDAY)->subWeeks(
+            $raceDistanceM <= self::MARATHON_THRESHOLD_DISTANCE_M ? self::BLOCK_WEEKS : self::LONG_RACE_BLOCK_WEEKS,
+        );
+    }
+
+    /**
+     * The self-scaled cycle from the arc's start until the block opens, then
+     * the race periodization over the block alone.
+     *
+     * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
      */
     public function forRace(Carbon $arcStart, Carbon $raceDate, float $raceDistanceM): array
     {
-        $currentWeekStart = $arcStart->copy()->startOfWeek(Carbon::MONDAY);
+        $arcStartWeek = $arcStart->copy()->startOfWeek(Carbon::MONDAY);
+        $blockStart = self::blockOpensOn($raceDate, $raceDistanceM);
+        if ($blockStart->lessThanOrEqualTo($arcStartWeek)) {
+            return $this->raceBlock($arcStartWeek, $raceDate, $raceDistanceM);
+        }
+
+        return [
+            ...$this->selfScaled($arcStartWeek, (int) $arcStartWeek->diffInWeeks($blockStart)),
+            ...$this->raceBlock($blockStart, $raceDate, $raceDistanceM),
+        ];
+    }
+
+    /**
+     * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
+     */
+    private function raceBlock(Carbon $currentWeekStart, Carbon $raceDate, float $raceDistanceM): array
+    {
         $raceWeekStart = $raceDate->copy()->startOfWeek(Carbon::MONDAY);
         // diffInWeeks is signed, so a race day already behind us counts down
         // past zero. Floored at one week: `plan:close-finished-races` retires a
@@ -103,7 +144,7 @@ final class PhaseSchedule
         if ($weeksToRace <= $taperWeeks + 1) {
             $phases = array_fill(0, $weeksToRace, PlanPhase::Taper);
 
-            return $this->weeksFrom($currentWeekStart, $phases);
+            return $this->weeksFrom($currentWeekStart, $phases, self::ZONE_BLOCK);
         }
 
         $remainingWeeks = $weeksToRace - $taperWeeks;
@@ -126,7 +167,7 @@ final class PhaseSchedule
             ...array_fill(0, $taperWeeks, PlanPhase::Taper),
         ];
 
-        return $this->weeksFrom($currentWeekStart, self::withScheduledDeloads($phases, $baseWeeks + $buildWeeks));
+        return $this->weeksFrom($currentWeekStart, self::withScheduledDeloads($phases, $baseWeeks + $buildWeeks), self::ZONE_BLOCK);
     }
 
     /**
@@ -135,7 +176,7 @@ final class PhaseSchedule
      * then runs from the week after it, so the recovery week is an extra week
      * rather than one borrowed from the first build block.
      *
-     * @return list<array{week_start: Carbon, phase: PlanPhase}>
+     * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
      */
     public function selfScaled(Carbon $arcStart, int $weeks, bool $opensWithRecovery = false): array
     {
@@ -148,7 +189,7 @@ final class PhaseSchedule
             $phases[] = $cyclePosition < self::SELF_SCALED_CYCLE_WEEKS - 1 ? PlanPhase::Build : PlanPhase::Deload;
         }
 
-        return $this->weeksFrom($currentWeekStart, $phases);
+        return $this->weeksFrom($currentWeekStart, $phases, self::ZONE_GENERAL);
     }
 
     /**
@@ -160,12 +201,32 @@ final class PhaseSchedule
      *
      * A `$selfScaled` arc holds flat at 1.0 (dipping only for deload) rather
      * than ramping on top of a baseline that already tracks real volume. See
-     * `docs/decisions/a-goalless-arc-does-not-ramp.md`.
+     * `docs/decisions/a-goalless-arc-does-not-ramp.md`. So does every
+     * {@see self::ZONE_GENERAL} week in `$zones`, and the ramp after them counts
+     * from the block's first week.
      *
+     * @param  list<PlanPhase>  $phases
+     * @param  list<string>  $zones
+     * @return list<float>
+     */
+    public static function volumeMultipliers(array $phases, bool $selfScaled = false, array $zones = []): array
+    {
+        $generalWeeks = count(array_keys($zones, self::ZONE_GENERAL, true));
+        if ($generalWeeks === 0 || $selfScaled) {
+            return self::arcMultipliers($phases, $selfScaled);
+        }
+
+        return [
+            ...self::arcMultipliers(array_slice($phases, 0, $generalWeeks), true),
+            ...self::arcMultipliers(array_slice($phases, $generalWeeks), false),
+        ];
+    }
+
+    /**
      * @param  list<PlanPhase>  $phases
      * @return list<float>
      */
-    public static function volumeMultipliers(array $phases, bool $selfScaled = false): array
+    private static function arcMultipliers(array $phases, bool $selfScaled): array
     {
         $result = [];
         // The ramp counts BUILD WEEKS, not position within a contiguous run: a
@@ -263,15 +324,16 @@ final class PhaseSchedule
 
     /**
      * @param  list<PlanPhase>  $phases
-     * @return list<array{week_start: Carbon, phase: PlanPhase}>
+     * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
      */
-    private function weeksFrom(Carbon $firstWeekStart, array $phases): array
+    private function weeksFrom(Carbon $firstWeekStart, array $phases, string $zone): array
     {
         $weeks = [];
         foreach ($phases as $index => $phase) {
             $weeks[] = [
                 'week_start' => $firstWeekStart->copy()->addWeeks($index),
                 'phase' => $phase,
+                'zone' => $zone,
             ];
         }
 

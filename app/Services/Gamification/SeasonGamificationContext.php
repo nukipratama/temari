@@ -10,6 +10,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
@@ -39,6 +40,7 @@ final readonly class SeasonGamificationContext
         public int $restHonored,
         public bool $raceGoalMet,
         public float $ctlGrowth,
+        public float $peakWeeklyKm,
     ) {
     }
 
@@ -48,7 +50,7 @@ final readonly class SeasonGamificationContext
         $rangeEnd = $season->ends_at->lessThan($boundary) ? $season->ends_at->copy() : $boundary;
 
         if ($rangeEnd->lessThan($season->starts_at)) {
-            return new self(0, 0, 0.0, 0, false, 0.0);
+            return new self(0, 0, 0.0, 0, false, 0.0, 0.0);
         }
 
         $sessions = PlannedSession::query()
@@ -92,7 +94,16 @@ final readonly class SeasonGamificationContext
             restHonored: $restHonored,
             raceGoalMet: $season->race_goal_id !== null && self::raceGoalMet($user->id, $season),
             ctlGrowth: $season->race_goal_id === null ? self::ctlGrowth($user, $season, $today, $trainingLoad) : 0.0,
+            peakWeeklyKm: $season->race_goal_id !== null ? self::peakWeeklyKm($user->id, $season) : 0.0,
         );
+    }
+
+    private static function peakWeeklyKm(int $userId, Season $season): float
+    {
+        return (float) WeeklySnapshot::query()
+            ->where('user_id', $userId)
+            ->whereBetween('week_ending', [$season->starts_at->toDateString(), $season->ends_at->toDateString()])
+            ->max('distance_km');
     }
 
     private static function hasActivityOn(int $userId, Carbon $date): bool
