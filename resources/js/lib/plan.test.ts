@@ -10,11 +10,13 @@ import {
     computeAdherence,
     creditedPaceLabel,
     easedFromLabel,
+    generalZoneSpan,
     isCreditedStatus,
     isRaceWeek,
     kmLabel,
     paceEaseLabel,
     paceLabel,
+    phaseGroupKey,
     phasesOf,
     volumeAdjustedFrom,
     weekdayLabel,
@@ -149,6 +151,78 @@ describe('phasesOf', () => {
         ]);
 
         expect(phases.map((p) => p.key)).toEqual(['build', 'deload']);
+    });
+
+    it('merges every general-zone week into one "general" entry, ignoring its own build/deload phase', () => {
+        const phases = phasesOf([
+            week({ zone: 'general', phase: 'build', type: 'history' }),
+            week({
+                week_start: '2026-06-22',
+                zone: 'general',
+                phase: 'deload',
+                type: 'current',
+            }),
+            week({
+                week_start: '2026-06-29',
+                zone: 'block',
+                phase: 'base',
+                type: 'lookahead',
+            }),
+        ]);
+
+        expect(phases.map((p) => p.key)).toEqual(['general', 'base']);
+        expect(phases[0].state).toBe('current');
+    });
+
+    it('puts the general entry first, ahead of the block phases it precedes', () => {
+        const phases = phasesOf([
+            week({ zone: 'general', phase: 'build' }),
+            week({
+                week_start: '2026-06-22',
+                zone: 'block',
+                phase: 'base',
+                type: 'current',
+            }),
+        ]);
+
+        expect(phases.map((p) => p.key)).toEqual(['general', 'base']);
+    });
+});
+
+describe('phaseGroupKey', () => {
+    it('reads a block week’s own phase', () => {
+        expect(phaseGroupKey(week({ zone: 'block', phase: 'peak' }))).toBe(
+            'peak',
+        );
+    });
+
+    it('collapses any general-zone week to the shared "general" key, whatever its own phase', () => {
+        expect(phaseGroupKey(week({ zone: 'general', phase: 'build' }))).toBe(
+            'general',
+        );
+        expect(phaseGroupKey(week({ zone: 'general', phase: 'deload' }))).toBe(
+            'general',
+        );
+    });
+});
+
+describe('generalZoneSpan', () => {
+    it('spans the first general week’s Monday to the last one’s Sunday', () => {
+        expect(
+            generalZoneSpan([
+                week({ week_start: '2026-06-15', zone: 'general' }),
+                week({ week_start: '2026-06-22', zone: 'general' }),
+                week({ week_start: '2026-06-29', zone: 'block' }),
+            ]),
+        ).toEqual({ start: '2026-06-15', end: '2026-06-28' });
+    });
+
+    it('returns null when the season has no general weeks', () => {
+        expect(
+            generalZoneSpan([
+                week({ week_start: '2026-06-15', zone: 'block' }),
+            ]),
+        ).toBeNull();
     });
 });
 
