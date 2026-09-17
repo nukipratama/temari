@@ -3,9 +3,18 @@ import { latLngBounds } from 'leaflet';
 import { useMemo, useState } from 'react';
 import { MapContainer, Polyline, TileLayer } from 'react-leaflet';
 
+import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { PALETTE } from '@/lib/chartTokens';
 // leaflet.css lives in resources/css/app.css (@import). Importing it here would race
 // the lazy-load and leave tiles unpositioned on first render.
+
+const TILE_ATTRIBUTION =
+    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
+
+const LIGHT_FILTER =
+    '[&_.leaflet-tile-pane]:[filter:sepia(0.35)_saturate(0.85)_hue-rotate(-6deg)_brightness(1.04)_contrast(0.96)]';
+const DARK_FILTER =
+    '[&_.leaflet-tile-pane]:[filter:invert(1)_hue-rotate(180deg)_brightness(0.9)_contrast(0.95)_saturate(0.7)]';
 
 interface RouteMapProps {
     polyline: string;
@@ -18,6 +27,7 @@ export default function RouteMap({
     distanceKm,
 }: Readonly<RouteMapProps>) {
     const [active, setActive] = useState(false);
+    const isDark = useIsDarkGround();
     const positions = useMemo<Array<[number, number]>>(
         () => polylineCodec.decode(polyline) as Array<[number, number]>,
         [polyline],
@@ -45,7 +55,7 @@ export default function RouteMap({
             <div
                 role="img"
                 aria-label={mapLabel}
-                className="[&_.leaflet-tile-pane]:[filter:sepia(0.35)_saturate(0.85)_hue-rotate(-6deg)_brightness(1.04)_contrast(0.96)]"
+                className={isDark ? DARK_FILTER : LIGHT_FILTER}
             >
                 <MapContainer
                     bounds={latLngBounds(positions)}
@@ -54,10 +64,13 @@ export default function RouteMap({
                     style={{ height: '280px', width: '100%' }}
                     attributionControl
                 >
-                    {/* OSMF main tile server. Avoid *.basemaps.cartocdn.com (blocked by uBlock
-                        lists) and tile.openstreetmap.de (needs /tiles/osmde/ prefix or all tiles 404). */}
+                    {/* OSMF main tile server. *.basemaps.cartocdn.com's free Voyager/Dark
+                        Matter styles now return a watermarked "API key required" tile for
+                        anonymous requests (verified live) — theming is a CSS filter on
+                        this one source instead, sepia-warm on light and invert-based on
+                        dark, rather than a second tile vendor. */}
                     <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
+                        attribution={TILE_ATTRIBUTION}
                         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                         maxZoom={19}
                         eventHandlers={{

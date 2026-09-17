@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-leaflet', () => ({
     MapContainer: ({ children }: { children?: React.ReactNode }) => (
@@ -9,7 +9,13 @@ vi.mock('react-leaflet', () => ({
     Polyline: ({ positions }: { positions: Array<[number, number]> }) => (
         <div data-testid="polyline" data-points={positions.length} />
     ),
-    TileLayer: () => <div data-testid="tile-layer" />,
+    TileLayer: ({ url, attribution }: { url: string; attribution: string }) => (
+        <div
+            data-testid="tile-layer"
+            data-url={url}
+            data-attribution={attribution}
+        />
+    ),
 }));
 
 vi.mock('@mapbox/polyline', () => ({
@@ -31,7 +37,15 @@ vi.mock('leaflet/dist/leaflet.css', () => ({}));
 
 import RouteMap from './RouteMap';
 
+function setTheme(theme: 'light' | 'dark') {
+    document.documentElement.dataset.theme = theme;
+}
+
 describe('RouteMap', () => {
+    afterEach(() => {
+        delete document.documentElement.dataset.theme;
+    });
+
     it('renders a MapContainer + Polyline + TileLayer when the polyline decodes to ≥2 points', () => {
         render(<RouteMap polyline="good" />);
         expect(screen.getByTestId('map-container')).toBeInTheDocument();
@@ -75,5 +89,38 @@ describe('RouteMap', () => {
         expect(
             screen.queryByRole('button', { name: /Activate map/i }),
         ).not.toBeInTheDocument();
+    });
+
+    it('applies the warm sepia tile filter on the light ground', () => {
+        setTheme('light');
+        render(<RouteMap polyline="good" />);
+        const mapImg = screen.getByRole('img', { name: 'Run route map' });
+        expect(mapImg.className).toContain('sepia(0.35)');
+        expect(mapImg.className).not.toContain('invert(1)');
+        expect(
+            screen.getByTestId('tile-layer').getAttribute('data-attribution'),
+        ).toContain('OpenStreetMap');
+    });
+
+    it('applies an invert-based dark tile filter on the dark ground', () => {
+        setTheme('dark');
+        render(<RouteMap polyline="good" />);
+        const mapImg = screen.getByRole('img', { name: 'Run route map' });
+        expect(mapImg.className).toContain('invert(1)');
+        expect(mapImg.className).not.toContain('sepia(0.35)');
+        expect(
+            screen.getByTestId('tile-layer').getAttribute('data-attribution'),
+        ).toContain('OpenStreetMap');
+    });
+
+    it('flips the tile filter live when the ground changes while mounted', async () => {
+        setTheme('light');
+        render(<RouteMap polyline="good" />);
+        const mapImg = screen.getByRole('img', { name: 'Run route map' });
+        expect(mapImg.className).toContain('sepia(0.35)');
+
+        act(() => setTheme('dark'));
+
+        await vi.waitFor(() => expect(mapImg.className).toContain('invert(1)'));
     });
 });

@@ -9,7 +9,7 @@ import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import Skeleton from '@/components/ui/Skeleton';
 import { useCountUp } from '@/hooks/useCountUp';
-import { useIsChartDark } from '@/hooks/useIsChartDark';
+import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { CHART_GROUND } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
@@ -119,7 +119,7 @@ export default function FitnessPanel({
     className,
 }: Readonly<FitnessPanelProps>) {
     const [selected, setSelected] = useState<string | null>(null);
-    const isDark = useIsChartDark();
+    const isDark = useIsDarkGround();
     const ground = isDark ? CHART_GROUND.dark : CHART_GROUND.light;
 
     const windowed = useMemo(
