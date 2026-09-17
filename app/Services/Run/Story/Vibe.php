@@ -31,30 +31,6 @@ class Vibe
 
     public const HIBERNATING = 'hibernating';
 
-    /** Display labels. */
-    public const array LABELS = [
-        self::BOUNCY => 'Bouncy',
-        self::STEADY => 'Steady',
-        self::WORN_DOWN => 'Worn Down',
-        self::COOKED => 'Cooked',
-        self::FRESH => 'Fresh',
-        self::STRETCHED_THIN => 'Stretched Thin',
-        self::PUMPED => 'Pumped',
-        self::HIBERNATING => 'Hibernating',
-    ];
-
-    /** Emoji partner per vibe — feeds the Blade component. */
-    public const array EMOJI = [
-        self::BOUNCY => '🦘',
-        self::STEADY => '🚶',
-        self::WORN_DOWN => '🥵',
-        self::COOKED => '🍳',
-        self::FRESH => '🌧️',
-        self::STRETCHED_THIN => '🧵',
-        self::PUMPED => '💥',
-        self::HIBERNATING => '🐻',
-    ];
-
     /** Decoupling lookback in days. */
     private const int DECOUPLING_WINDOW_DAYS = 28;
 
@@ -101,16 +77,6 @@ class Vibe
             'recent_pr' => $recentPr,
             'decoupling_avg' => $decoupling,
         ]);
-    }
-
-    public static function label(string $vibe): string
-    {
-        return self::LABELS[$vibe] ?? $vibe;
-    }
-
-    public static function emoji(string $vibe): string
-    {
-        return self::EMOJI[$vibe] ?? '';
     }
 
     private function daysSinceLastRun(User $user, Carbon $asOf): ?int

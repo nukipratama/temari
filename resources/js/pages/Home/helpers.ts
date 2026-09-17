@@ -1,7 +1,3 @@
-export function formatSignedForm(form: number): string {
-    return form >= 0 ? `+${form.toFixed(1)}` : form.toFixed(1);
-}
-
 /**
  * The district-level location only, skipping the specific venue/landmark first
  * part: "Gelora Bung Karno, Jakarta Pusat, DKI Jakarta" -> "Jakarta Pusat".

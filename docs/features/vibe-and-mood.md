@@ -28,7 +28,7 @@ Two distinct "feelings" drive how the app speaks. The **vibe** is a daily, *whol
 
 ## The daily vibe
 
-[Vibe::current](../../app/Services/Run/Story/Vibe.php) gathers five signals for a user as-of a date — current `form` and `form_status` from [TrainingLoad::summary](../../app/Services/Run/Metrics/TrainingLoad.php), days since the last run, whether a [[records|PR]] landed recently, and the average HR/pace `decoupling` over a recent window. The PR lookback and decoupling lookback windows are constants on the class ([`DECOUPLING_WINDOW_DAYS`](../../app/Services/Run/Story/Vibe.php#L58)). It hands all five to a pure lookup table.
+[Vibe::current](../../app/Services/Run/Story/Vibe.php) gathers five signals for a user as-of a date — current `form` and `form_status` from [TrainingLoad::summary](../../app/Services/Run/Metrics/TrainingLoad.php), days since the last run, whether a [[records|PR]] landed recently, and the average HR/pace `decoupling` over a recent window. The PR lookback and decoupling lookback windows are constants on the class ([`DECOUPLING_WINDOW_DAYS`](../../app/Services/Run/Story/Vibe.php#L35)). It hands all five to a pure lookup table.
 
 [VibeMatrix::pick](../../app/Services/Run/Story/VibeMatrix.php) is that table: an ordered cascade of guard clauses (first match wins, most-significant signal first — staleness, then a fresh PR, then the form-status bands, with decoupling as the tiebreaker between near-neighbours). It returns one of eight stable vibe keys. **Read the cascade at the source rather than this prose** — the thresholds live there and only there ([VibeMatrix's signal shape](../../app/Services/Run/Story/VibeMatrix.php#L12)).
 
@@ -56,7 +56,7 @@ The bridge between the two systems is `moodForVibe` ([`moodForVibe()`](../../app
 ## How the vibe is consumed
 
 - **Face ring colour.** The vibe does *not* drive it, and nor does it drive a pose any more — `PP2` cut the pose vocabulary with the mascot rig. A run `Mood` now picks only the ring colour on the surfaces that carry one, chiefly [RecapCard](../../resources/js/components/history/RecapCard.tsx) — see [[temari-mascot]].
-- **Vibe bar.** The label surfaces as text, in the "Vibe" row of [VitalBars](../../resources/js/components/dashboard/VitalBars.tsx#L21), with `VIBE_SUB` glossing what the vibe means underneath — see [[dashboard]] for the page wiring.
+- **Vibe bar.** Gone. It surfaced as text in `VitalBars`' "Vibe" row on `/trends`, until #967 deleted that component along with the range toggle it belonged to (see [[trends]]). `BriefingResult` no longer carries `vibeLabel`/`vibeEmoji` (nor does [Vibe](../../app/Services/Run/Story/Vibe.php) expose `label()`/`emoji()`/`LABELS`/`EMOJI` any more) — nothing rendered them once the bar was gone. `vibeState` itself is unaffected and still feeds `moodForVibe` below.
 - **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe once and hangs the briefing off it. The vibe *key* is then a context field the narrators key their tone to: the mascot voice keys its register to the vibe band ([BriefingMascotVoiceNarrator.php](../../app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php)) — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The pipeline itself is documented in [[ai-pipeline]].
 
 ## Featured kartu

@@ -9,7 +9,6 @@ code_refs:
   - app/Services/Run/Metrics/WeeklyAggregator.php
   - resources/js/types/inertia.ts
   - resources/js/pages/Activities/weekBuckets.ts
-  - resources/js/components/dashboard/TrainingLoadCard.tsx
 ---
 
 # An unscored week is null, a rest week is zero
