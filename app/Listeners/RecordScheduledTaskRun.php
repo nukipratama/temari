@@ -40,16 +40,17 @@ class RecordScheduledTaskRun
     }
 
     /**
-     * Prefer the bare artisan command name (e.g. "strava:sync") parsed from the
-     * built command string; fall back to Laravel's display summary for anything
-     * that isn't a plain artisan command (e.g. a scheduled closure). Public so
-     * the Pulse scheduler timeline keys live Schedule events the same way the
-     * recorded rows were keyed.
+     * Prefer the artisan command and its arguments (e.g. "ai:trend-read 7d") parsed
+     * from the built command string, so commands that share a signature but differ
+     * only by argument stay distinguishable; fall back to Laravel's display summary
+     * for anything that isn't a plain artisan command (e.g. a scheduled closure).
+     * Public so the Pulse scheduler timeline keys live Schedule events the same way
+     * the recorded rows were keyed.
      */
     public static function label(Event $task): string
     {
-        if (preg_match("/\\bartisan'?\\s+([^\\s']+)/", (string) $task->command, $matches) === 1) {
-            return $matches[1];
+        if (preg_match("/\\bartisan'?\\s+(.+)$/", (string) $task->command, $matches) === 1) {
+            return trim($matches[1]);
         }
 
         return $task->getSummaryForDisplay();
