@@ -378,7 +378,8 @@ export interface PlanDayEasedFrom {
     session_type: string;
     /** Null when only the intensity came down and the distance held. */
     distance_km: number | null;
-    /** The clamp line that is the day's voice until it is credited, then null. */
+    /** The clamp's reason for the ease, shown beside it rather than as the
+     *  day's read; populated until credited, then null. */
     voice: string | null;
 }
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PlanDay } from '@/lib/plan';
@@ -456,10 +456,10 @@ describe('WeekDayRow', () => {
 
     /**
      * The real case: a tempo eased to easy with its distance held. The row
-     * headlines the easy run, tempo is only context, and before credit the
-     * clamp line is the day's voice rather than a blurb about the tempo.
+     * headlines the easy run, tempo is only context, and an unrun eased day
+     * has a reason for the ease but no read yet — there is no run to read.
      */
-    it('headlines an eased day as the eased session, with the original as context', () => {
+    it('headlines an eased day as the eased session, with only the reason showing before it is run', () => {
         renderRow({
             day: day({
                 date: TODAY,
@@ -482,10 +482,7 @@ describe('WeekDayRow', () => {
                     voice: 'legs are still carrying the weekend, so today runs easy.',
                 },
             }),
-            narration: {
-                status: 'done',
-                content: 'tempo today, threshold blocks at 5:44.',
-            } as never,
+            narration: null,
         });
         fireEvent.click(screen.getByRole('button', { name: /easy/i }));
 
@@ -496,9 +493,48 @@ describe('WeekDayRow', () => {
                 'legs are still carrying the weekend, so today runs easy.',
             ),
         ).toBeInTheDocument();
-        expect(
-            screen.queryByText('tempo today, threshold blocks at 5:44.'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText("Temari's read")).not.toBeInTheDocument();
+    });
+
+    /**
+     * #939 decision 6: the clamp line is the reason for the eased session,
+     * never the day's read — it renders beside the eased session, and
+     * Temari's read renders independently whenever the day has one. A day
+     * that has both shows both, each in its own place.
+     */
+    it("shows both the eased-session reason and Temari's read on a credited day that has both", () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                status: 'done',
+                session_type: 'easy',
+                eased_from: {
+                    session_type: 'tempo',
+                    distance_km: null,
+                    voice: 'legs are still carrying the weekend, so today runs easy.',
+                },
+            }),
+            narration: narrationPayload(),
+        });
+        expand();
+
+        const reason = screen.getByText(
+            'legs are still carrying the weekend, so today runs easy.',
+        );
+        const readLabel = screen.getByText("Temari's read");
+        const readContent = screen.getByText(
+            'easy all the way, tempo block never happened.',
+        );
+
+        expect(reason).toBeInTheDocument();
+        expect(readLabel).toBeInTheDocument();
+        expect(readContent).toBeInTheDocument();
+
+        // Neither the label nor the read's own content contains the reason —
+        // they render in separate places, not stacked inside one slot.
+        const readBlock = readLabel.parentElement!.parentElement!;
+        expect(within(readBlock).queryByText(reason.textContent!)).toBeNull();
+        expect(readBlock).not.toContainElement(reason);
     });
 
     /** The server decides what the step-down is for; the row must not hardcode

@@ -52,7 +52,7 @@ class PlanDayVoiceNarrator
 
         Examples:
         - "easy all the way at 6:43/km, with a pickup at the end; the tempo block never happened."
-        - "asked for 5.9, you ran 6 at tempo pace. that's the session, done properly."
+        - "5.9 km at tempo pace, 4:32/km through the block. that's the session, done properly."
         - "6.4 km done; couldn't make out the reps from this one."
         - "10 against an easy 7, well past what the day called for."
         - "excused, and you ran it anyway. 6k."
