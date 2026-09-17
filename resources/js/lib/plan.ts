@@ -41,7 +41,6 @@ export interface SeasonSummaryWeek {
 export interface PlanNarration {
     /** Keyed by date (Y-m-d) — only the current week's 7 days are ever requested. */
     days: Record<string, AnalysisPayload>;
-    week: AnalysisPayload | null;
     season: AnalysisPayload | null;
 }
 
@@ -130,6 +129,16 @@ export const STATUS_LABEL: Record<string, string> = {
     missed: 'missed',
     overreached: 'overreached',
     skip: 'skipped',
+};
+
+/** What each verdict means: a day is graded on its distance and on the session's intent. */
+export const STATUS_MEANING: Record<string, string> = {
+    done: 'ran the distance and the session it asked for',
+    partial:
+        'short on the distance, or the run missed what the session was for',
+    missed: 'no run, or too little to count',
+    overreached: 'well past the distance, or ran harder than the session asked',
+    skip: 'excused, not graded',
 };
 
 /** Label colour per compliance verdict. `planned` reads as neutral and is unlabelled. */

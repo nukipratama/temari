@@ -8,7 +8,6 @@ use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
-use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\Season;
@@ -22,7 +21,6 @@ use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
 use App\Services\AI\Agent\Tools\PlanDayTool;
 use App\Services\AI\Agent\Tools\PlanSeasonTool;
-use App\Services\AI\Agent\Tools\PlanWeekTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
@@ -36,7 +34,6 @@ use App\Services\AI\Narrators\QuotedFigures;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PlanDayVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
-use App\Services\AI\Narrators\PlanWeekVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Anchor\RunAnchorResolver;
 use App\Services\AI\Narrators\RunInsightNarrator;
@@ -907,39 +904,6 @@ it('TrendReadNarrator offers exactly the readings its prompt describes', functio
     expect($prompt)->toContain('COMMIT FIRST');
 });
 
-// ── PlanWeekVoiceNarrator ─────────────────────────────────────────────
-
-it('PlanWeekVoiceNarrator returns voice on valid JSON', function (): void {
-    $user = User::factory()->create();
-    $adaptation = PlanAdaptation::factory()->for($user)->create(['reason' => 'steady', 'deload' => false]);
-    $caller = fakeCaller(json_encode(['voice' => 'steady week ahead.'], JSON_THROW_ON_ERROR));
-    $narrator = new PlanWeekVoiceNarrator($caller);
-    expect($narrator->generate($adaptation))->toBe('steady week ahead.');
-});
-
-it('PlanWeekVoiceNarrator throws on missing voice key', function (): void {
-    $user = User::factory()->create();
-    $adaptation = PlanAdaptation::factory()->for($user)->create();
-    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new PlanWeekVoiceNarrator($caller);
-    $narrator->generate($adaptation);
-})->throws(UnavailableException::class);
-
-it('PlanWeekTool reports the periodizer verdict as rule-based headline/detail text', function (): void {
-    $user = User::factory()->create();
-    $adaptation = PlanAdaptation::factory()->for($user)->create([
-        'reason' => 'missed_week', 'deload' => true, 'quality_delta' => -1, 'adherence_pct' => 20,
-    ]);
-
-    $context = new PlanWeekTool($adaptation)->handle([]);
-
-    expect($context['reason'])->toBe('missed_week')
-        ->and($context['deload'])->toBeTrue()
-        ->and($context['adherence_pct'])->toBe(20)
-        ->and($context['headline'])->toBeString()
-        ->and($context['detail'])->toBeString();
-});
-
 // ── PlanSeasonVoiceNarrator ───────────────────────────────────────────
 
 it('PlanSeasonVoiceNarrator returns voice on valid JSON', function (): void {
@@ -1706,7 +1670,6 @@ it('per-narrator step budgets cover two full read passes and only exist where th
         'MonthlyRecapNarrator' => 6,
         'PlanDayVoiceNarrator' => 4,
         'PlanSeasonVoiceNarrator' => 4,
-        'PlanWeekVoiceNarrator' => 4,
         'TrendReadNarrator' => 6,
         'WeeklyRecapNarrator' => 6,
     ]);

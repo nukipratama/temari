@@ -32,6 +32,7 @@ import {
     SESSION_TYPE_ICON,
     SESSION_TYPE_LABEL,
     STATUS_LABEL,
+    STATUS_MEANING,
     STATUS_TONE,
     volumeAdjustedFrom,
     weekdayLabel,
@@ -214,6 +215,7 @@ export default function WeekDayRow({
                         <MiniSessionBar segments={day.segments} />
                         {!isRest && STATUS_LABEL[status] && (
                             <span
+                                title={STATUS_MEANING[status]}
                                 className={cn(
                                     'mt-1 block text-label-micro',
                                     STATUS_TONE[status] ?? 'text-text-3',

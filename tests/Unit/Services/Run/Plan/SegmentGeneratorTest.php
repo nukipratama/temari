@@ -350,3 +350,15 @@ it('sums the segments it is given rather than reading a stored prescription', fu
     expect(SegmentGenerator::segmentSumKm($segments))
         ->toBe(round(array_sum(array_map(fn ($segment): float => $segment->km ?? 0.0, $segments)), 1));
 });
+
+it('builds the same session from an already-sized core distance as generate() does from the baseline', function (): void {
+    foreach ([SessionType::Easy, SessionType::Long, SessionType::Tempo, SessionType::Interval, SessionType::Rest] as $type) {
+        $coreKm = SegmentGenerator::coreKmFor($type, false, 16.0, 1.2, INF);
+
+        expect(SegmentGenerator::forCoreKm($type, PlanPhase::Peak, 42_195.0, $coreKm, PACES))
+            ->toEqual(SegmentGenerator::generate($type, PlanPhase::Peak, 42_195.0, false, 16.0, 1.2, INF, PACES));
+    }
+
+    expect(SegmentGenerator::forCoreKm(SessionType::Race, PlanPhase::Taper, 10_000.0, 10.0, PACES, 3_000))
+        ->toEqual(SegmentGenerator::generate(SessionType::Race, PlanPhase::Taper, 10_000.0, false, 16.0, 1.0, INF, PACES, 1.0, 3_000));
+});

@@ -3,7 +3,6 @@ import { ChevronDown } from 'lucide-react';
 import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
-import TemariTake from '@/components/plan/TemariTake';
 import WeekDayRow from '@/components/plan/WeekDayRow';
 import WeekVolumeChart from '@/components/plan/WeekVolumeChart';
 import Chip from '@/components/ui/Chip';
@@ -70,7 +69,6 @@ export default function SeasonWeekRow({
     today,
     raceDate = null,
     focus,
-    narration,
     dayNarration,
     focusDay = null,
     onMove,
@@ -85,7 +83,6 @@ export default function SeasonWeekRow({
     raceDate?: string | null;
     /** What this week is for — the periodizer's own adaptation verdict, where one exists. */
     focus: { headline: string; detail: string } | null;
-    narration: AnalysisPayload | null;
     dayNarration: Record<string, AnalysisPayload>;
     /** The day the visitor arrived asking for, from `/plan?day=`. */
     focusDay?: string | null;
@@ -180,12 +177,6 @@ export default function SeasonWeekRow({
                             />
                         </CollapsibleTrigger>
                         <CollapsibleContent className="border-t border-border-strong px-4 py-3">
-                            {narration && (
-                                <TemariTake
-                                    analysis={narration}
-                                    className="mb-3"
-                                />
-                            )}
                             {focus && (
                                 <div className="mb-3">
                                     <p className="text-sm font-semibold text-foreground">

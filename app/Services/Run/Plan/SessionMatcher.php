@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
+use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -153,6 +154,29 @@ final readonly class SessionMatcher
         }
 
         return ['status' => $status, 'score' => (int) round($ratio * 100), 'ran_anyway' => false];
+    }
+
+    /**
+     * Folds the session's intent into a distance verdict. See
+     * `docs/decisions/a-day-is-graded-on-distance-and-intent.md`.
+     *
+     * @param  array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}  $verdict
+     * @return array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}
+     */
+    public static function withIntent(array $verdict, IntentVerdict $intent): array
+    {
+        if (! $verdict['status']->isCredited()) {
+            return $verdict;
+        }
+
+        return match (true) {
+            $intent === IntentVerdict::TooHard => ['status' => PlannedSessionStatus::Overreached] + $verdict,
+            $intent === IntentVerdict::Missed && $verdict['status'] === PlannedSessionStatus::Done => [
+                'status' => PlannedSessionStatus::Partial,
+                'score' => $verdict['score'] === null ? null : min($verdict['score'], (int) round(self::DONE_FRACTION * 100) - 1),
+            ] + $verdict,
+            default => $verdict,
+        };
     }
 
     /**

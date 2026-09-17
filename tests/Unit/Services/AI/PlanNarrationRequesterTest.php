@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
-use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
 use App\Models\AI\Analysis;
 use App\Models\Feedback;
 use App\Services\AI\ServedBy;
@@ -23,6 +22,7 @@ use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use App\Enums\PlannedSessionStatus;
 
 uses(RefreshDatabase::class);
@@ -65,18 +65,18 @@ it('skips a day the plan prescribes nothing for, rather than requesting a narrat
         ->pluck('discriminator')->all())->toBe([Carbon::today()->toDateString()]);
 });
 
-it('requests week narration only when a PlanAdaptation exists for the current week', function (): void {
+/**
+ * #947: ahead-of-time week narration was cut entirely. A PlanAdaptation
+ * existing for the current week must never mint a `plan_week_voice` row —
+ * queried raw since the type is no longer a live AnalysisType case.
+ */
+it('never requests plan_week_voice narration, even when a PlanAdaptation exists for the current week', function (): void {
     $user = User::factory()->create();
-    $this->requester->requestForCurrentWeek($user, Carbon::today());
-    Bus::assertNotDispatched(AnalyzePlanWeekVoiceJob::class);
+    PlanAdaptation::factory()->for($user)->create(['week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)]);
 
-    $adaptation = PlanAdaptation::factory()->for($user)->create(['week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)]);
     $this->requester->requestForCurrentWeek($user, Carbon::today());
 
-    Bus::assertDispatched(
-        AnalyzePlanWeekVoiceJob::class,
-        fn (AnalyzePlanWeekVoiceJob $job): bool => Analysis::query()->find($job->analysisId)?->subject_id === $adaptation->id,
-    );
+    expect(DB::table('ai_analyses')->where('analysis_type', 'plan_week_voice')->count())->toBe(0);
 });
 
 it('requests season narration only when a Season exists', function (): void {
@@ -166,6 +166,15 @@ describe('isWithinCurrentWeek', function (): void {
 });
 
 describe('payloadsForCurrentWeek', function (): void {
+    /** #947: the Plan payload carries no week narration at all any more. */
+    it('never carries a week key', function (): void {
+        $user = User::factory()->create();
+        PlanAdaptation::factory()->for($user)->create(['week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)]);
+
+        expect($this->requester->payloadsForCurrentWeek($user, Carbon::today()))
+            ->not->toHaveKey('week');
+    });
+
     /**
      * `Analysis::toPayload(null, ...)` reports Pending, which the UI draws as a
      * skeleton. That's honest while a job is queued and false hope when none
@@ -178,16 +187,13 @@ describe('payloadsForCurrentWeek', function (): void {
         $payloads = $this->requester->payloadsForCurrentWeek($user, Carbon::today());
 
         expect($payloads['days'])->toBe([])
-            ->and($payloads['week'])->toBeNull()
             ->and($payloads['season'])->toBeNull();
     });
 
-    it('omits the week and season takes when their rows exist but no take has been queued', function (): void {
-        // A PlanAdaptation lands on every regenerate and a Season on the first
-        // /plan load, so a brand-new athlete has both long before anything has
-        // narrated them.
+    it('omits the season take when its row exists but no take has been queued', function (): void {
+        // A Season exists from the first /plan load, so a brand-new athlete
+        // has one long before anything has narrated it.
         $user = User::factory()->create();
-        PlanAdaptation::factory()->for($user)->create(['week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)]);
         Season::factory()->for($user)->create([
             'starts_at' => Carbon::today()->subWeek(),
             'ends_at' => Carbon::today()->addWeeks(8),
@@ -195,8 +201,7 @@ describe('payloadsForCurrentWeek', function (): void {
 
         $payloads = $this->requester->payloadsForCurrentWeek($user, Carbon::today());
 
-        expect($payloads['week'])->toBeNull()
-            ->and($payloads['season'])->toBeNull();
+        expect($payloads['season'])->toBeNull();
     });
 
     it('returns the real content once rows exist', function (): void {
@@ -208,18 +213,10 @@ describe('payloadsForCurrentWeek', function (): void {
             'analysis_type' => AnalysisType::PlanDayVoice,
             'discriminator' => $today,
         ]);
-        $adaptation = PlanAdaptation::factory()->for($user)->create(['week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)]);
-        Analysis::factory()->done('steady week')->create([
-            'subject_type' => PlanAdaptation::class,
-            'subject_id' => $adaptation->id,
-            'analysis_type' => AnalysisType::PlanWeekVoice,
-            'discriminator' => null,
-        ]);
 
         $payloads = $this->requester->payloadsForCurrentWeek($user, Carbon::today());
 
-        expect($payloads['days'][$today]['content'])->toBe('long run today')
-            ->and($payloads['week']['content'])->toBe('steady week');
+        expect($payloads['days'][$today]['content'])->toBe('long run today');
     });
 
     /** Before credit an eased day speaks through its clamp line, never a blurb written for the session it replaced. */
@@ -389,48 +386,6 @@ it('re-narrates a day left rule-based, since a filler line is not a narration of
     expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
 });
 
-it('leaves an unchanged week adaptation alone', function (): void {
-    $user = User::factory()->create();
-    $adaptation = PlanAdaptation::factory()->for($user)->create([
-        'week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(),
-    ]);
-    $row = Analysis::factory()->done('week narrated')->create([
-        'subject_type' => PlanAdaptation::class,
-        'subject_id' => $adaptation->id,
-        'analysis_type' => AnalysisType::PlanWeekVoice,
-        'discriminator' => null,
-        'content_fingerprint' => MaterialFingerprint::forPlanAdaptation($adaptation),
-    ]);
-
-    $this->requester->requestForCurrentWeek($user, Carbon::today());
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('week narrated');
-    Bus::assertNotDispatched(AnalyzePlanWeekVoiceJob::class);
-});
-
-it('re-narrates a week adaptation whose verdict changed', function (): void {
-    $user = User::factory()->create();
-    $adaptation = PlanAdaptation::factory()->for($user)->create([
-        'week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(),
-        'deload' => false,
-    ]);
-    $row = Analysis::factory()->done('week narrated')->create([
-        'subject_type' => PlanAdaptation::class,
-        'subject_id' => $adaptation->id,
-        'analysis_type' => AnalysisType::PlanWeekVoice,
-        'discriminator' => null,
-        'content_fingerprint' => MaterialFingerprint::forPlanAdaptation($adaptation),
-    ]);
-
-    $adaptation->update(['deload' => true]);
-
-    $this->requester->requestForCurrentWeek($user, Carbon::today());
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
-    Bus::assertDispatched(AnalyzePlanWeekVoiceJob::class);
-});
-
 describe('requestForCurrentWeekUnlessCoolingDown', function (): void {
     it('requests the first time and refuses inside the window', function (): void {
         $user = User::factory()->create();
@@ -563,7 +518,7 @@ describe('stale plan-day takes', function (): void {
 });
 
 describe('requestForFirstWeek', function (): void {
-    it('narrates the day, week and season blocks of a brand-new account', function (): void {
+    it('narrates the day and season blocks of a brand-new account, and never plan_week_voice', function (): void {
         $user = User::factory()->create();
         PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
         PlanAdaptation::factory()->for($user)->create(['week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)]);
@@ -572,8 +527,8 @@ describe('requestForFirstWeek', function (): void {
         $this->requester->requestForFirstWeek($user, Carbon::today());
 
         Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 1);
-        Bus::assertDispatched(AnalyzePlanWeekVoiceJob::class);
         Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class);
+        expect(DB::table('ai_analyses')->where('analysis_type', 'plan_week_voice')->count())->toBe(0);
     });
 
     /**

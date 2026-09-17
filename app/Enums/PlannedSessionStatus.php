@@ -23,7 +23,7 @@ enum PlannedSessionStatus: string
     case Done = 'done';
     case Partial = 'partial';
     case Missed = 'missed';
-    /** Ran significantly more than prescribed (score > 130) — a real signal, not a better Done. */
+    /** Ran significantly more than prescribed (score >= 130), or ran it harder than the session asked — a real signal, not a better Done. */
     case Overreached = 'overreached';
     /** Explicitly excused before the day passed ({@see \App\Models\PlannedSession::$skipped}) — never scored, never penalizes adherence. */
     case Skip = 'skip';

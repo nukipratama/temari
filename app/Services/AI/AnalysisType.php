@@ -14,11 +14,9 @@ use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePlanClampVoiceJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
-use App\Jobs\AI\AnalyzePlanWeekVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
-use App\Models\PlanAdaptation;
 use App\Models\RunCard;
 use App\Models\Season;
 use App\Models\WeeklySnapshot;
@@ -38,7 +36,6 @@ enum AnalysisType: string
     case TrendRead = 'trend_read';
     case PlanDayVoice = 'plan_day_voice';
     case PlanClampVoice = 'plan_clamp_voice';
-    case PlanWeekVoice = 'plan_week_voice';
     case PlanSeasonVoice = 'plan_season_voice';
 
     public const string BRIEFING_SUBJECT_TYPE = 'briefing_user_day';
@@ -113,7 +110,6 @@ enum AnalysisType: string
             self::TrendRead => AnalyzeTrendReadJob::class,
             self::PlanDayVoice => AnalyzePlanDayVoiceJob::class,
             self::PlanClampVoice => AnalyzePlanClampVoiceJob::class,
-            self::PlanWeekVoice => AnalyzePlanWeekVoiceJob::class,
             self::PlanSeasonVoice => AnalyzePlanSeasonVoiceJob::class,
         };
     }
@@ -223,7 +219,6 @@ enum AnalysisType: string
             self::RunInsight,
             self::WeeklyRecap,
             self::CardFlavor,
-            self::PlanWeekVoice,
             self::PlanSeasonVoice => ['prohibited'],
         };
     }
@@ -241,7 +236,6 @@ enum AnalysisType: string
             self::TrendRead => self::TREND_READ_SUBJECT_TYPE,
             self::PlanDayVoice => self::PLAN_DAY_VOICE_SUBJECT_TYPE,
             self::PlanClampVoice => self::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
-            self::PlanWeekVoice => PlanAdaptation::class,
             self::PlanSeasonVoice => Season::class,
         };
     }

@@ -39,7 +39,6 @@ export default function SeasonTimeline({
     today,
     raceDate = null,
     weekFocus,
-    weekNarration,
     dayNarration,
     focusDay = null,
     onMove,
@@ -52,7 +51,6 @@ export default function SeasonTimeline({
     raceDate?: string | null;
     /** The current week's adaptation verdict, shown as its focus line. */
     weekFocus: { headline: string; detail: string } | null;
-    weekNarration: AnalysisPayload | null;
     dayNarration: Record<string, AnalysisPayload>;
     /** The day the visitor arrived asking for, from `/plan?day=`. */
     focusDay?: string | null;
@@ -93,7 +91,6 @@ export default function SeasonTimeline({
             today={today}
             raceDate={raceDate}
             focus={week.type === 'current' ? weekFocus : null}
-            narration={week.type === 'current' ? weekNarration : null}
             dayNarration={week.type === 'current' ? dayNarration : {}}
             focusDay={focusDay}
             onMove={onMove}

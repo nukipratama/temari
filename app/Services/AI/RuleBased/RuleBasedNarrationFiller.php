@@ -8,7 +8,6 @@ use App\Enums\Badge;
 use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\Season;
@@ -51,7 +50,6 @@ final readonly class RuleBasedNarrationFiller
             AnalysisType::TrendRead => $this->trendRead($seed),
             AnalysisType::PlanDayVoice => $this->planDayVoice($row),
             AnalysisType::PlanClampVoice => $this->planClampVoice($seed),
-            AnalysisType::PlanWeekVoice => $this->planWeekVoice($row),
             AnalysisType::PlanSeasonVoice => $this->planSeasonVoice($row),
         };
     }
@@ -427,26 +425,6 @@ final readonly class RuleBasedNarrationFiller
             SessionType::Easy => $this->select(['easy day. nothing to prove, just log the miles.', 'an easy one today.'], $this->seedFor($row)),
             SessionType::Race => $this->select(['race day. this is the one you trained for.', "race day. go and run it."], $this->seedFor($row)),
         };
-    }
-
-    private function planWeekVoice(Analysis $row): string
-    {
-        $adaptation = PlanAdaptation::query()->find($row->subject_id);
-        if ($adaptation === null) {
-            return 'a fresh week on the plan.';
-        }
-
-        if ($adaptation->deload) {
-            return $this->select([
-                'lighter week. the last stretch ran hot, this one lets it cool.',
-                'a deload week. the legs get a break before the next push.',
-            ], $this->seedFor($row));
-        }
-
-        return $this->select([
-            'steady week ahead, same shape as last.',
-            'business as usual this week.',
-        ], $this->seedFor($row));
     }
 
     private function planSeasonVoice(Analysis $row): string

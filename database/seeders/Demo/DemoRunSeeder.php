@@ -425,6 +425,7 @@ class DemoRunSeeder
                         'skipped' => false,
                         'status' => PlannedSessionStatus::Done,
                         'compliance_score' => null,
+                        'distance_score' => null,
                         'ran_anyway' => false,
                     ],
                 );
@@ -444,15 +445,15 @@ class DemoRunSeeder
                     'skipped' => $status === PlannedSessionStatus::Skip,
                     'status' => $status,
                     'compliance_score' => $scoreFor[$status->value] ?? null,
+                    'distance_score' => $scoreFor[$status->value] ?? null,
                     'ran_anyway' => false,
                 ],
             );
         }
 
-        // Fills plan_day_voice (current week's 7 days) / plan_week_voice
-        // (this week's PlanAdaptation) / plan_season_voice (the active
-        // Season) rule-based, mirroring the demo Plan page's own "Reread"
-        // path — see PlanNarrationRequester::ensureDemoFilled's docblock.
+        // Fills plan_day_voice (current week's 7 days) / plan_season_voice
+        // (the active Season) rule-based, mirroring the demo Plan page's own
+        // "Reread" path — see PlanNarrationRequester::ensureDemoFilled's docblock.
         $this->planNarrationRequester->ensureDemoFilled($user, $today);
     }
 

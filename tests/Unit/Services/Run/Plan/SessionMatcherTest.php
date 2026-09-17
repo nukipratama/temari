@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\IntentVerdict;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -366,4 +367,35 @@ it('reports each run duration on elapsed time', function (): void {
     $byDate = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-03'), Carbon::parse('2026-08-03'));
 
     expect($byDate['2026-08-03']['runs'][0]['seconds'])->toBe(3_600);
+});
+
+it('reads a done day whose intent was missed as partial, its score capped under the done band', function (): void {
+    $verdict = SessionMatcher::withIntent(SessionMatcher::scoreFor(10.0, 10.0, true, false), IntentVerdict::Missed);
+
+    expect($verdict)->toBe(['status' => PlannedSessionStatus::Partial, 'score' => 84, 'ran_anyway' => false]);
+});
+
+it('leaves a partial or well-past day where distance put it when the intent was missed', function (): void {
+    expect(SessionMatcher::withIntent(SessionMatcher::scoreFor(10.0, 6.0, true, false), IntentVerdict::Missed))
+        ->toBe(['status' => PlannedSessionStatus::Partial, 'score' => 60, 'ran_anyway' => false])
+        ->and(SessionMatcher::withIntent(SessionMatcher::scoreFor(10.0, 14.0, true, false), IntentVerdict::Missed))
+        ->toBe(['status' => PlannedSessionStatus::Overreached, 'score' => 140, 'ran_anyway' => false]);
+});
+
+it('reads any credited day run too hard as overreached, keeping its distance score', function (): void {
+    expect(SessionMatcher::withIntent(SessionMatcher::scoreFor(10.0, 10.0, true, false), IntentVerdict::TooHard))
+        ->toBe(['status' => PlannedSessionStatus::Overreached, 'score' => 100, 'ran_anyway' => false])
+        ->and(SessionMatcher::withIntent(SessionMatcher::scoreFor(10.0, 5.0, true, false), IntentVerdict::TooHard)['status'])
+        ->toBe(PlannedSessionStatus::Overreached);
+});
+
+it('grades on distance alone when the intent was hit or cannot be told, or the day was never credited', function (): void {
+    $done = SessionMatcher::scoreFor(10.0, 10.0, true, false);
+    $missed = SessionMatcher::scoreFor(10.0, 1.0, true, false);
+    $excused = SessionMatcher::scoreFor(10.0, 10.0, true, true);
+
+    expect(SessionMatcher::withIntent($done, IntentVerdict::Hit))->toBe($done)
+        ->and(SessionMatcher::withIntent($done, IntentVerdict::Unknown))->toBe($done)
+        ->and(SessionMatcher::withIntent($missed, IntentVerdict::TooHard))->toBe($missed)
+        ->and(SessionMatcher::withIntent($excused, IntentVerdict::Missed))->toBe($excused);
 });

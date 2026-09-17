@@ -7,7 +7,6 @@ use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\RunCard;
@@ -320,22 +319,6 @@ it('falls back to a generic line when no PlannedSession exists for the day', fun
     expect($voice)->toBe("today's plan.");
 });
 
-it('names the week as lighter when the adaptation is a deload', function (): void {
-    $adaptation = PlanAdaptation::factory()->create(['deload' => true]);
-
-    $voice = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PlanWeekVoice, $adaptation->id));
-
-    expect($voice)->toMatch('/lighter|deload/');
-});
-
-it('names a steady week when the adaptation is not a deload', function (): void {
-    $adaptation = PlanAdaptation::factory()->create(['deload' => false]);
-
-    $voice = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PlanWeekVoice, $adaptation->id));
-
-    expect($voice)->not->toMatch('/lighter|deload/');
-});
-
 it('names the race for a race-oriented season', function (): void {
     $race = RaceGoal::factory()->create(['name' => 'Jakarta Half']);
     $season = Season::factory()->create(['race_goal_id' => $race->id]);
@@ -405,14 +388,12 @@ it('keeps all copy free of em-dashes', function (): void {
     $filler = app(RuleBasedNarrationFiller::class);
 
     $session = PlannedSession::factory()->create(['session_type' => 'long', 'date' => '2026-05-18']);
-    $adaptation = PlanAdaptation::factory()->create(['deload' => true]);
     $season = Season::factory()->create();
 
     $samples = [
         $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id)),
         $filler->fillFor(fillerRow(AnalysisType::BriefingMascotVoice, $card->id)),
         $filler->fillFor(fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18')),
-        $filler->fillFor(fillerRow(AnalysisType::PlanWeekVoice, $adaptation->id)),
         $filler->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id)),
     ];
 
