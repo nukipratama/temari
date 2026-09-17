@@ -30,6 +30,16 @@ class TokenUsageReport
     /** Fixed window the per-athlete money columns and the sparkline are measured over. */
     public const int ATHLETE_WINDOW_DAYS = 30;
 
+    /**
+     * The reasons a rule-based fill is grouped by on the overview's ledger,
+     * matching {@see \App\Services\AI\AnalysisOrigin}'s values one-for-one
+     * except `unattributed`, which is the residual for a null (or, defensively,
+     * any not-yet-taxonomised) `rule_based_reason`.
+     *
+     * @var list<string>
+     */
+    private const array RULE_BASED_REASONS = ['demo', 'capped', 'return', 'dead_letter', 'content_filter', 'unattributed'];
+
     public function __construct(
         private readonly LlmCostCalculator $costCalculator,
         private readonly CostCeilingLedger $ceilingLedger,
@@ -496,7 +506,7 @@ class TokenUsageReport
      *     today:float, last7:float, last30:float, calls:int,
      *     ceiling:float|null, ceiling_overridden:bool, capped:bool,
      *     sparkline: list<array{day:string, cost:float}>,
-     *     served: array{llm:int, rule_based:int, unknown:int},
+     *     served: array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, dead_letter:int, content_filter:int, unattributed:int}},
      *     flags:int, dead_lettered:int,
      * }>
      */
@@ -551,7 +561,7 @@ class TokenUsageReport
                     fn (string $day): array => ['day' => $day, 'cost' => $entry['daily'][$day] ?? 0.0],
                     $days,
                 ),
-                'served' => $served[$userId] ?? ['llm' => 0, 'rule_based' => 0, 'unknown' => 0],
+                'served' => $served[$userId] ?? self::emptyServedSplit(),
                 'flags' => $flags[$userId] ?? 0,
                 'dead_lettered' => $deadLettered[$userId] ?? 0,
             ];
@@ -638,18 +648,27 @@ class TokenUsageReport
      * every row narrated before the column shipped, and calling that rule-based
      * would invent a degradation that never happened.
      *
-     * @return array<int, array{llm:int, rule_based:int, unknown:int}>
+     * Every rule-based row also lands in exactly one `reasons` bucket. `demo` is
+     * derived from the athlete's own `is_demo` flag rather than the stored
+     * column — every demo rule-based fill counts as `demo` regardless of which
+     * (if any) reason a dispatch site declared, since the demo account's whole
+     * narration is rule-based by design, not by exception. Every other athlete's
+     * bucket comes straight off {@see \App\Models\AI\Analysis::$rule_based_reason},
+     * with a null or not-yet-taxonomised value folded into `unattributed`.
+     *
+     * @return array<int, array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, dead_letter:int, content_filter:int, unattributed:int}}>
      */
     private function servedByCounts(Carbon $from, Carbon $to): array
     {
         $rows = Analysis::query()
             ->where('status', AnalysisStatus::Done)
             ->whereBetween('generated_at', [$from, $to])
-            ->get(['id', 'subject_type', 'subject_id', 'served_by']);
+            ->get(['id', 'subject_type', 'subject_id', 'served_by', 'rule_based_reason']);
 
         $owners = AnalysisSubjectMap::ownerIdsForRows($rows);
+        $demoUserIds = $this->demoUserIds();
 
-        /** @var array<int, array{llm:int, rule_based:int, unknown:int}> $counts */
+        /** @var array<int, array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, dead_letter:int, content_filter:int, unattributed:int}}> $counts */
         $counts = [];
         foreach ($rows as $row) {
             $userId = $owners[$row->id] ?? null;
@@ -657,16 +676,50 @@ class TokenUsageReport
                 continue;
             }
 
-            $counts[$userId] ??= ['llm' => 0, 'rule_based' => 0, 'unknown' => 0];
+            $counts[$userId] ??= self::emptyServedSplit();
             $bucket = match ($row->served_by) {
                 ServedBy::Llm => 'llm',
                 ServedBy::RuleBased => 'rule_based',
                 null => 'unknown',
             };
             $counts[$userId][$bucket]++;
+
+            if ($row->served_by !== ServedBy::RuleBased) {
+                continue;
+            }
+
+            $reasonValue = $row->rule_based_reason?->value;
+            $reason = in_array($userId, $demoUserIds, true)
+                ? 'demo'
+                : (in_array($reasonValue, self::RULE_BASED_REASONS, true) ? $reasonValue : 'unattributed');
+            $counts[$userId]['reasons'][$reason]++;
         }
 
         return $counts;
+    }
+
+    /**
+     * @return array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, dead_letter:int, content_filter:int, unattributed:int}}
+     */
+    private static function emptyServedSplit(): array
+    {
+        return [
+            'llm' => 0,
+            'rule_based' => 0,
+            'unknown' => 0,
+            'reasons' => array_fill_keys(self::RULE_BASED_REASONS, 0),
+        ];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function demoUserIds(): array
+    {
+        return array_values(User::query()->where('is_demo', true)
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all());
     }
 
     /**
