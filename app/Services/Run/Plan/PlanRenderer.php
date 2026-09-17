@@ -217,7 +217,7 @@ final class PlanRenderer
      * @param  array<string, float>  $volumeScaleByDate  date => scale, from {@see VolumeRedistributor::redistribute()}
      * @param  bool  $isPrimaryEasy  whether this is the week's first (bigger) Easy day — see {@see SegmentGenerator::coreKmFor()}
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
-     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null}>}|null  $activity  every run logged that day, for the planned-vs-actual bar and the links out
+     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, moving_time: int|null}>}|null  $activity  every run logged that day, for the planned-vs-actual bar and the links out
      * @param  ?int  $raceGoalTimeSec  the active race's `goal_time_sec` — what race day is prescribed at
      * @return array<string, mixed>
      */
@@ -296,8 +296,14 @@ final class PlanRenderer
             'clamp' => $isToday && $clamp !== null && ! $effective->isEased() && ! $status->isCredited() ? self::clampPayload($clamp, $clampVoice) : null,
             'eased_from' => $effective->isEased() ? self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null) : null,
             'credit_note' => self::creditNote($sessionType, $status, $askedKm, $activity),
+            'ran_pace_sec_per_km' => $status->isCredited() && $sessionType !== SessionType::Rest
+                ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [])
+                : null,
             'actual_km' => $activity['km'] ?? null,
-            'activities' => $activity['runs'] ?? [],
+            'activities' => array_map(
+                static fn (array $run): array => ['id' => $run['id'], 'km' => $run['km'], 'seconds' => $run['seconds']],
+                $activity['runs'] ?? [],
+            ),
             'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
         ];
     }
@@ -376,7 +382,7 @@ final class PlanRenderer
      * volume arrived in pieces. Only that case has something to explain —
      * every other verdict is already said by its own numbers.
      *
-     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null}>}|null  $activity
+     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, moving_time: int|null}>}|null  $activity
      */
     private static function creditNote(SessionType $sessionType, PlannedSessionStatus $status, float $askedKm, ?array $activity): ?string
     {

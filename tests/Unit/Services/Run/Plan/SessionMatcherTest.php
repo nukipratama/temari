@@ -369,6 +369,28 @@ it('reports each run duration on elapsed time', function (): void {
     expect($byDate['2026-08-03']['runs'][0]['seconds'])->toBe(3_600);
 });
 
+/**
+ * The ran pace beside a graded day is moving time over distance, not elapsed
+ * time — a run's stoppage time never lands on a paused watch. Carried
+ * alongside `seconds` rather than in place of it, since the two read
+ * different things.
+ */
+it('carries each run\'s moving time beside its elapsed time', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->create([
+        'activity_id' => $activity->id,
+        'start_date_local' => Carbon::parse('2026-08-03 06:00:00'),
+        'distance' => 10_000.0,
+        'moving_time' => 3_000,
+        'elapsed_time' => 3_600,
+    ]);
+
+    $byDate = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-03'), Carbon::parse('2026-08-03'));
+
+    expect($byDate['2026-08-03']['runs'][0]['moving_time'])->toBe(3_000);
+});
+
 it('reads a done day whose intent was missed as partial, its score capped under the done band', function (): void {
     $verdict = SessionMatcher::withIntent(SessionMatcher::scoreFor(10.0, 10.0, true, false), IntentVerdict::Missed);
 

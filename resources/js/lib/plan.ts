@@ -271,7 +271,7 @@ export function volumeAdjustedFrom(day: PlanDay): number | null {
         : null;
 }
 
-/** The core set's pace target, which is the one pace a day is read at. */
+/** The core set's pace target, which is the one pace an unrun day is read at. */
 export function paceLabel(day: PlanDay): string | null {
     const core = day.segments.find(
         (s) => s.key === 'main' || s.key === 'interval',
@@ -280,6 +280,33 @@ export function paceLabel(day: PlanDay): string | null {
     return core?.pace_sec_per_km == null
         ? null
         : `${formatPace(core.pace_sec_per_km)}/km`;
+}
+
+/** Whether a day's status counts toward the week's "showed up" total — mirrors `PlannedSessionStatus::isCredited()`. */
+export function isCreditedStatus(status: PlanDay['status']): boolean {
+    return (
+        status === 'done' || status === 'partial' || status === 'overreached'
+    );
+}
+
+/**
+ * Once a day has a credited run, its prescribed pace can no longer stand
+ * alone next to the run's own distance — it would read as the run's pace,
+ * which is the bug this replaced. Each half is labelled and shown only when
+ * it has a real number behind it: `target` drops out with no prescribed
+ * pace, `ran` drops out when the credited runs carry no moving time to
+ * compute one from.
+ */
+export function creditedPaceLabel(day: PlanDay): string | null {
+    const target = paceLabel(day);
+    const parts = [
+        target === null ? null : `target ${target}`,
+        day.ran_pace_sec_per_km == null
+            ? null
+            : `ran ${formatPace(day.ran_pace_sec_per_km)}/km`,
+    ].filter((part): part is string => part !== null);
+
+    return parts.length === 0 ? null : parts.join(' · ');
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
