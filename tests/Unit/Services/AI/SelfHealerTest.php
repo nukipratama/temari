@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\AI\RecentlyActiveUsers;
 use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -79,7 +80,7 @@ function nonDispatchingResumeService(): AnalysisService
 
 function selfHealer(AnalysisService $service): SelfHealer
 {
-    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()));
+    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers());
 }
 
 /** Seed an activity for $user dated $startDate whose post-run speech is Pending. */
@@ -573,6 +574,54 @@ it('skips a demo user for a single-row type so the resume net never auto-bills i
 
     expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
 });
+
+it('never resumes a stalled block of an athlete away from the app', function (Closure $stage): void {
+    $away = User::factory()->create(['last_seen_at' => Carbon::today()->subDays(8)]);
+    $stage($away);
+
+    expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
+})->with([
+    'per-activity group' => [function (User $user): void {
+        pendingActivityChainLink($user, '2026-06-15 06:00:00');
+    }],
+    'card flavor' => [function (User $user): void {
+        $card = RunCard::factory()->for(Activity::factory()->for($user))->create();
+        Analysis::factory()->create([
+            'subject_type' => RunCard::class,
+            'subject_id' => $card->id,
+            'analysis_type' => AnalysisType::CardFlavor,
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }],
+    'weekly recap' => [function (User $user): void {
+        $snapshot = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-06-14', 'runs' => 3]);
+        Analysis::factory()->create([
+            'subject_type' => WeeklySnapshot::class,
+            'subject_id' => $snapshot->id,
+            'analysis_type' => AnalysisType::WeeklyRecap,
+            'discriminator' => null,
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }],
+    'monthly recap' => [function (User $user): void {
+        Analysis::factory()->create([
+            'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::MonthlyRecap,
+            'discriminator' => '2026-05',
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }],
+    'profile voice' => [function (User $user): void {
+        Analysis::factory()->create([
+            'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::ProfileVoice,
+            'discriminator' => '2026-W24',
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }],
+]);
 
 it('sweeps past a retired-type row left in flight instead of dying on the enum cast', function (): void {
     $user = User::factory()->create();

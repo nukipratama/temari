@@ -10,13 +10,12 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 /**
- * The athletes a per-user AI kickoff is allowed to spend on today: someone who
- * opened the app inside the active window, demo excluded. The daily briefing,
- * the weekly profile voice, the trend read and the plan's narration half all
- * draw their user list from here, so the eligibility rule lives in one place
- * rather than being restated per command.
+ * The athletes narration is allowed to spend on today: someone who opened the
+ * app inside the active window, demo excluded. Every scheduled cadence, the
+ * recap kickoffs, the self-heal sweep and the ingest cascade draw from here, so
+ * the rule lives in one place rather than being restated per caller.
  *
- * @see docs/decisions/narration-follows-the-athlete-not-the-run.md
+ * @see docs/decisions/narration-spends-only-on-active-athletes.md
  */
 class RecentlyActiveUsers
 {
@@ -38,13 +37,23 @@ class RecentlyActiveUsers
         return array_values($this->query()->pluck('id')->map(fn (mixed $id): int => (int) $id)->all());
     }
 
+    public function includes(User $user): bool
+    {
+        return ! $user->is_demo && $user->last_seen_at?->gte(self::windowStart()) === true;
+    }
+
     /**
      * @return Builder<User>
      */
-    private function query(): Builder
+    public function query(): Builder
     {
         return User::query()
             ->notDemo()
-            ->where('last_seen_at', '>=', Carbon::today()->subDays(self::ACTIVE_WINDOW_DAYS));
+            ->where('last_seen_at', '>=', self::windowStart());
+    }
+
+    public static function windowStart(): Carbon
+    {
+        return Carbon::today()->subDays(self::ACTIVE_WINDOW_DAYS);
     }
 }

@@ -23,6 +23,7 @@ enum AnalysisOrigin: string
     case User = 'user';
     case Recovery = 'recovery';
     case Replay = 'replay';
+    case Return = 'return';
     case Unknown = 'unknown';
 
     public function label(): string
@@ -33,6 +34,7 @@ enum AnalysisOrigin: string
             self::User => 'User-initiated',
             self::Recovery => 'Recovery',
             self::Replay => 'Replay',
+            self::Return => 'Athlete return',
             self::Unknown => 'Unattributed',
         };
     }

@@ -24,8 +24,7 @@ use App\Services\AI\ServedBy;
 use App\Actions\AI\StaggerBackfillAction;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\BackfillAgeGate;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\AI\NarrationEligibility;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\RestClampRecorder;
@@ -34,6 +33,7 @@ use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -577,8 +577,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         app(AnalysisService::class),
         $weekly,
         app(StaggerBackfillAction::class),
-        app(BackfillAgeGate::class),
-        app(HistoryNarrationGate::class),
+        app(NarrationEligibility::class),
         app(RestClampRecorder::class),
         app(PlanNarrationRequester::class),
         app(ComplianceScorer::class),
@@ -694,4 +693,59 @@ it('still narrates a run logged after the Strava connect', function (): void {
     Bus::assertDispatched(AnalyzeCardFlavorJob::class);
 
     Carbon::setTestNow();
+});
+
+function awayFromTheApp(Activity $activity): void
+{
+    $activity->user->forceFill(['last_seen_at' => Carbon::today()->subDays(8)])->save();
+}
+
+it('defers every LLM call for a run synced while the athlete is away from the app', function (): void {
+    Notification::fake();
+    $activity = analyzedActivity(Carbon::today()->setTime(6, 30)->toDateTimeString());
+    awayFromTheApp($activity);
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    fire($activity);
+
+    Bus::assertNothingDispatched();
+    Notification::assertNothingSent();
+
+    $groupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->get();
+    expect($groupRows)->toHaveCount(2)
+        ->and($groupRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Pending))->toBeTrue()
+        ->and(Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail()->status)
+        ->toBe(AnalysisStatus::Pending)
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->exists())->toBeFalse()
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::ProfileVoice)->exists())->toBeFalse();
+});
+
+it('still stages the recaps and scores the day for an athlete away from the app', function (): void {
+    $activity = analyzedActivity(Carbon::today()->setTime(6, 30)->toDateTimeString());
+    awayFromTheApp($activity);
+    $session = PlannedSession::factory()->for($activity->user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+
+    fire($activity);
+
+    expect($session->fresh()->status->isCredited())->toBeTrue()
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::WeeklyRecap)->exists())->toBeTrue()
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::MonthlyRecap)->exists())->toBeTrue()
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->exists())->toBeFalse();
+});
+
+it('narrates the run of an athlete seen on the edge of the active window exactly as before', function (): void {
+    $activity = analyzedActivity(Carbon::today()->setTime(6, 30)->toDateTimeString());
+    $activity->user->forceFill(['last_seen_at' => Carbon::today()->subDays(7)])->save();
+    RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeActivityJob::class);
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    Bus::assertDispatched(AnalyzeProfileVoiceJob::class);
 });

@@ -15,8 +15,8 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\BackfillAgeGate;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\AI\NarrationEligibility;
+use App\Services\AI\NarrationVerdict;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
@@ -38,8 +38,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly AnalysisService $analysisService,
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly StaggerBackfillAction $staggerBackfill,
-        private readonly BackfillAgeGate $ageGate,
-        private readonly HistoryNarrationGate $history,
+        private readonly NarrationEligibility $eligibility,
         private readonly RestClampRecorder $restClampRecorder,
         private readonly PlanNarrationRequester $planNarration,
         private readonly ComplianceScorer $complianceScorer,
@@ -57,8 +56,16 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         $user = $activity->user;
         $detail = $activity->detail;
-        $ruleBased = $this->ageGate->isTooOld($detail->start_date_local)
-            || $this->history->isHistorical($user, $detail->start_date_local);
+        $verdict = $this->eligibility->forIngestedRun($user, $detail->start_date_local);
+        $ruleBased = match ($verdict) {
+            NarrationVerdict::Demo,
+            NarrationVerdict::TooOld,
+            NarrationVerdict::PreConnect,
+            NarrationVerdict::AwaitingBacklog => true,
+            NarrationVerdict::Eligible,
+            NarrationVerdict::Inactive => false,
+        };
+        $athleteAway = $verdict === NarrationVerdict::Inactive;
 
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
@@ -69,24 +76,26 @@ class DispatchPostRunAnalysis implements ShouldQueue
             $this->complianceScorer->creditIfEarned($user, $detail->start_date_local, Carbon::today());
         }
 
-        $this->requestCardFlavor($activity, $ruleBased, $delaySec);
+        $this->requestCardFlavor($activity, $ruleBased, $athleteAway, $delaySec);
 
-        $this->dispatchActivityGroup($activity, $isBackfill, $ruleBased, $delaySec);
+        $this->dispatchActivityGroup($activity, $isBackfill, $ruleBased, $athleteAway, $delaySec);
 
         // Daily cadence: when the ingested run is today's, refresh the whole
         // daily AI set so each block narrates with every run done so far today.
         // Backfill of a previous day leaves the Done rows untouched, so
         // re-ingesting old days never re-bills.
-        $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
+        if (! $athleteAway) {
+            $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
 
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::ProfileVoice->subjectType(),
-            subjectId: $user->id,
-            type: AnalysisType::ProfileVoice,
-            discriminator: AnalysisType::currentIsoWeek(),
-            delaySeconds: $delaySec,
-            invalidate: false,
-        );
+            $this->analysisService->request(
+                subjectOrType: AnalysisType::ProfileVoice->subjectType(),
+                subjectId: $user->id,
+                type: AnalysisType::ProfileVoice,
+                discriminator: AnalysisType::currentIsoWeek(),
+                delaySeconds: $delaySec,
+                invalidate: false,
+            );
+        }
 
         if ($detail->start_date_local === null) {
             return;
@@ -101,6 +110,8 @@ class DispatchPostRunAnalysis implements ShouldQueue
         // already covers.
         if ($isToday) {
             $this->restClampRecorder->record($user, Carbon::today());
+        }
+        if ($isToday && ! $athleteAway) {
             // The run that just landed is what moved the ceiling, so the event
             // that invalidates the clamp's explanation regenerates it.
             $this->planNarration->requestClampVoice($user, Carbon::today());
@@ -139,10 +150,16 @@ class DispatchPostRunAnalysis implements ShouldQueue
         }
     }
 
-    private function requestCardFlavor(Activity $activity, bool $ruleBased, int $delaySec): void
+    private function requestCardFlavor(Activity $activity, bool $ruleBased, bool $athleteAway, int $delaySec): void
     {
         $card = $activity->runCard;
         if ($card === null) {
+            return;
+        }
+
+        if ($athleteAway) {
+            $this->analysisService->requestDeferred(RunCard::class, $card->id, AnalysisType::CardFlavor);
+
             return;
         }
 
@@ -186,7 +203,8 @@ class DispatchPostRunAnalysis implements ShouldQueue
     /**
      * A run the athlete did before they signed up, like one past the backfill
      * age cap, is filled deterministically here and narrated by the LLM only if
-     * they open it — see {@see HistoryNarrationGate}.
+     * they open it — see {@see NarrationEligibility}. A run of an athlete away
+     * from the app is only staged; their return narrates it.
      *
      * Backfilled (old) runs stage their narration group Pending and let the
      * chain narrate them one activity at a time, oldest first: each ingest
@@ -206,10 +224,16 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * state branch) is reserved for the common case: the chain is already
      * caught up.
      */
-    private function dispatchActivityGroup(Activity $activity, bool $isBackfill, bool $ruleBased, int $delaySec): void
+    private function dispatchActivityGroup(Activity $activity, bool $isBackfill, bool $ruleBased, bool $athleteAway, int $delaySec): void
     {
         if ($ruleBased) {
             $this->analysisService->requestActivityGroupRuleBased($activity);
+
+            return;
+        }
+
+        if ($athleteAway) {
+            $this->analysisService->requestActivityGroupDeferred($activity);
 
             return;
         }

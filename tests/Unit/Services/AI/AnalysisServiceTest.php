@@ -1304,6 +1304,26 @@ it('markDone fans out a notification for a notifiable, wired type', function ():
     );
 });
 
+it('markDone sends no notification for a narration requested on the athlete return', function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token', 'services.telegram.notify_max_age_days' => 14]);
+    Notification::fake();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
+    $row = Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Return);
+
+    $this->service->markDone($row, 'Run story.', ServedBy::Llm);
+
+    Notification::assertNothingSent();
+});
+
 it('markDone does not notify for a non-notifiable type', function (): void {
     Notification::fake();
     $row = Analysis::factory()->create(['analysis_type' => AnalysisType::BriefingMascotVoice]);

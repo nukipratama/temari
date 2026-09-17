@@ -12,9 +12,9 @@ use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisSubjectAuthorizer;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\AI\NarrationEligibility;
+use App\Services\AI\NarrationVerdict;
 use App\Services\Run\Metrics\SummaryRecomputer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -27,8 +27,7 @@ class AnalysisController extends Controller
         AnalysisService $service,
         SummaryRecomputer $summaries,
         ChainResolver $chains,
-        BackfillAgeGate $ages,
-        HistoryNarrationGate $history,
+        NarrationEligibility $eligibility,
         string $type,
         int $subjectId,
     ): JsonResponse {
@@ -51,27 +50,28 @@ class AnalysisController extends Controller
             return $this->payload($existing, $analysisType, $subjectId, $discriminator);
         }
 
-        if ($service->shouldServeRuleBased($user)) {
-            return $this->payload(
+        $refused = match ($eligibility->forManualTrigger($user, $analysisType, $subjectId, $discriminator)) {
+            NarrationVerdict::Demo => $this->payload(
                 $service->requestRuleBased($analysisType->subjectType(), $subjectId, $analysisType, $discriminator),
                 $analysisType,
                 $subjectId,
                 $discriminator,
-            );
-        }
-
-        if ($ages->blocksManualTrigger($analysisType, $subjectId, $discriminator)) {
-            return $this->payload(
+            ),
+            NarrationVerdict::TooOld => $this->payload(
                 $service->requestRuleBased($analysisType->subjectType(), $subjectId, $analysisType, $discriminator, refillDone: false),
                 $analysisType,
                 $subjectId,
                 $discriminator,
-            );
-        }
+            ),
+            NarrationVerdict::AwaitingBacklog => $this->payload($existing, $analysisType, $subjectId, $discriminator)
+                ->setStatusCode(409),
+            NarrationVerdict::Eligible,
+            NarrationVerdict::PreConnect,
+            NarrationVerdict::Inactive => null,
+        };
 
-        if ($history->awaitsHydration($user, $analysisType, $subjectId)) {
-            return $this->payload($existing, $analysisType, $subjectId, $discriminator)
-                ->setStatusCode(409);
+        if ($refused !== null) {
+            return $refused;
         }
 
         // Asked about this athlete: a manual re-read is theirs to pay for, so

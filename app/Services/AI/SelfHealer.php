@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Actions\AI\RecentlyActiveUsers;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
-use App\Models\User;
 use App\Models\WeeklySnapshot;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -22,6 +22,8 @@ use Illuminate\Support\Collection;
  * still-capped run is a clean no-op; the Failed-sweeping families are bounded
  * by {@see Analysis::MAX_SELF_HEAL_ATTEMPTS} so a terminally-broken block
  * drops out to the /devtools/narration dead-letter instead of re-billing forever.
+ * Every family sweeps only {@see RecentlyActiveUsers}: an athlete away from the
+ * app is caught up by {@see \App\Jobs\AI\NarrateOnReturnJob} when they come back.
  */
 class SelfHealer
 {
@@ -50,6 +52,7 @@ class SelfHealer
         private readonly ChainResolver $chains,
         private readonly BackfillAgeGate $ages,
         private readonly RecapHydrationReadiness $readiness,
+        private readonly RecentlyActiveUsers $activeUsers,
     ) {
     }
 
@@ -90,7 +93,7 @@ class SelfHealer
         Activity::query()
             ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
             ->whereNotNull('activity_details.start_date_local')
-            ->whereIn('activities.user_id', User::query()->notDemo()->select('id'))
+            ->whereIn('activities.user_id', $this->activeUsers->query()->select('id'))
             ->whereHas('analyses', function ($query): void {
                 /** @var Builder<Analysis> $query */
                 $query
@@ -156,7 +159,13 @@ class SelfHealer
      */
     private function resumeWeekly(): int
     {
-        $links = $this->chains->stalledWeeklyLinkPerUser();
+        $stalled = $this->chains->stalledWeeklyLinkPerUser();
+        $activeWeekIds = WeeklySnapshot::query()
+            ->whereIn('id', $stalled->map(fn (ChainLink $link): int => $link->subjectId)->all())
+            ->whereIn('user_id', $this->activeUsers->query()->select('id'))
+            ->pluck('id')
+            ->flip();
+        $links = $stalled->filter(fn (ChainLink $link): bool => $activeWeekIds->has($link->subjectId));
         $oldestReal = $this->ages->cutoffDate();
 
         // discriminator carries week_ending here (see ChainResolver::stalledWeeklyLinkPerUser).
@@ -211,7 +220,10 @@ class SelfHealer
 
     private function resumeMonthly(): int
     {
-        $links = $this->chains->stalledMonthlyLinkPerUser();
+        $activeIds = array_flip($this->activeUsers->ids());
+        $links = $this->chains->stalledMonthlyLinkPerUser()
+            ->filter(fn (ChainLink $link): bool => isset($activeIds[$link->subjectId]))
+            ->values();
         $oldestRealMonth = $this->ages->cutoffMonth();
         $index = 0;
 
@@ -261,7 +273,7 @@ class SelfHealer
             ->where('ai_analyses.analysis_type', AnalysisType::CardFlavor)
             ->join('run_cards', 'run_cards.id', '=', 'ai_analyses.subject_id')
             ->join('activities', 'activities.id', '=', 'run_cards.activity_id')
-            ->whereIn('activities.user_id', User::query()->notDemo()->select('id'))
+            ->whereIn('activities.user_id', $this->activeUsers->query()->select('id'))
             ->orderBy('ai_analyses.subject_id')
             ->get(['ai_analyses.subject_id', 'activities.user_id'])
             ->groupBy('user_id')
@@ -297,7 +309,7 @@ class SelfHealer
             ->stalled()
             ->where('subject_type', $type->subjectType())
             ->where('analysis_type', $type)
-            ->whereIn('subject_id', User::query()->notDemo()->select('id'))
+            ->whereIn('subject_id', $this->activeUsers->query()->select('id'))
             ->orderBy('discriminator')
             ->get(['subject_id', 'discriminator'])
             ->unique('subject_id');

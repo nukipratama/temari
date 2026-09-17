@@ -106,7 +106,7 @@ it('leaves an existing row of any status exactly as it found it', function (): v
 
 it('never resurrects a day the kickoff itself would have skipped', function (): void {
     // Dormant: no run inside the active window, so no kickoff was owed at all.
-    $dormant = User::factory()->create();
+    $dormant = User::factory()->create(['last_seen_at' => null]);
     $old = Activity::factory()->for($dormant)->analyzed()->create();
     ActivityDetail::factory()->for($old)->create(['start_date_local' => Carbon::today()->subDays(30)]);
 

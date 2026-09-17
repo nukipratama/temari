@@ -6,7 +6,6 @@ namespace App\Actions\AI;
 
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -25,11 +24,12 @@ class KickoffMonthlyRecaps
     public function __construct(
         private readonly AnalysisService $service,
         private readonly BackfillAgeGate $ages,
+        private readonly RecentlyActiveUsers $activeUsers,
     ) {
     }
 
     /**
-     * @param  int|null  $userId  narrow to one user; null sweeps every non-demo user
+     * @param  int|null  $userId  narrow to one user; null sweeps every active athlete
      * @return array{dispatched: int, rule_based: int}
      */
     public function __invoke(?int $userId = null): array
@@ -41,10 +41,7 @@ class KickoffMonthlyRecaps
 
         $stagger = (int) config('ai.backfill_stagger_seconds', 360);
 
-        // Demo never auto-bills any LLM cadence: its content is the rule-based
-        // seed, so every recap chain excludes it (locked decision).
-        $userIds = User::query()
-            ->notDemo()
+        $userIds = $this->activeUsers->query()
             ->when($userId !== null, fn (Builder $query): Builder => $query->whereKey($userId))
             ->pluck('id');
 

@@ -60,6 +60,13 @@ it('excludes the demo account', function (): void {
     expect(app(RecentlyActiveUsers::class)()->pluck('id')->all())->not->toContain($demo->id);
 });
 
+it('answers for one athlete by the same rule', function (): void {
+    expect(app(RecentlyActiveUsers::class)->includes(athleteLastSeen(RecentlyActiveUsers::ACTIVE_WINDOW_DAYS)))->toBeTrue()
+        ->and(app(RecentlyActiveUsers::class)->includes(athleteLastSeen(RecentlyActiveUsers::ACTIVE_WINDOW_DAYS + 1)))->toBeFalse()
+        ->and(app(RecentlyActiveUsers::class)->includes(athleteLastSeen(null)))->toBeFalse()
+        ->and(app(RecentlyActiveUsers::class)->includes(athleteLastSeen(0, demo: true)))->toBeFalse();
+});
+
 it('lists the active ids', function (): void {
     $active = athleteLastSeen(1);
     $dormant = athleteLastSeen(30);
