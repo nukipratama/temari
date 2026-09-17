@@ -8,6 +8,7 @@ use App\Enums\ExperienceLevel;
 use App\Enums\GoalType;
 use App\Enums\IngestState;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\PrCategory;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -15,6 +16,7 @@ use App\Models\ActivityStream;
 use App\Models\AI\Analysis;
 use App\Models\AI\RunQuestion;
 use App\Models\InboxNotification;
+use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\RunCard;
@@ -146,6 +148,8 @@ class DemoRunSeeder
             $log('Rebuilding weekly snapshots...');
             $weeks = $this->weeklyAggregator->rebuildFor($user);
             $log(sprintf('  %d weekly snapshots written', $weeks));
+
+            $this->seedRaceGoal($user);
 
             $log("Regenerating this week's training plan...");
             $this->seedCurrentWeekPlan($user);
@@ -352,6 +356,33 @@ class DemoRunSeeder
         }
 
         return $rows->count();
+    }
+
+    /**
+     * The demo user trains for a race, so there has to be one: without it
+     * Race renders its empty state and Profile's goal chip renders for
+     * nobody. Goal pace is 3% faster than the seeded 10K best (rounded to the
+     * nearest 15 s), so the showcase plan reads as ahead of, not behind,
+     * race pace. Runs after the activities are seeded so the 10K
+     * PersonalRecord it reads already reflects them. updateOrCreate on the
+     * active row so a re-seed converges.
+     */
+    private function seedRaceGoal(User $user): void
+    {
+        $km10BestSec = PersonalRecord::query()
+            ->where('user_id', $user->id)
+            ->where('category', PrCategory::Km10)
+            ->value('value_sec');
+
+        RaceGoal::query()->updateOrCreate(
+            ['user_id' => $user->id, 'completed_at' => null],
+            [
+                'race_date' => Carbon::today()->addWeeks(12),
+                'distance_m' => 10_000,
+                'goal_time_sec' => (int) (round($km10BestSec * 0.97 / 15) * 15),
+                'name' => 'City 10K',
+            ],
+        );
     }
 
     /**
@@ -733,27 +764,13 @@ class DemoRunSeeder
             ],
         );
 
-        // The demo user trains for a race, so there has to be one: without it
-        // Race renders its empty state and Profile's goal chip renders for
-        // nobody. Sub-50 over 10k, the distance the seeded history is built
-        // around. updateOrCreate on the active row so a re-seed converges.
-        RaceGoal::query()->updateOrCreate(
-            ['user_id' => $user->id, 'completed_at' => null],
-            [
-                'race_date' => Carbon::today()->addWeeks(12),
-                'distance_m' => 10_000,
-                'goal_time_sec' => 3_000,
-                'name' => 'City 10K',
-            ],
-        );
-
         // Without a row the whole Settings preferences card runs on
         // TrainingBaseline fallbacks and its "which one's the long run?" block
         // never renders, since that is gated on having run days. The seeded
         // history runs on every weekday about equally, so there is no pattern
         // to derive these from: they are a deliberate fixture for an
         // experienced runner on a race block, matching the race goal seeded
-        // above. updateOrCreate so a re-seed converges, as above.
+        // in seedRaceGoal(). updateOrCreate so a re-seed converges, as above.
         TrainingPreference::query()->updateOrCreate(
             ['user_id' => $user->id],
             [

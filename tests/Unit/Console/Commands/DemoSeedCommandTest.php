@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PlannedSessionStatus;
+use App\Enums\PrCategory;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
@@ -201,6 +202,16 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     expect($race->distance_m)->toBeGreaterThan(0)
         ->and($race->goal_time_sec)->toBeGreaterThan(0)
         ->and($race->race_date->isFuture())->toBeTrue();
+
+    // The race goal is 3% faster than the seeded 10K best, rounded to the
+    // nearest 15 s, not an independently hardcoded time (#917).
+    $km10Best = PersonalRecord::query()
+        ->where('user_id', $user->id)
+        ->where('category', PrCategory::Km10)
+        ->value('value_sec');
+    expect($km10Best)->not->toBeNull();
+    $expectedGoalTimeSec = (int) (round($km10Best * 0.97 / 15) * 15);
+    expect($race->goal_time_sec)->toBe($expectedGoalTimeSec);
 
     $preference = TrainingPreference::query()->where('user_id', $user->id)->firstOrFail();
     expect($preference->run_days)->not->toBeEmpty()
