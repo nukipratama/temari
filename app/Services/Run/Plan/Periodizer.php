@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Enums\FeedbackSubject;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Models\Feedback;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -40,6 +42,9 @@ use Illuminate\Support\Facades\DB;
  *   quality work) and resize every week's quality block against the race
  *   projection. Its verdict is recorded as a {@see PlanAdaptation} row so
  *   the Plan tab can explain the week it produced.
+ * - Deleting a row also deletes the `plan_day` {@see Feedback} rows filed
+ *   against it, and today's row carries its recorded readiness clamp
+ *   ({@see RestClampRecorder}) onto the row that replaces it.
  */
 final readonly class Periodizer
 {
@@ -115,17 +120,36 @@ final readonly class Periodizer
             // freshly-computed weeks) so a shrinking horizon — e.g. a
             // self-scaled plan's far-future weeks after the user sets a
             // near-term race — doesn't leave orphaned rows from the old mode.
-            PlannedSession::query()
+            $toDelete = PlannedSession::query()
                 ->where('user_id', $inputs->userId)
                 ->where('pinned', false)
                 ->where('status', PlannedSessionStatus::Planned)
                 ->whereBetween('date', [$inputs->today->toDateString(), $inputs->horizonEnd()->toDateString()])
+                ->get(['id', 'date', 'clamped_km', 'rest_clamped_at']);
+
+            // Today's row may carry a readiness clamp {@see RestClampRecorder}
+            // stamped earlier the same day. The athlete was already told about
+            // it, and the clamp only ever subtracts — so it survives onto the
+            // row that replaces it rather than vanishing with the delete.
+            $carriedClamps = $toDelete
+                ->filter(fn (PlannedSession $s): bool => $s->clamped_km !== null || $s->rest_clamped_at !== null)
+                ->keyBy(fn (PlannedSession $s): string => $s->date->toDateString());
+
+            PlannedSession::query()
+                ->whereIn('id', $toDelete->pluck('id'))
+                ->delete();
+
+            Feedback::query()
+                ->where('subject_type', FeedbackSubject::PlanDay)
+                ->whereIn('subject_id', $toDelete->pluck('id'))
                 ->delete();
 
             foreach ($rows as $date => $row) {
                 if (isset($inputs->settledDates[$date])) {
                     continue;
                 }
+
+                $carriedClamp = $carriedClamps->get($date);
 
                 PlannedSession::query()->updateOrCreate(
                     ['user_id' => $inputs->userId, 'date' => $date],
@@ -138,6 +162,8 @@ final readonly class Periodizer
                         'race_distance_m' => $row['session_type'] === SessionType::Race ? (int) $inputs->raceDistanceM : null,
                         'pinned' => false,
                         'status' => PlannedSessionStatus::Planned,
+                        'clamped_km' => $carriedClamp?->clamped_km,
+                        'rest_clamped_at' => $carriedClamp?->rest_clamped_at,
                     ],
                 );
             }
