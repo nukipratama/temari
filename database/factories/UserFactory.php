@@ -25,6 +25,7 @@ class UserFactory extends Factory
             'avatar_url' => fake()->imageUrl(192, 192, 'people'),
             'is_demo' => false,
             'onboarded_at' => now(),
+            'last_seen_at' => now(),
             'remember_token' => Str::random(10),
         ];
     }

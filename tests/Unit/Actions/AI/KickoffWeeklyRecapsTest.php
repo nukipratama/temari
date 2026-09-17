@@ -66,6 +66,19 @@ it('never dispatches for a demo user even when named directly', function (): voi
         ->and($captured)->toBeEmpty();
 });
 
+it('skips an athlete away from the app, even when named directly', function (): void {
+    $away = User::factory()->create(['last_seen_at' => Carbon::today()->subDays(8)]);
+    WeeklySnapshot::factory()->for($away)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+    WeeklySnapshot::factory()->for($away)->create(['week_ending' => '2025-01-05', 'runs' => 2]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffWeeklyRecaps::class)())->toBe(['dispatched' => 0, 'rule_based' => 0, 'deferred' => 0])
+        ->and(app(KickoffWeeklyRecaps::class)($away->id))->toBe(['dispatched' => 0, 'rule_based' => 0, 'deferred' => 0])
+        ->and($captured)->toBeEmpty();
+});
+
 it('fills a week past the backfill depth cap rule-based and narrates the rest', function (): void {
     config()->set('ai.backfill_max_age_days', 84);
     config()->set('ai.backfill_stagger_seconds', 100);

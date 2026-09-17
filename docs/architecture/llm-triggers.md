@@ -1,6 +1,6 @@
 ---
 title: The LLM surface — everything that calls a model, what starts it, and what it costs
-description: The complete inventory of narrators, agent tools and deterministic producers, with the four origins that dispatch them, the seven things that stop them, a proposed verdict per surface, and what the prod rebuild means for spend.
+description: The complete inventory of narrators, agent tools and deterministic producers, with the five origins that dispatch them, the seven things that stop them, a proposed verdict per surface, and what the prod rebuild means for spend.
 tags: [architecture, ai]
 status: living
 reviewed: 2026-09-04
@@ -50,7 +50,7 @@ without a row here is a red build.
 > 2026-09-10: `AnalysisType::cadence()` and its `AnalysisCadence` enum were removed — they had no
 > production callers and were flagged here as a standing trap. Use the origins below.
 
-## The four origins
+## The five origins
 
 Origin is a property of the dispatcher, not the narrator: the same `RunInsightNarrator` answers an
 ingest cascade, a "Reread" and a self-heal. An authenticated web request gets its origin for free —
@@ -60,7 +60,7 @@ whose origin is not `User` (a webhook, a devtools re-arm) still declares itself 
 wins because it runs after the middleware default. A job or console command, which never runs
 through that middleware, always declares itself with
 [`NarrationOrigin::set()`](../../app/Services/AI/NarrationOrigin.php#L32). Either way,
-[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L402) writes the current
+[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L427) writes the current
 [`AnalysisOrigin`](../../app/Services/AI/AnalysisOrigin.php#L19) onto the job it dispatches, and the
 job restores it before generating, so the metering row records what started the call rather than
 only which narrator answered. A dispatch site that is not an authenticated web request and declares
@@ -75,7 +75,7 @@ Every narration cadence below draws its athletes from
 [`RecentlyActiveUsers`](../../app/Actions/AI/RecentlyActiveUsers.php), which reads
 `users.last_seen_at`: narration is spent on an athlete who opened the app in the last 7 days, demo
 excluded. Plan rows, metrics, compliance and snapshots are deterministic and keep running for
-everyone. See [[narration-follows-the-athlete-not-the-run]].
+everyone. See [[narration-spends-only-on-active-athletes]].
 
 | when | command | what it dispatches |
 |---|---|---|
@@ -161,7 +161,10 @@ and spends nothing. See [[demo-user-billing-exclusion]].
 [`DispatchPostRunAnalysis::handle()`](../../app/Listeners/DispatchPostRunAnalysis.php#L41) is queued
 on `ActivityIngested` and is where most per-run spend originates. In order: `CardFlavor`, then the
 grouped `PostRunSpeech` + `RunInsight` pair — both filled rule-based instead, with no dispatch, when
-the run is older than the backfill cap or predates the athlete's Strava connect — then `BriefingMascotVoice` (invalidated only when the
+[`NarrationEligibility::forIngestedRun()`](../../app/Services/AI/NarrationEligibility.php) says demo,
+too old or pre-connect, and staged `Pending` with every LLM request below skipped (briefing, profile
+voice, clamp voice, Temari's read) when the athlete is away from the app, until origin 5 catches them
+up — then `BriefingMascotVoice` (invalidated only when the
 run is today's), then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
 never re-bills. `WeeklyRecap` and `MonthlyRecap` rows are **staged `Pending` and not narrated here** —
 the scheduled commands above narrate them once the window closes, which is why a pending recap row
@@ -170,8 +173,9 @@ is not a backlog. See [[deferred-recap-windowing]].
 ### 3. User-initiated
 
 - [`AnalysisController::trigger()`](../../app/Http/Controllers/Api/AnalysisController.php#L26) — the
-  per-block "Reread". Gated in a fixed order: ownership, an open recap window, cooldown, demo,
-  backfill age, unfinished history hydration, paused generation, then chain resumption. Each gate is described under
+  per-block "Reread". Gated in a fixed order: ownership, an open recap window, cooldown, then
+  [`NarrationEligibility::forManualTrigger()`](../../app/Services/AI/NarrationEligibility.php) (demo,
+  backfill age, unfinished history hydration), paused generation, then chain resumption. Each gate is described under
   *What stops a call*.
 - [`RunQuestionController::store()`](../../app/Http/Controllers/Api/RunQuestionController.php#L53) —
   the scoped run Q&A. **The one AI surface that is not an `Analysis` row**: one run holds many
@@ -187,11 +191,22 @@ is not a backlog. See [[deferred-recap-windowing]].
 
 [`SelfHealer::run()`](../../app/Services/AI/SelfHealer.php#L59), hourly: reverts rows stuck in
 flight, then resumes the earliest stalled link per user per family. **Every dispatch is
-`invalidate: false`**, so recovery never re-bills content that already exists, and demo users are
-excluded from every sweep. Failed rows are bounded by
+`invalidate: false`**, so recovery never re-bills content that already exists, and every sweep
+covers only [`RecentlyActiveUsers`](../../app/Actions/AI/RecentlyActiveUsers.php), so demo and
+athletes away from the app are excluded. Failed rows are bounded by
 [`MAX_SELF_HEAL_ATTEMPTS`](../../app/Models/AI/Analysis.php#L62) and then dead-letter to
 `/devtools/narration` for a manual re-arm, which is itself a recovery-origin dispatch. See
 [[bounded-self-heal-and-dead-letter]].
+
+### 5. Return
+
+[`StampLastSeen`](../../app/Http/Middleware/StampLastSeen.php) queues
+[`NarrateOnReturnJob`](../../app/Jobs/AI/NarrateOnReturnJob.php) on an athlete's first visit after
+the 7-day window lapsed (not for an account younger than the window). It sends the last 7 days of
+pending runs and cards, the latest closed week's and month's recaps and this week's credited day
+reads to the LLM with `invalidate: false`, and fills anything older still `Pending` rule-based. The
+origin is `return`, and `AnalysisService::markDone()` sends no notification for it. See
+[[narration-spends-only-on-active-athletes]].
 
 ## The eleven surfaces
 
@@ -227,16 +242,16 @@ is the one people misremember.
 | **daily cost ceiling** | **`Done`, rule-based** | no | **no — clears on the clock** |
 
 All three pauses resolve through
-[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L749), and an in-flight job reverts
+[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L752), and an in-flight job reverts
 its rows via [`haltForPausedGeneration()`](../../app/Jobs/AI/AnalyzeBaseJob.php#L193) without burning
 an attempt.
 
 **The cost ceiling is the exception in three ways.** It does not pause: a `pending` row is filled
 from the rule-based filler and marked `Done` by
-[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L803), so a capped day is not a
+[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L806), so a capped day is not a
 day of empty blocks. A `Failed` row is explicitly excluded and stays failed, keeping its dead-letter
 visibility. And a *manual* trigger past the ceiling is refused with a 409 rather than degraded,
-because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L714) asks with the budget
+because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L717) asks with the budget
 included while auto-dispatch asks without it. Two ceilings reach that behaviour through the same
 path — the per-athlete slice and the app-wide total above it, which gates callers holding no
 athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
@@ -535,5 +550,5 @@ all of them one-offs worth knowing before the day:
 - [[azure-openai-routing]] — which model each kind routes to.
 - [[bounded-self-heal-and-dead-letter]] · [[cost-ceiling-degrades-to-rule-based]] ·
   [[twelve-week-narration-cutoff]] · [[demo-user-billing-exclusion]] ·
-  [[scoped-run-qa-not-an-analysis-row]] · [[narration-follows-the-athlete-not-the-run]] ·
+  [[scoped-run-qa-not-an-analysis-row]] · [[narration-spends-only-on-active-athletes]] ·
   [[history-narrates-on-demand]].

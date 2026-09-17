@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\AI;
 
-use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -28,11 +27,12 @@ class KickoffWeeklyRecaps
         private readonly AnalysisService $service,
         private readonly BackfillAgeGate $ages,
         private readonly RecapHydrationReadiness $readiness,
+        private readonly RecentlyActiveUsers $activeUsers,
     ) {
     }
 
     /**
-     * @param  int|null  $userId  narrow to one user; null sweeps every non-demo user
+     * @param  int|null  $userId  narrow to one user; null sweeps every active athlete
      * @return array{dispatched: int, rule_based: int, deferred: int}
      */
     public function __invoke(?int $userId = null): array
@@ -46,7 +46,7 @@ class KickoffWeeklyRecaps
         $baseQuery = fn (): Builder => WeeklySnapshot::query()
             ->where('week_ending', '<=', $lastWeekEnding)
             ->where('runs', '>', 0)
-            ->whereIn('user_id', User::query()->notDemo()->select('id'))
+            ->whereIn('user_id', $this->activeUsers->query()->select('id'))
             ->when($userId !== null, fn (Builder $query): Builder => $query->where('user_id', $userId))
             ->whereDoesntHave('analyses', fn ($query) => $query
                 ->where('analysis_type', AnalysisType::WeeklyRecap)

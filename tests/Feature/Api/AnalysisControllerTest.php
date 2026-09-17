@@ -21,9 +21,8 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\AI\NarrationEligibility;
 use App\Services\Run\Metrics\SummaryRecomputer;
 use Illuminate\Auth\Access\AuthorizationException;
 use App\Support\Config\AppConfig;
@@ -929,8 +928,7 @@ it('throws Unauthenticated when the request has no user (defensive guard)', func
         app(AnalysisService::class),
         app(SummaryRecomputer::class),
         app(ChainResolver::class),
-        app(BackfillAgeGate::class),
-        app(HistoryNarrationGate::class),
+        app(NarrationEligibility::class),
         'briefing_mascot_voice',
         1,
     ))->toThrow(AuthorizationException::class, 'Unauthenticated');
