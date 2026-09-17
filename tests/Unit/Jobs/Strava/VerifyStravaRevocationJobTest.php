@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\StravaSyncSource;
 use App\Jobs\Strava\VerifyStravaRevocationJob;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\StravaConnection;
@@ -33,7 +34,8 @@ it('revokes the connection when Strava rejects the token with a 401 (genuine dea
     runVerifyJob($connection);
 
     expect($connection->fresh()->isRevoked())->toBeTrue()
-        ->and(StravaSyncLog::query()->where('user_id', $connection->user_id)->where('status', 'revoked')->exists())->toBeTrue();
+        ->and(StravaSyncLog::query()->where('user_id', $connection->user_id)->where('status', 'revoked')->value('source'))
+        ->toBe(StravaSyncSource::Webhook);
 });
 
 it('revokes when the token refresh is permanently rejected (invalid_grant)', function (): void {

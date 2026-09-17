@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\NotificationDeliveryStatus;
+use App\Enums\StravaSyncSource;
 use App\Livewire\Pulse\AthleteOperations;
 use App\Models\AI\Analysis;
 use App\Models\Analytics\StravaSyncLog;
@@ -44,22 +45,31 @@ it('shows an athlete who has never synced', function (): void {
         ->assertSee('no notification yet');
 });
 
-it('attributes a sync that spent list calls to the poll', function (): void {
+it('shows the recorded poll source for a scheduled sync', function (): void {
     $user = User::factory()->create(['name' => 'Rina']);
-    StravaSyncLog::log($user->id, 'success', activitiesSynced: 2, apiCallsUsed: 3);
+    StravaSyncLog::log($user->id, 'success', activitiesSynced: 2, apiCallsUsed: 3, source: StravaSyncSource::Poll);
 
     Livewire::test(AthleteOperations::class)
         ->assertOk()
         ->assertSee('poll');
 });
 
-it('attributes a sync that spent no list call to the webhook push', function (): void {
+it('shows the recorded webhook source for a push-delivered sync', function (): void {
     $user = User::factory()->create(['name' => 'Rina']);
-    StravaSyncLog::log($user->id, 'success', activitiesSynced: 1);
+    StravaSyncLog::log($user->id, 'success', activitiesSynced: 1, source: StravaSyncSource::Webhook);
 
     Livewire::test(AthleteOperations::class)
         ->assertOk()
         ->assertSee('webhook');
+});
+
+it('shows the recorded manual source for a user-triggered sync', function (): void {
+    $user = User::factory()->create(['name' => 'Rina']);
+    StravaSyncLog::log($user->id, 'success', activitiesSynced: 5, apiCallsUsed: 1, source: StravaSyncSource::Manual);
+
+    Livewire::test(AthleteOperations::class)
+        ->assertOk()
+        ->assertSee('manual');
 });
 
 it('alerts when an athlete last sync errored', function (): void {

@@ -6,6 +6,7 @@ namespace App\Services\Run\Ingest;
 
 use Throwable;
 use App\Enums\IngestState;
+use App\Enums\StravaSyncSource;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\Analytics\StravaSyncLog;
@@ -37,7 +38,7 @@ class SyncOrchestrator
     ) {
     }
 
-    public function syncUser(User $user, ?CarbonImmutable $since = null): int
+    public function syncUser(User $user, ?CarbonImmutable $since = null, StravaSyncSource $source = StravaSyncSource::Poll): int
     {
         if (! $this->stravaEnabled()) {
             return 0;
@@ -58,7 +59,7 @@ class SyncOrchestrator
         try {
             ['summaries' => $summaries, 'api_calls' => $apiCalls] = $this->fetcher->fetchNewSummaries($connection, $since);
             if ($summaries === []) {
-                $this->logSync($user->id, 'success', 0, $apiCalls);
+                $this->logSync($user->id, 'success', 0, $apiCalls, source: $source);
 
                 return 0;
             }
@@ -74,7 +75,7 @@ class SyncOrchestrator
 
             Pulse::record('strava_sync', 'inserted', $inserted)->sum()->count();
 
-            $this->logSync($user->id, 'success', $inserted, $apiCalls);
+            $this->logSync($user->id, 'success', $inserted, $apiCalls, source: $source);
 
             return $inserted;
         } catch (StravaConnectionRevokedException $e) {
@@ -84,7 +85,7 @@ class SyncOrchestrator
             // token-refresh-failure path).
             $connection->markRevoked();
             Pulse::record('strava_revoked', 'api_401')->count();
-            $this->logSync($user->id, 'error', 0, 0, $e->getMessage());
+            $this->logSync($user->id, 'error', 0, 0, $e->getMessage(), source: $source);
             Log::warning('strava-sync revoked connection after API 401', [
                 'user_id' => $user->id,
                 'reason' => $e->getMessage(),
@@ -92,7 +93,7 @@ class SyncOrchestrator
 
             return 0;
         } catch (Throwable $e) {
-            $this->logSync($user->id, 'error', 0, 0, $e->getMessage());
+            $this->logSync($user->id, 'error', 0, 0, $e->getMessage(), source: $source);
 
             throw $e;
         } finally {
@@ -112,7 +113,7 @@ class SyncOrchestrator
      * null) still ingests. Genuine updates re-pull via the hourly poll or a manual
      * re-ingest, not this push path.
      */
-    public function syncSingleActivity(User $user, int $externalId): bool
+    public function syncSingleActivity(User $user, int $externalId, StravaSyncSource $source = StravaSyncSource::Webhook): bool
     {
         if (! $this->stravaEnabled()) {
             return false;
@@ -133,7 +134,7 @@ class SyncOrchestrator
                 ->first();
 
             if ($activity === null) {
-                $this->logSync($user->id, 'success', 0);
+                $this->logSync($user->id, 'success', 0, source: $source);
 
                 return false;
             }
@@ -144,7 +145,7 @@ class SyncOrchestrator
                     'strava_external_id' => $externalId,
                 ]);
 
-                $this->logSync($user->id, 'success', 0);
+                $this->logSync($user->id, 'success', 0, source: $source);
 
                 return false;
             }
@@ -156,11 +157,11 @@ class SyncOrchestrator
                 'strava_external_id' => $externalId,
             ]);
 
-            $this->logSync($user->id, 'success', 1);
+            $this->logSync($user->id, 'success', 1, source: $source);
 
             return true;
         } catch (Throwable $e) {
-            $this->logSync($user->id, 'error', 0, 0, $e->getMessage());
+            $this->logSync($user->id, 'error', 0, 0, $e->getMessage(), source: $source);
 
             throw $e;
         }
@@ -194,14 +195,14 @@ class SyncOrchestrator
         $this->weeklyAggregator->rebuildForwardFrom($user, CarbonImmutable::parse($start));
     }
 
-    private function logSync(int $userId, string $status, int $activitiesSynced, int $apiCalls = 0, ?string $error = null): void
+    private function logSync(int $userId, string $status, int $activitiesSynced, int $apiCalls = 0, ?string $error = null, ?StravaSyncSource $source = null): void
     {
         $remaining = $this->client->rateLimitRemaining();
 
         // Rate-limit headroom is only meaningful on the log row after a successful
         // API call; the shared budget itself is worth reporting either way, and an
         // exhausted one is exactly what an errored sync tends to mean.
-        StravaSyncLog::log($userId, $status, $activitiesSynced, $apiCalls, $error, $error === null ? $remaining : null);
+        StravaSyncLog::log($userId, $status, $activitiesSynced, $apiCalls, $error, $error === null ? $remaining : null, $source);
 
         $this->alerter->stravaBudgetLow($remaining['15min'], StravaClient::RATE_LIMIT_15MIN_MAX);
     }
