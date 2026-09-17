@@ -180,21 +180,40 @@ final class SegmentGenerator
         float $volumeScale = 1.0,
         ?int $raceGoalTimeSec = null,
     ): array {
-        if ($sessionType === SessionType::Rest) {
-            return [];
-        }
-
-        $isMarathonDistance = WeekPlanBuilder::isMarathonDistance($raceDistanceM);
+        $coreKm = self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, $raceDistanceM);
 
         // The race is the distance it is: a redistributed week may scale the
         // training around it, never the event itself.
-        if ($sessionType === SessionType::Race) {
-            return self::raceSegments(self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, $raceDistanceM), $isMarathonDistance, $paces, $raceGoalTimeSec);
-        }
+        return self::forCoreKm(
+            $sessionType,
+            $phase,
+            $raceDistanceM,
+            $sessionType === SessionType::Race ? $coreKm : $coreKm * $volumeScale,
+            $paces,
+            $raceGoalTimeSec,
+        );
+    }
 
-        $coreKm = self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm) * $volumeScale;
+    /**
+     * The segments of a session whose distance is already decided, such as the
+     * core km a day was graded against.
+     *
+     * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
+     * @return list<SessionSegment>
+     */
+    public static function forCoreKm(
+        SessionType $sessionType,
+        PlanPhase $phase,
+        ?float $raceDistanceM,
+        float $coreKm,
+        ?array $paces,
+        ?int $raceGoalTimeSec = null,
+    ): array {
+        $isMarathonDistance = WeekPlanBuilder::isMarathonDistance($raceDistanceM);
 
         return match ($sessionType) {
+            SessionType::Rest => [],
+            SessionType::Race => self::raceSegments($coreKm, $isMarathonDistance, $paces, $raceGoalTimeSec),
             SessionType::Easy => [self::block(SegmentKey::Main, $coreKm, PaceBand::Easy, $paces)],
             SessionType::Long => self::longSegments($phase, $isMarathonDistance, $coreKm, $paces),
             SessionType::Tempo => self::tempoSegments($phase, $isMarathonDistance, $coreKm, $paces),

@@ -73,7 +73,7 @@ class StreamAnalysis
     private const float NEGATIVE_SPLIT_MARGIN = 1.07;
 
     /** Best-effort window durations in seconds → label suffix. */
-    private const array BEST_EFFORT_WINDOWS = [
+    public const array BEST_EFFORT_WINDOWS = [
         30 => '30s',
         60 => '1min',
         180 => '3min',
