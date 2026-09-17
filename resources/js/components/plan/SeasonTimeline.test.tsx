@@ -145,7 +145,7 @@ describe('SeasonTimeline', () => {
         expect(screen.getByText('Wk 3')).toBeInTheDocument();
     });
 
-    it('merges every general-zone week into one "general fitness" run, ignoring its alternating build/deload phase', () => {
+    it('merges every general-zone week into one "maintain" run, ignoring its alternating build/deload phase', () => {
         renderTimeline({
             weeks: [
                 week({
@@ -169,7 +169,7 @@ describe('SeasonTimeline', () => {
             ],
         });
 
-        expect(screen.getByText('general fitness phase')).toBeInTheDocument();
+        expect(screen.getByText('maintain phase')).toBeInTheDocument();
         expect(screen.queryByText('build phase')).not.toBeInTheDocument();
         expect(screen.queryByText('deload phase')).not.toBeInTheDocument();
 

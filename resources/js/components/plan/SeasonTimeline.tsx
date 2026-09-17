@@ -15,7 +15,7 @@ function plural(count: number, noun: string): string {
  * The season split into runs of consecutive weeks sharing the same displayed
  * phase, in season order. Grouped by {@see phaseGroupKey} rather than the raw
  * `phase` so every general-zone week — the self-scaled cycle alternates
- * Build/Deload before the block opens — folds into one "general fitness" run
+ * Build/Deload before the block opens — folds into one "maintain" run
  * instead of splitting into alternating Build/Deload runs.
  */
 function contiguousPhaseRuns(

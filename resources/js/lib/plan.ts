@@ -103,8 +103,8 @@ export const GENERAL_PHASE_KEY = 'general';
 
 /**
  * The identity a week displays as: its own phase inside the race block, or
- * one shared "general fitness" identity for every `zone: general` week —
- * the self-scaled cycle alternates Build/Deload before the block opens, and
+ * one shared "maintain" identity for every `zone: general` week — the
+ * self-scaled cycle alternates Build/Deload before the block opens, and
  * naming that would read as noise rather than as the season's real arc. Used
  * everywhere a week's phase would otherwise be shown or grouped: the season
  * header, the phase legend ({@see phasesOf}), and the timeline's phase runs.
@@ -119,7 +119,7 @@ export const PHASE_LABEL: Record<string, string> = {
     peak: 'peak',
     taper: 'taper',
     deload: 'deload',
-    [GENERAL_PHASE_KEY]: 'general fitness',
+    [GENERAL_PHASE_KEY]: 'maintain',
 };
 
 /**
@@ -127,8 +127,8 @@ export const PHASE_LABEL: Record<string, string> = {
  * week's start through the last general week's end — or `null` when the
  * season has no general weeks (already inside the block, or goal-less).
  * Reading this off `weeks` rather than the season's own `starts_at`/`ends_at`
- * keeps the header from claiming "general fitness" spans dates that are
- * really the race block's.
+ * keeps the header from claiming "maintain" spans dates that are really the
+ * race block's.
  */
 export function generalZoneSpan(
     weeks: SeasonSummaryWeek[],

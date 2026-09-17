@@ -60,8 +60,8 @@ export default function SeasonHeaderCard({
     const currentGroupKey =
         currentWeek === undefined ? undefined : phaseGroupKey(currentWeek);
     // A general-zone header names its own run's span, not the season's —
-    // "general fitness" spanning all the way to race day would read as the
-    // block belonging to it too.
+    // "maintain" spanning all the way to race day would read as the block
+    // belonging to it too.
     const headerSpan =
         currentWeek?.zone === 'general'
             ? (generalZoneSpan(weeks) ?? { start: startsAt, end: endsAt })

@@ -12,8 +12,8 @@ function cellLabel(week: SeasonSummaryWeek): string {
 
 /**
  * The season at a glance, one cell per week from season start to race day: a
- * flat neutral "general fitness" band for the weeks before the race block
- * opens, phase-coloured cells for the weeks inside it. Reads the `zone` each
+ * flat neutral "maintain" band for the weeks before the race block opens,
+ * phase-coloured cells for the weeks inside it. Reads the `zone` each
  * week of the season summary already carries
  * ({@see docs/decisions/the-block-opens-on-a-computed-date.md}) rather than
  * computing anything of its own. A general week's own `phase` (the
@@ -52,7 +52,7 @@ export default function PhaseRibbon({
 
     return (
         <div className="mt-3">
-            <div className="flex h-3 w-full overflow-hidden rounded-full">
+            <div className="flex h-3 w-full overflow-hidden rounded-full border border-border">
                 {weeks.map((week, index) => (
                     <button
                         key={week.week_start}

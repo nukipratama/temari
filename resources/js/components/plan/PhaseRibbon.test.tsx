@@ -82,7 +82,7 @@ describe('PhaseRibbon', () => {
         render(<PhaseRibbon weeks={RACE_SEASON} />);
 
         const generalCells = screen.getAllByRole('button', {
-            name: 'general fitness',
+            name: 'maintain',
         });
         expect(generalCells).toHaveLength(2);
         for (const cell of generalCells) {
@@ -122,7 +122,7 @@ describe('PhaseRibbon', () => {
         render(<PhaseRibbon weeks={RACE_SEASON} />);
 
         const solid = [
-            ...screen.getAllByRole('button', { name: 'general fitness' }),
+            ...screen.getAllByRole('button', { name: 'maintain' }),
             screen.getByRole('button', { name: 'base, current week' }),
         ];
         for (const cell of solid) {
@@ -199,11 +199,11 @@ describe('PhaseRibbon', () => {
         render(<PhaseRibbon weeks={RACE_SEASON} />);
 
         const [firstGeneralCell] = screen.getAllByRole('button', {
-            name: 'general fitness',
+            name: 'maintain',
         });
         fireEvent.mouseEnter(firstGeneralCell);
 
-        expect(screen.getByText('general fitness')).toBeInTheDocument();
+        expect(screen.getByText('maintain')).toBeInTheDocument();
         expect(screen.queryByText('build')).not.toBeInTheDocument();
         expect(screen.queryByText('deload')).not.toBeInTheDocument();
     });

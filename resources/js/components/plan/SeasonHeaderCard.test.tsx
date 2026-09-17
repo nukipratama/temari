@@ -139,7 +139,7 @@ describe('SeasonHeaderCard', () => {
             screen.queryByRole('button', { name: 'build' }),
         ).not.toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: 'general fitness' }),
+            screen.queryByRole('button', { name: 'maintain' }),
         ).not.toBeInTheDocument();
     });
 
@@ -153,15 +153,15 @@ describe('SeasonHeaderCard', () => {
         // Not the raw phase ('build'), and not the whole season's span
         // ('2026-05-25 – 2026-08-10') — just the general run's own dates.
         expect(
-            screen.getByText('general fitness · may 25 – jun 7'),
+            screen.getByText('maintain · may 25 – jun 7'),
         ).toBeInTheDocument();
         expect(screen.queryByText(/^build ·/)).not.toBeInTheDocument();
     });
 
-    it('adds a "general fitness" legend entry first, filled while the current week is in it', () => {
+    it('adds a "maintain" legend entry first, filled while the current week is in it', () => {
         renderCard({ weeks: GENERAL_ZONE_CURRENT });
 
-        expect(screen.getByText('general fitness')).toBeInTheDocument();
+        expect(screen.getByText('maintain')).toBeInTheDocument();
         expect(screen.queryByText('build')).not.toBeInTheDocument();
         expect(screen.queryByText('deload')).not.toBeInTheDocument();
     });
