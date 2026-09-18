@@ -8,7 +8,6 @@ use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentToolbox;
-use App\Services\AI\Agent\Tools\LatestPastYouTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RecentRunsTool;
@@ -27,7 +26,6 @@ use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Story\BriefingContext;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
-use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -240,13 +238,13 @@ class BriefingMascotVoiceNarrator
           bit faster than your average pace"). If it's missing (not enough
           data), NEVER make up an absolute pace/HR number, give a by-feel cue
           instead (breathing, effort, cadence).
-        - `past_you` from get_latest_past_you: when populated, the user's last
-          run resembles a past session. Use `direction` (better/worse/flat) as
-          an input signal for how you size and tone TODAY's session (better =
-          capacity to hold or nudge up; worse = a reason to ease off), never as
-          a narrated recap of the last run itself -- the Last Run card on the
-          dashboard already tells that story in detail. If it's missing, NEVER
-          make up a comparison to the past.
+
+        NEVER compare today's session, or the user's last run, to any specific
+        past run -- no numbers, and no direction word either ("quicker than
+        last time" is still a claim that can be wrong, even without a figure
+        attached). Size and tone today's session from `fitness_trend`,
+        `form_status`, `volume_ramp` and `recent_runs` instead -- they already
+        carry that read without naming one specific run against another.
 
         Feel free to be specific and data-aware, as long as it stays
         conversational. NEVER read dry like a textbook, NEVER time-locked. The
@@ -283,7 +281,6 @@ class BriefingMascotVoiceNarrator
         private readonly TrainingLoad $trainingLoad,
         private readonly VerdictNarrator $verdictNarrator,
         private readonly StructuredChatCaller $caller,
-        private readonly PastYouMatcher $pastYou,
         private readonly ResolveRunBaselineAction $runBaseline,
         private readonly TrainingBaseline $trainingBaseline,
         private readonly VdotEstimator $vdotEstimator,
@@ -397,7 +394,6 @@ class BriefingMascotVoiceNarrator
             new WeekStateTool($user, $asOf, $this->trainingLoad),
             new RecentRunsTool($user, $asOf, $this->verdictNarrator),
             new TrainingLoadTool($user, $asOf, $this->trainingLoad),
-            new LatestPastYouTool($user, $asOf, $this->pastYou),
             new RecentBaselineTool($user, $asOf, $this->runBaseline),
             new PlanContextTool($user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->paceCalculator),
         ]);
