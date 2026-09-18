@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import type { ShareCardTarget } from '@/components/card/ShareCardModal';
+import type { CardFactsPayload } from '@/lib/card/types';
 import type {
     ActivityDetail,
     AnalysisPayload,
@@ -23,6 +24,7 @@ import {
 export type RunCardDetail = Omit<RunCard, 'activity' | 'edition'> & {
     edition: CardEdition | null;
     flavor_analysis: AnalysisPayload;
+    facts: CardFactsPayload;
     public_share_url: string;
 };
 
@@ -65,12 +67,12 @@ export function useRunShow({
             card === null
                 ? null
                 : {
-                      activityId: detail.activity_id,
                       name: card.special_move,
+                      facts: card.facts,
                       shareUrl: card.public_share_url,
                       quote: card.flavor_analysis.content ?? null,
                   },
-        [card, detail.activity_id],
+        [card],
     );
 
     return {

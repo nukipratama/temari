@@ -7,6 +7,7 @@ import type {
     StoryLine,
 } from '@/types/inertia';
 
+import { makeCardFacts } from '@/test/cardFacts';
 import { setMockPage } from '@/test/setup';
 
 import RunsShow from './Show';
@@ -73,6 +74,7 @@ const runCard: NonNullable<Parameters<typeof RunsShow>[0]['card']> = {
     special_move: 'Iron Lungs',
     badges: ['negative_split'],
     edition: { index: 3, total: 5 },
+    facts: makeCardFacts(),
     flavor_analysis: {
         id: 2,
         status: 'done',

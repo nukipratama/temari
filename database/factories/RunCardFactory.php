@@ -36,7 +36,6 @@ class RunCardFactory extends Factory
                 'Tanpa Letih',
             ]),
             'pr_set' => false,
-            'share_image_path' => null,
         ];
     }
 }

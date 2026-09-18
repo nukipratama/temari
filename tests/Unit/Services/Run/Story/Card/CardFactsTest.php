@@ -6,7 +6,6 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Services\Run\Story\Card\CardFacts;
-use App\Services\Run\Story\Card\CardOptions;
 use App\Services\Run\Story\Card\RunForm;
 use Illuminate\Support\Carbon;
 
@@ -14,7 +13,7 @@ use Illuminate\Support\Carbon;
  * @param  array<string, mixed>  $detailAttrs
  * @param  array<string, mixed>  $cardAttrs
  */
-function factsFor(array $detailAttrs = [], array $cardAttrs = [], ?CardOptions $options = null): CardFacts
+function factsFor(array $detailAttrs = [], array $cardAttrs = []): CardFacts
 {
     $detail = ActivityDetail::factory()->make(array_merge([
         'activity_id' => 1,
@@ -43,7 +42,7 @@ function factsFor(array $detailAttrs = [], array $cardAttrs = [], ?CardOptions $
     $card->id = 418;
     $card->setRelation('activity', $activity);
 
-    return CardFacts::from($card, $options ?? new CardOptions());
+    return CardFacts::from($card);
 }
 
 it('reads distance at the app\'s two decimals, not the one-decimal copy precision', function (): void {
@@ -75,7 +74,7 @@ it('separates having a route from the run\'s form', function (): void {
     $facts = factsFor(['distance' => 18_400.0, 'summary_polyline' => null]);
 
     expect($facts->form)->toBe(RunForm::Long)
-        ->and($facts->hasRoute())->toBeFalse();
+        ->and($facts->polyline)->toBeNull();
 });
 
 it('strips the emoji emblem off a badge name and caps the row at three', function (): void {
@@ -88,31 +87,30 @@ it('drops an unknown badge slug rather than printing it raw', function (): void 
     expect(factsFor([], ['badges' => ['not_a_badge', 'climber']])->badges)->toBe(['Climber']);
 });
 
-it('withholds a fact its toggle turned off', function (): void {
-    $facts = factsFor([], ['badges' => ['climber']], new CardOptions(
-        heartRate: false,
-        elevation: false,
-        weather: false,
-        badges: false,
-    ));
+it('carries every optional fact, since the chips that hide them live in the browser', function (): void {
+    $facts = factsFor([], ['badges' => ['climber']]);
 
-    expect($facts->heartRate)->toBeNull()
-        ->and($facts->elevation)->toBeNull()
-        ->and($facts->weather)->toBeNull()
-        ->and($facts->badges)->toBe([]);
+    expect($facts->heartRate)->toBe('142')
+        ->and($facts->elevation)->toBe('18')
+        ->and($facts->weather)->toBe('29°C · wind 8 km/h')
+        ->and($facts->badges)->toBe(['Climber']);
 });
 
-it('spends the flex stat cell on elevation for a long run, heart rate otherwise', function (): void {
-    expect(factsFor()->statCells()[2])->toBe(['AVG HR', '142'])
-        ->and(factsFor(['distance' => 18_400.0])->statCells()[2])->toBe(['ELEV', '18 m'])
-        ->and(factsFor(['average_heartrate' => null])->statCells()[2])->toBe(['ELEV', '18 m'])
-        ->and(factsFor(['average_heartrate' => null, 'total_elevation_gain' => null])->statCells()[2])
-        ->toBe(['START', '05:41']);
-});
+it('ships the whole print as one payload the client can draw without a round trip', function (): void {
+    $payload = factsFor([], ['badges' => ['climber']])->toArray();
 
-it('always leads the stat row with time and pace', function (): void {
-    expect(factsFor()->statCells()[0])->toBe(['TIME', '32:18'])
-        ->and(factsFor()->statCells()[1])->toBe(['PACE', '6:07/km']);
+    expect($payload['form'])->toBe('easy')
+        ->and($payload['rarity'])->toBe('common')
+        ->and($payload['km'])->toBe('5.28')
+        ->and($payload['time'])->toBe('32:18')
+        ->and($payload['pace'])->toBe('6:07')
+        ->and($payload['heart_rate'])->toBe('142')
+        ->and($payload['elevation'])->toBe('18')
+        ->and($payload['place_short'])->toBe('SENAYAN')
+        ->and($payload['date_long'])->toBe('SUN 13 SEP 2026')
+        ->and($payload['serial'])->toBe('TMR-0418')
+        ->and($payload['badges'])->toBe(['Climber'])
+        ->and($payload['polyline'])->not->toBeNull();
 });
 
 it('names a race by its title and its round distance', function (): void {
@@ -165,12 +163,6 @@ it('shortens a geocoded place to its first segment for the tight labels', functi
         ->and(factsFor()->place)->toBe('Senayan, Jakarta Pusat, Indonesia');
 });
 
-it('numbers the print from the card, and prints that number in the bib slot', function (): void {
-    expect(factsFor()->serial)->toBe('TMR-0418')
-        ->and(factsFor()->bib())->toBe('0418');
-});
-
-it('reads the rarity ladder as a level the styles escalate on', function (): void {
-    expect(factsFor([], ['rarity' => 'common'])->level())->toBe(1)
-        ->and(factsFor([], ['rarity' => 'legendary'])->level())->toBe(5);
+it('numbers the print from the card', function (): void {
+    expect(factsFor()->serial)->toBe('TMR-0418');
 });

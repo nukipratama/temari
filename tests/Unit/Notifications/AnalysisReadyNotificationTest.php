@@ -18,9 +18,6 @@ use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
-use App\Services\Run\Story\Card\CardAspect;
-use App\Services\Run\Story\Card\CardStyle;
-use App\Services\Run\Story\RunCardImageRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -204,44 +201,15 @@ it('exposes the force flag so a channel can skip its delivery claim', function (
         ->and(new AnalysisReadyNotification($analysis)->forcesDelivery())->toBeFalse();
 });
 
-it('attaches the card photo for a post-run whose activity has a card', function (): void {
-    app()->instance(RunCardImageRenderer::class, fakeRenderer());
+it('sends the post-run as text with the run link, never a photo', function (): void {
     $user = User::factory()->create();
     $analysis = postRunAnalysis($user);
     RunCard::factory()->create(['activity_id' => $analysis->subject_id, 'rarity' => 'epic']);
 
-    expect(new AnalysisReadyNotification($analysis)->toTelegram($user)->photoPng)->toBe('fake-png-bytes');
-});
+    $message = new AnalysisReadyNotification($analysis)->toTelegram($user);
 
-it('takes the default print for the photo, since no last-used style is stored', function (): void {
-    $renderer = Mockery::mock(RunCardImageRenderer::class);
-    $renderer->shouldReceive('render')
-        ->once()
-        ->withArgs(fn (RunCard $card, CardStyle $style, CardAspect $aspect): bool => $style === CardStyle::Broadsheet
-            && $aspect === CardAspect::Story)
-        ->andReturn('fake-png-bytes');
-    app()->instance(RunCardImageRenderer::class, $renderer);
-
-    $user = User::factory()->create();
-    $analysis = postRunAnalysis($user);
-    RunCard::factory()->create(['activity_id' => $analysis->subject_id, 'rarity' => 'epic']);
-
-    expect(new AnalysisReadyNotification($analysis)->toTelegram($user)->photoPng)->toBe('fake-png-bytes');
-});
-
-it('falls back to text when the card render throws', function (): void {
-    app()->instance(RunCardImageRenderer::class, fakeRenderer(new RuntimeException('imagick boom')));
-    $user = User::factory()->create();
-    $analysis = postRunAnalysis($user);
-    RunCard::factory()->create(['activity_id' => $analysis->subject_id, 'rarity' => 'epic']);
-
-    expect(new AnalysisReadyNotification($analysis)->toTelegram($user)->photoPng)->toBeNull();
-});
-
-it('sends as text when the post-run activity has no card', function (): void {
-    $user = User::factory()->create();
-
-    expect(new AnalysisReadyNotification(postRunAnalysis($user))->toTelegram($user)->photoPng)->toBeNull();
+    expect($message->photoPng)->toBeNull()
+        ->and($message->text)->toContain(route('activities.show', $analysis->subject_id));
 });
 
 it('builds a web push message with the dynamic title, body, tap-through url, and high urgency', function (): void {
@@ -324,19 +292,6 @@ it('has no inbox message for an analysis type that never notifies', function ():
 
     expect(new AnalysisReadyNotification($analysis)->toInbox(User::factory()->create()))->toBeNull();
 });
-
-/**
- * A fake renderer returning dummy PNG bytes (or throwing) — the real renderer has
- * its own Imagick suite; this only needs "photo when render succeeds, text when not."
- */
-function fakeRenderer(?Throwable $throws = null): RunCardImageRenderer
-{
-    $renderer = Mockery::mock(RunCardImageRenderer::class);
-    $expectation = $renderer->shouldReceive('render');
-    $throws !== null ? $expectation->andThrow($throws) : $expectation->andReturn('fake-png-bytes');
-
-    return $renderer;
-}
 
 /**
  * The one rule that differs from every other gate: `force: true` skips the

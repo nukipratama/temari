@@ -12,6 +12,7 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\DetailHydrator;
+use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\CardPresenter;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
@@ -125,6 +126,10 @@ class RunController extends Controller
         return [
             ...$cards->base($card),
             'flavor_analysis' => $cards->flavorAnalysis($card),
+            // Everything a print needs, resolved once here: the browser draws
+            // the share card itself, so a style, aspect or chip change is a
+            // local redraw rather than a request.
+            'facts' => CardFacts::from($card)->toArray(),
             'edition' => $cards->edition($card, $user->id),
             'public_share_url' => route('activities.show', ['activity' => $card->activity_id]),
         ];

@@ -25,7 +25,6 @@ use App\Services\AI\RecapPeriod;
 use App\Services\AI\ServedBy;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Story\Card\CardFacts;
-use App\Services\Run\Story\Card\CardOptions;
 use App\Services\Run\Story\Card\RunForm;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -227,7 +226,7 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     expect($raceDetail->workout_type)->toBe(1);
 
     $raceCard = RunCard::query()->where('activity_id', $raceDetail->activity_id)->firstOrFail();
-    expect(CardFacts::from($raceCard, new CardOptions())->form)->toBe(RunForm::Race);
+    expect(CardFacts::from($raceCard)->form)->toBe(RunForm::Race);
 
     $preference = TrainingPreference::query()->where('user_id', $user->id)->firstOrFail();
     expect($preference->run_days)->not->toBeEmpty()

@@ -27,7 +27,7 @@ const OFF_TOKEN = [
     '#d99a1a' => 'chartTokens hrZone Z3',
     '#c46f1c' => 'chartTokens hrZone Z4',
     '#b8302f' => 'chartTokens hrZone Z5',
-    '#140d16' => 'Svg PR_GROUND — the broadsheet PR field, sky-deep pulled toward citrus, no token equivalent',
+    '#140d16' => 'card palette PR_GROUND — the broadsheet PR field, sky-deep pulled toward citrus, no token equivalent',
 ];
 
 const MIRROR_FILES = [
@@ -35,7 +35,7 @@ const MIRROR_FILES = [
     'resources/js/lib/runcard.ts',
     'resources/views/app.blade.php',
     'resources/views/errors/layout.blade.php',
-    'app/Services/Run/Story/Card/Svg.php',
+    'resources/js/lib/card/palette.ts',
     'app/Enums/Rarity.php',
 ];
 

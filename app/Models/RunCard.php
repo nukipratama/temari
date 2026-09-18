@@ -23,7 +23,6 @@ use Override;
  * @property array<int, string> $badges
  * @property string $special_move
  * @property bool $pr_set
- * @property string|null $share_image_path
  * @property-read Activity $activity
  */
 #[Fillable([
@@ -32,7 +31,6 @@ use Override;
     'badges',
     'special_move',
     'pr_set',
-    'share_image_path',
 ])]
 class RunCard extends Model
 {

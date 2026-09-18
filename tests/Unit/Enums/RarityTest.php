@@ -26,7 +26,7 @@ it('ranks cases from common (0) to legendary (4)', function (): void {
 /*
 * Parity guard: these hex values are mirrored in resources/js/lib/runcard.ts
  * (RARITY_HEX), the client's single source of truth per the docblock. A
- * server-rendered surface (RunCardImageRenderer) that drifts
+ * printed card surface (lib/card) that drifts
  * from the client's tint fails here first.
  */
 it('exposes the Threadwork rarity hex tints', function (): void {
@@ -39,7 +39,7 @@ it('exposes the Threadwork rarity hex tints', function (): void {
 
 /*
  * Parity guard: these counts are mirrored in resources/js/lib/runcard.ts
- * (RARITY_BAND_COUNT) and RunCardImageRenderer's SVG thread-band ticks.
+ * (RARITY_BAND_COUNT) and the printed card's rarity dots.
  */
 it('scales the thread-band accent count from 1 (common) to 5 (legendary)', function (): void {
     expect(Rarity::Common->bandCount())->toBe(1)
