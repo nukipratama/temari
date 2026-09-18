@@ -40,7 +40,7 @@ describe('topo plate', () => {
 
         expect(svg).toContain('>5.28 KM<');
         expect(svg).toContain('>32:18<');
-        expect(svg).toContain('>6:07/K<');
+        expect(svg).toContain('>6:07/KM<');
         expect(svg).toContain('>13.09.26<');
         expect(svg).toContain('>05:41<');
         expect(svg).toContain('>142<');

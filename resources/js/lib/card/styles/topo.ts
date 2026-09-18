@@ -399,7 +399,7 @@ function titleBlock(
         [
             ['DISTANCE', `${facts.km} KM`],
             [facts.form === 'race' ? 'FINISH' : 'TIME', facts.time],
-            ['PACE', `${facts.pace}/K`],
+            ['PACE', `${facts.pace}/KM`],
         ],
         true,
     );
