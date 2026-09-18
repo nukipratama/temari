@@ -186,6 +186,10 @@ const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
         line: 'pulling in your runs',
         sub: 'hang tight, your history shows up as soon as the first run finishes processing.',
     },
+    failed: {
+        line: "that sync didn't make it through",
+        sub: 'something went wrong pulling your runs from Strava. try syncing again.',
+    },
     ready: {
         line: 'no runs to show yet',
         sub: "new runs appear here once they're processed. try syncing again if you just finished a run.",

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs\Strava;
 
+use Throwable;
 use App\Enums\StravaSyncSource;
+use App\Models\Analytics\StravaSyncLog;
 use App\Models\User;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
@@ -112,5 +114,29 @@ class SyncActivitiesJob implements ShouldQueue
                 'reason' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Once $tries is exhausted on an error none of the typed catches above
+     * handle, the job lands in failed_jobs. Log it like the ingest siblings do,
+     * and close the sync log with a status distinct from the routine per-attempt
+     * 'error' rows (rate limits, token hiccups) so the athlete-facing state can
+     * tell a permanent failure apart from one still retrying.
+     */
+    public function failed(Throwable $exception): void
+    {
+        Log::warning('strava.sync.failed', [
+            'user_id' => $this->userId,
+            'strava_activity_id' => $this->stravaActivityId,
+            'exception' => $exception::class,
+            'reason' => $exception->getMessage(),
+        ]);
+
+        StravaSyncLog::log(
+            $this->userId,
+            'failed',
+            error: $exception->getMessage(),
+            source: $this->stravaActivityId !== null ? StravaSyncSource::Webhook : StravaSyncSource::Manual,
+        );
     }
 }

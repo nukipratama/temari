@@ -90,6 +90,16 @@ it('shows an alert health badge when a user\'s latest sync errored', function ()
         ->assertSee('health: alert');
 });
 
+it('shows an alert health badge when a user\'s sync exhausted its retries', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    StravaSyncLog::log($user->id, 'failed', error: 'boom');
+
+    Livewire::test(StravaHealth::class)
+        ->assertOk()
+        ->assertSee('health: alert');
+});
+
 it('counts a revoked connection in the revoked bucket', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create([

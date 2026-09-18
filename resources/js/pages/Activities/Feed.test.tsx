@@ -65,6 +65,20 @@ describe('Activities/Feed', () => {
         expect(screen.getByText(/No runs to show yet/i)).toBeInTheDocument();
     });
 
+    it('shows a retry button and honest copy when the last sync failed', () => {
+        setMockPage({
+            auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
+            flash: {},
+            demoLoginEnabled: false,
+            stravaSync: { state: 'failed', last_synced_at: null },
+        });
+        render(<RunsIndex runs={[]} rangeFilter="8w" weeklySnapshots={[]} />);
+        expect(screen.getByText(/didn't make it through/i)).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /sync now/i }),
+        ).toBeInTheDocument();
+    });
+
     it('hides the sync button while a sync is already running', () => {
         // state defaults to 'syncing' in beforeEach.
         render(<RunsIndex runs={[]} rangeFilter="8w" weeklySnapshots={[]} />);
