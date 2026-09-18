@@ -237,20 +237,24 @@ it('fills the backfilled history rule-based since it closed before the connectio
     Http::assertSentCount(1);
 
     // The connection lands in June; every backfilled run closed in May, before
-    // it. #993: both recaps are filled rule-based immediately rather than
-    // waiting on hydration or the LLM — Temari was not there for that period.
-    $weekly = collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap);
+    // it. #993: both recaps are routed rule-based, never the LLM — Temari was
+    // not there for that period. #1010: the weekly half still reads the same
+    // WeeklySnapshot columns (form_status, atl/ctl) the LLM path does, so it
+    // is held to the same hydration gate rather than filled blind against a
+    // backfill that just landed as summary-only rows — hence deferred here,
+    // not yet in $captured. The monthly half is unaffected by that fix (see
+    // docs/decisions/recap-waits-for-hydration.md's "monthly is unchanged").
     $monthly = collect($captured)->firstWhere('type', AnalysisType::MonthlyRecap);
 
-    expect($weekly)->not->toBeNull()
-        ->and($weekly['ruleBased'])->toBeTrue()
+    expect(collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap))->toBeNull()
         ->and($monthly)->not->toBeNull()
         ->and($monthly['ruleBased'])->toBeTrue()
         ->and($monthly['subjectId'])->toBe($user->id)
         ->and($monthly['discriminator'])->toBe('2026-05');
 
-    // Still rule-based once hydration finishes: the connect-date gate decided
-    // this, not the hydration backlog.
+    // Once hydration finishes, the deferred weekly recap resolves rule-based
+    // on the next sweep — the connect-date gate decided LLM-vs-rule-based,
+    // hydration decided only when, same as any other pre-connect period.
     Activity::query()->withStubs()->where('user_id', $user->id)->update(['ingest_state' => IngestState::Detailed]);
 
     $captured = [];
