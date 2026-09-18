@@ -263,6 +263,18 @@ jobs:
       - name: Stub .env (larastan boots the app to resolve types)
         run: cp .env.example .env
 
+      # Both tools hash their own inputs internally and refuse a cache whose
+      # content doesn't match, so a stale restore is safe by construction —
+      # the key below only needs to be a good starting point, not exact.
+      - name: Cache PHPStan/Rector analyser caches
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+        with:
+          path: |
+            .phpstan-cache
+            .rector-cache
+          key: analyser-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon', 'rector.php') }}
+          restore-keys: analyser-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
       - name: Pint (code style)
         run: vendor/bin/pint --test
 

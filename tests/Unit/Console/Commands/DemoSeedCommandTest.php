@@ -298,15 +298,21 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
         ->and(InboxNotification::query()->where('user_id', $user->id)->count())->toBe($inboxCount);
 });
 
-it('leaves every analysis done unless --with-edge-states is passed', function (): void {
+it('leaves every analysis done and rule-based-served unless --with-edge-states is passed', function (): void {
     $this->artisan('demo:seed')->assertSuccessful();
 
     expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())
         ->toBe(0, 'The public demo must not render a pending or failed block.');
+
+    expect(Analysis::query()->where('served_by', ServedBy::Llm)->count())
+        ->toBe(0, 'The demo seed never calls the LLM, so no demo row may claim it did.')
+        ->and(Analysis::query()->where('served_by', ServedBy::RuleBased)->count())
+        ->toBeGreaterThan(0);
 });
 
 it('seeds the pending, processing and failed states the audits cannot otherwise reach', function (): void {
-    $this->artisan('demo:seed')->assertSuccessful();
+    // demo:seed --with-edge-states already runs the full seed() before applying
+    // edge states, so a plain seed() call first would just redo it for nothing.
     $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
 
     $statuses = Analysis::query()
@@ -336,17 +342,8 @@ it('applies the edge states at most once across re-runs', function (): void {
     expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())->toBe($first);
 });
 
-it('stamps every seeded narration rule-based, never llm', function (): void {
-    $this->artisan('demo:seed')->assertSuccessful();
-
-    expect(Analysis::query()->where('served_by', ServedBy::Llm)->count())
-        ->toBe(0, 'The demo seed never calls the LLM, so no demo row may claim it did.')
-        ->and(Analysis::query()->where('served_by', ServedBy::RuleBased)->count())
-        ->toBeGreaterThan(0);
-});
-
 it('clears the producer on a row whose content the edge states blank', function (): void {
-    $this->artisan('demo:seed')->assertSuccessful();
+    // See the previous test: --with-edge-states already seeds first.
     $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
 
     expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->whereNotNull('served_by')->count())
