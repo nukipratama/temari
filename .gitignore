@@ -54,6 +54,9 @@ Thumbs.db
 # Vitest coverage reports (regenerated on every test run)
 /coverage
 
+# Vitest shard blob reports (frontend-tests-shard/frontend-coverage-merge; see ci.yml)
+/.vitest-reports
+
 # Octane downloads a local FrankenPHP binary for dev runs — large + platform-
 # specific, stays out of git. The worker stub at public/frankenphp-worker.php
 # IS committed (the prod Docker build relies on it).
