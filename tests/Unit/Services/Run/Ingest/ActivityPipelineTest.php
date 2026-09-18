@@ -10,6 +10,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\StravaConnection;
+use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Events\ActivityIngested;
 use App\Jobs\Geo\ResolveActivityLocationJob;
@@ -963,7 +964,7 @@ it('keeps zones the athlete set by hand too', function (): void {
 });
 
 /**
- * `strava:hydrate-backlog` drains newest-first, so the peak is frequently
+ * `strava:hydrate-backlog` drains oldest-first, so the peak is frequently
  * already in the history rather than in the run being ingested. Reconciling
  * against the whole history makes the answer the same either way.
  */
@@ -1132,4 +1133,51 @@ it('clears a backfill phantom PR, and its mood, once the older faster run it nev
         ->and($newerCard->special_move)->not->toBe('Personal Best')
         ->and(StoryLine::query()->where('activity_id', $newer->id)->value('mood'))->not->toBe('blazing')
         ->and(RunCard::query()->where('activity_id', $older->id)->value('pr_set'))->toBeTrue();
+});
+
+it('lands each card\'s PR flag and mood correctly at ingest when hydrated oldest-first, no replay needed', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create([
+        'access_token' => 'tok',
+        'token_expires_at' => Carbon::now()->addHours(2),
+    ]);
+    $older = Activity::factory()->for($user)->stub()->create(['strava_external_id' => 501]);
+    $newer = Activity::factory()->for($user)->stub()->create(['strava_external_id' => 502]);
+
+    $fastSplits = [];
+    $slowSplits = [];
+    for ($k = 1; $k <= 5; $k++) {
+        $fastSplits[] = ['split' => $k, 'distance' => 1000, 'moving_time' => 360, 'elapsed_time' => 360];
+        $slowSplits[] = ['split' => $k, 'distance' => 1000, 'moving_time' => 434, 'elapsed_time' => 434];
+    }
+
+    Http::fake([
+        'strava.com/api/v3/activities/501' => Http::response([
+            'name' => 'Fast 5K', 'start_date_local' => '2025-11-26 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'splits_metric' => $fastSplits, 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/501/streams*' => Http::response([]),
+        'strava.com/api/v3/activities/502' => Http::response([
+            'name' => 'Easy 5K', 'start_date_local' => '2026-09-17 17:39:52',
+            'distance' => 5000, 'moving_time' => 2170, 'elapsed_time' => 2170,
+            'splits_metric' => $slowSplits, 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/502/streams*' => Http::response([]),
+    ]);
+
+    // Oldest-first: the faster, earlier run lands first and genuinely sets the record.
+    $this->pipeline->ingest($older);
+    $olderCard = RunCard::query()->where('activity_id', $older->id)->firstOrFail();
+    expect($olderCard->pr_set)->toBeTrue();
+
+    // The slower, later run lands next with the record already known, so it is
+    // judged correctly the moment it lands — no RecomputeCardClaimsAction needed.
+    $this->pipeline->ingest($newer);
+    $newerCard = RunCard::query()->where('activity_id', $newer->id)->firstOrFail();
+
+    expect($newerCard->pr_set)->toBeFalse()
+        ->and($newerCard->special_move)->not->toBe('Personal Best')
+        ->and(StoryLine::query()->where('activity_id', $newer->id)->value('mood'))->not->toBe('blazing')
+        ->and($olderCard->fresh()->pr_set)->toBeTrue();
 });

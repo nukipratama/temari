@@ -355,9 +355,8 @@ class ActivityPipeline
      *
      * Order-independent by construction: the ceiling is the highest plausible
      * `max_heartrate` across the whole history, not a running maximum built up
-     * as ingest walks. A drain hydrating newest-first therefore reaches the same
-     * answer as one walking oldest-first — the assumption the previous shape
-     * carried, which `strava:hydrate-backlog` does not satisfy.
+     * as ingest walks. `strava:hydrate-backlog` drains oldest-first, but this
+     * would reach the same answer walking either direction.
      *
      * Zones are only re-derived for a profile the athlete never spoke for. A
      * `strava` or `manual` source states where the bands came from, and the

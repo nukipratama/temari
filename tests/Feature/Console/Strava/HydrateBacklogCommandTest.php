@@ -59,18 +59,31 @@ it('queues the summary-only backlog at background priority', function (): void {
     );
 });
 
-it('hydrates newest-first', function (): void {
+it('hydrates oldest-first', function (): void {
     $user = drainUser();
-    backlogRun($user, '2020-05-01 06:00:00');
-    $newest = backlogRun($user, '2026-08-01 06:00:00');
+    $oldest = backlogRun($user, '2020-05-01 06:00:00');
+    backlogRun($user, '2026-08-01 06:00:00');
 
     $this->artisan('strava:hydrate-backlog', ['--batch' => 1])->assertSuccessful();
 
     Queue::assertPushed(
         IngestActivityJob::class,
-        fn (IngestActivityJob $job): bool => $job->activityId === $newest->id,
+        fn (IngestActivityJob $job): bool => $job->activityId === $oldest->id,
     );
     Queue::assertPushed(IngestActivityJob::class, 1);
+});
+
+it('hydrates a mixed-date-order backlog oldest-first', function (): void {
+    $user = drainUser();
+    $middle = backlogRun($user, '2023-03-01 06:00:00');
+    $oldest = backlogRun($user, '2019-11-20 06:00:00');
+    $newest = backlogRun($user, '2026-08-01 06:00:00');
+
+    $this->artisan('strava:hydrate-backlog', ['--batch' => 3])->assertSuccessful();
+
+    $order = Queue::pushed(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
+
+    expect($order)->toBe([$oldest->id, $middle->id, $newest->id]);
 });
 
 it('leaves already-detailed runs alone', function (): void {
@@ -106,6 +119,21 @@ it('gives up on a run whose detail fetch has exhausted its attempts', function (
         fn (IngestActivityJob $job): bool => $job->activityId === $drainable->id,
     );
     Queue::assertPushed(IngestActivityJob::class, 1);
+});
+
+it('skips a permanently-stuck old run and continues draining newer ones in date order', function (): void {
+    $user = drainUser();
+    $stuck = backlogRun($user, '2021-01-01 06:00:00');
+    $stuck->update(['detail_fail_count' => Activity::MAX_DETAIL_FETCH_ATTEMPTS]);
+    $next = backlogRun($user, '2022-06-01 06:00:00');
+    $newest = backlogRun($user, '2026-08-01 06:00:00');
+
+    $this->artisan('strava:hydrate-backlog', ['--batch' => 2])->assertSuccessful();
+
+    Queue::assertPushed(IngestActivityJob::class, 2);
+    $queued = Queue::pushed(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
+    expect($queued)->toBe([$next->id, $newest->id])
+        ->and($queued)->not->toContain($stuck->id);
 });
 
 it('never spends a Strava read on the demo account', function (): void {
