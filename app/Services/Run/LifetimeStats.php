@@ -23,7 +23,7 @@ class LifetimeStats
     private const int CACHE_TTL_SECONDS = 300;
 
     /**
-     * @return array{total_runs: int, total_km: float, longest_km: float, first_run_at: string|null}
+     * @return array{total_runs: int, total_km: float, longest_km: float, first_run_at: string|null, has_activity: bool}
      */
     public function forUser(User $user): array
     {
@@ -40,7 +40,7 @@ class LifetimeStats
     }
 
     /**
-     * @return array{total_runs: int, total_km: float, longest_km: float, first_run_at: string|null}
+     * @return array{total_runs: int, total_km: float, longest_km: float, first_run_at: string|null, has_activity: bool}
      */
     private function compute(User $user): array
     {
@@ -63,6 +63,7 @@ class LifetimeStats
             'total_km' => DistanceFormatter::km($totalDistanceMeters),
             'longest_km' => DistanceFormatter::km($longestMeters, DistanceFormatter::EXACT),
             'first_run_at' => is_string($firstRunAt) ? $firstRunAt : $firstRunAt?->toIso8601String(),
+            'has_activity' => $totalRuns > 0,
         ];
     }
 }

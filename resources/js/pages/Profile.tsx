@@ -39,6 +39,7 @@ interface StatsPayload {
     total_runs: number;
     total_km: number;
     longest_run_km: number;
+    has_activity: boolean;
 }
 
 interface FitnessPayload {
@@ -76,23 +77,25 @@ export default function Profile({
     const firstName =
         sharedUser?.first_name ?? identity.name.split(' ')[0] ?? '';
 
-    const heroStats: HeroStat[] = [
-        {
-            icon: Route,
-            label: 'Total km',
-            value: stats.total_km.toFixed(1),
-        },
-        {
-            icon: Footprints,
-            label: 'Total runs',
-            value: stats.total_runs.toString(),
-        },
-        {
-            icon: Trophy,
-            label: 'Longest run',
-            value: stats.longest_run_km.toFixed(2),
-        },
-    ];
+    const heroStats: HeroStat[] = stats.has_activity
+        ? [
+              {
+                  icon: Route,
+                  label: 'Total km',
+                  value: stats.total_km.toFixed(1),
+              },
+              {
+                  icon: Footprints,
+                  label: 'Total runs',
+                  value: stats.total_runs.toString(),
+              },
+              {
+                  icon: Trophy,
+                  label: 'Longest run',
+                  value: stats.longest_run_km.toFixed(2),
+              },
+          ]
+        : [];
     if (fitness?.vdot != null) {
         heroStats.push({
             icon: Gauge,

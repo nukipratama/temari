@@ -116,34 +116,43 @@ export default function ProfileHero({
             )}
 
             <div className="relative -mx-5 mt-5 border-t border-border-strong" />
-            <div
-                ref={statRail.ref}
-                style={{
-                    maskImage: statRail.faded ? SCROLL_FADE_MASK : undefined,
-                }}
-                className="relative -mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 pt-3.5 scrollbar-thin-fine"
-            >
-                {stats.map((stat) => (
-                    <div
-                        key={stat.label}
-                        className="grow shrink-0 basis-[108px] min-w-fit rounded-sm bg-muted px-2.5 py-3 text-center ring-1 ring-horizon/30"
-                    >
-                        <Icon
-                            icon={stat.icon}
-                            width={17}
-                            height={17}
-                            className="mx-auto mb-1.5 text-horizon-ink"
-                            aria-hidden
-                        />
-                        <b className="block font-mono text-base font-bold tabular-nums text-foreground">
-                            {stat.value}
-                        </b>
-                        <span className="mt-0.5 block text-label-micro text-text-2">
-                            {stat.label}
-                        </span>
-                    </div>
-                ))}
-            </div>
+            {stats.length > 0 ? (
+                <div
+                    ref={statRail.ref}
+                    style={{
+                        maskImage: statRail.faded
+                            ? SCROLL_FADE_MASK
+                            : undefined,
+                    }}
+                    className="relative -mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 pt-3.5 scrollbar-thin-fine"
+                >
+                    {stats.map((stat) => (
+                        <div
+                            key={stat.label}
+                            className="grow shrink-0 basis-[108px] min-w-fit rounded-sm bg-muted px-2.5 py-3 text-center ring-1 ring-horizon/30"
+                        >
+                            <Icon
+                                icon={stat.icon}
+                                width={17}
+                                height={17}
+                                className="mx-auto mb-1.5 text-horizon-ink"
+                                aria-hidden
+                            />
+                            <b className="block font-mono text-base font-bold tabular-nums text-foreground">
+                                {stat.value}
+                            </b>
+                            <span className="mt-0.5 block text-label-micro text-text-2">
+                                {stat.label}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="relative mt-3.5 text-sm text-text-2">
+                    no runs yet. sync your first one and your numbers show up
+                    here.
+                </p>
+            )}
         </section>
     );
 }

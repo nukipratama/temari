@@ -98,6 +98,7 @@ class ProfileController extends Controller
                 'total_runs' => $loadLifetime()['total_runs'],
                 'total_km' => $loadLifetime()['total_km'],
                 'longest_run_km' => $loadLifetime()['longest_km'],
+                'has_activity' => $loadLifetime()['has_activity'],
             ],
             'profileVoice' => fn (): array => $this->resolveProfileVoice($user),
             'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user), $activeRace($user->id))),
