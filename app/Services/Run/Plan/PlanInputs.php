@@ -20,6 +20,8 @@ final readonly class PlanInputs
      * @param  array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int}  $adaptation
      * @param  array<string, true>  $pinnedDates  Y-m-d the athlete fixed, never overwritten
      * @param  array<string, true>  $settledDates  Y-m-d already carrying a verdict
+     * @param  float|null  $volumeFloorKm  the race season's weekly volume floor, which an adapter deload is allowed to break
+     * @param  bool  $increasesHeld  the race block holds flat at its floor until the load guard's recent runs are scored
      */
     public function __construct(
         public int $userId,
@@ -36,6 +38,8 @@ final readonly class PlanInputs
         public array $pinnedDates,
         public array $settledDates,
         public ?float $projectedRaceSeconds,
+        public ?float $volumeFloorKm = null,
+        public bool $increasesHeld = false,
     ) {
     }
 

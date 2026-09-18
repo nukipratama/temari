@@ -42,6 +42,7 @@ final readonly class PlanInputsGatherer
         // set/cleared since the last call, or a self-scaled season's 12-week
         // expiry, both take effect here — see SeasonService's own docblock.
         $season = $this->seasonService->ensureCurrent($user, $today);
+        $this->seasonService->releaseHeldIncreases($season, $user, $today);
 
         $race = ($this->activeRace)($user->id);
         $preference = ($this->trainingPreference)($user->id);
@@ -72,6 +73,8 @@ final readonly class PlanInputsGatherer
             projectedRaceSeconds: $race === null
                 ? null
                 : $this->riegelProjector->project($user, (float) $race->distance_m)['predicted_sec'] ?? null,
+            volumeFloorKm: $season->volume_floor_km,
+            increasesHeld: $season->increases_held,
         );
     }
 

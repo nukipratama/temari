@@ -10,6 +10,7 @@ use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\SeasonGoal;
 use App\Models\User;
+use App\Services\AI\HydrationBacklog;
 use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
@@ -54,19 +55,6 @@ final readonly class SeasonService
      */
     private const float REANCHOR_COLLAPSE_FRACTION = 0.25;
 
-    /**
-     * The long run a race distance wants the athlete to reach, as
-     * `[distance_up_to_m, km]` ascending, with the marathon target past the last band.
-     *
-     * @var list<array{0: float, 1: float}>
-     */
-    private const array READINESS_LONG_RUN_BANDS = [
-        [15_000.0, 12.0],
-        [25_000.0, 18.0],
-    ];
-
-    private const float READINESS_LONG_RUN_MARATHON_KM = 30.0;
-
     /** Every week count short of the longest block, spelled out for the under-ready line. */
     private const array WEEK_COUNT_WORDS = [
         'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
@@ -85,6 +73,7 @@ final readonly class SeasonService
         private ResolveActiveRaceAction $activeRace,
         private ResolveSeasonAction $season,
         private SeasonSummaryBuilder $seasonSummaryBuilder,
+        private HydrationBacklog $hydrationBacklog,
     ) {
     }
 
@@ -103,6 +92,8 @@ final readonly class SeasonService
 
         return DB::transaction(function () use ($user, $race, $today, $current): Season {
             $anchorKm = $this->baseline->trailingWeeklyVolumeKm($user, $today);
+            $volumeFloorKm = $race !== null ? $this->baseline->recentWeeklyMeanKm($user, $today) : null;
+            $increasesHeld = $race !== null && $this->recentLoadAwaitsScoring($user, $today);
             $opensWithRecovery = $race === null && self::followsARaceAlreadyRun($current, $today);
             $endsAt = $race !== null
                 ? $race->race_date->toDateString()
@@ -118,6 +109,8 @@ final readonly class SeasonService
                 $current->update([
                     'race_goal_id' => $race?->id,
                     'anchor_weekly_volume_km' => $anchorKm,
+                    'volume_floor_km' => $volumeFloorKm,
+                    'increases_held' => $increasesHeld,
                     'opens_with_recovery' => $opensWithRecovery,
                     'block_goals_appended_at' => $blockGoalsAppendedAt,
                     'ends_at' => $endsAt,
@@ -139,6 +132,8 @@ final readonly class SeasonService
                 'user_id' => $user->id,
                 'race_goal_id' => $race?->id,
                 'anchor_weekly_volume_km' => $anchorKm,
+                'volume_floor_km' => $volumeFloorKm,
+                'increases_held' => $increasesHeld,
                 'opens_with_recovery' => $opensWithRecovery,
                 'block_goals_appended_at' => $blockGoalsAppendedAt,
                 'starts_at' => $today->toDateString(),
@@ -185,15 +180,57 @@ final readonly class SeasonService
      * below it. A replan, a page load or a manual regeneration reaches here
      * every time and must leave the arc alone — only a race change (which
      * opens a new season) resets it outright.
+     *
+     * A race season's volume floor follows the same two rules: backfilled
+     * from the weeks before the season opened when it has none, and brought
+     * down to the new anchor after a collapse, since the weeks it averaged no
+     * longer describe the athlete.
      */
     private function reanchorIfCollapsed(Season $season, User $user, Carbon $today): void
     {
         $anchor = $season->anchor_weekly_volume_km;
         $trailing = $this->baseline->trailingWeeklyVolumeKm($user, $today);
+        $collapsed = $anchor !== null && $trailing < $anchor * (1 - self::REANCHOR_COLLAPSE_FRACTION);
 
-        if ($anchor === null || $trailing < $anchor * (1 - self::REANCHOR_COLLAPSE_FRACTION)) {
+        if ($anchor === null || $collapsed) {
             $season->update(['anchor_weekly_volume_km' => $trailing]);
         }
+
+        if ($season->race_goal_id === null) {
+            return;
+        }
+
+        if ($collapsed) {
+            $season->update(['volume_floor_km' => $trailing]);
+        } elseif ($season->volume_floor_km === null) {
+            $season->update(['volume_floor_km' => $this->baseline->recentWeeklyMeanKm($user, $season->starts_at)]);
+        }
+    }
+
+    /**
+     * Lets a held season's block ramp once the load guard can judge it. Only
+     * a regeneration calls this, so the multipliers it stamps and the
+     * baseline every render reads flip together.
+     */
+    public function releaseHeldIncreases(Season $season, User $user, Carbon $today): void
+    {
+        if ($season->increases_held && ! $this->recentLoadAwaitsScoring($user, $today)) {
+            $season->update(['increases_held' => false]);
+        }
+    }
+
+    /**
+     * Whether a run inside the chronic-load window {@see PlanAdapter} judges
+     * through {@see TrainingLoad} is still waiting for the hydration that
+     * scores its TRIMP. Until then the guard reads that load as no signal.
+     */
+    private function recentLoadAwaitsScoring(User $user, Carbon $today): bool
+    {
+        return $this->hydrationBacklog->awaitsHydrationBefore(
+            $user->id,
+            $today->copy()->addDay()->startOfDay(),
+            $today->copy()->subDays(TrainingLoad::CTL_TAU - 1)->startOfDay(),
+        );
     }
 
     /**
@@ -236,7 +273,7 @@ final readonly class SeasonService
 
         $phases = array_column($weeks, 'phase');
         $zones = array_column($weeks, 'zone');
-        $multipliers = PhaseSchedule::volumeMultipliers($phases, $race === null, $zones);
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, $race === null || $season->increases_held, $zones);
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
 
         $qualityTotal = 0;
@@ -269,9 +306,7 @@ final readonly class SeasonService
                 'title' => 'Run this season\'s longest long run',
                 'metric' => 'season_longest_long_run_km',
                 'metric_key' => null,
-                'target' => $race !== null
-                    ? min(self::readinessLongRunKm((float) $race->distance_m), $baselineData['long_run_cap_km'])
-                    : max(1.0, round($longestLongRunKm, 1)),
+                'target' => max(1.0, round($longestLongRunKm, 1)),
                 'unit' => 'km',
             ],
             [
@@ -321,17 +356,6 @@ final readonly class SeasonService
 
         return self::WEEK_COUNT_WORDS[$weeks - 1].' '.Str::plural('week', $weeks)
             ." is tighter than I'd pick for this one, so we build what we can and race what we've built.";
-    }
-
-    private static function readinessLongRunKm(float $raceDistanceM): float
-    {
-        foreach (self::READINESS_LONG_RUN_BANDS as [$upTo, $km]) {
-            if ($raceDistanceM <= $upTo) {
-                return $km;
-            }
-        }
-
-        return self::READINESS_LONG_RUN_MARATHON_KM;
     }
 
     private static function blockHasOpened(RaceGoal $race, Carbon $today): bool
