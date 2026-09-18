@@ -9,6 +9,7 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\KickoffRecapsJob;
+use App\Jobs\Strava\HydrateBacklogForUserJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -63,6 +64,29 @@ it('runs the weekly and monthly kickoff for its own user, attributed to the inge
 
     expect($seen['weekly'])->toBe([$user->id, AnalysisOrigin::Ingest])
         ->and($seen['monthly'])->toBe([$user->id, AnalysisOrigin::Ingest]);
+});
+
+/**
+ * #1051: the backfill landing is the moment hydration should start, not the
+ * next `strava:hydrate-backlog` tick up to 15 minutes later.
+ */
+it('dispatches an immediate hydration batch for the backfilled user', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    [$weekly, $monthly] = kickoffRecapsDoubles();
+
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+
+    Bus::assertDispatched(HydrateBacklogForUserJob::class, fn (HydrateBacklogForUserJob $job): bool => $job->userId === $user->id);
+});
+
+it('does not dispatch a hydration batch when the user is gone', function (): void {
+    Bus::fake();
+    [$weekly, $monthly] = kickoffRecapsDoubles();
+
+    new KickoffRecapsJob(404)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+
+    Bus::assertNotDispatched(HydrateBacklogForUserJob::class);
 });
 
 /** The chain's last link is the only place that can answer "is the history in yet?". */
