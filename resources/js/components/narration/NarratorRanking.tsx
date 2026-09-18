@@ -16,15 +16,22 @@ interface NarratorRankingProps {
 /**
  * Ranked cost-and-calls list beside the daily chart, replacing the chart's own
  * wrapping legend. `chart.kinds` is already cost-descending and shares its
- * band colours with the stacked bars via {@link band}; calls are joined in
- * from the breakdown rows the chart itself has no need of.
+ * band colours with the stacked bars via {@link band}; tokens and calls are
+ * joined in from the breakdown rows the chart itself has no need of, so a kind
+ * that is most of the spend on a handful of calls reads differently from one
+ * that got there on hundreds.
  */
 export default function NarratorRanking({
     chart,
     byKind,
     currency,
 }: Readonly<NarratorRankingProps>) {
-    const callsByKind = new Map(byKind.map((row) => [row.kind, row.calls]));
+    const rowsByKind = new Map(
+        byKind.map((row) => [
+            row.kind,
+            { calls: row.calls, tokens: row.total },
+        ]),
+    );
 
     return (
         <div>
@@ -44,28 +51,30 @@ export default function NarratorRanking({
                 ) : (
                     <ul>
                         {chart.kinds.map((kind, index) => {
-                            const calls = callsByKind.get(kind.kind) ?? null;
+                            const stats = rowsByKind.get(kind.kind) ?? null;
 
                             return (
                                 <li
                                     key={kind.kind}
-                                    className="flex items-center gap-2 border-b border-border/45 py-1.5 text-sm last:border-b-0"
+                                    className="flex flex-col gap-0.5 border-b border-border/45 py-1.5 text-sm last:border-b-0"
                                 >
-                                    <span
-                                        aria-hidden
-                                        className={`h-2.5 w-2.5 shrink-0 rounded-sm ${band(index)}`}
-                                    />
-                                    <span className="min-w-0 flex-1 truncate text-text-2">
-                                        {kind.label}
-                                    </span>
-                                    <span className="font-mono text-sm font-semibold text-foreground tabular-nums">
-                                        {formatCost(kind.cost, currency)}
-                                    </span>
-                                    <span className="w-16 shrink-0 text-right font-mono text-xs text-text-3 tabular-nums">
-                                        {calls === null
+                                    <div className="flex items-center gap-2">
+                                        <span
+                                            aria-hidden
+                                            className={`h-2.5 w-2.5 shrink-0 rounded-sm ${band(index)}`}
+                                        />
+                                        <span className="min-w-0 flex-1 truncate text-text-2">
+                                            {kind.label}
+                                        </span>
+                                        <span className="font-mono text-sm font-semibold text-foreground tabular-nums">
+                                            {formatCost(kind.cost, currency)}
+                                        </span>
+                                    </div>
+                                    <div className="pl-[18px] font-mono text-xs text-text-3 tabular-nums">
+                                        {stats === null
                                             ? '—'
-                                            : `${fmt(calls)} calls`}
-                                    </span>
+                                            : `${fmt(stats.tokens)} tok · ${fmt(stats.calls)} calls`}
+                                    </div>
                                 </li>
                             );
                         })}

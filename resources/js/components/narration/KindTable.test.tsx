@@ -11,6 +11,7 @@ function row(overrides: Partial<UsageRow> = {}): UsageRow {
         prompt: 300,
         completion: 150,
         total: 450,
+        cached: 214,
         calls: 1,
         cost: 0.03,
         truncated_calls: 0,
@@ -63,7 +64,7 @@ describe('KindTable', () => {
         );
 
         expect(
-            screen.getByText('3.5 steps · 71% cache · 18% reasoning'),
+            screen.getByText('3.5 steps · 214 cached (71%) · 18% reasoning'),
         ).toBeInTheDocument();
         expect(screen.queryAllByText(/steps/)).toHaveLength(1);
     });
@@ -83,14 +84,21 @@ describe('KindTable', () => {
     it('treats a measured zero as measured, not as missing', () => {
         render(
             <KindTable
-                rows={[row({ avg_steps: 0, cached_pct: 0, reasoning_pct: 0 })]}
+                rows={[
+                    row({
+                        avg_steps: 0,
+                        cached: 0,
+                        cached_pct: 0,
+                        reasoning_pct: 0,
+                    }),
+                ]}
                 grandTotal={880}
                 currency="USD"
             />,
         );
 
         expect(
-            screen.getByText('0.0 steps · 0% cache · 0% reasoning'),
+            screen.getByText('0.0 steps · 0 cached (0%) · 0% reasoning'),
         ).toBeInTheDocument();
     });
 

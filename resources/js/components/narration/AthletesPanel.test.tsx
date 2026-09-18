@@ -14,6 +14,7 @@ const ROW: AthleteRow = {
     last7: 1.5,
     last30: 4.75,
     calls: 42,
+    tokens: 18400,
     ceiling: 1,
     ceiling_overridden: false,
     capped: false,
@@ -59,6 +60,13 @@ describe('AthletesPanel', () => {
 
         expect(screen.getByText('$1.50')).toBeInTheDocument();
         expect(screen.getByText('$4.75')).toBeInTheDocument();
+    });
+
+    it('shows the 30-day token total beside calls', () => {
+        renderPanel();
+
+        expect(screen.getByText('tokens, 30d')).toBeInTheDocument();
+        expect(screen.getByText('18,400')).toBeInTheDocument();
     });
 
     it('reads today against the athlete own ceiling', () => {

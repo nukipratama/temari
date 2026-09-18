@@ -111,7 +111,7 @@ function AthleteRowView({
     const label = athleteLabel(row.user_name, row.user_id);
 
     return (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-b border-border/55 py-3 last:border-b-0 sm:grid-cols-3 lg:grid-cols-[minmax(150px,1.1fr)_minmax(120px,0.9fr)_repeat(3,minmax(58px,0.5fr))_minmax(96px,0.8fr)] lg:items-center">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-b border-border/55 py-3 last:border-b-0 sm:grid-cols-3 lg:grid-cols-[minmax(150px,1.1fr)_minmax(120px,0.9fr)_repeat(4,minmax(58px,0.5fr))_minmax(96px,0.8fr)] lg:items-center">
             <div className="col-span-2 sm:col-span-1">
                 <a
                     href={athletePath(row.user_id)}
@@ -153,6 +153,7 @@ function AthleteRowView({
             <Fact label="7 days" value={formatCost(row.last7, currency)} />
             <Fact label="30 days" value={formatCost(row.last30, currency)} />
             <Fact label="calls" value={fmt(row.calls)} />
+            <Fact label="tokens, 30d" value={fmt(row.tokens)} />
 
             <div className="col-span-2 sm:col-span-3 lg:col-span-1">
                 <span className="text-label-micro text-text-3">

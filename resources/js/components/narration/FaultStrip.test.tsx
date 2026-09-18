@@ -13,6 +13,7 @@ import FaultStrip from './FaultStrip';
 
 const BUDGET: Budget = {
     todayCost: 1,
+    tokens: { prompt: 3000, completion: 1000, cached: 500, total: 4000 },
     dailyCeiling: 3,
     perUserCeiling: 1,
     totalCeiling: 5,
@@ -33,6 +34,7 @@ const ATHLETE: AthleteRow = {
     last7: 4,
     last30: 10,
     calls: 42,
+    tokens: 84000,
     ceiling: 1,
     ceiling_overridden: false,
     capped: false,

@@ -94,6 +94,7 @@ it('aggregates totals + per-kind ordered by total descending, excluding out-of-r
         'prompt' => 600,
         'completion' => 280,
         'total' => 880,
+        'cached' => 0,
         'calls' => 3,
         'truncated_calls' => 1,
     ])
@@ -247,6 +248,7 @@ it('sums per-day cost across deployments in the stacked series', function () use
     expect($chart['days'])->toHaveCount(1)
         ->and($chart['days'][0]['day'])->toBe('2026-05-10')
         ->and($chart['days'][0]['cost'])->toBe(2.65)
+        ->and($chart['days'][0]['tokens'])->toBe(2_000_000)
         ->and($chart['days'][0]['byKind']['briefing'])->toBe(2.50)
         ->and($chart['days'][0]['byKind']['run-insight'])->toBe(0.15);
 });
@@ -338,11 +340,44 @@ it('returns zeroed totals and empty breakdowns when no rows fall in range', func
     $result = $this->report->build($from, $to, null);
 
     expect($result['totals'])->toBe([
-        'prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'truncated_calls' => 0, 'cost' => 0.0,
+        'prompt' => 0, 'completion' => 0, 'total' => 0, 'cached' => 0, 'calls' => 0, 'truncated_calls' => 0, 'cost' => 0.0,
     ])
         ->and($result['byKind'])->toBe([])
         ->and($result['byDeployment'])->toBe([])
         ->and($result['availableKinds'])->toBe([]);
+});
+
+it('exposes raw cached token counts on totals and byKind, not just the cache percentage', function (): void {
+    seedAgentUsage('run_insight', 1000, 200, 600, 50, 2);
+    seedAgentUsage('run_insight', 1000, 200, 900, 30, 4);
+
+    $result = $this->report->build(Carbon::today(), Carbon::today(), null);
+    $row = collect($result['byKind'])->firstWhere('kind', 'run_insight');
+
+    expect($result['totals']['cached'])->toBe(1500)
+        ->and($row['cached'])->toBe(1500);
+});
+
+it('reports raw token totals for today, decoupled from the selected range', function (): void {
+    seedAgentUsage('run_insight', 1000, 200, 600, 50, 2);
+    seedReportUsage('briefing', 999, 999, Carbon::today()->subDays(60)); // outside today
+
+    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
+
+    expect($result['budget']['tokens'])->toBe([
+        'prompt' => 1000,
+        'completion' => 200,
+        'cached' => 600,
+        'total' => 1200,
+    ]);
+});
+
+it('reports zeroed today tokens when nothing billed today', function (): void {
+    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
+
+    expect($result['budget']['tokens'])->toBe([
+        'prompt' => 0, 'completion' => 0, 'cached' => 0, 'total' => 0,
+    ]);
 });
 
 it('summarises how a kind behaves as an agent', function (): void {
@@ -476,7 +511,10 @@ it('measures the money columns over fixed windows, whatever range is selected', 
     expect($row['today'])->toBe(2.50)
         ->and($row['last7'])->toBe(5.00)
         ->and($row['last30'])->toBe(7.50)
-        ->and($row['calls'])->toBe(3);
+        ->and($row['calls'])->toBe(3)
+        // Unlike the money columns, tokens sum across the whole 30-day window,
+        // same as `calls` — the 60-day-old row stays excluded either way.
+        ->and($row['tokens'])->toBe(3_000_000);
 });
 
 it('gives the sparkline one slot per day of the window, silent days included', function (): void {
@@ -623,6 +661,7 @@ it('lists a silent athlete rather than hiding them behind zero spend', function 
 
     expect($row['today'])->toBe(0.0)
         ->and($row['calls'])->toBe(0)
+        ->and($row['tokens'])->toBe(0)
         ->and($row['sparkline'])->toHaveCount(TokenUsageReport::ATHLETE_WINDOW_DAYS);
 });
 

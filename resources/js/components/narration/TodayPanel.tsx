@@ -2,7 +2,7 @@ import type { Budget, CostChart } from '@/pages/Narration/types';
 
 import ProgressBar from '@/components/ui/ProgressBar';
 import { cn } from '@/lib/cn';
-import { formatCost, median } from '@/pages/Narration/helpers';
+import { fmt, formatCost, median } from '@/pages/Narration/helpers';
 
 interface TodayPanelProps {
     budget: Budget;
@@ -20,18 +20,25 @@ export default function TodayPanel({
     budget,
     chart,
 }: Readonly<TodayPanelProps>) {
-    const { todayCost, totalCeiling, currency } = budget;
+    const { todayCost, totalCeiling, currency, tokens } = budget;
     const hasCeiling = totalCeiling !== null && totalCeiling > 0;
     const ratio = hasCeiling ? todayCost / totalCeiling : 0;
     const over = hasCeiling && todayCost > totalCeiling;
 
     const days = chart.days;
     const medianCost = median(days.map((day) => day.cost));
-    const yesterday = days.length > 1 ? days[days.length - 2].cost : null;
-    const busiest =
-        days.length > 1
-            ? Math.max(...days.slice(0, -1).map((day) => day.cost))
+    const medianTokens =
+        days.length > 0
+            ? Math.round(median(days.map((day) => day.tokens)))
             : null;
+    const yesterdayDay = days.length > 1 ? days[days.length - 2] : null;
+    const yesterday = yesterdayDay?.cost ?? null;
+    const priorDays = days.slice(0, -1);
+    const busiestDay =
+        priorDays.length > 0
+            ? priorDays.reduce((max, day) => (day.cost > max.cost ? day : max))
+            : null;
+    const busiest = busiestDay?.cost ?? null;
 
     return (
         <section className="mt-6 rounded-md border border-border bg-popover pad-card shadow-e1">
@@ -48,6 +55,9 @@ export default function TodayPanel({
                     >
                         {formatCost(todayCost, currency)}
                     </div>
+                    <p className="mt-1 font-mono text-xs text-text-2 tabular-nums">
+                        {fmt(tokens.total)} tokens · {fmt(tokens.cached)} cached
+                    </p>
                     {hasCeiling ? (
                         <>
                             <ProgressBar
@@ -85,6 +95,11 @@ export default function TodayPanel({
                                 ? formatCost(medianCost, currency)
                                 : '—'
                         }
+                        sub={
+                            medianTokens === null
+                                ? undefined
+                                : `${fmt(medianTokens)} tok`
+                        }
                         note={
                             days.length > 0 ? 'the normal day' : 'no days yet'
                         }
@@ -96,6 +111,11 @@ export default function TodayPanel({
                                 ? '—'
                                 : formatCost(yesterday, currency)
                         }
+                        sub={
+                            yesterdayDay === null
+                                ? undefined
+                                : `${fmt(yesterdayDay.tokens)} tok`
+                        }
                         note="one day back"
                     />
                     <Fact
@@ -104,6 +124,11 @@ export default function TodayPanel({
                             busiest === null
                                 ? '—'
                                 : formatCost(busiest, currency)
+                        }
+                        sub={
+                            busiestDay === null
+                                ? undefined
+                                : `${fmt(busiestDay.tokens)} tok`
                         }
                         note="the worst of the other days"
                     />
@@ -121,13 +146,19 @@ function Fact({
     label,
     value,
     note,
-}: Readonly<{ label: string; value: string; note: string }>) {
+    sub,
+}: Readonly<{ label: string; value: string; note: string; sub?: string }>) {
     return (
         <div className="flex min-w-0 flex-col gap-0.5">
             <span className="text-label-micro text-text-3">{label}</span>
             <span className="font-mono text-sm font-bold text-foreground tabular-nums">
                 {value}
             </span>
+            {sub !== undefined && (
+                <span className="font-mono text-[0.6875rem] text-text-3 tabular-nums">
+                    {sub}
+                </span>
+            )}
             <span className="text-[0.6875rem] text-text-3">{note}</span>
         </div>
     );

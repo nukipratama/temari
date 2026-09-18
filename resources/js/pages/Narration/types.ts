@@ -3,6 +3,8 @@ export interface UsageRow {
     prompt: number;
     completion: number;
     total: number;
+    /** The slice of `prompt` the provider served from its cache, as a raw count. */
+    cached: number;
     calls: number;
     cost: number;
     truncated_calls: number;
@@ -20,6 +22,7 @@ export interface UsageTotals {
     prompt: number;
     completion: number;
     total: number;
+    cached: number;
     calls: number;
     cost: number;
     truncated_calls: number;
@@ -58,6 +61,13 @@ export interface OriginRow {
 
 export interface Budget {
     todayCost: number;
+    /** Raw token totals behind `todayCost`, app-wide and decoupled from the selected range. */
+    tokens: {
+        prompt: number;
+        completion: number;
+        cached: number;
+        total: number;
+    };
     /**
      * Combined figure: perUserCeiling x athletes. Derived, not a limit of its
      * own: what the bill would reach if every athlete spent their slice.
@@ -86,6 +96,8 @@ export interface ContentFilterSummary {
 export interface ChartDay {
     day: string;
     cost: number;
+    /** Prompt + completion tokens billed that day, across every kind. */
+    tokens: number;
     byKind: Record<string, number>;
 }
 
@@ -136,6 +148,8 @@ export interface AthleteRow {
     last7: number;
     last30: number;
     calls: number;
+    /** Prompt + completion tokens over the same 30-day window as `calls`. */
+    tokens: number;
     /** The athlete's effective daily ceiling, override included. */
     ceiling: number | null;
     ceiling_overridden: boolean;
