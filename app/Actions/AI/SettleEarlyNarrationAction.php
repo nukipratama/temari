@@ -13,8 +13,10 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -33,6 +35,12 @@ use Illuminate\Support\Facades\DB;
  * row was ever marked `narrated_early_at`: PR detection can be deferred
  * ({@see \App\Services\Run\Ingest\ActivityPipeline}) even when its narration
  * finishes late enough to never need marking at all.
+ *
+ * The Trends read ({@see \App\Jobs\AI\KickoffRecapsJob}) and a still-hydrating
+ * month's recap ({@see KickoffMonthlyRecaps}) never get an Analysis row at all
+ * while deferred — there is nothing to mark or claim for them — so they are
+ * asked for directly here on every successful claim; both are naturally
+ * idempotent (an existing row is left alone, a Done month is skipped).
  */
 class SettleEarlyNarrationAction
 {
@@ -40,6 +48,8 @@ class SettleEarlyNarrationAction
         private readonly PersonalRecords $personalRecords,
         private readonly RecomputeCardClaimsAction $recomputeCardClaims,
         private readonly AnalysisService $analysisService,
+        private readonly PlanNarrationRequester $planNarration,
+        private readonly KickoffMonthlyRecaps $kickoffMonthlyRecaps,
     ) {
     }
 
@@ -68,9 +78,21 @@ class SettleEarlyNarrationAction
             if ($rows->isNotEmpty()) {
                 Analysis::query()->whereIn('id', $rows->pluck('id'))->update([
                     'narrated_early_at' => null,
-                    'status' => AnalysisStatus::Pending,
                     'error' => null,
                 ]);
+
+                // Every other early type is unconditionally re-requested below,
+                // so flipping it to Pending here is safe. PlanDayVoice is the
+                // exception — requestDayVoiceIfChanged() decides for itself
+                // whether the day's material actually changed, and it has no
+                // SelfHealer recovery family, so pre-flipping it here could
+                // strand it Pending with nothing behind it if it decides not to.
+                $toPending = $rows->reject(fn (Analysis $row): bool => $row->analysis_type === AnalysisType::PlanDayVoice);
+                if ($toPending->isNotEmpty()) {
+                    Analysis::query()->whereIn('id', $toPending->pluck('id'))->update([
+                        'status' => AnalysisStatus::Pending,
+                    ]);
+                }
             }
 
             return $rows;
@@ -85,6 +107,30 @@ class SettleEarlyNarrationAction
 
         if ($claimed->isNotEmpty()) {
             $this->regenerate($user, $claimed);
+        }
+
+        $this->requestDeferredTrendReads($user);
+        ($this->kickoffMonthlyRecaps)($user->id);
+    }
+
+    /**
+     * Mirrors {@see \App\Jobs\AI\KickoffRecapsJob::kickoffTrendReads()}'s own
+     * guard: skipped for an athlete whose backfill found no runs, and a no-op
+     * for a range already requested (`request()`'s own idempotent upsert).
+     */
+    private function requestDeferredTrendReads(User $user): void
+    {
+        if (! Activity::query()->where('user_id', $user->id)->exists()) {
+            return;
+        }
+
+        foreach (AnalysisType::TREND_READ_RANGES as $range) {
+            $this->analysisService->request(
+                subjectOrType: AnalysisType::TrendRead->subjectType(),
+                subjectId: $user->id,
+                type: AnalysisType::TrendRead,
+                discriminator: $range,
+            );
         }
     }
 
@@ -114,6 +160,9 @@ class SettleEarlyNarrationAction
                     (string) $row->discriminator,
                     invalidate: false,
                 ),
+                AnalysisType::PlanDayVoice => $row->discriminator !== null
+                    ? $this->planNarration->requestDayVoiceIfChanged($user, Carbon::parse($row->discriminator))
+                    : null,
                 default => null,
             };
         }

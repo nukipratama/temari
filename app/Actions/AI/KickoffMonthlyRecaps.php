@@ -6,6 +6,7 @@ namespace App\Actions\AI;
 
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -70,6 +71,25 @@ class KickoffMonthlyRecaps
             $preConnect = $narratable->filter(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
             $narratable = $narratable->reject(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
 
+            // A month within LLM reach whose own runs are still hydrating (a
+            // fresh connect's backlog drain) is a load/fitness read of an
+            // incomplete past. Staged Pending instead — never rule-based, this
+            // month deserves the real thing — and the user's replay flag is
+            // what asks for it again once the drain empties (#1054).
+            $stillHydrating = $narratable->filter(fn (string $month): bool => $this->monthAwaitsHydration((int) $id, $month))->values();
+            $narratable = $narratable->reject(fn (string $month): bool => $this->monthAwaitsHydration((int) $id, $month))->values();
+            if ($stillHydrating->isNotEmpty()) {
+                $stillHydrating->each(fn (string $month) => $this->service->requestDeferred(
+                    subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+                    subjectId: (int) $id,
+                    type: AnalysisType::MonthlyRecap,
+                    discriminator: $month,
+                ));
+                User::query()->whereKey((int) $id)->whereNull('history_replay_due_at')->update([
+                    'history_replay_due_at' => Carbon::now(),
+                ]);
+            }
+
             $tooOld->each(fn (string $month) => $this->service->requestRuleBased(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                 subjectId: (int) $id,
@@ -114,6 +134,16 @@ class KickoffMonthlyRecaps
     {
         return $connectedAt !== null
             && Carbon::parse($month.'-01')->endOfMonth()->endOfDay()->lt($connectedAt);
+    }
+
+    /**
+     * Whether any run dated inside $month still awaits detail hydration.
+     */
+    private function monthAwaitsHydration(int $userId, string $month): bool
+    {
+        $start = Carbon::parse($month.'-01')->startOfMonth();
+
+        return $this->backlog->awaitsHydrationBefore($userId, $start->copy()->addMonthNoOverflow(), $start);
     }
 
     /**

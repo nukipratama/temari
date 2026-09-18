@@ -191,8 +191,8 @@ class DispatchPostRunAnalysis implements ShouldQueue
     }
 
     /**
-     * The daily briefing narrates right away even while its own past-you reach
-     * (get_latest_past_you, {@see \App\Services\Run\Story\PastYouMatcher::MAX_GAP_DAYS})
+     * The daily briefing narrates right away even while history within its
+     * bounded reach ({@see \App\Services\Run\Story\PastYouMatcher::MAX_GAP_DAYS})
      * is still hydrating — a fresh connect's early pass, per
      * docs/decisions/history-narrates-on-demand.md. AnalysisService::markDone()
      * detects that live (via {@see \App\Services\AI\HistoryNarrationGate::awaitsOlderHydration()},

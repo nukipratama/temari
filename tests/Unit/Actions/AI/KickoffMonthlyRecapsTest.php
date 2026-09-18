@@ -25,6 +25,15 @@ function backfilledRunInMonth(User $user, string $month): void
     ]);
 }
 
+/** A genuinely summary-only (not yet detail-hydrated) run in $month (Y-m). */
+function unhydratedRunInMonth(User $user, string $month): void
+{
+    $activity = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::createFromFormat('Y-m', $month)->startOfMonth()->addDays(10)->setTime(6, 30),
+    ]);
+}
+
 function stageKickoffMonthlyRecap(User $user, string $month, AnalysisStatus $status): void
 {
     Analysis::factory()->create([
@@ -133,6 +142,21 @@ it('fills a month that closed before the athlete connected rule-based, and narra
     expect(collect($captured)->firstWhere('discriminator', '2026-04')['ruleBased'])->toBeTrue()
         ->and(collect($captured)->firstWhere('discriminator', '2026-05'))
         ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
+});
+
+it('defers a narratable month whose own runs are still hydrating, flagging the user for a later replay (#1054)', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => '2026-01-01 00:00:00']);
+    unhydratedRunInMonth($user, '2026-05');
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 0, 'rule_based' => 0]);
+
+    expect(collect($captured)->firstWhere('discriminator', '2026-05'))
+        ->not->toBeNull()
+        ->and($user->fresh()->history_replay_due_at)->not->toBeNull();
 });
 
 it('narrates every completed month for an athlete who connected long ago', function (): void {

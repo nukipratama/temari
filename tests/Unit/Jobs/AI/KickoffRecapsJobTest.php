@@ -15,8 +15,10 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Models\StravaConnection;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\HydrationBacklog;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\PlanNarrationRequester;
@@ -60,7 +62,7 @@ it('runs the weekly and monthly kickoff for its own user, attributed to the inge
             return ['dispatched' => 0, 'rule_based' => 0];
         });
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     expect($seen['weekly'])->toBe([$user->id, AnalysisOrigin::Ingest])
         ->and($seen['monthly'])->toBe([$user->id, AnalysisOrigin::Ingest]);
@@ -75,7 +77,7 @@ it('dispatches an immediate hydration batch for the backfilled user', function (
     $user = User::factory()->create();
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     Bus::assertDispatched(HydrateBacklogForUserJob::class, fn (HydrateBacklogForUserJob $job): bool => $job->userId === $user->id);
 });
@@ -84,7 +86,7 @@ it('does not dispatch a hydration batch when the user is gone', function (): voi
     Bus::fake();
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob(404)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob(404)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     Bus::assertNotDispatched(HydrateBacklogForUserJob::class);
 });
@@ -94,7 +96,7 @@ it('stamps backfilled_at as the last link of the connect chain', function (): vo
     $user = User::factory()->create();
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     expect($user->fresh()->backfilled_at)->not->toBeNull();
 });
@@ -106,7 +108,7 @@ it('narrates the season, never a day, when onboarding already wrote a plan', fun
     PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class);
     Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
@@ -122,7 +124,7 @@ it('re-sizes the plan against the history the backfill just landed', function ()
     PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     $lastPlanned = PlannedSession::query()->where('user_id', $user->id)->max('date');
 
@@ -138,7 +140,7 @@ it('re-sizes before narrating, so the described season is the one that stands', 
     PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     $plannedThisWeek = PlannedSession::query()
         ->where('user_id', $user->id)
@@ -162,7 +164,7 @@ it('narrates nothing and plans nothing when no plan exists yet', function (): vo
     $user = User::factory()->create();
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
     expect(PlannedSession::query()->where('user_id', $user->id)->exists())->toBeFalse()
@@ -173,7 +175,7 @@ it('does nothing beyond the recaps when the user is gone', function (): void {
     Bus::fake();
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob(404)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob(404)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 });
@@ -185,7 +187,7 @@ it('kicks every Trends range off the backfill, so a new account is not days behi
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     // The 7d range's own cron only reaches athletes who existed when it last
     // ran, so without this a Friday signup waits up to a day for its first read.
@@ -203,9 +205,23 @@ it('reads no trends for an athlete whose backfill found no runs', function (): v
     $user = User::factory()->create();
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     expect(Analysis::query()->where('analysis_type', AnalysisType::TrendRead)->count())->toBe(0);
+});
+
+it('defers the Trends read while the backlog is still hydrating (#1046), flagging the user for a later replay', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    $activity = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subDay()]);
+    [$weekly, $monthly] = kickoffRecapsDoubles();
+
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
+
+    expect(Analysis::query()->where('analysis_type', AnalysisType::TrendRead)->count())->toBe(0)
+        ->and($user->fresh()->history_replay_due_at)->not->toBeNull();
 });
 
 // Onboarding asked for today's briefing while the history was still importing,
@@ -215,7 +231,7 @@ it('re-requests today\'s briefing once the backfill has landed', function (): vo
     $user = User::factory()->create();
     [$weekly, $monthly] = kickoffRecapsDoubles();
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
 });
@@ -226,8 +242,8 @@ it('re-requests the briefing at most once a day, however often the chain re-runs
     [$weekly, $monthly] = kickoffRecapsDoubles();
     $briefing = app(RequestTodaysBriefing::class);
 
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), $briefing);
-    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), $briefing);
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), $briefing, app(HydrationBacklog::class));
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), $briefing, app(HydrationBacklog::class));
 
     Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
 });

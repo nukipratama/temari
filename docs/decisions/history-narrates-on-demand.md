@@ -18,6 +18,9 @@ code_refs:
   - app/Actions/AI/SettleEarlyNarrationAction.php
   - app/Services/Run/Ingest/ActivityPipeline.php
   - app/Console/Commands/Strava/HydrateBacklogCommand.php
+  - app/Jobs/AI/KickoffRecapsJob.php
+  - app/Actions/AI/KickoffMonthlyRecaps.php
+  - app/Services/AI/PlanNarrationRequester.php
   - app/Jobs/Strava/HydrateBacklogForUserJob.php
 ---
 
@@ -51,6 +54,13 @@ code_refs:
 > hydration, bounded by the same grace window. Oldest-first only changes *when* that condition clears —
 > now monotonically, as the drain works forward through the window, rather than depending on the drain
 > reaching backward into it.
+
+> **2026-09-19 — correction (#1044): the briefing narrator never calls `get_latest_past_you`.**
+> The note below says the daily briefing's own narrator reads past-you's bounded reach through
+> that tool; it doesn't — `BriefingMascotVoiceNarrator` calls `get_week_state` / `get_training_load`
+> / `get_recent_runs`, none of them past-you. The bound was chosen for consistency with the per-run
+> hold ({@see \App\Services\Run\Story\PastYouMatcher::MAX_GAP_DAYS}), not because the briefing reads
+> that comparison itself. The gate and its grace-window bound are otherwise exactly as described.
 
 > **2026-09-19 — the daily briefing and the weekly profile voice hold the same way (#1032).**
 > `DispatchPostRunAnalysis` requested both unconditionally for every non-away athlete, so a first-day
@@ -117,6 +127,24 @@ code_refs:
 > both markers, so a second drain-complete signal or a later `ai:self-heal` sweep claims nothing
 > and bills nothing more. A long-connected athlete never satisfies `awaitsOlderHydration()` /
 > `awaitsFullHydration()` in the first place, so none of this fires for them.
+>
+> Three surfaces are pure load/fitness reads with nothing safe to say thin, so they are held
+> outright instead of narrated early: `KickoffRecapsJob::kickoffTrendReads()` skips the Trends
+> (`TrendRead`) read while any backlog awaits hydration, and `KickoffMonthlyRecaps` stages a
+> narratable month's `MonthlyRecap` Pending (never rule-based — it deserves the real thing) while
+> its own runs are still hydrating, both stamping the same `history_replay_due_at` flag with no
+> `Analysis` row ever created for the reader to mark. `SettleEarlyNarrationAction` asks for both
+> again, unconditionally and idempotently, on every successful claim. `PlanDayVoice`
+> (`PlanNarrationRequester::requestDayVoiceIfChanged()`) is different: it *is* narrated early, off
+> a thin `TrainingBaseline`, because #939 already made a credited day's own read a genuine event
+> worth reacting to same-day. `AnalysisService::markDone()` marks it the same way as the per-run
+> types, but the replay leaves its row Done rather than pre-flipping it Pending: the day-voice
+> row has no `SelfHealer` recovery family, and `requestDayVoiceIfChanged()`'s own material-
+> fingerprint check decides for itself whether the now-real baseline actually moved the read
+> — pre-flipping it would strand a row nothing re-fills when it decides nothing changed. The
+> plan clamp voice needed no equivalent: `RestClampRecorder::record()` already refuses to record
+> a clamp at all while `HydrationBacklog::recentLoadAwaitsScoring()` is true (#1059), so
+> `requestClampVoice()` finds nothing to narrate and creates no row — see #1044.
 
 ## Context
 

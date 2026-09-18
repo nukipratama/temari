@@ -23,6 +23,9 @@ code_refs:
   - app/Models/AI/TokenUsage.php
   - app/Actions/AI/RecordTokenUsageAction.php
   - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
+  - app/Actions/AI/KickoffMonthlyRecaps.php
+  - app/Jobs/AI/KickoffRecapsJob.php
+  - app/Actions/AI/SettleEarlyNarrationAction.php
   - tests/Unit/Architecture/LlmInventoryDocTest.php
 ---
 
@@ -101,8 +104,11 @@ three-month backfill therefore bills nothing for the roughly twelve weekly and t
 it used to narrate on day one for periods Temari never watched. The weekly bucket still waits on
 [RecapHydrationReadiness](../../app/Services/AI/RecapHydrationReadiness.php) before that rule-based
 fill runs — a pre-connect week's closer reads the snapshot's own `form_status`, so it races the same
-ordering problem the LLM path does (#1010). The monthly bucket bypasses the hydration wait entirely,
-unchanged. See [[deferred-recap-windowing]].
+ordering problem the LLM path does (#1010). The monthly bucket's rule-based fill still bypasses the
+hydration wait, unchanged — but a month that closed after connecting and would otherwise get a real
+LLM read is staged Pending instead while its own runs are still hydrating (#1054), and
+`SettleEarlyNarrationAction` re-kicks `KickoffMonthlyRecaps` for that user once the drain empties.
+See [[deferred-recap-windowing]] and [[history-narrates-on-demand]].
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 and it still runs for every athlete. The narration half then calls

@@ -56,6 +56,7 @@ class SelfHealer
         private readonly RecapHydrationReadiness $readiness,
         private readonly RecentlyActiveUsers $activeUsers,
         private readonly HistoryNarrationGate $history,
+        private readonly HydrationBacklog $backlog,
     ) {
     }
 
@@ -234,6 +235,7 @@ class SelfHealer
         $oldestRealMonth = $this->ages->cutoffMonth();
         $index = 0;
 
+        $resumed = 0;
         foreach ($links as $link) {
             if ($link->discriminator !== null && $link->discriminator < $oldestRealMonth) {
                 $this->service->requestRuleBased(
@@ -242,7 +244,15 @@ class SelfHealer
                     type: AnalysisType::MonthlyRecap,
                     discriminator: $link->discriminator,
                 );
+                $resumed++;
 
+                continue;
+            }
+
+            // A month whose own runs are still hydrating (#1054/KickoffMonthlyRecaps'
+            // own deferral) is left for the next sweep rather than resumed —
+            // SettleEarlyNarrationAction re-kicks it once the drain empties.
+            if ($link->discriminator !== null && $this->monthAwaitsHydration($link->subjectId, $link->discriminator)) {
                 continue;
             }
 
@@ -255,9 +265,10 @@ class SelfHealer
                 invalidate: false,
             );
             $index++;
+            $resumed++;
         }
 
-        return $links->count();
+        return $resumed;
     }
 
     /**
@@ -338,6 +349,17 @@ class SelfHealer
         ));
 
         return $earliestPerUser->count();
+    }
+
+    /**
+     * Whether any run dated inside $month (Y-m) still awaits detail hydration —
+     * the same check {@see \App\Actions\AI\KickoffMonthlyRecaps} defers on.
+     */
+    private function monthAwaitsHydration(int $userId, string $month): bool
+    {
+        $start = Carbon::parse($month.'-01')->startOfMonth();
+
+        return $this->backlog->awaitsHydrationBefore($userId, $start->copy()->addMonthNoOverflow(), $start);
     }
 
     /**

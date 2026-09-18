@@ -1428,6 +1428,38 @@ it('markDone marks the profile voice early while any history at all is hydrating
     expect($row->fresh()->narrated_early_at)->not->toBeNull();
 });
 
+it('markDone marks the plan-day voice early while older history is hydrating (#1044)', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    $olderBacklog = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($olderBacklog)->create(['start_date_local' => now()->subDays(3)]);
+    $row = Analysis::factory()->create([
+        'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::PlanDayVoice,
+        'discriminator' => now()->subDay()->toDateString(),
+    ]);
+
+    $this->service->markDone($row, 'Easy day.', ServedBy::Llm);
+
+    expect($row->fresh()->narrated_early_at)->not->toBeNull();
+});
+
+it('markDone leaves the plan-day voice unmarked for a long-connected athlete', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => now()->subDays(90)]);
+    $row = Analysis::factory()->create([
+        'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::PlanDayVoice,
+        'discriminator' => now()->toDateString(),
+    ]);
+
+    $this->service->markDone($row, 'Easy day.', ServedBy::Llm);
+
+    expect($row->fresh()->narrated_early_at)->toBeNull();
+});
+
 it('markDone does not notify for a non-notifiable type', function (): void {
     Notification::fake();
     $row = Analysis::factory()->create(['analysis_type' => AnalysisType::BriefingMascotVoice]);

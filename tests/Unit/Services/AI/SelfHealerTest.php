@@ -82,7 +82,7 @@ function nonDispatchingResumeService(): AnalysisService
 
 function selfHealer(AnalysisService $service): SelfHealer
 {
-    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HistoryNarrationGate(new BackfillAgeGate(), new HydrationBacklog()));
+    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HistoryNarrationGate(new BackfillAgeGate(), new HydrationBacklog()), new HydrationBacklog());
 }
 
 /** Seed an activity for $user dated $startDate whose post-run speech is Pending. */
