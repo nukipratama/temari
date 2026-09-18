@@ -12,6 +12,7 @@ enum AppConfigKey: string
 {
     case AiEnabled = 'ai.enabled';
     case StravaEnabled = 'strava.enabled';
+    case MaintenanceEnabled = 'app.maintenance';
 
     case StravaBreakerThreshold = 'strava.breaker.threshold';
     case StravaBreakerCooldownSeconds = 'strava.breaker.cooldown_seconds';
@@ -37,6 +38,7 @@ enum AppConfigKey: string
     {
         return match ($this) {
             self::AiEnabled, self::StravaEnabled => true,
+            self::MaintenanceEnabled => false,
             self::StravaBreakerThreshold => 5,
             self::StravaBreakerCooldownSeconds => 300,
             self::StravaBreakerState => 'closed',
@@ -59,7 +61,7 @@ enum AppConfigKey: string
     public function cast(mixed $value): mixed
     {
         return match ($this) {
-            self::AiEnabled, self::StravaEnabled => (bool) $value,
+            self::AiEnabled, self::StravaEnabled, self::MaintenanceEnabled => (bool) $value,
             self::StravaBreakerThreshold,
             self::StravaBreakerCooldownSeconds,
             self::StravaBreakerFailures,

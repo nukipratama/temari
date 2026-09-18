@@ -107,6 +107,7 @@ if (gitCanReadRepository(dirname(__DIR__))) {
         'resources/js/**/*.tsx' => 'tests/Unit/Architecture',
         'resources/views/**/*.blade.php' => 'tests/Unit/Architecture',
         'public/**' => 'tests/Unit/Architecture',
+        'docker/**' => 'tests/Unit/Architecture',
         'resources/js/types/generated.ts' => 'tests/Feature/Console/GenerateTypeScriptEnumsCommandTest.php',
         'routes/**/*.php' => 'tests/Feature/Compliance',
         // NarratorsCoverageTest globs these two directories, so a brand-new

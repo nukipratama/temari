@@ -324,7 +324,7 @@ it('paints Home inside its query budget', function (): void {
 
     $this->actingAs($user)->get('/')->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(15);
+    expect($queries)->toBeLessThanOrEqual(16);
 });
 
 // clampVoiceFor used to be an argument inside the per-day `->map()`, so a day

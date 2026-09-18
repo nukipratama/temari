@@ -110,17 +110,15 @@ return [
     | Maintenance Mode Driver
     |--------------------------------------------------------------------------
     |
-    | These configuration options determine the driver used to determine and
-    | manage Laravel's "maintenance mode" status. The "cache" driver will
-    | allow maintenance mode to be controlled across multiple machines.
-    |
-    | Supported drivers: "file", "cache"
+    | The "app-config" driver (AppConfigMaintenanceMode) keeps the flag in the
+    | durable `app_config` table shared by every container. It is not read from
+    | the environment: a host env file still carrying the old "file" value would
+    | otherwise silently scope maintenance to a single container again.
     |
     */
 
     'maintenance' => [
-        'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
-        'store' => env('APP_MAINTENANCE_STORE', 'database'),
+        'driver' => 'app-config',
     ],
 
 ];

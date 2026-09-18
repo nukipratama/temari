@@ -54,6 +54,17 @@ class AppConfig
         unset($this->memo[$key->value]);
     }
 
+    /**
+     * Seed the per-request memo without writing to the DB, so a later read of the
+     * same key this request reuses the value instead of repeating a doomed query.
+     * Used when a caller resolves a key's value itself, such as falling back after
+     * a failed read.
+     */
+    public function remember(AppConfigKey $key, mixed $value): void
+    {
+        $this->memo[$key->value] = $key->cast($value);
+    }
+
     public function set(AppConfigKey $key, mixed $value): void
     {
         $this->setMany([[$key, $value]]);
