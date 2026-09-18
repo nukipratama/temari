@@ -118,7 +118,9 @@ describe('WeekPlanWidget', () => {
         await waitFor(() => {
             expect(screen.getByText('18.2 of 24.6')).toBeInTheDocument();
         });
-        expect(screen.getByText('eased from 26.9')).toBeInTheDocument();
+        expect(screen.getByText('26.9')).toBeInTheDocument();
+        expect(screen.getByText('24.6')).toBeInTheDocument();
+        expect(screen.getByText('eased')).toBeInTheDocument();
     });
 
     it('names no original on a week nothing eased', async () => {

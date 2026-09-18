@@ -108,9 +108,9 @@ describe('SeasonWeekRow', () => {
             detail: { ...DETAIL, type: 'current' },
         });
 
-        expect(
-            screen.getByText(/25 km target · eased from 27 · 5 sessions/),
-        ).toBeInTheDocument();
+        expect(screen.getByText('27')).toBeInTheDocument();
+        expect(screen.getByText('25 km target')).toBeInTheDocument();
+        expect(screen.getByText(/5 sessions/)).toBeInTheDocument();
     });
 
     it('shows a past week’s adherence in its header', () => {

@@ -71,9 +71,10 @@ now says on a credited day.
 
 ## Consequences
 
-- **`prescribed_km` on a clamped day is the eased figure.** The card reads "3.6 km asked · 3.6 km
-  run · done" rather than pairing a 5.9 km ask with a 3.6 km run and a passing grade, which was
-  incoherent either way round.
+- **`prescribed_km` on a clamped day is the eased figure.** The card reads "asked 3.6 km" / "ran
+  3.6 km", done, rather than pairing a 5.9 km ask with a 3.6 km run and a passing grade, which was
+  incoherent either way round. (The exact phrasing regrouped by side, one line per figure, in #975;
+  the substitution this decision describes is unchanged.)
 - **Rendering is untouched.** Only the scorer substitutes; `PlanRenderer` still leads with the
   stored session, so the week's headline km and the day cells still agree at the un-eased total,
   as [[readiness-clamp-is-advisory]] settled. **Correction, 2026-09-16:** no longer true. The

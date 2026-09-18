@@ -12,6 +12,12 @@ import { useEffect, useRef, useState } from 'react';
 import type { PlanDay } from '@/lib/plan';
 import type { AnalysisPayload, PlanDayClamp } from '@/types/inertia';
 
+import {
+    AskedRanResult,
+    DeltaPair,
+    DeltaTag,
+    SessionTypeDelta,
+} from '@/components/plan/DeltaPair';
 import MiniSessionBar, { zoneColor } from '@/components/plan/MiniSessionBar';
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
 import TemariTake from '@/components/plan/TemariTake';
@@ -26,11 +32,10 @@ import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import {
     clampSummary,
-    creditedPaceLabel,
-    easedFromLabel,
-    isCreditedStatus,
-    kmLabel,
-    paceEaseLabel,
+    deltaDirection,
+    easedFromDelta,
+    judgedDayResult,
+    paceEaseDelta,
     paceLabel,
     SESSION_TYPE_ICON,
     SESSION_TYPE_LABEL,
@@ -105,7 +110,9 @@ function iconColor(day: PlanDay): string {
 /**
  * One day of a week, collapsed to weekday + session + a zone strip, expanding
  * to Temari's read on it, the session's segment breakdown, a link to what was
- * actually run, and — on a day still ahead — the move and skip actions.
+ * actually run, and — on a day still ahead — the move and skip actions. A day
+ * whose panel would carry none of that renders flat instead: no chevron, and
+ * nothing focusable that would open onto an empty panel.
  */
 export default function WeekDayRow({
     day,
@@ -134,12 +141,25 @@ export default function WeekDayRow({
         }
     }, [focused]);
 
-    const credited = isCreditedStatus(day.status);
-    const pace = credited ? null : paceLabel(day);
-    const creditedPace = credited ? creditedPaceLabel(day) : null;
+    const judged = judgedDayResult(day);
+    const pace = judged === null ? paceLabel(day) : null;
     const isRest = day.session_type === 'rest';
     const ranAnyway = isRest && day.ran_anyway;
     const adjustedFrom = volumeAdjustedFrom(day);
+    const weekFitDelta =
+        adjustedFrom === null
+            ? null
+            : {
+                  from: `${adjustedFrom}`,
+                  to: `${day.distance_km} km`,
+                  direction: deltaDirection(adjustedFrom, day.distance_km),
+              };
+    const sessionDelta = day.eased_from
+        ? easedFromDelta(day.eased_from, day)
+        : null;
+    const paceDelta = day.pace_eased_from
+        ? paceEaseDelta(day.pace_eased_from, day)
+        : null;
     const editable = day.date > today;
     // A day excused before it passes is still `planned` server-side until
     // plan:score-compliance runs the next morning; the row says "skipped" now.
@@ -153,101 +173,146 @@ export default function WeekDayRow({
     const canMove = editable && !isRest && weekDays.some(isValidMoveTarget);
     const canSkip = editable && !isRest && !day.skipped;
 
-    return (
-        <Collapsible
-            ref={rowRef}
-            defaultOpen={focused}
-            className={cn(
-                cardVariants({ padding: 'none' }),
-                'overflow-hidden',
-                day.date === today
-                    ? 'border-icon-accent'
-                    : 'border-border-strong',
+    // A rest day with nothing logged, no note, no clamp and no read has
+    // nothing an expanded panel would show — a future day with a session
+    // type but no segments yet (no VDOT to size them) is the same case.
+    const hasSegments = day.segments.some((s) => (s.minutes ?? 0) > 0);
+    const expandable =
+        hasSegments ||
+        Boolean(day.eased_from?.voice) ||
+        Boolean(day.pace_eased_from?.voice) ||
+        narration !== null ||
+        day.clamp !== null ||
+        Boolean(day.credit_note) ||
+        day.activities.length > 0 ||
+        canMove ||
+        canSkip;
+
+    const weekdayAndIcon = (
+        <span className="flex w-9 flex-none flex-col items-center gap-1">
+            <span className="text-label-micro text-text-2">
+                {weekdayLabel(day.date)}
+            </span>
+            <Icon
+                icon={SESSION_TYPE_ICON[day.session_type] ?? Feather}
+                className="size-3.5"
+                style={{ color: iconColor(day) }}
+                aria-hidden
+            />
+        </span>
+    );
+
+    const summary = (
+        <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-foreground">
+                {sessionDelta?.typeFrom != null ? (
+                    <SessionTypeDelta
+                        from={sessionDelta.typeFrom}
+                        to={sessionDelta.typeTo}
+                    />
+                ) : (
+                    (SESSION_TYPE_LABEL[day.session_type] ?? day.session_type)
+                )}
+            </span>
+            {!isRest && judged !== null && (
+                <AskedRanResult
+                    askedKm={judged.askedKm}
+                    askedPace={judged.askedPace}
+                    ranKm={judged.ranKm}
+                    ranPace={judged.ranPace}
+                />
             )}
-        >
+            {!isRest && judged === null && (
+                <span className="mt-0.5 block text-xs text-text-2">
+                    {day.distance_km} km
+                    {pace !== null && ` · ${pace}`}
+                </span>
+            )}
+            {sessionDelta && (
+                <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-label-micro">
+                    {sessionDelta.distanceFrom !== null && (
+                        <DeltaPair
+                            from={sessionDelta.distanceFrom}
+                            to={sessionDelta.distanceTo}
+                            direction={sessionDelta.direction}
+                        />
+                    )}
+                    <DeltaTag>eased</DeltaTag>
+                </span>
+            )}
+            {paceDelta && (
+                <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-label-micro">
+                    <DeltaPair
+                        from={paceDelta.from}
+                        to={paceDelta.to}
+                        direction={paceDelta.direction}
+                    />
+                    <DeltaTag>eased</DeltaTag>
+                </span>
+            )}
+            {weekFitDelta && (
+                <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-label-micro">
+                    <DeltaPair
+                        from={weekFitDelta.from}
+                        to={weekFitDelta.to}
+                        direction={weekFitDelta.direction}
+                    />
+                    <DeltaTag>week fit</DeltaTag>
+                </span>
+            )}
+            {ranAnyway && (
+                <span className="mt-0.5 block text-xs font-semibold text-leaf-ink">
+                    Ran anyway · {daySummary(day)}
+                </span>
+            )}
+            <MiniSessionBar segments={day.segments} />
+            {!isRest && STATUS_LABEL[status] && (
+                <span
+                    title={STATUS_MEANING[status]}
+                    className={cn(
+                        'mt-1 block text-label-micro',
+                        STATUS_TONE[status] ?? 'text-text-3',
+                    )}
+                >
+                    {STATUS_LABEL[status]}
+                    {day.compliance_score != null &&
+                        ` · ${day.compliance_score}%`}
+                </span>
+            )}
+        </span>
+    );
+
+    const outerClass = cn(
+        cardVariants({ padding: 'none' }),
+        'overflow-hidden',
+        day.date === today ? 'border-icon-accent' : 'border-border-strong',
+    );
+
+    if (!expandable) {
+        return (
+            <div ref={rowRef} className={outerClass}>
+                <div className="flex items-center pr-1">
+                    <div className="flex min-w-0 flex-1 items-center gap-3 py-3 pr-2 pl-4 text-left">
+                        {weekdayAndIcon}
+                        {summary}
+                    </div>
+                    <FlagWrong
+                        subjectType="plan_day"
+                        subjectId={day.id}
+                        label="flag this day"
+                        flagged={day.flagged === true}
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <Collapsible ref={rowRef} defaultOpen={focused} className={outerClass}>
             <div className="flex items-center pr-1">
                 <CollapsibleTrigger className="group focus-ring flex min-w-0 flex-1 items-center gap-3 py-3 pr-2 pl-4 text-left">
-                    <span className="flex w-9 flex-none flex-col items-center gap-1">
-                        <span className="text-label-micro text-text-2">
-                            {weekdayLabel(day.date)}
-                        </span>
-                        <Icon
-                            icon={
-                                SESSION_TYPE_ICON[day.session_type] ?? Feather
-                            }
-                            className="size-3.5"
-                            style={{ color: iconColor(day) }}
-                            aria-hidden
-                        />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold text-foreground">
-                            {SESSION_TYPE_LABEL[day.session_type] ??
-                                day.session_type}
-                        </span>
-                        {!isRest && (
-                            <span className="mt-0.5 block text-xs text-text-2">
-                                {kmLabel(day)}
-                                {pace !== null && ` · ${pace}`}
-                            </span>
-                        )}
-                        {!isRest && creditedPace !== null && (
-                            <span className="mt-0.5 block text-xs text-text-2">
-                                {creditedPace}
-                            </span>
-                        )}
-                        {day.eased_from && (
-                            <span className="mt-0.5 flex items-center gap-1 text-label-micro text-text-2">
-                                <Icon
-                                    icon={ArrowDown}
-                                    className="size-3"
-                                    aria-hidden
-                                />
-                                {easedFromLabel(day.eased_from)}
-                            </span>
-                        )}
-                        {day.pace_eased_from && (
-                            <span className="mt-0.5 flex items-center gap-1 text-label-micro text-text-2">
-                                <Icon
-                                    icon={ArrowDown}
-                                    className="size-3"
-                                    aria-hidden
-                                />
-                                eased pace ·{' '}
-                                {paceEaseLabel(day.pace_eased_from, day)}
-                            </span>
-                        )}
-                        {adjustedFrom !== null && (
-                            <span className="mt-0.5 flex items-center gap-1 text-label-micro text-text-2">
-                                <Icon
-                                    icon={ArrowDown}
-                                    className="size-3"
-                                    aria-hidden
-                                />
-                                asked for {adjustedFrom} km · adjusted for the
-                                week
-                            </span>
-                        )}
-                        {ranAnyway && (
-                            <span className="mt-0.5 block text-xs font-semibold text-leaf-ink">
-                                Ran anyway · {daySummary(day)}
-                            </span>
-                        )}
-                        <MiniSessionBar segments={day.segments} />
-                        {!isRest && STATUS_LABEL[status] && (
-                            <span
-                                title={STATUS_MEANING[status]}
-                                className={cn(
-                                    'mt-1 block text-label-micro',
-                                    STATUS_TONE[status] ?? 'text-text-3',
-                                )}
-                            >
-                                {STATUS_LABEL[status]}
-                                {day.compliance_score != null &&
-                                    ` · ${day.compliance_score}%`}
-                            </span>
-                        )}
-                    </span>
+                    {weekdayAndIcon}
+                    {summary}
                     <Icon
                         icon={ChevronDown}
                         className="size-4 flex-none text-text-2 transition-transform group-aria-expanded:rotate-180"

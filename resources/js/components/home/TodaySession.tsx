@@ -2,6 +2,12 @@ import { ArrowDown } from 'lucide-react';
 
 import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
 
+import {
+    AskedRanResult,
+    DeltaPair,
+    DeltaTag,
+    SessionTypeDelta,
+} from '@/components/plan/DeltaPair';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { renderNarration } from '@/components/temari/Citation';
 import FaceIcon from '@/components/temari/FaceIcon';
@@ -10,11 +16,9 @@ import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import {
     clampSummary,
-    creditedPaceLabel,
-    easedFromLabel,
-    isCreditedStatus,
-    kmLabel,
-    paceEaseLabel,
+    easedFromDelta,
+    judgedDayResult,
+    paceEaseDelta,
     paceLabel,
     SESSION_TYPE_LABEL,
 } from '@/lib/plan';
@@ -77,12 +81,17 @@ function SessionVoice({
  * `docs/decisions/the-eased-session-leads.md`.
  */
 function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
-    const credited = isCreditedStatus(day.status);
-    const pace = credited ? null : paceLabel(day);
-    const creditedPace = credited ? creditedPaceLabel(day) : null;
+    const judged = judgedDayResult(day);
+    const pace = judged === null ? paceLabel(day) : null;
+    const sessionDelta = day.eased_from
+        ? easedFromDelta(day.eased_from, day)
+        : null;
+    const paceDelta = day.pace_eased_from
+        ? paceEaseDelta(day.pace_eased_from, day)
+        : null;
     const parts = [SESSION_TYPE_LABEL[day.session_type] ?? day.session_type];
-    if (day.session_type !== 'rest') {
-        parts.push(kmLabel(day));
+    if (day.session_type !== 'rest' && judged === null) {
+        parts.push(`${day.distance_km} km`);
         if (pace !== null) {
             parts.push(pace);
         }
@@ -96,33 +105,52 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
             <p className="text-sm font-semibold text-foreground">
                 {parts.join(' · ')}
             </p>
-            {creditedPace !== null && (
-                <p className="mt-0.5 text-sm font-semibold text-foreground">
-                    {creditedPace}
-                </p>
+            {judged !== null && (
+                <AskedRanResult
+                    askedKm={judged.askedKm}
+                    askedPace={judged.askedPace}
+                    ranKm={judged.ranKm}
+                    ranPace={judged.ranPace}
+                />
             )}
-            {day.eased_from !== null && (
+            {sessionDelta && (
                 <div className="mt-2 border-l-2 border-border-strong pl-3">
-                    <p className="flex items-center gap-1.5 text-label-micro text-text-2">
-                        <Icon icon={ArrowDown} className="size-3" aria-hidden />
-                        {easedFromLabel(day.eased_from)}
+                    <p className="flex flex-wrap items-center gap-1.5 text-label-micro">
+                        {sessionDelta.typeFrom !== null && (
+                            <SessionTypeDelta
+                                from={sessionDelta.typeFrom}
+                                to={sessionDelta.typeTo}
+                            />
+                        )}
+                        {sessionDelta.distanceFrom !== null && (
+                            <DeltaPair
+                                from={sessionDelta.distanceFrom}
+                                to={sessionDelta.distanceTo}
+                                direction={sessionDelta.direction}
+                            />
+                        )}
+                        <DeltaTag>eased</DeltaTag>
                     </p>
-                    {day.eased_from.voice !== null && (
+                    {day.eased_from?.voice !== null && (
                         <p className="mt-1 text-sm leading-relaxed text-text-2">
-                            {day.eased_from.voice}
+                            {day.eased_from?.voice}
                         </p>
                     )}
                 </div>
             )}
-            {day.pace_eased_from !== null && (
+            {paceDelta && (
                 <div className="mt-2 border-l-2 border-border-strong pl-3">
-                    <p className="flex items-center gap-1.5 text-label-micro text-text-2">
-                        <Icon icon={ArrowDown} className="size-3" aria-hidden />
-                        eased pace · {paceEaseLabel(day.pace_eased_from, day)}
+                    <p className="flex items-center gap-1.5 text-label-micro">
+                        <DeltaPair
+                            from={paceDelta.from}
+                            to={paceDelta.to}
+                            direction={paceDelta.direction}
+                        />
+                        <DeltaTag>eased</DeltaTag>
                     </p>
-                    {day.pace_eased_from.voice !== null && (
+                    {day.pace_eased_from?.voice !== null && (
                         <p className="mt-1 text-sm leading-relaxed text-text-2">
-                            {day.pace_eased_from.voice}
+                            {day.pace_eased_from?.voice}
                         </p>
                     )}
                 </div>

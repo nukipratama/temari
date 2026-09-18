@@ -142,20 +142,31 @@ describe('WeekDayRow', () => {
         expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
     });
 
-    it("says why the ask moved when the week's live redistribution shrank it", () => {
+    /**
+     * The week-adjustment arrow used to always point down, even when the
+     * number went up (#975). It must point the way the ask actually moved.
+     */
+    it("shows the week-fit delta pointing down when the week's redistribution shrank the ask", () => {
         renderRow({ day: day({ distance_km: 3, asked_km: 8 }) });
 
-        expect(
-            screen.getByText('asked for 8 km · adjusted for the week'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('8')).toBeInTheDocument();
+        expect(screen.getByText('3 km')).toBeInTheDocument();
+        expect(screen.getByText('week fit')).toBeInTheDocument();
+        expect(screen.getByText('↓')).toHaveClass('text-ember-ink');
+    });
+
+    it("shows the week-fit delta pointing up when the week's redistribution raised the ask", () => {
+        renderRow({ day: day({ distance_km: 4.1, asked_km: 3.6 }) });
+
+        expect(screen.getByText('3.6')).toBeInTheDocument();
+        expect(screen.getByText('4.1 km')).toBeInTheDocument();
+        expect(screen.getByText('↑')).toHaveClass('text-leaf-ink');
     });
 
     it('stays quiet when the redistributed figure matches what was asked', () => {
         renderRow({ day: day({ distance_km: 8, asked_km: 8 }) });
 
-        expect(
-            screen.queryByText(/adjusted for the week/),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('week fit')).not.toBeInTheDocument();
     });
 
     it('stays quiet once the day is graded, even if distance and ask differ', () => {
@@ -169,9 +180,7 @@ describe('WeekDayRow', () => {
             }),
         });
 
-        expect(
-            screen.queryByText(/adjusted for the week/),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('week fit')).not.toBeInTheDocument();
     });
 
     it('starts closed, as the prototype does', () => {
@@ -264,14 +273,77 @@ describe('WeekDayRow', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('offers neither on a rest day', () => {
+    it('renders a plain rest day flat, with no chevron or focusable trigger', () => {
+        renderRow({ day: WEEK[1] });
+
+        expect(
+            screen.queryByRole('button', { name: /rest/i }),
+        ).not.toBeInTheDocument();
+        // The flag control is its own, separate affordance — it stays.
+        expect(
+            screen.getByRole('button', { name: 'flag this day' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('rest')).toBeInTheDocument();
+        expect(document.querySelector('[aria-expanded]')).toBeNull();
+    });
+
+    it('becomes expandable again once a rest day has a logged run', () => {
         renderRow({
-            day: WEEK[1],
+            day: day({
+                id: 2,
+                date: '2026-06-19',
+                session_type: 'rest',
+                segments: [],
+                distance_km: 0,
+                status: 'done',
+                ran_anyway: true,
+                actual_km: 5,
+                activities: [{ id: 7, km: 5, seconds: 1800 }],
+            }),
+        });
+
+        expect(
+            screen.getByRole('button', { name: /rest/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('offers neither move nor skip once a rest day is expanded by its logged run', () => {
+        renderRow({
+            day: day({
+                id: 2,
+                date: '2026-06-19',
+                session_type: 'rest',
+                segments: [],
+                distance_km: 0,
+                status: 'done',
+                ran_anyway: true,
+                actual_km: 5,
+                activities: [{ id: 7, km: 5, seconds: 1800 }],
+            }),
         });
         fireEvent.click(screen.getByRole('button', { name: /rest/i }));
 
         expect(
             screen.queryByRole('button', { name: /move this session/i }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /skip this session/i }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('stays flat on a past rest day with nothing else to show', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-10',
+                session_type: 'rest',
+                segments: [],
+                distance_km: 0,
+                status: 'done',
+            }),
+        });
+
+        expect(
+            screen.queryByRole('button', { name: /rest/i }),
         ).not.toBeInTheDocument();
     });
 
@@ -486,10 +558,15 @@ describe('WeekDayRow', () => {
             }),
             narration: null,
         });
-        fireEvent.click(screen.getByRole('button', { name: /easy/i }));
+        const trigger = screen.getByRole('button', { name: /easy/i });
+        fireEvent.click(trigger);
 
         expect(screen.getByText('6.4 km · 6:43/km')).toBeInTheDocument();
-        expect(screen.getByText('eased from tempo')).toBeInTheDocument();
+        // The type change leads the delta line: the replaced type struck
+        // through, the eased-into type at normal weight — no distance shown
+        // since it held.
+        expect(trigger).toHaveTextContent(/tempo\s*→\s*easy/);
+        expect(screen.getByText('eased')).toBeInTheDocument();
         expect(
             screen.getByText(
                 'legs are still carrying the weekend, so today runs easy.',
@@ -568,10 +645,13 @@ describe('WeekDayRow', () => {
             }),
             narration: null,
         });
-        fireEvent.click(screen.getByRole('button', { name: /long run/i }));
+        const trigger = screen.getByRole('button', { name: /long run/i });
+        fireEvent.click(trigger);
 
         expect(screen.getByText('20 km · 6:40/km')).toBeInTheDocument();
-        expect(screen.getByText(/6:00 → 6:40\/km/)).toBeInTheDocument();
+        expect(trigger).toHaveTextContent('6:00');
+        expect(trigger).toHaveTextContent('6:40/km');
+        expect(screen.getByText('eased')).toBeInTheDocument();
         expect(
             screen.queryByText('eased from long run'),
         ).not.toBeInTheDocument();
@@ -602,9 +682,77 @@ describe('WeekDayRow', () => {
             }),
             narration: null,
         });
-        fireEvent.click(screen.getByRole('button', { name: /long run/i }));
+        const trigger = screen.getByRole('button', { name: /long run/i });
+        fireEvent.click(trigger);
 
-        expect(screen.getByText(/6:00 → 6:40\/km/)).toBeInTheDocument();
+        expect(trigger).toHaveTextContent('6:00');
+        expect(trigger).toHaveTextContent('6:40/km');
+    });
+
+    /**
+     * #975: three independent change lines used to stack as full sentences.
+     * Even combined on one (synthetic) day, each stays a short delta pair —
+     * this proves the row copes with all three at once rather than turning
+     * into a paragraph.
+     */
+    it('renders all three change kinds together, each as its own short delta line', () => {
+        renderRow({
+            day: day({
+                date: TODAY,
+                session_type: 'easy',
+                distance_km: 4.1,
+                asked_km: 3.6,
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 27,
+                        zone: 'Z2',
+                        pace_label: 'easy',
+                        km: 4.1,
+                        pace_sec_per_km: 400,
+                    },
+                ],
+                eased_from: {
+                    session_type: 'tempo',
+                    distance_km: 5.9,
+                    voice: null,
+                },
+                pace_eased_from: { pace_sec_per_km: 360, voice: null },
+            }),
+        });
+
+        const trigger = screen.getByRole('button', { name: /easy/i });
+
+        // Session-type change leads its line, distance delta follows.
+        expect(trigger).toHaveTextContent(/tempo\s*→\s*easy/);
+        expect(trigger).toHaveTextContent(/5\.9\s*[↑↓]\s*4\.1 km/);
+        // The pace-ease delta.
+        expect(trigger).toHaveTextContent(/6:00\s*[↑↓]\s*6:40\/km/);
+        // The week-fit delta.
+        expect(trigger).toHaveTextContent(/3\.6\s*[↑↓]\s*4\.1 km/);
+        expect(screen.getAllByText('eased')).toHaveLength(2);
+        expect(screen.getByText('week fit')).toBeInTheDocument();
+    });
+
+    it('keeps the accessible name informative about what changed', () => {
+        renderRow({
+            day: day({
+                date: TODAY,
+                session_type: 'easy',
+                distance_km: 4.1,
+                eased_from: {
+                    session_type: 'tempo',
+                    distance_km: 5.9,
+                    voice: null,
+                },
+            }),
+        });
+
+        const trigger = screen.getByRole('button', { name: /easy/i });
+        expect(trigger).toHaveAccessibleName(/tempo/);
+        expect(trigger).toHaveAccessibleName(/easy/);
+        expect(trigger).toHaveAccessibleName(/5\.9/);
+        expect(trigger).toHaveAccessibleName(/4\.1/);
     });
 
     /** The server decides what the step-down is for; the row must not hardcode
@@ -653,12 +801,13 @@ describe('WeekDayRow', () => {
         expect(screen.queryByText('eased today')).not.toBeInTheDocument();
     });
 
-    it('states both recorded facts on a day the plan has judged: what it asked for, and what was run', () => {
+    it('states both recorded facts on a day the plan has judged, one side per line: what it asked for, and what was run', () => {
         renderRow({
             day: day({ prescribed_km: 6, actual_km: 5, distance_km: 8 }),
         });
 
-        expect(screen.getByText(/6 km asked · 5 km run/)).toBeInTheDocument();
+        expect(screen.getByText('asked 6 km · 5:00/km')).toBeInTheDocument();
+        expect(screen.getByText('ran 5 km')).toBeInTheDocument();
         expect(screen.queryByText(/8 km/)).not.toBeInTheDocument();
     });
 
@@ -667,7 +816,8 @@ describe('WeekDayRow', () => {
             day: day({ prescribed_km: 9, actual_km: 12, distance_km: 8 }),
         });
 
-        expect(screen.getByText(/9 km asked · 12 km run/)).toBeInTheDocument();
+        expect(screen.getByText('asked 9 km · 5:00/km')).toBeInTheDocument();
+        expect(screen.getByText('ran 12 km')).toBeInTheDocument();
     });
 
     it('shows the ask alone on a day that has not been judged yet', () => {
@@ -702,12 +852,8 @@ describe('WeekDayRow', () => {
             }),
         });
 
-        expect(
-            screen.getByText('6.4 km asked · 5.3 km run'),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByText('target 5:32/km · ran 6:43/km'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('asked 6.4 km · 5:32/km')).toBeInTheDocument();
+        expect(screen.getByText('ran 5.3 km · 6:43/km')).toBeInTheDocument();
     });
 
     it('shows the pace as before on a day still unrun', () => {
@@ -724,7 +870,7 @@ describe('WeekDayRow', () => {
         expect(screen.queryByText(/ran \d+:\d+\/km/)).not.toBeInTheDocument();
     });
 
-    it('never renders an unlabelled pace next to km run once the day is graded', () => {
+    it('never mixes both sides on one line once the day is graded', () => {
         renderRow({
             day: day({
                 status: 'done',
@@ -744,11 +890,12 @@ describe('WeekDayRow', () => {
             }),
         });
 
-        // The line stating what was asked and what was run carries no pace at
-        // all — the labelled figures render on their own line instead.
-        expect(screen.getByText(/km run/).textContent).not.toMatch(
-            /\d+:\d+\/km/,
-        );
+        // The old sentence mixed distance from both sides on one line and the
+        // pace on another, unlabelled. Each side now owns one line with its
+        // own distance and pace together.
+        expect(screen.queryByText(/km asked · .* km run/)).toBeNull();
+        expect(screen.queryByText(/target .* · ran /)).toBeNull();
+        expect(screen.getByText('ran 5.3 km · 6:43/km')).toBeInTheDocument();
     });
 
     it('offers one icon-only flag control without expanding the day', () => {

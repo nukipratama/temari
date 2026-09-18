@@ -258,7 +258,7 @@ describe('TodaySession', () => {
 
     /** The real case: a tempo eased to easy with its distance held leads as the easy run. */
     it('leads with the eased session, the original only as context, and the clamp line as why', () => {
-        render(
+        const { container } = render(
             <TodaySession
                 briefing={briefing('Easy 6k.')}
                 today={day({
@@ -284,7 +284,10 @@ describe('TodaySession', () => {
         );
 
         expect(screen.getByText('easy · 6.4 km · 6:43/km')).toBeInTheDocument();
-        expect(screen.getByText('eased from tempo')).toBeInTheDocument();
+        // The type change reads as a delta — the replaced type struck
+        // through, the eased-into type at normal weight.
+        expect(container).toHaveTextContent(/tempo\s*→\s*easy/);
+        expect(screen.getByText('eased')).toBeInTheDocument();
         expect(
             screen.getByText('you ran hard yesterday, so today runs easy.'),
         ).toBeInTheDocument();
@@ -293,7 +296,7 @@ describe('TodaySession', () => {
 
     /** The eased pace already sits in the session line; the block below states the step-down and why. */
     it('shows the eased pace in the session line, with the step-down and its note', () => {
-        render(
+        const { container } = render(
             <TodaySession
                 briefing={briefing('Easy 6k.')}
                 today={day({
@@ -320,7 +323,9 @@ describe('TodaySession', () => {
         expect(
             screen.getByText('long run · 20 km · 6:40/km'),
         ).toBeInTheDocument();
-        expect(screen.getByText(/6:00 → 6:40\/km/)).toBeInTheDocument();
+        expect(container).toHaveTextContent('6:00');
+        expect(container).toHaveTextContent('6:40/km');
+        expect(screen.getByText('eased')).toBeInTheDocument();
         expect(
             screen.getByText(
                 "your form's a little flat, so run this one at the easy end of your range.",
@@ -329,7 +334,7 @@ describe('TodaySession', () => {
     });
 
     it('drops the pace-ease voice, but keeps the pace arrow, once the day is credited', () => {
-        render(
+        const { container } = render(
             <TodaySession
                 briefing={briefing('Easy 6k.')}
                 today={day({
@@ -351,7 +356,8 @@ describe('TodaySession', () => {
             />,
         );
 
-        expect(screen.getByText(/6:00 → 6:40\/km/)).toBeInTheDocument();
+        expect(container).toHaveTextContent('6:00');
+        expect(container).toHaveTextContent('6:40/km');
     });
 
     it('names a rest day with no distance or pace hung off it', () => {
@@ -389,12 +395,9 @@ describe('TodaySession', () => {
             />,
         );
 
-        expect(
-            screen.getByText('easy · 6 km asked · 6.4 km run'),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByText('target 6:00/km · ran 6:20/km'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('easy')).toBeInTheDocument();
+        expect(screen.getByText('asked 6 km · 6:00/km')).toBeInTheDocument();
+        expect(screen.getByText('ran 6.4 km · 6:20/km')).toBeInTheDocument();
     });
 
     it('draws no prescription when no plan covers today', () => {
