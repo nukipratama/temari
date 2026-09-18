@@ -16,7 +16,7 @@ import {
     AskedRanResult,
     DeltaPair,
     DeltaTag,
-    SessionTypeDelta,
+    EasedDelta,
 } from '@/components/plan/DeltaPair';
 import MiniSessionBar, { zoneColor } from '@/components/plan/MiniSessionBar';
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
@@ -206,9 +206,10 @@ export default function WeekDayRow({
         <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold text-foreground">
                 {sessionDelta?.typeFrom != null ? (
-                    <SessionTypeDelta
+                    <DeltaPair
                         from={sessionDelta.typeFrom}
                         to={sessionDelta.typeTo}
+                        direction="neutral"
                     />
                 ) : (
                     (SESSION_TYPE_LABEL[day.session_type] ?? day.session_type)
@@ -229,26 +230,28 @@ export default function WeekDayRow({
                 </span>
             )}
             {sessionDelta && (
-                <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-label-micro">
-                    {sessionDelta.distanceFrom !== null && (
-                        <DeltaPair
-                            from={sessionDelta.distanceFrom}
-                            to={sessionDelta.distanceTo}
-                            direction={sessionDelta.direction}
-                        />
-                    )}
-                    <DeltaTag>eased</DeltaTag>
-                </span>
+                <EasedDelta
+                    className="mt-0.5"
+                    from={sessionDelta.distanceFrom ?? undefined}
+                    to={
+                        sessionDelta.distanceFrom === null
+                            ? undefined
+                            : sessionDelta.distanceTo
+                    }
+                    direction={
+                        sessionDelta.distanceFrom === null
+                            ? undefined
+                            : sessionDelta.direction
+                    }
+                />
             )}
             {paceDelta && (
-                <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-label-micro">
-                    <DeltaPair
-                        from={paceDelta.from}
-                        to={paceDelta.to}
-                        direction={paceDelta.direction}
-                    />
-                    <DeltaTag>eased</DeltaTag>
-                </span>
+                <EasedDelta
+                    className="mt-0.5"
+                    from={paceDelta.from}
+                    to={paceDelta.to}
+                    direction={paceDelta.direction}
+                />
             )}
             {weekFitDelta && (
                 <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-label-micro">

@@ -1,12 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import {
-    AskedRanResult,
-    DeltaPair,
-    DeltaTag,
-    SessionTypeDelta,
-} from './DeltaPair';
+import { AskedRanResult, DeltaPair, DeltaTag, EasedDelta } from './DeltaPair';
 
 describe('DeltaPair', () => {
     it('reads both values with the old one struck through', () => {
@@ -57,15 +52,16 @@ describe('DeltaPair', () => {
     });
 });
 
-describe('SessionTypeDelta', () => {
-    it('reads the type change with a neutral arrow, old value struck through', () => {
+describe('DeltaPair neutral direction', () => {
+    it('reads a type change with a neutral arrow, old value struck through', () => {
         const { container } = render(
-            <SessionTypeDelta from="tempo" to="easy" />,
+            <DeltaPair from="tempo" to="easy" direction="neutral" />,
         );
 
         expect(screen.getByText('tempo')).toHaveClass('line-through');
         expect(screen.getByText('easy')).toBeInTheDocument();
         expect(container.textContent).toBe('tempo → easy');
+        expect(screen.getByText('→')).toHaveClass('text-text-2');
     });
 });
 
@@ -74,6 +70,47 @@ describe('DeltaTag', () => {
         render(<DeltaTag>week fit</DeltaTag>);
 
         expect(screen.getByText('week fit')).toHaveClass('text-label-micro');
+    });
+});
+
+describe('EasedDelta', () => {
+    it('tags a plain value-only ease', () => {
+        const { container } = render(
+            <EasedDelta from="6:00" to="6:15/km" direction="up" />,
+        );
+
+        expect(container).toHaveTextContent('6:00');
+        expect(container).toHaveTextContent('6:15/km');
+        expect(screen.getByText('eased')).toBeInTheDocument();
+    });
+
+    it('leads with the type change when the type moved too', () => {
+        const { container } = render(
+            <EasedDelta
+                typeFrom="tempo"
+                typeTo="easy"
+                from="5.9"
+                to="4.1 km"
+                direction="down"
+            />,
+        );
+
+        expect(container).toHaveTextContent(/tempo\s*→\s*easy/);
+        expect(container).toHaveTextContent(/5\.9\s*↓\s*4\.1 km/);
+        expect(screen.getByText('eased')).toBeInTheDocument();
+    });
+
+    it('omits the type delta when the type held', () => {
+        render(
+            <EasedDelta
+                typeFrom={null}
+                from="5.9"
+                to="4.1 km"
+                direction="down"
+            />,
+        );
+
+        expect(screen.queryByText('tempo')).not.toBeInTheDocument();
     });
 });
 

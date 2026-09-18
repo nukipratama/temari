@@ -2,12 +2,7 @@ import { ArrowDown } from 'lucide-react';
 
 import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
 
-import {
-    AskedRanResult,
-    DeltaPair,
-    DeltaTag,
-    SessionTypeDelta,
-} from '@/components/plan/DeltaPair';
+import { AskedRanResult, EasedDelta } from '@/components/plan/DeltaPair';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { renderNarration } from '@/components/temari/Citation';
 import FaceIcon from '@/components/temari/FaceIcon';
@@ -115,22 +110,21 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
             )}
             {sessionDelta && (
                 <div className="mt-2 border-l-2 border-border-strong pl-3">
-                    <p className="flex flex-wrap items-center gap-1.5 text-label-micro">
-                        {sessionDelta.typeFrom !== null && (
-                            <SessionTypeDelta
-                                from={sessionDelta.typeFrom}
-                                to={sessionDelta.typeTo}
-                            />
-                        )}
-                        {sessionDelta.distanceFrom !== null && (
-                            <DeltaPair
-                                from={sessionDelta.distanceFrom}
-                                to={sessionDelta.distanceTo}
-                                direction={sessionDelta.direction}
-                            />
-                        )}
-                        <DeltaTag>eased</DeltaTag>
-                    </p>
+                    <EasedDelta
+                        typeFrom={sessionDelta.typeFrom}
+                        typeTo={sessionDelta.typeTo}
+                        from={sessionDelta.distanceFrom ?? undefined}
+                        to={
+                            sessionDelta.distanceFrom === null
+                                ? undefined
+                                : sessionDelta.distanceTo
+                        }
+                        direction={
+                            sessionDelta.distanceFrom === null
+                                ? undefined
+                                : sessionDelta.direction
+                        }
+                    />
                     {day.eased_from?.voice !== null && (
                         <p className="mt-1 text-sm leading-relaxed text-text-2">
                             {day.eased_from?.voice}
@@ -140,14 +134,11 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
             )}
             {paceDelta && (
                 <div className="mt-2 border-l-2 border-border-strong pl-3">
-                    <p className="flex items-center gap-1.5 text-label-micro">
-                        <DeltaPair
-                            from={paceDelta.from}
-                            to={paceDelta.to}
-                            direction={paceDelta.direction}
-                        />
-                        <DeltaTag>eased</DeltaTag>
-                    </p>
+                    <EasedDelta
+                        from={paceDelta.from}
+                        to={paceDelta.to}
+                        direction={paceDelta.direction}
+                    />
                     {day.pace_eased_from?.voice !== null && (
                         <p className="mt-1 text-sm leading-relaxed text-text-2">
                             {day.pace_eased_from?.voice}
