@@ -16,6 +16,11 @@ code_refs:
 
 **Status:** Accepted (2026-09-09)
 
+> **2026-09-19 — the monthly recap now waits too.** The last consequence below turned out to be
+> wrong for a first connect late in a month: the connect month is narrated for real, and its own
+> backfilled runs hydrate last. The same gate now covers the monthly LLM path; see the 2026-09-19
+> addenda in [[deferred-recap-windowing]].
+
 ## Context
 
 [[background-hydration-drain]] closed with an unenforced rule under *Consequences*: *"Ordering matters, and is not enforced in code. A recap generated before its weeks are hydrated narrates null load and, being `invalidate: false`, keeps that thin story. Drain first, kick off recaps second."*

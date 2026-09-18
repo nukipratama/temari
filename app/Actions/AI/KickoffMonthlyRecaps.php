@@ -11,6 +11,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\HydrationBacklog;
+use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -23,7 +24,8 @@ use Illuminate\Support\Collection;
  *
  * A month that closed before the athlete connected Strava is filled
  * rule-based up front, the same as a month past the backfill depth cap —
- * Temari was not there for it.
+ * Temari was not there for it. A month the LLM would narrate while the ingest
+ * pipeline is still hydrating it is held back by {@see RecapHydrationReadiness}.
  *
  * @see docs/decisions/deferred-recap-windowing.md
  */
@@ -32,6 +34,7 @@ class KickoffMonthlyRecaps
     public function __construct(
         private readonly AnalysisService $service,
         private readonly BackfillAgeGate $ages,
+        private readonly RecapHydrationReadiness $readiness,
         private readonly RecentlyActiveUsers $activeUsers,
         private readonly HydrationBacklog $backlog,
     ) {
@@ -83,6 +86,8 @@ class KickoffMonthlyRecaps
                 discriminator: $month,
             ));
             $ruleFilled += $tooOld->count() + $preConnect->count();
+
+            $narratable = $this->readiness->readyMonths((int) $id, $narratable);
 
             // Oldest month first so the connected story narrates in chronological
             // order: the kickoff dispatches the earliest link and the job chain

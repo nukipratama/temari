@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\AI\KickoffMonthlyRecaps;
+use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -190,4 +191,26 @@ it('still picks up a Failed recap and skips the open month', function (): void {
     app(KickoffMonthlyRecaps::class)($user->id);
 
     expect(array_column($captured, 'discriminator'))->toBe(['2026-04']);
+});
+
+it('holds back the connect month while its backfilled runs are still hydrating, and narrates it once they land', function (): void {
+    // The 1st-of-month sweep, three days after a late-May connect: May closed
+    // after the connection so it narrates for real, but the drain works
+    // oldest-first and has not reached May's own backfilled runs yet.
+    Carbon::setTestNow('2026-06-01 05:45:00');
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => '2026-05-29 20:00:00']);
+    $backfilled = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($backfilled)->create(['start_date_local' => Carbon::parse('2026-05-12 06:30:00')]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 0, 'rule_based' => 0])
+        ->and($captured)->toBeEmpty();
+
+    $backfilled->update(['ingest_state' => IngestState::Detailed]);
+
+    expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 0])
+        ->and(collect($captured)->firstWhere('discriminator', '2026-05'))->toMatchArray(['ruleBased' => false]);
 });

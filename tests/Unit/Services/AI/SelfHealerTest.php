@@ -761,3 +761,26 @@ it('holds a stalled card flavor while older history within past-you reach still 
 
     expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
 });
+
+it('does not resume a monthly link whose month is still hydrating, and resumes it once it has', function (): void {
+    Carbon::setTestNow('2026-06-01 06:00:00');
+    $user = User::factory()->create();
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-05',
+        'status' => AnalysisStatus::Pending,
+    ]);
+    $activity = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2026-05-20')]);
+
+    $captured = [];
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(0)
+        ->and($captured)->toBeEmpty();
+
+    $activity->update(['ingest_state' => IngestState::Detailed]);
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1)
+        ->and($captured[0]['discriminator'])->toBe('2026-05');
+});

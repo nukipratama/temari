@@ -11,10 +11,12 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Holds a weekly recap back while the week it narrates is still filling in.
+ * Holds a weekly or monthly recap back while the period it narrates is still
+ * filling in.
  *
  * A recap is requested `invalidate: false`, so a week narrated against half its
- * splits and a null `weekly_trimp` keeps that thin story permanently. The
+ * splits and a null `weekly_trimp`, or a month narrated before its PRs and load
+ * land, keeps that thin story permanently. The
  * `strava:hydrate-backlog` drain and the Monday kickoff have no ordering
  * between them, so this is the ordering: a week whose activities the pipeline
  * still owes a hydration is not narrated yet.
@@ -70,7 +72,7 @@ class RecapHydrationReadiness
                 continue;
             }
 
-            if ($now->lt($this->graceEndsAt($weekEnding, $connectedAt[$userId] ?? null))) {
+            if ($now->lt($this->graceEndsAt(Carbon::parse($weekEnding)->endOfDay(), $connectedAt[$userId] ?? null))) {
                 $deferred->push($snapshot);
 
                 continue;
@@ -80,21 +82,54 @@ class RecapHydrationReadiness
             $ready->push($snapshot);
         }
 
-        $this->log('narrator.recap.hydration_deferred', $deferred);
-        $this->log('narrator.recap.hydration_grace_expired', $forced);
+        $weekKey = fn (WeeklySnapshot $snapshot): string => $this->key((int) $snapshot->user_id, $snapshot->week_ending->toDateString());
+        $this->log('narrator.recap.hydration_deferred', 'weeks', $deferred->map($weekKey));
+        $this->log('narrator.recap.hydration_grace_expired', 'weeks', $forced->map($weekKey));
 
         return $ready;
     }
 
     /**
-     * When a week stops waiting and narrates whatever has landed. Anchored at
-     * the later of the week's own close and the athlete's Strava connection:
-     * a first connect backfills weeks that closed long ago, and those need the
-     * same grace as a week that closed last night.
+     * The subset of one athlete's $months (`Y-m`) that may be narrated now, by
+     * the same rule {@see ready()} applies to a week.
+     *
+     * @param  Collection<int, string>  $months
+     * @return Collection<int, string>
      */
-    private function graceEndsAt(string $weekEnding, ?Carbon $connectedAt): Carbon
+    public function readyMonths(int $userId, Collection $months): Collection
     {
-        $anchor = Carbon::parse($weekEnding)->endOfDay();
+        if ($months->isEmpty()) {
+            return $months;
+        }
+
+        $awaiting = $this->backlog->awaitingHydration([$userId])
+            ->selectRaw("DISTINCT DATE_FORMAT(activity_details.start_date_local, '%Y-%m') as month")
+            ->pluck('month')
+            ->flip();
+        $connectedAt = $this->backlog->connectedAt($userId);
+        $now = Carbon::now();
+
+        $held = $months->filter(fn (string $month): bool => $awaiting->has($month));
+        $deferred = $held->filter(fn (string $month): bool => $now->lt(
+            $this->graceEndsAt(Carbon::parse($month.'-01')->endOfMonth(), $connectedAt),
+        ));
+
+        $monthKey = fn (string $month): string => $this->key($userId, $month);
+        $this->log('narrator.recap.hydration_deferred', 'months', $deferred->map($monthKey));
+        $this->log('narrator.recap.hydration_grace_expired', 'months', $held->diff($deferred)->map($monthKey));
+
+        return $months->diff($deferred)->values();
+    }
+
+    /**
+     * When a period stops waiting and narrates whatever has landed. Anchored at
+     * the later of the period's own close and the athlete's Strava connection:
+     * a first connect backfills periods that closed long ago, and those need the
+     * same grace as one that closed last night.
+     */
+    private function graceEndsAt(Carbon $closedAt, ?Carbon $connectedAt): Carbon
+    {
+        $anchor = $closedAt->copy();
 
         if ($connectedAt !== null && $connectedAt->gt($anchor)) {
             $anchor = $connectedAt->copy();
@@ -127,25 +162,23 @@ class RecapHydrationReadiness
             ->all();
     }
 
-    private function key(int $userId, string $weekEnding): string
+    private function key(int $userId, string $period): string
     {
-        return $userId.'|'.$weekEnding;
+        return $userId.'|'.$period;
     }
 
     /**
-     * @param  Collection<int, WeeklySnapshot>  $snapshots
+     * @param  Collection<int, string>  $keys
      */
-    private function log(string $event, Collection $snapshots): void
+    private function log(string $event, string $unit, Collection $keys): void
     {
-        if ($snapshots->isEmpty()) {
+        if ($keys->isEmpty()) {
             return;
         }
 
         Log::info($event, [
-            'count' => $snapshots->count(),
-            'weeks' => $snapshots
-                ->map(fn (WeeklySnapshot $snapshot): string => $snapshot->user_id.'|'.$snapshot->week_ending->toDateString())
-                ->all(),
+            'count' => $keys->count(),
+            $unit => $keys->values()->all(),
         ]);
     }
 }

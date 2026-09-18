@@ -33,8 +33,8 @@ covers the fill side; nothing it decided changes.
 ## Context
 
 Every recovery family in [SelfHealer](../../app/Services/AI/SelfHealer.php) starts from a row that
-already exists — [`resumeSingleRowType`](../../app/Services/AI/SelfHealer.php#L303),
-[`resumeCardFlavor`](../../app/Services/AI/SelfHealer.php#L260) and the two chain sweeps all
+already exists — [`resumeSingleRowType`](../../app/Services/AI/SelfHealer.php#L325),
+[`resumeCardFlavor`](../../app/Services/AI/SelfHealer.php#L279) and the two chain sweeps all
 query `Analysis::query()->stalled()`. There is no `firstOrCreate` anywhere in it.
 
 But a row's existence is decided by a single scheduled minute. `ai:daily-briefing` stages the day's

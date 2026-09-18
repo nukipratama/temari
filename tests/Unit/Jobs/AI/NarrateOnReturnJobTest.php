@@ -216,3 +216,16 @@ it('does nothing for an athlete who no longer exists', function (): void {
 
     Bus::assertNothingDispatched();
 });
+
+it('holds the latest closed month back while its runs are still hydrating', function (): void {
+    Carbon::setTestNow('2026-06-01 09:00:00');
+    monthlyRecapLeftPending($this->athlete, '2026-05');
+    $activity = Activity::factory()->for($this->athlete)->summaryOnly()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2026-05-20')]);
+
+    narrateOnReturn($this->athlete);
+
+    Bus::assertNotDispatched(AnalyzeMonthlyRecapJob::class);
+    expect(returnRowStatus(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-05'))
+        ->toBe(AnalysisStatus::Pending);
+});

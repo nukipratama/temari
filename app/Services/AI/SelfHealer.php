@@ -232,6 +232,7 @@ class SelfHealer
             ->filter(fn (ChainLink $link): bool => isset($activeIds[$link->subjectId]))
             ->values();
         $oldestRealMonth = $this->ages->cutoffMonth();
+        $resumed = 0;
         $index = 0;
 
         foreach ($links as $link) {
@@ -242,7 +243,12 @@ class SelfHealer
                     type: AnalysisType::MonthlyRecap,
                     discriminator: $link->discriminator,
                 );
+                $resumed++;
 
+                continue;
+            }
+
+            if ($link->discriminator !== null && $this->readiness->readyMonths($link->subjectId, collect([$link->discriminator]))->isEmpty()) {
                 continue;
             }
 
@@ -255,9 +261,10 @@ class SelfHealer
                 invalidate: false,
             );
             $index++;
+            $resumed++;
         }
 
-        return $links->count();
+        return $resumed;
     }
 
     /**

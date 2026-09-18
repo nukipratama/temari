@@ -160,3 +160,64 @@ it('records the deferral and the escape hatch in the structured log', function (
 it('short-circuits on an empty set', function (): void {
     expect(hydrationReadyIds())->toBe([]);
 });
+
+/** @return list<string> */
+function hydrationReadyMonths(User $user, string ...$months): array
+{
+    return app(RecapHydrationReadiness::class)->readyMonths($user->id, collect($months))->all();
+}
+
+it('holds back a month that still holds a summary-only run, and only that month', function (): void {
+    // The 1st-of-month sweep, 5h45m after May closed.
+    Carbon::setTestNow('2026-06-01 05:45:00');
+    $user = User::factory()->create();
+    hydrationRun($user, 'summaryOnly', date: '2026-05-29');
+    hydrationRun($user, 'analyzed', date: '2026-04-20');
+
+    expect(hydrationReadyMonths($user, '2026-04', '2026-05'))->toBe(['2026-04']);
+});
+
+it('releases a month whose runs are all detailed, or whose backlog belongs to another athlete', function (): void {
+    Carbon::setTestNow('2026-06-01 05:45:00');
+    $user = User::factory()->create();
+    hydrationRun($user, 'analyzed', date: '2026-05-29');
+    hydrationRun(User::factory()->create(), 'summaryOnly', date: '2026-05-29');
+
+    expect(hydrationReadyMonths($user, '2026-05'))->toBe(['2026-05']);
+});
+
+it('releases a still-unhydrated month once the grace window after its close has run out', function (): void {
+    $user = User::factory()->create();
+    hydrationRun($user, 'summaryOnly', date: '2026-05-29');
+
+    Carbon::setTestNow('2026-06-02 23:59:00');
+    expect(hydrationReadyMonths($user, '2026-05'))->toBe([]);
+
+    Carbon::setTestNow('2026-06-03 00:01:00');
+    expect(hydrationReadyMonths($user, '2026-05'))->toBe(['2026-05']);
+});
+
+it('measures a month\'s grace window from the connection when that came later', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => '2026-06-05 12:00:00']);
+    hydrationRun($user, 'summaryOnly', date: '2026-05-29');
+
+    Carbon::setTestNow('2026-06-07 11:59:00');
+    expect(hydrationReadyMonths($user, '2026-05'))->toBe([]);
+
+    Carbon::setTestNow('2026-06-07 12:01:00');
+    expect(hydrationReadyMonths($user, '2026-05'))->toBe(['2026-05']);
+});
+
+it('records a deferred month in the structured log', function (): void {
+    Log::spy();
+    Carbon::setTestNow('2026-06-01 05:45:00');
+    $user = User::factory()->create();
+    hydrationRun($user, 'summaryOnly', date: '2026-05-29');
+
+    hydrationReadyMonths($user, '2026-05');
+
+    Log::shouldHaveReceived('info')
+        ->with('narrator.recap.hydration_deferred', ['count' => 1, 'months' => [$user->id.'|2026-05']])
+        ->once();
+});

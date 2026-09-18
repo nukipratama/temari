@@ -65,7 +65,7 @@ class NarrateOnReturnJob implements ShouldQueue
         $this->catchUpRuns($service, $user, $windowStart);
         $this->catchUpCardFlavors($service, $user, $windowStart);
         $this->catchUpWeeklyRecaps($service, $readiness, $user);
-        $this->catchUpMonthlyRecaps($service, $user);
+        $this->catchUpMonthlyRecaps($service, $readiness, $user);
         $this->readThisWeek($planNarration, $user);
     }
 
@@ -139,7 +139,7 @@ class NarrateOnReturnJob implements ShouldQueue
             ));
     }
 
-    private function catchUpMonthlyRecaps(AnalysisService $service, User $user): void
+    private function catchUpMonthlyRecaps(AnalysisService $service, RecapHydrationReadiness $readiness, User $user): void
     {
         $lastClosed = RecapPeriod::lastClosedMonth();
         $months = Analysis::query()
@@ -150,15 +150,11 @@ class NarrateOnReturnJob implements ShouldQueue
             ->where('discriminator', '<=', $lastClosed)
             ->pluck('discriminator');
 
-        foreach ($months as $month) {
-            if ($month < $lastClosed) {
-                $service->requestRuleBased(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $month, refillDone: false, reason: AnalysisOrigin::Return);
+        $months->filter(fn (string $month): bool => $month < $lastClosed)
+            ->each(fn (string $month) => $service->requestRuleBased(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $month, refillDone: false, reason: AnalysisOrigin::Return));
 
-                continue;
-            }
-
-            $service->request(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $month, invalidate: false);
-        }
+        $readiness->readyMonths($user->id, $months->filter(fn (string $month): bool => $month === $lastClosed)->values())
+            ->each(fn (string $month) => $service->request(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $month, invalidate: false));
     }
 
     private function readThisWeek(PlanNarrationRequester $planNarration, User $user): void

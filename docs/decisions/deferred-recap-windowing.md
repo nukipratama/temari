@@ -72,6 +72,31 @@ code_refs:
 > investigated: whether the real-LLM (`narratable`) branch — which also dispatches without an
 > explicit `RecapHydrationReadiness` call — needs one. #1018 was scoped to the rule-based bypass
 > specifically; that branch's safety, if any, comes from elsewhere and was not checked here.
+>
+> **2026-09-19 (later the same day) — the monthly LLM branch did race hydration, and is now
+> gated.** Nothing upstream made it safe: [AnalyzeMonthlyRecapJob](app/Jobs/AI/AnalyzeMonthlyRecapJob.php)
+> waits on its predecessor month's recap, never on the ingest pipeline. Unlike the rule-based fill,
+> [MonthTotalsTool](app/Services/AI/Agent/Tools/MonthTotalsTool.php) reads three things only
+> hydration writes ([ActivityPipeline](app/Services/Run/Ingest/ActivityPipeline.php)): `pr_count`
+> (`personal_records`), `mood_mix` (`story_lines`), and the `fitness` arc (the snapshots' CTL and
+> `form_status`, which need `trimp_edwards`). A summary-only run contributes distance and nothing
+> else. The race is reachable in one case. #993 routes every month that closed before connect to
+> rule-based, so the only LLM-narrated month that can hold backfilled runs is the **connect month
+> itself**. The drain works oldest-first (#1031) at no more than 1600 background reads a day, about
+> 800 runs, shared by all athletes. So an athlete with a long history who connects late in a month
+> still has that month's own pre-connect runs summary-only when the 1st-of-month sweep or the
+> hourly `ai:self-heal` reaches it. Because the recap is requested with `invalidate: false`, that
+> thin month stays permanently. All three monthly LLM entry points now go through
+> [`RecapHydrationReadiness::readyMonths()`](app/Services/AI/RecapHydrationReadiness.php):
+> [KickoffMonthlyRecaps](app/Actions/AI/KickoffMonthlyRecaps.php), `SelfHealer::resumeMonthly`
+> and `NarrateOnReturnJob`'s latest-month branch. This is the same set of entry points weekly gates.
+> The grace window and its anchor match the weekly one: 48 hours from the later of the month's close
+> and the connection. Pickup is the same hourly sweep, and the row it needs is staged `Pending` by
+> [DispatchPostRunAnalysis](app/Listeners/DispatchPostRunAnalysis.php) as each run hydrates. The
+> monthly rule-based branches remain ungated, for the reason given in the entry above. Not fixed
+> here: `mood_mix` counts `story_lines` by `created_at`, which is the time a run *hydrated*. A
+> backfilled run's mood therefore lands in the month it was hydrated rather than the month it was
+> run, whether or not the recap waits.
 
 ## Context
 
