@@ -1,6 +1,6 @@
 ---
 title: A race block never prescribes below habit, and the load guard outranks that
-description: A race block averages at least the athlete's recent actual weekly mean, climbs to its readiness long run and holds it until the taper, keeps its last recovery week off the last Build week, derives its long-run goal from the plan, and gives way to a load deload that it records.
+description: A race block averages at least the athlete's recent actual weekly mean, climbs to its readiness long run and holds it until the taper, keeps its last recovery week off the last Build week, derives its long-run goal from the plan, gives way to a load deload that it records, and holds every increase above habit until the load guard's recent runs are scored.
 tags: [decision, run, plan]
 status: accepted
 reviewed: 2026-09-18
@@ -12,6 +12,8 @@ code_refs:
   - app/Services/Run/Plan/PlanPageAssembler.php
   - app/Models/Season.php
   - app/Models/PlanAdaptation.php
+  - app/Services/Run/Plan/PlanInputsGatherer.php
+  - app/Services/AI/HydrationBacklog.php
 ---
 
 # A race block never prescribes below habit, and the load guard outranks that
@@ -41,6 +43,8 @@ Each of these has a defensible cautious reading for an athlete whose biggest wee
 
 **5. The load guard outranks all four.** Nothing above touches [PlanAdapter](app/Services/Run/Plan/PlanAdapter.php): an overreaching form, excess monotony or strain, or a missed week still deloads the current week, and the floor is a target the guard is allowed to break. When a deload turns a week of a floored season down, [Periodizer](app/Services/Run/Plan/Periodizer.php) records the floor it set aside on the week's `PlanAdaptation` row as `volume_floor_km`. The Plan tab's adaptation detail then ends with one plain sentence naming that floor. There is no narration change and no LLM call. A taper week the adapter leaves alone records nothing.
 
+**6. The floor applies at once, but increases wait for scored load.** The guard judges TRIMP-derived load: monotony and strain over seven days, and ATL, CTL and form over the 42-day chronic window. Summary-first ingest writes a run's distance at once, so the floor's input is there from the first sync. The run's TRIMP only arrives with hydration, and the guard reads an unscored run as no signal. A race season opened while any run dated inside that 42-day window still awaits hydration ([HydrationBacklog::awaitsHydrationBefore()](app/Services/AI/HydrationBacklog.php)) is stamped `seasons.increases_held`. While held, the block runs flat: 1.0 outside its recovery and taper dips, with no ramp and neither long-run target floor. The volume floor is solved over its training weeks alone, so each one matches the athlete's mean. A floor held as a mean across the dips would push the training weeks above habit, which is exactly what the hold forbids. Every regeneration records the hold on the week's `PlanAdaptation` row as `increases_held`, and the Plan tab's detail line says the build is waiting for the recent runs to be scored. Only a regeneration can release the hold ([PlanInputsGatherer](app/Services/Run/Plan/PlanInputsGatherer.php) calls `SeasonService::releaseHeldIncreases()`), so the multipliers it stamps and the baseline every render reads flip together. A page load never releases it. The trigger already exists: the Monday `plan:regenerate`, or any earlier regeneration (a manual replan, a race or preference save, the onboarding chain's `KickoffRecapsJob`), once the window is scored.
+
 ## Consequences
 
 For the audited athlete and the same twelve-week block, the plan now averages 26.83 km/week, where it averaged 22.05 km. The long run climbs 10.4, 11.2 and 12.0 km and holds 12.0 through Peak. The biggest week is 32.4 km, and the long-run goal is 12 km, which the plan prescribes four times.
@@ -49,6 +53,9 @@ For the audited athlete and the same twelve-week block, the plan now averages 26
 - **A short marathon block reaches its cap early.** With almost no ramp to divide by, the 30 km readiness target bounded by half the week becomes the long run from the first week.
 - **The guard is only as sensitive as its thresholds.** Replaying the audited athlete's own flagged week into the current week reads `fatigued` against today's fitness, not `overreaching`, so it clamps today's session through [[readiness-clamp-is-advisory]] but does not deload the week. Only at 1.25 times that load does the form reach `overreaching`, and then the plan deloads and says so.
 - The floor still gives way to the race-distance band and the time-on-feet cap, and that shortfall is not recorded.
+- **While held, a block averages under its floor.** Its training weeks sit at the mean and its dips sit under it: the audited athlete's held block would run 25.8 km training weeks, a 9.6 km flat long run, and a 22.91 km mean across its eleven full weeks. The released plan replaces it at the first regeneration after hydration, which can be up to a week later if nothing else regenerates first.
+- **A run hydrated without heart rate never holds anything.** It no longer awaits hydration, so the guard stays as blind to it as [[unscored-load-is-null-not-zero]] already leaves it.
+- **A held season's goals come from the held plan,** so the long-run goal sits at or below what the released plan builds to.
 
 ## See also
 

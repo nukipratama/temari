@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Enums\IngestState;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\SeasonGoal;
@@ -398,4 +401,47 @@ it('says nothing about readiness for a full block or a season with no race', fun
         expect($this->service->takeUnderReadyLine($season))->toBeNull()
             ->and($season->fresh()->under_ready_noted_at)->toBeNull();
     }
+});
+
+function unscoredRunOn(User $user, Carbon $day): Activity
+{
+    $activity = Activity::factory()->summaryOnly()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => $day->copy()->setTime(7, 0)]);
+
+    return $activity;
+}
+
+it('holds a race season\'s increases when a run inside the chronic-load window is still unscored', function (): void {
+    $held = User::factory()->create();
+    RaceGoal::factory()->for($held)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString()]);
+    unscoredRunOn($held, Carbon::today()->subDays(41));
+    $outsideWindow = User::factory()->create();
+    RaceGoal::factory()->for($outsideWindow)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString()]);
+    unscoredRunOn($outsideWindow, Carbon::today()->subDays(42));
+    $goalless = User::factory()->create();
+    unscoredRunOn($goalless, Carbon::today()->subDay());
+
+    expect($this->service->ensureCurrent($held, Carbon::today())->increases_held)->toBeTrue()
+        ->and($this->service->ensureCurrent($outsideWindow, Carbon::today())->increases_held)->toBeFalse()
+        ->and($this->service->ensureCurrent($goalless, Carbon::today())->increases_held)->toBeFalse();
+});
+
+it('releases held increases only once the window is scored, and never on an ordinary read', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString()]);
+    $run = unscoredRunOn($user, Carbon::today()->subDay());
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+
+    $this->service->releaseHeldIncreases($season, $user, Carbon::today());
+    $stillHeld = $season->fresh()->increases_held;
+
+    $run->update(['ingest_state' => IngestState::Detailed]);
+    $this->service->ensureCurrent($user, Carbon::today());
+    $heldAfterRead = $season->fresh()->increases_held;
+
+    $this->service->releaseHeldIncreases($season, $user, Carbon::today());
+
+    expect($stillHeld)->toBeTrue()
+        ->and($heldAfterRead)->toBeTrue()
+        ->and($season->fresh()->increases_held)->toBeFalse();
 });

@@ -17,7 +17,7 @@ class TrainingLoad
     /** Time constants (days) for the EWMA decay. */
     private const int ATL_TAU = 7;
 
-    private const int CTL_TAU = 42;
+    public const int CTL_TAU = 42;
 
     /**
      * Lower bound (days) on how far back the EWMA loads TRIMP. At 365 days a

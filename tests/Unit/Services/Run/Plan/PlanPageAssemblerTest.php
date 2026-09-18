@@ -116,6 +116,22 @@ it('says so when the deload takes the week under the season\'s volume floor', fu
         ->toBe(AdaptationReason::LowReadiness->detail(100).' that puts it under your usual 25.9 km a week, on purpose.');
 });
 
+it('says the build is waiting when the block holds its increases for unscored load', function (): void {
+    $user = assemblerAthlete();
+    PlanAdaptation::query()->create([
+        'user_id' => $user->id,
+        'week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(),
+        'reason' => AdaptationReason::Steady,
+        'deload' => false,
+        'quality_delta' => 0,
+        'adherence_pct' => 100,
+        'increases_held' => true,
+    ]);
+
+    expect($this->assembler->adaptation($user, Carbon::today())['detail'])
+        ->toBe(AdaptationReason::Steady->detail(100).' the build and the longer long runs wait until your recent runs are scored.');
+});
+
 it('has no weeks to render before anything has been planned', function (): void {
     expect($this->assembler->weeks(assemblerAthlete(), Carbon::today()))->toBe([]);
 });

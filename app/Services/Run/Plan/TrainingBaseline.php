@@ -305,7 +305,8 @@ final readonly class TrainingBaseline
 
     /**
      * Volume decides the long run, not the other way round, and a race block
-     * raises it only as far as its three floors ask.
+     * raises it only as far as its three floors ask. A block whose increases
+     * are held takes the volume floor alone, over its flat curve.
      */
     private function longRunKm(?RaceGoal $race, float $weeklyVolumeKm, ?Season $season, float $capKm, int $sessionsPerWeek): float
     {
@@ -313,8 +314,8 @@ final readonly class TrainingBaseline
 
         $derived = max(
             $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm),
-            $block === null ? 0.0 : self::longRunTargetFloorKm($race, $block, $capKm),
-            $block === null ? 0.0 : $this->volumeFloorKm($race, $block, $season->volume_floor_km, $sessionsPerWeek),
+            $block === null || $season->increases_held ? 0.0 : self::longRunTargetFloorKm($race, $block, $capKm),
+            $block === null ? 0.0 : $this->volumeFloorKm($race, $block, $season, $sessionsPerWeek),
         );
 
         return max(round(min($derived, $capKm), 1), self::MIN_LONG_RUN_KM);
@@ -348,7 +349,7 @@ final readonly class TrainingBaseline
     {
         $weeks = $this->phaseSchedule->forRace($season->starts_at, $race->race_date, (float) $race->distance_m);
         $zones = array_column($weeks, 'zone');
-        $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), zones: $zones);
+        $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), $season->increases_held, $zones);
 
         $block = [];
         foreach ($weeks as $i => $week) {
@@ -401,10 +402,22 @@ final readonly class TrainingBaseline
      * baseline, so the floor solves in one step. Deload and Taper weeks sit
      * under the floor; the Build and Peak weeks carry the difference.
      *
+     * A block holding its increases has no ramp to carry that difference, and
+     * its training weeks may not go above habit to make it up, so the floor
+     * is solved over those weeks alone: each matches the athlete's mean and
+     * the recovery and taper weeks dip under it.
+     *
      * @param  list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>  $block
      */
-    private function volumeFloorKm(RaceGoal $race, array $block, ?float $floorKm, int $sessionsPerWeek): float
+    private function volumeFloorKm(RaceGoal $race, array $block, Season $season, int $sessionsPerWeek): float
     {
+        $floorKm = $season->volume_floor_km;
+        if ($season->increases_held) {
+            $block = array_values(array_filter(
+                $block,
+                static fn (array $week): bool => ! in_array($week['phase'], [PlanPhase::Deload, PlanPhase::Taper], true),
+            ));
+        }
         if ($floorKm === null || $block === []) {
             return 0.0;
         }

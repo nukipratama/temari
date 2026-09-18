@@ -98,7 +98,8 @@ final class PlanPageAssembler
 
     /**
      * A deload that took the week below the race season's volume floor says
-     * so, with the floor it set aside.
+     * so, with the floor it set aside, and a block holding its increases for
+     * unscored load says that too.
      *
      * @return array{reason: string, headline: string, detail: string, deload: bool}|null
      */
@@ -112,6 +113,9 @@ final class PlanPageAssembler
         $detail = $adaptation->reason->detail($adaptation->adherence_pct);
         if ($adaptation->volume_floor_km !== null) {
             $detail .= ' that puts it under your usual '.number_format($adaptation->volume_floor_km, 1).' km a week, on purpose.';
+        }
+        if ($adaptation->increases_held) {
+            $detail .= ' the build and the longer long runs wait until your recent runs are scored.';
         }
 
         return [

@@ -467,3 +467,27 @@ it('averages the last twelve logged weeks, plainly, for the floor', function ():
     expect($this->baseline->recentWeeklyMeanKm($user, Carbon::today()))->toBe(22.0)
         ->and($this->baseline->recentWeeklyMeanKm(User::factory()->create(), Carbon::today()))->toBeNull();
 });
+
+it('matches each training week to the floor, never above it, while its increases are held', function (): void {
+    $held = User::factory()->create();
+    flooredRaceSeason($held, 20.0, 27.0)->update(['increases_held' => true]);
+    $released = User::factory()->create();
+    flooredRaceSeason($released, 20.0, 27.0);
+
+    $weeks = app(SeasonSummaryBuilder::class)->plannedWeeks($held, Season::query()->where('user_id', $held->id)->firstOrFail());
+    $trainingWeeksKm = array_column(array_filter($weeks, fn (array $week): bool => ! in_array($week['phase'], [PlanPhase::Deload, PlanPhase::Taper], true)), 'planned_km');
+
+    // Base and Build weeks mix their sessions differently, so they straddle the mean by about 1%.
+    expect(array_sum($trainingWeeksKm) / count($trainingWeeksKm))->toBeGreaterThanOrEqual(26.8)
+        ->and(max(array_column($weeks, 'planned_km')))->toBeLessThanOrEqual(27.0 * 1.02)
+        ->and($this->baseline->forUser($held, Carbon::today())['long_run_km'])
+        ->toBeLessThan($this->baseline->forUser($released, Carbon::today())['long_run_km']);
+});
+
+it('drops the readiness climb while a floorless block\'s increases are held', function (): void {
+    $user = User::factory()->create();
+    flooredRaceSeason($user, 20.0, null)->update(['increases_held' => true]);
+
+    // 20 x 0.35 = 7.0 km, with neither the 12 km readiness target nor the 10 km race distance lifting it.
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(7.0);
+});

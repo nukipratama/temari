@@ -152,3 +152,16 @@ it('builds a self-scaled cycle of its own when the athlete has no race', functio
     expect($phases)->not->toContain(PlanPhase::Taper)
         ->and(collect($rows)->pluck('session_type')->all())->not->toContain(SessionType::Race);
 });
+
+it('holds a race block flat outside its dips while its increases are held', function (): void {
+    $held = arcInputs();
+    $held = new PlanInputs(...[...get_object_vars($held), 'increasesHeld' => true]);
+
+    $multipliers = array_unique(array_map(
+        fn (array $row): float => round($row['volume_multiplier'], 3),
+        app(Periodizer::class)->rowsFor($held),
+    ));
+    sort($multipliers);
+
+    expect($multipliers)->toBe([0.4, 0.65, 1.0]);
+});

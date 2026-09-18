@@ -85,7 +85,7 @@ final readonly class Periodizer
             // SeasonSummaryBuilder draws is the one the athlete trains.
             : $this->phaseSchedule->selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($inputs->seasonEnd) + 1), $inputs->seasonOpensWithRecovery);
 
-        $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $inputs->currentWeekStart(), $inputs->adaptation['deload'], $inputs->isSelfScaled());
+        $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $inputs->currentWeekStart(), $inputs->adaptation['deload'], $inputs->isSelfScaled() || $inputs->increasesHeld);
 
         $rows = [];
         foreach ($weeks as $week) {
@@ -178,6 +178,7 @@ final readonly class Periodizer
                     'quality_delta' => $inputs->adaptation['quality_delta'],
                     'adherence_pct' => $inputs->adaptation['adherence_pct'],
                     'volume_floor_km' => self::overriddenFloorKm($inputs, $rows),
+                    'increases_held' => $inputs->increasesHeld,
                 ],
             );
         });
@@ -219,6 +220,9 @@ final readonly class Periodizer
      * to race day, and restarting the taper curve from a deload multiplier
      * would leave the athlete under-stimulated going in.
      *
+     * `$flat` holds the arc at 1.0 outside its dips: a self-scaled arc always,
+     * a race block while its increases are held.
+     *
      * A season whose stored window outlasts its own arc — only reachable for a
      * self-scaled row written before the two were aligned — holds on its last
      * arc week rather than materializing nothing at all, until it rolls over.
@@ -226,7 +230,7 @@ final readonly class Periodizer
      * @param  list<array{week_start: Carbon, phase: PlanPhase, zone: string}>  $arc
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string, multiplier: float}>
      */
-    private static function sliceFromCurrentWeek(array $arc, Carbon $arcStart, Carbon $currentWeekStart, bool $deload, bool $selfScaled): array
+    private static function sliceFromCurrentWeek(array $arc, Carbon $arcStart, Carbon $currentWeekStart, bool $deload, bool $flat): array
     {
         if ($arc === []) {
             return [];
@@ -238,7 +242,7 @@ final readonly class Periodizer
         if ($deload && $phases[$offset] !== PlanPhase::Taper) {
             $phases[$offset] = PlanPhase::Deload;
         }
-        $multipliers = PhaseSchedule::volumeMultipliers($phases, $selfScaled, array_column($arc, 'zone'));
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, $flat, array_column($arc, 'zone'));
 
         $weeks = [];
         foreach (array_slice($arc, $offset, self::HORIZON_WEEKS, preserve_keys: true) as $index => $week) {

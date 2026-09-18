@@ -39,6 +39,10 @@ use Override;
  * on a self-scaled season. See
  * `docs/decisions/a-race-block-never-prescribes-below-habit.md`.
  *
+ * `increases_held` marks a race season opened while the load guard's recent
+ * runs were still unscored: its block holds at the floor, with no ramp and no
+ * climb to the readiness long run, until a regeneration finds them scored.
+ *
  * `opens_with_recovery` marks a self-scaled arc that follows a race the
  * athlete has actually run: its first week is a recovery week rather than the
  * cycle's usual Build. Frozen at creation for the same reason the anchor is —
@@ -50,6 +54,7 @@ use Override;
  * @property int|null $race_goal_id
  * @property float|null $anchor_weekly_volume_km
  * @property float|null $volume_floor_km
+ * @property bool $increases_held
  * @property bool $opens_with_recovery
  * @property Carbon|null $under_ready_noted_at
  * @property Carbon|null $block_goals_appended_at
@@ -58,7 +63,7 @@ use Override;
  * @property-read User $user
  * @property-read RaceGoal|null $raceGoal
  */
-#[Fillable(['user_id', 'race_goal_id', 'anchor_weekly_volume_km', 'volume_floor_km', 'opens_with_recovery', 'under_ready_noted_at', 'block_goals_appended_at', 'starts_at', 'ends_at'])]
+#[Fillable(['user_id', 'race_goal_id', 'anchor_weekly_volume_km', 'volume_floor_km', 'increases_held', 'opens_with_recovery', 'under_ready_noted_at', 'block_goals_appended_at', 'starts_at', 'ends_at'])]
 class Season extends Model
 {
     /** @use HasFactory<SeasonFactory> */
@@ -116,6 +121,7 @@ class Season extends Model
             'race_goal_id' => 'integer',
             'anchor_weekly_volume_km' => 'float',
             'volume_floor_km' => 'float',
+            'increases_held' => 'boolean',
             'opens_with_recovery' => 'boolean',
             'under_ready_noted_at' => 'datetime',
             'block_goals_appended_at' => 'datetime',
