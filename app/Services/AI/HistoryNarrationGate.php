@@ -6,6 +6,7 @@ namespace App\Services\AI;
 
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\User;
+use App\Services\Run\Story\PastYouMatcher;
 use Illuminate\Support\Carbon;
 
 /**
@@ -20,10 +21,10 @@ use Illuminate\Support\Carbon;
  * identical regardless of how much history it imports. Anything older is filled
  * deterministically and an LLM read is left to the page's own "Try again".
  *
- * That on-demand read waits until every older run inside the backfill window
- * has finished hydrating, because the narrator's baseline and recent-runs tools
- * read resolved metrics: narrating over a half-hydrated history writes a thin
- * story that nothing re-narrates.
+ * Any narration, automatic or on-demand, waits until every older run within
+ * past-you's reach has finished hydrating, because the narrator's baseline,
+ * recent-runs and past-you tools read resolved metrics: narrating over a
+ * half-hydrated history writes a thin story that nothing re-narrates.
  *
  * @see docs/decisions/history-narrates-on-demand.md
  */
@@ -56,8 +57,8 @@ class HistoryNarrationGate
     }
 
     /**
-     * Whether a manual trigger on this subject must wait: a historical run with
-     * an older, still-unhydrated run inside the backfill window.
+     * Whether a manual trigger on this subject must wait: a historical run whose
+     * older history is still hydrating.
      */
     public function awaitsHydration(User $user, AnalysisType $type, int $subjectId): bool
     {
@@ -67,9 +68,36 @@ class HistoryNarrationGate
             return false;
         }
 
-        return $this->backlog->awaitingHydration([$user->id])
-            ->where('activity_details.start_date_local', '<', $startedAt)
-            ->where('activity_details.start_date_local', '>=', $this->ages->cutoff())
-            ->exists();
+        return $this->olderHistoryHydrating($user->id, $startedAt);
+    }
+
+    /**
+     * Whether narrating a run automatically now would read a history still
+     * filling in. Bounded by the grace window after the athlete connected: past
+     * it the run narrates whatever has landed, so a stuck drain cannot hold
+     * narration forever.
+     */
+    public function awaitsOlderHydration(int $userId, ?Carbon $startedAt): bool
+    {
+        $connectedAt = $this->backlog->connectedAt($userId);
+        $graceHours = (int) config('ai.recap_hydration_grace_hours', 48);
+
+        if ($startedAt === null || $connectedAt === null || Carbon::now()->gte($connectedAt->addHours($graceHours))) {
+            return false;
+        }
+
+        return $this->olderHistoryHydrating($userId, $startedAt);
+    }
+
+    /**
+     * A run inside past-you's reach before $startedAt still awaits hydration.
+     */
+    private function olderHistoryHydrating(int $userId, Carbon $startedAt): bool
+    {
+        return $this->backlog->awaitsHydrationBefore(
+            $userId,
+            $startedAt,
+            $startedAt->copy()->subDays(PastYouMatcher::MAX_GAP_DAYS),
+        );
     }
 }

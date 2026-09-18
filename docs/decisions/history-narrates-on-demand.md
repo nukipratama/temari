@@ -17,6 +17,16 @@ code_refs:
 
 **Status:** Accepted (documented 2026-09-15)
 
+> **2026-09-18 — every narration waits for the history past-you reads (#1012).** The last-7-days
+> carve-out below narrated on ingest while older runs were still summary-only, and the text was
+> never revisited: a run's stored narration cited a comparison from 293 days back that the app no
+> longer makes. `HistoryNarrationGate::awaitsOlderHydration()` now holds any ingested run, historical
+> or live, whose older history within `PastYouMatcher::MAX_GAP_DAYS` (365) still awaits hydration.
+> The run is staged `Pending` and `ai:self-heal` narrates it once that history lands. The hold is
+> bounded by `ai.recap_hydration_grace_hours` after the connect, so for an athlete connected longer
+> ago than that the gate does nothing. The on-demand gate below uses the same 365-day look-back in
+> place of the 84-day window, and still has no time limit.
+
 > **2026-09-18 — the last 7 days of history no longer wait for "Try again".** #989: a day-one
 > backfill's automatic spend used to depend on how much history an athlete imported, since nothing
 > here capped it. `HistoryNarrationGate::narratesAutomatically()` now carves out the last

@@ -51,4 +51,16 @@ class HydrationBacklog
             ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
             ->whereIn('activities.user_id', $userIds);
     }
+
+    /**
+     * Whether a run of this user dated before $before still awaits hydration,
+     * optionally only those dated on or after $since.
+     */
+    public function awaitsHydrationBefore(int $userId, ?Carbon $before, ?Carbon $since = null): bool
+    {
+        return $before !== null && $this->awaitingHydration([$userId])
+            ->where('activity_details.start_date_local', '<', $before)
+            ->when($since !== null, fn (Builder $query) => $query->where('activity_details.start_date_local', '>=', $since))
+            ->exists();
+    }
 }

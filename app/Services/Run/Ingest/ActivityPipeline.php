@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Ingest;
 
 use App\Actions\Gamification\DetectActivityMilestonesAction;
+use App\Actions\Run\Story\RecomputeCardClaimsAction;
 use App\Enums\IngestState;
 use App\Enums\StravaReadPriority;
 use App\Events\ActivityIngested;
@@ -14,6 +15,7 @@ use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Services\AI\HydrationBacklog;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\HeartRateZones;
 use App\Services\Run\Metrics\StreamSummary;
@@ -55,6 +57,8 @@ class ActivityPipeline
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly DetectActivityMilestonesAction $milestoneDetector,
         private readonly AppConfig $config,
+        private readonly HydrationBacklog $backlog,
+        private readonly RecomputeCardClaimsAction $recomputeCardClaims,
     ) {
     }
 
@@ -136,8 +140,34 @@ class ActivityPipeline
             ($this->milestoneDetector)($activity, $detailModel, $newPrCategories);
         });
 
+        $this->recomputeCardClaimsOnceHistoryLands($activity, $detailModel);
         $this->dispatchIngestedEvent($activity);
         $this->scheduleLocationResolution($detailModel);
+    }
+
+    /**
+     * A run landing behind already-hydrated later runs (a backfill, a backdated
+     * upload) can change which of those later runs set a PR on their day. Once
+     * nothing earlier is left to hydrate, every card is re-judged, before the
+     * ingested event can release narration that reads the flags.
+     */
+    private function recomputeCardClaimsOnceHistoryLands(Activity $activity, ActivityDetail $detail): void
+    {
+        $startedAt = $detail->start_date_local;
+        if ($startedAt === null || $this->backlog->awaitsHydrationBefore($activity->user_id, $startedAt)) {
+            return;
+        }
+
+        $laterRunLanded = Activity::query()
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activities.user_id', $activity->user_id)
+            ->where('activities.ingest_state', IngestState::Detailed)
+            ->where('activity_details.start_date_local', '>', $startedAt)
+            ->exists();
+
+        if ($laterRunLanded) {
+            ($this->recomputeCardClaims)($activity->user);
+        }
     }
 
     /**

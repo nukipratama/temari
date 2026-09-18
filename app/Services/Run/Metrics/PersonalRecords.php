@@ -11,6 +11,7 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\LazyCollection;
 use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
 
 class PersonalRecords
@@ -32,16 +33,7 @@ class PersonalRecords
         PersonalRecord::query()->where('user_id', $user->id)->delete();
         $this->distanceRecords->forget($user->id);
 
-        $activities = Activity::query()
-            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
-            ->where('activities.user_id', $user->id)
-            ->whereNotNull('activity_details.start_date_local')
-            ->orderBy('activity_details.start_date_local')
-            ->with('detail')
-            ->select('activities.*')
-            ->lazy();
-
-        foreach ($activities as $activity) {
+        foreach ($this->chronologically($user) as $activity) {
             $detail = $activity->detail;
             if ($detail !== null) {
                 $this->detectAndStore($activity, $detail);
@@ -50,25 +42,80 @@ class PersonalRecords
     }
 
     /**
-     * @return list<string>
+     * The runs that set a record on the day they were run, each judged against
+     * every earlier run rather than against whatever happened to be ingested
+     * before it. Writes nothing.
+     *
+     * @return list<int>
      */
-    public function detectAndStore(Activity $activity, ActivityDetail $detail): array
+    public function recordSettingActivityIds(User $user): array
     {
-        $setAt = $detail->start_date_local ?? Carbon::now();
-        return [
-            ...$this->checkDistancePrs($activity, $detail, $setAt),
-            ...$this->checkEffortPrs($activity, $detail, $setAt),
-        ];
+        $best = [];
+        $setters = [];
+
+        foreach ($this->chronologically($user) as $activity) {
+            $detail = $activity->detail;
+            if ($detail === null) {
+                continue;
+            }
+
+            foreach ($this->categoryValues($detail) as $category => $value) {
+                if (isset($best[$category]) && $value >= $best[$category]) {
+                    continue;
+                }
+
+                $best[$category] = $value;
+                $setters[$activity->id] = $activity->id;
+            }
+        }
+
+        return array_values($setters);
+    }
+
+    /**
+     * @return LazyCollection<int, Activity>
+     */
+    private function chronologically(User $user): LazyCollection
+    {
+        return Activity::query()
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activities.user_id', $user->id)
+            ->whereNotNull('activity_details.start_date_local')
+            ->orderBy('activity_details.start_date_local')
+            ->orderBy('activities.id')
+            ->with('detail')
+            ->select('activities.*')
+            ->lazy();
     }
 
     /**
      * @return list<string>
      */
-    private function checkDistancePrs(Activity $activity, ActivityDetail $detail, Carbon $setAt): array
+    public function detectAndStore(Activity $activity, ActivityDetail $detail): array
     {
-        $distance = (float) ($detail->distance ?? 0);
-        $splits = $this->splitRows(StreamSummary::fromArray($detail->streamSummary()));
+        $setAt = $detail->start_date_local ?? Carbon::now();
         $broken = [];
+
+        foreach ($this->categoryValues($detail) as $category => $value) {
+            if ($this->updateIfFaster($activity, PrCategory::from($category), $value, $setAt)) {
+                $broken[] = $category;
+            }
+        }
+
+        return $broken;
+    }
+
+    /**
+     * The run's time for every category it qualifies for: distances first, then efforts.
+     *
+     * @return array<string, float>
+     */
+    private function categoryValues(ActivityDetail $detail): array
+    {
+        $summary = StreamSummary::fromArray($detail->streamSummary());
+        $distance = (float) ($detail->distance ?? 0);
+        $splits = $this->splitRows($summary);
+        $values = [];
 
         foreach (PrCategory::distances() as $category) {
             $targetMeters = $category->distanceMeters();
@@ -76,44 +123,24 @@ class PersonalRecords
                 continue;
             }
             $value = $this->timeAtDistance($splits, $targetMeters);
-            if ($value === null || $value <= 0) {
-                continue;
-            }
-            if ($this->updateIfFaster($activity, $category, $value, $setAt)) {
-                $broken[] = $category->value;
+            if ($value !== null && $value > 0) {
+                $values[$category->value] = $value;
             }
         }
-
-        return $broken;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function checkEffortPrs(Activity $activity, ActivityDetail $detail, Carbon $setAt): array
-    {
-        $streamSummary = StreamSummary::fromArray($detail->streamSummary());
-        $broken = [];
 
         foreach (PrCategory::efforts() as $category) {
             $window = $category->effortWindow();
             if ($window === null) {
                 continue;
             }
-            $label = $streamSummary->bestPace($window);
-            if ($label === null) {
-                continue;
-            }
-            $value = PaceFormatter::parse($label);
-            if ($value === null) {
-                continue;
-            }
-            if ($this->updateIfFaster($activity, $category, $value, $setAt)) {
-                $broken[] = $category->value;
+            $label = $summary->bestPace($window);
+            $value = $label === null ? null : PaceFormatter::parse($label);
+            if ($value !== null) {
+                $values[$category->value] = $value;
             }
         }
 
-        return $broken;
+        return $values;
     }
 
     /**

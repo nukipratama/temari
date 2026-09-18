@@ -9,6 +9,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
+use App\Services\AI\HydrationBacklog;
 use App\Services\Run\Metrics\StreamSummary;
 
 class RunCardFactory
@@ -18,19 +19,19 @@ class RunCardFactory
         private readonly BuildCardContextAction $contextBuilder,
         private readonly BadgeEvaluator $badgeEvaluator,
         private readonly RarityScorer $rarityScorer,
+        private readonly HydrationBacklog $backlog,
     ) {
     }
 
-    public function build(Activity $activity, ActivityDetail $detail): RunCard
+    /**
+     * $prSet is the chronological verdict from {@see \App\Actions\Run\Story\RecomputeCardClaimsAction};
+     * without it the flag is judged against what is ingested right now.
+     */
+    public function build(Activity $activity, ActivityDetail $detail, ?bool $prSet = null): RunCard
     {
         $summary = StreamSummary::fromArray($detail->streamSummary());
 
-        $existing = RunCard::query()->where('activity_id', $activity->id)->first();
-
-        // The PR contribution is sticky: once a card is minted off a PR, a later
-        // run beating that PR (which reassigns personal_records.activity_id) must
-        // not retroactively downgrade this already-earned card on a rebuild.
-        $prSet = ($existing !== null && $existing->pr_set) || $this->hasPrFromThisActivity($activity);
+        $prSet ??= $this->prSetAtIngest($activity, $detail);
 
         $context = ($this->contextBuilder)($activity, $detail);
 
@@ -59,10 +60,17 @@ class RunCardFactory
         return $card;
     }
 
-    private function hasPrFromThisActivity(Activity $activity): bool
+    private function prSetAtIngest(Activity $activity, ActivityDetail $detail): bool
     {
-        return PersonalRecord::query()
-            ->where('activity_id', $activity->id)
-            ->exists();
+        // The PR contribution is sticky: once a card is minted off a PR, a later
+        // run beating that PR (which reassigns personal_records.activity_id) must
+        // not retroactively downgrade this already-earned card on a rebuild.
+        if (RunCard::query()->where('activity_id', $activity->id)->where('pr_set', true)->exists()) {
+            return true;
+        }
+
+        // Holding a record only proves a PR once every earlier run has landed.
+        return PersonalRecord::query()->where('activity_id', $activity->id)->exists()
+            && ! $this->backlog->awaitsHydrationBefore($activity->user_id, $detail->start_date_local);
     }
 }
