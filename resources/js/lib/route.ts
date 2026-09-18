@@ -3,8 +3,8 @@ import polylineCodec from '@mapbox/polyline';
 /**
  * Decode + normalize a Google-encoded polyline into points fitted to a
  * `width`×`height` box (0-origin), preserving aspect ratio and flipping
- * latitude so north is up. Shared by the on-card SVG glyph ([RouteGlyph]) and
- * the canvas share renderer ([shareCard]) so the two renderings never drift.
+ * latitude so north is up. Drawn by the on-card SVG glyph ([RouteGlyph]); the
+ * share image projects the same polyline server-side in `PolylineProjector`.
  * Returns null when there's nothing drawable (missing / undecodable /
  * single-point polyline). Long routes are downsampled to `maxPoints`.
  *

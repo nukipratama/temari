@@ -49,8 +49,7 @@ Three families, one job each:
 
 There used to be a fourth, Oswald, scoped to the collectible Card. It was the single biggest
 reason the collection read as a different product from the rest of the app, so it is retired
-and the card chrome uses the same sans/mono stack (including the share-card canvas in
-[shareCard.ts](../resources/js/lib/shareCard.ts)).
+and the card chrome uses the same sans/mono stack, the server-rendered [[share-card]] included.
 
 `font-sans` is Tailwind's default family, so prose / UI resolve to Plus Jakarta Sans
 automatically. **Telemetry must carry an explicit `font-mono`** (numbers/stats via `.text-stat`,
@@ -58,15 +57,12 @@ uppercase labels via `.text-label-micro` / `.text-label-small`). Keep `tabular-n
 numeric / stat display. Rule of thumb: **mono = numbers/labels · sans = prose (narrator prose
 included) · serif italic = display/headlines**.
 
-**Exemption — the card art layer.** The collectible card's rarity label, TRIMP number and
-edition number are **sans**, and stay that way. The card is art, not UI chrome: its type is
-composed into the illustration rather than tokenised, and since `PS8` deleted the DOM card component
-the one surface that still draws a full-size card is the `card` layout of the canvas share
-renderer [shareCard.ts](../resources/js/lib/shareCard.ts#L816), so "fixing" it desyncs it from
-the server card it was converged with on purpose. The boundary is exactly that art layer:
-[RunCardMini.tsx](../resources/js/components/card/RunCardMini.tsx#L111), the `route` /
-`stats` share layouts, and the server story card
-[RunCardImageRenderer.php](../app/Services/Run/Story/RunCardImageRenderer.php#L204) all stay mono,
+**Exemption — the card art layer.** The share card is art, not UI chrome: its type is composed
+into the print rather than tokenised. Since `#968` retired the canvas port, the exemption has one
+shape — the three print styles in [app/Services/Run/Story/Card/Styles/](../app/Services/Run/Story/Card/Styles/)
+set every figure and label in mono, and Fraunces italic appears in exactly two places, the
+wordmark and the broadsheet's hero figure. No sans is drawn on a card at all.
+[RunCardMini.tsx](../resources/js/components/card/RunCardMini.tsx#L111) stays mono the same way,
 and the mono-for-numbers-and-uppercase-metadata rule is absolute everywhere else in the app.
 
 All three are **self-hosted**: [fonts.css](../resources/css/fonts.css) declares the faces and

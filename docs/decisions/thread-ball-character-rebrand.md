@@ -8,12 +8,14 @@ reviewed: 2026-08-11
 code_refs:
   - resources/js/components/temari/FaceIcon.tsx
   - resources/js/components/TemariMark.tsx
-  - resources/js/lib/shareCard.ts
   - app/Enums/Rarity.php
   - resources/css/app.css
 ---
 
 # Rebrand Temari from bunny/Daybreak to a thread-ball character
+
+> **`shareCard.ts` is gone too (2026-09-18).** `#968` retired the client canvas renderer; the
+> share card is now server-rendered only. The decision below is unchanged, only its surfaces are.
 
 > **The art this note describes no longer ships (2026-08-31).** `PP2` of the prototype-parity
 > program deleted `TemariProto.tsx`, the ten faces, the eight pose names, thread coverage, the

@@ -74,6 +74,24 @@ it('handles a perfectly horizontal route (constant latitude) without dividing by
     }
 });
 
+it('hands back raw coordinate pairs for a caller that places markers along the trace', function (): void {
+    $projector = new PolylineProjector(new PolylineDecoder());
+    $encoded = '_p~iF~ps|U_ulLnnqC_mqNvxq`@';
+    $points = $projector->points($encoded, 320, 320, 24);
+
+    expect($points)->not->toBeNull()
+        // The same projection the `points` string carries, just unjoined.
+        ->and(parseProjectedCoords((string) $projector->project($encoded, 320, 320, 24)))
+        ->toBe(array_map(fn (array $p): array => [round($p[0], 1), round($p[1], 1)], $points));
+});
+
+it('returns no points at all when there is nothing drawable', function (): void {
+    $projector = new PolylineProjector(new PolylineDecoder());
+
+    expect($projector->points(null, 320, 320, 24))->toBeNull()
+        ->and($projector->points('_p~iF~ps|U', 320, 320, 24))->toBeNull();
+});
+
 it('handles a perfectly vertical route (constant longitude) without dividing by zero', function (): void {
     $decoder = Mockery::mock(PolylineDecoder::class);
     $decoder->shouldReceive('decode')->andReturn([[1.0, 2.0], [2.0, 2.0]]);

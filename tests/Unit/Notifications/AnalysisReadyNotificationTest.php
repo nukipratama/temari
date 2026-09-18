@@ -18,6 +18,8 @@ use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Story\Card\CardAspect;
+use App\Services\Run\Story\Card\CardStyle;
 use App\Services\Run\Story\RunCardImageRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -204,6 +206,22 @@ it('exposes the force flag so a channel can skip its delivery claim', function (
 
 it('attaches the card photo for a post-run whose activity has a card', function (): void {
     app()->instance(RunCardImageRenderer::class, fakeRenderer());
+    $user = User::factory()->create();
+    $analysis = postRunAnalysis($user);
+    RunCard::factory()->create(['activity_id' => $analysis->subject_id, 'rarity' => 'epic']);
+
+    expect(new AnalysisReadyNotification($analysis)->toTelegram($user)->photoPng)->toBe('fake-png-bytes');
+});
+
+it('takes the default print for the photo, since no last-used style is stored', function (): void {
+    $renderer = Mockery::mock(RunCardImageRenderer::class);
+    $renderer->shouldReceive('render')
+        ->once()
+        ->withArgs(fn (RunCard $card, CardStyle $style, CardAspect $aspect): bool => $style === CardStyle::Broadsheet
+            && $aspect === CardAspect::Story)
+        ->andReturn('fake-png-bytes');
+    app()->instance(RunCardImageRenderer::class, $renderer);
+
     $user = User::factory()->create();
     $analysis = postRunAnalysis($user);
     RunCard::factory()->create(['activity_id' => $analysis->subject_id, 'rarity' => 'epic']);

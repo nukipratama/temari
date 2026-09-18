@@ -23,6 +23,26 @@ class PolylineProjector
      */
     public function project(?string $polyline, float $width, float $height, float $pad): ?string
     {
+        $projected = $this->points($polyline, $width, $height, $pad);
+        if ($projected === null) {
+            return null;
+        }
+
+        return implode(' ', array_map(
+            fn (array $p): string => sprintf('%.1f,%.1f', $p[0], $p[1]),
+            $projected,
+        ));
+    }
+
+    /**
+     * The same projection as raw coordinate pairs, for callers that draw their
+     * own path and need to place markers along it (a start node, km ticks, a
+     * finish gate) rather than emit one `points` attribute.
+     *
+     * @return list<array{0: float, 1: float}>|null
+     */
+    public function points(?string $polyline, float $width, float $height, float $pad): ?array
+    {
         if ($polyline === null || $polyline === '') {
             return null;
         }
@@ -47,15 +67,12 @@ class PolylineProjector
         $offX = $pad + ($innerW - $spanLng * $scale) / 2;
         $offY = $pad + ($innerH - $spanLat * $scale) / 2;
 
-        $coords = array_map(
-            fn (array $p): string => sprintf(
-                '%.1f,%.1f',
+        return array_map(
+            fn (array $p): array => [
                 $offX + ($p[1] - $minLng) * $scale,
                 $offY + ($maxLat - $p[0]) * $scale, // flip y: higher latitude = higher on screen
-            ),
+            ],
             $points,
         );
-
-        return implode(' ', $coords);
     }
 }

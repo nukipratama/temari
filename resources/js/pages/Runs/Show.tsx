@@ -28,7 +28,7 @@ import { zonePctFromDetail } from '@/lib/runcard';
 
 import { useRunShow, type RunCardDetail } from './useRunShow';
 
-// Carries the ~1200-line canvas engine; fetched on the share tap.
+// Fetched on the share tap; the card itself is a server-rendered PNG.
 const ShareCardModal = lazyIsland(
     () => import('@/components/card/ShareCardModal'),
 );

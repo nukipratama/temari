@@ -1,5 +1,8 @@
 <?php
 
+use App\Services\Run\Story\Card\RunForm;
+use App\Enums\Rarity;
+use App\Services\Run\Story\Card\CardFacts;
 use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Responses\Meta\MetaInformation;
 use App\Models\AI\Analysis;
@@ -442,4 +445,46 @@ function mockStravaDriver(callable $configure): MockInterface
     Socialite::shouldReceive('driver')->once()->with('strava')->andReturn($driver);
 
     return $driver;
+}
+
+/**
+ * A share-card fixture built straight from the value object, so a style test
+ * asserts on what it draws rather than on how a run resolves into facts (that
+ * is CardFactsTest's job). Override any field by name.
+ */
+function cardFacts(
+    RunForm $form = RunForm::Easy,
+    Rarity $rarity = Rarity::Common,
+    ?string $polyline = '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+    ?string $heartRate = '142',
+    ?string $elevation = '18',
+    ?string $weather = '29°C',
+    array $badges = [],
+    array $splits = [],
+    array $paceProfile = [],
+): CardFacts {
+    return new CardFacts(
+        form: $form,
+        rarity: $rarity,
+        kind: mb_strtoupper(str_replace('nogps', 'no gps', $form->value)).' RUN',
+        km: '5.28',
+        distanceKm: 5.28,
+        time: '32:18',
+        pace: '6:07',
+        heartRate: $heartRate,
+        elevation: $elevation,
+        place: 'Senayan, Jakarta Pusat',
+        placeShort: 'SENAYAN',
+        weather: $weather,
+        dateLong: 'SUN 13 SEP 2026',
+        dateShort: '13.09.26',
+        clock: '05:41',
+        badges: $badges,
+        serial: 'TMR-0418',
+        polyline: $polyline,
+        raceName: $form === RunForm::Race ? 'JAKARTA CITY 10K' : null,
+        raceDistance: $form === RunForm::Race ? '10K' : null,
+        splits: $splits,
+        paceProfile: $paceProfile,
+    );
 }

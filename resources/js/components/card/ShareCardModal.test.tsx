@@ -1,568 +1,162 @@
-import {
-    render,
-    screen,
-    fireEvent,
-    act,
-    waitFor,
-} from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-
-// The canvas renderer is unit-tested on its own; here we stub it so the modal
-// tests don't depend on a real 2d context (jsdom doesn't implement one).
-vi.mock('@/lib/shareCard', () => ({
-    drawShareCard: vi.fn(() => Promise.resolve()),
-    shareCardBlob: vi.fn(() =>
-        Promise.resolve(new Blob(['x'], { type: 'image/png' })),
-    ),
-    // The modal only reads `.surface` (swatch preview colour) — the real
-    // module has the full Palette shape, tested on its own in shareCard.test.ts.
-    COLORWAYS: {
-        navy: { surface: '#161b33' },
-        dawn: { surface: '#f6f1e8' },
-        ember: { surface: '#3a2015' },
-    },
-}));
 
 // jsdom doesn't implement ClipboardItem
 (globalThis as unknown as { ClipboardItem: unknown }).ClipboardItem = class {
     constructor(public data: Record<string, Blob | Promise<Blob>>) {}
 };
 
-// jsdom has no canvas backend, so toBlob is unimplemented and never calls back.
-// The spy also records which canvas the modal exported from.
-const toBlobSpy = vi.fn(function (this: HTMLCanvasElement, cb: BlobCallback) {
-    cb(new Blob(['png'], { type: 'image/png' }));
-});
-HTMLCanvasElement.prototype.toBlob =
-    toBlobSpy as unknown as HTMLCanvasElement['toBlob'];
-import ShareCardModal, { type ShareCardData } from './ShareCardModal';
+import ShareCardModal, { type ShareCardTarget } from './ShareCardModal';
 
-// Both share paths fetch the rendered data: URL and turn it into a Blob.
-// jsdom has no real fetch, so resolve data: URLs to a stub PNG blob.
-function stubDataUrlFetch() {
-    globalThis.fetch = vi.fn((url: string) =>
-        url.startsWith('data:')
-            ? Promise.resolve({
-                  blob: () =>
-                      Promise.resolve(new Blob(['i'], { type: 'image/png' })),
-              } as Response)
-            : Promise.reject(new Error('unexpected')),
-    ) as typeof fetch;
-}
-
-const card: ShareCardData = {
-    id: 7,
+const card: ShareCardTarget = {
+    activityId: 7,
     name: 'Counter Kick',
     shareUrl: '/activities/7',
-    rarity: 'epic',
-    mood: 'easy',
-    subtitle: 'Negative-split morning · 20 Mei 2026',
-    date: '20 Mei 2026\n07:00',
-    km: '5.28',
-    duration: '40 min',
-    pace: '5:30',
-    trimp: '87',
-    hr: '145 bpm',
-    cadence: '176 spm',
-    fastestKm: '5:02/km',
-    zonePct: { Z1: 8, Z2: 35, Z3: 32, Z4: 18, Z5: 7 },
-    location: 'Jakarta Selatan',
-    weather: '28°C',
-    tags: ['Negative Split', 'Early Bird'],
-    tagEmojis: ['👻', '🌅'],
-    quote: 'This run proves you can go further.',
-    polyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-    edition: { index: 3, total: 25 },
+    quote: 'that last kilometre was yours.',
 };
 
+/** The endpoint is the only source of pixels, so both CTAs fetch from it. */
+function stubCardFetch() {
+    const fetchSpy = vi.fn((url: string) =>
+        Promise.resolve({
+            ok: true,
+            url,
+            blob: () => Promise.resolve(new Blob(['i'], { type: 'image/png' })),
+        } as Response),
+    );
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    return fetchSpy;
+}
+
+function previewSrc(): string {
+    return screen.getByRole('img').getAttribute('src') ?? '';
+}
+
+afterEach(() => {
+    vi.restoreAllMocks();
+    Object.defineProperty(navigator, 'share', {
+        value: undefined,
+        configurable: true,
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+        value: undefined,
+        configurable: true,
+    });
+});
+
 describe('ShareCardModal', () => {
-    it('renders nothing when card is null', () => {
+    it('renders nothing without a card', () => {
         const { container } = render(
             <ShareCardModal card={null} onClose={vi.fn()} />,
         );
+
         expect(container.firstChild).toBeNull();
     });
 
-    it('renders the card name in the header', () => {
+    it('previews the server endpoint with the default style, aspect and facts', () => {
         render(<ShareCardModal card={card} onClose={vi.fn()} />);
-        expect(screen.getAllByText(/Counter Kick/).length).toBeGreaterThan(0);
+
+        const src = previewSrc();
+        expect(src).toContain('/activities/7/card.png');
+        expect(src).toContain('style=broadsheet');
+        expect(src).toContain('aspect=story');
+        expect(src).toContain('hr=true');
+        expect(src).toContain('elevation=true');
+        expect(src).toContain('weather=true');
+        expect(src).toContain('badges=true');
     });
 
-    it('renders Share and Copy Image CTAs', () => {
+    it('re-points the preview when the style or aspect changes', () => {
         render(<ShareCardModal card={card} onClose={vi.fn()} />);
-        expect(screen.getAllByText(/Share/).length).toBeGreaterThan(0);
-        expect(screen.getByText(/Copy image/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('topo plate'));
+        expect(previewSrc()).toContain('style=topo');
+
+        fireEvent.click(screen.getByText('square · 1:1'));
+        expect(previewSrc()).toContain('aspect=feed');
+        // The style survives the aspect change: the tuple is one URL.
+        expect(previewSrc()).toContain('style=topo');
     });
 
-    it('renders format picker Portrait and Square buttons', () => {
+    it('turns an optional fact off without touching the others', () => {
         render(<ShareCardModal card={card} onClose={vi.fn()} />);
-        expect(screen.getByText(/portrait/)).toBeInTheDocument();
-        expect(screen.getByText(/square/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('elevation'));
+
+        expect(previewSrc()).toContain('elevation=false');
+        expect(previewSrc()).toContain('hr=true');
     });
 
-    it('calls onClose when the close button is clicked', () => {
-        const onClose = vi.fn();
-        render(<ShareCardModal card={card} onClose={onClose} />);
-        fireEvent.click(screen.getByLabelText('Close'));
-        expect(onClose).toHaveBeenCalledOnce();
-    });
-
-    it('renders the canvas preview', () => {
+    it('offers another style when the render fails instead of a broken image', () => {
         render(<ShareCardModal card={card} onClose={vi.fn()} />);
-        expect(screen.getByLabelText(/Preview of/)).toBeInTheDocument();
-    });
 
-    it('moves focus into the dialog when it opens', () => {
-        render(<ShareCardModal card={card} onClose={vi.fn()} />);
-        const dialog = screen.getByRole('dialog');
-        expect(dialog.contains(document.activeElement)).toBe(true);
-    });
+        fireEvent.error(screen.getByRole('img'));
 
-    it('fires Share without crashing when share API is unavailable', async () => {
-        const writeText = vi.fn(() => Promise.resolve());
-        Object.defineProperty(navigator, 'share', {
-            value: undefined,
-            configurable: true,
-        });
-        Object.defineProperty(navigator, 'clipboard', {
-            value: { writeText },
-            configurable: true,
-        });
-        stubDataUrlFetch();
-        render(<ShareCardModal card={card} onClose={vi.fn()} />);
-        await act(async () => {
-            fireEvent.click(
-                screen
-                    .getAllByRole('button')
-                    .find((b) => b.textContent === 'Share') ?? document.body,
-            );
-        });
-        expect(writeText).toHaveBeenCalledWith(
-            expect.stringContaining('/activities/7'),
+        expect(screen.queryByRole('img')).toBeNull();
+        expect(screen.getByRole('status').textContent).toContain(
+            'try another style',
         );
     });
 
-    it('fires Copy Image and copies image to clipboard', async () => {
+    it('copies the PNG the endpoint returns', async () => {
+        const fetchSpy = stubCardFetch();
         const write = vi.fn(() => Promise.resolve());
         Object.defineProperty(navigator, 'clipboard', {
             value: { write },
             configurable: true,
         });
-        stubDataUrlFetch();
+
         render(<ShareCardModal card={card} onClose={vi.fn()} />);
-        await act(async () => {
-            fireEvent.click(screen.getByText(/Copy image/));
-        });
-        expect(write).toHaveBeenCalled();
+        fireEvent.click(screen.getByText('Copy image'));
+
+        await waitFor(() => expect(write).toHaveBeenCalled());
+        expect(fetchSpy.mock.calls[0][0]).toContain('/activities/7/card.png');
+        expect(screen.getByRole('status').textContent).toContain('copied');
     });
 
-    it('offers the share templates as buttons and switches between them', () => {
+    it('shares the PNG as a file when the browser can', async () => {
+        stubCardFetch();
+        const share = vi.fn<(data: ShareData) => Promise<void>>(() =>
+            Promise.resolve(),
+        );
+        Object.defineProperty(navigator, 'share', {
+            value: share,
+            configurable: true,
+        });
+        Object.defineProperty(navigator, 'canShare', {
+            value: () => true,
+            configurable: true,
+        });
+
         render(<ShareCardModal card={card} onClose={vi.fn()} />);
-        const cardBtn = screen.getByRole('button', { name: 'card' });
-        const routeBtn = screen.getByRole('button', { name: 'route' });
-        const statsBtn = screen.getByRole('button', { name: 'stats' });
-        expect(cardBtn).toBeInTheDocument();
-        expect(routeBtn).toBeInTheDocument();
-        expect(statsBtn).toBeInTheDocument();
-        // The dropdown and the trimmed Struk template are gone.
-        expect(screen.queryByLabelText('Pick a card style')).toBeNull();
-        expect(screen.queryByRole('button', { name: 'Receipt' })).toBeNull();
-        // Switching to the route template renders without crashing.
-        fireEvent.click(routeBtn);
-        expect(screen.getAllByText(/Counter Kick/).length).toBeGreaterThan(0);
+        fireEvent.click(screen.getByText('Share'));
+
+        await waitFor(() => expect(share).toHaveBeenCalled());
+        expect(share.mock.calls[0][0]).toHaveProperty('files');
     });
 
-    it('hides only the route template for a no-GPS run, keeping card and Stats', () => {
-        render(
-            <ShareCardModal
-                card={{ ...card, polyline: null }}
-                onClose={vi.fn()}
-            />,
+    it('falls back to the activity link, carrying Temari line as the caption', async () => {
+        stubCardFetch();
+        const share = vi.fn<(data: ShareData) => Promise<void>>(() =>
+            Promise.resolve(),
         );
-        // route needs a polyline the run doesn't have; card and Stats don't.
-        expect(screen.queryByRole('button', { name: 'route' })).toBeNull();
-        expect(
-            screen.getByRole('button', { name: 'card' }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'stats' }),
-        ).toBeInTheDocument();
-    });
-
-    it('clamps a stale stats-incompatible layout back to card for a no-GPS run, same as route', () => {
-        const { rerender } = render(
-            <ShareCardModal card={card} onClose={vi.fn()} />,
-        );
-        fireEvent.click(screen.getByRole('button', { name: 'route' }));
-        rerender(
-            <ShareCardModal
-                card={{ ...card, polyline: null }}
-                onClose={vi.fn()}
-            />,
-        );
-        // The route button is gone, and card is selectable again — the stale
-        // selection didn't strand the picker on a hidden option.
-        expect(screen.queryByRole('button', { name: 'route' })).toBeNull();
-        expect(
-            screen.getByRole('button', { name: 'card', pressed: true }),
-        ).toBeInTheDocument();
-    });
-
-    it('clamps a stale route layout to card for a no-GPS run so the map is never blank', async () => {
-        const { drawShareCard } = await import('@/lib/shareCard');
-        vi.mocked(drawShareCard).mockClear();
-        const { rerender } = render(
-            <ShareCardModal card={card} onClose={vi.fn()} />,
-        );
-        // Pick the route template on a GPS card, then reuse the same modal for a
-        // no-GPS run: the carried-over 'route' selection must not paint a blank map.
-        fireEvent.click(screen.getByRole('button', { name: 'route' }));
-        rerender(
-            <ShareCardModal
-                card={{ ...card, polyline: null }}
-                onClose={vi.fn()}
-            />,
-        );
-        const lastCall = vi.mocked(drawShareCard).mock.calls.at(-1);
-        expect(lastCall?.[1].layout).toBe('card');
-    });
-
-    describe('colorway swatch picker', () => {
-        it('offers navy, dawn, and ember swatches with navy selected by default', () => {
-            render(<ShareCardModal card={card} onClose={vi.fn()} />);
-            expect(
-                screen.getByRole('button', {
-                    name: 'Colorway: navy',
-                    pressed: true,
-                }),
-            ).toBeInTheDocument();
-            expect(
-                screen.getByRole('button', {
-                    name: 'Colorway: dawn',
-                    pressed: false,
-                }),
-            ).toBeInTheDocument();
-            expect(
-                screen.getByRole('button', {
-                    name: 'Colorway: ember',
-                    pressed: false,
-                }),
-            ).toBeInTheDocument();
+        Object.defineProperty(navigator, 'share', {
+            value: share,
+            configurable: true,
+        });
+        Object.defineProperty(navigator, 'canShare', {
+            value: () => false,
+            configurable: true,
         });
 
-        it('switches the drawn colorway when a swatch is clicked', async () => {
-            const { drawShareCard } = await import('@/lib/shareCard');
-            vi.mocked(drawShareCard).mockClear();
-            render(<ShareCardModal card={card} onClose={vi.fn()} />);
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Colorway: ember' }),
-            );
-            const lastCall = vi.mocked(drawShareCard).mock.calls.at(-1);
-            expect(lastCall?.[1].colorway).toBe('ember');
-            expect(
-                screen.getByRole('button', {
-                    name: 'Colorway: ember',
-                    pressed: true,
-                }),
-            ).toBeInTheDocument();
-        });
-    });
-
-    describe('export source', () => {
-        const originalClipboard = Object.getOwnPropertyDescriptor(
-            navigator,
-            'clipboard',
-        );
-
-        afterEach(() => {
-            if (originalClipboard) {
-                Object.defineProperty(
-                    navigator,
-                    'clipboard',
-                    originalClipboard,
-                );
-            }
-        });
-
-        it('exports the preview canvas itself instead of redrawing the card into a second one', async () => {
-            const { shareCardBlob } = await import('@/lib/shareCard');
-            vi.mocked(shareCardBlob).mockClear();
-            toBlobSpy.mockClear();
-            const write = vi.fn(() => Promise.resolve());
-            Object.defineProperty(navigator, 'clipboard', {
-                value: { write },
-                configurable: true,
-            });
-
-            render(<ShareCardModal card={card} onClose={vi.fn()} />);
-            await act(async () => {
-                fireEvent.click(screen.getByText(/Copy image/));
-            });
-
-            expect(write).toHaveBeenCalled();
-            expect(shareCardBlob).not.toHaveBeenCalled();
-            expect(toBlobSpy).toHaveBeenCalledWith(
-                expect.any(Function),
-                'image/png',
-            );
-            // Same element as the on-screen preview, at the full 1080x1920 export
-            // resolution — the shared PNG must not silently drop to preview size.
-            const exported = toBlobSpy.mock.instances[0];
-            expect(exported).toBe(screen.getByLabelText(/Preview of/));
-            expect(exported.width).toBe(1080);
-            expect(exported.height).toBe(1920);
-        });
-    });
-
-    it('switches the export format when a format button is clicked', () => {
         render(<ShareCardModal card={card} onClose={vi.fn()} />);
-        const canvas = screen.getByLabelText(/Preview of/) as HTMLCanvasElement;
-        // Story (9:16) is the default — the canvas is 1080x1920.
-        expect(canvas.height).toBe(1920);
-        fireEvent.click(screen.getByText(/square/));
-        // Switching to feed (1:1) repaints the canvas at 1080x1080.
-        expect(canvas.height).toBe(1080);
-    });
+        fireEvent.click(screen.getByText('Share'));
 
-    describe('native share (Web Share API)', () => {
-        const original = {
-            share: Object.getOwnPropertyDescriptor(navigator, 'share'),
-            clipboard: Object.getOwnPropertyDescriptor(navigator, 'clipboard'),
-        };
-
-        afterEach(() => {
-            if (original.share) {
-                Object.defineProperty(navigator, 'share', original.share);
-            }
-            if (original.clipboard) {
-                Object.defineProperty(
-                    navigator,
-                    'clipboard',
-                    original.clipboard,
-                );
-            }
-        });
-
-        function clickShare() {
-            return fireEvent.click(
-                screen
-                    .getAllByRole('button')
-                    .find((b) => b.textContent === 'Share') ?? document.body,
-            );
-        }
-
-        it('shares the rendered image file when the platform can share files', async () => {
-            const share = vi.fn(() => Promise.resolve());
-            const canShare = vi.fn(() => true);
-            Object.defineProperty(navigator, 'share', {
-                value: share,
-                configurable: true,
-            });
-            Object.defineProperty(navigator, 'canShare', {
-                value: canShare,
-                configurable: true,
-            });
-            stubDataUrlFetch();
-            render(<ShareCardModal card={card} onClose={vi.fn()} />);
-            await act(async () => {
-                clickShare();
-            });
-            expect(canShare).toHaveBeenCalledWith({
-                files: [expect.any(File)],
-            });
-            expect(share).toHaveBeenCalledWith(
-                expect.objectContaining({ files: [expect.any(File)] }),
-            );
-        });
-
-        it('falls back to a URL share when files cannot be shared', async () => {
-            const share = vi.fn(() => Promise.resolve());
-            Object.defineProperty(navigator, 'share', {
-                value: share,
-                configurable: true,
-            });
-            // canShare returns false → file share skipped, URL share path taken.
-            Object.defineProperty(navigator, 'canShare', {
-                value: () => false,
-                configurable: true,
-            });
-            stubDataUrlFetch();
-            render(<ShareCardModal card={card} onClose={vi.fn()} />);
-            await act(async () => {
-                clickShare();
-            });
-            expect(share).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    url: expect.stringContaining('/activities/7'),
-                    // The card has a quote, so it rides along as the share text.
-                    text: card.quote,
-                }),
-            );
-        });
-
-        it('uses the rarity label as share text when the card has no quote', async () => {
-            const share = vi.fn(() => Promise.resolve());
-            Object.defineProperty(navigator, 'share', {
-                value: share,
-                configurable: true,
-            });
-            Object.defineProperty(navigator, 'canShare', {
-                value: () => false,
-                configurable: true,
-            });
-            stubDataUrlFetch();
-            // quote=null exercises the `?? RARITY_LABELS[...]` fallback.
-            render(
-                <ShareCardModal
-                    card={{ ...card, quote: null }}
-                    onClose={vi.fn()}
-                />,
-            );
-            await act(async () => {
-                clickShare();
-            });
-            expect(share).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    text: expect.stringContaining(card.name),
-                }),
-            );
-        });
-
-        it('shows a copied-link toast when share is unavailable but clipboard works', async () => {
-            const writeText = vi.fn(() => Promise.resolve());
-            Object.defineProperty(navigator, 'share', {
-                value: undefined,
-                configurable: true,
-            });
-            Object.defineProperty(navigator, 'clipboard', {
-                value: { writeText },
-                configurable: true,
-            });
-            render(<ShareCardModal card={card} onClose={vi.fn()} />);
-            await act(async () => {
-                clickShare();
-            });
-            expect(
-                await screen.findByText('activity link copied.'),
-            ).toBeInTheDocument();
-        });
-
-        it('shows an error toast when copying the link to the clipboard fails', async () => {
-            const writeText = vi.fn(() => Promise.reject(new Error('denied')));
-            Object.defineProperty(navigator, 'share', {
-                value: undefined,
-                configurable: true,
-            });
-            Object.defineProperty(navigator, 'clipboard', {
-                value: { writeText },
-                configurable: true,
-            });
-            render(<ShareCardModal card={card} onClose={vi.fn()} />);
-            await act(async () => {
-                clickShare();
-            });
-            expect(
-                await screen.findByText('failed to copy link.'),
-            ).toBeInTheDocument();
-        });
-
-        it('shows an unsupported toast when neither share nor clipboard exist', async () => {
-            Object.defineProperty(navigator, 'share', {
-                value: undefined,
-                configurable: true,
-            });
-            Object.defineProperty(navigator, 'clipboard', {
-                value: undefined,
-                configurable: true,
-            });
-            render(<ShareCardModal card={card} onClose={vi.fn()} />);
-            await act(async () => {
-                clickShare();
-            });
-            expect(
-                await screen.findByText(
-                    "this browser doesn't support sharing.",
-                ),
-            ).toBeInTheDocument();
-        });
-    });
-
-    describe('copy image', () => {
-        const originalClipboard = Object.getOwnPropertyDescriptor(
-            navigator,
-            'clipboard',
-        );
-        const originalClipboardItem = (
-            globalThis as { ClipboardItem?: unknown }
-        ).ClipboardItem;
-
-        afterEach(() => {
-            if (originalClipboard) {
-                Object.defineProperty(
-                    navigator,
-                    'clipboard',
-                    originalClipboard,
-                );
-            }
-            (globalThis as { ClipboardItem?: unknown }).ClipboardItem =
-                originalClipboardItem;
-        });
-
-        it('shows an unsupported toast when ClipboardItem is missing', async () => {
-            (globalThis as { ClipboardItem?: unknown }).ClipboardItem =
-                undefined;
-            render(<ShareCardModal card={card} onClose={vi.fn()} />);
-            await act(async () => {
-                fireEvent.click(screen.getByText(/Copy image/));
-            });
-            expect(
-                await screen.findByText(/doesn't support copying images/),
-            ).toBeInTheDocument();
-        });
-
-        it('shows an error toast when writing the image to the clipboard fails', async () => {
-            const write = vi.fn(() => Promise.reject(new Error('blocked')));
-            Object.defineProperty(navigator, 'clipboard', {
-                value: { write },
-                configurable: true,
-            });
-            stubDataUrlFetch();
-            render(<ShareCardModal card={card} onClose={vi.fn()} />);
-            await act(async () => {
-                fireEvent.click(screen.getByText(/Copy image/));
-            });
-            expect(
-                await screen.findByText(/failed to copy image/),
-            ).toBeInTheDocument();
-        });
-    });
-
-    describe('transient status effect', () => {
-        afterEach(() => {
-            vi.useRealTimers();
-            vi.restoreAllMocks();
-        });
-
-        it('auto-clears the status toast after its timeout', async () => {
-            const write = vi.fn(() => Promise.resolve());
-            Object.defineProperty(navigator, 'clipboard', {
-                value: { write },
-                configurable: true,
-            });
-            stubDataUrlFetch();
-            render(<ShareCardModal card={card} onClose={vi.fn()} />);
-            await act(async () => {
-                fireEvent.click(screen.getByText(/Copy image/));
-            });
-            expect(
-                await screen.findByText('card image copied.'),
-            ).toBeInTheDocument();
-            // The status line is a transient toast; it removes itself after 2.6s.
-            await waitFor(
-                () =>
-                    expect(screen.queryByText('card image copied.')).toBeNull(),
-                { timeout: 4000 },
-            );
+        await waitFor(() => expect(share).toHaveBeenCalled());
+        expect(share.mock.calls[0][0]).toMatchObject({
+            url: '/activities/7',
+            text: 'that last kilometre was yours.',
         });
     });
 });

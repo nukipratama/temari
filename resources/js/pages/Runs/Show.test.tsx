@@ -19,8 +19,8 @@ vi.mock('@/components/run/RouteMap', () => ({
     default: () => <div data-testid="route-map" />,
 }));
 
-// The share popup carries the ~1200-line canvas engine behind a lazy import;
-// this file only asserts that the button reaches it.
+// The share popup sits behind a lazy import and fetches its PNG from the
+// server; this file only asserts that the button reaches it.
 vi.mock('@/components/card/ShareCardModal', () => ({
     default: ({ onClose }: { onClose: () => void }) => (
         <div data-testid="share-card-modal">
