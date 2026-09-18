@@ -327,7 +327,7 @@ export default function ShareCardModal({
 
                 {aspect === 'story' && (
                     <p className="mx-[18px] mt-2.5 text-center text-label-micro text-text-3 min-[900px]:mx-[22px]">
-                        shaded bands = what instagram covers
+                        shaded bands = what story apps cover
                     </p>
                 )}
 
@@ -506,7 +506,7 @@ function PrintSlot({
                             state.print === null ? 'opacity-[0.34]' : '',
                         )}
                     />
-                    {/* Instagram's own chrome, previewed over the story print.
+                    {/* A story app's own chrome, previewed over the story print.
                         Drawn here and never by the renderer, so it cannot reach
                         the exported file. A fixed dark scrim rather than a
                         ground token: it stands for another app's UI, and it
@@ -524,7 +524,7 @@ function PrintSlot({
                                     className="w-full px-[0.4375rem] py-[0.3125rem] font-mono text-[0.4375rem] uppercase tracking-[0.14em]"
                                     style={SAFE_LABEL}
                                 >
-                                    instagram ui
+                                    story app ui
                                 </span>
                             </div>
                             <div
@@ -535,7 +535,7 @@ function PrintSlot({
                                     className="w-full px-[0.4375rem] py-[0.3125rem] text-right font-mono text-[0.4375rem] uppercase tracking-[0.14em]"
                                     style={SAFE_LABEL}
                                 >
-                                    instagram ui
+                                    story app ui
                                 </span>
                             </div>
                         </div>
