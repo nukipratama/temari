@@ -89,6 +89,18 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 | hourly | [`ai:self-heal`](../../routes/console.php#L118) | recovery only — see origin 4 |
 | hourly | [`ai:catch-up`](../../routes/console.php#L127) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
+**A new athlete's recap kickoff only reaches periods that closed after they connected.**
+[`KickoffWeeklyRecaps`](../../app/Actions/AI/KickoffWeeklyRecaps.php) /
+[`KickoffMonthlyRecaps`](../../app/Actions/AI/KickoffMonthlyRecaps.php) — the shared implementation
+behind `ai:weekly-recap`/`ai:monthly-recap` and `KickoffRecapsJob`'s first-connect kickoff — route a
+week or month whose close fell before `StravaConnection.created_at` (read through
+[`HydrationBacklog::connectedAt()`](../../app/Services/AI/HydrationBacklog.php#L21) /
+`connectedAtFor()`, the same anchor [[recap-waits-for-hydration]] and [[history-narrates-on-demand]]
+use) to `AnalysisService::requestRuleBased()` alongside the too-old bucket, bypassing the hydration
+wait entirely — a pre-connect period needs no real numbers to fill rule-based. A three-month backfill
+therefore bills nothing for the roughly twelve weekly and three monthly recaps it used to narrate on
+day one for periods Temari never watched. See [[deferred-recap-windowing]].
+
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 and it still runs for every athlete. The narration half then calls
 [`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L198) for each

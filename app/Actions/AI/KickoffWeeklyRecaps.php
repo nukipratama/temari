@@ -9,9 +9,11 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
+use App\Services\AI\HydrationBacklog;
 use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 
 /**
  * Kicks off the connected weekly-recap chain for every completed week whose
@@ -19,7 +21,11 @@ use Illuminate\Database\Eloquent\Builder;
  * follows a first-connect backfill draw from this single query.
  *
  * A week the ingest pipeline is still hydrating is held back by
- * {@see RecapHydrationReadiness} rather than narrated thin.
+ * {@see RecapHydrationReadiness} rather than narrated thin. A week that closed
+ * before the athlete connected Strava is filled rule-based up front, the same
+ * as a week past the backfill depth cap — Temari was not there for it.
+ *
+ * @see docs/decisions/deferred-recap-windowing.md
  */
 class KickoffWeeklyRecaps
 {
@@ -28,6 +34,7 @@ class KickoffWeeklyRecaps
         private readonly BackfillAgeGate $ages,
         private readonly RecapHydrationReadiness $readiness,
         private readonly RecentlyActiveUsers $activeUsers,
+        private readonly HydrationBacklog $backlog,
     ) {
     }
 
@@ -67,7 +74,28 @@ class KickoffWeeklyRecaps
         // predecessor is Done. invalidate:false never re-bills a Done recap,
         // so this doubles as a daily resume safety net for stalled links.
         $candidates = $baseQuery()->where('week_ending', '>=', $oldestReal)->orderBy('week_ending')->get();
-        $snapshots = $this->readiness->ready($candidates);
+
+        // A week that closed before the athlete connected Strava is history
+        // Temari never watched — filled rule-based, same as a week too old.
+        /** @var list<int> $userIds */
+        $userIds = $candidates->pluck('user_id')->map(fn (mixed $id): int => (int) $id)->unique()->values()->all();
+        $connectedAt = $this->backlog->connectedAtFor($userIds);
+        $preConnect = $candidates->filter(fn (WeeklySnapshot $snapshot): bool => $this->closedBeforeConnect(
+            $snapshot->week_ending,
+            $connectedAt[(int) $snapshot->user_id] ?? null,
+        ));
+        $eligible = $candidates->reject(fn (WeeklySnapshot $snapshot): bool => $this->closedBeforeConnect(
+            $snapshot->week_ending,
+            $connectedAt[(int) $snapshot->user_id] ?? null,
+        ));
+
+        $preConnect->each(fn (WeeklySnapshot $snapshot) => $this->service->requestRuleBased(
+            subjectOrType: WeeklySnapshot::class,
+            subjectId: (int) $snapshot->id,
+            type: AnalysisType::WeeklyRecap,
+        ));
+
+        $snapshots = $this->readiness->ready($eligible);
 
         $stagger = (int) config('ai.backfill_stagger_seconds', 360);
 
@@ -83,8 +111,18 @@ class KickoffWeeklyRecaps
 
         return [
             'dispatched' => $snapshots->count(),
-            'rule_based' => $tooOld->count(),
-            'deferred' => $candidates->count() - $snapshots->count(),
+            'rule_based' => $tooOld->count() + $preConnect->count(),
+            'deferred' => $eligible->count() - $snapshots->count(),
         ];
+    }
+
+    /**
+     * Whether the week ending on $weekEnding was already over before the
+     * athlete's Strava connection landed — the same anchor
+     * {@see RecapHydrationReadiness} and {@see \App\Services\AI\HistoryNarrationGate} use.
+     */
+    private function closedBeforeConnect(Carbon $weekEnding, ?Carbon $connectedAt): bool
+    {
+        return $connectedAt !== null && $weekEnding->copy()->endOfDay()->lt($connectedAt);
     }
 }

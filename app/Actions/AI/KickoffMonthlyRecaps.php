@@ -10,14 +10,22 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
+use App\Services\AI\HydrationBacklog;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
  * Kicks off the connected monthly-recap chain for every completed month whose
  * recap is not Done — the scheduled 1st-of-month sweep and the one-shot kickoff
  * that follows a first-connect backfill draw from this single query.
+ *
+ * A month that closed before the athlete connected Strava is filled
+ * rule-based up front, the same as a month past the backfill depth cap —
+ * Temari was not there for it.
+ *
+ * @see docs/decisions/deferred-recap-windowing.md
  */
 class KickoffMonthlyRecaps
 {
@@ -25,6 +33,7 @@ class KickoffMonthlyRecaps
         private readonly AnalysisService $service,
         private readonly BackfillAgeGate $ages,
         private readonly RecentlyActiveUsers $activeUsers,
+        private readonly HydrationBacklog $backlog,
     ) {
     }
 
@@ -55,13 +64,25 @@ class KickoffMonthlyRecaps
             $tooOld = $months->filter(fn (string $month): bool => $month < $oldestRealMonth)->values();
             $narratable = $months->reject(fn (string $month): bool => $month < $oldestRealMonth)->values();
 
+            // A month that closed before the athlete connected Strava is
+            // history Temari never watched — filled rule-based too.
+            $connectedAt = $this->backlog->connectedAt((int) $id);
+            $preConnect = $narratable->filter(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
+            $narratable = $narratable->reject(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
+
             $tooOld->each(fn (string $month) => $this->service->requestRuleBased(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                 subjectId: (int) $id,
                 type: AnalysisType::MonthlyRecap,
                 discriminator: $month,
             ));
-            $ruleFilled += $tooOld->count();
+            $preConnect->each(fn (string $month) => $this->service->requestRuleBased(
+                subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+                subjectId: (int) $id,
+                type: AnalysisType::MonthlyRecap,
+                discriminator: $month,
+            ));
+            $ruleFilled += $tooOld->count() + $preConnect->count();
 
             // Oldest month first so the connected story narrates in chronological
             // order: the kickoff dispatches the earliest link and the job chain
@@ -83,6 +104,16 @@ class KickoffMonthlyRecaps
         }
 
         return ['dispatched' => $dispatched, 'rule_based' => $ruleFilled];
+    }
+
+    /**
+     * Whether $month (Y-m) was already over before the athlete's Strava
+     * connection landed — the same anchor {@see \App\Services\AI\HistoryNarrationGate} uses.
+     */
+    private function closedBeforeConnect(string $month, ?Carbon $connectedAt): bool
+    {
+        return $connectedAt !== null
+            && Carbon::parse($month.'-01')->endOfMonth()->endOfDay()->lt($connectedAt);
     }
 
     /**

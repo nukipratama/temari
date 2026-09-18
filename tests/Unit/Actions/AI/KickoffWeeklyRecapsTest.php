@@ -7,6 +7,7 @@ use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
@@ -95,6 +96,48 @@ it('fills a week past the backfill depth cap rule-based and narrates the rest', 
     expect(collect($captured)->firstWhere('subjectId', $tooOld->id)['ruleBased'])->toBeTrue()
         ->and(collect($captured)->firstWhere('subjectId', $recent->id))
         ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
+});
+
+it('fills a week that closed before the athlete connected rule-based, and narrates one that closed after', function (): void {
+    $user = User::factory()->create();
+    // "now" is 2026-05-18 05:30; connected 3 days earlier, mid the last closed week.
+    StravaConnection::factory()->for($user)->create(['created_at' => '2026-05-15 05:30:00']);
+
+    $preConnect = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'runs' => 3]);
+    $postConnect = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 1, 'deferred' => 0]);
+
+    expect(collect($captured)->firstWhere('subjectId', $preConnect->id)['ruleBased'])->toBeTrue()
+        ->and(collect($captured)->firstWhere('subjectId', $postConnect->id))
+        ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
+});
+
+it('narrates every completed week for an athlete who connected long ago', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => '2025-01-01 00:00:00']);
+    $week = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 0, 'deferred' => 0])
+        ->and(array_column($captured, 'subjectId'))->toBe([$week->id]);
+});
+
+it('never dispatches for the demo account regardless of connect date', function (): void {
+    $demo = User::factory()->demo()->create();
+    StravaConnection::factory()->for($demo)->create(['created_at' => Carbon::today()->subDay()]);
+    WeeklySnapshot::factory()->for($demo)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffWeeklyRecaps::class)($demo->id))->toBe(['dispatched' => 0, 'rule_based' => 0, 'deferred' => 0])
+        ->and($captured)->toBeEmpty();
 });
 
 it('re-dispatches nothing on a second run once every recap is Done', function (): void {
