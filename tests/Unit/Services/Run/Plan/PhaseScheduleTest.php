@@ -325,9 +325,20 @@ it('never lets a race block reach Peak or Taper straight out of a recovery week'
         }
     }
 })->with(function (): array {
+    $arcStart = Carbon::parse('2026-08-10');
+    $schedule = new PhaseSchedule();
+
     $cases = [];
     foreach ([10_000.0, 21_097.0, 42_195.0] as $distanceM) {
         foreach (range(4, 20) as $weeksOut) {
+            $phases = array_column($schedule->forRace($arcStart, $arcStart->copy()->addWeeks($weeksOut), $distanceM), 'phase');
+            // A block this short holds no scheduled recovery week at all
+            // (already proven by "leaves a ramp too short to need one without
+            // any recovery week"), so there is nothing here for this
+            // invariant to check.
+            if (! in_array(PlanPhase::Deload, $phases, true)) {
+                continue;
+            }
             $cases["{$distanceM} m, {$weeksOut} weeks"] = [$weeksOut, $distanceM];
         }
     }
