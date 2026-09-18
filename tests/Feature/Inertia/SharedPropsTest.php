@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Jobs\AI\SendMaintainerAlertJob;
+use App\Models\AI\TokenUsage;
 use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
 use App\Models\TelegramConnection;
@@ -9,7 +11,10 @@ use App\Models\User;
 use App\Services\Inertia\SharedProps;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
@@ -121,4 +126,38 @@ it('runs no queries at all for a guest request', function (): void {
     }
 
     expect($queries)->toBe(0);
+});
+
+// #986: HandleInertiaRequests resolves every shared prop on a full page load,
+// which reaches AnalysisService::ceilingExceeded() and, past the app-wide
+// ceiling, a maintainer alert. That alert must never make an outbound call
+// itself — it only queues one (see MaintainerAlerter::broadcast()).
+it('makes no outbound call while resolving props, even when it trips a maintainer alert', function (): void {
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
+    config(['azure_openai.daily_cost_ceiling_total' => 5.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 6.00, 'output_per_1m' => 10.00]]]);
+    config(['services.telegram.bot_token' => 'test-bot-token']);
+
+    $admin = User::factory()->admin()->create();
+    TelegramConnection::factory()->for($admin)->create();
+
+    $user = User::factory()->create();
+    TokenUsage::query()->create([
+        'user_id' => $user->id,
+        'kind' => 'briefing',
+        'prompt_tokens' => 1_000_000,
+        'completion_tokens' => 0,
+        'total_tokens' => 1_000_000,
+        'model' => 'gpt-4o',
+        'created_at' => Carbon::now(),
+    ]);
+
+    Http::fake();
+    Bus::fake();
+
+    $props = sharedPropsFor($user);
+
+    expect(($props['aiPaused'])())->toBeTrue();
+    Http::assertNothingSent();
+    Bus::assertDispatched(SendMaintainerAlertJob::class);
 });

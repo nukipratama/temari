@@ -17,6 +17,15 @@ class TelegramClient
     private const int CAPTION_MAX = 1024;
 
     /**
+     * Bounds DNS/TCP connection establishment on its own, so a resolver or
+     * socket stall is capped independently of the total request timeout below.
+     */
+    private const int CONNECT_TIMEOUT_SECONDS = 5;
+
+    /** Total time budget for a call, on top of any long-poll timeout requested. */
+    private const int TIMEOUT_SECONDS = 10;
+
+    /**
      * Send a plain-text message to a chat. Returns nothing; throws on failure so
      * the caller (a job) decides retry vs drop from the status.
      */
@@ -103,7 +112,7 @@ class TelegramClient
     {
         $token = (string) config('services.telegram.bot_token');
 
-        $http = Http::baseUrl(self::API_BASE_URL . '/bot' . $token)->timeout($longPollTimeout + 10);
+        $http = $this->client($token, $longPollTimeout);
         $http = $request !== null ? $request($http) : $http->asJson();
 
         try {
@@ -131,5 +140,17 @@ class TelegramClient
         }
 
         return $response->json('result');
+    }
+
+    /**
+     * The base pending request for every Bot API call: an explicit connect
+     * timeout bounds DNS/TCP setup, separately from the total timeout, so a
+     * resolver or socket stall can never outlast either budget.
+     */
+    private function client(string $token, int $longPollTimeout): PendingRequest
+    {
+        return Http::baseUrl(self::API_BASE_URL . '/bot' . $token)
+            ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS)
+            ->timeout($longPollTimeout + self::TIMEOUT_SECONDS);
     }
 }

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\FlushDeadLetterAlertJob;
+use App\Jobs\AI\SendMaintainerAlertJob;
 use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
@@ -180,19 +181,20 @@ it('coalesces a burst of dead-letters into exactly one delayed flush job', funct
     Bus::assertDispatched(FlushDeadLetterAlertJob::class, fn (FlushDeadLetterAlertJob $job): bool => $job->delay === 90);
 });
 
-it('flushDeadLetterWindow sends one summary message carrying the coalesced count', function (): void {
+it('flushDeadLetterWindow queues one summary message carrying the coalesced count', function (): void {
     Bus::fake();
-    $client = fakeTelegram();
-    adminWithChat(7001);
 
     $alerter = app(MaintainerAlerter::class);
     $alerter->deadLettered();
     $alerter->deadLettered();
     $alerter->deadLettered();
 
-    $client->shouldReceive('sendMessage')->once()->with(7001, Mockery::pattern('/^3 AI blocks gave up/'));
-
     $alerter->flushDeadLetterWindow();
+
+    Bus::assertDispatched(
+        SendMaintainerAlertJob::class,
+        fn (SendMaintainerAlertJob $job): bool => str_starts_with($job->message, '3 AI blocks gave up'),
+    );
 });
 
 it('flushDeadLetterWindow is a no-op when nothing is pending in the window', function (): void {
@@ -369,4 +371,33 @@ it('spendDigest says so plainly on a day nobody spent anything', function (): vo
     $client->shouldReceive('sendMessage')->once()->with(7402, Mockery::pattern('/No athlete spent anything today/'));
 
     app(MaintainerAlerter::class)->spendDigest([], 0.0, 1.0, 5.0);
+});
+
+// #986: every alert queues its Telegram send instead of making the call
+// inline, so a slow/unreachable Telegram can never block the caller.
+it('queues the Telegram send instead of calling the client inline', function (): void {
+    Bus::fake();
+    $client = fakeTelegram();
+    adminWithChat(8001);
+
+    $client->shouldNotReceive('sendMessage');
+
+    app(MaintainerAlerter::class)->totalCeilingApproaching(4.0, 5.0);
+
+    Bus::assertDispatched(
+        SendMaintainerAlertJob::class,
+        fn (SendMaintainerAlertJob $job): bool => str_contains($job->message, '80%'),
+    );
+});
+
+it('gates the job dispatch itself on the dedupe window, not just the eventual send', function (): void {
+    Bus::fake();
+    adminWithChat(8002);
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->totalCeilingApproaching(4.1, 5.0);
+    $alerter->totalCeilingApproaching(4.6, 5.0);
+
+    // Not zero (the first trigger is not lost) and not two (no duplicate).
+    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
 });
