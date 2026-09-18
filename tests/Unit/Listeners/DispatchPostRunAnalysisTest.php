@@ -681,6 +681,70 @@ it('fills a pre-connect run rule-based and dispatches no LLM job for it', functi
     Carbon::setTestNow();
 });
 
+it('narrates a pre-connect run inside the last 7 days instead of filling it rule-based', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    // 5 days old: historical (predates the connection below) but inside the
+    // window NarrateOnReturnJob already applies to pending runs.
+    $activity = analyzedActivity('2026-06-05 06:00:00');
+    StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-06-09 12:00:00')]);
+    RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeActivityJob::class);
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class);
+
+    $groupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->get();
+    expect($groupRows->every(fn (Analysis $row): bool => $row->status !== AnalysisStatus::Done))->toBeTrue();
+
+    Carbon::setTestNow();
+});
+
+it('a 60-day backfill narrates only the last 7 days, rule-based on the rest', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $connectedAt = Carbon::parse('2026-06-10 08:00:00');
+
+    $recent = analyzedActivity('2026-06-05 06:00:00');
+    StravaConnection::factory()->for($recent->user)->create(['created_at' => $connectedAt]);
+    $recentCard = RunCard::factory()->create(['activity_id' => $recent->id]);
+    fire($recent);
+
+    Bus::assertDispatched(AnalyzeActivityJob::class, fn (AnalyzeActivityJob $job): bool => $job->subjectId === $recent->id);
+    expect(Analysis::query()->forSubject(RunCard::class, $recentCard->id, AnalysisType::CardFlavor)->firstOrFail()->status)
+        ->not->toBe(AnalysisStatus::Done);
+
+    Bus::fake();
+    $old = analyzedActivity('2026-04-12 06:00:00', $recent->user_id);
+    $oldCard = RunCard::factory()->create(['activity_id' => $old->id]);
+    fire($old);
+
+    Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
+    $oldGroupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $old->id)->get();
+    expect($oldGroupRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue()
+        ->and(Analysis::query()->forSubject(RunCard::class, $oldCard->id, AnalysisType::CardFlavor)->firstOrFail()->status)
+        ->toBe(AnalysisStatus::Done);
+
+    Carbon::setTestNow();
+});
+
+it('a 3-day backfill narrates every imported run', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $connectedAt = Carbon::parse('2026-06-10 08:00:00');
+
+    $activity = analyzedActivity('2026-06-08 06:00:00');
+    StravaConnection::factory()->for($activity->user)->create(['created_at' => $connectedAt]);
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeActivityJob::class);
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class);
+    expect(Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail()->status)
+        ->not->toBe(AnalysisStatus::Done);
+
+    Carbon::setTestNow();
+});
+
 it('still narrates a run logged after the Strava connect', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $activity = analyzedActivity('2026-06-10 06:00:00');

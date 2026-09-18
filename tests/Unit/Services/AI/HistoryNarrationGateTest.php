@@ -108,3 +108,17 @@ it('never holds back a subject that is not one run', function (): void {
 
     expect(app(HistoryNarrationGate::class)->awaitsHydration($user, AnalysisType::TrendRead, $user->id))->toBeFalse();
 });
+
+it('narrates a historical run automatically inside the last 7 days', function (): void {
+    expect(app(HistoryNarrationGate::class)->narratesAutomatically(Carbon::parse('2026-09-10 06:00:00')))
+        ->toBeTrue();
+});
+
+it('leaves a historical run older than 7 days for the on-demand read', function (): void {
+    expect(app(HistoryNarrationGate::class)->narratesAutomatically(Carbon::parse('2026-08-20 06:00:00')))
+        ->toBeFalse();
+});
+
+it('does not auto-narrate a null start date', function (): void {
+    expect(app(HistoryNarrationGate::class)->narratesAutomatically(null))->toBeFalse();
+});

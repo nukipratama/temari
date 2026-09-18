@@ -174,7 +174,8 @@ and spends nothing. See [[demo-user-billing-exclusion]].
 on `ActivityIngested` and is where most per-run spend originates. In order: `CardFlavor`, then the
 grouped `PostRunSpeech` + `RunInsight` pair — both filled rule-based instead, with no dispatch, when
 [`NarrationEligibility::forIngestedRun()`](../../app/Services/AI/NarrationEligibility.php) says demo,
-too old or pre-connect, and staged `Pending` with every LLM request below skipped (briefing, profile
+too old, or pre-connect and older than the last 7 days (see *the history gate* below), and staged
+`Pending` with every LLM request below skipped (briefing, profile
 voice, clamp voice, Temari's read) when the athlete is away from the app, until origin 5 catches them
 up — then `BriefingMascotVoice` (invalidated only when the
 run is today's), then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
@@ -281,9 +282,12 @@ Three more limits:
   the ingest fan-out, [`blocksManualTrigger()`](../../app/Services/AI/BackfillAgeGate.php#L51) for
   the button. It is exhaustive per type — chained and recap types are exempt, because they resume a
   chain rather than narrate old material. See [[twelve-week-narration-cutoff]].
-- **The history gate.** A run that started before the athlete's Strava connect is filled rule-based
-  on ingest and narrated by a model only when they ask for it on that run's page, and only once
-  every older run inside the backfill window has hydrated —
+- **The history gate.** A run that started before the athlete's Strava connect is history. Inside
+  the last [`RecentlyActiveUsers::ACTIVE_WINDOW_DAYS`](../../app/Actions/AI/RecentlyActiveUsers.php#L22)
+  (7) days it still narrates automatically on ingest, so a day-one backfill's cost is bounded and
+  identical whatever depth of history it imports — deliberately, not as a degradation. Older history
+  is filled rule-based on ingest and narrated by a model only when the athlete asks for it on that
+  run's page, and only once every older run inside the backfill window has hydrated —
   [`HistoryNarrationGate`](../../app/Services/AI/HistoryNarrationGate.php#L28), which refuses the
   trigger with 409 until then. See [[history-narrates-on-demand]].
 - **Cooldown and idempotency are two different defences for the same goal.** The
@@ -547,9 +551,10 @@ all of them one-offs worth knowing before the day:
   through `BackfillAgeGate` exactly as a first-time backfill would, so only the last twelve weeks are
   narrated by a model. That is the gate working as designed ([[twelve-week-narration-cutoff]]), not a
   failure to fix on the day.
-- **And the last twelve weeks come back rule-based too, until asked for.** Every re-synced run
-  predates the new Strava connection, so the whole import is history: it hydrates in full and
-  narrates on demand, one run at a time ([[history-narrates-on-demand]]).
+- **And the last twelve weeks come back rule-based too, past the last 7 days, until asked for.**
+  Every re-synced run predates the new Strava connection, so the whole import is history: the last
+  7 days of it narrate automatically on ingest, exactly as a first-time backfill's do, and the rest
+  hydrates in full and narrates on demand, one run at a time ([[history-narrates-on-demand]]).
 - **The backfill is staggered, not bursty.** `ai.backfill_stagger_seconds` spaces successive cascades
   6 minutes apart per user, so a large re-sync spreads over hours rather than firehosing Azure.
 - **The daily cost ceiling still applies.** If the narratable slice of the re-sync exceeds it, the

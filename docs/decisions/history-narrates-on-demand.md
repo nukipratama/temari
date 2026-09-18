@@ -10,11 +10,21 @@ code_refs:
   - app/Http/Controllers/Api/AnalysisController.php
   - app/Services/AI/BackfillAgeGate.php
   - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
+  - app/Actions/AI/RecentlyActiveUsers.php
 ---
 
 # History narrates on demand
 
 **Status:** Accepted (documented 2026-09-15)
+
+> **2026-09-18 — the last 7 days of history no longer wait for "Try again".** #989: a day-one
+> backfill's automatic spend used to depend on how much history an athlete imported, since nothing
+> here capped it. `HistoryNarrationGate::narratesAutomatically()` now carves out the last
+> `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS` (7) days of a historical run — the same window
+> [[narration-spends-only-on-active-athletes]]'s `NarrateOnReturnJob` already applies to a returning
+> athlete's pending runs — and narrates it on ingest like any other run. Everything older still
+> takes this decision's on-demand path unchanged. This bounds a backfill's automatic cost to at most
+> 7 days of runs regardless of import depth, deliberately, not as a degradation of the ceiling.
 
 ## Context
 
