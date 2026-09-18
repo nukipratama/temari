@@ -57,6 +57,14 @@ For the audited athlete and the same twelve-week block, the plan now averages 26
 - **A run hydrated without heart rate never holds anything.** It no longer awaits hydration, so the guard stays as blind to it as [[unscored-load-is-null-not-zero]] already leaves it.
 - **A held season's goals come from the held plan,** so the long-run goal sits at or below what the released plan builds to.
 
+## Clarifications (PR #1027, 2026-09-18)
+
+**The realised ceiling staying at 1.1556 is deliberate, not a defect.** Rule 2 moves the deload off the last Build week, but a twelve-week block still has only three Build weeks, so the move adds no compounding step — the ceiling is bounded by block length, not by the deload's position. The extra volume in Consequences comes entirely from rule 1's floor. A steeper ramp on top of a raised floor was considered and rejected: it would stack load for an athlete with an `overreaching` week in their history. A future audit should not re-flag this number.
+
+**The volume floor is a block average, except while held.** Rule 1's floor is solved over the block's mean, so Build weeks sit above it to offset the deload and taper dips — see week one at 28.2 km in Consequences. While increases are held under rule 6, the floor is solved per training week instead, so no training week exceeds habit.
+
+**Deload weeks dip the long run.** Rule 3's climb-or-hold runs between deloads, not through them: a deload, scheduled or reactive, still drops the long run, and the climb toward the readiness floor resumes on the next Build week.
+
 ## See also
 
 - [[plan-volume-anchors-on-weekly-mean]]: the anchor the floor sits beside
