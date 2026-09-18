@@ -101,6 +101,7 @@ final readonly class Periodizer
                 $inputs->longRunDay,
                 $inputs->projectedRaceSeconds,
                 $inputs->raceDate,
+                $week['zone'],
             );
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier']];
@@ -198,7 +199,7 @@ final readonly class Periodizer
      * arc week rather than materializing nothing at all, until it rolls over.
      *
      * @param  list<array{week_start: Carbon, phase: PlanPhase, zone: string}>  $arc
-     * @return list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>
+     * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string, multiplier: float}>
      */
     private static function sliceFromCurrentWeek(array $arc, Carbon $arcStart, Carbon $currentWeekStart, bool $deload, bool $selfScaled): array
     {
@@ -219,6 +220,7 @@ final readonly class Periodizer
             $weeks[] = [
                 'week_start' => $week['week_start'],
                 'phase' => $phases[$index],
+                'zone' => $week['zone'],
                 'multiplier' => $multipliers[$index],
             ];
         }

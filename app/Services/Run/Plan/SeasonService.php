@@ -235,13 +235,14 @@ final readonly class SeasonService
         $weekCount = count($weeks);
 
         $phases = array_column($weeks, 'phase');
-        $multipliers = PhaseSchedule::volumeMultipliers($phases, $race === null, array_column($weeks, 'zone'));
+        $zones = array_column($weeks, 'zone');
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, $race === null, $zones);
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
 
         $qualityTotal = 0;
         $longestLongRunKm = 0.0;
         foreach ($phases as $index => $phase) {
-            $qualityTotal += $this->weekPlanBuilder->qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, $race === null);
+            $qualityTotal += $this->weekPlanBuilder->qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, $race === null, $zones[$index]);
             $longRunKm = SegmentGenerator::coreKmFor(SessionType::Long, isPrimaryEasy: false, longRunBaselineKm: $baselineData['long_run_km'], volumeMultiplier: $multipliers[$index], longRunCapKm: $baselineData['long_run_cap_km']);
             $longestLongRunKm = max($longestLongRunKm, $longRunKm);
         }
