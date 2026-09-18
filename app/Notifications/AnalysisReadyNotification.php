@@ -78,9 +78,6 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
     {
         $presenter = app(AnalysisMessagePresenter::class);
 
-        // Text plus the link to the run page. The share card is drawn in the
-        // browser now, so there is no server-rendered photo to attach — the
-        // athlete makes the print they want from the run page itself.
         return new TelegramMessage(
             text: $presenter->format($this->analysis),
             deliveryKey: $this->deliveryKey(),

@@ -41,11 +41,14 @@ export function useCardPrints(
     );
     const [attempt, setAttempt] = useState(0);
     const memoRef = useRef(new Map<string, Print>());
+    const openRef = useRef(true);
 
     useEffect(() => {
         const cache = memoRef.current;
+        openRef.current = true;
 
         return () => {
+            openRef.current = false;
             for (const print of cache.values()) URL.revokeObjectURL(print.url);
             cache.clear();
         };
@@ -70,11 +73,17 @@ export function useCardPrints(
                 } catch {
                     print = null;
                 }
-                if (!live) {
-                    if (print !== null) URL.revokeObjectURL(print.url);
-                    return;
+                if (print !== null) {
+                    // A finished print is worth keeping even when its pass was
+                    // superseded: the key fully describes it, so switching back
+                    // is a lookup rather than the same draw again.
+                    if (!openRef.current) {
+                        URL.revokeObjectURL(print.url);
+                        return;
+                    }
+                    memoRef.current.set(key, print);
                 }
-                if (print !== null) memoRef.current.set(key, print);
+                if (!live) return;
                 setResults((prev) => ({ ...prev, [each]: { key, print } }));
             }
         })();

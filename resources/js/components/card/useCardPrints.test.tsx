@@ -70,6 +70,35 @@ describe('useCardPrints', () => {
         expect(renderPrint).toHaveBeenCalledTimes(6);
     });
 
+    it('keeps a print whose pass was superseded, so switching back is a lookup', async () => {
+        let release: (() => void) | null = null;
+        renderPrint.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    release = () => resolve(print());
+                }),
+        );
+        const { result, rerender } = renderHook(
+            ({ aspect }: { aspect: 'story' | 'feed' }) =>
+                useCardPrints(facts, ALL_FACTS, aspect, 'broadsheet'),
+            { initialProps: { aspect: 'story' } as { aspect: 'story' | 'feed' } },
+        );
+
+        await waitFor(() => expect(renderPrint).toHaveBeenCalledTimes(1));
+        rerender({ aspect: 'feed' });
+        act(() => release?.());
+        await waitFor(() => expect(renderPrint).toHaveBeenCalledTimes(4));
+
+        const drawn = renderPrint.mock.calls.length;
+        rerender({ aspect: 'story' });
+        await waitFor(() =>
+            expect(result.current.states.broadsheet.print).not.toBeNull(),
+        );
+        // Only the two story neighbours are left to draw; the print the
+        // superseded pass finished is not drawn a second time.
+        expect(renderPrint).toHaveBeenCalledTimes(drawn + 2);
+    });
+
     it('draws nothing at all without facts', () => {
         renderHook(() => useCardPrints(null, ALL_FACTS, 'story', 'ticket'));
 

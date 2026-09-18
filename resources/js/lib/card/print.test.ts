@@ -18,6 +18,13 @@ import { makeCardFacts } from '@/test/cardFacts';
 
 const FORMS: RunForm[] = ['easy', 'long', 'race', 'pr', 'nogps'];
 
+const NO_FACTS = {
+    hr: false,
+    elevation: false,
+    weather: false,
+    badges: false,
+};
+
 const forForm = (form: RunForm) =>
     makeCardFacts({
         form,
@@ -44,10 +51,30 @@ describe('card svg', () => {
                     ).toContain(
                         `width="${CARD_WIDTH}" height="${cardHeight(aspect)}" viewBox="0 0 ${CARD_WIDTH} ${cardHeight(aspect)}"`,
                     );
-                    // No block ever ships a caption over a value it does not have.
-                    expect(svg, `${style}/${form}/${aspect}`).not.toContain(
-                        '></text>',
-                    );
+                }
+            }
+        }
+    });
+
+    it('never captions a block it has no value for, with any chip set', () => {
+        for (const options of [ALL_FACTS, NO_FACTS]) {
+            for (const style of CARD_STYLES) {
+                for (const form of FORMS) {
+                    for (const aspect of CARD_ASPECTS) {
+                        const svg = buildCardSvg(
+                            forForm(form),
+                            options,
+                            style,
+                            aspect,
+                        );
+
+                        // An empty text node is what a labelled void looks like
+                        // once the SVG is written out.
+                        expect(
+                            svg,
+                            `${style}/${form}/${aspect}`,
+                        ).not.toContain('></text>');
+                    }
                 }
             }
         }
@@ -138,15 +165,24 @@ describe('rasterising', () => {
         expect(drawn).toContain('data:font/woff2;base64,');
     });
 
-    it('draws the feed print at the square size', async () => {
-        const print = await renderPrint(
-            makeCardFacts(),
-            ALL_FACTS,
-            'topo',
-            'feed',
-        );
+    it('hands back a png at the aspect size for every style, form and aspect', async () => {
+        for (const style of CARD_STYLES) {
+            for (const form of FORMS) {
+                for (const aspect of CARD_ASPECTS) {
+                    const print = await renderPrint(
+                        forForm(form),
+                        ALL_FACTS,
+                        style,
+                        aspect,
+                    );
 
-        expect(print.height).toBe(1080);
+                    expect(
+                        [print.width, print.height, print.blob.type],
+                        `${style}/${form}/${aspect}`,
+                    ).toEqual([CARD_WIDTH, cardHeight(aspect), 'image/png']);
+                }
+            }
+        }
     });
 
     it('still draws when the faces cannot be fetched', async () => {
