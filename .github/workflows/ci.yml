@@ -481,8 +481,11 @@ jobs:
       # Roll app + workers together: /up (VerifyDependencies) 500s unless Horizon is
       # running, so the healthcheck can't gate the app alone. A boot-broken image is
       # caught by the healthcheck and reverted by the failure-path auto-rollback below.
-      - name: Roll app, workers + Pulse daemon onto the new image
-        run: $COMPOSE up -d --no-deps app horizon pulse
+      # Pulse is deliberately not in this list — it's a monitoring daemon, not on
+      # the healthcheck's dependency graph, so it rolls after the deploy is green
+      # (below), the same way `scheduler` does.
+      - name: Roll app + workers onto the new image
+        run: $COMPOSE up -d --no-deps app horizon
 
       - name: Optimize caches
         run: $COMPOSE exec -T app php artisan optimize
@@ -518,6 +521,9 @@ jobs:
 
       - name: Resume scheduler (deploy green)
         run: $COMPOSE up -d --no-deps scheduler
+
+      - name: Roll Pulse daemon (deploy green)
+        run: $COMPOSE up -d --no-deps pulse
 
       - name: Roll back on failure
         if: failure()

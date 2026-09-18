@@ -212,12 +212,19 @@ services:
   # past Compose's interpolation so the container's own shell resolves them.
   # Polls both PIDs rather than `wait -n` since this image's /bin/sh is busybox,
   # where `wait -n` isn't guaranteed portable; polling was verified live.
+  # This shell is PID 1 (the base image's ENTRYPOINT execs straight into
+  # `command:`), and a PID-1 process ignores every signal it hasn't explicitly
+  # trapped — the kernel's default-ignore rule for init processes. Without the
+  # `trap` below, Docker's SIGTERM landed on nobody and the poll loop only ever
+  # woke up to SIGKILL at the end of `stop_grace_period`. The trap kills both
+  # children (a monitoring daemon has nothing to flush) and exits immediately.
   pulse:
     <<: *app-base
     command:
       - "/bin/sh"
       - "-c"
       - |
+        trap 'kill $$PULSE_CHECK_PID $$PULSE_WORK_PID 2>/dev/null; wait; exit 0' TERM INT
         php artisan pulse:check &
         PULSE_CHECK_PID=$!
         php artisan pulse:work &
@@ -228,7 +235,9 @@ services:
         done
         kill $$PULSE_CHECK_PID $$PULSE_WORK_PID 2>/dev/null
         wait
-    stop_grace_period: 30s
+    # Trap makes SIGTERM exit near-instantly; this is only the backstop if it
+    # ever doesn't fire, so it's a fraction of the old 30s, not zero.
+    stop_grace_period: 10s
     volumes:
       - app_logs:/var/www/html/storage/logs
       - /:/host:ro
