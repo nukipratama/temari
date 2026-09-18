@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
+use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
@@ -148,11 +149,8 @@ it('renders the generated weeks with the current one marked as such', function (
         ->and($current['days'])->toHaveCount(7);
 });
 
-/**
- * The real case: a tempo day eased to easy at 00:01 with its distance held.
- * The Plan row headlines the easy run the athlete was told to do.
- */
-it('headlines a tempo day eased to easy on the Plan row, with tempo only as context', function (): void {
+/** A tempo day eased to easy at 00:01, distance held: the Plan row still headlines tempo, easy as the step-down. */
+it('steps a tempo day eased to easy down on the Plan row today, tempo still leading', function (): void {
     $user = assemblerAthlete();
     $row = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
@@ -165,12 +163,44 @@ it('headlines a tempo day eased to easy on the Plan row, with tempo only as cont
     $day = collect($this->assembler->weeks($user, Carbon::today()))
         ->firstWhere('type', 'current')['days'][0];
 
-    expect($day['session_type'])->toBe('easy')
+    expect($day['session_type'])->toBe('tempo')
         ->and($day['distance_km'])->toBe($storedKm)
-        ->and($day['clamp'])->toBeNull()
-        ->and($day['eased_from']['session_type'])->toBe('tempo')
-        ->and($day['eased_from']['distance_km'])->toBeNull()
-        ->and($day['eased_from']['voice'])->not->toBeNull();
+        ->and($day['eased_from'])->toBeNull()
+        ->and($day['clamp']['session_type'])->toBe('easy')
+        ->and($day['clamp']['distance_km'])->toBe($storedKm)
+        ->and($day['clamp']['label'])->toBe('eased today')
+        ->and($day['clamp']['note'])->not->toBeNull();
+});
+
+it('holds todays advisory clamp on the Plan row while a run inside the load window still awaits hydration, and resumes once it lands', function (): void {
+    $user = assemblerAthlete();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'form_status' => 'overreaching',
+        'monotony' => 1.0,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Interval,
+    ]);
+    $activity = Activity::factory()->summaryOnly()->for($user)->create();
+    // No heart rate, so hydrating this run doesn't introduce a competing live form_status.
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->copy()->subDays(41)->setTime(7, 0),
+        'has_heartrate' => false,
+        'trimp_edwards' => null,
+    ]);
+
+    $held = collect($this->assembler->weeks($user, Carbon::today()))
+        ->firstWhere('type', 'current')['days'][0];
+
+    $activity->update(['ingest_state' => IngestState::Detailed]);
+
+    $resumed = collect($this->assembler->weeks($user, Carbon::today()))
+        ->firstWhere('type', 'current')['days'][0];
+
+    expect($held['clamp'])->toBeNull()
+        ->and($resumed['clamp'])->not->toBeNull();
 });
 
 it('reports the baseline session count the plan is built on', function (): void {

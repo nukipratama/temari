@@ -6,6 +6,7 @@ namespace App\Services\AI;
 
 use App\Models\Activity;
 use App\Models\StravaConnection;
+use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
@@ -62,5 +63,17 @@ class HydrationBacklog
             ->where('activity_details.start_date_local', '<', $before)
             ->when($since !== null, fn (Builder $query) => $query->where('activity_details.start_date_local', '>=', $since))
             ->exists();
+    }
+
+    /**
+     * Whether a run inside the trailing CTL window {@see TrainingLoad} scores readiness off still awaits hydration.
+     */
+    public function recentLoadAwaitsScoring(int $userId, Carbon $today): bool
+    {
+        return $this->awaitsHydrationBefore(
+            $userId,
+            $today->copy()->addDay()->startOfDay(),
+            $today->copy()->subDays(TrainingLoad::CTL_TAU - 1)->startOfDay(),
+        );
     }
 }

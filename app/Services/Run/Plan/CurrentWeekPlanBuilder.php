@@ -11,6 +11,7 @@ use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Models\User;
 use App\Services\Run\Metrics\ReadinessCeiling;
+use App\Services\AI\HydrationBacklog;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -38,6 +39,7 @@ final readonly class CurrentWeekPlanBuilder
         private PlanNarrationRequester $planNarration,
         private ResolveActiveRaceAction $activeRace,
         private ResolvePlannedSessionsAction $plannedSessions,
+        private HydrationBacklog $hydrationBacklog,
     ) {
     }
 
@@ -81,7 +83,7 @@ final readonly class CurrentWeekPlanBuilder
         $primaryEasyDate = PlanRenderer::primaryEasyDate($currentWeekSessions);
 
         $plannedKmByDate = [];
-        $easedAwayKm = 0.0;
+        $easedAwayKmByDate = [];
         foreach ($currentWeekSessions as $s) {
             $effective = EffectiveSession::of($s, SegmentGenerator::coreKmFor(
                 $s->session_type,
@@ -92,7 +94,7 @@ final readonly class CurrentWeekPlanBuilder
                 $s->race_distance_m === null ? null : (float) $s->race_distance_m,
             ));
             $plannedKmByDate[$s->date->toDateString()] = $effective->coreKm;
-            $easedAwayKm += $effective->easedAwayKm();
+            $easedAwayKmByDate[$s->date->toDateString()] = $effective->easedAwayKm();
         }
 
         // Every past row should already carry its real status —
@@ -117,8 +119,16 @@ final readonly class CurrentWeekPlanBuilder
             ],
         )->all();
 
+        // Today's uncredited ease is only a step-down, so it shouldn't shrink the week total.
+        $todayKey = $today->toDateString();
+        if (isset($easedAwayKmByDate[$todayKey]) && ! ($resolvedStatuses[$todayKey] ?? PlannedSessionStatus::Planned)->isCredited()) {
+            $easedAwayKmByDate[$todayKey] = 0.0;
+        }
+        $easedAwayKm = array_sum($easedAwayKmByDate);
+
+        // Held back while recent load is still unscored, same guard as RestClampRecorder::record().
         $todaySession = $currentWeekSessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
-        $clamp = ($todaySession !== null && ! $todaySession->pinned)
+        $clamp = ($todaySession !== null && ! $todaySession->pinned && ! $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today))
             ? ReadinessClamp::apply(
                 $todaySession->session_type,
                 $todaySession->phase,

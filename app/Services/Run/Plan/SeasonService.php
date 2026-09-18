@@ -93,7 +93,7 @@ final readonly class SeasonService
         return DB::transaction(function () use ($user, $race, $today, $current): Season {
             $anchorKm = $this->baseline->trailingWeeklyVolumeKm($user, $today);
             $volumeFloorKm = $race !== null ? $this->baseline->recentWeeklyMeanKm($user, $today) : null;
-            $increasesHeld = $race !== null && $this->recentLoadAwaitsScoring($user, $today);
+            $increasesHeld = $race !== null && $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
             $opensWithRecovery = $race === null && self::followsARaceAlreadyRun($current, $today);
             $endsAt = $race !== null
                 ? $race->race_date->toDateString()
@@ -214,23 +214,9 @@ final readonly class SeasonService
      */
     public function releaseHeldIncreases(Season $season, User $user, Carbon $today): void
     {
-        if ($season->increases_held && ! $this->recentLoadAwaitsScoring($user, $today)) {
+        if ($season->increases_held && ! $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today)) {
             $season->update(['increases_held' => false]);
         }
-    }
-
-    /**
-     * Whether a run inside the chronic-load window {@see PlanAdapter} judges
-     * through {@see TrainingLoad} is still waiting for the hydration that
-     * scores its TRIMP. Until then the guard reads that load as no signal.
-     */
-    private function recentLoadAwaitsScoring(User $user, Carbon $today): bool
-    {
-        return $this->hydrationBacklog->awaitsHydrationBefore(
-            $user->id,
-            $today->copy()->addDay()->startOfDay(),
-            $today->copy()->subDays(TrainingLoad::CTL_TAU - 1)->startOfDay(),
-        );
     }
 
     /**
