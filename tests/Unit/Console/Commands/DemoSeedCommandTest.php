@@ -28,6 +28,7 @@ use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\Card\RunForm;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -154,6 +155,21 @@ function releaseSharedDemoFixture(): void
     DB::connection('mysql')->commit();
     DB::connection('analytics')->commit();
 }
+
+/**
+ * Backstop for releaseSharedDemoFixture(): PHPUnit always calls afterAll()
+ * once, after the last test of this file that actually ran — even when that
+ * is not the test below (an earlier test fails before reaching it, or a
+ * `--filter`/TIA-narrowed run never selects it at all). Flipping the flag
+ * directly needs no live Application, unlike a throwaway-Application
+ * `migrate:fresh`: it is the same plain static property RefreshDatabase's own
+ * teardown already reads before every test, so whichever RefreshDatabase test
+ * this process runs next always re-migrates instead of trusting whatever this
+ * file left committed.
+ */
+afterAll(function (): void {
+    RefreshDatabaseState::$migrated = false;
+});
 
 it('seeds a complete, login-ready demo dataset and stays idempotent across re-runs', function (): void {
     ensureBareDemoSeeded();
@@ -420,10 +436,12 @@ it('applies the edge states at most once across re-runs', function (): void {
 });
 
 it('clears the producer on a row whose content the edge states blank', function (): void {
-    ensureEdgeStatesSeeded();
+    try {
+        ensureEdgeStatesSeeded();
 
-    expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->whereNotNull('served_by')->count())
-        ->toBe(0);
-
-    releaseSharedDemoFixture();
+        expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->whereNotNull('served_by')->count())
+            ->toBe(0);
+    } finally {
+        releaseSharedDemoFixture();
+    }
 });
