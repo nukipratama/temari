@@ -31,6 +31,11 @@ const HERO: Record<
         headline: 'your runs are being pulled from Strava',
         copy: "hang tight, the moment your first run comes in, i'll read it and the card will show up.",
     },
+    failed: {
+        eyebrow: '★ Sync stalled',
+        headline: "that sync didn't make it through",
+        copy: "something went wrong pulling your runs from Strava. give it another sync and i'll try again.",
+    },
     ready: {
         eyebrow: '★ Nothing yet',
         headline: 'no new runs found yet',

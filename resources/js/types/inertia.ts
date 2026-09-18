@@ -32,13 +32,16 @@ export interface AuthUser {
     is_demo: boolean;
 }
 
-export type StravaSyncState = 'disconnected' | 'revoked' | 'syncing' | 'ready';
+export type StravaSyncState =
+    'disconnected' | 'revoked' | 'syncing' | 'failed' | 'ready';
 
 export interface StravaSync {
     /**
      * Honest connection/ingest state the UI branches on. `syncing` means
-     * connected but no analyzed run has landed yet (backfill in flight); a
-     * "connected" boolean is derived from this, not shipped separately.
+     * connected but no analyzed run has landed yet (backfill in flight);
+     * `failed` means the same, except the last sync attempt exhausted its
+     * retries. A "connected" boolean is derived from this, not shipped
+     * separately.
      */
     state: StravaSyncState;
     last_synced_at: string | null;

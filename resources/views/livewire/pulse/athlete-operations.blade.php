@@ -19,9 +19,9 @@
                             <div class="flex items-center gap-2 min-w-0">
                                 <span @class([
                                     'inline-block h-2 w-2 rounded-full shrink-0',
-                                    'bg-ember' => in_array($athlete['syncStatus'], ['error', 'revoked'], true),
+                                    'bg-ember' => in_array($athlete['syncStatus'], ['error', 'failed', 'revoked'], true),
                                     'bg-stone' => $athlete['syncStatus'] === 'never',
-                                    'bg-leaf' => ! in_array($athlete['syncStatus'], ['error', 'revoked', 'never'], true),
+                                    'bg-leaf' => ! in_array($athlete['syncStatus'], ['error', 'failed', 'revoked', 'never'], true),
                                 ])></span>
                                 <span class="truncate text-sm font-bold text-foreground">{{ $athlete['name'] }}</span>
                                 @if ($athlete['isDemo'])

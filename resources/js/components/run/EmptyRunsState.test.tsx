@@ -21,6 +21,10 @@ const HERO_COPY: Record<StravaSyncState, { headline: string; copy: string }> = {
         headline: 'your runs are being pulled from Strava',
         copy: "Hang tight, the moment your first run comes in, I'll read it and the card will show up.",
     },
+    failed: {
+        headline: "that sync didn't make it through",
+        copy: "Something went wrong pulling your runs from Strava. Give it another sync and I'll try again.",
+    },
     ready: {
         headline: 'no new runs found yet',
         copy: 'If you just finished a run, try syncing again so it gets picked up.',
@@ -93,6 +97,18 @@ describe('EmptyRunsState', () => {
         expect(start).not.toHaveBeenCalled();
         expect(stop).toHaveBeenCalled();
         expectHeroContent('ready');
+        expectActionLinks();
+    });
+
+    it('stops polling and offers a retry once the sync has permanently failed', () => {
+        const { start, stop } = renderWithState('failed');
+
+        expect(start).not.toHaveBeenCalled();
+        expect(stop).toHaveBeenCalled();
+        expectHeroContent('failed');
+        expect(
+            screen.getByRole('button', { name: /sync now/i }),
+        ).toBeInTheDocument();
         expectActionLinks();
     });
 });

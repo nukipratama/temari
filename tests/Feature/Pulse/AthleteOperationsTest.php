@@ -82,6 +82,16 @@ it('alerts when an athlete last sync errored', function (): void {
         ->assertSee('health: alert');
 });
 
+it('alerts when an athlete\'s sync exhausted its retries', function (): void {
+    $user = User::factory()->create(['name' => 'Rina']);
+    StravaSyncLog::log($user->id, 'failed', error: 'boom');
+
+    Livewire::test(AthleteOperations::class)
+        ->assertOk()
+        ->assertSee('sync failed')
+        ->assertSee('health: alert');
+});
+
 it('shows the last delivery per channel for the athlete it belongs to', function (): void {
     $user = User::factory()->create(['name' => 'Rina']);
     athleteDelivery($user, 'telegram', NotificationDeliveryStatus::Sent);
