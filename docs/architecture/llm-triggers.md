@@ -194,9 +194,17 @@ too old, or pre-connect and older than the last 7 days (see *the history gate* b
 voice, clamp voice, Temari's read) when the athlete is away from the app, until origin 5 catches them
 up — then `BriefingMascotVoice` (invalidated only when the
 run is today's), then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
-never re-bills. `WeeklyRecap` and `MonthlyRecap` rows are **staged `Pending` and not narrated here** —
-the scheduled commands above narrate them once the window closes, which is why a pending recap row
-is not a backlog. See [[deferred-recap-windowing]].
+never re-bills. Both of those two are also **held** — staged `Pending`, not dispatched — while
+history their own narrator reads is still hydrating: the briefing on past-you's bounded reach
+([`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+anchored on now rather than the ingested run's own date), the profile voice on the whole backlog
+([`HistoryNarrationGate::awaitsFullHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+since it reads lifetime stats and the full PR table). Both holds are bounded by the same
+`ai.recap_hydration_grace_hours` window as the history gate below, so a long-connected athlete sees
+no change, and `ai:self-heal` releases a held row once its history lands (#1032). `WeeklyRecap` and
+`MonthlyRecap` rows are **staged `Pending` and not narrated here** — the scheduled commands above
+narrate them once the window closes, which is why a pending recap row is not a backlog. See
+[[deferred-recap-windowing]].
 
 ### 3. User-initiated
 

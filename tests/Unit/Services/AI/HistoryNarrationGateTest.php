@@ -155,3 +155,31 @@ it('makes an on-demand read wait on an unhydrated run older than the backfill wi
     expect(app(HistoryNarrationGate::class)->awaitsHydration($user, AnalysisType::PostRunSpeech, $clicked->id))
         ->toBeTrue();
 });
+
+it('holds full hydration while any run of the backlog is unhydrated, even outside past-you reach', function (): void {
+    $user = athleteConnectedAt('2026-09-15 08:00:00');
+    historyRunFor($user, '2020-01-01 06:00:00', IngestState::Summary);
+
+    expect(app(HistoryNarrationGate::class)->awaitsFullHydration($user->id))->toBeTrue();
+});
+
+it('releases full hydration once every run of the backlog has hydrated', function (): void {
+    $user = athleteConnectedAt('2026-09-15 08:00:00');
+    historyRunFor($user, '2020-01-01 06:00:00');
+
+    expect(app(HistoryNarrationGate::class)->awaitsFullHydration($user->id))->toBeFalse();
+});
+
+it('releases full hydration once the grace window after connecting has passed, despite a stuck backlog entry', function (): void {
+    $user = athleteConnectedAt('2026-09-13 08:00:00');
+    historyRunFor($user, '2020-01-01 06:00:00', IngestState::Summary);
+
+    expect(app(HistoryNarrationGate::class)->awaitsFullHydration($user->id))->toBeFalse();
+});
+
+it('never holds full hydration for an athlete with no Strava connection', function (): void {
+    $user = User::factory()->create();
+    historyRunFor($user, '2020-01-01 06:00:00', IngestState::Summary);
+
+    expect(app(HistoryNarrationGate::class)->awaitsFullHydration($user->id))->toBeFalse();
+});

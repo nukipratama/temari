@@ -44,6 +44,18 @@ code_refs:
 > now monotonically, as the drain works forward through the window, rather than depending on the drain
 > reaching backward into it.
 
+> **2026-09-19 — the daily briefing and the weekly profile voice hold the same way (#1032).**
+> `DispatchPostRunAnalysis` requested both unconditionally for every non-away athlete, so a first-day
+> backfill's first briefing and first-week profile read were written against whatever sliver of
+> history had landed at connect time. The briefing reuses `awaitsOlderHydration()` unchanged, anchored
+> on now rather than the ingested run's own date, because its own narrator reads exactly past-you's
+> bounded reach (`get_latest_past_you`). The profile voice needed a wider gate —
+> `HistoryNarrationGate::awaitsFullHydration()` — because it reads the athlete's whole history
+> (`get_lifetime_stats`, the full PR table, all-time plan adherence), so a run outside past-you's
+> 365-day reach can still be exactly the one it misreads. Both holds are bounded by the same
+> `ai.recap_hydration_grace_hours` window, so a long-connected athlete's timing is unchanged; `ai:self-heal`
+> releases a held row once its history lands, same as the per-run hold above.
+
 ## Context
 
 A first Strava connect imports the athlete's history, and the ingest cascade narrated every run of
