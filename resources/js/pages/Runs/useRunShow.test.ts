@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { ActivityDetail, StoryLine } from '@/types/inertia';
 
+import { makeCardFacts } from '@/test/cardFacts';
+
 import { useRunShow, type RunCardDetail } from './useRunShow';
 
 const detail: ActivityDetail = {
@@ -34,6 +36,7 @@ const runCard: RunCardDetail = {
     special_move: 'Iron Lungs',
     badges: ['negative_split'],
     edition: { index: 3, total: 5 },
+    facts: makeCardFacts(),
     flavor_analysis: {
         id: 2,
         status: 'done',
@@ -151,13 +154,13 @@ describe('useRunShow', () => {
 
     it('builds share data from the card, or null when there is no card', () => {
         const { result: withCard } = renderHook(() => useRunShow(hookProps()));
-        // The card itself is server-rendered, so the page hands the modal the
-        // run to fetch and the copy for the share sheet, nothing more.
+        // The browser draws the card, so the page hands the modal the facts
+        // themselves plus the copy for the share sheet — no round trip.
         expect(withCard.current.shareData).toMatchObject({
-            activityId: 99,
             name: 'Iron Lungs',
             shareUrl: '/activities/255',
         });
+        expect(withCard.current.shareData?.facts?.km).toBe('5.28');
 
         const { result: withoutCard } = renderHook(() =>
             useRunShow(hookProps({ card: null })),

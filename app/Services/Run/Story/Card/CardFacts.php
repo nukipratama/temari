@@ -16,9 +16,11 @@ use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Story\BadgeEvaluator;
 
 /**
- * Everything a card prints, resolved once and read by all three styles — so
- * "form follows the run" and the numbers themselves cannot drift between a
- * broadsheet, a ticket and a survey plate.
+ * Everything a card prints, resolved once server-side and shipped with the run
+ * page, so the browser can draw any print — style, aspect, chips — without a
+ * round trip. Every optional fact is resolved here whether or not the athlete
+ * has it switched on; the chips are the client's, and dropping a fact it can
+ * already see would cost a request to get it back.
  *
  * Distance is the app's own 2-decimal reading and the date stamp is the app's
  * own `j M Y`, cased up for the mono labels the styles set them in.
@@ -59,7 +61,7 @@ final readonly class CardFacts
     ) {
     }
 
-    public static function from(RunCard $card, CardOptions $options): self
+    public static function from(RunCard $card): self
     {
         $card->loadMissing('activity.detail');
         $detail = $card->activity->detail ?? null;
@@ -79,19 +81,19 @@ final readonly class CardFacts
             distanceKm: $distance / 1000,
             time: DurationFormatter::hms($elapsed),
             pace: $secPerKm === null ? '—' : PaceFormatter::format($secPerKm),
-            heartRate: $options->heartRate && $detail?->average_heartrate !== null
+            heartRate: $detail?->average_heartrate !== null
                 ? (string) (int) round($detail->average_heartrate)
                 : null,
-            elevation: $options->elevation && $detail?->total_elevation_gain !== null
+            elevation: $detail?->total_elevation_gain !== null
                 ? (string) (int) round($detail->total_elevation_gain)
                 : null,
             place: $detail->location_name ?? 'no location',
             placeShort: mb_strtoupper(self::firstSegment($detail?->location_name) ?? 'no location'),
-            weather: $options->weather ? self::weather($detail) : null,
+            weather: self::weather($detail),
             dateLong: mb_strtoupper($detail?->start_date_local?->format('D j M Y') ?? ''),
             dateShort: $detail?->start_date_local?->format('d.m.y') ?? '',
             clock: $detail?->start_date_local?->format('H:i') ?? '',
-            badges: $options->badges ? self::badgeNames($card->badges ?? []) : [],
+            badges: self::badgeNames($card->badges ?? []),
             serial: sprintf('TMR-%04d', (int) $card->getKey()),
             polyline: $polyline,
             raceName: $isRace ? mb_strtoupper(trim($detail->name ?? '') ?: 'race') : null,
@@ -101,41 +103,38 @@ final readonly class CardFacts
         );
     }
 
-    public function hasRoute(): bool
-    {
-        return $this->polyline !== null;
-    }
-
-    /** The bib slot's number: the print's own serial, since no bib is recorded. */
-    public function bib(): string
-    {
-        return mb_substr($this->serial, -4);
-    }
-
-    /** 1 at common through 5 at legendary, the ladder every style escalates on. */
-    public function level(): int
-    {
-        return $this->rarity->rank() + 1;
-    }
-
     /**
-     * TIME, PACE and one flex cell, in the order the broadsheet and the ticket
-     * rule them. A long run always spends the flex cell on elevation; every
-     * other form prefers heart rate and falls back to elevation, then to the
-     * start clock, so the row is never short a cell.
+     * The payload the run page ships. Keys are the client renderer's own field
+     * names, so the port reads the same facts the PHP styles used to.
      *
-     * @return list<array{0: string, 1: string}>
+     * @return array<string, mixed>
      */
-    public function statCells(): array
+    public function toArray(): array
     {
-        $flex = match (true) {
-            $this->form === RunForm::Long && $this->elevation !== null => ['ELEV', $this->elevation.' m'],
-            $this->heartRate !== null => ['AVG HR', $this->heartRate],
-            $this->elevation !== null => ['ELEV', $this->elevation.' m'],
-            default => ['START', $this->clock],
-        };
-
-        return [['TIME', $this->time], ['PACE', $this->pace.'/km'], $flex];
+        return [
+            'form' => $this->form->value,
+            'rarity' => $this->rarity->value,
+            'kind' => $this->kind,
+            'km' => $this->km,
+            'distance_km' => $this->distanceKm,
+            'time' => $this->time,
+            'pace' => $this->pace,
+            'heart_rate' => $this->heartRate,
+            'elevation' => $this->elevation,
+            'place' => $this->place,
+            'place_short' => $this->placeShort,
+            'weather' => $this->weather,
+            'date_long' => $this->dateLong,
+            'date_short' => $this->dateShort,
+            'clock' => $this->clock,
+            'badges' => $this->badges,
+            'serial' => $this->serial,
+            'polyline' => $this->polyline,
+            'race_name' => $this->raceName,
+            'race_distance' => $this->raceDistance,
+            'splits' => $this->splits,
+            'pace_profile' => $this->paceProfile,
+        ];
     }
 
     private static function resolveForm(bool $isRace, bool $prSet, float $distance, ?string $polyline): RunForm

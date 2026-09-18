@@ -84,8 +84,8 @@ class CardPresenter
      */
     public function base(RunCard $card): array
     {
-        // Explicit whitelist (not `...$card->toArray()`) so internal columns
-        // like `share_image_path` never leak into the Inertia payload.
+        // Explicit whitelist (not `...$card->toArray()`) so no internal column
+        // ever leaks into the Inertia payload.
         return [
             'id' => $card->id,
             'activity_id' => $card->activity_id,

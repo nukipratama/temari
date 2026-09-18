@@ -58,8 +58,8 @@ numeric / stat display. Rule of thumb: **mono = numbers/labels · sans = prose (
 included) · serif italic = display/headlines**.
 
 **Exemption — the card art layer.** The share card is art, not UI chrome: its type is composed
-into the print rather than tokenised. Since `#968` retired the canvas port, the exemption has one
-shape — the three print styles in [app/Services/Run/Story/Card/Styles/](../app/Services/Run/Story/Card/Styles/)
+into the print rather than tokenised. The exemption has one shape — the three print styles in
+[resources/js/lib/card/styles/](../resources/js/lib/card/styles/)
 set every figure and label in mono, and Fraunces italic appears in exactly two places, the
 wordmark and the broadsheet's hero figure. No sans is drawn on a card at all.
 [RunCardMini.tsx](../resources/js/components/card/RunCardMini.tsx#L111) stays mono the same way,

@@ -20,7 +20,7 @@ Every Strava run that syncs becomes a **card** — a trading-card view of that r
 - **Gamification engine** — rarities, badges, and special moves are assigned by [[gamification]] during ingest.
 - **AI narration** — the card's flavor quote comes from an `Analysis` row ([[ai-pipeline]]).
 - **Data model** — `RunCard`, `Activity`, `Rarity` enum, edition numbering in [[data-model]].
-- **Share** — `public_share_url` is a signed route. There is **one** share-image renderer: [RunCardImageRenderer](../../app/Services/Run/Story/RunCardImageRenderer.php) builds an SVG and rasterises it through Imagick + librsvg, and everything downstream (the modal preview, the download, the copy, the post-run Telegram photo) reads the same bytes. The client canvas port retired with `#968`, so the two runtimes can no longer drift. The SVG names three font families, which is why the image needs them installed (see [resources/brand/fonts/README.md](../../resources/brand/fonts/README.md)). See [[share-card]] for the styles, the forms and the endpoint.
+- **Share** — `public_share_url` is a signed route. There is **one** share-image renderer and it runs in the browser: [print.ts](../../resources/js/lib/card/print.ts) composes the print's SVG and the canvas turns it into the PNG the preview, the download, the copy and the native share sheet all hand out. The server renderer retired with `#981`, so nothing rasterises on a box shared with production. The SVG names three font families and carries their faces inline, since an `<img>`-loaded SVG cannot reach the page's web fonts. See [[share-card]] for the styles, the forms and the popup.
 
 ## Card presenter — the single owner of the card shape
 

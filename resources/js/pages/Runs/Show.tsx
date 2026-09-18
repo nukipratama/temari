@@ -28,7 +28,6 @@ import { zonePctFromDetail } from '@/lib/runcard';
 
 import { useRunShow, type RunCardDetail } from './useRunShow';
 
-// Fetched on the share tap; the card itself is a server-rendered PNG.
 const ShareCardModal = lazyIsland(
     () => import('@/components/card/ShareCardModal'),
 );

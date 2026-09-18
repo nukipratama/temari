@@ -66,7 +66,7 @@ jobs:
           # that look like frontend or documentation. See MIRROR_FILES in
           # tests/Unit/Architecture/DesignTokenMirrorsTest.php and the doc list
           # in DesignTokenDocsTest.php - if either grows, this pattern must too.
-          MIRRORS='^resources/(css|views|brand)/|^resources/js/lib/(shareCard|runcard|chartTokens)\.ts$'
+          MIRRORS='^resources/(css|views|brand)/|^resources/js/lib/(shareCard|runcard|chartTokens)\.ts$|^resources/js/lib/card/palette\.ts$'
           DOCS_READ_BY_TESTS='^(CLAUDE|README)\.md$|^docs/design-tokens\.md$|^\.claude/skills/temari/SKILL\.md$'
           BACKEND='^(app|bootstrap|config|database|routes|tests)/|^scripts/.*\.php$|^composer\.(json|lock)$|^(phpunit\.xml|artisan|rector\.php|pint\.json)$|^phpstan.*\.neon$'
           FRONTEND='^resources/(js|css|views)/|^scripts/.*\.mjs$|^(package\.json|package-lock\.json|vite\.config\.ts|eslint\.config\.js)$|^tsconfig.*\.json$|^\.prettierrc'

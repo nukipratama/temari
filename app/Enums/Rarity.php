@@ -41,7 +41,7 @@ enum Rarity: string
     /**
      * Threadwork rarity tint, mirrored from the client's `RARITY_HEX`
      * ({@see resources/js/lib/runcard.ts}). Single source of truth for the
-     * server-rendered card surface ({@see \App\Services\Run\Story\RunCardImageRenderer}).
+     * card surface the browser prints ({@see resources/js/lib/card/palette.ts}).
      */
     public function hexColor(): string
     {

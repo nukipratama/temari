@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
-use Throwable;
 use App\Enums\NotificationKind;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
@@ -15,16 +14,12 @@ use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
-use App\Services\Run\Story\Card\CardAspect;
-use App\Services\Run\Story\Card\CardStyle;
-use App\Services\Run\Story\RunCardImageRenderer;
 use App\Services\Notifications\ChannelRouter;
 use App\Services\Telegram\AnalysisMessagePresenter;
 use App\Services\Telegram\NotificationEligibility;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Log;
 use NotificationChannels\WebPush\WebPushMessage;
 
 /**
@@ -85,7 +80,6 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
 
         return new TelegramMessage(
             text: $presenter->format($this->analysis),
-            photoPng: $this->renderPostRunCard(),
             deliveryKey: $this->deliveryKey(),
             force: $this->force,
         );
@@ -166,36 +160,5 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
             'run_card_id' => $card?->id,
             'rarity' => $card?->rarity->value,
         ];
-    }
-
-    /**
-     * The rendered card PNG for a post-run notification whose activity has a
-     * generated card, or null (send as text) for any other type, a card-less
-     * activity, or a render failure.
-     */
-    private function renderPostRunCard(): ?string
-    {
-        if ($this->analysis->analysis_type !== AnalysisType::PostRunSpeech) {
-            return null;
-        }
-
-        $card = RunCard::query()->where('activity_id', $this->analysis->subject_id)->first();
-        if ($card === null) {
-            return null;
-        }
-
-        try {
-            // Style A at story, always: nothing stores a last-used style —
-            // remembering the athlete's pick was considered and dropped in the
-            // #915 design round — so the post-run photo takes the default print.
-            return app(RunCardImageRenderer::class)->render($card, CardStyle::Broadsheet, CardAspect::Story);
-        } catch (Throwable $e) {
-            Log::warning('telegram.card_photo.render_failed', [
-                'analysis_id' => $this->analysis->id,
-                'reason' => $e->getMessage(),
-            ]);
-
-            return null;
-        }
     }
 }
