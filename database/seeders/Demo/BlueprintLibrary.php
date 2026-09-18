@@ -378,6 +378,7 @@ class BlueprintLibrary
                 name: '10K race-pace effort',
                 tags: ['10k_pr_attempt'],
                 location: $this->loc(0),
+                workoutType: 1,
             ),
             new RunBlueprint(
                 startsAt: Carbon::today()->subDays(1)->setTime(17, 30),

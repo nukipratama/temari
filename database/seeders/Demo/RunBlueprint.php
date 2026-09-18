@@ -30,6 +30,7 @@ final readonly class RunBlueprint
         public bool $hasCadenceSensor = true,
         public ?DemoLocation $location = null,
         public ?array $lapDistancesM = null,
+        public ?int $workoutType = null,
     ) {
     }
 
