@@ -149,12 +149,7 @@ it('renders the generated weeks with the current one marked as such', function (
         ->and($current['days'])->toHaveCount(7);
 });
 
-/**
- * The real case, reset by #1047: a tempo day eased to easy at 00:01 with its
- * distance held. TODAY, before credit, the Plan row still headlines tempo
- * and steps down to the easy run beside it, exactly as an unrecorded clamp
- * would. See docs/decisions/todays-ease-stays-a-stepdown.md.
- */
+/** A tempo day eased to easy at 00:01, distance held: the Plan row still headlines tempo, easy as the step-down. */
 it('steps a tempo day eased to easy down on the Plan row today, tempo still leading', function (): void {
     $user = assemblerAthlete();
     $row = PlannedSession::factory()->for($user)->create([
@@ -177,14 +172,6 @@ it('steps a tempo day eased to easy down on the Plan row today, tempo still lead
         ->and($day['clamp']['note'])->not->toBeNull();
 });
 
-/**
- * The blind-clamp guard, and the rebuild-day bug it exists for: a
- * half-hydrated history reads as no recent load, which bottoms the ceiling
- * out at Rest for the wrong reason.
- * {@see \App\Services\AI\HydrationBacklog::recentLoadAwaitsScoring()} holds
- * this render-time advisory clamp the same way RestClampRecorder::record()
- * holds a written one.
- */
 it('holds todays advisory clamp on the Plan row while a run inside the load window still awaits hydration, and resumes once it lands', function (): void {
     $user = assemblerAthlete();
     WeeklySnapshot::factory()->for($user)->create([
@@ -197,8 +184,7 @@ it('holds todays advisory clamp on the Plan row while a run inside the load wind
         'session_type' => SessionType::Interval,
     ]);
     $activity = Activity::factory()->summaryOnly()->for($user)->create();
-    // No heart rate: once hydrated this run must not introduce a competing
-    // live form_status of its own (see BriefingContext::forUser()).
+    // No heart rate, so hydrating this run doesn't introduce a competing live form_status.
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::today()->copy()->subDays(41)->setTime(7, 0),
         'has_heartrate' => false,

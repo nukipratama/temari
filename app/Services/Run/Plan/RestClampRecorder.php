@@ -94,10 +94,7 @@ final readonly class RestClampRecorder
             return false;
         }
 
-        // A half-hydrated history reads as no recent load, which bottoms the
-        // ceiling out at Rest for the wrong reason — the rebuild-day bug this
-        // guards against. Wait for the same window {@see ReadinessCeiling}'s
-        // load is scored off before recording anything against it.
+        // A half-hydrated history reads as no recent load, bottoming the ceiling out at Rest for the wrong reason.
         if ($this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today)) {
             return false;
         }

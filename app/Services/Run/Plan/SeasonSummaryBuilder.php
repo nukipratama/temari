@@ -176,9 +176,14 @@ final readonly class SeasonSummaryBuilder
         $baselineData = $this->baseline->forUser($user, $today);
         $storedKmByDate = PlanRenderer::plannedKmByDate($rows, $baselineData['long_run_km'], $baselineData['long_run_cap_km'], $baselineData['self_scaled']);
 
-        return $eased->sum(
-            fn (PlannedSession $row): float => EffectiveSession::of($row, $storedKmByDate[$row->date->toDateString()])->easedAwayKm(),
-        );
+        return $eased->sum(function (PlannedSession $row) use ($today, $storedKmByDate): float {
+            // Today's uncredited ease is only a step-down, so it shouldn't shrink the week total.
+            if ($row->date->isSameDay($today) && ! $row->status->isCredited()) {
+                return 0.0;
+            }
+
+            return EffectiveSession::of($row, $storedKmByDate[$row->date->toDateString()])->easedAwayKm();
+        });
     }
 
     /**

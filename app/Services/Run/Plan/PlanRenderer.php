@@ -249,12 +249,7 @@ final class PlanRenderer
         // screens just disagreeing with no explanation.
         $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM);
         $effective = EffectiveSession::of($s, $askedKm);
-        // A recorded ease headlines a PAST row (docs/decisions/the-eased-session-leads.md);
-        // for TODAY, before credit, it renders exactly like an unrecorded
-        // clamp instead — the stored session leads and the ease is the
-        // step-down beside it, so the presentation never depends on whether
-        // the 00:01 recorder beat the render to it. See
-        // docs/decisions/todays-ease-stays-a-stepdown.md.
+        // Today, before credit, a recorded ease renders as a step-down beside the original session, not a headline swap.
         $recordedEaseToday = $isToday && $effective->isEased() && ! $status->isCredited();
         $headlinesEase = $effective->isEased() && ! $recordedEaseToday;
         $sessionType = $headlinesEase ? $effective->sessionType : $s->session_type;
@@ -377,9 +372,7 @@ final class PlanRenderer
     }
 
     /**
-     * The eased session as a step-down source, for TODAY's recorded ease
-     * before credit — rendered the same way an unrecorded clamp is, rather
-     * than headlining. See `docs/decisions/todays-ease-stays-a-stepdown.md`.
+     * The eased session as a step-down source, for today's recorded-but-uncredited ease.
      *
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @return array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}
@@ -397,15 +390,10 @@ final class PlanRenderer
     }
 
     /**
-     * An unrecorded clamp, as a step-down *beside* the day's own
-     * prescription, never in place of it — and, for TODAY only, a recorded
-     * ease before credit too (see `docs/decisions/todays-ease-stays-a-stepdown.md`).
-     * Only a PAST recorded ease headlines as the day's session itself (see
-     * {@see EffectiveSession} and `docs/decisions/the-eased-session-leads.md`).
-     * Either way the eased version travels as its own object rather than
-     * overwriting the stored fields. Carries a single
-     * pace rather than the full segment list: the step-down is one line, and
-     * only the core set's pace is ever shown on it.
+     * A step-down *beside* the day's own prescription, never in place of it —
+     * an unrecorded clamp, or (today only) a recorded-but-uncredited ease.
+     * Carries a single pace rather than the full segment list: the step-down
+     * is one line, and only the core set's pace is ever shown on it.
      *
      * `note` is a permanent floor rather than a placeholder: the templated
      * string always renders, and the narrated line replaces it in place once

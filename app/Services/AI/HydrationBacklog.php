@@ -66,11 +66,7 @@ class HydrationBacklog
     }
 
     /**
-     * Whether a run inside the trailing CTL window {@see TrainingLoad} scores
-     * readiness off is still awaiting hydration — the same "is the load this
-     * moment reads off scored yet?" guard {@see \App\Services\Run\Plan\SeasonService}
-     * uses to hold a race season's increases, reused here so a readiness
-     * clamp reads the identical signal rather than a second one.
+     * Whether a run inside the trailing CTL window {@see TrainingLoad} scores readiness off still awaits hydration.
      */
     public function recentLoadAwaitsScoring(int $userId, Carbon $today): bool
     {

@@ -277,14 +277,6 @@ it('reports the km it renders, so a clamped today cannot disagree with the headl
     Carbon::setTestNow();
 });
 
-/**
- * The blind-clamp guard, and the rebuild-day bug it exists for: a
- * half-hydrated history reads as no recent load, which bottoms the ceiling
- * out at Rest for the wrong reason.
- * {@see \App\Services\AI\HydrationBacklog::recentLoadAwaitsScoring()} holds
- * this render-time advisory clamp the same way RestClampRecorder::record()
- * holds a written one.
- */
 it('holds todays advisory clamp while a run inside the load window still awaits hydration, and resumes once it lands', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
@@ -296,8 +288,7 @@ it('holds todays advisory clamp while a run inside the load window still awaits 
         'monotony' => 1.0,
     ]);
     $activity = Activity::factory()->summaryOnly()->for($user)->create();
-    // No heart rate: once hydrated this run must not introduce a competing
-    // live form_status of its own (see BriefingContext::forUser()).
+    // No heart rate, so hydrating this run doesn't introduce a competing live form_status.
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::today()->copy()->subDays(41)->setTime(7, 0),
         'has_heartrate' => false,
@@ -328,12 +319,7 @@ function tempoToday(User $user): array
     return [$row, PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled'])];
 }
 
-/**
- * The real case, reset by #1047: a tempo day eased to easy at 00:01 with its
- * distance held. TODAY, before credit, Home's week card still headlines
- * tempo and steps down to the easy run beside it, exactly like an
- * unrecorded clamp. See docs/decisions/todays-ease-stays-a-stepdown.md.
- */
+/** A tempo day eased to easy at 00:01, distance held: today's card still headlines tempo, easy as the step-down. */
 it('steps a tempo day eased to easy down on Home today, tempo still leading', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
@@ -354,11 +340,7 @@ it('steps a tempo day eased to easy down on Home today, tempo still leading', fu
     Carbon::setTestNow();
 });
 
-/**
- * TODAY's step-down no longer subtracts from the week's forecast — the
- * headline already carries the un-eased distance, so subtracting it again
- * would disagree with every row on the page, its own included.
- */
+/** Today's step-down no longer subtracts from the week's forecast total. */
 it('keeps the week total at the un-eased distance while todays ease is only a step-down', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();

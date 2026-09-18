@@ -119,19 +119,14 @@ final readonly class CurrentWeekPlanBuilder
             ],
         )->all();
 
-        // TODAY's recorded ease, before credit, renders as a step-down beside
-        // the original session (see PlanRenderer::dayPayload()), so it must
-        // not also shrink the week's forecast total — that would disagree
-        // with every visible day row, today's own headline included.
+        // Today's uncredited ease is only a step-down, so it shouldn't shrink the week total.
         $todayKey = $today->toDateString();
         if (isset($easedAwayKmByDate[$todayKey]) && ! ($resolvedStatuses[$todayKey] ?? PlannedSessionStatus::Planned)->isCredited()) {
             $easedAwayKmByDate[$todayKey] = 0.0;
         }
         $easedAwayKm = array_sum($easedAwayKmByDate);
 
-        // Held back entirely while recent load is still unscored (a
-        // rebuild-day half-hydrated history bottoms the ceiling out at Rest
-        // for the wrong reason), same guard as RestClampRecorder::record().
+        // Held back while recent load is still unscored, same guard as RestClampRecorder::record().
         $todaySession = $currentWeekSessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $clamp = ($todaySession !== null && ! $todaySession->pinned && ! $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today))
             ? ReadinessClamp::apply(

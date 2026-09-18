@@ -416,9 +416,7 @@ it('sends no notification for a pace-only ease', function (): void {
     Notification::assertNothingSent();
 });
 
-// No heart rate: once hydrated this run must not introduce a competing live
-// form_status of its own (see BriefingContext::forUser()), which would mask
-// whether the guard itself is what changed the outcome.
+// No heart rate, so hydrating this run doesn't introduce a competing live form_status.
 function unscoredLoadRunOn(User $user, Carbon $day): Activity
 {
     $activity = Activity::factory()->summaryOnly()->for($user)->create();
@@ -431,14 +429,6 @@ function unscoredLoadRunOn(User $user, Carbon $day): Activity
     return $activity;
 }
 
-/**
- * The blind-clamp guard, and the rebuild-day bug it exists for: a
- * half-hydrated history reads as no recent load, which bottoms the ceiling
- * out at Rest for the wrong reason.
- * {@see \App\Services\AI\HydrationBacklog::recentLoadAwaitsScoring()} is the
- * same "is the load this moment reads off scored yet?" check #1027 uses to
- * hold a race season's increases.
- */
 it('records nothing while a run inside the trailing load window still awaits hydration', function (): void {
     $user = User::factory()->create();
     bottomOutReadiness($user);

@@ -466,12 +466,7 @@ it('dayPayload narrates the clamp on a day still to be run', function (): void {
     expect($pending['clamp']['note'])->toBe($voice);
 });
 
-/**
- * The real case, reset by #1047: a tempo day eased to easy at 00:01 with its
- * 6.4 km held. TODAY, before credit, this renders exactly like an unrecorded
- * clamp — tempo still headlines, and the easy 6.4 comes down beside it as the
- * step-down, reason and all. See docs/decisions/todays-ease-stays-a-stepdown.md.
- */
+/** A tempo day eased to easy at 00:01 with its 6.4 km held: before credit, tempo still headlines. */
 it('dayPayload renders todays recorded ease as a step-down, the original session still leading', function (): void {
     $today = Carbon::parse('2026-09-15');
     [$session, $liveClamp] = tempoSessionWithEasyClamp($today, 'Templated floor.');

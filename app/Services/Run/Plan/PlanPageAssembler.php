@@ -185,9 +185,7 @@ final class PlanPageAssembler
 
         // Readiness clamp: TODAY's row only — a future day's readiness isn't
         // knowable today, so clamping never reaches past this one row. Held
-        // back entirely while recent load is still unscored (a rebuild-day
-        // half-hydrated history bottoms the ceiling out at Rest for the wrong
-        // reason), same guard as RestClampRecorder::record().
+        // back while recent load is still unscored, same guard as RestClampRecorder::record().
         $todaySession = $sessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $clamp = ($todaySession !== null && ! $todaySession->pinned && ! $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today))
             ? ReadinessClamp::apply(
