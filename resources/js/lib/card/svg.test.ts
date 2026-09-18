@@ -126,8 +126,21 @@ describe('geometry', () => {
     ];
 
     it('builds a path out of projected points, open or closed', () => {
-        expect(polylinePath([[0, 0], [1, 2]])).toBe('M0,0L1,2');
-        expect(polylinePath([[0, 0], [1, 2]], true)).toBe('M0,0L1,2Z');
+        expect(
+            polylinePath([
+                [0, 0],
+                [1, 2],
+            ]),
+        ).toBe('M0,0L1,2');
+        expect(
+            polylinePath(
+                [
+                    [0, 0],
+                    [1, 2],
+                ],
+                true,
+            ),
+        ).toBe('M0,0L1,2Z');
         expect(polylinePath([])).toBe('');
     });
 

@@ -267,7 +267,12 @@ export function line(
     x2: number,
     y2: number,
     stroke: string,
-    options: { width?: number; opacity?: number; dash?: string; cap?: string } = {},
+    options: {
+        width?: number;
+        opacity?: number;
+        dash?: string;
+        cap?: string;
+    } = {},
 ): string {
     return tag('line', {
         x1: num(x1),
@@ -391,7 +396,8 @@ export function closedLoop(
         const theta = (i / steps) * Math.PI * 2;
         let magnitude = 1;
         for (let h = 0; h < 3; h++) {
-            magnitude += amplitudes[h] * Math.sin(harmonics[h] * theta + phases[h]);
+            magnitude +=
+                amplitudes[h] * Math.sin(harmonics[h] * theta + phases[h]);
         }
         points.push([
             cx + Math.cos(theta) * rx * magnitude,
@@ -408,7 +414,9 @@ export function along(points: Point[], count: number): Point[] {
 
     const picked: Point[] = [];
     for (let i = 1; i <= count; i++) {
-        picked.push(points[Math.round((points.length - 1) * (i / (count + 1)))]);
+        picked.push(
+            points[Math.round((points.length - 1) * (i / (count + 1)))],
+        );
     }
 
     return picked;

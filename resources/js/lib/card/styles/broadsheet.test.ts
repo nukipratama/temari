@@ -26,8 +26,7 @@ function hero(svg: string): string {
     return (
         /font-family="Fraunces" font-size="\d{3}(?:\.\d+)?"[^>]*>([^<]+)</.exec(
             svg,
-        )?.[1] ??
-        ''
+        )?.[1] ?? ''
     );
 }
 
@@ -58,8 +57,9 @@ describe('broadsheet', () => {
     it('fits the hero to the room it has instead of stepping a fixed ladder', () => {
         const sizeOf = (svg: string) =>
             Number(
-                /font-family="Fraunces" font-size="(\d{3}(?:\.\d+)?)"/.exec(svg)?.[1] ??
-                    0,
+                /font-family="Fraunces" font-size="(\d{3}(?:\.\d+)?)"/.exec(
+                    svg,
+                )?.[1] ?? 0,
             );
 
         // A wider figure takes a smaller size; a narrow one is never inflated

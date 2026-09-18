@@ -127,9 +127,10 @@ describe('ShareCardModal', () => {
         const stage = screen.getByRole('group', { name: 'print style' });
 
         fireEvent.keyDown(stage, { key: 'ArrowRight' });
-        expect(
-            screen.getByRole('button', { name: 'ticket' }),
-        ).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'ticket' })).toHaveAttribute(
+            'aria-pressed',
+            'true',
+        );
 
         fireEvent.keyDown(stage, { key: 'ArrowLeft' });
         expect(
@@ -150,17 +151,19 @@ describe('ShareCardModal', () => {
         fireEvent.touchStart(stage, { touches: [{ clientX: 200 }] });
         fireEvent.touchEnd(stage, { changedTouches: [{ clientX: 100 }] });
 
-        expect(
-            screen.getByRole('button', { name: 'ticket' }),
-        ).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'ticket' })).toHaveAttribute(
+            'aria-pressed',
+            'true',
+        );
 
         // A nudge too small to be a swipe leaves the rack where it was.
         fireEvent.touchStart(stage, { touches: [{ clientX: 200 }] });
         fireEvent.touchEnd(stage, { changedTouches: [{ clientX: 190 }] });
 
-        expect(
-            screen.getByRole('button', { name: 'ticket' }),
-        ).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'ticket' })).toHaveAttribute(
+            'aria-pressed',
+            'true',
+        );
     });
 
     it('offers a retry when a print cannot be made', async () => {

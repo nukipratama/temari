@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-    CREAM,
-    INK,
-    RARITY_INK_HEX,
-    readableInk,
-} from '@/lib/card/palette';
+import { CREAM, INK, RARITY_INK_HEX, readableInk } from '@/lib/card/palette';
 
 describe('card export palette', () => {
     it('puts dark ink on a light fill and cream on a dark one', () => {

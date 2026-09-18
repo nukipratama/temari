@@ -45,10 +45,7 @@ describe('card svg', () => {
                         aspect,
                     );
 
-                    expect(
-                        svg,
-                        `${style}/${form}/${aspect}`,
-                    ).toContain(
+                    expect(svg, `${style}/${form}/${aspect}`).toContain(
                         `width="${CARD_WIDTH}" height="${cardHeight(aspect)}" viewBox="0 0 ${CARD_WIDTH} ${cardHeight(aspect)}"`,
                     );
                 }
@@ -70,10 +67,9 @@ describe('card svg', () => {
 
                         // An empty text node is what a labelled void looks like
                         // once the SVG is written out.
-                        expect(
-                            svg,
-                            `${style}/${form}/${aspect}`,
-                        ).not.toContain('></text>');
+                        expect(svg, `${style}/${form}/${aspect}`).not.toContain(
+                            '></text>',
+                        );
                     }
                 }
             }
@@ -84,9 +80,9 @@ describe('card svg', () => {
         expect(printKey('ticket', 'story', ALL_FACTS)).toBe(
             'ticket:story:1:1:1:1',
         );
-        expect(printKey('ticket', 'story', { ...ALL_FACTS, hr: false })).not.toBe(
-            printKey('ticket', 'story', ALL_FACTS),
-        );
+        expect(
+            printKey('ticket', 'story', { ...ALL_FACTS, hr: false }),
+        ).not.toBe(printKey('ticket', 'story', ALL_FACTS));
         expect(printKey('ticket', 'feed', ALL_FACTS)).not.toBe(
             printKey('ticket', 'story', ALL_FACTS),
         );
@@ -122,10 +118,9 @@ describe('rasterising', () => {
                 }),
             },
         });
-        vi.spyOn(
-            HTMLCanvasElement.prototype,
-            'getContext',
-        ).mockReturnValue({ drawImage: vi.fn() } as never);
+        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+            drawImage: vi.fn(),
+        } as never);
         vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(
             (callback) => callback(new Blob(['png'], { type: 'image/png' })),
         );

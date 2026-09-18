@@ -104,11 +104,7 @@ function withFonts(svg: string, css: string): string {
     return `${svg.slice(0, open)}<style>${css}</style>${svg.slice(open)}`;
 }
 
-function rasterise(
-    svg: string,
-    width: number,
-    height: number,
-): Promise<Print> {
+function rasterise(svg: string, width: number, height: number): Promise<Print> {
     return new Promise<Print>((resolve, reject) => {
         const source = URL.createObjectURL(
             new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }),

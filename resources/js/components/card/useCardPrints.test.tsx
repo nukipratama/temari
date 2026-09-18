@@ -39,9 +39,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('useCardPrints', () => {
     it('draws the style on screen first, then its neighbours', async () => {
-        renderHook(() =>
-            useCardPrints(facts, ALL_FACTS, 'story', 'topo'),
-        );
+        renderHook(() => useCardPrints(facts, ALL_FACTS, 'story', 'topo'));
 
         await waitFor(() => expect(renderPrint).toHaveBeenCalledTimes(3));
         expect(renderPrint.mock.calls.map((call) => call[2])).toEqual([
@@ -55,7 +53,11 @@ describe('useCardPrints', () => {
         const { result, rerender } = renderHook(
             ({ aspect }: { aspect: 'story' | 'feed' }) =>
                 useCardPrints(facts, ALL_FACTS, aspect, 'broadsheet'),
-            { initialProps: { aspect: 'story' } as { aspect: 'story' | 'feed' } },
+            {
+                initialProps: { aspect: 'story' } as {
+                    aspect: 'story' | 'feed';
+                },
+            },
         );
 
         await waitFor(() => expect(renderPrint).toHaveBeenCalledTimes(3));
@@ -81,7 +83,11 @@ describe('useCardPrints', () => {
         const { result, rerender } = renderHook(
             ({ aspect }: { aspect: 'story' | 'feed' }) =>
                 useCardPrints(facts, ALL_FACTS, aspect, 'broadsheet'),
-            { initialProps: { aspect: 'story' } as { aspect: 'story' | 'feed' } },
+            {
+                initialProps: { aspect: 'story' } as {
+                    aspect: 'story' | 'feed';
+                },
+            },
         );
 
         await waitFor(() => expect(renderPrint).toHaveBeenCalledTimes(1));

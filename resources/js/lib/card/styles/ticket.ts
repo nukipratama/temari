@@ -113,7 +113,19 @@ export function renderTicket(facts: PrintFacts, aspect: CardAspect): string {
     const perfY = ty + th - (story ? 250 : 196);
 
     if (facts.form === 'race') {
-        out += bib(facts, tx, ty, tw, bandHeight, bx, bw, cy, perfY, story, rarity);
+        out += bib(
+            facts,
+            tx,
+            ty,
+            tw,
+            bandHeight,
+            bx,
+            bw,
+            cy,
+            perfY,
+            story,
+            rarity,
+        );
     } else if (story) {
         out += storyBody(facts, bx, bw, cy, perfY, rarity);
     } else {
@@ -226,7 +238,10 @@ function storyBody(
     });
 
     if (facts.form === 'pr') {
-        svg += rect(bx + bw - 250, cy + 26, 226, 76, { fill: CITRUS, radius: 8 });
+        svg += rect(bx + bw - 250, cy + 26, 226, 76, {
+            fill: CITRUS,
+            radius: 8,
+        });
         svg += text('NEW BEST', bx + bw - 137, cy + 76, 30, INK, {
             weight: 700,
             anchor: 'middle',
@@ -350,7 +365,9 @@ function window(
     for (let i = 1; i < 10; i++) {
         const tick = x + (width / 10) * i;
         svg += line(tick, y, tick, y + 10, LINE, { width: 2 });
-        svg += line(tick, y + height - 10, tick, y + height, LINE, { width: 2 });
+        svg += line(tick, y + height - 10, tick, y + height, LINE, {
+            width: 2,
+        });
     }
     for (let i = 1; i < 6; i++) {
         const tick = y + (height / 6) * i;
@@ -505,12 +522,9 @@ function stub(
 
     let svg = wordmark(bx, y + (story ? 8 : 4), story ? 54 : 46, HORIZON_INK);
     svg += text(
-        truncate(
-            facts.place.toUpperCase(),
-            story ? 24 : 21,
-            stubRoom,
-            { tracking: 2 },
-        ),
+        truncate(facts.place.toUpperCase(), story ? 24 : 21, stubRoom, {
+            tracking: 2,
+        }),
         bx,
         y + (story ? 66 : 54),
         story ? 24 : 21,

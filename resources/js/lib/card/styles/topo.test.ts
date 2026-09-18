@@ -86,16 +86,21 @@ describe('topo plate', () => {
     });
 
     it("records the run's own shape rather than an invented terrain profile", () => {
-        expect(
-            render({ form: 'long', pace_profile: [0, 1, 0.5] }),
-        ).toContain('PACE PROFILE');
+        expect(render({ form: 'long', pace_profile: [0, 1, 0.5] })).toContain(
+            'PACE PROFILE',
+        );
         expect(render({ form: 'long' })).not.toContain('PACE PROFILE');
     });
 
     it('escalates the survey density with the rarity tier', () => {
-        expect(occurrences(render({ rarity: 'common' }), `stroke="${LEAF_INK}"`)).toBe(7);
         expect(
-            occurrences(render({ rarity: 'legendary' }), `stroke="${LEAF_INK}"`),
+            occurrences(render({ rarity: 'common' }), `stroke="${LEAF_INK}"`),
+        ).toBe(7);
+        expect(
+            occurrences(
+                render({ rarity: 'legendary' }),
+                `stroke="${LEAF_INK}"`,
+            ),
         ).toBe(15);
     });
 

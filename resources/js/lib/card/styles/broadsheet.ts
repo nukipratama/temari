@@ -91,8 +91,15 @@ export function renderBroadsheet(
     const routeWidth = width - 2 * margin + (isLong ? 2 * margin : -80);
 
     out +=
-        route(facts, routeX, routeTop, routeWidth, routeHeight, rarity, ground) ??
-        noSignalBelt(width, margin, routeTop, routeHeight, story);
+        route(
+            facts,
+            routeX,
+            routeTop,
+            routeWidth,
+            routeHeight,
+            rarity,
+            ground,
+        ) ?? noSignalBelt(width, margin, routeTop, routeHeight, story);
 
     out += hero(facts, width, margin, story);
 
@@ -175,10 +182,7 @@ function raceBand(
     const nameFont = { weight: 700, tracking: 5 };
     const distance = facts.raceDistance ?? '';
     const room =
-        width -
-        2 * margin -
-        measure(distance, nameSize, { weight: 700 }) -
-        40;
+        width - 2 * margin - measure(distance, nameSize, { weight: 700 }) - 40;
 
     return (
         rect(0, bandTop, width, 104, { fill: rarity }) +
@@ -302,12 +306,7 @@ function hero(
         ? 0
         : measure('KM', unitSize, { weight: 600 }) + 40;
     const heroFont = { family: DISPLAY, weight: 600, italic: true };
-    const size = fitSize(
-        value,
-        base,
-        width - 2 * margin - unitRoom,
-        heroFont,
-    );
+    const size = fitSize(value, base, width - 2 * margin - unitRoom, heroFont);
     const baseline = story
         ? facts.form === 'pr'
             ? 1300

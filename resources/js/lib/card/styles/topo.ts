@@ -186,7 +186,10 @@ function survey(
         });
     }
 
-    const points: Point[] = projected.map(([x, y]) => [x + fx + pad, y + fy + pad]);
+    const points: Point[] = projected.map(([x, y]) => [
+        x + fx + pad,
+        y + fy + pad,
+    ]);
     const d = polylinePath(points, isClosedLoop(points, fw, fh));
 
     const traceColour =
@@ -298,10 +301,17 @@ function unsurveyed(
 
     return (
         svg +
-        text(`NO TRACE · ${facts.km} KM`, cx, cy + 110, story ? 26 : 22, INK_3, {
-            anchor: 'middle',
-            tracking: 5,
-        })
+        text(
+            `NO TRACE · ${facts.km} KM`,
+            cx,
+            cy + 110,
+            story ? 26 : 22,
+            INK_3,
+            {
+                anchor: 'middle',
+                tracking: 5,
+            },
+        )
     );
 }
 

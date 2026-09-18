@@ -12,7 +12,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { Print } from '@/lib/card/print';
 
-import { useCardPrints, type PrintState } from '@/components/card/useCardPrints';
+import {
+    useCardPrints,
+    type PrintState,
+} from '@/components/card/useCardPrints';
 import { Icon, type IconComponent } from '@/components/ui/Icon';
 import { useModal } from '@/hooks/useModal';
 import { hasFact } from '@/lib/card/facts';
@@ -218,18 +221,22 @@ export default function ShareCardModal({
                         ? '[--print-h:372px] min-[900px]:[--print-h:486px]'
                         : '[--print-h:268px] min-[900px]:[--print-h:360px]',
                 )}
-                style={{
-                    '--print-w':
-                        aspect === 'story'
-                            ? 'calc(var(--print-h) * 1080 / 1920)'
-                            : 'var(--print-h)',
-                } as React.CSSProperties}
+                style={
+                    {
+                        '--print-w':
+                            aspect === 'story'
+                                ? 'calc(var(--print-h) * 1080 / 1920)'
+                                : 'var(--print-h)',
+                    } as React.CSSProperties
+                }
             >
                 <div className="mx-auto mt-2 h-1 w-9 rounded-full bg-border min-[900px]:hidden" />
 
                 <div className="flex items-center gap-2.5 px-[18px] pb-1.5 pt-2.5 min-[900px]:px-[22px] min-[900px]:pb-2 min-[900px]:pt-4">
                     <div className="flex-1">
-                        <div className="text-label-micro text-text-3">share</div>
+                        <div className="text-label-micro text-text-3">
+                            share
+                        </div>
                         <div className="font-serif text-xl italic leading-tight tracking-tight">
                             {card.name}
                         </div>

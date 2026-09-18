@@ -15,7 +15,10 @@ function render(
     overrides: Partial<CardFactsPayload> = {},
     aspect: CardAspect = 'story',
 ): string {
-    return renderTicket(printFacts(makeCardFacts(overrides), ALL_FACTS), aspect);
+    return renderTicket(
+        printFacts(makeCardFacts(overrides), ALL_FACTS),
+        aspect,
+    );
 }
 
 function occurrences(haystack: string, needle: string): number {
@@ -132,7 +135,9 @@ describe('ticket', () => {
 
     it('shrinks the distance figure only as far as the box needs', () => {
         const sizeOf = (svg: string) =>
-            Number(/font-size="([\d.]+)" font-weight="800"/.exec(svg)?.[1] ?? 0);
+            Number(
+                /font-size="([\d.]+)" font-weight="800"/.exec(svg)?.[1] ?? 0,
+            );
 
         expect(sizeOf(render({ km: '188.40' }))).toBeLessThan(
             sizeOf(render({ km: '5.28' })),
