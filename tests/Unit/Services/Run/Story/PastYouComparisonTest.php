@@ -86,6 +86,15 @@ it('does not let heart rate override a decided pace gap', function (): void {
     expect($comparison->direction())->toBe(TrendDirection::Better);
 });
 
+// PastYouMatcher::findMatch() computes the same two deltas outside a
+// PastYouComparison instance and shares this static method rather than
+// re-deriving the rule, per #1009.
+it('exposes the direction rule as a static call for callers with no instance', function (): void {
+    expect(PastYouComparison::directionFor(15.0, -8.0))->toBe(TrendDirection::Better)
+        ->and(PastYouComparison::directionFor(-15.0, 8.0))->toBe(TrendDirection::Worse)
+        ->and(PastYouComparison::directionFor(1.0, 1.0))->toBe(TrendDirection::Flat);
+});
+
 it('serializes both sides of the pair alongside the deltas', function (): void {
     $comparison = PastYouComparison::between(
         comparisonRun('2026-06-15', 420.0, 152.0, 2),

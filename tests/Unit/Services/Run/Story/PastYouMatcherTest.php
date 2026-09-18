@@ -68,6 +68,33 @@ it('matches the oldest qualifying easy run within ±20% distance', function (): 
         ->and($match['pace_diff_sec'])->toBeFloat()->toBeGreaterThan(0);
 });
 
+// Regression for #1009: findMatch()'s payload carried an exact but unlabelled
+// pace_diff_sec sign, which the LLM narrator misread as "slower" on faster
+// runs two times out of three. direction() already resolves it unambiguously.
+it('reports direction=better when the current run is faster, matching the sign of pace_diff_sec', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27];
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $temp); // 420 s/km
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_140, $temp); // 414 s/km, 6 s/km faster
+    $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
+
+    expect($match['pace_diff_sec'])->toBeGreaterThan(0.0)
+        ->and($match['direction'])->toBe('better');
+});
+
+it('reports direction=worse when the current run is slower, matching the sign of pace_diff_sec', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27];
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $temp); // 420 s/km
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_260, $temp); // 426 s/km, 6 s/km slower
+    $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
+
+    expect($match['pace_diff_sec'])->toBeLessThan(0.0)
+        ->and($match['direction'])->toBe('worse');
+});
+
 it('rejects matches less than 21 days apart', function (): void {
     $user = User::factory()->create();
     seedRun($user, Carbon::today()->subDays(10), 10_000, 4_200);

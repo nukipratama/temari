@@ -31,9 +31,10 @@ final class LatestPastYouTool extends UserTool
     public function description(): string
     {
         return "A comparison between the user's most recent run and a similar run of theirs from the "
-            .'past. pace_diff_sec and time_diff_sec positive = the recent one is faster, negative = '
-            .'slower. If past_you is missing, there\'s no good match, and in that case never make up '
-            .'a comparison to the past.';
+            .'past. `direction` (better/worse/flat) is the call to make -- say that, never infer it '
+            .'from the sign of pace_diff_sec/time_diff_sec, which are for size only (seconds). If '
+            .'past_you is missing, there\'s no good match, and in that case never make up a '
+            .'comparison to the past.';
     }
 
     /** @return array<string, mixed> */

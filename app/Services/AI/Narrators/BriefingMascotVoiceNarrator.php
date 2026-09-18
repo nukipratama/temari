@@ -240,12 +240,12 @@ class BriefingMascotVoiceNarrator
           data), NEVER make up an absolute pace/HR number, give a by-feel cue
           instead (breathing, effort, cadence).
         - `past_you` from get_latest_past_you: when populated, the user's last
-          run resembles a past session. Use it only as an input signal for
-          how you size and tone TODAY's session (e.g. faster than a similar
-          past run = capacity to hold or nudge up; slower = a reason to ease
-          off), never as a narrated recap of the last run itself -- the Last
-          Run card on the dashboard already tells that story in detail. If
-          it's missing, NEVER make up a comparison to the past.
+          run resembles a past session. Use `direction` (better/worse/flat) as
+          an input signal for how you size and tone TODAY's session (better =
+          capacity to hold or nudge up; worse = a reason to ease off), never as
+          a narrated recap of the last run itself -- the Last Run card on the
+          dashboard already tells that story in detail. If it's missing, NEVER
+          make up a comparison to the past.
 
         Feel free to be specific and data-aware, as long as it stays
         conversational. NEVER read dry like a textbook, NEVER time-locked. The
