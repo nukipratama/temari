@@ -30,6 +30,7 @@ use Override;
  * @property bool $deload
  * @property int $quality_delta
  * @property int $adherence_pct
+ * @property float|null $volume_floor_km
  * @property-read User $user
  */
 #[Fillable([
@@ -39,6 +40,7 @@ use Override;
     'deload',
     'quality_delta',
     'adherence_pct',
+    'volume_floor_km',
 ])]
 class PlanAdaptation extends Model
 {
@@ -83,6 +85,7 @@ class PlanAdaptation extends Model
             'deload' => 'boolean',
             'quality_delta' => 'integer',
             'adherence_pct' => 'integer',
+            'volume_floor_km' => 'float',
         ];
     }
 }

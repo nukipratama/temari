@@ -72,6 +72,7 @@ final readonly class PlanInputsGatherer
             projectedRaceSeconds: $race === null
                 ? null
                 : $this->riegelProjector->project($user, (float) $race->distance_m)['predicted_sec'] ?? null,
+            volumeFloorKm: $season->volume_floor_km,
         );
     }
 

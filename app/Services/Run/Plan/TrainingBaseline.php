@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PlanPhase;
+use App\Enums\SessionType;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Models\RaceGoal;
 use App\Models\Season;
@@ -147,6 +148,26 @@ final readonly class TrainingBaseline
      */
     private const float MAX_LONG_RUN_SHARE_OF_WEEK = 0.5;
 
+    /**
+     * The long run a race distance wants the athlete to reach by the block's
+     * peak, as `[distance_up_to_m, km]` ascending, with the marathon target
+     * past the last band. Bounded by the athlete's own `long_run_cap_km`.
+     *
+     * @var list<array{0: float, 1: float}>
+     */
+    private const array READINESS_LONG_RUN_BANDS = [
+        [15_000.0, 12.0],
+        [25_000.0, 18.0],
+    ];
+
+    private const float READINESS_LONG_RUN_MARATHON_KM = 30.0;
+
+    /** Sized against this baseline so {@see SegmentGenerator::coreKmFor()}'s 0.1 km rounding stays negligible. */
+    private const float REFERENCE_BASELINE_KM = 100.0;
+
+    /** How far back the volume floor averages the athlete's actual weeks. */
+    private const int VOLUME_FLOOR_WEEKS = 12;
+
     public function __construct(
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
@@ -155,6 +176,7 @@ final readonly class TrainingBaseline
         private ResolveTrainingPreferenceAction $trainingPreference,
         private ResolveTrailingWeeksAction $weeklySnapshots,
         private ResolveSeasonAction $season,
+        private WeekPlanBuilder $weekPlanBuilder,
     ) {
     }
 
@@ -183,12 +205,12 @@ final readonly class TrainingBaseline
         $weeklyVolumeKm = $season->anchor_weekly_volume_km ?? $this->weeklyVolumeKm($weeks, $seed);
 
         $race = ($this->activeRace)($user->id);
-        $longRunCapKm = $this->longRunCapKm($race, $weeklyVolumeKm, $user, $asOf);
+        $longRunCapKm = $this->longRunCapKm($race, max($weeklyVolumeKm, $race === null ? 0.0 : (float) $season?->volume_floor_km), $user, $asOf);
 
         return [
             'sessions_per_week' => $sessionsPerWeek,
             'weekly_volume_km' => $weeklyVolumeKm,
-            'long_run_km' => $this->longRunKm($race, $weeklyVolumeKm, $season, $longRunCapKm),
+            'long_run_km' => $this->longRunKm($race, $weeklyVolumeKm, $season, $longRunCapKm, $sessionsPerWeek),
             'long_run_cap_km' => $longRunCapKm,
             'self_scaled' => $race === null,
         ];
@@ -206,6 +228,18 @@ final readonly class TrainingBaseline
         $weeks = $this->trailingWeeks($user, $asOf);
 
         return $this->weeklyVolumeKm($weeks, self::seedFor($preference, $weeks));
+    }
+
+    /**
+     * The plain mean of the athlete's last twelve logged weeks — what they
+     * actually run, and the level a race block may not prescribe below.
+     * Null with no logged weeks at all.
+     */
+    public function recentWeeklyMeanKm(User $user, Carbon $asOf): ?float
+    {
+        $weeks = ($this->weeklySnapshots)($user->id, $asOf->toDateString(), self::VOLUME_FLOOR_WEEKS);
+
+        return $weeks->isEmpty() ? null : round((float) $weeks->avg(fn (WeeklySnapshot $week): float => (float) $week->distance_km), 2);
     }
 
     /**
@@ -270,13 +304,17 @@ final readonly class TrainingBaseline
     }
 
     /**
-     * Volume decides the long run, not the other way round.
+     * Volume decides the long run, not the other way round, and a race block
+     * raises it only as far as its three floors ask.
      */
-    private function longRunKm(?RaceGoal $race, float $weeklyVolumeKm, ?Season $season, float $capKm): float
+    private function longRunKm(?RaceGoal $race, float $weeklyVolumeKm, ?Season $season, float $capKm, int $sessionsPerWeek): float
     {
+        $block = $race !== null && $season !== null ? $this->block($race, $season) : null;
+
         $derived = max(
             $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm),
-            $this->raceDistanceFloorKm($race, $season),
+            $block === null ? 0.0 : self::longRunTargetFloorKm($race, $block, $capKm),
+            $block === null ? 0.0 : $this->volumeFloorKm($race, $block, $season->volume_floor_km, $sessionsPerWeek),
         );
 
         return max(round(min($derived, $capKm), 1), self::MIN_LONG_RUN_KM);
@@ -284,7 +322,9 @@ final readonly class TrainingBaseline
 
     /**
      * The ceiling on any single long run, whichever of the three binds
-     * tightest: the race-distance band, time on feet, and half the week.
+     * tightest: the race-distance band, time on feet, and half the week —
+     * the week a race season's volume floor asks for, when that is the
+     * bigger one.
      * Returned by {@see self::forUser()} because capping the baseline alone
      * left {@see SegmentGenerator::coreKmFor()}'s volume-multiplied
      * prescription unbounded.
@@ -299,44 +339,111 @@ final readonly class TrainingBaseline
     }
 
     /**
-     * The baseline a sub-marathon arc has to start from for its long run to
-     * REACH the race distance at the arc's own peak — race km divided by the
-     * biggest volume multiplier the arc ever reaches, rounded up so the peak
-     * lands on or past the distance rather than a rounding step short.
+     * The race block's own weeks with the multiplier each earns, counted from
+     * the season's start so the block sits where the arc puts it.
      *
-     * Dividing by the peak rather than flooring at the race distance outright
-     * is the whole point: the athlete arrives at race distance by running the
-     * ramp, not by being handed a 10% jump in week one. An arc too short or
-     * too flat to hold a ramp simply gets a smaller step — 0.0 when there is
-     * no race, no season, or a marathon-distance goal.
-     *
-     * Only the block's Build and Peak multipliers count as the ramp's
-     * high-water mark; Taper and Deload are reductions and would inflate the
-     * floor if divided into, and a general week before block open holds flat.
-     * An arc holding neither phase gets no floor at all.
+     * @return list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>
      */
-    private function raceDistanceFloorKm(?RaceGoal $race, ?Season $season): float
+    private function block(RaceGoal $race, Season $season): array
     {
-        if ($race === null || $season === null || (float) $race->distance_m >= self::RACE_DISTANCE_FLOOR_THRESHOLD_M) {
-            return 0.0;
+        $weeks = $this->phaseSchedule->forRace($season->starts_at, $race->race_date, (float) $race->distance_m);
+        $zones = array_column($weeks, 'zone');
+        $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), zones: $zones);
+
+        $block = [];
+        foreach ($weeks as $i => $week) {
+            if ($zones[$i] === PhaseSchedule::ZONE_BLOCK) {
+                $block[] = ['week_start' => $week['week_start'], 'phase' => $week['phase'], 'multiplier' => $multipliers[$i]];
+            }
         }
 
-        $weeks = $this->phaseSchedule->forRace($season->starts_at, $race->race_date, (float) $race->distance_m);
-        $phases = array_column($weeks, 'phase');
-        $zones = array_column($weeks, 'zone');
+        return $block;
+    }
 
-        $multipliers = PhaseSchedule::volumeMultipliers($phases, zones: $zones);
+    /**
+     * The baseline the block has to start from for its long run to REACH its
+     * target at the block's own peak: the race distance itself below the
+     * marathon threshold, and the readiness distance for every race, capped by
+     * the athlete's own ceiling. Divided by the biggest Build or Peak
+     * multiplier, so the athlete arrives there by running the ramp rather
+     * than being handed the distance in week one. Taper and Deload are
+     * reductions and never count as the ramp's high-water mark; a block
+     * holding neither phase gets no floor.
+     *
+     * @param  list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>  $block
+     */
+    private static function longRunTargetFloorKm(RaceGoal $race, array $block, float $capKm): float
+    {
         $rampMultipliers = [];
-        foreach ($phases as $i => $phase) {
-            if ($zones[$i] === PhaseSchedule::ZONE_BLOCK && in_array($phase, [PlanPhase::Build, PlanPhase::Peak], true)) {
-                $rampMultipliers[] = $multipliers[$i];
+        foreach ($block as $week) {
+            if (in_array($week['phase'], [PlanPhase::Build, PlanPhase::Peak], true)) {
+                $rampMultipliers[] = $week['multiplier'];
             }
         }
         if ($rampMultipliers === []) {
             return 0.0;
         }
 
-        return ceil((float) $race->distance_m / 1000.0 / max($rampMultipliers) * 10) / 10;
+        $distanceM = (float) $race->distance_m;
+        $targetKm = max(
+            $distanceM < self::RACE_DISTANCE_FLOOR_THRESHOLD_M ? $distanceM / 1000.0 : 0.0,
+            min(self::readinessLongRunKm($distanceM), $capKm),
+        );
+
+        return ceil($targetKm / max($rampMultipliers) * 10) / 10;
+    }
+
+    /**
+     * The baseline at which the block's weeks, as {@see WeekPlanBuilder} lays
+     * them out and {@see SegmentGenerator::coreKmFor()} sizes them, average
+     * the season's volume floor. Every session scales linearly off the
+     * baseline except race day, which is the race distance whatever the
+     * baseline, so the floor solves in one step. Deload and Taper weeks sit
+     * under the floor; the Build and Peak weeks carry the difference.
+     *
+     * @param  list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>  $block
+     */
+    private function volumeFloorKm(RaceGoal $race, array $block, ?float $floorKm, int $sessionsPerWeek): float
+    {
+        if ($floorKm === null || $block === []) {
+            return 0.0;
+        }
+
+        $raceDistanceM = (float) $race->distance_m;
+        $kmPerBaselineKm = 0.0;
+        $raceKm = 0.0;
+        foreach ($block as $week) {
+            $days = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $sessionsPerWeek, [], $raceDistanceM, false, raceDate: $race->race_date);
+            ksort($days);
+            $primaryEasySeen = false;
+            foreach ($days as $day) {
+                $isPrimaryEasy = $day['session_type'] === SessionType::Easy && ! $primaryEasySeen;
+                $primaryEasySeen = $primaryEasySeen || $isPrimaryEasy;
+                if ($day['session_type'] === SessionType::Race) {
+                    $raceKm += SegmentGenerator::coreKmFor(SessionType::Race, false, 0.0, 1.0, INF, $raceDistanceM);
+
+                    continue;
+                }
+                $kmPerBaselineKm += SegmentGenerator::coreKmFor($day['session_type'], $isPrimaryEasy, self::REFERENCE_BASELINE_KM, $week['multiplier'], INF) / self::REFERENCE_BASELINE_KM;
+            }
+        }
+
+        if ($kmPerBaselineKm <= 0.0) {
+            return 0.0;
+        }
+
+        return ceil(max(0.0, $floorKm * count($block) - $raceKm) / $kmPerBaselineKm * 10) / 10;
+    }
+
+    private static function readinessLongRunKm(float $raceDistanceM): float
+    {
+        foreach (self::READINESS_LONG_RUN_BANDS as [$upTo, $km]) {
+            if ($raceDistanceM <= $upTo) {
+                return $km;
+            }
+        }
+
+        return self::READINESS_LONG_RUN_MARATHON_KM;
     }
 
     private static function longRunShare(float $weeklyVolumeKm): float

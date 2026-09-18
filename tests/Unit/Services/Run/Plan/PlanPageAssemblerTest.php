@@ -100,6 +100,22 @@ it('explains the current week in the adapter\'s own words', function (): void {
     ]);
 });
 
+it('says so when the deload takes the week under the season\'s volume floor', function (): void {
+    $user = assemblerAthlete();
+    PlanAdaptation::query()->create([
+        'user_id' => $user->id,
+        'week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(),
+        'reason' => AdaptationReason::LowReadiness,
+        'deload' => true,
+        'quality_delta' => 0,
+        'adherence_pct' => 100,
+        'volume_floor_km' => 25.91,
+    ]);
+
+    expect($this->assembler->adaptation($user, Carbon::today())['detail'])
+        ->toBe(AdaptationReason::LowReadiness->detail(100).' that puts it under your usual 25.9 km a week, on purpose.');
+});
+
 it('has no weeks to render before anything has been planned', function (): void {
     expect($this->assembler->weeks(assemblerAthlete(), Carbon::today()))->toBe([]);
 });

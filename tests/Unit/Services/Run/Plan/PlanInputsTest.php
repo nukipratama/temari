@@ -98,9 +98,9 @@ it('trains every phase of the arc rather than restarting it each Monday', functi
 
 it('trains a ramp that builds, dips through the scheduled deload and tapers', function (): void {
     // Base flat, Build's first week off it, the scheduled Deload at -35%,
-    // Build resuming its 7.5% compounding across the dip, Peak just under
-    // that, and race week at 40% of Peak.
-    expect(array_column(trainedArcRows(8), 'multiplier'))->toBe([1.0, 1.0, 1.0, 0.65, 1.075, 0.989, 0.989, 0.396]);
+    // Build resuming its 7.5% compounding across the dip, Peak holding it,
+    // and race week at 40% of Peak.
+    expect(array_column(trainedArcRows(8), 'multiplier'))->toBe([1.0, 1.0, 1.0, 0.65, 1.075, 1.075, 1.075, 0.43]);
 });
 
 it('turns the week the adapter called down into a real deload', function (): void {

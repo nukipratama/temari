@@ -11,6 +11,10 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
+use App\Services\Run\Plan\PhaseSchedule;
+use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\TrainingBaseline;
+use App\Enums\SessionType;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -230,10 +234,23 @@ function seasonServiceWeeks(User $user, float $km): void
     }
 }
 
-it('opens a race season far from its block with the general goals only', function (int $distanceM, float $weeklyKm, float $readinessKm): void {
+/** The longest long run the season's own arc prescribes, sized the way the plan sizes it. */
+function planLongestLongRunKm(User $user, RaceGoal $race): float
+{
+    $baselineData = app(TrainingBaseline::class)->forUser($user, Carbon::today());
+    $weeks = new PhaseSchedule()->forRace(Carbon::today(), $race->race_date, (float) $race->distance_m);
+    $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), zones: array_column($weeks, 'zone'));
+
+    return round(max(array_map(
+        fn (float $multiplier): float => SegmentGenerator::coreKmFor(SessionType::Long, false, $baselineData['long_run_km'], $multiplier, $baselineData['long_run_cap_km']),
+        $multipliers,
+    )), 1);
+}
+
+it('opens a race season far from its block with the general goals only, its long-run goal the plan\'s own longest', function (int $distanceM, float $weeklyKm): void {
     $user = User::factory()->create();
     seasonServiceWeeks($user, $weeklyKm);
-    RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-08', 'distance_m' => $distanceM]);
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-08', 'distance_m' => $distanceM]);
 
     $season = $this->service->ensureCurrent($user, Carbon::today());
     $goals = SeasonGoal::query()->where('season_id', $season->id)->pluck('target', 'metric')->all();
@@ -244,13 +261,83 @@ it('opens a race season far from its block with the general goals only', functio
         'season_longest_long_run_km',
         'season_rest_honored',
     ])
-        ->and($goals['season_longest_long_run_km'])->toBe($readinessKm);
+        ->and($goals['season_longest_long_run_km'])->toBe(planLongestLongRunKm($user, $race));
 })->with([
-    '10K' => [10_000, 40.0, 12.0],
-    'half' => [21_097, 40.0, 18.0],
-    'marathon' => [42_195, 80.0, 30.0],
-    '10K capped at half the week' => [10_000, 16.0, 8.0],
+    '10K' => [10_000, 40.0],
+    'half' => [21_097, 40.0],
+    'marathon' => [42_195, 80.0],
+    '10K capped at half the week' => [10_000, 16.0],
 ]);
+
+/**
+ * The audit case: the goal asked for a 12 km long run while the plan peaked at
+ * 10.1 km. The goal now reads the plan, and the plan climbs to the 12 km a 10K
+ * wants.
+ */
+it('asks for exactly the long run the plan builds to, which reaches a 10K\'s 12 km', function (): void {
+    $user = User::factory()->create();
+    seasonServiceWeeks($user, 24.4);
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString(), 'distance_m' => 10_000]);
+
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $goal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_longest_long_run_km')->value('target');
+
+    expect($goal)->toBe(12.0)
+        ->and($goal)->toBe(planLongestLongRunKm($user, $season->raceGoal));
+});
+
+it('freezes a race season\'s twelve-week actual mean as its volume floor, and gives a self-scaled one none', function (): void {
+    $racer = User::factory()->create();
+    foreach (range(0, 13) as $i) {
+        WeeklySnapshot::factory()->for($racer)->create([
+            'week_ending' => Carbon::today()->subWeeks($i)->toDateString(),
+            'distance_km' => $i < 12 ? 20.0 + $i : 100.0,
+        ]);
+    }
+    RaceGoal::factory()->for($racer)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString()]);
+    $goalless = User::factory()->create();
+    seasonServiceWeeks($goalless, 30.0);
+
+    // 20..31 km, the two older 100 km weeks outside the window.
+    expect($this->service->ensureCurrent($racer, Carbon::today())->volume_floor_km)->toBe(25.5)
+        ->and($this->service->ensureCurrent($goalless, Carbon::today())->volume_floor_km)->toBeNull();
+});
+
+it('backfills a race season\'s missing floor from the weeks before it opened', function (): void {
+    $user = User::factory()->create();
+    seasonServiceWeeks($user, 30.0);
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString()]);
+    $season = Season::factory()->for($user)->create([
+        'race_goal_id' => $race->id,
+        'anchor_weekly_volume_km' => 30.0,
+        'starts_at' => Carbon::today()->toDateString(),
+        'ends_at' => $race->race_date->toDateString(),
+    ]);
+
+    Carbon::setTestNow('2026-08-24 08:00:00');
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-08-16', 'distance_km' => 60.0]);
+
+    expect($this->service->ensureCurrent($user, Carbon::today())->volume_floor_km)->toBe(30.0)
+        ->and($season->fresh()->volume_floor_km)->toBe(30.0);
+});
+
+it('brings the floor down to the new anchor when the athlete\'s volume collapses', function (): void {
+    $user = User::factory()->create();
+    seasonServiceWeeks($user, 30.0);
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString()]);
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+    expect($season->volume_floor_km)->toBe(30.0);
+
+    Carbon::setTestNow('2026-09-21 08:00:00');
+    foreach (range(0, 5) as $i) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::parse('2026-09-20')->subWeeks($i)->toDateString(),
+            'distance_km' => 10.0,
+        ]);
+    }
+
+    expect($this->service->ensureCurrent($user, Carbon::today())->volume_floor_km)->toBe(10.0);
+});
 
 it('appends the block goals once the block opens, and only once', function (): void {
     $user = User::factory()->create();
