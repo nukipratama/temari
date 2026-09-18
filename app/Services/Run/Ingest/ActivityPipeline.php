@@ -120,7 +120,7 @@ class ActivityPipeline
         }
 
         $this->computeAndStoreSummary($activity, $detailModel, $streams);
-        $this->lookupWeather($detailModel, $streams);
+        $this->lookupWeather($detailModel);
 
         // Wrapped in a transaction so analyzed_at rolls back with the story layer:
         // a PR / card / Temari / milestone throw must leave the stub drainable,
@@ -490,19 +490,12 @@ class ActivityPipeline
     }
 
     /**
-     * Best-effort weather lookup. Reads first lat/lng from the streams blob;
-     * if either coords or start time are missing, no weather is stored.
-     *
-     * @param  array<string, mixed>|null  $streams
+     * Best-effort weather lookup. If either coords or start time are missing,
+     * no weather is stored.
      */
-    private function lookupWeather(ActivityDetail $detail, ?array $streams): void
+    private function lookupWeather(ActivityDetail $detail): void
     {
-        if ($streams === null || $detail->start_date_local === null) {
-            return;
-        }
-
-        $latlng = $streams['latlng']['data'][0] ?? null;
-        if (! is_array($latlng) || count($latlng) !== 2) {
+        if ($detail->start_lat === null || $detail->start_lng === null || $detail->start_date_local === null) {
             return;
         }
 
@@ -510,8 +503,8 @@ class ActivityPipeline
 
         try {
             $snapshot = $this->weather->fetchForActivity(
-                (float) $latlng[0],
-                (float) $latlng[1],
+                (float) $detail->start_lat,
+                (float) $detail->start_lng,
                 $startedAt,
             );
         } catch (Throwable $e) {
