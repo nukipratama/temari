@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 #[Signature('strava:hydrate-backlog {--batch= : Runs to hydrate this tick; defaults to whatever the background read headroom affords}')]
-#[Description('Hydrate summary-only runs newest-first, paced by the background share of the Strava read budget and split evenly across users.')]
+#[Description('Hydrate summary-only runs oldest-first, paced by the background share of the Strava read budget and split evenly across users.')]
 class HydrateBacklogCommand extends Command
 {
     /** Detail + streams, the two calls ActivityPipeline makes per run. */
@@ -101,17 +101,21 @@ class HydrateBacklogCommand extends Command
     }
 
     /**
-     * Newest-first: the runs a user is most likely to look at next, and the
-     * ones whose narration is still inside the twelve-week LLM window. Ordered
-     * by a correlated subquery rather than a join so {@see AnalyzedScope} and
-     * the `summaryOnly` scope keep their own qualified columns.
+     * Oldest-first: each run lands with its complete past already hydrated, so
+     * card PR flags, moods and Past You comparisons are right the moment it
+     * lands instead of needing a later replay. See
+     * {@see \App\Actions\Run\Story\RecomputeCardClaimsAction} for the safety
+     * net this leaves in place for runs that still arrive out of order (a
+     * live run synced mid-drain, a backdated upload). Ordered by a correlated
+     * subquery rather than a join so {@see AnalyzedScope} and the
+     * `summaryOnly` scope keep their own qualified columns.
      */
     private function hydrateFor(DetailHydrator $hydrator, int $userId, int $take): int
     {
         return Activity::query()
             ->where('user_id', $userId)
             ->tap($this->hydratable(...))
-            ->orderByDesc(
+            ->orderBy(
                 ActivityDetail::query()
                     ->select('start_date_local')
                     ->whereColumn('activity_details.activity_id', 'activities.id')

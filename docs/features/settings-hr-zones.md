@@ -72,7 +72,7 @@ banner that cannot be dismissed at all was the review finding that prompted the 
 
 ## What ingest may and may not change
 
-[ActivityPipeline::reconcileMaxHeartRate()](../../app/Services/Run/Ingest/ActivityPipeline.php) raises `max_hr` when the athlete's own history proves the stored ceiling too low — their peak can never be an underestimate. It reads the highest plausible `max_heartrate` across the **whole** history rather than a maximum accumulated as ingest walks, so the result does not depend on ingest order; `strava:hydrate-backlog` drains newest-first ([[background-hydration-drain]]) and would otherwise disagree with an oldest-first backfill.
+[ActivityPipeline::reconcileMaxHeartRate()](../../app/Services/Run/Ingest/ActivityPipeline.php) raises `max_hr` when the athlete's own history proves the stored ceiling too low — their peak can never be an underestimate. It reads the highest plausible `max_heartrate` across the **whole** history rather than a maximum accumulated as ingest walks, so the result does not depend on ingest order — `strava:hydrate-backlog` drains oldest-first ([[chronological-hydration-drain]]), and reconciliation would reach the same ceiling walking either direction.
 
 It re-derives the five bands **only** for a profile the athlete never spoke for. [RunnerProfile::hasExplicitZones()](../../app/Models/RunnerProfile.php) marks `strava` and `manual` as statements of intent, and the percentage model must not silently replace them: real Strava zones routinely look nothing like it. Overwriting them left this card captioned "Synced from Strava" over formula-derived numbers, which is how the bug was found.
 

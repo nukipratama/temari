@@ -79,7 +79,8 @@ _Data_
 
 _Infra & Strava_
 - [[summary-first-ingest]] — a connect stores the whole history from paged summaries; detail, streams and the story layer are hydrated only for runs someone opens
-- [[background-hydration-drain]] — an hourly tick hydrates the summary-only backlog newest-first, sized from the read headroom background calls may already spend
+- [[background-hydration-drain]] — a tick hydrates the summary-only backlog sized from the read headroom background calls may already spend *(its ordering half superseded by [[chronological-hydration-drain]])*
+- [[chronological-hydration-drain]] — the drain hydrates oldest-first, so a card's PR flag, mood and Past You comparison are right the moment a run lands
 - [[recap-waits-for-hydration]] — a weekly recap is held back while its week still has runs the pipeline owes a detail fetch, bounded by a wall-clock grace window
 - [[unscored-load-is-null-not-zero]] — a week that ran without heart rate reports unknown load; only a week nobody ran reports zero
 - [[strava-circuit-breaker-rate-limit]] — Strava rate limit is per-client, so the guard key is global
