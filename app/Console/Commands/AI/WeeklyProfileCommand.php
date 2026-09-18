@@ -7,6 +7,7 @@ namespace App\Console\Commands\AI;
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\HistoryNarrationGate;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -24,7 +25,7 @@ class WeeklyProfileCommand extends Command
      * never auto-bills any LLM cadence); the manual "Reread" button still
      * forces an on-demand refresh between runs.
      */
-    public function handle(AnalysisService $service, RecentlyActiveUsers $activeUsers): int
+    public function handle(AnalysisService $service, RecentlyActiveUsers $activeUsers, HistoryNarrationGate $history): int
     {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
@@ -37,6 +38,17 @@ class WeeklyProfileCommand extends Command
         $users = $activeUsers();
 
         foreach ($users as $user) {
+            // A first connect whose backlog drain crosses this Monday kickoff
+            // must not have this cadence write the profile voice against a
+            // still-hydrating backlog — see HistoryNarrationGate::awaitsFullHydration().
+            // Held means staged Pending, not skipped; ai:self-heal releases it
+            // once history lands.
+            if ($history->awaitsFullHydration($user->id)) {
+                $service->requestDeferred(AnalysisType::ProfileVoice->subjectType(), $user->id, AnalysisType::ProfileVoice, $isoWeek);
+
+                continue;
+            }
+
             $service->requestProfileVoice($user, $isoWeek);
         }
 

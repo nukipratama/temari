@@ -11,10 +11,12 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
+use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\NarrationEligibility;
 use App\Services\AI\NarrationVerdict;
 use App\Services\Run\Plan\ComplianceScorer;
@@ -42,6 +44,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly RestClampRecorder $restClampRecorder,
         private readonly PlanNarrationRequester $planNarration,
         private readonly ComplianceScorer $complianceScorer,
+        private readonly HistoryNarrationGate $history,
     ) {
     }
 
@@ -89,18 +92,13 @@ class DispatchPostRunAnalysis implements ShouldQueue
         // Daily cadence: when the ingested run is today's, refresh the whole
         // daily AI set so each block narrates with every run done so far today.
         // Backfill of a previous day leaves the Done rows untouched, so
-        // re-ingesting old days never re-bills.
+        // re-ingesting old days never re-bills. Both requests are held (staged
+        // Pending, not dispatched) while history their own narrator reads is
+        // still hydrating — see requestBriefingHeldForHydration() and
+        // requestProfileVoiceHeldForHydration() below.
         if (! $athleteAway) {
-            $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
-
-            $this->analysisService->request(
-                subjectOrType: AnalysisType::ProfileVoice->subjectType(),
-                subjectId: $user->id,
-                type: AnalysisType::ProfileVoice,
-                discriminator: AnalysisType::currentIsoWeek(),
-                delaySeconds: $delaySec,
-                invalidate: false,
-            );
+            $this->requestBriefingHeldForHydration($user, $today, $isToday, $delaySec);
+            $this->requestProfileVoiceHeldForHydration($user, $delaySec);
         }
 
         if ($detail->start_date_local === null) {
@@ -186,6 +184,55 @@ class DispatchPostRunAnalysis implements ShouldQueue
             delaySeconds: $delaySec,
             type: AnalysisType::CardFlavor,
             invalidate: true,
+        );
+    }
+
+    /**
+     * The daily briefing's own narrator reads past-you's bounded reach
+     * (get_latest_past_you, {@see \App\Services\Run\Story\PastYouMatcher::MAX_GAP_DAYS}),
+     * the same reach {@see HistoryNarrationGate::awaitsOlderHydration()} already
+     * gates per-run narration on, so it reuses that gate unchanged, anchored on
+     * now rather than the ingested run's own date: the briefing is always for
+     * today, whichever day's run just triggered this ingest. Held means staged
+     * Pending, not skipped — ai:self-heal releases it once that history lands.
+     */
+    private function requestBriefingHeldForHydration(User $user, string $today, bool $isToday, int $delaySec): void
+    {
+        if ($this->history->awaitsOlderHydration($user->id, Carbon::now())) {
+            $this->analysisService->requestDeferred(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, $today);
+
+            return;
+        }
+
+        $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
+    }
+
+    /**
+     * Unlike the briefing, the profile voice reads the athlete's WHOLE history
+     * (get_lifetime_stats, get_progression_signal's full PR table,
+     * get_plan_adherence with no $from), so past-you's 365-day reach is the
+     * wrong bound: a run outside it can still be the one this narrator reads.
+     * It waits for {@see HistoryNarrationGate::awaitsFullHydration()} instead —
+     * the whole backlog, not just the bounded reach — under the same grace-
+     * window cap. Held means staged Pending, not skipped.
+     */
+    private function requestProfileVoiceHeldForHydration(User $user, int $delaySec): void
+    {
+        $isoWeek = AnalysisType::currentIsoWeek();
+
+        if ($this->history->awaitsFullHydration($user->id)) {
+            $this->analysisService->requestDeferred(AnalysisType::ProfileVoice->subjectType(), $user->id, AnalysisType::ProfileVoice, $isoWeek);
+
+            return;
+        }
+
+        $this->analysisService->request(
+            subjectOrType: AnalysisType::ProfileVoice->subjectType(),
+            subjectId: $user->id,
+            type: AnalysisType::ProfileVoice,
+            discriminator: $isoWeek,
+            delaySeconds: $delaySec,
+            invalidate: false,
         );
     }
 

@@ -79,9 +79,9 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 
 | when | command | what it dispatches |
 |---|---|---|
-| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L39) | one `BriefingMascotVoice` per active non-demo user |
+| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L39) | one `BriefingMascotVoice` per active non-demo user — staged `Pending` instead for a first connect whose backlog drain crosses this kickoff ([[history-narrates-on-demand]], #1032) |
 | Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php#L53) | `WeeklyRecap`, oldest unfinished link first |
-| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L60) | `ProfileVoice`, keyed by ISO week |
+| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L60) | `ProfileVoice`, keyed by ISO week — staged `Pending` instead under the same first-connect condition |
 | **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php#L90) | **up to 9 rows per user — see below** |
 | 1st 05:45 | [`ai:monthly-recap`](../../routes/console.php#L98) | `MonthlyRecap`, oldest first |
 | daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php#L118) | `TrendRead`, discriminator `7d` — the only range since #967 |
@@ -115,18 +115,32 @@ the ingest listener right after the day is credited.
 **A brand-new account also gets today's briefing on the day it signs up.** `BriefingMascotVoice`
 is keyed by the day, and the only thing that used to stage it was the 00:01 kickoff, so an account
 created at any other hour met a silent Today card until the next midnight. Two triggers close that,
-both through [RequestTodaysBriefing](../../app/Actions/AI/RequestTodaysBriefing.php#L23) and both
+both through [RequestTodaysBriefing](../../app/Actions/AI/RequestTodaysBriefing.php#L30) and both
 reusing `AnalysisService::requestBriefing()`, the same upsert the kickoff and `ai:catch-up` share:
 
 | when | entry point | origin | what it dispatches |
 |---|---|---|---|
-| the onboarding wizard is submitted | [`RequestTodaysBriefing::atSignup()`](../../app/Actions/AI/RequestTodaysBriefing.php#L29) from [OnboardingController::store](../../app/Http/Controllers/OnboardingController.php#L53) | user | one `BriefingMascotVoice` for today — one mini call per new athlete, never a second row |
-| the first-connect backfill lands | [`RequestTodaysBriefing::afterBackfill()`](../../app/Actions/AI/RequestTodaysBriefing.php#L43) from [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php#L65) | ingest | the same row, invalidated, so a briefing narrated against an empty history is re-read once — at most one re-run per athlete per day |
+| the onboarding wizard is submitted | [`RequestTodaysBriefing::atSignup()`](../../app/Actions/AI/RequestTodaysBriefing.php#L38) from [OnboardingController::store](../../app/Http/Controllers/OnboardingController.php#L53) | user | one `BriefingMascotVoice` for today — one mini call per new athlete, never a second row |
+| the first-connect backfill lands | [`RequestTodaysBriefing::afterBackfill()`](../../app/Actions/AI/RequestTodaysBriefing.php#L55) from [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php#L65) | ingest | the same row, invalidated, so a briefing narrated against an empty history is re-read once — at most one re-run per athlete per day |
 
 The second exists because `BriefingMascotVoice` stamps no `MaterialFingerprint`: a plain request
 leaves a Done row alone, so without `invalidate: true` the first briefing would keep whatever it said
 about an account with no runs in it. The demo account reaches neither as an LLM call — both route
 through `shouldServeRuleBased()` to the filler, per [[demo-triggers-served-rule-based]].
+
+**Both entry points are held (#1032), not just the ingest cascade.** `atSignup()` fires from the
+onboarding wizard, before the backfill sync has written a single Activity row, so
+[`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php)
+would vacuously read "nothing awaiting hydration" and let it straight through — there is nothing
+for the row-based gate to find yet. `users.backfilled_at` (stamped by `KickoffRecapsJob` right
+before it calls `afterBackfill()`) closes that gap: `RequestTodaysBriefing` treats a null
+`backfilled_at` as held outright, then falls back to the same bounded gate `DispatchPostRunAnalysis`
+uses for the remaining (detail-hydration) window `afterBackfill()` can still land inside. A held
+request stages the row `Pending` (`AnalysisService::requestDeferred()`) instead of generating, and
+`SelfHealer::resumeSingleRowType(BriefingMascotVoice)` releases it once the gate clears — no second
+release mechanism. The once-per-day `Cache::add` guard in `afterBackfill()` only runs *after* that
+check, so a re-run of the connect chain while held never spends the day's one real request; it just
+re-stages the same idempotent row.
 
 **A brand-new account narrates its season once, off-schedule.** Onboarding and the first-connect
 backfill chain race, and whichever finishes second calls
@@ -194,9 +208,17 @@ too old, or pre-connect and older than the last 7 days (see *the history gate* b
 voice, clamp voice, Temari's read) when the athlete is away from the app, until origin 5 catches them
 up — then `BriefingMascotVoice` (invalidated only when the
 run is today's), then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
-never re-bills. `WeeklyRecap` and `MonthlyRecap` rows are **staged `Pending` and not narrated here** —
-the scheduled commands above narrate them once the window closes, which is why a pending recap row
-is not a backlog. See [[deferred-recap-windowing]].
+never re-bills. Both of those two are also **held** — staged `Pending`, not dispatched — while
+history their own narrator reads is still hydrating: the briefing on past-you's bounded reach
+([`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+anchored on now rather than the ingested run's own date), the profile voice on the whole backlog
+([`HistoryNarrationGate::awaitsFullHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+since it reads lifetime stats and the full PR table). Both holds are bounded by the same
+`ai.recap_hydration_grace_hours` window as the history gate below, so a long-connected athlete sees
+no change, and `ai:self-heal` releases a held row once its history lands (#1032). `WeeklyRecap` and
+`MonthlyRecap` rows are **staged `Pending` and not narrated here** — the scheduled commands above
+narrate them once the window closes, which is why a pending recap row is not a backlog. See
+[[deferred-recap-windowing]].
 
 ### 3. User-initiated
 

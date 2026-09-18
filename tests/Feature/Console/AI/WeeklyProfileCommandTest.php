@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -97,6 +100,34 @@ it('skips an athlete who is running but not opening the app', function (): void 
     $this->artisan('ai:weekly-profile')
         ->expectsOutputToContain('Dispatched weekly profile refresh for 0 active users')
         ->assertSuccessful();
+
+    Carbon::setTestNow();
+});
+
+// A first connect whose backlog drain crosses this Monday kickoff must not
+// have the scheduled cadence write the profile voice against a still-
+// hydrating backlog, the same hold the ingest-time path already applies (#1032).
+it('stages the profile voice Pending instead of generating while any run of the backlog awaits hydration', function (): void {
+    Carbon::setTestNow('2026-05-18 00:05:00');
+    $isoWeek = AnalysisType::currentIsoWeek();
+
+    $user = User::factory()->seenToday()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()]);
+    // Well outside past-you's reach too — the profile voice reads the whole
+    // history, so it holds regardless of how old the unhydrated run is.
+    $ancient = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($ancient)->create(['start_date_local' => Carbon::parse('2022-01-01 06:00:00')]);
+
+    $this->artisan('ai:weekly-profile')
+        ->expectsOutputToContain('Dispatched weekly profile refresh for 1 active users')
+        ->assertSuccessful();
+
+    $row = Analysis::query()
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::ProfileVoice)
+        ->where('discriminator', $isoWeek)
+        ->firstOrFail();
+    expect($row->status)->toBe(AnalysisStatus::Pending);
 
     Carbon::setTestNow();
 });

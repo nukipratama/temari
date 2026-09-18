@@ -100,4 +100,25 @@ class HistoryNarrationGate
             $startedAt->copy()->subDays(PastYouMatcher::MAX_GAP_DAYS),
         );
     }
+
+    /**
+     * Whether ANY of this athlete's runs, at any age, still await hydration —
+     * wider than {@see self::awaitsOlderHydration()}'s past-you-bounded reach.
+     * The profile voice reads the athlete's whole history (lifetime stats,
+     * full PR table, all-time plan adherence), so a run outside past-you's
+     * 365-day window can still be exactly the one it would misread. Bounded
+     * by the same connect-anchored grace window, so a stuck drain cannot hold
+     * it forever and a long-connected athlete is never affected.
+     */
+    public function awaitsFullHydration(int $userId): bool
+    {
+        $connectedAt = $this->backlog->connectedAt($userId);
+        $graceHours = (int) config('ai.recap_hydration_grace_hours', 48);
+
+        if ($connectedAt === null || Carbon::now()->gte($connectedAt->addHours($graceHours))) {
+            return false;
+        }
+
+        return $this->backlog->awaitingHydration([$userId])->exists();
+    }
 }
