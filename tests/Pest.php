@@ -317,6 +317,12 @@ function captureAnalysisServiceRequests(array &$captured): AnalysisService
 
             return new Analysis();
         });
+    $service->shouldReceive('requestDeferred')
+        ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$captured): Analysis {
+            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator') + ['delaySeconds' => null, 'invalidate' => null, 'ruleBased' => false];
+
+            return new Analysis();
+        });
 
     $service->shouldReceive('shouldServeRuleBased')->andReturn(false);
     $service->shouldReceive('requestBriefing')

@@ -11,6 +11,10 @@ code_refs:
   - app/Services/AI/BackfillAgeGate.php
   - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
   - app/Actions/AI/RecentlyActiveUsers.php
+  - app/Actions/AI/RequestTodaysBriefing.php
+  - app/Console/Commands/AI/DailyBriefingCommand.php
+  - app/Console/Commands/AI/WeeklyProfileCommand.php
+  - app/Services/AI/SelfHealer.php
 ---
 
 # History narrates on demand
@@ -55,6 +59,32 @@ code_refs:
 > 365-day reach can still be exactly the one it misreads. Both holds are bounded by the same
 > `ai.recap_hydration_grace_hours` window, so a long-connected athlete's timing is unchanged; `ai:self-heal`
 > releases a held row once its history lands, same as the per-run hold above.
+
+> **2026-09-19 — the connect/signup briefing paths and the two scheduled kickoffs hold too (#1032
+> re-check).** The previous note only closed the ingest-time gap; `RequestTodaysBriefing::atSignup()`
+> and `::afterBackfill()` still bypassed it, and so did the `ai:daily-briefing`/`ai:weekly-profile`
+> 00:01/Monday kickoffs. `atSignup()` fires from the onboarding wizard before the backfill sync has
+> written a single `Activity` row, so `awaitsOlderHydration()` would vacuously read "nothing awaiting
+> hydration" — there is nothing yet for the row-based gate to find. `users.backfilled_at` (stamped by
+> `KickoffRecapsJob` immediately before it calls `afterBackfill()`) closes that gap: a null
+> `backfilled_at` holds outright, then the same bounded gate takes over for the remaining
+> detail-hydration window `afterBackfill()` can still land inside. Both entry points stage `Pending`
+> (`AnalysisService::requestDeferred()`) instead of generating while held, and the existing
+> `SelfHealer::resumeSingleRowType()` releases the row — no second release mechanism. `afterBackfill()`'s
+> once-per-day `Cache::add` guard, which exists only to stop a re-run connect chain from re-billing,
+> now runs *after* the hold check, so it can never consume the day's one real request while the row is
+> still held. `DailyBriefingCommand`/`WeeklyProfileCommand` gained the same two checks for a first
+> connect late enough that its backlog drain crosses the kickoff — staging instead of generating, same
+> release path. `PlanNarrationRequester::requestClampVoice()`/`requestDayVoiceIfChanged()` were checked
+> too: both do read hydrated history (the clamp voice through `TrainingLoad`'s 365-day-converged
+> ATL/CTL; the day voice through `TrainingBaseline`'s trailing-weeks average and `SessionMatcher`'s
+> credited-km read), so by this decision's own reasoning they belong on the same hold. Left unfixed
+> here: unlike `BriefingMascotVoice`/`ProfileVoice`, neither has a `SelfHealer` recovery family — each
+> fires only from the ingest listener's `isToday` branch (the clamp also from the 00:01 kickoff, for
+> a new day, never a retroactive re-check of a held one). Holding them with no release path would trade
+> "narrated thin" for "never narrated, no route to get one" — worse, and a false-hope Pending skeleton
+> with nothing behind it. Building that release path is a separate, larger change; tracked as a
+> follow-up rather than folded in here.
 
 ## Context
 
