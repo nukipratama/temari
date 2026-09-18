@@ -336,6 +336,76 @@ it('does not log for a normally-resolved form_status', function (): void {
     Log::shouldNotHaveReceived('warning');
 });
 
+it('does not praise a week that is well below the athlete\'s usual', function (): void {
+    $userId = WeeklySnapshot::factory()->create(['week_ending' => '2026-08-02', 'distance_km' => 30.0])->user_id;
+    WeeklySnapshot::factory()->create(['user_id' => $userId, 'week_ending' => '2026-08-09', 'distance_km' => 32.0]);
+    WeeklySnapshot::factory()->create(['user_id' => $userId, 'week_ending' => '2026-08-16', 'distance_km' => 28.0]);
+
+    $snapshot = WeeklySnapshot::factory()->create([
+        'user_id' => $userId,
+        'week_ending' => '2026-08-23',
+        'distance_km' => 1.3,
+        'runs' => 1,
+        'form_status' => 'optimal',
+    ]);
+
+    $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
+
+    expect($recap)->not->toContain("that's the range where the work actually banks.")
+        ->and($recap)->not->toContain('above your usual week')
+        ->and($recap)->toContain('not a verdict on it');
+});
+
+it('keeps the banking line for a week in the athlete\'s usual range', function (): void {
+    $userId = WeeklySnapshot::factory()->create(['week_ending' => '2026-08-02', 'distance_km' => 30.0])->user_id;
+    WeeklySnapshot::factory()->create(['user_id' => $userId, 'week_ending' => '2026-08-09', 'distance_km' => 32.0]);
+    WeeklySnapshot::factory()->create(['user_id' => $userId, 'week_ending' => '2026-08-16', 'distance_km' => 28.0]);
+
+    $snapshot = WeeklySnapshot::factory()->create([
+        'user_id' => $userId,
+        'week_ending' => '2026-08-23',
+        'distance_km' => 29.0,
+        'runs' => 4,
+        'form_status' => 'optimal',
+    ]);
+
+    $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
+
+    expect($recap)->toContain("that's the range where the work actually banks.");
+});
+
+it('reads a week well above the athlete\'s usual as a big week', function (): void {
+    $userId = WeeklySnapshot::factory()->create(['week_ending' => '2026-08-02', 'distance_km' => 20.0])->user_id;
+    WeeklySnapshot::factory()->create(['user_id' => $userId, 'week_ending' => '2026-08-09', 'distance_km' => 22.0]);
+    WeeklySnapshot::factory()->create(['user_id' => $userId, 'week_ending' => '2026-08-16', 'distance_km' => 18.0]);
+
+    $snapshot = WeeklySnapshot::factory()->create([
+        'user_id' => $userId,
+        'week_ending' => '2026-08-23',
+        'distance_km' => 45.0,
+        'runs' => 6,
+        'form_status' => 'optimal',
+    ]);
+
+    $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
+
+    expect($recap)->not->toContain("that's the range where the work actually banks.")
+        ->and($recap)->toContain('above your usual week');
+});
+
+it('pluralizes run and session for a single-run week', function (): void {
+    $snapshot = WeeklySnapshot::factory()->create([
+        'distance_km' => 5.0,
+        'runs' => 1,
+        'form_status' => 'fresh',
+    ]);
+
+    $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
+
+    expect($recap)->toMatch('/\b1 (run|session|time)\b/')
+        ->and($recap)->not->toMatch('/\b1 (runs|sessions|times)\b/');
+});
+
 it('phrases an intent hit as the session doing its job', function (): void {
     $session = PlannedSession::factory()->create([
         'session_type' => 'tempo',

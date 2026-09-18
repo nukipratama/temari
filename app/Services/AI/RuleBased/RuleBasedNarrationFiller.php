@@ -40,6 +40,11 @@ use Illuminate\Support\Facades\Log;
  */
 final readonly class RuleBasedNarrationFiller
 {
+    /** Weekly-recap volume bands, as a ratio of the week's distance to the athlete's usual week. */
+    private const float LIGHT_WEEK_RATIO = 0.5;
+
+    private const float BIG_WEEK_RATIO = 1.5;
+
     public function __construct(
         private SessionMatcher $sessionMatcher,
         private SustainedAheadOfRacePace $sustainedAheadOfRacePace,
@@ -232,6 +237,9 @@ final readonly class RuleBasedNarrationFiller
 
         $km = DecimalFormatter::decimal((float) $snapshot->distance_km);
         $runs = $snapshot->runs;
+        $runWord = $runs === 1 ? 'run' : 'runs';
+        $sessionWord = $runs === 1 ? 'session' : 'sessions';
+        $timeWord = $runs === 1 ? 'time' : 'times';
 
         // A ran week with a null form_status means the training-load rollup
         // never reached this snapshot before the recap read it — the caller
@@ -247,20 +255,61 @@ final readonly class RuleBasedNarrationFiller
 
         $closer = match ($snapshot->form_status) {
             'fresh' => "you're fresh, with room to add a little on top of that.",
-            'optimal' => "that's the range where the work actually banks.",
+            'optimal' => match ($this->volumeBand((float) $snapshot->distance_km, $this->usualWeeklyKm($snapshot))) {
+                'light' => "well below your usual week. that's the number, not a verdict on it.",
+                'big' => "well above your usual week, and the form's still fine with it.",
+                default => "that's the range where the work actually banks.",
+            },
             'fatigued' => 'the fatigue is showing. bank some recovery next week.',
             'overreaching' => "your load is above what you've been carrying lately. worth pulling something back.",
             default => "steady. that's the read.",
         };
 
         return $this->select([
-            "{$km} km across {$runs} runs this week. {$closer}",
-            "{$runs} sessions, {$km} km on the board. {$closer}",
-            "{$km} km this week, spread over {$runs} runs. {$closer}",
-            "{$runs} runs, {$km} km. {$closer}",
-            "The week came to {$km} km from {$runs} sessions. {$closer}",
-            "{$km} km logged, {$runs} times out the door. {$closer}",
+            "{$km} km across {$runs} {$runWord} this week. {$closer}",
+            "{$runs} {$sessionWord}, {$km} km on the board. {$closer}",
+            "{$km} km this week, spread over {$runs} {$runWord}. {$closer}",
+            "{$runs} {$runWord}, {$km} km. {$closer}",
+            "The week came to {$km} km from {$runs} {$sessionWord}. {$closer}",
+            "{$km} km logged, {$runs} {$timeWord} out the door. {$closer}",
         ], $snapshotId);
+    }
+
+    /**
+     * The athlete's own usual week, as a trailing mean of up to 6 prior weeks'
+     * distance — the same depth {@see \App\Services\Run\Plan\TrainingBaseline}
+     * trails. Null with no prior weeks to compare against.
+     */
+    private function usualWeeklyKm(WeeklySnapshot $snapshot): ?float
+    {
+        $distances = WeeklySnapshot::query()
+            ->where('user_id', $snapshot->user_id)
+            ->where('week_ending', '<', $snapshot->week_ending)
+            ->orderByDesc('week_ending')
+            ->limit(6)
+            ->pluck('distance_km')
+            ->filter(fn (?float $km): bool => $km !== null);
+
+        return $distances->isEmpty() ? null : (float) $distances->avg();
+    }
+
+    /**
+     * light: under half the usual week. big: over 1.5x it. Anything in
+     * between, or no usual week to compare against, reads as usual.
+     */
+    private function volumeBand(float $km, ?float $usualKm): string
+    {
+        if ($usualKm === null || $usualKm <= 0.0) {
+            return 'usual';
+        }
+
+        $ratio = $km / $usualKm;
+
+        return match (true) {
+            $ratio < self::LIGHT_WEEK_RATIO => 'light',
+            $ratio > self::BIG_WEEK_RATIO => 'big',
+            default => 'usual',
+        };
     }
 
 
