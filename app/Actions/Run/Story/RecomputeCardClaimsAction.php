@@ -14,7 +14,10 @@ use Illuminate\Support\Facades\DB;
 /**
  * Re-judges every card's PR flag in date order, then the post-run mood that
  * reads it. A card's claim is only as good as the history loaded when it was
- * minted, and a backfill loads that history newest-first.
+ * minted. The backfill drain now hydrates oldest-first, so a card is judged
+ * against its complete past the moment it lands and this rarely has anything
+ * to fix; it is the safety net for a run that still arrives out of order —
+ * a live run synced mid-drain, or a backdated upload.
  */
 class RecomputeCardClaimsAction
 {

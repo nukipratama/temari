@@ -70,7 +70,12 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
-        $delaySec = $isBackfill ? ($this->staggerBackfill)($activity->user_id) : 0;
+        // Reserve a stagger slot only for a run that will actually dispatch to
+        // the LLM: a rule-based fill or a staged (held/away) row never reads
+        // $delaySec below, so reserving one for it would only poison the
+        // shared per-user slot ahead of the run that does need it — see
+        // docs/decisions/chronological-hydration-drain.md.
+        $delaySec = ($isBackfill && ! $ruleBased && ! $stageOnly) ? ($this->staggerBackfill)($activity->user_id) : 0;
         $isToday = $detail->start_date_local?->toDateString() === $today;
 
         if ($detail->start_date_local !== null) {
