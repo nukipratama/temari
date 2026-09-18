@@ -51,10 +51,11 @@ and what the day was eased from. The scorer, `PlanRenderer::dayPayload()`, Home'
 Plan page's redistribution and status fallback, the season header and both narrator tools read it; no
 surface re-derives the substitution.
 
-- **The day row and Home's today card** headline the eased session and carry `eased_from` as context
-  ("eased from 5.9 km tempo"). A rest clamp reads as a rest day with the same line. When the ease only
-  lowered the intensity and the distance held, the context names the type alone, so it never repeats an
-  identical figure.
+- **The day row and Home's today card** headline the eased session and carry `eased_from` as context.
+  **Since #975** this renders as a delta pair rather than a sentence — `tempo → easy · 5.9 → 4.1 km`,
+  tagged `eased` — with the type omitted when only the distance moved and the distance omitted when
+  only the intensity did, so it never repeats an identical figure. A rest clamp reads as a rest day the
+  same way. The decision below is unchanged; only the copy is.
 - **The week total sums the eased values.** Home's card sums the day payloads it renders and names the
   un-eased total beside it. The Plan page's week header is a season forecast, so for the current week
   only it subtracts the km the recorded eases took off and names the forecast figure. A week whose ease

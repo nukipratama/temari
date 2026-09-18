@@ -8,13 +8,12 @@ import {
     SESSION_TYPE_LABEL,
     clampSummary,
     computeAdherence,
-    creditedPaceLabel,
-    easedFromLabel,
+    deltaDirection,
+    easedFromDelta,
     generalZoneSpan,
-    isCreditedStatus,
     isRaceWeek,
-    kmLabel,
-    paceEaseLabel,
+    judgedDayResult,
+    paceEaseDelta,
     paceLabel,
     phaseGroupKey,
     phasesOf,
@@ -226,26 +225,55 @@ describe('generalZoneSpan', () => {
     });
 });
 
-describe('easedFromLabel', () => {
-    it('names the distance and session a day was eased from', () => {
+describe('deltaDirection', () => {
+    it('reads an increase as up', () => {
+        expect(deltaDirection(3.6, 4.1)).toBe('up');
+    });
+
+    it('reads a decrease as down', () => {
+        expect(deltaDirection(5.9, 4.1)).toBe('down');
+    });
+});
+
+describe('easedFromDelta', () => {
+    it('names the type and distance change together when both moved', () => {
         expect(
-            easedFromLabel({
-                session_type: 'tempo',
-                distance_km: 5.9,
-                voice: null,
-            }),
-        ).toBe('eased from 5.9 km tempo');
+            easedFromDelta(
+                { session_type: 'tempo', distance_km: 5.9, voice: null },
+                planDay({ session_type: 'easy', distance_km: 4.1 }),
+            ),
+        ).toEqual({
+            typeFrom: 'tempo',
+            typeTo: 'easy',
+            distanceFrom: '5.9',
+            distanceTo: '4.1',
+            direction: 'down',
+        });
     });
 
     /** Intensity-only: the distance did not move, so repeating it reads as a bug. */
-    it('names only the session when the distance was held', () => {
+    it('names only the type when the distance was held', () => {
         expect(
-            easedFromLabel({
-                session_type: 'tempo',
-                distance_km: null,
-                voice: null,
-            }),
-        ).toBe('eased from tempo');
+            easedFromDelta(
+                { session_type: 'tempo', distance_km: null, voice: null },
+                planDay({ session_type: 'easy', distance_km: 4.1 }),
+            ),
+        ).toEqual({
+            typeFrom: 'tempo',
+            typeTo: 'easy',
+            distanceFrom: null,
+            distanceTo: '4.1',
+            direction: 'down',
+        });
+    });
+
+    it('names no type change when the type held', () => {
+        expect(
+            easedFromDelta(
+                { session_type: 'easy', distance_km: 5.9, voice: null },
+                planDay({ session_type: 'easy', distance_km: 4.1 }),
+            ).typeFrom,
+        ).toBeNull();
     });
 });
 
@@ -353,21 +381,51 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
     };
 }
 
-describe('kmLabel', () => {
-    it('reads a day still to come as the ask alone', () => {
-        expect(kmLabel(planDay())).toBe('8 km');
+describe('judgedDayResult', () => {
+    it('shows nothing for a day still to come', () => {
+        expect(judgedDayResult(planDay())).toBeNull();
     });
 
-    it('states what a judged day asked for and what was run against it', () => {
-        expect(kmLabel(planDay({ prescribed_km: 6, actual_km: 5.4 }))).toBe(
-            '6 km asked · 5.4 km run',
-        );
+    it('pairs what a judged day asked for with what was run, each with its own pace', () => {
+        expect(
+            judgedDayResult(
+                planDay({
+                    prescribed_km: 6,
+                    actual_km: 5.4,
+                    ran_pace_sec_per_km: 403,
+                }),
+            ),
+        ).toEqual({
+            askedKm: 6,
+            askedPace: '6:00/km',
+            ranKm: 5.4,
+            ranPace: '6:43/km',
+        });
     });
 
     it('reads a judged day nothing was run on as zero, not as blank', () => {
-        expect(kmLabel(planDay({ prescribed_km: 6 }))).toBe(
-            '6 km asked · 0 km run',
-        );
+        expect(judgedDayResult(planDay({ prescribed_km: 6 }))?.ranKm).toBe(0);
+    });
+
+    it('drops the asked pace on a rest day with no prescribed pace', () => {
+        expect(
+            judgedDayResult(
+                planDay({
+                    session_type: 'rest',
+                    segments: [],
+                    prescribed_km: 0,
+                    ran_pace_sec_per_km: 403,
+                }),
+            )?.askedPace,
+        ).toBeNull();
+    });
+
+    it('drops the ran pace when the credited runs carry no moving time', () => {
+        expect(
+            judgedDayResult(
+                planDay({ prescribed_km: 6, ran_pace_sec_per_km: null }),
+            )?.ranPace,
+        ).toBeNull();
     });
 });
 
@@ -450,14 +508,14 @@ describe('paceLabel', () => {
     });
 });
 
-describe('paceEaseLabel', () => {
-    it("shows the step-down as an arrow, from the original pace to the day's own (already eased) pace", () => {
+describe('paceEaseDelta', () => {
+    it("pairs the original pace with the day's own (already eased) pace", () => {
         expect(
-            paceEaseLabel({ pace_sec_per_km: 360, voice: null }, planDay()),
-        ).toBe('6:00 → 6:00/km');
+            paceEaseDelta({ pace_sec_per_km: 360, voice: null }, planDay()),
+        ).toEqual({ from: '6:00', to: '6:00/km' });
 
         expect(
-            paceEaseLabel(
+            paceEaseDelta(
                 { pace_sec_per_km: 360, voice: null },
                 planDay({
                     segments: [
@@ -472,72 +530,50 @@ describe('paceEaseLabel', () => {
                     ],
                 }),
             ),
-        ).toBe('6:00 → 6:15/km');
+        ).toEqual({ from: '6:00', to: '6:15/km' });
+    });
+
+    /**
+     * Regression: `eased_pace_sec_per_km` is the SLOW END of the easy band
+     * (`RestClampRecorder` writes `TrainingPaceCalculator::easySlowEndFromVdotResult()`
+     * there) and `PlanRenderer` builds the day's own `segments` from it — so
+     * the day's own pace (what the row reads via `corePaceSecPerKm`) is
+     * always the EASED, slower figure, never the original. `pace_eased_from`
+     * is independently recomputed from the athlete's un-eased paces, so it is
+     * always the faster, replaced one. A pace ease is never a speed-up: `to`
+     * (the day's own pace) must read slower than `from` (the replaced one).
+     */
+    it('reads the day’s own (eased) pace as the slower figure, never the original', () => {
+        const delta = paceEaseDelta(
+            { pace_sec_per_km: 380, voice: null }, // original: 6:20/km
+            planDay({
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 22.6,
+                        zone: 'Z2',
+                        pace_label: 'easy',
+                        km: 2.7,
+                        pace_sec_per_km: 502, // eased slow end: 8:22/km
+                    },
+                ],
+            }),
+        );
+
+        expect(delta).toEqual({ from: '6:20', to: '8:22/km' });
     });
 
     it('has nothing to show without a recorded original pace', () => {
         expect(
-            paceEaseLabel({ pace_sec_per_km: null, voice: null }, planDay()),
+            paceEaseDelta({ pace_sec_per_km: null, voice: null }, planDay()),
         ).toBeNull();
     });
 
     it('has nothing to show when the day itself carries no pace', () => {
         expect(
-            paceEaseLabel(
+            paceEaseDelta(
                 { pace_sec_per_km: 360, voice: null },
                 planDay({ session_type: 'rest', segments: [] }),
-            ),
-        ).toBeNull();
-    });
-});
-
-describe('isCreditedStatus', () => {
-    it('credits done, partial and overreached', () => {
-        expect(isCreditedStatus('done')).toBe(true);
-        expect(isCreditedStatus('partial')).toBe(true);
-        expect(isCreditedStatus('overreached')).toBe(true);
-    });
-
-    it('does not credit planned, missed or skip', () => {
-        expect(isCreditedStatus('planned')).toBe(false);
-        expect(isCreditedStatus('missed')).toBe(false);
-        expect(isCreditedStatus('skip')).toBe(false);
-    });
-});
-
-describe('creditedPaceLabel', () => {
-    it('labels both figures once a credited run has one to show', () => {
-        expect(creditedPaceLabel(planDay({ ran_pace_sec_per_km: 403 }))).toBe(
-            'target 6:00/km · ran 6:43/km',
-        );
-    });
-
-    it('drops the target half on a day with no prescribed pace', () => {
-        expect(
-            creditedPaceLabel(
-                planDay({
-                    session_type: 'rest',
-                    segments: [],
-                    ran_pace_sec_per_km: 403,
-                }),
-            ),
-        ).toBe('ran 6:43/km');
-    });
-
-    it('drops the ran half when the credited runs carry no moving time', () => {
-        expect(creditedPaceLabel(planDay({ ran_pace_sec_per_km: null }))).toBe(
-            'target 6:00/km',
-        );
-    });
-
-    it('shows nothing when neither figure is available', () => {
-        expect(
-            creditedPaceLabel(
-                planDay({
-                    session_type: 'rest',
-                    segments: [],
-                    ran_pace_sec_per_km: null,
-                }),
             ),
         ).toBeNull();
     });

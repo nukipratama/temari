@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
+import { DeltaPair } from '@/components/plan/DeltaPair';
 import WeekDayRow from '@/components/plan/WeekDayRow';
 import WeekVolumeChart from '@/components/plan/WeekVolumeChart';
 import Chip from '@/components/ui/Chip';
@@ -13,7 +14,12 @@ import {
 } from '@/components/ui/collapsible';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
-import { computeAdherence, isRaceWeek, weekRangeLabel } from '@/lib/plan';
+import {
+    computeAdherence,
+    deltaDirection,
+    isRaceWeek,
+    weekRangeLabel,
+} from '@/lib/plan';
 import { cardVariants } from '@/lib/variants';
 
 /** The dot on the season rail: filled and haloed for now, filled for done, hollow ahead. */
@@ -160,9 +166,21 @@ export default function SeasonWeekRow({
                                     />
                                 </span>
                                 <span className="mt-0.5 block text-label-micro text-text-3">
-                                    {Math.round(week.planned_km)} km target ·{' '}
-                                    {week.eased_from_km != null &&
-                                        `eased from ${Math.round(week.eased_from_km)} · `}
+                                    {week.eased_from_km == null ? (
+                                        `${Math.round(week.planned_km)} km target · `
+                                    ) : (
+                                        <>
+                                            <DeltaPair
+                                                from={`${Math.round(week.eased_from_km)}`}
+                                                to={`${Math.round(week.planned_km)} km target`}
+                                                direction={deltaDirection(
+                                                    week.eased_from_km,
+                                                    week.planned_km,
+                                                )}
+                                            />{' '}
+                                            ·{' '}
+                                        </>
+                                    )}
                                     {week.sessions} sessions
                                     {isCurrent && ' · this week'}
                                     {!isCurrent &&

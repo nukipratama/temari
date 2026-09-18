@@ -252,14 +252,46 @@ export function isRaceWeek(
     );
 }
 
-/** The session an eased day replaced, with its distance only when that moved. */
-export function easedFromLabel(easedFrom: PlanDayEasedFrom): string {
-    const session =
-        SESSION_TYPE_LABEL[easedFrom.session_type] ?? easedFrom.session_type;
+/** Which way a plan number moved — up when it increased, down when it decreased. */
+export type DeltaDirection = 'up' | 'down';
 
-    return easedFrom.distance_km === null
-        ? `eased from ${session}`
-        : `eased from ${easedFrom.distance_km} km ${session}`;
+/** @see DeltaDirection */
+export function deltaDirection(from: number, to: number): DeltaDirection {
+    return to >= from ? 'up' : 'down';
+}
+
+/**
+ * A changed session, read as a delta: the type when it moved, the distance
+ * when it moved. `typeFrom`/`distanceFrom` are null when that half held — an
+ * intensity-only ease names the distance alone, unchanged type omitted.
+ */
+export interface SessionChangeDelta {
+    typeFrom: string | null;
+    typeTo: string;
+    distanceFrom: string | null;
+    distanceTo: string;
+    direction: DeltaDirection;
+}
+
+export function easedFromDelta(
+    easedFrom: PlanDayEasedFrom,
+    day: PlanDay,
+): SessionChangeDelta {
+    const fromType =
+        SESSION_TYPE_LABEL[easedFrom.session_type] ?? easedFrom.session_type;
+    const toType = SESSION_TYPE_LABEL[day.session_type] ?? day.session_type;
+
+    return {
+        typeFrom: fromType === toType ? null : fromType,
+        typeTo: toType,
+        distanceFrom:
+            easedFrom.distance_km === null ? null : `${easedFrom.distance_km}`,
+        distanceTo: `${day.distance_km}`,
+        direction:
+            easedFrom.distance_km === null
+                ? 'down'
+                : deltaDirection(easedFrom.distance_km, day.distance_km),
+    };
 }
 
 /**
@@ -282,25 +314,13 @@ export function clampSummary(clamp: PlanDayClamp, plannedKm: number): string {
 }
 
 /**
- * A day the plan has already judged states both facts it recorded: what it
- * asked for, and what was run. Every other day shows the ask alone, sized
- * against the athlete's fitness today.
- */
-export function kmLabel(day: PlanDay): string {
-    if (day.prescribed_km == null) {
-        return `${day.distance_km} km`;
-    }
-
-    return `${day.prescribed_km} km asked · ${day.actual_km ?? 0} km run`;
-}
-
-/**
  * The current week's live volume redistribution can shrink an ungraded day's
  * `distance_km` below what it was originally sized at (`asked_km`) as the
  * athlete banks km elsewhere in the week. Returns that original figure only
  * when it has actually moved, so the day's header can say why its number
- * doesn't match what Home or its own narration says. A graded day (`prescribed_km`
- * set) already has a settled answer to this via {@see kmLabel}.
+ * doesn't match what Home or its own narration says. A graded day
+ * (`prescribed_km` set) already has a settled answer to this via
+ * {@see judgedDayResult}.
  */
 export function volumeAdjustedFrom(day: PlanDay): number | null {
     if (day.prescribed_km != null || day.session_type === 'rest') {
@@ -312,60 +332,80 @@ export function volumeAdjustedFrom(day: PlanDay): number | null {
         : null;
 }
 
-/** The core set's pace target, which is the one pace an unrun day is read at. */
-export function paceLabel(day: PlanDay): string | null {
+/** The core segment's own pace, in seconds/km — the number every pace figure
+ *  on a day (the target, a pace-ease delta) reads from. Null with no VDOT
+ *  estimate to size one. */
+function corePaceSecPerKm(day: PlanDay): number | null {
     const core = day.segments.find(
         (s) => s.key === 'main' || s.key === 'interval',
     );
 
-    return core?.pace_sec_per_km == null
-        ? null
-        : `${formatPace(core.pace_sec_per_km)}/km`;
+    return core?.pace_sec_per_km ?? null;
+}
+
+/** The core set's pace target, which is the one pace an unrun day is read at. */
+export function paceLabel(day: PlanDay): string | null {
+    const sec = corePaceSecPerKm(day);
+    return sec == null ? null : `${formatPace(sec)}/km`;
 }
 
 /**
- * The pace-only step-down as one line: "6:00 → 6:15/km". The day's own
- * segments already carry the slower (eased) pace, so this only supplies the
- * pace it replaced — the arrow is the whole story, no session type or
- * distance to name since neither moved.
+ * The pace-only step-down as a delta: the original pace and the day's own
+ * (already eased, effective) one — the day's own segments already carry the
+ * eased pace, so this only supplies the pace it replaced. No direction: a
+ * bigger pace number is an easier day, not a "worse" one, so this never
+ * carries an up/down arrow — render it with `DeltaPair`'s `neutral` direction.
  */
-export function paceEaseLabel(
+export interface PaceEaseDelta {
+    from: string;
+    to: string;
+}
+
+export function paceEaseDelta(
     paceEasedFrom: PlanDayPaceEasedFrom,
     day: PlanDay,
-): string | null {
-    const current = paceLabel(day);
-    if (paceEasedFrom.pace_sec_per_km == null || current === null) {
+): PaceEaseDelta | null {
+    const toSec = corePaceSecPerKm(day);
+    if (paceEasedFrom.pace_sec_per_km == null || toSec == null) {
         return null;
     }
 
-    return `${formatPace(paceEasedFrom.pace_sec_per_km)} → ${current}`;
-}
-
-/** Whether a day's status counts toward the week's "showed up" total — mirrors `PlannedSessionStatus::isCredited()`. */
-export function isCreditedStatus(status: PlanDay['status']): boolean {
-    return (
-        status === 'done' || status === 'partial' || status === 'overreached'
-    );
+    return {
+        from: formatPace(paceEasedFrom.pace_sec_per_km),
+        to: `${formatPace(toSec)}/km`,
+    };
 }
 
 /**
- * Once a day has a credited run, its prescribed pace can no longer stand
- * alone next to the run's own distance — it would read as the run's pace,
- * which is the bug this replaced. Each half is labelled and shown only when
- * it has a real number behind it: `target` drops out with no prescribed
- * pace, `ran` drops out when the credited runs carry no moving time to
- * compute one from.
+ * A day the plan has judged, paired by side rather than by figure: what it
+ * asked for (distance and its effective pace together) and what was run
+ * (distance and the pace over the credited runs). The asked pace is the
+ * effective target — the eased pace on a pace-eased day, since `segments`
+ * already carries it (#932/#965); the ran pace is the pace over the runs
+ * `SessionMatcher` credits (#962). Null on a day still ahead, which shows the
+ * ask alone instead.
  */
-export function creditedPaceLabel(day: PlanDay): string | null {
-    const target = paceLabel(day);
-    const parts = [
-        target === null ? null : `target ${target}`,
-        day.ran_pace_sec_per_km == null
-            ? null
-            : `ran ${formatPace(day.ran_pace_sec_per_km)}/km`,
-    ].filter((part): part is string => part !== null);
+export interface JudgedDayResult {
+    askedKm: number;
+    askedPace: string | null;
+    ranKm: number;
+    ranPace: string | null;
+}
 
-    return parts.length === 0 ? null : parts.join(' · ');
+export function judgedDayResult(day: PlanDay): JudgedDayResult | null {
+    if (day.prescribed_km == null) {
+        return null;
+    }
+
+    return {
+        askedKm: day.prescribed_km,
+        askedPace: paceLabel(day),
+        ranKm: day.actual_km ?? 0,
+        ranPace:
+            day.ran_pace_sec_per_km == null
+                ? null
+                : `${formatPace(day.ran_pace_sec_per_km)}/km`,
+    };
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
