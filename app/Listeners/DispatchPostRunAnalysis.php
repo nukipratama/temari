@@ -60,12 +60,13 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $ruleBased = match ($verdict) {
             NarrationVerdict::Demo,
             NarrationVerdict::TooOld,
-            NarrationVerdict::PreConnect,
-            NarrationVerdict::AwaitingBacklog => true,
+            NarrationVerdict::PreConnect => true,
+            NarrationVerdict::AwaitingBacklog,
             NarrationVerdict::Eligible,
             NarrationVerdict::Inactive => false,
         };
         $athleteAway = $verdict === NarrationVerdict::Inactive;
+        $stageOnly = $athleteAway || $verdict === NarrationVerdict::AwaitingBacklog;
 
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
@@ -76,9 +77,9 @@ class DispatchPostRunAnalysis implements ShouldQueue
             $this->complianceScorer->creditIfEarned($user, $detail->start_date_local, Carbon::today());
         }
 
-        $this->requestCardFlavor($activity, $ruleBased, $athleteAway, $delaySec);
+        $this->requestCardFlavor($activity, $ruleBased, $stageOnly, $delaySec);
 
-        $this->dispatchActivityGroup($activity, $isBackfill, $ruleBased, $athleteAway, $delaySec);
+        $this->dispatchActivityGroup($activity, $isBackfill, $ruleBased, $stageOnly, $delaySec);
 
         // Daily cadence: when the ingested run is today's, refresh the whole
         // daily AI set so each block narrates with every run done so far today.
@@ -150,14 +151,14 @@ class DispatchPostRunAnalysis implements ShouldQueue
         }
     }
 
-    private function requestCardFlavor(Activity $activity, bool $ruleBased, bool $athleteAway, int $delaySec): void
+    private function requestCardFlavor(Activity $activity, bool $ruleBased, bool $stageOnly, int $delaySec): void
     {
         $card = $activity->runCard;
         if ($card === null) {
             return;
         }
 
-        if ($athleteAway) {
+        if ($stageOnly) {
             $this->analysisService->requestDeferred(RunCard::class, $card->id, AnalysisType::CardFlavor);
 
             return;
@@ -204,7 +205,8 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * A run the athlete did before they signed up, like one past the backfill
      * age cap, is filled deterministically here and narrated by the LLM only if
      * they open it — see {@see NarrationEligibility}. A run of an athlete away
-     * from the app is only staged; their return narrates it.
+     * from the app is only staged; their return narrates it. So is a run whose
+     * older history is still hydrating; ai:self-heal narrates it once that lands.
      *
      * Backfilled (old) runs stage their narration group Pending and let the
      * chain narrate them one activity at a time, oldest first: each ingest
@@ -224,7 +226,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * state branch) is reserved for the common case: the chain is already
      * caught up.
      */
-    private function dispatchActivityGroup(Activity $activity, bool $isBackfill, bool $ruleBased, bool $athleteAway, int $delaySec): void
+    private function dispatchActivityGroup(Activity $activity, bool $isBackfill, bool $ruleBased, bool $stageOnly, int $delaySec): void
     {
         if ($ruleBased) {
             $this->analysisService->requestActivityGroupRuleBased($activity);
@@ -232,7 +234,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
             return;
         }
 
-        if ($athleteAway) {
+        if ($stageOnly) {
             $this->analysisService->requestActivityGroupDeferred($activity);
 
             return;

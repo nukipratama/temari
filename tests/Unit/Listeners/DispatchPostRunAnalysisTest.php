@@ -813,3 +813,26 @@ it('narrates the run of an athlete seen on the edge of the active window exactly
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Bus::assertDispatched(AnalyzeProfileVoiceJob::class);
 });
+
+it('stages a recent run Pending, never narrated or templated, while its older history is still hydrating', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $activity = analyzedActivity('2026-06-05 06:00:00');
+    StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-06-10 08:00:00')]);
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+    $older = Activity::factory()->for($activity->user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::parse('2025-11-26 06:00:00')]);
+
+    fire($activity);
+
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+    Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
+    $held = Analysis::query()
+        ->where(fn ($query) => $query
+            ->where(fn ($q) => $q->where('subject_type', Activity::class)->where('subject_id', $activity->id))
+            ->orWhere(fn ($q) => $q->where('subject_type', RunCard::class)->where('subject_id', $card->id)))
+        ->get();
+    expect($held)->not->toBeEmpty()
+        ->and($held->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Pending))->toBeTrue();
+
+    Carbon::setTestNow();
+});
