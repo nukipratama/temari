@@ -92,8 +92,8 @@ surfaces draw it now:
 - [BrandMark](../../resources/js/components/BrandMark.tsx) — the larger wordmark lockup, on Login.
 - [RouteGlyph](../../resources/js/components/card/RouteGlyph.tsx) — a Card's watermark when a run
   has no route to draw, and `RunCardMini`'s corner signature.
-- The share card, whose wordmark is set in Fraunces italic by the server renderer
-  ([Svg::wordmark](../../app/Services/Run/Story/Card/Svg.php)) — see [[share-card]].
+- The share card, whose wordmark is set in Fraunces italic by the browser renderer
+  ([wordmark](../../resources/js/lib/card/svg.ts)) — see [[share-card]].
 
 ## See also
 
