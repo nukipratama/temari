@@ -19,6 +19,9 @@ env:
   # Backend coverage shard count for PRs (see backend-tests-shard). Keep in
   # sync with that job's `strategy.matrix.shard` list.
   SHARD_TOTAL: 3
+  # Frontend coverage shard count for PRs (see frontend-tests-shard). Keep in
+  # sync with that job's `strategy.matrix.shard` list.
+  FRONTEND_SHARD_TOTAL: 3
 
 # Least-privilege default for GITHUB_TOKEN across every job; a job that needs
 # more widens it in its own permissions block.
@@ -342,9 +345,13 @@ jobs:
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # Push-to-main only: no coverage, unsharded — mirrors backend-tests. A push
+  # is already-gated (it can only land via a PR that ran ci-gate), so this
+  # runs the plain suite once, fast, with no v8 coverage instrumentation on
+  # the deploy critical path.
   frontend-tests:
     needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.frontend == 'true') }}
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && needs.changes.outputs.frontend == 'true' && github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -361,25 +368,104 @@ jobs:
       - name: Raw Tailwind palette guard
         run: npm run check:palette
 
-      # Coverage is a merge gate, mirroring backend-tests: it runs on the PR,
-      # which is the only way anything reaches main. Running it again on the
-      # main push would gate an already-gated tree.
       - name: Vitest
+        run: npm run test
+
+      # The only gate that reads the built bundle: without it a stray static
+      # import can put a chart or animation library back on first paint silently.
+      - name: Build assets
+        run: npm run build
+
+      - name: Entry chunk guard (first-paint budget)
+        run: npm run check:chunks
+
+  # PR only: coverage instrumentation adds only ~15s (measured: ~144s Vitest
+  # step with --coverage vs ~129s without, on the same runners), but Vitest's
+  # own per-file jsdom environment setup dominates the rest — profiled
+  # locally, "environment" time swamped transform/setup/test-body time by a
+  # wide margin. Disabling test isolation (--no-isolate) cut wall-clock by
+  # more than half but broke 117 tests via cross-file state leaks (mocks and
+  # module state are not meant to survive across files), so that's not a safe
+  # cheaper fix here. Switching the worker pool from the default `forks` to
+  # `threads` made it *five times slower* locally (356s vs 78s) and produced
+  # 3 errors, so that's rejected too. Sharding the whole run (not just
+  # coverage) across N parallel jobs — mirroring backend-tests-shard — is what
+  # the profile actually supports: each shard writes a Vitest "blob" report
+  # (test results + raw v8 coverage) with its own per-shard threshold checks
+  # disabled; frontend-coverage-merge below merges the blobs with
+  # `--mergeReports` and applies the real thresholds once, against the merged
+  # whole — never per shard (a shard only sees a slice of the suite, so its
+  # own coverage is expected to sit well under the threshold).
+  frontend-tests-shard:
+    needs: [changes, secret-scan, repo-guards]
+    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && needs.changes.outputs.frontend == 'true' && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/show-runner-resources
+        with:
+          workers-label: vitest workers
+
+      - uses: ./.github/actions/setup-node
+
+      - name: Component/test 1:1 structure check
+        run: npx vitest run resources/js/test/structure.test.ts
+
+      - name: Raw Tailwind palette guard
+        run: npm run check:palette
+
+      - name: Vitest (shard ${{ matrix.shard }}/${{ env.FRONTEND_SHARD_TOTAL }})
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "Running Vitest with coverage (threshold gate)"
-            npm run test:coverage
-          else
-            echo "Running Vitest without coverage"
-            npm run test
-          fi
+          # --reporter=blob records this shard's test results + raw v8 coverage
+          # for frontend-coverage-merge to combine; --reporter=default alongside
+          # it keeps the normal pass/fail console output for this step's own
+          # log. Thresholds are disabled here (a shard only sees its own slice
+          # of the suite) and applied once, for real, at the merge step.
+          npx vitest run \
+            --shard="${{ matrix.shard }}/${FRONTEND_SHARD_TOTAL}" \
+            --coverage \
+            --coverage.thresholds.lines=0 --coverage.thresholds.functions=0 \
+            --reporter=blob --reporter=default \
+            --outputFile=".vitest-reports/blob-${{ matrix.shard }}.json"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vitest-blob-${{ matrix.shard }}
+          path: .vitest-reports/blob-${{ matrix.shard }}.json
+          retention-days: 1
+
+  # Merges the N shards' blob reports (test results + raw coverage) and
+  # applies the real coverage thresholds exactly once, to the merged
+  # whole-suite total.
+  frontend-coverage-merge:
+    needs: frontend-tests-shard
+    if: needs.frontend-tests-shard.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-node
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: vitest-blob-*
+          path: .vitest-reports
+          merge-multiple: true
+
+      - name: Merge shard reports and check coverage thresholds on the whole suite
+        run: npx vitest run --mergeReports=.vitest-reports --coverage
 
       - name: Vitest summary
         if: always()
         run: |
           if [ -f coverage/coverage-summary.json ]; then
             {
-              echo "### Frontend · Tests (Vitest)"
+              echo "### Frontend · Tests (Vitest, ${{ env.FRONTEND_SHARD_TOTAL }}-way shard)"
               echo ""
               echo "| Metric | % | Covered / Total |"
               echo "| --- | --- | --- |"
@@ -454,18 +540,20 @@ jobs:
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [changes, backend-tests, backend-tests-shard, backend-coverage-merge, frontend-tests, backend-static-analysis, frontend-static-analysis, build, secret-scan, repo-guards]
+    needs: [changes, backend-tests, backend-tests-shard, backend-coverage-merge, frontend-tests, frontend-tests-shard, frontend-coverage-merge, backend-static-analysis, frontend-static-analysis, build, secret-scan, repo-guards]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Require upstream jobs to have succeeded (or cleanly skipped)
         run: |
-          # backend-tests-shard/backend-coverage-merge run only on a PR, and
-          # backend-tests only on a push — one pair is a clean "skipped" on any
-          # given run, never both failing to run at all. A missing, cancelled
-          # or failed shard (or a skipped merge behind a failed shard) must
-          # still red the gate, so it's checked the same as every other job.
-          for r in "${{ needs.backend-tests.result }}" "${{ needs.backend-tests-shard.result }}" "${{ needs.backend-coverage-merge.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.backend-static-analysis.result }}" "${{ needs.frontend-static-analysis.result }}" "${{ needs.build.result }}"; do
+          # backend-tests-shard/backend-coverage-merge and
+          # frontend-tests-shard/frontend-coverage-merge run only on a PR, and
+          # backend-tests/frontend-tests only on a push — each pair is a clean
+          # "skipped" on any given run, never both failing to run at all. A
+          # missing, cancelled or failed shard (or a skipped merge behind a
+          # failed shard) must still red the gate, so it's checked the same as
+          # every other job.
+          for r in "${{ needs.backend-tests.result }}" "${{ needs.backend-tests-shard.result }}" "${{ needs.backend-coverage-merge.result }}" "${{ needs.frontend-tests.result }}" "${{ needs.frontend-tests-shard.result }}" "${{ needs.frontend-coverage-merge.result }}" "${{ needs.backend-static-analysis.result }}" "${{ needs.frontend-static-analysis.result }}" "${{ needs.build.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
           for r in "${{ needs.secret-scan.result }}" "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do

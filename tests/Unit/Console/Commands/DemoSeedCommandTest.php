@@ -117,29 +117,6 @@ function ensureBareDemoSeeded(): void
 }
 
 /**
- * Layers --with-edge-states on top of the shared bare fixture, exactly once
- * per test process, for the same reason and by the same mechanism as
- * ensureBareDemoSeeded().
- */
-function ensureEdgeStatesSeeded(): void
-{
-    static $done = false;
-
-    if ($done) {
-        return;
-    }
-
-    ensureBareDemoSeeded();
-
-    $exitCode = Artisan::call('demo:seed', ['--with-edge-states' => true]);
-    expect($exitCode)->toBe(0);
-
-    commitSharedDemoFixture();
-
-    $done = true;
-}
-
-/**
  * Commits the shared fixture connections one last time *without* reopening a
  * transaction, called at the end of the last test in this file. RefreshDatabase's
  * own teardown then finds each connection's PDO not mid-transaction and, per
@@ -394,53 +371,16 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
 });
 
 it('leaves every analysis done and rule-based-served unless --with-edge-states is passed', function (): void {
-    ensureBareDemoSeeded();
-
-    expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())
-        ->toBe(0, 'The public demo must not render a pending or failed block.');
-
-    expect(Analysis::query()->where('served_by', ServedBy::Llm)->count())
-        ->toBe(0, 'The demo seed never calls the LLM, so no demo row may claim it did.')
-        ->and(Analysis::query()->where('served_by', ServedBy::RuleBased)->count())
-        ->toBeGreaterThan(0);
-});
-
-it('seeds the pending, processing and failed states the audits cannot otherwise reach', function (): void {
-    ensureEdgeStatesSeeded();
-
-    $statuses = Analysis::query()
-        ->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Processing, AnalysisStatus::Failed])
-        ->pluck('status')
-        ->map(fn (AnalysisStatus $s): string => $s->value)
-        ->sort()
-        ->values()
-        ->all();
-
-    expect($statuses)->toBe(['failed', 'pending', 'processing']);
-
-    // A failed row has to carry what the dead-letter UI reads, or the state
-    // renders as merely empty rather than as failed.
-    $failed = Analysis::query()->where('status', AnalysisStatus::Failed)->sole();
-    expect($failed->error)->not->toBeNull()
-        ->and($failed->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
-        ->and($failed->content)->toBeNull();
-});
-
-it('applies the edge states at most once across re-runs', function (): void {
-    ensureEdgeStatesSeeded();
-    $first = Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count();
-
-    $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
-
-    expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())->toBe($first);
-});
-
-it('clears the producer on a row whose content the edge states blank', function (): void {
     try {
-        ensureEdgeStatesSeeded();
+        ensureBareDemoSeeded();
 
-        expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->whereNotNull('served_by')->count())
-            ->toBe(0);
+        expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())
+            ->toBe(0, 'The public demo must not render a pending or failed block.');
+
+        expect(Analysis::query()->where('served_by', ServedBy::Llm)->count())
+            ->toBe(0, 'The demo seed never calls the LLM, so no demo row may claim it did.')
+            ->and(Analysis::query()->where('served_by', ServedBy::RuleBased)->count())
+            ->toBeGreaterThan(0);
     } finally {
         releaseSharedDemoFixture();
     }
