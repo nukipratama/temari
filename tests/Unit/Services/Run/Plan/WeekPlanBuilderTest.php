@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
+use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\WeekPlanBuilder;
 use Illuminate\Support\Carbon;
@@ -240,6 +241,11 @@ it('leaves the season-goal slot count on the unadapted phase baseline', function
     expect($this->builder->qualitySlotCount(PlanPhase::Build, 6, null, true))->toBe(2);
 });
 
+it('counts a race season\'s general-zone week at its base-rule slot count, not the block\'s', function (): void {
+    expect($this->builder->qualitySlotCount(PlanPhase::Build, 6, 10_000.0, false, PhaseSchedule::ZONE_GENERAL))->toBe(1)
+        ->and($this->builder->qualitySlotCount(PlanPhase::Build, 6, 10_000.0, false, PhaseSchedule::ZONE_BLOCK))->toBe(2);
+});
+
 it('classifies marathon distance at and above the threshold, never on a null race', function (): void {
     expect(WeekPlanBuilder::isMarathonDistance(null))->toBeFalse()
         ->and(WeekPlanBuilder::isMarathonDistance(21_097.5))->toBeFalse()
@@ -402,6 +408,34 @@ it('holds Base at one quality session even when the adapter asks for more', func
     );
 
     expect($quality)->toHaveCount(1);
+});
+
+it('trains a race season\'s general-zone week by base rules: at most one quality slot, and it is a tempo', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, zone: PhaseSchedule::ZONE_GENERAL);
+
+    expect(qualityCount($rows))->toBe(1)
+        ->and(collect($rows)->pluck('session_type'))->not->toContain(SessionType::Interval);
+});
+
+it('leaves a race season\'s block-zone week unchanged by the general-zone rule', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, zone: PhaseSchedule::ZONE_BLOCK);
+
+    expect(qualityCount($rows))->toBe(2)
+        ->and(collect($rows)->pluck('session_type'))->toContain(SessionType::Interval);
+});
+
+it('does not let quality_delta push a general-zone week past one quality session', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, null, 1, zone: PhaseSchedule::ZONE_GENERAL);
+
+    expect(qualityCount($rows))->toBe(1);
+});
+
+it('leaves a self-scaled (goal-less) season unchanged by the general-zone rule', function (): void {
+    $generalZone = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true, zone: PhaseSchedule::ZONE_GENERAL);
+    $blockZone = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true, zone: PhaseSchedule::ZONE_BLOCK);
+
+    expect(qualityCount($generalZone))->toBe(2)
+        ->and(array_column($generalZone, 'session_type'))->toBe(array_column($blockZone, 'session_type'));
 });
 
 it('keeps a Base week under a fifth of its volume at threshold or faster', function (): void {

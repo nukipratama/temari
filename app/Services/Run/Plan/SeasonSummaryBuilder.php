@@ -126,7 +126,7 @@ final readonly class SeasonSummaryBuilder
 
         $result = [];
         foreach ($weeks as $i => $week) {
-            $dayRows = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled, raceDate: $race?->race_date);
+            $dayRows = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled, raceDate: $race?->race_date, zone: $week['zone']);
             $primaryEasyDate = self::primaryEasyDate($dayRows);
 
             $plannedKm = 0.0;

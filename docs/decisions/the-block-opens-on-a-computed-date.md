@@ -54,7 +54,7 @@ The first design, grilled on 2026-09-11, made the season *be* the block: the `Se
 
 **Costs and limits.**
 - A race set far out now prescribes flat volume until the block opens. That is intended: the growth before then comes from the baseline following real volume.
-- The general weeks still pick session types in race mode. Only their volume is general.
+- ~~The general weeks still pick session types in race mode. Only their volume is general.~~ Fixed 2026-09-18 (#973): a general-zone week now trains its quality block by base rules — see [[plan-periodizer]].
 - [PlanRenderer](app/Services/Run/Plan/PlanRenderer.php)'s fallback for rows written before multipliers were stored has no zones, so it keeps the old whole-arc curve for those rows.
 - Only two athletes exist in production, so nothing is backfilled. The next regeneration writes the new multipliers.
 

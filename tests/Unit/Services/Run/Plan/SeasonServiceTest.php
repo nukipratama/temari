@@ -188,6 +188,27 @@ it('scales the quality-session target with the athlete\'s own trailing session c
     expect($qualityGoal->target)->toBe(18.0);
 });
 
+it('counts a race season\'s general-zone weeks at their reduced, base-rule quality slot count', function (): void {
+    $user = User::factory()->create();
+    foreach (range(0, 5) as $i) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::today()->subWeeks($i)->toDateString(),
+            'runs' => 6,
+            'distance_km' => 60.0,
+        ]);
+    }
+    RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-08', 'distance_m' => 10_000]);
+
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $qualityGoal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_quality_completed')->first();
+
+    // 31-week arc: 15 general weeks (12 Build @ 1 slot + 3 Deload @ 0) = 12,
+    // 16 block weeks (3 Base @ 1 + 2 Deload @ 0 + 6 Build @ 2 + 4 Peak @ 2 +
+    // 1 Taper @ 2) = 25. A general-zone Build week no longer counts the
+    // block's race-mode 2-slot mix.
+    expect($qualityGoal->target)->toBe(37.0);
+});
+
 it('respects an explicit sessions_per_week preference below the old behavioral floor of 3', function (): void {
     $user = User::factory()->create();
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 2, 'run_days' => null, 'long_run_day' => null]);
