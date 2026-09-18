@@ -20,6 +20,21 @@ code_refs:
 
 > **2026-09-10 — `AnalysisCadence` removed.** The enum cited below no longer exists (it had no production callers). The windowed-cadence path it labelled is unchanged; see [[llm-triggers]] for how each type's dispatch origin is actually determined.
 
+> **2026-09-18 — a new athlete's kickoff only reaches periods that closed after they connected.**
+> #993: [KickoffWeeklyRecaps](app/Actions/AI/KickoffWeeklyRecaps.php) /
+> [KickoffMonthlyRecaps](app/Actions/AI/KickoffMonthlyRecaps.php) used to narrate every completed
+> week and month back to the 84-day `BackfillAgeGate` cutoff regardless of when the athlete
+> connected, so a three-month backfill narrated roughly twelve weekly and three monthly recaps on
+> day one — periods Temari never watched. Both kickoffs now also route a period whose close (the
+> week's `week_ending`, or the month's last day) fell before
+> [`HydrationBacklog::connectedAt()`](app/Services/AI/HydrationBacklog.php) — reading
+> `strava_connections.created_at`, the same anchor [[recap-waits-for-hydration]] and
+> [[history-narrates-on-demand]] already use — to `AnalysisService::requestRuleBased()` alongside
+> the too-old bucket, bypassing the hydration wait entirely: a pre-connect period is filled
+> rule-based up front and never left `Pending`. This matches the shape #989 gives per-run
+> narration and the rule #922 applies on return. The demo account is unaffected: it never reaches
+> either kickoff's `RecentlyActiveUsers` query.
+
 ## Context
 
 A weekly or monthly recap describes a whole period. But activities trickle in across that period (each Strava ingest fires the post-run cascade). If the recap narrated on every ingest, the *same* recap would be re-billed several times per week as runs landed — and any narration produced mid-window would describe an incomplete period. We needed the recap to bill once, on final data, after the window closes.

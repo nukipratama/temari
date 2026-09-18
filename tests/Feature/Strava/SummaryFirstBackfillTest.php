@@ -201,7 +201,7 @@ it('renders the feed and calendar for a summary-only run without inventing a zer
         ->and($runCells->first()['trimp'])->toBeNull();
 });
 
-it('holds the backfilled history back until it is hydrated, then narrates it without one extra Strava read', function (): void {
+it('fills the backfilled history rule-based since it closed before the connection, without one extra Strava read', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
     Bus::fake();
 
@@ -236,16 +236,21 @@ it('holds the backfilled history back until it is hydrated, then narrates it wit
     // both kickoffs read, so nothing goes back to Strava.
     Http::assertSentCount(1);
 
-    // Every backfilled run is still summary-only, so the weekly recap waits for
-    // the hydration drain rather than narrating a week with no load in it.
+    // The connection lands in June; every backfilled run closed in May, before
+    // it. #993: both recaps are filled rule-based immediately rather than
+    // waiting on hydration or the LLM — Temari was not there for that period.
+    $weekly = collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap);
     $monthly = collect($captured)->firstWhere('type', AnalysisType::MonthlyRecap);
 
-    expect(collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap))->toBeNull()
+    expect($weekly)->not->toBeNull()
+        ->and($weekly['ruleBased'])->toBeTrue()
         ->and($monthly)->not->toBeNull()
+        ->and($monthly['ruleBased'])->toBeTrue()
         ->and($monthly['subjectId'])->toBe($user->id)
-        ->and($monthly['discriminator'])->toBe('2026-05')
-        ->and($monthly['invalidate'])->toBeFalse();
+        ->and($monthly['discriminator'])->toBe('2026-05');
 
+    // Still rule-based once hydration finishes: the connect-date gate decided
+    // this, not the hydration backlog.
     Activity::query()->withStubs()->where('user_id', $user->id)->update(['ingest_state' => IngestState::Detailed]);
 
     $captured = [];
@@ -258,7 +263,7 @@ it('holds the backfilled history back until it is hydrated, then narrates it wit
 
     expect($weekly)->not->toBeNull()
         ->and($weekly['subjectOrType'])->toBe(WeeklySnapshot::class)
-        ->and($weekly['invalidate'])->toBeFalse();
+        ->and($weekly['ruleBased'])->toBeTrue();
 
     Carbon::setTestNow();
 });

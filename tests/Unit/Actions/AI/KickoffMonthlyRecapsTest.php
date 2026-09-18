@@ -6,6 +6,7 @@ use App\Actions\AI\KickoffMonthlyRecaps;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -114,6 +115,48 @@ it('fills a month past the backfill depth cap rule-based and narrates the rest, 
         ->toBe(['2026-04', '2026-05'])
         ->and(collect($captured)->where('ruleBased', false)->pluck('delaySeconds')->all())
         ->toBe([0, 100]);
+});
+
+it('fills a month that closed before the athlete connected rule-based, and narrates one that closed after', function (): void {
+    $user = User::factory()->create();
+    // Connected mid-May: April already closed, May had not.
+    StravaConnection::factory()->for($user)->create(['created_at' => '2026-05-20 08:00:00']);
+
+    backfilledRunInMonth($user, '2026-04');
+    backfilledRunInMonth($user, '2026-05');
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 1]);
+
+    expect(collect($captured)->firstWhere('discriminator', '2026-04')['ruleBased'])->toBeTrue()
+        ->and(collect($captured)->firstWhere('discriminator', '2026-05'))
+        ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
+});
+
+it('narrates every completed month for an athlete who connected long ago', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => '2025-01-01 00:00:00']);
+    backfilledRunInMonth($user, '2026-05');
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 0])
+        ->and(array_column($captured, 'discriminator'))->toBe(['2026-05']);
+});
+
+it('never dispatches for the demo account regardless of connect date', function (): void {
+    $demo = User::factory()->demo()->create();
+    StravaConnection::factory()->for($demo)->create(['created_at' => Carbon::today()->subDay()]);
+    backfilledRunInMonth($demo, '2026-05');
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffMonthlyRecaps::class)($demo->id))->toBe(['dispatched' => 0, 'rule_based' => 0])
+        ->and($captured)->toBeEmpty();
 });
 
 it('re-dispatches nothing on a second run once every recap is Done', function (): void {
