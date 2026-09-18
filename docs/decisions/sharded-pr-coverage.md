@@ -6,6 +6,7 @@ status: accepted
 reviewed: 2026-09-18
 code_refs:
   - .github/workflows/ci.yml
+  - tests/.pest/shards.json
 ---
 
 # PR backend coverage is sharded, not moved off the PR
@@ -30,9 +31,16 @@ Two alternatives were rejected:
 
 Backend tests with coverage are split across `SHARD_TOTAL` (3) parallel GitHub-hosted jobs on a
 PR only (`backend-tests-shard`, [ci.yml](../../.github/workflows/ci.yml#L196)), using Pest's
-`--shard=i/N` ([Shard plugin](https://github.com/pestphp/pest), round-robin by test class — no
-`shards.json` time-balancing file is committed, so shards are only as balanced as the class list
-happens to be). Each shard writes its own raw coverage object with a plain PHPUnit
+`--shard=i/N` ([Shard plugin](https://github.com/pestphp/pest)). Plain round-robin (by test-class
+index, no timing data) put one file — `DemoSeedCommandTest`, the single heaviest file in the suite
+even after [#1019](https://github.com/nukipratama/temari/issues/1019) — alongside enough other
+classes to make its shard the long pole (measured: 105s vs ~45s for the other two shards' own
+"Tests" step). `tests/.pest/shards.json` is committed instead: Pest's `--update-shards` records a
+per-class wall-time timing, and every `--shard` run then uses LPT bin-packing to keep each shard's
+*total* time close to equal rather than just its file count. Regenerate it (`--update-shards
+--exclude-group=structure`, same flags as the real run) when the suite's shape changes enough that
+balance drifts — Pest warns (doesn't fail) when it sees test classes the file doesn't know about.
+Each shard writes its own raw coverage object with a plain PHPUnit
 `--coverage-php` (not Pest's own `--coverage`/`--min`, which hardcodes an internal temp path and
 deletes it after printing a single-run report); ParaTest — Pest's `--parallel` implementation —
 already merges each of its own worker processes' coverage into that one file, so a shard ends up
