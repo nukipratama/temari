@@ -17,7 +17,12 @@ const identity = {
     strava_connected: true,
 };
 
-const stats = { total_runs: 63, total_km: 544.1, longest_run_km: 17.99 };
+const stats = {
+    total_runs: 63,
+    total_km: 544.1,
+    longest_run_km: 17.99,
+    has_activity: true,
+};
 
 beforeEach(() => {
     setMockPage({
@@ -76,6 +81,27 @@ describe('Profile', () => {
         expect(screen.getByText('544.1')).toBeInTheDocument();
         expect(screen.getByText('Total runs')).toBeInTheDocument();
         expect(screen.getByText('Longest run')).toBeInTheDocument();
+    });
+
+    it('shows an empty state instead of zeros for a brand-new athlete with no activity', () => {
+        render(
+            <Profile
+                identity={{ ...identity, first_run_at: null }}
+                stats={{
+                    total_runs: 0,
+                    total_km: 0,
+                    longest_run_km: 0,
+                    has_activity: false,
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByText(/no runs yet\. sync your first one/),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Total km')).not.toBeInTheDocument();
+        expect(screen.queryByText('0.0')).not.toBeInTheDocument();
+        expect(screen.queryByText('0.00')).not.toBeInTheDocument();
     });
 
     it('renders the time-in-zone bar when the window has zone time', () => {

@@ -105,4 +105,13 @@ describe('ProfileHero', () => {
             screen.getByRole('button', { name: 'Reconnect' }),
         ).toBeInTheDocument();
     });
+
+    it('shows an empty message instead of the stat rail when there are no stats', () => {
+        renderHero({ stats: [] });
+
+        expect(
+            screen.getByText(/no runs yet\. sync your first one/),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Total runs')).not.toBeInTheDocument();
+    });
 });

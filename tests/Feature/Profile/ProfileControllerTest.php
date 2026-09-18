@@ -56,6 +56,7 @@ it('renders Profile with computed identity + hero stats', function (): void {
             ->where('stats.total_runs', 2)
             ->where('stats.total_km', 13)
             ->where('stats.longest_run_km', 8)
+            ->where('stats.has_activity', true)
             ->where('identity.strava_connected', true));
 });
 
@@ -68,7 +69,8 @@ it('reports strava_connected as false when the user has no connection', function
             ->component('Profile')
             ->where('identity.strava_connected', false)
             ->where('stats.total_runs', 0)
-            ->where('stats.longest_run_km', 0));
+            ->where('stats.longest_run_km', 0)
+            ->where('stats.has_activity', false));
 });
 
 it('requires auth', function (): void {
@@ -274,6 +276,7 @@ it('serves the hero stats from LifetimeStats, keeping 1dp total km and 2dp longe
             ->where('stats.total_runs', $lifetime['total_runs'])
             ->where('stats.total_km', $lifetime['total_km'])
             ->where('stats.longest_run_km', $lifetime['longest_km'])
+            ->where('stats.has_activity', $lifetime['has_activity'])
             ->where('identity.first_run_at', $lifetime['first_run_at'])
             ->etc());
 });
