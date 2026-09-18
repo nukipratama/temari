@@ -43,12 +43,22 @@ Rector pass was the slowest single step the hook ever carried, so it moved to th
 
 [.github/workflows/ci.yml](../../.github/workflows/ci.yml) does not shell out to `gate.sh`; its jobs
 run the same checks directly so each can be its own job with its own cache and log — structural
-Pest ([ci.yml](../../.github/workflows/ci.yml#L149)), the full Pest suite with coverage
-([ci.yml](../../.github/workflows/ci.yml#L173)), the Vitest structure test, Pint and PHPStan
-(`--test`/no dry-run, [ci.yml](../../.github/workflows/ci.yml#L267) and
-[ci.yml](../../.github/workflows/ci.yml#L270)), and more. **CI is the authoritative full gate** — a green
+Pest ([ci.yml](../../.github/workflows/ci.yml#L153)), the Vitest structure test, Pint and PHPStan
+(`--test`/no dry-run, [ci.yml](../../.github/workflows/ci.yml#L429) and
+[ci.yml](../../.github/workflows/ci.yml#L432)), and more. **CI is the authoritative full gate** — a green
 `composer gate` locally is a fast pre-push signal, not a substitute for CI passing. On `push` to
 `main`, `deploy` additionally builds and rolls the image once `ci-gate` and `build` both pass; see
 [[deployment]] for that half.
+
+The full Pest suite with coverage only runs on a PR (a push is already-gated, having landed via
+one), and is the critical-path cost: pcov instrumentation roughly doubles it. It's split across
+`SHARD_TOTAL` parallel jobs (`backend-tests-shard`, [ci.yml](../../.github/workflows/ci.yml#L196)),
+each writing its own raw coverage object via `--coverage-php`; `backend-coverage-merge`
+([ci.yml](../../.github/workflows/ci.yml#L289)) merges them with `phpcov` and applies `--min=95`
+once, to the merged whole — never per shard, since a shard only ever covers its own slice. A push
+runs the unsharded, uninstrumented suite instead ([ci.yml](../../.github/workflows/ci.yml#L117)).
+`ci-gate` requires every shard and the merge step, so a missing, cancelled or failed shard reds the
+gate the same as any other required job — see
+[docs/decisions/sharded-pr-coverage.md](../decisions/sharded-pr-coverage.md).
 
 See also: [[deployment]].
