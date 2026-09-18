@@ -235,10 +235,9 @@ final readonly class SeasonService
         $weekCount = count($weeks);
 
         $phases = array_column($weeks, 'phase');
-        $multipliers = PhaseSchedule::volumeMultipliers($phases, $race === null, array_column($weeks, 'zone'));
-        $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
-
         $zones = array_column($weeks, 'zone');
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, $race === null, $zones);
+        $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
 
         $qualityTotal = 0;
         $longestLongRunKm = 0.0;

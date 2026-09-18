@@ -280,6 +280,16 @@ final class WeekPlanBuilder
     }
 
     /**
+     * Whether this week is a race season's general zone (before the block
+     * opens) rather than self-scaled training, which is `zone: general`
+     * throughout and unaffected by this distinction.
+     */
+    private static function isGeneralZone(bool $selfScaled, string $zone): bool
+    {
+        return ! $selfScaled && $zone === PhaseSchedule::ZONE_GENERAL;
+    }
+
+    /**
      * How many quality (Tempo/Interval) sessions a week of this phase carries
      * — the same count {@see self::withQualityDelta()} materializes into rows,
      * exposed so season-goal generation can sum it across an arc without
@@ -315,8 +325,7 @@ final class WeekPlanBuilder
      */
     private static function withQualityDelta(array $slots, PlanPhase $phase, int $sessionsPerWeek, int $qualityDelta, int $qualityPoolSize, bool $selfScaled, ?float $projectedRaceSeconds, string $zone): array
     {
-        $isGeneralZone = ! $selfScaled && $zone === PhaseSchedule::ZONE_GENERAL;
-        if ($qualityDelta === 0 || $isGeneralZone || in_array($phase, [PlanPhase::Base, PlanPhase::Deload, PlanPhase::Taper], true)) {
+        if ($qualityDelta === 0 || self::isGeneralZone($selfScaled, $zone) || in_array($phase, [PlanPhase::Base, PlanPhase::Deload, PlanPhase::Taper], true)) {
             return $slots;
         }
 
@@ -381,7 +390,7 @@ final class WeekPlanBuilder
             return [];
         }
 
-        if ($phase === PlanPhase::Base || (! $selfScaled && $zone === PhaseSchedule::ZONE_GENERAL)) {
+        if ($phase === PlanPhase::Base || self::isGeneralZone($selfScaled, $zone)) {
             // "Predominantly easy, at most one threshold session" — and only
             // once there's a session to spare beyond the long run + 2 easy days.
             return $sessionsPerWeek >= 4
