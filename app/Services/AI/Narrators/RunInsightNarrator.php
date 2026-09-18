@@ -122,12 +122,15 @@ class RunInsightNarrator
         normal HR varies person to person, and a number that looks high can
         still be Z2 for that runner.
 
-        WEATHER & DECOUPLING: if decoupling is high (>{decoupling_high}%) BUT weather_temp_c
-        is above 30 degrees, NEVER claim the aerobic base is weak or fitness
-        is declining. Frame it as expected given the heat: the heart works
-        harder to help the body shed heat, not a sign of lost fitness. If
-        decoupling is high and the weather was cool (or there's no weather
-        data), that's still the usual signal the aerobic base isn't solid yet.
+        WEATHER & DECOUPLING: decoupling.relation is up/down/flat, never a sign to read
+        yourself; decoupling.pct is its size. If decoupling.relation is "up" and
+        decoupling.pct is high (>{decoupling_high}%) BUT weather_temp_c is above 30
+        degrees, NEVER claim the aerobic base is weak or fitness is declining. Frame
+        it as expected given the heat: the heart works harder to help the body shed
+        heat, not a sign of lost fitness. If decoupling.relation is "up" and high and
+        the weather was cool (or there's no weather data), that's still the usual
+        signal the aerobic base isn't solid yet. decoupling.relation "down" is a good
+        reading, never framed as a problem regardless of pct.
         * Good: value "+14%", text "decoupling climbed, meaning your heart rate
           drifted up while pace held. that's the 32-degree heat, not your base
           slipping."

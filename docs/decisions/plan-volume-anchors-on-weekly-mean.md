@@ -11,6 +11,8 @@ code_refs:
   - app/Services/Run/Plan/SeasonService.php
 ---
 
+> **Amended (2026-09-18) by [[a-race-block-never-prescribes-below-habit]].** In a race season the long run is also floored so the block averages the athlete's twelve-week actual mean and reaches the readiness distance at its peak. The half-the-week cap is sized off the bigger of the anchor and that floor.
+
 # Prescribed volume anchors on a trimmed weekly mean, not the longest run
 
 **Status:** Accepted (2026-09-06)

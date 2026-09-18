@@ -41,7 +41,8 @@ use Illuminate\Support\Facades\DB;
  *   the current week into a real {@see PlanPhase::Deload} (fewer km, no
  *   quality work) and resize every week's quality block against the race
  *   projection. Its verdict is recorded as a {@see PlanAdaptation} row so
- *   the Plan tab can explain the week it produced.
+ *   the Plan tab can explain the week it produced, including the race
+ *   season's volume floor when that deload takes the week below it.
  * - Deleting a row also deletes the `plan_day` {@see Feedback} rows filed
  *   against it, and today's row carries its recorded readiness clamp
  *   ({@see RestClampRecorder}) onto the row that replaces it.
@@ -84,7 +85,7 @@ final readonly class Periodizer
             // SeasonSummaryBuilder draws is the one the athlete trains.
             : $this->phaseSchedule->selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($inputs->seasonEnd) + 1), $inputs->seasonOpensWithRecovery);
 
-        $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $inputs->currentWeekStart(), $inputs->adaptation['deload'], $inputs->isSelfScaled());
+        $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $inputs->currentWeekStart(), $inputs->adaptation['deload'], $inputs->isSelfScaled() || $inputs->increasesHeld);
 
         $rows = [];
         foreach ($weeks as $week) {
@@ -176,9 +177,34 @@ final readonly class Periodizer
                     'deload' => $inputs->adaptation['deload'],
                     'quality_delta' => $inputs->adaptation['quality_delta'],
                     'adherence_pct' => $inputs->adaptation['adherence_pct'],
+                    'volume_floor_km' => self::overriddenFloorKm($inputs, $rows),
+                    'increases_held' => $inputs->increasesHeld,
                 ],
             );
         });
+    }
+
+    /**
+     * The volume floor this week gives way to, recorded so the Plan tab can
+     * say so: only when the adapter's deload actually turned the week down,
+     * which a Taper week never is.
+     *
+     * @param  array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float}>  $rows
+     */
+    private static function overriddenFloorKm(PlanInputs $inputs, array $rows): ?float
+    {
+        if ($inputs->volumeFloorKm === null || ! $inputs->adaptation['deload']) {
+            return null;
+        }
+
+        $weekEnd = $inputs->currentWeekStart()->addDays(6)->toDateString();
+        foreach ($rows as $date => $row) {
+            if ($date <= $weekEnd) {
+                return $row['phase'] === PlanPhase::Deload ? $inputs->volumeFloorKm : null;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -194,6 +220,9 @@ final readonly class Periodizer
      * to race day, and restarting the taper curve from a deload multiplier
      * would leave the athlete under-stimulated going in.
      *
+     * `$flat` holds the arc at 1.0 outside its dips: a self-scaled arc always,
+     * a race block while its increases are held.
+     *
      * A season whose stored window outlasts its own arc — only reachable for a
      * self-scaled row written before the two were aligned — holds on its last
      * arc week rather than materializing nothing at all, until it rolls over.
@@ -201,7 +230,7 @@ final readonly class Periodizer
      * @param  list<array{week_start: Carbon, phase: PlanPhase, zone: string}>  $arc
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string, multiplier: float}>
      */
-    private static function sliceFromCurrentWeek(array $arc, Carbon $arcStart, Carbon $currentWeekStart, bool $deload, bool $selfScaled): array
+    private static function sliceFromCurrentWeek(array $arc, Carbon $arcStart, Carbon $currentWeekStart, bool $deload, bool $flat): array
     {
         if ($arc === []) {
             return [];
@@ -213,7 +242,7 @@ final readonly class Periodizer
         if ($deload && $phases[$offset] !== PlanPhase::Taper) {
             $phases[$offset] = PlanPhase::Deload;
         }
-        $multipliers = PhaseSchedule::volumeMultipliers($phases, $selfScaled, array_column($arc, 'zone'));
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, $flat, array_column($arc, 'zone'));
 
         $weeks = [];
         foreach (array_slice($arc, $offset, self::HORIZON_WEEKS, preserve_keys: true) as $index => $week) {

@@ -109,7 +109,34 @@ it('does not compare a partial week against a full one, either in the numbers or
     expect($ctx->lastWeekRuns)->toBe(1)
         ->and($ctx->lastWeekKm)->toBe(5.3)
         ->and($ctx->volumeRampPct)->toBe(0.0)
-        ->and($ctx->volumeRampPct)->not->toBeLessThan(-15.0);
+        ->and($ctx->volumeRampPct)->not->toBeLessThan(-15.0)
+        // Regression for #1009 (reopened): the LLM-facing shape carries no
+        // bare signed volume_ramp_pct, just its own relation.
+        ->and($ctx->toArray()['volume_ramp'])->toBe(['pct' => 0.0, 'relation' => 'flat']);
+});
+
+// Regression for #1009 (reopened): a raw signed volume_ramp_pct used to reach
+// the briefing narrator with no sign convention stated anywhere in the
+// prompt. `volume_ramp` now carries the magnitude and its own relation, so
+// there's no sign left for a narrator to invert.
+it('exposes volume_ramp with relation=down and no signed field on a real drop in volume', function (): void {
+    $user = User::factory()->create();
+    $asOf = Carbon::create(2026, 5, 21, 8); // Thursday in week ending 2026-05-24 (Sun)
+
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-24',
+        'distance_km' => 10.0,
+    ]);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
+    $mondayLastWeek = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($mondayLastWeek)->create([
+        'start_date_local' => Carbon::create(2026, 5, 11, 7),
+        'distance' => 20_000.0, // last week through Thursday: 20 km, this week: 10 km, -50%
+    ]);
+
+    $ctx = BriefingContext::forUser($user, $asOf);
+
+    expect($ctx->toArray()['volume_ramp'])->toBe(['pct' => 50.0, 'relation' => 'down']);
 });
 
 it('computes recovery hours from the most recent activity start', function (): void {
@@ -258,6 +285,6 @@ it('serialises to a compact array suitable for the LLM user message', function (
         'this_week_runs', 'last_week_runs', 'this_week_km', 'last_week_km',
         'recovery_hours', 'ran_today', 'days_since_last_run', 'form_status',
         'time_bucket', 'consecutive_weeks_active', 'fitness_trend',
-        'volume_ramp_pct', 'readiness_ceiling', 'build_nudge',
+        'volume_ramp', 'readiness_ceiling', 'build_nudge',
     ]);
 });

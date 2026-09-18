@@ -6,6 +6,7 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\SessionIntent;
 
@@ -28,17 +29,23 @@ final class EffortContextTool extends ActivityTool
     {
         return 'How hard this session was relative to its intent and to the last 28 days\' habits: '
             .'session_intent (workout/race/easy/unknown, tagged or inferred), relative_effort band, '
-            ."and decoupling. If decoupling is missing, this run was too short to measure it, so don't "
-            .'make it up.';
+            .'and decoupling, its own pct plus a relation (up/down/flat -- up means HR drifted up for '
+            .'the same pace, there is no sign to read it from yourself). If decoupling is missing, '
+            ."this run was too short to measure it, so don't make it up.";
     }
 
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
+        $decouplingPct = $this->summary()->decouplingPct();
+
         return [
             'session_intent' => SessionIntent::forDetail($this->detail),
             'relative_effort' => $this->relativeEffort->forRun($this->activity, $this->detail),
-            'decoupling_pct' => $this->summary()->decouplingPct(),
+            'decoupling' => $decouplingPct === null ? null : [
+                'pct' => abs($decouplingPct),
+                'relation' => DecouplingBands::relationFor($decouplingPct),
+            ],
         ];
     }
 }

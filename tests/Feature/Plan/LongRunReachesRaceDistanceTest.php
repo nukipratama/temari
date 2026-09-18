@@ -115,8 +115,8 @@ it('reaches it by ramping rather than by jumping there in week one', function ()
 
     // 9.1 km was the un-floored share of this athlete's week. The floor lifts
     // the arc's STARTING long run only as far as the build ramp needs to carry
-    // it to 10 km, not to 10 km outright.
-    expect($series[0]['long_km'])->toBeLessThan(9.7)
+    // it to the 12 km readiness distance, not to 12 km outright.
+    expect($series[0]['long_km'])->toBeLessThan(max(array_column($series, 'long_km')))
         ->and($series[0]['long_km'])->toBeGreaterThan(9.1);
 });
 

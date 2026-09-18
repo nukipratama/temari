@@ -121,7 +121,7 @@ final readonly class SeasonSummaryBuilder
             $weeks = $this->phaseSchedule->selfScaled($season->starts_at, $totalWeeks, $season->opens_with_recovery);
         }
 
-        $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), $isSelfScaled, array_column($weeks, 'zone'));
+        $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), $isSelfScaled || $season->increases_held, array_column($weeks, 'zone'));
         $baselineData = $this->baseline->forUser($user, $season->starts_at);
 
         $result = [];

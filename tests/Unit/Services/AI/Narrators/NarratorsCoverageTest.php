@@ -681,7 +681,11 @@ it('WeeklyRecapNarrator omits prev_narrative when the prior week recap is not ye
     expect($context['prev_narrative'])->toBeNull();
 });
 
-it('WeekTotalsTool reads avg_decoupling for the week', function (): void {
+// Regression for #1009 (reopened): avg_decoupling reached the model as a
+// bare signed percentage. It now carries its own relation, resolved from
+// the sign alone via the same DecouplingBands::TIGHT flat band used
+// elsewhere.
+it('WeekTotalsTool reads avg_decoupling with no signed field for the week', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => '2026-05-17', 'avg_decoupling' => 6.4,
@@ -689,7 +693,18 @@ it('WeekTotalsTool reads avg_decoupling for the week', function (): void {
 
     $context = new WeekTotalsTool($snap)->handle([]);
 
-    expect($context['avg_decoupling'])->toBe(6.4);
+    expect($context['avg_decoupling'])->toBe(['pct' => 6.4, 'relation' => 'up']);
+});
+
+it('WeekTotalsTool reads form with no signed field, relation=fatigued on negative form', function (): void {
+    $user = User::factory()->create();
+    $snap = WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-17', 'form' => -8.0,
+    ]);
+
+    $context = new WeekTotalsTool($snap)->handle([]);
+
+    expect($context['form'])->toBe(['value' => 8.0, 'relation' => 'fatigued']);
 });
 
 // ── TrendReadNarrator ─────────────────────────────────────────────────

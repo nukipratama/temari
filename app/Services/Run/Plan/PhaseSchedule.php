@@ -49,9 +49,6 @@ final class PhaseSchedule
     /** Ceiling on how far the compounding {@see self::BUILD_WEEKLY_RAMP} may climb over a long arc. */
     private const float MAX_BUILD_MULTIPLIER = 1.4;
 
-    /** Peak's long run sits slightly below Build's peak volume. */
-    private const float PEAK_VOLUME_FRACTION = 0.92;
-
     /** Self-scaled deload volume reduction off the just-completed build block. */
     private const float DELOAD_REDUCTION = 0.35;
 
@@ -259,9 +256,9 @@ final class PhaseSchedule
                     static fn (int $k): float => self::rampLevel($buildWeeks + $k, $selfScaled),
                     range(0, $runLength - 1),
                 ),
-                PlanPhase::Peak => array_fill(0, $runLength, $buildLevel * self::PEAK_VOLUME_FRACTION),
+                PlanPhase::Peak => array_fill(0, $runLength, $buildLevel),
                 PlanPhase::Taper => array_map(
-                    static fn (float $reduction): float => $buildLevel * self::PEAK_VOLUME_FRACTION * (1 - $reduction),
+                    static fn (float $reduction): float => $buildLevel * (1 - $reduction),
                     self::taperCurve($runLength),
                 ),
                 PlanPhase::Deload => array_fill(0, $runLength, $buildLevel * (1 - self::DELOAD_REDUCTION)),
@@ -288,9 +285,10 @@ final class PhaseSchedule
 
     /**
      * Turns every fourth week of the Base/Build ramp into a recovery week. Peak
-     * and Taper are untouched — both are already volume reductions, and a race
-     * arc short enough to hold fewer than {@see self::DELOAD_EVERY_WEEKS} ramp
-     * weeks has nothing to recover from yet.
+     * and Taper are untouched, and a race arc short enough to hold fewer than
+     * {@see self::DELOAD_EVERY_WEEKS} ramp weeks has nothing to recover from yet.
+     * A recovery week never takes the ramp's last week: it moves one week
+     * earlier, so the block reaches Peak off a Build week.
      *
      * @param  list<PlanPhase>  $phases
      * @param  int  $rampWeeks  how many leading weeks are Base or Build
@@ -299,7 +297,7 @@ final class PhaseSchedule
     private static function withScheduledDeloads(array $phases, int $rampWeeks): array
     {
         for ($i = self::DELOAD_EVERY_WEEKS - 1; $i < $rampWeeks; $i += self::DELOAD_EVERY_WEEKS) {
-            $phases[$i] = PlanPhase::Deload;
+            $phases[$i === $rampWeeks - 1 ? $i - 1 : $i] = PlanPhase::Deload;
         }
 
         return array_values($phases);

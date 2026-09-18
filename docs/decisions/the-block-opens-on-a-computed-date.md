@@ -18,6 +18,8 @@ code_refs:
   - resources/js/components/plan/SeasonHeaderCard.tsx
 ---
 
+> **Partly superseded (2026-09-18) by [[a-race-block-never-prescribes-below-habit]].** `season_longest_long_run_km` is now the longest long run the season's own arc prescribes. The readiness distances moved into `TrainingBaseline` as a floor the plan climbs to. The block and its zones stand as written.
+
 # The race block opens on a computed date, inside one continuous season
 
 **Status:** Accepted (2026-09-17)

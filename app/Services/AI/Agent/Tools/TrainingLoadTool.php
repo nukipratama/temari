@@ -25,9 +25,11 @@ final class TrainingLoadTool extends UserTool
 
     public function description(): string
     {
-        return "The user's training load state: acute_7d, chronic_42d, form, and form_status "
-            .'(fresh/optimal/fatigued/overreaching). Call this before suggesting recovery or the '
-            .'next session. If training_load is missing, their TRIMP history isn\'t enough yet.';
+        return "The user's training load state: acute_7d, chronic_42d, form (value plus its own "
+            .'relation: fresh/fatigued/balanced -- no sign to read, that\'s the call already made), '
+            .'and the finer form_status (fresh/optimal/fatigued/overreaching). Call this before '
+            ."suggesting recovery or the next session. If training_load is missing, their TRIMP "
+            .'history isn\'t enough yet.';
     }
 
     /** @return array<string, mixed> */
@@ -39,7 +41,7 @@ final class TrainingLoadTool extends UserTool
             'training_load' => $load === null ? null : [
                 'acute_7d' => $load['atl_7d'],
                 'chronic_42d' => $load['ctl_42d'],
-                'form' => $load['form'],
+                'form' => ['value' => abs($load['form']), 'relation' => TrainingLoad::formRelation($load['form'])],
                 'form_status' => $load['form_status'],
             ],
         ];

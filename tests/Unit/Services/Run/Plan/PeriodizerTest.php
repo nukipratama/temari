@@ -289,6 +289,50 @@ it('never deloads a taper week, where freshness is already the goal', function (
     expect(currentWeekPhases($user))->toBe([PlanPhase::Taper]);
 });
 
+function floorOverriddenKm(User $user): ?float
+{
+    return PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->volume_floor_km;
+}
+
+it('records the volume floor a load deload takes the week under', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString(), 'distance_m' => 10_000]);
+    bindMonotonyDeloadSignals();
+
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+
+    expect(currentWeekPhases($user))->toBe([PlanPhase::Deload])
+        ->and(floorOverriddenKm($user))->toBe(Season::query()->where('user_id', $user->id)->value('volume_floor_km'))
+        ->and(floorOverriddenKm($user))->not->toBeNull();
+});
+
+it('records no overridden floor when the week stands, or when a taper week is left alone', function (): void {
+    $steady = User::factory()->create();
+    seedPeriodizerBaseline($steady);
+    RaceGoal::factory()->for($steady)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString(), 'distance_m' => 10_000]);
+    app(Periodizer::class)->regenerate($steady, Carbon::today());
+
+    $tapering = User::factory()->create();
+    seedPeriodizerBaseline($tapering);
+    RaceGoal::factory()->for($tapering)->create(['race_date' => Carbon::today()->addDays(5)->toDateString(), 'distance_m' => 10_000]);
+    bindMonotonyDeloadSignals();
+    app(Periodizer::class)->regenerate($tapering, Carbon::today());
+
+    expect(floorOverriddenKm($steady))->toBeNull()
+        ->and(floorOverriddenKm($tapering))->toBeNull();
+});
+
+it('records no overridden floor for a goal-less season, which has none', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    bindMonotonyDeloadSignals();
+
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+
+    expect(floorOverriddenKm($user))->toBeNull();
+});
+
 it('an explicit sessions_per_week preference overrides the behavioral session count', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);

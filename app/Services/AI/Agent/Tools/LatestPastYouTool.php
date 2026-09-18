@@ -31,10 +31,11 @@ final class LatestPastYouTool extends UserTool
     public function description(): string
     {
         return "A comparison between the user's most recent run and a similar run of theirs from the "
-            .'past. `direction` (better/worse/flat) is the call to make -- say that, never infer it '
-            .'from the sign of pace_diff_sec/time_diff_sec, which are for size only (seconds). If '
-            .'past_you is missing, there\'s no good match, and in that case never make up a '
-            .'comparison to the past.';
+            .'past. pace/time/hr each carry their own relation (pace.relation/time.relation: faster/'
+            .'slower/same; hr.relation: higher/lower/same) -- say that, there is no sign to infer it '
+            .'from: seconds_per_km/seconds/bpm are for size only. `direction` (better/worse/flat) is '
+            ."the overall call. If past_you is missing, there's no good match, and in that case never "
+            .'make up a comparison to the past.';
     }
 
     /** @return array<string, mixed> */

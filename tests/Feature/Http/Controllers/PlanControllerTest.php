@@ -395,7 +395,9 @@ it('paints the Plan shell inside its query budget', function (): void {
 
     $this->actingAs($user)->get('/plan')->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(26);
+    // 27: a race season's creation asks whether its recent load is scored yet,
+    // plus the maintenance flag read on every request.
+    expect($queries)->toBeLessThanOrEqual(27);
 });
 
 it('resolves the deferred Plan props inside their query budget', function (): void {

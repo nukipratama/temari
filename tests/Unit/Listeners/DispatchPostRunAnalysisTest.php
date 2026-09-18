@@ -348,6 +348,38 @@ it('staggers ProfileVoice by the backfill delay on the ingest that first origina
     Carbon::setTestNow();
 });
 
+it('does not grow a recent run\'s stagger delay with the number of rule-based backfill runs ahead of it', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    config()->set('ai.backfill_stagger_seconds', 100);
+    $connectedAt = Carbon::parse('2026-06-10 08:00:00');
+
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => $connectedAt]);
+
+    // Oldest-first drain: several pre-connect runs, well outside the last-7-
+    // days window, land first and fill rule-based. None of them narrates to
+    // the LLM, so none should reserve a backfill stagger slot.
+    foreach (range(0, 4) as $i) {
+        fire(analyzedActivity(Carbon::parse('2025-01-01 06:00:00')->addDays($i)->toDateTimeString(), $user->id));
+    }
+
+    // The most recent run, inside the last-7-days pre-connect window, lands
+    // last with nothing older left to hydrate: it is eligible for real
+    // narration and should reserve the immediate (0-delay) slot, regardless
+    // of how many rule-based runs preceded it.
+    Bus::fake();
+    $recent = analyzedActivity('2026-06-05 06:00:00', $user->id);
+    RunCard::factory()->create(['activity_id' => $recent->id]);
+
+    fire($recent);
+
+    // No ->delay() call leaves the job's delay null, which PendingDispatch
+    // treats as immediate — the same "reserved the 0-delay slot" outcome
+    // StaggerBackfillActionTest asserts directly on the action itself.
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class, fn (AnalyzeCardFlavorJob $job): bool => ($job->delay ?? 0) === 0);
+    Carbon::setTestNow();
+});
+
 it('fills an activity older than the backfill depth cap rule-based (group + card), no real dispatch', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     config()->set('ai.backfill_max_age_days', 365);

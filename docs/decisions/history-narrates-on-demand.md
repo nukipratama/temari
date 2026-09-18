@@ -36,6 +36,14 @@ code_refs:
 > takes this decision's on-demand path unchanged. This bounds a backfill's automatic cost to at most
 > 7 days of runs regardless of import depth, deliberately, not as a degradation of the ceiling.
 
+> **2026-09-18 — the drain this hold waits on now runs oldest-first (#1023).** "`strava:hydrate-backlog`
+> drains newest-first, so the wait is bounded by the drain reaching the older end of the window" below
+> no longer describes the drain's order — see [[chronological-hydration-drain]]. The hold's own logic is
+> unchanged: a run still waits while any older run within `PastYouMatcher::MAX_GAP_DAYS` awaits
+> hydration, bounded by the same grace window. Oldest-first only changes *when* that condition clears —
+> now monotonically, as the drain works forward through the window, rather than depending on the drain
+> reaching backward into it.
+
 ## Context
 
 A first Strava connect imports the athlete's history, and the ingest cascade narrated every run of

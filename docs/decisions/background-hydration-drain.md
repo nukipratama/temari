@@ -17,6 +17,15 @@ code_refs:
 
 **Status:** Accepted (2026-09-06)
 
+> **Superseded 2026-09-18 on ordering: the drain now hydrates oldest-first, not
+> newest-first.** See [[chronological-hydration-drain]]. Both reasons this
+> decision gave for newest-first are addressed there: narration latency no
+> longer depends on hydration order (the LLM-eligible runs wait on a hydration
+> gate either way, since [[history-narrates-on-demand]]'s 2026-09-18 update),
+> and recent runs getting stream-derived detail last on day one is the
+> accepted cost. Everything else below — the headroom pacing, the even split,
+> the give-up guard, the cadence — is unchanged.
+
 > **Cadence changed 2026-09-07: the drain now runs every 15 minutes, not hourly.**
 > The decision below — a headroom-paced background drain, newest-first, yielding to
 > live ingest — is unchanged and still holds; only the tick interval moved. Fifteen
