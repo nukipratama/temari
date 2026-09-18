@@ -374,7 +374,6 @@ inline in its `toolbox()` method.
 | `TerrainTool` · `get_terrain` | `elevation_gain_m`, `max_grade` (`{pct, relation}`, no bare sign — #1009), `gap_pace` | stored detail attributes and `stream_summary` |
 | `WeatherTool` · `get_weather` | `weather_temp_c`, `weather_humidity_pct`, `weather_rain`, `weather_rain_source`, `weather_wind_speed_kmh`, `weather_wind_gust_kmh`, `weather_wind_direction_deg` | `ActivityNarrationContext` over the stored weather snapshot |
 | `EffortContextTool` · `get_effort_context` | `session_intent`, `relative_effort`, `decoupling` (`{pct, relation}`, no bare sign — #1009) | `SessionIntent`, `RelativeEffort`; decoupling from `stream_summary`, relation via `DecouplingBands::relationFor()` |
-| `PastYouTool` · `get_past_you` | `past_you`: `days_ago`, `pace`/`time`/`hr` (each `{magnitude, relation}`, no bare sign — #1009, reopened), `direction`, `past_km`, `past_date` | `PastYouMatcher` |
 | `PersonalRecordsTool` · `get_personal_records` | `personal_records`: list of `{category, value_sec}` | stored `PersonalRecord` rows, written by `PersonalRecords` |
 
 ### Bound to a user and an as-of date (`UserTool`)
@@ -386,7 +385,6 @@ inline in its `toolbox()` method.
 | `TrainingPacesTool` · `get_training_paces` | `easy_pace_sec`, `marathon_pace_sec`, `threshold_pace_sec`, `interval_pace_sec` | `VdotEstimator` into `TrainingPaceCalculator` |
 | `RecentBaselineTool` · `get_recent_baseline` | `recent_baseline_28d`: rolling pace / HR averages, `avg_decoupling` (`{pct, relation}`, no bare sign — #1009) | `ResolveRunBaselineAction` |
 | `RecentRunsTool` · `get_recent_runs` | `recent_runs`: up to 5 × `{mood, km, intensity, oneline}` | `VerdictNarrator::recent()` |
-| `LatestPastYouTool` · `get_latest_past_you` | `past_you`, same shape as `PastYouTool` but for the latest run | `PastYouMatcher` |
 | `LifetimeStatsTool` · `get_lifetime_stats` | `name`, `total_runs`, `total_km`, `longest_run_km`, `months_running`, `pr_count`, `weekly_streak`, `favorite_time`, `strava_connected`, `form_status` | `LifetimeStats`, `WeeklySnapshot::consecutiveWeekStreak()` / `::latestFormStatus()` |
 | `PersonaMixTool` · `get_persona_mix` | `lookback_weeks`, `total_runs`, `persona_mix`, `persona_mix_recent`, `persona_mix_earlier`, `form_status` | `MoodMix`, `WeeklySnapshot::latestFormStatus()` |
 | `ProgressionSignalTool` · `get_progression_signal` | `progression_signal`: `{label, delta_sec}` | `ProgressionSeriesBuilder` over `PersonalRecord` rows |
@@ -410,9 +408,9 @@ inline in its `toolbox()` method.
 |---|---|
 | `RunInsightNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` |
 | `RunQuestionNarrator` | `RunSummaryTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` always; `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool` only once the run is `Detailed` |
-| `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `PastYouTool`, `WeekStateTool`, `PlanContextTool` |
+| `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `WeekStateTool`, `PlanContextTool` |
 | `CardFlavorNarrator` | `CardIdentityTool` always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool`, `PlanContextTool` when the run has detail |
-| `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `LatestPastYouTool`, `RecentBaselineTool`, `PlanContextTool` |
+| `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `RecentBaselineTool`, `PlanContextTool` |
 | `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool`, `PlanAdherenceTool` |
 | `WeeklyRecapNarrator` | `WeekTotalsTool`, `PlanContextTool` |
 | `MonthlyRecapNarrator` | `MonthTotalsTool`, `PlanContextTool` |
@@ -420,7 +418,7 @@ inline in its `toolbox()` method.
 | `PlanDayVoiceNarrator` | `PlanDayTool` |
 | `PlanSeasonVoiceNarrator` | `PlanSeasonTool` |
 
-Every one of the 26 tools is carried by at least one narrator; none is orphaned.
+Every one of the 24 tools is carried by at least one narrator; none is orphaned.
 
 ## The deterministic half
 
@@ -490,6 +488,20 @@ schedule entirely: it is now one call per run day, requested after scoring, so i
 runs logged rather than weeks swept.
 
 ## Retired surfaces
+
+**`PastYouTool` / `LatestPastYouTool`** (cut 2026-09-19, #1009). Two live checks
+(#1016, #1033) each re-encoded the past-you delta the tools handed
+`PostRunSpeechNarrator` and `BriefingMascotVoiceNarrator` — a signed number plus
+a composite direction, then an unsigned magnitude plus a relation word — and
+each still let the narrator invert a fact about half the time: the model
+builds a mood from the rest of the context, then states the comparison to fit
+that story, regardless of how the numbers are shaped. The decision was that no
+narrator states this comparison at all, so nothing legitimate was left for
+either tool to hand over. `PastYouMatcher::findMatchContext()` survives —
+`RunController` reads it directly to render the fact line on the run-detail
+page (`PastYouCard.tsx`), no LLM involved. `PostRunSpeechNarrator` and
+`BriefingMascotVoiceNarrator` are otherwise unaffected; their prompts now
+forbid comparing to a specific past run instead of inviting it.
 
 **`plan_week_voice`** (cut 2026-09-17, #947). Ahead-of-time plan narration was decided against for
 the week-adaptation surface specifically: the week's headline/detail/deload/quality chips already

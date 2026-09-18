@@ -160,25 +160,28 @@ class PastYouMatcher
     }
 
     /**
-     * Compact, LLM-safe shape of {@see findMatch}: the comparison deltas plus a
-     * couple of descriptors of the matched past run, without the full
-     * ActivityDetail model.
+     * Compact shape of {@see findMatch}: the comparison deltas plus a couple
+     * of descriptors of the matched past run, without the full ActivityDetail
+     * model. Originally the LLM-facing tool payload; since #1009's decision
+     * that code states the comparison and narrators never do, this is now the
+     * source a controller reads directly to render the fact line the UI
+     * shows next to the narration, never inside it.
      *
      * Regression for #1009 (reopened): {@see findMatch}'s bare signed
      * `pace_diff_sec`/`time_diff_sec`/`hr_diff_bpm` plus a `direction`
-     * composite still let the narrator invert a field's sign -- `direction`
+     * composite still let a narrator invert a field's sign -- `direction`
      * is a verdict on the pair as a whole, not a guard on each number, and a
      * model reading a mixed-signal pair (slower pace, lower HR) read the pace
      * backwards to fit whichever number it decided was the headline. No
-     * signed number reaches the model here: `pace`/`time` carry an unsigned
+     * signed number reaches a caller here: `pace`/`time` carry an unsigned
      * magnitude plus their own `relation` (faster/slower/same, `time` always
      * agreeing with `pace` in sign since it is the same delta scaled by
      * distance), banded by {@see PastYouComparison::PACE_SIGNAL_SEC}; `hr`
      * carries bpm plus higher/lower/same, banded by
      * {@see PastYouComparison::HR_SIGNAL_BPM}. `direction` still travels
-     * alongside as the composite call to narrate.
+     * alongside as the composite call.
      *
-     * @return array{days_ago: int, pace: array{seconds_per_km: float, relation: string}, time: array{seconds: float, relation: string}, hr: array{bpm: float, relation: string}|null, direction: string, past_km: float, past_date: string|null}|null
+     * @return array{days_ago: int, pace: array{seconds_per_km: float, relation: string}, time: array{seconds: float, relation: string}, hr: array{bpm: float, relation: string}|null, direction: string, past_km: float, past_activity_id: int, past_name: string|null}|null
      */
     public function findMatchContext(Activity $activity, ActivityDetail $detail): ?array
     {
@@ -199,7 +202,8 @@ class PastYouMatcher
             'hr' => $hrDiffBpm === null ? null : ['bpm' => abs($hrDiffBpm), 'relation' => self::hrRelation($hrDiffBpm)],
             'direction' => $match['direction'],
             'past_km' => DistanceFormatter::km((float) ($past->distance ?? 0)),
-            'past_date' => $past->start_date_local?->toDateString(),
+            'past_activity_id' => $past->activity_id,
+            'past_name' => $past->name,
         ];
     }
 
