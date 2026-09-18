@@ -1345,8 +1345,7 @@ it('markDone marks the row early and skips the notification during a fresh conne
     $this->service->markDone($row, 'Run story.', ServedBy::Llm);
 
     Notification::assertNothingSent();
-    expect($row->fresh()->narrated_early_at)->not->toBeNull()
-        ->and($user->fresh()->history_replay_due_at)->not->toBeNull();
+    expect($row->fresh()->narrated_early_at)->not->toBeNull();
 });
 
 it('markDone leaves narrated_early_at null and notifies normally for a long-connected athlete', function (): void {
@@ -1367,8 +1366,7 @@ it('markDone leaves narrated_early_at null and notifies normally for a long-conn
     $this->service->markDone($row, 'Run story.', ServedBy::Llm);
 
     Notification::assertSentTo($user, AnalysisReadyNotification::class);
-    expect($row->fresh()->narrated_early_at)->toBeNull()
-        ->and($user->fresh()->history_replay_due_at)->toBeNull();
+    expect($row->fresh()->narrated_early_at)->toBeNull();
 });
 
 it('markDone never marks a rule-based fill early, even for a run inside the early-pass window', function (): void {
@@ -1387,8 +1385,43 @@ it('markDone never marks a rule-based fill early, even for a run inside the earl
 
     $this->service->markDone($row, 'filler.', ServedBy::RuleBased);
 
-    expect($row->fresh()->narrated_early_at)->toBeNull()
-        ->and($user->fresh()->history_replay_due_at)->toBeNull();
+    expect($row->fresh()->narrated_early_at)->toBeNull();
+});
+
+it('marks a row early from $startedEarly even once the backlog has finished hydrating by markDone (the straddling row, B4)', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
+    $row = Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    // No unhydrated backlog exists right now, so isEarlyPassRow() alone would
+    // say this row is not early — but its generation started while it was
+    // (e.g. a slow Azure call spanning the moment the drain emptied).
+    $this->service->markDone($row, 'Run story.', ServedBy::Llm, startedEarly: true);
+
+    expect($row->fresh()->narrated_early_at)->not->toBeNull();
+});
+
+it('never marks a rule-based fill early from $startedEarly either', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
+    $row = Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    $this->service->markDone($row, 'filler.', ServedBy::RuleBased, startedEarly: true);
+
+    expect($row->fresh()->narrated_early_at)->toBeNull();
 });
 
 it('markDone marks the daily briefing early while older history is hydrating', function (): void {

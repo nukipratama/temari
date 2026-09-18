@@ -7,7 +7,6 @@ use App\Actions\Run\Story\RecomputeCardClaimsAction;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
-use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Enums\PlannedSessionStatus;
@@ -32,7 +31,8 @@ uses(RefreshDatabase::class);
  */
 function earlyPassUser(): array
 {
-    $user = User::factory()->create(['history_replay_due_at' => Carbon::now()]);
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
 
     $older = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::now()->subDays(2)]);
@@ -82,22 +82,35 @@ function earlyPassUser(): array
     return ['user' => $user, 'older' => $older, 'newer' => $newer];
 }
 
-it('does nothing when the user has no replay owed', function (): void {
+it('does nothing while the backlog is still hydrating', function (): void {
     $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
+    $stub = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($stub)->create(['start_date_local' => Carbon::now()->subDay()]);
     $this->mock(PersonalRecords::class)->shouldNotReceive('rebuildForUser');
     $this->mock(RecomputeCardClaimsAction::class)->shouldNotReceive('__invoke');
 
     app(SettleEarlyNarrationAction::class)($user);
-
-    expect($user->fresh()->history_replay_due_at)->toBeNull();
 });
 
-it('rebuilds PRs and replays cards even when nothing was ever marked for narration', function (): void {
-    // PR detection can be deferred by ActivityPipeline (stamping the user
-    // flag) even when the narration for that same run finishes after the
-    // drain already landed — so it was never marked `narrated_early_at`.
+it('does nothing for a long-connected athlete, even with a stuck backlog straggler', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subDays(90)]);
+    $stuck = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($stuck)->create(['start_date_local' => Carbon::now()->subDays(80)]);
+    $this->mock(PersonalRecords::class)->shouldNotReceive('rebuildForUser');
+    $this->mock(RecomputeCardClaimsAction::class)->shouldNotReceive('__invoke');
+
+    app(SettleEarlyNarrationAction::class)($user);
+});
+
+it('rebuilds PRs and replays cards once the backlog is empty, even when nothing was ever marked for narration', function (): void {
+    // PR detection can be deferred by ActivityPipeline even when the
+    // narration for that same run finishes after the drain already landed —
+    // so it was never marked `narrated_early_at`.
     Bus::fake();
-    $user = User::factory()->create(['history_replay_due_at' => Carbon::now()]);
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
 
     $this->mock(PersonalRecords::class)->shouldReceive('rebuildForUser')->once();
     $this->mock(RecomputeCardClaimsAction::class)->shouldReceive('__invoke')->once()
@@ -105,7 +118,6 @@ it('rebuilds PRs and replays cards even when nothing was ever marked for narrati
 
     app(SettleEarlyNarrationAction::class)($user);
 
-    expect($user->fresh()->history_replay_due_at)->toBeNull();
     Bus::assertNothingDispatched();
 });
 
@@ -123,7 +135,6 @@ it('rebuilds PRs, replays cards, and regenerates every early-marked row exactly 
 
     app(SettleEarlyNarrationAction::class)($user);
 
-    expect($user->fresh()->history_replay_due_at)->toBeNull();
     expect(Analysis::query()->whereNotNull('narrated_early_at')->count())->toBe(0);
 
     // Only the earliest activity's group is dispatched directly; its own
@@ -153,13 +164,54 @@ it('rebuilds PRs, replays cards, and regenerates every early-marked row exactly 
             ->count())->toBe(2);
 });
 
-it('requests the deferred Trends read and kicks off a deferred month recap once the drain empties (#1046/#1054)', function (): void {
+it('pairs a lone early RunInsight with its own PostRunSpeech row so the group is never left stranded (B4)', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subDay()]);
+
+    // Only RunInsight was marked early; PostRunSpeech finished a moment later,
+    // after the drain had already emptied, so it settled Done with no mark.
+    $speech = Analysis::factory()->done()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+        'narrated_early_at' => null,
+    ]);
+    $insight = Analysis::factory()->done()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+        'narrated_early_at' => Carbon::now(),
+    ]);
+
+    $this->mock(PersonalRecords::class)->shouldReceive('rebuildForUser')->once();
+    $this->mock(RecomputeCardClaimsAction::class)->shouldReceive('__invoke')->once()
+        ->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
+
+    app(SettleEarlyNarrationAction::class)($user);
+
+    // The group's representative row (chain advance + SelfHealer key on it)
+    // is reset alongside its sibling, not left Done.
+    Bus::assertDispatched(
+        AnalyzeActivityJob::class,
+        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id,
+    );
+    expect($speech->fresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($insight->fresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($insight->fresh()->narrated_early_at)->toBeNull();
+});
+
+it('requests the deferred Trends read once the drain empties (#1046)', function (): void {
     Bus::fake();
     Carbon::setTestNow('2026-06-17 05:30:00');
-    $user = User::factory()->create(['history_replay_due_at' => Carbon::now()]);
-    StravaConnection::factory()->for($user)->create(['created_at' => '2026-01-01 00:00:00']);
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
     $activity = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => '2026-05-10 06:30:00']);
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => '2026-06-16 06:30:00']);
 
     $this->mock(PersonalRecords::class)->shouldReceive('rebuildForUser')->once();
     $this->mock(RecomputeCardClaimsAction::class)->shouldReceive('__invoke')->once()
@@ -172,14 +224,14 @@ it('requests the deferred Trends read and kicks off a deferred month recap once 
         ->where('analysis_type', AnalysisType::TrendRead)
         ->pluck('discriminator')
         ->all())->toEqualCanonicalizing(AnalysisType::TREND_READ_RANGES);
-    Bus::assertDispatched(AnalyzeMonthlyRecapJob::class);
 
     Carbon::setTestNow();
 });
 
 it('regenerates a thin plan-day voice exactly once when history lands (#1044)', function (): void {
     Bus::fake();
-    $user = User::factory()->create(['history_replay_due_at' => Carbon::now()]);
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
     $date = Carbon::yesterday();
     PlannedSession::factory()->for($user)->create([
         'date' => $date->toDateString(),
@@ -210,7 +262,8 @@ it('leaves a thin plan-day voice Done, not stranded Pending, when nothing about 
     // exactly as it was rather than being pre-flipped to a Pending nothing
     // will ever fill.
     Bus::fake();
-    $user = User::factory()->create(['history_replay_due_at' => Carbon::now()]);
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
     $row = Analysis::factory()->done()->create([
         'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
@@ -237,14 +290,17 @@ it('bills nothing more on a second completion signal', function (): void {
     ['user' => $user] = earlyPassUser();
 
     $personalRecords = $this->mock(PersonalRecords::class);
-    $personalRecords->shouldReceive('rebuildForUser')->once();
+    $personalRecords->shouldReceive('rebuildForUser')->twice();
     $recomputeCardClaims = $this->mock(RecomputeCardClaimsAction::class);
-    $recomputeCardClaims->shouldReceive('__invoke')->once()->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
+    $recomputeCardClaims->shouldReceive('__invoke')->twice()->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
 
     $action = app(SettleEarlyNarrationAction::class);
     $action($user->fresh());
     Bus::fake();
     $action($user->fresh());
 
+    // The PR rebuild and card recompute are idempotent and re-run on every
+    // completion signal (a racing ingest, an unrelated sweep) — the row-level
+    // claim is what stops a second bill, not a call skipped outright.
     Bus::assertNothingDispatched();
 });

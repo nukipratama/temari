@@ -10,8 +10,10 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\Readiness;
+use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
 /**
@@ -62,13 +64,7 @@ final readonly class BriefingContext
     /**
      * @param  array<string, mixed>|null  $load  Live TrainingLoad summary (form_status/monotony);
      *                                            when null, readiness falls back to the weekly snapshot.
-     * @param  bool  $historyLoading  A fresh connect's early pass: older history
-     *                                (this week's and last week's snapshots, the CTL
-     *                                slope) is still hydrating, so form, fitness_trend,
-     *                                volume_ramp and the readiness ceiling they'd drive
-     *                                are computed from nothing rather than a partial
-     *                                past — the same neutral path a brand-new account
-     *                                with no snapshots yet already takes.
+     * @param  bool  $historyLoading  A fresh connect's early pass: older history is still hydrating.
      */
     #[NoDiscard]
     public static function forUser(User $user, Carbon $asOf, ?array $load = null, bool $historyLoading = false): self
@@ -76,51 +72,40 @@ final readonly class BriefingContext
         $thisWeekEnd = $asOf->copy()->endOfWeek(Carbon::SUNDAY);
         $lastWeekEnd = $thisWeekEnd->copy()->subWeek();
 
-        // Bound to weeks at or before the briefing week so a backdated recompute
-        // (self-heal / dead-letter retry) reads fitness_trend from the state as
-        // of $asOf, not from weeks that came after it.
+        // A fresh connect's early pass reads null snapshots and no live load,
+        // the same neutral path a brand-new account with nothing yet already
+        // takes — never a partial past. Bound to weeks at or before the
+        // briefing week otherwise, so a backdated recompute (self-heal /
+        // dead-letter retry) reads fitness_trend from the state as of $asOf.
         /** @var array<string, WeeklySnapshot> $byDate */
-        $byDate = app(ResolveTrailingWeeksAction::class)(
+        $byDate = $historyLoading ? [] : app(ResolveTrailingWeeksAction::class)(
             $user->id,
             $thisWeekEnd->toDateString(),
             ResolveTrailingWeeksAction::MAX_WEEKS,
         )
             ->keyBy(fn (WeeklySnapshot $row): string => $row->week_ending->toDateString())
             ->all();
+        $load = $historyLoading ? null : $load;
 
         $thisWeek = $byDate[$thisWeekEnd->toDateString()] ?? null;
         $lastWeek = $byDate[$lastWeekEnd->toDateString()] ?? null;
 
-        $snapshotFormStatus = null;
-        if (! $historyLoading && $thisWeek !== null && $thisWeek->form_status !== null) {
-            $snapshotFormStatus = $thisWeek->form_status;
-        } elseif (! $historyLoading && $lastWeek !== null) {
-            $snapshotFormStatus = $lastWeek->form_status;
-        }
+        $snapshotFormStatus = $thisWeek->form_status ?? $lastWeek?->form_status;
 
         $recovery = RecoveryWindow::forUser($user, $asOf);
         $lastWeekStart = $lastWeekEnd->copy()->subDays(6)->startOfDay();
         $lastWeekToDate = self::lastWeekToDate($user, $lastWeek, $lastWeekStart, $asOf);
-        // Both are load-trend reads of a history still hydrating during the
-        // early pass, computed from nothing rather than a partial past — the
-        // same neutral path Readiness::assess() already takes for a brand-new
-        // account with no weekly snapshots yet.
-        $volumeRampPct = $historyLoading ? null : self::volumeRampPct($thisWeek?->distance_km, $lastWeekToDate['km']);
-        $fitnessTrend = $historyLoading ? 'plateau' : self::fitnessTrend($byDate);
+        $volumeRampPct = self::volumeRampPct($thisWeek?->distance_km, $lastWeekToDate['km']);
+        $fitnessTrend = self::fitnessTrend($byDate);
 
         // Readiness keys off the live load when we have it (same numbers the LLM
         // sees), falling back to the weekly snapshot otherwise.
-        $snapshotMonotony = null;
-        if (! $historyLoading && $thisWeek !== null && $thisWeek->monotony !== null) {
-            $snapshotMonotony = $thisWeek->monotony;
-        } elseif (! $historyLoading && $lastWeek !== null) {
-            $snapshotMonotony = $lastWeek->monotony;
-        }
+        $snapshotMonotony = $thisWeek->monotony ?? $lastWeek?->monotony;
         // The form_status shown to the LLM and the one readiness caps off must
         // be the same source, or the prompt sees a snapshot form that
         // contradicts the ceiling. Prefer the live load, fall back to snapshot.
-        $formStatus = $historyLoading ? null : (self::stringOrNull($load['form_status'] ?? null) ?? $snapshotFormStatus);
-        $readinessMonotony = $historyLoading ? null : (self::floatOrNull($load['monotony'] ?? null) ?? $snapshotMonotony);
+        $formStatus = self::stringOrNull($load['form_status'] ?? null) ?? $snapshotFormStatus;
+        $readinessMonotony = self::floatOrNull($load['monotony'] ?? null) ?? $snapshotMonotony;
 
         $readiness = Readiness::assess(
             formStatus: $formStatus,
@@ -148,6 +133,21 @@ final readonly class BriefingContext
             buildNudge: $readiness->buildNudge,
             historyLoading: $historyLoading,
         );
+    }
+
+    /**
+     * {@see self::forUser()} for the briefing narrator's own tools
+     * (`get_week_state`, the daily voice's own context build): resolves
+     * `$historyLoading` and the live load itself, so both call sites stop
+     * duplicating the same two-line gate/load lookup.
+     */
+    #[NoDiscard]
+    public static function forBriefingNarrator(User $user, Carbon $asOf): self
+    {
+        $historyLoading = app(HistoryNarrationGate::class)->awaitsOlderHydration($user->id, $asOf);
+        $load = $historyLoading ? null : (app(TrainingLoad::class)->summary($user, $asOf) ?? []);
+
+        return self::forUser($user, $asOf, $load, $historyLoading);
     }
 
     /**

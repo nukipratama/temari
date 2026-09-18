@@ -144,9 +144,13 @@ it('fills a month that closed before the athlete connected rule-based, and narra
         ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
 });
 
-it('defers a narratable month whose own runs are still hydrating, flagging the user for a later replay (#1054)', function (): void {
+it('defers a narratable month whose own runs are still hydrating (#1054)', function (): void {
+    // Connected the evening before the month closed (post-connect, so the
+    // month is narratable in principle) and still within the 48h hydration
+    // grace as of "now".
+    Carbon::setTestNow('2026-06-01 10:00:00');
     $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['created_at' => '2026-01-01 00:00:00']);
+    StravaConnection::factory()->for($user)->create(['created_at' => '2026-05-31 20:00:00']);
     unhydratedRunInMonth($user, '2026-05');
 
     $captured = [];
@@ -154,9 +158,22 @@ it('defers a narratable month whose own runs are still hydrating, flagging the u
 
     expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 0, 'rule_based' => 0]);
 
-    expect(collect($captured)->firstWhere('discriminator', '2026-05'))
-        ->not->toBeNull()
-        ->and($user->fresh()->history_replay_due_at)->not->toBeNull();
+    expect(collect($captured)->firstWhere('discriminator', '2026-05'))->not->toBeNull();
+
+    Carbon::setTestNow();
+});
+
+it('defers a hydrating month past the grace window too if a run there truly never hydrates (#1054)', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => '2020-01-01 00:00:00']);
+    unhydratedRunInMonth($user, '2026-05');
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    // Long past the 48h hydration grace: the month is no longer deferred and
+    // narrates from whatever has landed, rather than sitting Pending forever.
+    expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 0]);
 });
 
 it('narrates every completed month for an athlete who connected long ago', function (): void {

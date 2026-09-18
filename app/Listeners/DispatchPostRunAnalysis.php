@@ -11,7 +11,6 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
-use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -93,15 +92,22 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $this->dispatchActivityGroup($activity, $isBackfill, $ruleBased, $stageOnly, $delaySec);
 
         // Daily cadence: when the ingested run is today's, refresh the whole
-        // daily AI set so each block narrates with every run done so far today.
-        // Backfill of a previous day leaves the Done rows untouched, so
-        // re-ingesting old days never re-bills. Both requests are held (staged
-        // Pending, not dispatched) while history their own narrator reads is
-        // still hydrating — see requestBriefingHeldForHydration() and
-        // requestProfileVoiceHeldForHydration() below.
+        // daily AI set so each block narrates with every run done so far
+        // today. Backfill of a previous day leaves the Done rows untouched, so
+        // re-ingesting old days never re-bills. Both narrate right away even
+        // during a fresh connect's early pass — AnalysisService::markDone()
+        // detects that live and flags the row for SettleEarlyNarrationAction's
+        // one-time replay.
         if (! $athleteAway) {
-            $this->requestBriefingHeldForHydration($user, $today, $isToday, $delaySec);
-            $this->requestProfileVoiceHeldForHydration($user, $delaySec);
+            $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
+            $this->analysisService->request(
+                subjectOrType: AnalysisType::ProfileVoice->subjectType(),
+                subjectId: $user->id,
+                type: AnalysisType::ProfileVoice,
+                discriminator: AnalysisType::currentIsoWeek(),
+                delaySeconds: $delaySec,
+                invalidate: false,
+            );
         }
 
         if ($detail->start_date_local === null) {
@@ -187,46 +193,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
             delaySeconds: $delaySec,
             type: AnalysisType::CardFlavor,
             invalidate: true,
-        );
-    }
-
-    /**
-     * The daily briefing narrates right away even while history within its
-     * bounded reach ({@see \App\Services\Run\Story\PastYouMatcher::MAX_GAP_DAYS})
-     * is still hydrating — a fresh connect's early pass, per
-     * docs/decisions/history-narrates-on-demand.md. AnalysisService::markDone()
-     * detects that live (via {@see \App\Services\AI\HistoryNarrationGate::awaitsOlderHydration()},
-     * anchored on now rather than the ingested run's own date) and flags the
-     * row for SettleEarlyNarrationAction's one-time replay once that history
-     * lands.
-     */
-    private function requestBriefingHeldForHydration(User $user, string $today, bool $isToday, int $delaySec): void
-    {
-        $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
-    }
-
-    /**
-     * Unlike the briefing, the profile voice reads the athlete's WHOLE history
-     * (get_lifetime_stats, get_progression_signal's full PR table,
-     * get_plan_adherence with no $from), so past-you's 365-day reach is the
-     * wrong bound: a run outside it can still be the one this narrator reads.
-     * It narrates right away too during a fresh connect's early pass;
-     * AnalysisService::markDone() detects that live via
-     * {@see \App\Services\AI\HistoryNarrationGate::awaitsFullHydration()} — the whole backlog,
-     * not just the bounded reach — and flags the row for
-     * SettleEarlyNarrationAction's one-time replay.
-     */
-    private function requestProfileVoiceHeldForHydration(User $user, int $delaySec): void
-    {
-        $isoWeek = AnalysisType::currentIsoWeek();
-
-        $this->analysisService->request(
-            subjectOrType: AnalysisType::ProfileVoice->subjectType(),
-            subjectId: $user->id,
-            type: AnalysisType::ProfileVoice,
-            discriminator: $isoWeek,
-            delaySeconds: $delaySec,
-            invalidate: false,
         );
     }
 

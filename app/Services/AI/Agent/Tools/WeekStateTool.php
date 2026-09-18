@@ -4,29 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Agent\Tools;
 
-use App\Models\User;
-use App\Services\AI\HistoryNarrationGate;
-use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingContext;
-use Illuminate\Support\Carbon;
 
 /**
  * The dashboard briefing's whole picture of the week in one read.
  *
- * These fields are produced together by {@see BriefingContext::forUser()} and
- * cost the same query work whether one or all fifteen are wanted, so splitting
- * them across several tools would only buy extra round trips.
+ * These fields are produced together by {@see BriefingContext::forBriefingNarrator()}
+ * and cost the same query work whether one or all fifteen are wanted, so
+ * splitting them across several tools would only buy extra round trips.
  */
 final class WeekStateTool extends UserTool
 {
-    public function __construct(
-        User $user,
-        Carbon $asOf,
-        private readonly TrainingLoad $trainingLoad,
-    ) {
-        parent::__construct($user, $asOf);
-    }
-
     public function name(): string
     {
         return 'get_week_state';
@@ -47,9 +35,6 @@ final class WeekStateTool extends UserTool
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
-        $historyLoading = app(HistoryNarrationGate::class)->awaitsOlderHydration($this->user->id, $this->asOf);
-        $load = $historyLoading ? [] : ($this->trainingLoad->summary($this->user, $this->asOf) ?? []);
-
-        return BriefingContext::forUser($this->user, $this->asOf, $load, $historyLoading)->toArray();
+        return BriefingContext::forBriefingNarrator($this->user, $this->asOf)->toArray();
     }
 }

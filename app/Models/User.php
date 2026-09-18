@@ -26,7 +26,6 @@ use Override;
  * @property bool $is_admin
  * @property Carbon|null $onboarded_at
  * @property Carbon|null $backfilled_at
- * @property Carbon|null $history_replay_due_at  Set while a fresh connect's early-narrated rows still await the one-time replay their landed history owes them; cleared by {@see \App\Actions\AI\SettleEarlyNarrationAction}.
  * @property Carbon|null $last_seen_at
  */
 // `is_admin` is deliberately NOT fillable: it is a privilege flag granted only
@@ -67,7 +66,6 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'onboarded_at' => 'datetime',
             'backfilled_at' => 'datetime',
-            'history_replay_due_at' => 'datetime',
             'last_seen_at' => 'datetime',
         ];
     }

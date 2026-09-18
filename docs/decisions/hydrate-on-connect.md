@@ -29,10 +29,8 @@ card or PR flag — on day one, the exact moment a new signup forms its impressi
 > [HydrateBacklogCommand::hydrateFor()](../../app/Console/Commands/Strava/HydrateBacklogCommand.php)
 > gained an optional `$recentFirst` sort, passed only from
 > [HydrateBacklogForUserJob](../../app/Jobs/Strava/HydrateBacklogForUserJob.php): the last
-> `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS` days hydrate first, then the rest oldest-first as
-> before. The cron tick (`strava:hydrate-backlog`) never passes it, so its drain is exactly as
-> described below. Everything else here — reusing `budget()`/`hydrateFor()`, the headroom
-> pacing, the give-up guard, the no-new-locking argument — is unchanged. See
+> `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS` days hydrate first, then the rest oldest-first. The
+> cron tick never passes it, so its own drain is unchanged. See
 > docs/decisions/history-narrates-on-demand.md for why: a fresh connect narrates its recent
 > runs, briefing and profile voice immediately, ahead of the rest of its history.
 

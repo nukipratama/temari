@@ -14,7 +14,7 @@ use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\HydrationBacklog;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
@@ -55,7 +55,7 @@ class KickoffRecapsJob implements ShouldQueue
         AnalysisService $analysis,
         Periodizer $periodizer,
         RequestTodaysBriefing $briefing,
-        HydrationBacklog $backlog,
+        HistoryNarrationGate $history,
     ): void {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
 
@@ -73,7 +73,7 @@ class KickoffRecapsJob implements ShouldQueue
 
         $briefing->afterBackfill($user);
 
-        $this->kickoffTrendReads($analysis, $user, $backlog);
+        $this->kickoffTrendReads($analysis, $user, $history);
 
         if (PlannedSession::query()->where('user_id', $user->id)->exists()) {
             $periodizer->regenerate($user);
@@ -95,21 +95,17 @@ class KickoffRecapsJob implements ShouldQueue
      * It is entirely a load/fitness/form read (#1054/#1046), so it must not be
      * requested while any of this athlete's backlog is still hydrating — the
      * same reasoning behind withholding CTL/ATL/form from the early-pass
-     * narrators. Deferred here rather than staged: the flag stamped for
-     * {@see \App\Actions\AI\SettleEarlyNarrationAction} is what asks for it
-     * again, exactly once, the moment the drain empties.
+     * narrators. Deferred here rather than staged:
+     * {@see \App\Actions\AI\SettleEarlyNarrationAction} requests it again,
+     * exactly once, the moment the drain empties.
      */
-    private function kickoffTrendReads(AnalysisService $analysis, User $user, HydrationBacklog $backlog): void
+    private function kickoffTrendReads(AnalysisService $analysis, User $user, HistoryNarrationGate $history): void
     {
         if (! Activity::query()->where('user_id', $user->id)->exists()) {
             return;
         }
 
-        if ($backlog->awaitingHydration([$user->id])->exists()) {
-            User::query()->whereKey($user->id)->whereNull('history_replay_due_at')->update([
-                'history_replay_due_at' => Carbon::now(),
-            ]);
-
+        if ($history->awaitsFullHydration($user->id)) {
             return;
         }
 

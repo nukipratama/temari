@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\AI;
 
 use App\Actions\Run\Story\RecomputeCardClaimsAction;
+use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
@@ -13,6 +14,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\HydrationBacklog;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,26 +23,20 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The replay a fresh connect's early pass owes once its history finishes
- * hydrating: real PRs and cards in date order (#1022), then exactly one
- * regeneration of every row the early pass narrated ahead of that history —
- * see docs/decisions/history-narrates-on-demand.md.
+ * hydrating: real PRs and cards in date order, then exactly one regeneration
+ * of every row the early pass narrated ahead of that history — see
+ * docs/decisions/history-narrates-on-demand.md.
  *
- * The exactly-once guarantee is the claim on {@see User::$history_replay_due_at}
- * itself: one conditional UPDATE (`whereNotNull`, checked for one affected row)
- * both asks whether a replay is owed and takes it, the same pattern
- * {@see AnalysisService::claimForDispatch()} uses. A second call — another
- * ingest also finding nothing left to hydrate, an unrelated `ai:self-heal`
- * sweep, a racing concurrent ingest — claims nothing and does no work. The PR
- * rebuild and card replay run whenever the claim succeeds, whether or not any
- * row was ever marked `narrated_early_at`: PR detection can be deferred
- * ({@see \App\Services\Run\Ingest\ActivityPipeline}) even when its narration
- * finishes late enough to never need marking at all.
- *
- * The Trends read ({@see \App\Jobs\AI\KickoffRecapsJob}) and a still-hydrating
- * month's recap ({@see KickoffMonthlyRecaps}) never get an Analysis row at all
- * while deferred — there is nothing to mark or claim for them — so they are
- * asked for directly here on every successful claim; both are naturally
- * idempotent (an existing row is left alone, a Done month is skipped).
+ * Called from every point an ingest or a give-up can leave the backlog empty
+ * ({@see \App\Services\Run\Ingest\ActivityPipeline}). It is a no-op unless the
+ * backlog is actually empty and the athlete is still inside the hydration
+ * grace window, so a long-connected athlete's every ingest returns
+ * immediately. The claim is per row: an early row is only ever picked up by
+ * the call that clears its own `narrated_early_at`, so a second call (a
+ * racing ingest, an unrelated sweep) finds nothing left to claim. The PR
+ * rebuild and card recompute run on every successful call regardless, since
+ * both are idempotent and PR detection can be deferred even when its
+ * narration finishes late enough to never need marking at all.
  */
 class SettleEarlyNarrationAction
 {
@@ -49,58 +45,19 @@ class SettleEarlyNarrationAction
         private readonly RecomputeCardClaimsAction $recomputeCardClaims,
         private readonly AnalysisService $analysisService,
         private readonly PlanNarrationRequester $planNarration,
-        private readonly KickoffMonthlyRecaps $kickoffMonthlyRecaps,
+        private readonly HydrationBacklog $backlog,
     ) {
     }
 
     public function __invoke(User $user): void
     {
-        if ($user->history_replay_due_at === null) {
+        if (! $this->backlog->withinHydrationGrace($user->id)
+            || $this->backlog->awaitingHydration([$user->id])->exists()) {
             return;
         }
 
-        /** @var Collection<int, Analysis>|null $claimed */
-        $claimed = DB::transaction(function () use ($user): ?Collection {
-            $won = User::query()
-                ->whereKey($user->id)
-                ->whereNotNull('history_replay_due_at')
-                ->update(['history_replay_due_at' => null]) === 1;
-
-            if (! $won) {
-                return null;
-            }
-
-            $rows = AnalysisSubjectMap::whereOwnedBy(Analysis::query(), $user->id)
-                ->whereNotNull('narrated_early_at')
-                ->lockForUpdate()
-                ->get();
-
-            if ($rows->isNotEmpty()) {
-                Analysis::query()->whereIn('id', $rows->pluck('id'))->update([
-                    'narrated_early_at' => null,
-                    'error' => null,
-                ]);
-
-                // Every other early type is unconditionally re-requested below,
-                // so flipping it to Pending here is safe. PlanDayVoice is the
-                // exception — requestDayVoiceIfChanged() decides for itself
-                // whether the day's material actually changed, and it has no
-                // SelfHealer recovery family, so pre-flipping it here could
-                // strand it Pending with nothing behind it if it decides not to.
-                $toPending = $rows->reject(fn (Analysis $row): bool => $row->analysis_type === AnalysisType::PlanDayVoice);
-                if ($toPending->isNotEmpty()) {
-                    Analysis::query()->whereIn('id', $toPending->pluck('id'))->update([
-                        'status' => AnalysisStatus::Pending,
-                    ]);
-                }
-            }
-
-            return $rows;
-        });
-
-        if ($claimed === null) {
-            return;
-        }
+        /** @var Collection<int, Analysis> $claimed */
+        $claimed = DB::transaction(fn (): Collection => $this->claimEarlyRows($user));
 
         $this->personalRecords->rebuildForUser($user);
         ($this->recomputeCardClaims)($user);
@@ -110,7 +67,60 @@ class SettleEarlyNarrationAction
         }
 
         $this->requestDeferredTrendReads($user);
-        ($this->kickoffMonthlyRecaps)($user->id);
+    }
+
+    /**
+     * Clears `narrated_early_at` on every early row this athlete owns, pairing
+     * a lone early RunInsight or PostRunSpeech with its sibling so the
+     * per-activity group's representative row is never left Done while the
+     * other resets alone — {@see AnalyzeActivityJob}'s chain advance and
+     * SelfHealer both key on PostRunSpeech's status.
+     *
+     * @return Collection<int, Analysis>
+     */
+    private function claimEarlyRows(User $user): Collection
+    {
+        $rows = AnalysisSubjectMap::whereOwnedBy(Analysis::query(), $user->id)
+            ->whereNotNull('narrated_early_at')
+            ->lockForUpdate()
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return $rows;
+        }
+
+        $activityIds = $rows
+            ->filter(fn (Analysis $row): bool => in_array($row->analysis_type, [AnalysisType::PostRunSpeech, AnalysisType::RunInsight], true))
+            ->pluck('subject_id')
+            ->unique();
+
+        if ($activityIds->isNotEmpty()) {
+            $siblings = Analysis::query()
+                ->where('subject_type', AnalyzeActivityJob::subjectType())
+                ->whereIn('analysis_type', [AnalysisType::PostRunSpeech, AnalysisType::RunInsight])
+                ->whereIn('subject_id', $activityIds)
+                ->lockForUpdate()
+                ->get();
+
+            $rows = $rows->merge($siblings)->unique('id')->values();
+        }
+
+        Analysis::query()->whereIn('id', $rows->pluck('id'))->update([
+            'narrated_early_at' => null,
+            'error' => null,
+        ]);
+
+        // PlanDayVoice is the exception: requestDayVoiceIfChanged() decides for
+        // itself whether the day's material changed, and has no SelfHealer
+        // recovery family, so pre-flipping it to Pending here could strand it.
+        $toPending = $rows->reject(fn (Analysis $row): bool => $row->analysis_type === AnalysisType::PlanDayVoice);
+        if ($toPending->isNotEmpty()) {
+            Analysis::query()->whereIn('id', $toPending->pluck('id'))->update([
+                'status' => AnalysisStatus::Pending,
+            ]);
+        }
+
+        return $rows;
     }
 
     /**

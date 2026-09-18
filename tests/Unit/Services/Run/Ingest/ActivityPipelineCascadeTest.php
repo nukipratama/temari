@@ -9,6 +9,7 @@ use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\ActivityPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -71,11 +72,13 @@ it('queues no AI job from inside the ingest transaction', function (): void {
 
     $this->pipeline->ingest($activity);
 
-    // The story layer runs inside DB::transaction; every analysis request now
-    // belongs to the post-commit listener, so nothing is billable until the
-    // watermark is durable.
+    // The story layer runs inside DB::transaction; every fan-out analysis
+    // request now belongs to the post-commit listener, so nothing from it is
+    // billable until the watermark is durable. A TrendRead row can still
+    // exist here — SettleEarlyNarrationAction runs post-commit too, and this
+    // single-run user's backlog is trivially empty (#1063).
     Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
-    expect(Analysis::query()->count())->toBe(0);
+    expect(Analysis::query()->where('analysis_type', '!=', AnalysisType::TrendRead)->count())->toBe(0);
 });
 
 it('dispatches nothing when the ingest transaction rolls back', function (): void {

@@ -731,7 +731,7 @@ it('reads an empty badge list when the card carries none', function (): void {
 it('reads the whole week picture in one call, since it is produced in one query pass', function (): void {
     ['activity' => $a] = agentToolFixture();
 
-    $reading = new WeekStateTool($a->user, Carbon::today(), new TrainingLoad())->handle([]);
+    $reading = new WeekStateTool($a->user, Carbon::today())->handle([]);
 
     expect($reading)->toHaveKeys([
         'this_week_runs', 'last_week_runs', 'this_week_km', 'last_week_km',
@@ -744,7 +744,7 @@ it('reads the whole week picture in one call, since it is produced in one query 
 it('reads a ran_today of true on a day the runner already ran', function (): void {
     ['activity' => $a] = agentToolFixture();
 
-    expect(new WeekStateTool($a->user, Carbon::today(), new TrainingLoad())->handle([])['ran_today'])
+    expect(new WeekStateTool($a->user, Carbon::today())->handle([])['ran_today'])
         ->toBeTrue();
 });
 
@@ -1431,7 +1431,7 @@ it('exposes no signed numeric field across every tool payload touched by the #10
         new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction())->handle([]),
         new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad())->handle([]),
         new WeekTotalsTool($snapshot)->handle([]),
-        new WeekStateTool($a->user, Carbon::today(), new TrainingLoad())->handle([]),
+        new WeekStateTool($a->user, Carbon::today())->handle([]),
     ];
 
     $retiredKeys = [

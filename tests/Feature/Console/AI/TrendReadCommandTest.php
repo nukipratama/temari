@@ -6,6 +6,7 @@ use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\AI\AnalysisService;
@@ -50,6 +51,49 @@ it('dispatches the 7d range for every active user', function (): void {
         ->and($requestCalls[0]['subjectId'])->toBe($user->id)
         ->and($requestCalls[0]['type'])->toBe(AnalysisType::TrendRead)
         ->and($requestCalls[0]['discriminator'])->toBe('7d');
+
+    Carbon::setTestNow();
+});
+
+it('holds the trend read for an athlete whose backlog is still hydrating (B5)', function (): void {
+    Carbon::setTestNow('2026-08-17 12:00:00');
+
+    $user = User::factory()->seenToday()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
+    $stub = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($stub)->create(['start_date_local' => Carbon::now()->subDay()]);
+
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldNotReceive('request');
+    $this->app->instance(AnalysisService::class, $service);
+
+    $this->artisan('ai:trend-read', ['range' => '7d'])
+        ->expectsOutputToContain('Dispatched trend read (7d) for 1 active users.')
+        ->assertSuccessful();
+
+    Carbon::setTestNow();
+});
+
+it('does not hold the trend read past the hydration grace window', function (): void {
+    Carbon::setTestNow('2026-08-17 12:00:00');
+
+    $user = User::factory()->seenToday()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subDays(90)]);
+    $stub = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($stub)->create(['start_date_local' => Carbon::now()->subDays(80)]);
+
+    $requestCalls = [];
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldReceive('request')->once()->andReturnUsing(function () use (&$requestCalls): Analysis {
+        $requestCalls[] = true;
+
+        return new Analysis();
+    });
+    $this->app->instance(AnalysisService::class, $service);
+
+    $this->artisan('ai:trend-read', ['range' => '7d'])->assertSuccessful();
+
+    expect($requestCalls)->toHaveCount(1);
 
     Carbon::setTestNow();
 });

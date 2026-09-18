@@ -106,8 +106,8 @@ it used to narrate on day one for periods Temari never watched. The weekly bucke
 fill runs — a pre-connect week's closer reads the snapshot's own `form_status`, so it races the same
 ordering problem the LLM path does (#1010). The monthly bucket's rule-based fill still bypasses the
 hydration wait, unchanged — but a month that closed after connecting and would otherwise get a real
-LLM read is staged Pending instead while its own runs are still hydrating (#1054), and
-`SettleEarlyNarrationAction` re-kicks `KickoffMonthlyRecaps` for that user once the drain empties.
+LLM read is staged Pending instead while `HydrationBacklog::monthAwaitsHydration()` (grace-bounded)
+holds (#1054), and the hourly `ai:self-heal` sweep resumes it once that clears.
 See [[deferred-recap-windowing]] and [[history-narrates-on-demand]].
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,

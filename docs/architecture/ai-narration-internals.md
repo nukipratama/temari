@@ -83,7 +83,7 @@ The neighbour it collides with is not on that page at all. `get_week_state` serv
 
 The last-week half of that pair, and `volume_ramp_pct`, are never the full prior week: [`lastWeekToDate`](app/Services/Run/Story/BriefingContext.php#L146) sums real activity through the same weekday `$asOf` falls on this week, queried straight off `ActivityDetail` rather than the `WeeklySnapshot` row, so a two-day-old week is compared against a two-day-old week rather than a full seven-day one. [Readiness](app/Services/Run/Metrics/Readiness.php)'s ramp guardrail reads the same like-for-like figure.
 
-Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing — now computed by [RecoveryWindow::forUser](app/Services/Run/Story/RecoveryWindow.php#L35) and passed in. `BriefingContext::forUser` is called from [WeekStateTool::handle](app/Services/AI/Agent/Tools/WeekStateTool.php#L48), one of the agent tools [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) reads from; the rendered surface is the [[dashboard]] mascot-voice block.
+Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing — now computed by [RecoveryWindow::forUser](app/Services/Run/Story/RecoveryWindow.php#L35) and passed in. `BriefingContext::forUser` is called from [WeekStateTool::handle](app/Services/AI/Agent/Tools/WeekStateTool.php#L36), one of the agent tools [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) reads from; the rendered surface is the [[dashboard]] mascot-voice block.
 
 ## The demo filler — copy without the LLM
 

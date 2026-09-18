@@ -101,50 +101,40 @@ code_refs:
 > follow-up rather than folded in here.
 
 > **2026-09-19 — the per-run, briefing and profile-voice holds above are lifted for a fresh
-> connect's recent runs; a one-time replay closes the gap (#1054).** #1057 hydrates a fresh
-> connect's last `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS` days first (recent-first), then the
-> rest oldest-first as before ([[hydrate-on-connect]]). `awaitsOlderHydration()` /
-> `awaitsFullHydration()` are unchanged, but `DispatchPostRunAnalysis`, `RequestTodaysBriefing`,
-> `DailyBriefingCommand` and `WeeklyProfileCommand` no longer stage a row Pending when they're
-> true: the run, the day's briefing and the profile voice narrate right away, with two things
-> withheld rather than prompted away — a prompt rule already proved unreliable here. PR
-> detection (`PersonalRecords::detectAndStore()`) is skipped in `ActivityPipeline::ingest()` for
-> a run still inside `awaitsOlderHydration()`'s reach, so no PR row, card badge or notification
-> is ever minted off an incomplete past. `TrainingLoadTool`, `WeekStateTool`/`BriefingContext`,
-> `LifetimeStatsTool` and `PersonaMixTool` return `history_loading: true` and withhold
-> CTL/ATL/form/monotony/volume-trend instead of computing them from a partial history.
-> `AnalysisService::markDone()` detects the same condition live (at generation time, not
-> dispatch time) and stamps `Analysis::$narrated_early_at` plus `User::$history_replay_due_at`;
-> it also skips the notification, since every channel's delivery claim is keyed on the row's id
-> for good and would otherwise permanently spend it on a run that couldn't yet know it set a PR.
-> `ActivityPipeline::ingest()` stamps the same user flag directly when it defers PR detection, so
-> the replay still runs even if narration itself finishes after the drain (and so was never
-> marked early at all).
-> Once the drain empties, `SettleEarlyNarrationAction` (triggered from the same
-> `ActivityPipeline::ingest()` that already runs the #1022 card replay) rebuilds PRs
-> (`PersonalRecords::rebuildForUser()`), re-judges cards (`RecomputeCardClaimsAction`), and
-> regenerates every marked row exactly once — its claim is one locked transaction that clears
-> both markers, so a second drain-complete signal or a later `ai:self-heal` sweep claims nothing
-> and bills nothing more. A long-connected athlete never satisfies `awaitsOlderHydration()` /
-> `awaitsFullHydration()` in the first place, so none of this fires for them.
+> connect's recent runs; a one-time replay closes the gap (#1054, reworked from an
+> earlier `users.history_replay_due_at` design that re-fired on nearly every ingest).**
+> #1057 hydrates a fresh connect's last `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS` days first
+> (recent-first), then the rest oldest-first ([[hydrate-on-connect]]). `DispatchPostRunAnalysis`,
+> `RequestTodaysBriefing`, `DailyBriefingCommand` and `WeeklyProfileCommand` no longer stage a row
+> Pending while `awaitsOlderHydration()` / `awaitsFullHydration()` hold true: the run, the day's
+> briefing and the profile voice narrate right away, withholding CTL/ATL/form/monotony/volume-trend
+> (`history_loading: true` from `TrainingLoadTool`, `WeekStateTool`/`BriefingContext`,
+> `LifetimeStatsTool`, `PersonaMixTool`) instead. PR detection is skipped in
+> `ActivityPipeline::ingest()` for the same reach, so no PR row, card badge or notification mints
+> off an incomplete past. `AnalysisService::markDone()` stamps `Analysis::$narrated_early_at` when
+> the row was early either at generation start or completion (a row can straddle the drain
+> finishing mid-generation).
 >
-> Three surfaces are pure load/fitness reads with nothing safe to say thin, so they are held
-> outright instead of narrated early: `KickoffRecapsJob::kickoffTrendReads()` skips the Trends
-> (`TrendRead`) read while any backlog awaits hydration, and `KickoffMonthlyRecaps` stages a
-> narratable month's `MonthlyRecap` Pending (never rule-based — it deserves the real thing) while
-> its own runs are still hydrating, both stamping the same `history_replay_due_at` flag with no
-> `Analysis` row ever created for the reader to mark. `SettleEarlyNarrationAction` asks for both
-> again, unconditionally and idempotently, on every successful claim. `PlanDayVoice`
-> (`PlanNarrationRequester::requestDayVoiceIfChanged()`) is different: it *is* narrated early, off
-> a thin `TrainingBaseline`, because #939 already made a credited day's own read a genuine event
-> worth reacting to same-day. `AnalysisService::markDone()` marks it the same way as the per-run
-> types, but the replay leaves its row Done rather than pre-flipping it Pending: the day-voice
-> row has no `SelfHealer` recovery family, and `requestDayVoiceIfChanged()`'s own material-
-> fingerprint check decides for itself whether the now-real baseline actually moved the read
-> — pre-flipping it would strand a row nothing re-fills when it decides nothing changed. The
-> plan clamp voice needed no equivalent: `RestClampRecorder::record()` already refuses to record
-> a clamp at all while `HydrationBacklog::recentLoadAwaitsScoring()` is true (#1059), so
-> `requestClampVoice()` finds nothing to narrate and creates no row — see #1044.
+> The replay has no flag of its own: `SettleEarlyNarrationAction` fires from every point an ingest
+> or a give-up can leave the backlog empty ({@see HydrationBacklog::withinHydrationGrace()} +
+> `awaitingHydration()`), and is a no-op otherwise — a long-connected athlete's connect date is
+> always past grace, so every one of their ingests returns immediately. The claim is per row: an
+> `UPDATE ... WHERE narrated_early_at IS NOT NULL` clears the marker, so a second drain-complete
+> signal (a racing ingest, `ai:self-heal`) claims nothing; the PR rebuild
+> (`PersonalRecords::rebuildForUser()`) and card recompute (`RecomputeCardClaimsAction`) run on
+> every successful call regardless, since both are idempotent. A lone early `RunInsight` or
+> `PostRunSpeech` pulls its sibling into the same reset, since `AnalyzeActivityJob`'s chain advance
+> and `SelfHealer` both key on `PostRunSpeech`'s status.
+>
+> Two more surfaces hold outright rather than narrate early, since neither has anything safe to
+> say thin: `ai:trend-read` and `KickoffRecapsJob::kickoffTrendReads()` skip the Trends read while
+> `HistoryNarrationGate::awaitsFullHydration()` holds; `KickoffMonthlyRecaps` stages a narratable
+> month `Pending` while `HydrationBacklog::monthAwaitsHydration()` (grace-bounded) holds, and the
+> hourly `ai:self-heal` sweep resumes it once that clears. `PlanDayVoice` is narrated early instead
+> (#939 already made a credited day's own read a same-day event), but the replay leaves its row
+> Done rather than pre-flipping it Pending — it has no `SelfHealer` recovery family, and
+> `requestDayVoiceIfChanged()`'s own fingerprint check decides whether the now-real baseline
+> actually moved the read.
 
 ## Context
 

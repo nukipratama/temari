@@ -17,7 +17,6 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
-use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\TrainingBaseline;
@@ -136,7 +135,6 @@ class PostRunSpeechNarrator
 
     public function __construct(
         private readonly StructuredChatCaller $caller,
-        private readonly TrainingLoad $trainingLoad,
         private readonly TrainingBaseline $trainingBaseline,
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $paceCalculator,
@@ -205,7 +203,7 @@ class PostRunSpeechNarrator
             new TerrainTool($activity, $detail),
             new WeatherTool($activity, $detail),
             new PersonalRecordsTool($activity, $detail),
-            new WeekStateTool($activity->user, $asOf, $this->trainingLoad),
+            new WeekStateTool($activity->user, $asOf),
             new PlanContextTool($activity->user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->paceCalculator),
         ]);
     }

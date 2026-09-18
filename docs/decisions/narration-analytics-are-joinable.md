@@ -50,7 +50,7 @@ through narrator signatures: [NarratedAnalysis](app/Services/AI/NarratedAnalysis
 `scoped` ambient holder — the same seam [NarrationOrigin](app/Services/AI/NarrationOrigin.php)
 already uses for `origin` — set around the generation by
 [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php#L49) and, per narrator call, by
-[`AnalyzeGroupJob::narrating()`](app/Jobs/AI/AnalyzeGroupJob.php#L159), and read at metering time
+[`AnalyzeGroupJob::narrating()`](app/Jobs/AI/AnalyzeGroupJob.php#L175), and read at metering time
 in [StructuredChatCaller](app/Services/AI/StructuredChatCaller.php#L257). A call made outside a
 narration (a run question) reads null and stays unattributed, exactly as an undeclared origin does.
 

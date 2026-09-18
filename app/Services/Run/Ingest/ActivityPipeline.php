@@ -99,13 +99,13 @@ class ActivityPipeline
             // instead of revoking a healthy connection.
             throw $e;
         } catch (Throwable $e) {
-            $this->handleDetailFailure($activity, $e);
+            $this->settleIfGaveUp($activity, $this->handleDetailFailure($activity, $e));
 
             return;
         }
 
         if (! is_array($detail)) {
-            $this->handleDetailFailure($activity, new RuntimeException('Strava returned non-array detail'));
+            $this->settleIfGaveUp($activity, $this->handleDetailFailure($activity, new RuntimeException('Strava returned non-array detail')));
 
             return;
         }
@@ -149,12 +149,6 @@ class ActivityPipeline
             $this->cardFactory->build($activity, $detailModel);
             $this->temari->postRunLine($activity, $detailModel);
             ($this->milestoneDetector)($activity, $detailModel, $newPrCategories);
-
-            if ($deferPrDetection) {
-                User::query()->whereKey($activity->user_id)->whereNull('history_replay_due_at')->update([
-                    'history_replay_due_at' => now(),
-                ]);
-            }
         });
 
         $this->recomputeCardClaimsOnceHistoryLands($activity, $detailModel);
@@ -165,14 +159,15 @@ class ActivityPipeline
 
     /**
      * A run landing behind already-hydrated later runs (a backfill, a backdated
-     * upload) can change which of those later runs set a PR on their day. Once
-     * nothing earlier is left to hydrate, every card is re-judged, before the
-     * ingested event can release narration that reads the flags.
+     * upload) can change which of those later runs set a PR on their day. Held
+     * until the WHOLE backlog is empty, not just nothing older than this run —
+     * with recent-first hydration, "nothing older" is true for nearly every
+     * tail ingest while the bulk of history is still draining.
      */
     private function recomputeCardClaimsOnceHistoryLands(Activity $activity, ActivityDetail $detail): void
     {
         $startedAt = $detail->start_date_local;
-        if ($startedAt === null || $this->backlog->awaitsHydrationBefore($activity->user_id, $startedAt)) {
+        if ($startedAt === null || $this->backlog->awaitingHydration([$activity->user_id])->exists()) {
             return;
         }
 
@@ -543,12 +538,19 @@ class ActivityPipeline
         $detail->update($snapshot->toActivityDetailAttributes());
     }
 
-    private function handleDetailFailure(Activity $activity, Throwable $reason): void
+    /**
+     * @return bool  whether this attempt gave up for good (detail_fail_count
+     *               reached {@see Activity::MAX_DETAIL_FETCH_ATTEMPTS}), which
+     *               can leave the athlete's backlog empty.
+     */
+    private function handleDetailFailure(Activity $activity, Throwable $reason): bool
     {
         $status = $this->httpStatus($reason);
+        $count = $activity->detail_fail_count + 1;
+
         if ($this->isPermanentClientError($status)) {
             $activity->update([
-                'detail_fail_count' => $activity->detail_fail_count + 1,
+                'detail_fail_count' => $count,
                 'analyzed_at' => now(),
             ]);
             Log::info('detail fetch hit a permanent 4xx; marking handled', [
@@ -557,10 +559,8 @@ class ActivityPipeline
                 'reason' => $reason->getMessage(),
             ]);
 
-            return;
+            return $count >= Activity::MAX_DETAIL_FETCH_ATTEMPTS;
         }
-
-        $count = $activity->detail_fail_count + 1;
 
         if ($count >= Activity::MAX_DETAIL_FETCH_ATTEMPTS) {
             $activity->update([
@@ -573,7 +573,7 @@ class ActivityPipeline
                 'reason' => $reason->getMessage(),
             ]);
 
-            return;
+            return true;
         }
 
         $activity->update(['detail_fail_count' => $count]);
@@ -582,5 +582,18 @@ class ActivityPipeline
             'attempts' => $count,
             'reason' => $reason->getMessage(),
         ]);
+
+        return false;
+    }
+
+    /**
+     * A give-up removes the activity from the backlog same as a success would
+     * — see {@see SettleEarlyNarrationAction}.
+     */
+    private function settleIfGaveUp(Activity $activity, bool $gaveUp): void
+    {
+        if ($gaveUp) {
+            ($this->settleEarlyNarration)($activity->user);
+        }
     }
 }

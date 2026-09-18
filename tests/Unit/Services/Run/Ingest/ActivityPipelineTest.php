@@ -9,13 +9,17 @@ use App\Models\PersonalRecord;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
+use App\Models\AI\Analysis;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Events\ActivityIngested;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Actions\Gamification\DetectActivityMilestonesAction;
+use App\Actions\Run\Story\RecomputeCardClaimsAction;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\ActivityPipeline;
+use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use App\Services\Weather\OpenMeteoClient;
@@ -1213,8 +1217,7 @@ it('defers PR detection for a run hydrated ahead of its older history (the early
     $this->pipeline->ingest($recent);
 
     expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->exists())->toBeFalse()
-        ->and(RunCard::query()->where('activity_id', $recent->id)->value('pr_set'))->toBeFalse()
-        ->and($user->fresh()->history_replay_due_at)->not->toBeNull();
+        ->and(RunCard::query()->where('activity_id', $recent->id)->value('pr_set'))->toBeFalse();
 
     // The older run finishes hydrating: the drain empties, so
     // SettleEarlyNarrationAction rebuilds PRs and replays cards.
@@ -1233,6 +1236,114 @@ it('defers PR detection for a run hydrated ahead of its older history (the early
         ->where('category', '5km')
         ->where('activity_id', $recent->id)
         ->exists())->toBeTrue()
-        ->and(RunCard::query()->where('activity_id', $recent->id)->value('pr_set'))->toBeTrue()
-        ->and($user->fresh()->history_replay_due_at)->toBeNull();
+        ->and(RunCard::query()->where('activity_id', $recent->id)->value('pr_set'))->toBeTrue();
+});
+
+it('fires the replay when the drain ends by give-up, not just success (#1063 B3)', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create([
+        'access_token' => 'tok',
+        'token_expires_at' => Carbon::now()->addHours(2),
+    ]);
+    // One attempt short of giving up: the next permanent failure crosses
+    // Activity::MAX_DETAIL_FETCH_ATTEMPTS and removes it from the backlog.
+    $older = Activity::factory()->for($user)->summaryOnly()->create(['strava_external_id' => 701, 'detail_fail_count' => 4]);
+    ActivityDetail::factory()->for($older)->create(['start_date_local' => '2025-11-26 06:30:00']);
+    $recent = Activity::factory()->for($user)->stub()->create(['strava_external_id' => 702]);
+
+    $fastSplits = [];
+    for ($k = 1; $k <= 5; $k++) {
+        $fastSplits[] = ['split' => $k, 'distance' => 1000, 'moving_time' => 360, 'elapsed_time' => 360];
+    }
+
+    Http::fake([
+        'strava.com/api/v3/activities/702' => Http::response([
+            'name' => 'Fast 5K', 'start_date_local' => '2026-09-17 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'splits_metric' => $fastSplits, 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/702/streams*' => Http::response([]),
+    ]);
+    $this->pipeline->ingest($recent);
+
+    expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->exists())->toBeFalse();
+
+    // A permanent 404 on the final attempt: a give-up, not a success.
+    Http::fake([
+        'strava.com/api/v3/activities/701' => Http::response(['error' => 'gone'], 404),
+    ]);
+    $this->pipeline->ingest($older);
+
+    expect($older->fresh()->detail_fail_count)->toBe(5)
+        ->and($older->fresh()->analyzed_at)->not->toBeNull()
+        ->and(PersonalRecord::query()
+            ->where('user_id', $user->id)
+            ->where('category', '5km')
+            ->where('activity_id', $recent->id)
+            ->exists())->toBeTrue();
+});
+
+it('drains 5+ runs recent-first then oldest-first, settling the replay exactly once with no mid-drain loop (#1063)', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create([
+        'access_token' => 'tok',
+        'token_expires_at' => Carbon::now()->addHours(2),
+    ]);
+
+    $recent1 = Activity::factory()->for($user)->stub()->create(['strava_external_id' => 801]);
+    $recent2 = Activity::factory()->for($user)->stub()->create(['strava_external_id' => 802]);
+    $older1 = Activity::factory()->for($user)->summaryOnly()->create(['strava_external_id' => 803]);
+    ActivityDetail::factory()->for($older1)->create(['start_date_local' => '2025-11-20 06:00:00']);
+    $older2 = Activity::factory()->for($user)->summaryOnly()->create(['strava_external_id' => 804]);
+    ActivityDetail::factory()->for($older2)->create(['start_date_local' => '2025-11-22 06:00:00']);
+    $older3 = Activity::factory()->for($user)->summaryOnly()->create(['strava_external_id' => 805]);
+    ActivityDetail::factory()->for($older3)->create(['start_date_local' => '2025-11-24 06:00:00']);
+
+    $fakeDetail = function (int $id, string $date): void {
+        Http::fake([
+            "strava.com/api/v3/activities/{$id}" => Http::response([
+                'name' => 'Run', 'start_date_local' => $date,
+                'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+                'splits_metric' => [], 'map' => null,
+            ]),
+            "strava.com/api/v3/activities/{$id}/streams*" => Http::response([]),
+        ]);
+    };
+
+    // rebuildForUser only ever runs from SettleEarlyNarrationAction, so
+    // Mockery's `once()` (it fails the test the moment a second call happens)
+    // is the direct proof B1's mid-drain re-billing loop is gone: on the old
+    // code this ran on nearly every one of the 5 ingests. RecomputeCardClaimsAction
+    // legitimately runs twice on the final ingest — once from ActivityPipeline's
+    // own per-run recompute (B2), once from the replay — both idempotent.
+    $personalRecords = $this->mock(PersonalRecords::class);
+    $personalRecords->shouldReceive('detectAndStore')->andReturn([]);
+    $personalRecords->shouldReceive('rebuildForUser')->once();
+    $this->mock(RecomputeCardClaimsAction::class)
+        ->shouldReceive('__invoke')
+        ->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
+    $this->pipeline = app(ActivityPipeline::class);
+
+    $fakeDetail(801, '2026-09-17 06:30:00');
+    $this->pipeline->ingest($recent1);
+    $fakeDetail(802, '2026-09-18 06:30:00');
+    $this->pipeline->ingest($recent2);
+
+    expect(Analysis::query()->where('analysis_type', AnalysisType::TrendRead)->exists())->toBeFalse();
+
+    $fakeDetail(803, '2025-11-20 06:00:00');
+    $this->pipeline->ingest($older1);
+    $fakeDetail(804, '2025-11-22 06:00:00');
+    $this->pipeline->ingest($older2);
+
+    expect(Analysis::query()->where('analysis_type', AnalysisType::TrendRead)->exists())->toBeFalse();
+
+    $fakeDetail(805, '2025-11-24 06:00:00');
+    $this->pipeline->ingest($older3);
+
+    expect(Analysis::query()
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::TrendRead)
+        ->pluck('discriminator')
+        ->all())->toEqualCanonicalizing(AnalysisType::TREND_READ_RANGES);
 });
