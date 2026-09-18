@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use App\Services\AI\AnalysisOrigin;
 
-it('covers the six ways a call starts, plus an unattributed default', function (): void {
+it('covers the six ways a call starts, an unattributed default, and the rule-based-only reasons', function (): void {
     expect(array_column(AnalysisOrigin::cases(), 'value'))
-        ->toBe(['scheduled', 'ingest', 'user', 'recovery', 'replay', 'return', 'unknown']);
+        ->toBe(['scheduled', 'ingest', 'user', 'recovery', 'replay', 'return', 'unknown', 'demo', 'capped', 'dead_letter', 'content_filter']);
 });
 
 it('labels every case for the usage dashboard', function (AnalysisOrigin $origin, string $label): void {
@@ -19,4 +19,8 @@ it('labels every case for the usage dashboard', function (AnalysisOrigin $origin
     'replay' => [AnalysisOrigin::Replay, 'Replay'],
     'return' => [AnalysisOrigin::Return, 'Athlete return'],
     'unknown' => [AnalysisOrigin::Unknown, 'Unattributed'],
+    'demo' => [AnalysisOrigin::Demo, 'Demo account'],
+    'capped' => [AnalysisOrigin::Capped, 'Daily ceiling reached'],
+    'dead_letter' => [AnalysisOrigin::DeadLetter, 'Dead-lettered block'],
+    'content_filter' => [AnalysisOrigin::ContentFilter, 'Content filter fallback'],
 ]);

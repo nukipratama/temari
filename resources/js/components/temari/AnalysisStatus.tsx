@@ -96,12 +96,14 @@ const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
  * The prototype's narration-card trigger: a filled pill in the bottom-right
  * corner of the card, identical on Trends and Activity, the only two screens
  * that draw it. `self-end` is `justify-end` by another name inside the flex
- * column each state already renders into.
+ * column each state already renders into. Exported so other Analysis-adjacent
+ * buttons (the Trends verdict's empty-state retry, "set a race") share the
+ * same recipe instead of hand-copying the class string.
  */
-const TRIGGER_CLASS =
+export const TRIGGER_CLASS =
     'focus-ring pad-chip text-label-micro pressable inline-flex items-center self-end gap-1 rounded-full transition-colors disabled:pointer-events-none disabled:opacity-60';
 
-function triggerTone(onSky: boolean): string {
+export function triggerTone(onSky: boolean): string {
     return onSky
         ? 'bg-cream/10 text-cream hover:opacity-90'
         : 'bg-muted text-foreground hover:bg-accent';

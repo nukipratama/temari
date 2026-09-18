@@ -99,7 +99,19 @@ const baseProps: NarrationOverviewProps = {
             ceiling_overridden: false,
             capped: false,
             sparkline: [{ day: '2026-05-18', cost: 0.42 }],
-            served: { llm: 5, rule_based: 1, unknown: 0 },
+            served: {
+                llm: 5,
+                rule_based: 1,
+                unknown: 0,
+                reasons: {
+                    demo: 0,
+                    capped: 0,
+                    return: 0,
+                    dead_letter: 0,
+                    content_filter: 0,
+                    unattributed: 1,
+                },
+            },
             flags: 0,
             dead_lettered: 0,
         },
@@ -127,13 +139,19 @@ describe('Narration overview page', () => {
         ).toBeInTheDocument();
     });
 
-    it('opens on the overview tab: ceiling strip, KPIs, cost chart and athletes', () => {
+    it('opens on the overview tab: today panel, cost chart and who drove it', () => {
         render(<Overview {...baseProps} />);
 
         expect(screen.getByText('today, app-wide')).toBeInTheDocument();
         expect(screen.getByText('daily cost')).toBeInTheDocument();
-        expect(screen.getByText('athletes')).toBeInTheDocument();
+        expect(screen.getByText('who drove it')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Alice' })).toBeInTheDocument();
+    });
+
+    it('collapses the fault region to a quiet line when nothing is wrong', () => {
+        render(<Overview {...baseProps} />);
+
+        expect(screen.getByText(/nothing on fire/)).toBeInTheDocument();
     });
 
     it('keeps the kind, deployment and origin tables off the overview tab', () => {

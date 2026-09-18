@@ -823,7 +823,7 @@ class AnalysisService
             return;
         }
 
-        $this->fillRuleBased($row);
+        $this->fillRuleBased($row, AnalysisOrigin::Capped);
         $this->ceilingLedger->recordDegradedFill();
     }
 

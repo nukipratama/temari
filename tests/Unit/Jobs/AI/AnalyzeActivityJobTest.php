@@ -11,6 +11,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -394,6 +395,7 @@ it('marks a content-filtered group as rule-based across every row it settles', f
     expect($rows)->toHaveCount(2);
     foreach ($rows as $row) {
         expect($row->status)->toBe(AnalysisStatus::Done)
-            ->and($row->served_by)->toBe(ServedBy::RuleBased);
+            ->and($row->served_by)->toBe(ServedBy::RuleBased)
+            ->and($row->rule_based_reason)->toBe(AnalysisOrigin::ContentFilter);
     }
 });

@@ -4,14 +4,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     athleteLabel,
     athletePath,
+    FLAGGED_REASONS,
     fmt,
     formatCost,
     formatDayLabel,
     formatDayLabelShort,
     formatTimestamp,
+    median,
     navigate,
+    PAUSE_LABEL,
+    plural,
     presetHref,
     PRESETS,
+    REASON_LABEL,
 } from './helpers';
 
 beforeEach(() => {
@@ -185,5 +190,56 @@ describe('day labels', () => {
 
     it('formats a day key as short weekday + day for the dense axis', () => {
         expect(formatDayLabelShort('2026-05-18')).toBe('18 mon');
+    });
+});
+
+describe('plural', () => {
+    it('keeps the noun singular for exactly one', () => {
+        expect(plural(1, 'athlete')).toBe('1 athlete');
+    });
+
+    it('adds an s for zero and for more than one', () => {
+        expect(plural(0, 'athlete')).toBe('0 athletes');
+        expect(plural(2, 'athlete')).toBe('2 athletes');
+    });
+});
+
+describe('median', () => {
+    it('returns 0 for an empty series', () => {
+        expect(median([])).toBe(0);
+    });
+
+    it('returns the middle value of an odd-length series', () => {
+        expect(median([3, 1, 2])).toBe(2);
+    });
+
+    it('averages the two middle values of an even-length series', () => {
+        expect(median([1, 4, 2, 3])).toBe(2.5);
+    });
+});
+
+describe('reason and pause labels', () => {
+    it('labels every rule-based reason', () => {
+        expect(Object.keys(REASON_LABEL)).toEqual([
+            'demo',
+            'capped',
+            'return',
+            'dead_letter',
+            'content_filter',
+            'unattributed',
+        ]);
+    });
+
+    it('flags only the reasons that want explaining', () => {
+        expect(FLAGGED_REASONS.has('content_filter')).toBe(true);
+        expect(FLAGGED_REASONS.has('dead_letter')).toBe(true);
+        expect(FLAGGED_REASONS.has('unattributed')).toBe(true);
+        expect(FLAGGED_REASONS.has('demo')).toBe(false);
+        expect(FLAGGED_REASONS.has('capped')).toBe(false);
+        expect(FLAGGED_REASONS.has('return')).toBe(false);
+    });
+
+    it('translates a known pause reason', () => {
+        expect(PAUSE_LABEL.kill_switch).toBe('kill switch off');
     });
 });

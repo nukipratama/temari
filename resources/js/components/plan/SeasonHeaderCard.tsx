@@ -1,19 +1,22 @@
 import type { SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
+import PhaseRibbon from '@/components/plan/PhaseRibbon';
 import TemariTake from '@/components/plan/TemariTake';
 import Card from '@/components/ui/LegacyCard';
-import { PHASE_COLORS, type PlanPhaseKey } from '@/lib/chartTokens';
+import { phaseColor } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { formatNaiveMonthDayId } from '@/lib/pace';
-import { PHASE_LABEL, phasesOf, type Phase } from '@/lib/plan';
+import {
+    generalZoneSpan,
+    PHASE_LABEL,
+    phaseGroupKey,
+    phasesOf,
+    type Phase,
+} from '@/lib/plan';
 
 /** Shortest bar in the arc, as a percentage of the tallest. */
 const MIN_BAR_PCT = 35;
-
-function phaseColor(phase: string): string {
-    return PHASE_COLORS[phase as PlanPhaseKey] ?? 'var(--color-text-3)';
-}
 
 function barHeightPct(phase: Phase, phases: Phase[]): number {
     const values = phases.map((p) => p.avgKm);
@@ -40,6 +43,7 @@ export default function SeasonHeaderCard({
     adherencePct,
     weeks,
     narration,
+    underReadyLine = null,
 }: Readonly<{
     weekIndex: number;
     totalWeeks: number;
@@ -48,9 +52,20 @@ export default function SeasonHeaderCard({
     adherencePct: number | null;
     weeks: SeasonSummaryWeek[];
     narration: AnalysisPayload | null;
+    /** Served once, when the season opened with less than a full race block left. */
+    underReadyLine?: string | null;
 }>) {
     const phases = phasesOf(weeks);
-    const currentPhase = weeks.find((w) => w.type === 'current')?.phase;
+    const currentWeek = weeks.find((w) => w.type === 'current');
+    const currentGroupKey =
+        currentWeek === undefined ? undefined : phaseGroupKey(currentWeek);
+    // A general-zone header names its own run's span, not the season's —
+    // "maintain" spanning all the way to race day would read as the block
+    // belonging to it too.
+    const headerSpan =
+        currentWeek?.zone === 'general'
+            ? (generalZoneSpan(weeks) ?? { start: startsAt, end: endsAt })
+            : { start: startsAt, end: endsAt };
 
     return (
         <Card padding="panel" className="mb-3 border-border-strong">
@@ -60,11 +75,11 @@ export default function SeasonHeaderCard({
                         Season · Week {weekIndex} of {totalWeeks}
                     </p>
                     <p className="mt-1 text-xs text-text-2">
-                        {currentPhase
-                            ? `${PHASE_LABEL[currentPhase] ?? currentPhase} · `
+                        {currentGroupKey
+                            ? `${PHASE_LABEL[currentGroupKey] ?? currentGroupKey} · `
                             : ''}
-                        {formatNaiveMonthDayId(startsAt)} –{' '}
-                        {formatNaiveMonthDayId(endsAt)}
+                        {formatNaiveMonthDayId(headerSpan.start)} –{' '}
+                        {formatNaiveMonthDayId(headerSpan.end)}
                     </p>
                 </div>
                 {adherencePct != null && (
@@ -78,6 +93,8 @@ export default function SeasonHeaderCard({
                     </div>
                 )}
             </div>
+
+            <PhaseRibbon weeks={weeks} />
 
             {phases.length > 0 && (
                 <div className="mt-3 flex items-end gap-1.5">
@@ -124,6 +141,10 @@ export default function SeasonHeaderCard({
                         );
                     })}
                 </div>
+            )}
+
+            {underReadyLine && (
+                <p className="mt-3 text-xs text-text-2">{underReadyLine}</p>
             )}
 
             {narration && <TemariTake analysis={narration} className="mt-3" />}

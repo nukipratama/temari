@@ -46,12 +46,15 @@ enum AnalysisType: string
     public const string PLAN_CLAMP_VOICE_SUBJECT_TYPE = 'plan_clamp_voice_user_day';
 
     /**
-     * The four windows Trends narrates. Not chained, not date-keyed — each is
-     * always "as of now", so the discriminator names the range, not a period.
+     * The one window Trends narrates. Not chained, not date-keyed — always
+     * "as of now", so the discriminator names the range, not a period. Used
+     * to carry `30d`/`90d`/`12mo` too; those retired (#967) to cut scheduled
+     * LLM calls once the page settled on a single verdict. Stored rows under
+     * a retired range are hidden by {@see \App\Models\Scopes\KnownAnalysisTypeScope}.
      *
      * @var list<string>
      */
-    public const array TREND_READ_RANGES = ['7d', '30d', '90d', '12mo'];
+    public const array TREND_READ_RANGES = ['7d'];
 
     /**
      * How far back a period-keyed discriminator may reach. Deliberately wider

@@ -218,6 +218,9 @@
                 ],
                 "resources/js/components/race/RaceGoalForm.tsx": [
                     "paper"
+                ],
+                "resources/js/components/narration/FaultStrip.tsx": [
+                    "paper"
                 ]
             },
             "text": [
@@ -226,10 +229,7 @@
         },
         "ember/0.15": {
             "over": {
-                "resources/js/components/narration/AthleteTable.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/narration/CeilingHeader.tsx": [
+                "resources/js/components/narration/AthletesPanel.tsx": [
                     "paper"
                 ],
                 "resources/js/components/home/EvidenceList.tsx": [
@@ -239,6 +239,9 @@
                     "paper"
                 ],
                 "resources/js/components/history/WeeklyStatusChips.test.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/trends/WeekComparison.tsx": [
                     "paper"
                 ]
             },
@@ -351,16 +354,6 @@
                 "icon-accent"
             ]
         },
-        "horizon/0.25": {
-            "over": {
-                "resources/js/components/trends/panels/FitnessPanel.tsx": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "foreground"
-            ]
-        },
         "horizon/0.35": {
             "text": []
         },
@@ -402,6 +395,9 @@
                     "paper"
                 ],
                 "resources/js/components/narration/athlete/VersionDiff.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/trends/WeekComparison.tsx": [
                     "paper"
                 ]
             },

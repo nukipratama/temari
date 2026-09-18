@@ -10,6 +10,7 @@ use App\Models\StreakRestToken;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Plan\PhaseSchedule;
 use Illuminate\Support\Carbon;
 
 /**
@@ -32,13 +33,14 @@ final readonly class SeasonStreakSummaryBuilder
 
     /**
      * @param  SeasonGamificationContext|null  $context  Pass a pre-built context when the caller already holds one, to avoid resolving it twice.
-     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, is_race_oriented: bool, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>}|null
+     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, is_race_oriented: bool, block_opens_on: string|null, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>}|null
      */
     public function seasonPayload(User $user, ?Season $season, Carbon $today, ?SeasonGamificationContext $context = null): ?array
     {
         if ($season === null) {
             return null;
         }
+        $race = $season->raceGoal;
 
         $context ??= SeasonGamificationContext::forSeason($user, $season, $today, $this->trainingLoad);
         $goals = $this->seasonGoalResolver->forSeason($user, $season, $context);
@@ -52,6 +54,7 @@ final readonly class SeasonStreakSummaryBuilder
             'week_index' => $weekIndex,
             'total_weeks' => $totalWeeks,
             'is_race_oriented' => $season->race_goal_id !== null,
+            'block_opens_on' => $race === null ? null : PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m)->toDateString(),
             'goals' => $goals,
         ];
     }

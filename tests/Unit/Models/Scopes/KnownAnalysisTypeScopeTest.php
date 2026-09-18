@@ -66,3 +66,48 @@ it('reveals a retired-type row only when withoutGlobalScope opts out', function 
     expect(Analysis::query()->withoutGlobalScope(KnownAnalysisTypeScope::class)->count())->toBe(1)
         ->and(Analysis::query()->count())->toBe(0);
 });
+
+it('hides a trend_read row under a retired discriminator', function (): void {
+    $live = Analysis::factory()->done('holding steady')->create([
+        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
+        'subject_id' => 1,
+        'analysis_type' => AnalysisType::TrendRead,
+        'discriminator' => '7d',
+    ]);
+    Analysis::factory()->done('an old 30d read')->create([
+        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
+        'subject_id' => 1,
+        'analysis_type' => AnalysisType::TrendRead,
+        'discriminator' => '30d',
+    ]);
+    Analysis::factory()->done('an old 12mo read')->create([
+        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
+        'subject_id' => 1,
+        'analysis_type' => AnalysisType::TrendRead,
+        'discriminator' => '12mo',
+    ]);
+
+    expect(Analysis::query()->pluck('id')->all())->toBe([$live->id])
+        ->and(Analysis::query()->count())->toBe(1);
+});
+
+it('reveals a retired-discriminator trend_read row only when withoutGlobalScope opts out', function (): void {
+    Analysis::factory()->done('an old 90d read')->create([
+        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
+        'subject_id' => 1,
+        'analysis_type' => AnalysisType::TrendRead,
+        'discriminator' => '90d',
+    ]);
+
+    expect(Analysis::query()->withoutGlobalScope(KnownAnalysisTypeScope::class)->count())->toBe(1)
+        ->and(Analysis::query()->count())->toBe(0);
+});
+
+it('does not hide a null-discriminator row of an unrelated type', function (): void {
+    $row = Analysis::factory()->done('x')->create([
+        'analysis_type' => AnalysisType::CardFlavor,
+        'discriminator' => null,
+    ]);
+
+    expect(Analysis::query()->pluck('id')->all())->toBe([$row->id]);
+});

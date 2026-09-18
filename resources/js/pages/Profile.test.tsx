@@ -155,6 +155,7 @@ describe('Profile', () => {
                     {
                         week_start: '2026-06-15',
                         phase: 'base',
+                        zone: 'block',
                         type: 'current',
                         planned_km: 30,
                         actual_km: null,

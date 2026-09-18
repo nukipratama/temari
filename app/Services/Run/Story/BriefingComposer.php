@@ -36,8 +36,6 @@ class BriefingComposer
 
         return new BriefingResult(
             vibeState: $vibeState,
-            vibeLabel: Vibe::label($vibeState),
-            vibeEmoji: Vibe::emoji($vibeState),
             mascotVoice: Analysis::toPayload($mascotVoice, AnalysisType::BriefingMascotVoice, $subjectType, $user->id, $discriminator),
             firstRead: ! $everNarrated,
             recoveryLabel: FormStatus::label($load),

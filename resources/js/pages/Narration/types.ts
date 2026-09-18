@@ -106,12 +106,24 @@ export interface SparklinePoint {
     cost: number;
 }
 
+/** Why a rule-based fill happened, not merely that it did. */
+export interface RuleBasedReasons {
+    demo: number;
+    capped: number;
+    return: number;
+    dead_letter: number;
+    content_filter: number;
+    /** No reason recorded: a null `rule_based_reason`, e.g. a pre-widening row. */
+    unattributed: number;
+}
+
 /** How a period's Done narration was produced, per athlete. */
 export interface ServedSplit {
     llm: number;
     rule_based: number;
     /** Narrated before `served_by` existed. Not the same as rule-based. */
     unknown: number;
+    reasons: RuleBasedReasons;
 }
 
 export interface AthleteRow {
