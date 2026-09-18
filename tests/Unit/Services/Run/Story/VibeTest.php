@@ -161,13 +161,6 @@ it('averages decoupling_pct across recent runs to drive the vibe', function (): 
     expect(app(Vibe::class)->current($user))->toBe(Vibe::BOUNCY);
 });
 
-it('exposes display labels', function (): void {
-    expect(Vibe::label(Vibe::BOUNCY))->toBe('Bouncy')
-        ->and(Vibe::label(Vibe::COOKED))->toBe('Cooked')
-        ->and(Vibe::label(Vibe::HIBERNATING))->toBe('Hibernating')
-        ->and(Vibe::emoji(Vibe::PUMPED))->toBe('💥');
-});
-
 // DashboardController resolves today's vibe in the method body and BriefingComposer
 // asks again while rendering. Three statements each, on a scoped() binding.
 it('resolves a given day once per request', function (): void {

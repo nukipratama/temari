@@ -31,6 +31,8 @@ export interface PlanWeek {
 export interface SeasonSummaryWeek {
     week_start: string;
     phase: string;
+    /** `general` before the race block opens, `block` inside it; a self-scaled week is always `general`. */
+    zone: 'general' | 'block';
     type: 'history' | 'current' | 'lookahead';
     planned_km: number;
     /** The current week's target before a recorded ease took km off it. */
@@ -67,24 +69,22 @@ export function phasesOf(weeks: SeasonSummaryWeek[]): Phase[] {
     const states = new Map<string, PhaseState>();
 
     for (const week of weeks) {
-        if (!totals.has(week.phase)) {
-            order.push(week.phase);
-            totals.set(week.phase, { km: 0, count: 0 });
+        const key = phaseGroupKey(week);
+        if (!totals.has(key)) {
+            order.push(key);
+            totals.set(key, { km: 0, count: 0 });
         }
-        const total = totals.get(week.phase)!;
+        const total = totals.get(key)!;
         total.km += week.planned_km;
         total.count += 1;
 
-        const seen = states.get(week.phase);
+        const seen = states.get(key);
         if (week.type === 'current') {
-            states.set(week.phase, 'current');
+            states.set(key, 'current');
         } else if (seen === undefined) {
-            states.set(
-                week.phase,
-                week.type === 'history' ? 'done' : 'upcoming',
-            );
+            states.set(key, week.type === 'history' ? 'done' : 'upcoming');
         } else if (seen === 'done' && week.type === 'lookahead') {
-            states.set(week.phase, 'upcoming');
+            states.set(key, 'upcoming');
         }
     }
 
@@ -98,13 +98,53 @@ export function phasesOf(weeks: SeasonSummaryWeek[]): Phase[] {
     });
 }
 
+/** The shared group key every week before the race block opens displays under, regardless of the self-scaled cycle's own build/deload phase. */
+export const GENERAL_PHASE_KEY = 'general';
+
+/**
+ * The identity a week displays as: its own phase inside the race block, or
+ * one shared "maintain" identity for every `zone: general` week — the
+ * self-scaled cycle alternates Build/Deload before the block opens, and
+ * naming that would read as noise rather than as the season's real arc. Used
+ * everywhere a week's phase would otherwise be shown or grouped: the season
+ * header, the phase legend ({@see phasesOf}), and the timeline's phase runs.
+ */
+export function phaseGroupKey(week: SeasonSummaryWeek): string {
+    return week.zone === 'general' ? GENERAL_PHASE_KEY : week.phase;
+}
+
 export const PHASE_LABEL: Record<string, string> = {
     base: 'base',
     build: 'build',
     peak: 'peak',
     taper: 'taper',
     deload: 'deload',
+    [GENERAL_PHASE_KEY]: 'maintain',
 };
+
+/**
+ * The Monday-to-Sunday span the general zone covers — the first general
+ * week's start through the last general week's end — or `null` when the
+ * season has no general weeks (already inside the block, or goal-less).
+ * Reading this off `weeks` rather than the season's own `starts_at`/`ends_at`
+ * keeps the header from claiming "maintain" spans dates that are really the
+ * race block's.
+ */
+export function generalZoneSpan(
+    weeks: SeasonSummaryWeek[],
+): { start: string; end: string } | null {
+    const generalWeeks = weeks.filter((week) => week.zone === 'general');
+    if (generalWeeks.length === 0) {
+        return null;
+    }
+
+    const last = generalWeeks[generalWeeks.length - 1];
+
+    return {
+        start: generalWeeks[0].week_start,
+        end: isoDateLocal(sundayOf(mondayOf(last.week_start))),
+    };
+}
 
 export const SESSION_TYPE_LABEL: Record<string, string> = {
     easy: 'easy',

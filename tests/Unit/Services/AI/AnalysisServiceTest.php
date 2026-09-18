@@ -1739,7 +1739,8 @@ it('marks a ceiling degrade as rule-based', function (): void {
         type: AnalysisType::WeeklyRecap,
     );
 
-    expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased);
+    expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased)
+        ->and($row->fresh()->rule_based_reason)->toBe(AnalysisOrigin::Capped);
 });
 
 // ── analysis_versions: what a re-narration supersedes ─────────────────

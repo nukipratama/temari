@@ -15,6 +15,10 @@ namespace App\Services\AI;
  * `Unknown` is the default rather than a guess: a dispatch site that forgets to
  * declare itself shows up as unattributed in the data instead of silently
  * inflating whichever origin happened to be the default.
+ *
+ * Also reused, cases below `Return`, as {@see \App\Models\AI\Analysis::$rule_based_reason}:
+ * why the rule-based filler answered instead of the LLM, a different axis than
+ * dispatch origin but the same "value on a nullable column" shape.
  */
 enum AnalysisOrigin: string
 {
@@ -25,6 +29,10 @@ enum AnalysisOrigin: string
     case Replay = 'replay';
     case Return = 'return';
     case Unknown = 'unknown';
+    case Demo = 'demo';
+    case Capped = 'capped';
+    case DeadLetter = 'dead_letter';
+    case ContentFilter = 'content_filter';
 
     public function label(): string
     {
@@ -36,6 +44,10 @@ enum AnalysisOrigin: string
             self::Replay => 'Replay',
             self::Return => 'Athlete return',
             self::Unknown => 'Unattributed',
+            self::Demo => 'Demo account',
+            self::Capped => 'Daily ceiling reached',
+            self::DeadLetter => 'Dead-lettered block',
+            self::ContentFilter => 'Content filter fallback',
         };
     }
 }

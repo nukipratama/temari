@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 
 import { formatMonthDayId, formatWeekdayDayId } from '@/lib/pace';
 
-import type { RangeToken } from './types';
+import type { RangeToken, RuleBasedReasons } from './types';
 
 const numberFmt = new Intl.NumberFormat('en-US');
 
@@ -128,4 +128,47 @@ export function formatDayLabelShort(day: string): string {
 /** The athlete's display name, falling back to the bare id for a deleted one. */
 export function athleteLabel(name: string | null, userId: number): string {
     return name ?? `User #${userId}`;
+}
+
+/** Why auto-dispatch is stopped right now, for the fault region. */
+export const PAUSE_LABEL: Record<string, string> = {
+    suppressed: 'dispatch suppressed',
+    kill_switch: 'kill switch off',
+    auto_dispatch: 'auto-dispatch off',
+    unconfigured: 'azure not configured',
+    config: 'azure config breaker tripped',
+    cost_ceiling: 'cost ceiling hit',
+};
+
+/** Why a rule-based fill happened, for the served-rule-based ledger. */
+export const REASON_LABEL: Record<keyof RuleBasedReasons, string> = {
+    demo: 'demo account',
+    capped: 'daily ceiling reached',
+    return: 'return backfill',
+    dead_letter: 'dead-lettered block',
+    content_filter: 'content filter tripped',
+    unattributed: 'no reason recorded',
+};
+
+/** Reasons whose presence signals something worth a look, not routine cover. */
+export const FLAGGED_REASONS: ReadonlySet<keyof RuleBasedReasons> = new Set([
+    'content_filter',
+    'dead_letter',
+    'unattributed',
+]);
+
+/** `${n} ${word}` with a trailing `s` unless n is exactly one. */
+export function plural(n: number, word: string): string {
+    return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
+
+export function median(values: readonly number[]): number {
+    if (values.length === 0) {
+        return 0;
+    }
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 1
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2;
 }

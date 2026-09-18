@@ -1,25 +1,14 @@
 import type { Plugin, TooltipItem } from 'chart.js';
 
-import { Medal } from 'lucide-react';
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useMemo } from 'react';
 
-import type { Rarity } from '@/types/inertia';
+import type { FormStatus } from '@/types/inertia';
 
-import EmptyPanel from '@/components/ui/EmptyPanel';
-import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import Skeleton from '@/components/ui/Skeleton';
-import { useCountUp } from '@/hooks/useCountUp';
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
-import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
-import { formatNaiveIdDate, formatNaiveMonthDayId } from '@/lib/pace';
-import { badgeName, BADGE_ABILITY, RARITY_INK } from '@/lib/runcard';
-import { revealDelay } from '@/lib/styles';
-
-import type { TrendRange } from '../RangeToggle';
+import { formatNaiveMonthDayId } from '@/lib/pace';
 
 // Chart.js core + its scale/element registration live inside this lazy
 // module, mirroring CtlTrendChart/ProgressionChart so nothing chart-related
@@ -30,27 +19,8 @@ export interface FitnessTrendPoint {
     date: string;
     atl: number;
     ctl: number;
-}
-
-export interface BadgeMilestone {
-    key: string;
-    date: string;
-    rarity: Rarity;
-}
-
-export interface StreakSummaryLike {
-    weeks: number;
-    rest_weeks_held: number;
-    rest_weeks_cap: number;
-    ran_this_week: boolean;
-    week_ends_on: string;
-}
-
-interface PanelChip {
-    key: string;
-    label: string;
-    rarity: Rarity;
-    detail: string;
+    /** TrainingLoad::formStatus() for this day, stamped server-side. */
+    form_status: FormStatus;
 }
 
 export interface FitnessChartAnnotations {
@@ -63,39 +33,80 @@ export interface FitnessChartAnnotations {
 const NO_ANNOTATIONS: FitnessChartAnnotations = { deload: [], race: [] };
 
 interface FitnessPanelProps {
+    /** The full 365-day series ({@link FitnessTrendPoint}), oldest first. */
     trend: ReadonlyArray<FitnessTrendPoint>;
-    milestones: ReadonlyArray<BadgeMilestone>;
-    streak: StreakSummaryLike;
-    range: TrendRange;
+    /** Only the deload marker is drawn here — direction A keeps race day off
+     *  this chart, see the "vs race day" comparison instead. */
     annotations?: FitnessChartAnnotations;
+    /** Trailing days to shade, so "a month ago" is a place on the line. */
+    highlightDays?: number;
     className?: string;
 }
 
-interface ChartMarker {
-    index: number;
-    kind: 'deload' | 'race';
+type BandBucket = 'fresh' | 'balanced' | 'tired';
+
+// Fatigued and overreaching share one bucket: the strip is a glance, not a
+// second read of the fitness numbers, and the cost section above already
+// carries the finer-grained form_status word.
+const BAND_BUCKET: Record<FormStatus, BandBucket> = {
+    fresh: 'fresh',
+    optimal: 'balanced',
+    fatigued: 'tired',
+    overreaching: 'tired',
+};
+
+const BAND_COLOR: Record<BandBucket, string> = {
+    fresh: PALETTE.leaf,
+    balanced: PALETTE.stone,
+    tired: PALETTE.ember,
+};
+
+const BAND_LABEL: Record<BandBucket, string> = {
+    fresh: 'fresh',
+    balanced: 'in balance',
+    tired: 'tired',
+};
+
+interface BandRun {
+    bucket: BandBucket;
+    length: number;
+    /** The run's first date — a stable, real key, unlike its array index. */
+    startDate: string;
 }
 
-/** Draws a vertical line per marker across the plot area — a deload week or a
- *  race day, read off the plan rather than guessed from the fitness curve. */
-function markerPlugin(
-    markers: ReadonlyArray<ChartMarker>,
-    colors: { deload: string; race: string },
-): Plugin<'line'> {
+/** Collapses the per-day form-status band into contiguous runs, so the strip
+ *  is a handful of flex segments rather than one per day. */
+function bandRuns(trend: ReadonlyArray<FitnessTrendPoint>): BandRun[] {
+    const runs: BandRun[] = [];
+    for (const point of trend) {
+        const bucket = BAND_BUCKET[point.form_status];
+        const last = runs[runs.length - 1];
+        if (last && last.bucket === bucket) {
+            last.length += 1;
+        } else {
+            runs.push({ bucket, length: 1, startDate: point.date });
+        }
+    }
+    return runs;
+}
+
+/** Draws a vertical line at each deload-week index — the fitness chart's one
+ *  marker in direction A (race day lives in its own comparison instead). */
+function deloadMarkerPlugin(indices: number[], color: string): Plugin<'line'> {
     return {
-        id: 'trendMarkers',
+        id: 'trendDeloadMarker',
         afterDatasetsDraw(chart) {
-            if (markers.length === 0) return;
+            if (indices.length === 0) return;
             const { ctx, chartArea, scales } = chart;
             const xScale = scales.x;
             if (!xScale || !chartArea) return;
 
             ctx.save();
-            markers.forEach(({ index, kind }) => {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 2]);
+            indices.forEach((index) => {
                 const x = xScale.getPixelForValue(index);
-                ctx.strokeStyle = kind === 'race' ? colors.race : colors.deload;
-                ctx.lineWidth = kind === 'race' ? 1.5 : 1;
-                ctx.setLineDash(kind === 'race' ? [] : [3, 2]);
                 ctx.beginPath();
                 ctx.moveTo(x, chartArea.top);
                 ctx.lineTo(x, chartArea.bottom);
@@ -106,166 +117,96 @@ function markerPlugin(
     };
 }
 
-const RANGE_DAYS: Record<TrendRange, number> = {
-    '7d': 7,
-    '30d': 30,
-    '90d': 90,
-    '12mo': 365,
-};
+/** Shades the trailing `days` of the plot area, so "a month ago" reads as a
+ *  place on the line rather than an abstract number. */
+function highlightPlugin(
+    days: number,
+    total: number,
+    color: string,
+): Plugin<'line'> {
+    return {
+        id: 'trendHighlight',
+        beforeDatasetsDraw(chart) {
+            if (days <= 0 || total === 0) return;
+            const { ctx, chartArea, scales } = chart;
+            const xScale = scales.x;
+            if (!xScale || !chartArea) return;
 
-/** The panel's headline, read off the window the range tabs selected. */
-export function fitnessVerdict(
-    firstCtl: number,
-    lastCtl: number,
-    lastAtl: number,
-): string {
-    const climb = lastCtl - firstCtl;
-    if (climb >= 2) {
-        return lastCtl - lastAtl >= 0
-            ? 'climbing, not spiking.'
-            : 'climbing, and carrying the load.';
-    }
-    if (climb <= -2) {
-        return 'easing off.';
-    }
-    return 'holding steady.';
-}
-
-function streakDetail(streak: StreakSummaryLike): string {
-    const rest =
-        streak.rest_weeks_held > 0
-            ? ` ${streak.rest_weeks_held} rest week${streak.rest_weeks_held === 1 ? '' : 's'} in hand to forgive a missed one.`
-            : '';
-    return `${streak.weeks} consecutive week${streak.weeks === 1 ? '' : 's'} with at least one run logged.${rest}`;
-}
-
-function FitnessStat({
-    value,
-    label,
-}: Readonly<{ value: string; label: string }>) {
-    return (
-        <div className="rounded-lg bg-muted p-2.5 text-center">
-            <b className="block font-mono text-base font-extrabold text-foreground tabular-nums">
-                {value}
-            </b>
-            <span className="text-label-micro text-text-2">{label}</span>
-        </div>
-    );
+            const fromIndex = Math.max(0, total - days);
+            const x0 = xScale.getPixelForValue(fromIndex);
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.fillRect(
+                x0,
+                chartArea.top,
+                chartArea.right - x0,
+                chartArea.bottom - chartArea.top,
+            );
+            ctx.restore();
+        },
+    };
 }
 
 /**
- * The prototype's single fitness panel: the CTL/ATL chart with its stat tiles,
- * its hand-built legend, and the badges earned in the selected window as chips
- * (P14/P15 — every one of them, wrapping). The week streak rides along as a
- * chip of its own, which is the only place it survives (P27).
+ * The fitness line "vs a month ago" owns: one CTL series over the last 365
+ * days with a categorical form band beneath it, the trailing window shaded,
+ * and the deload marker kept. No ATL line, no stat tiles, no badge chips —
+ * those moved to the comparison cards around it, or off the page entirely
+ * (#967). Chart.js stays; the band is a plain flex strip rather than a
+ * second dataset, since a categorical read has no business being a line.
  */
 export default function FitnessPanel({
     trend,
-    milestones,
-    streak,
-    range,
     annotations = NO_ANNOTATIONS,
+    highlightDays = 30,
     className,
 }: Readonly<FitnessPanelProps>) {
-    const [selected, setSelected] = useState<string | null>(null);
     const isDark = useIsDarkGround();
     const ground = isDark ? CHART_GROUND.dark : CHART_GROUND.light;
 
-    const windowed = useMemo(
-        () => trend.slice(-RANGE_DAYS[range]),
-        [trend, range],
-    );
-
-    const markers = useMemo<ChartMarker[]>(() => {
+    const deloadIndices = useMemo(() => {
         const deload = new Set(annotations.deload);
-        const race = new Set(annotations.race);
-        const found: ChartMarker[] = [];
-        windowed.forEach((point, index) => {
-            if (race.has(point.date)) {
-                found.push({ index, kind: 'race' });
-            } else if (deload.has(point.date)) {
-                found.push({ index, kind: 'deload' });
-            }
+        const indices: number[] = [];
+        trend.forEach((point, index) => {
+            if (deload.has(point.date)) indices.push(index);
         });
-        return found;
-    }, [windowed, annotations]);
-
-    const hasDeloadMarker = markers.some((m) => m.kind === 'deload');
-    const hasRaceMarker = markers.some((m) => m.kind === 'race');
+        return indices;
+    }, [trend, annotations]);
 
     const chartPlugins = useMemo(
         () => [
-            markerPlugin(markers, {
-                deload: PALETTE.stone,
-                race: PALETTE.ember,
-            }),
+            deloadMarkerPlugin(deloadIndices, PALETTE.stone),
+            highlightPlugin(
+                highlightDays,
+                trend.length,
+                `${PALETTE.horizon}22`,
+            ),
         ],
-        [markers],
+        [deloadIndices, highlightDays, trend.length],
     );
 
-    const chips = useMemo<PanelChip[]>(() => {
-        const dates = new Set(windowed.map((p) => p.date));
-        const earned = milestones
-            .filter((m) => dates.has(m.date))
-            .map((m) => ({
-                key: m.key,
-                label: badgeName(m.key),
-                rarity: m.rarity,
-                detail: `${BADGE_ABILITY[m.key] ?? ''} First earned ${formatNaiveIdDate(m.date, 'short')}.`.trim(),
-            }));
-
-        return streak.weeks > 0
-            ? [
-                  {
-                      key: 'week-streak',
-                      label: `${streak.weeks}-week streak`,
-                      rarity: 'uncommon' as Rarity,
-                      detail: streakDetail(streak),
-                  },
-                  ...earned,
-              ]
-            : earned;
-    }, [windowed, milestones, streak]);
-
-    const active = chips.find((c) => c.key === selected) ?? null;
-
-    // The compact "sep 10" form (no weekday) — legible as an x-axis tick,
-    // unlike formatNaiveIdDate's fuller "thursday, sep 10" used elsewhere.
     const labels = useMemo(
-        () => windowed.map((p) => formatNaiveMonthDayId(p.date)),
-        [windowed],
+        () => trend.map((p) => formatNaiveMonthDayId(p.date)),
+        [trend],
     );
 
     const data = useMemo(
         () => ({
             labels,
-            // Fatigue drawn first so the fitness line — the one the headline
-            // and stat tiles are about — is never obscured where they cross.
             datasets: [
                 {
-                    label: 'fatigue',
-                    data: windowed.map((p) => p.atl),
-                    borderColor: ground.secondaryLine,
-                    backgroundColor: 'transparent',
-                    borderWidth: 1.5,
-                    borderDash: [3, 3],
-                    pointRadius: 0,
-                    tension: 0.35,
-                    fill: false,
-                },
-                {
                     label: 'fitness',
-                    data: windowed.map((p) => p.ctl),
+                    data: trend.map((p) => p.ctl),
                     borderColor: ground.line,
                     backgroundColor: 'transparent',
                     borderWidth: 2,
                     pointRadius: 0,
-                    tension: 0.35,
+                    tension: 0.25,
                     fill: false,
                 },
             ],
         }),
-        [windowed, labels, ground.line, ground.secondaryLine],
+        [trend, labels, ground.line],
     );
 
     const options = useMemo(
@@ -278,13 +219,13 @@ export default function FitnessPanel({
                 tooltip: {
                     callbacks: {
                         title: (items: TooltipItem<'line'>[]): string => {
-                            const point = windowed[items[0]?.dataIndex ?? -1];
+                            const point = trend[items[0]?.dataIndex ?? -1];
                             return point
                                 ? formatNaiveMonthDayId(point.date)
                                 : '';
                         },
                         label: (item: TooltipItem<'line'>): string =>
-                            `${item.dataset.label ?? ''}: ${Math.round(item.parsed.y ?? 0)}`,
+                            `fitness: ${Math.round(item.parsed.y ?? 0)}`,
                     },
                 },
             },
@@ -311,77 +252,34 @@ export default function FitnessPanel({
                 },
             },
         }),
-        [ground, windowed],
+        [ground, trend],
     );
 
-    const latest = windowed[windowed.length - 1];
-    const ctlCount = useCountUp(latest?.ctl ?? 0);
-    const atlCount = useCountUp(latest?.atl ?? 0);
-    const formCount = useCountUp((latest?.ctl ?? 0) - (latest?.atl ?? 0));
+    const runs = useMemo(() => bandRuns(trend), [trend]);
+    const bucketsPresent = useMemo(
+        () => Array.from(new Set(runs.map((r) => r.bucket))),
+        [runs],
+    );
 
-    if (windowed.length === 0) {
+    if (trend.length === 0) {
         return (
-            <EmptyPanel
-                title="not enough training history yet to draw a trend."
-                className={className}
-            />
+            <p className={className ?? 'text-sm text-text-2'}>
+                not enough training history yet to draw a trend.
+            </p>
         );
     }
 
-    const markerNote = [
-        hasDeloadMarker ? 'a deload week' : null,
-        hasRaceMarker ? 'a race' : null,
-    ].filter((note): note is string => note !== null);
-    const summarySentence =
-        `Fitness ${windowed[0].ctl.toFixed(0)} to ${latest.ctl.toFixed(0)} over ${windowed.length} days, fatigue now ${latest.atl.toFixed(0)}.` +
-        (markerNote.length > 0
-            ? ` Marked on the chart: ${markerNote.join(' and ')}.`
-            : '');
-    const form = Math.round(formCount);
+    const latest = trend[trend.length - 1];
 
     return (
-        <Card as="section" className={className}>
-            <Eyebrow token="micro" className="text-text-2">
-                Fitness
-            </Eyebrow>
-            <h2 className="mt-1 font-serif text-base font-bold text-foreground">
-                {fitnessVerdict(windowed[0].ctl, latest.ctl, latest.atl)}
-            </h2>
-            <p className="mt-1.5 text-xs leading-relaxed text-text-2">
-                Fitness (CTL) tracks your rolling training load; fatigue (ATL)
-                reacts faster. Form is the gap between them, and positive means
-                you&apos;re absorbing the work.
-            </p>
-
-            <div className="mt-3.5 grid grid-cols-3 gap-2">
-                <div className="reveal" style={revealDelay(0)}>
-                    <FitnessStat
-                        value={Math.round(ctlCount).toString()}
-                        label="fitness"
-                    />
-                </div>
-                <div className="reveal" style={revealDelay(1)}>
-                    <FitnessStat
-                        value={Math.round(atlCount).toString()}
-                        label="fatigue"
-                    />
-                </div>
-                <div className="reveal" style={revealDelay(2)}>
-                    <FitnessStat
-                        value={form >= 0 ? `+${form}` : form.toString()}
-                        label="form"
-                    />
-                </div>
-            </div>
-
+        <div className={className}>
             <div
                 role="img"
-                aria-label={`Fitness and fatigue over ${windowed.length} days. ${summarySentence}`}
-                className="reveal mt-3.5 h-[150px]"
+                aria-label={`Fitness over ${trend.length} days, now at ${latest.ctl.toFixed(1)}.`}
+                className="h-[168px]"
             >
-                <span className="sr-only">{summarySentence}</span>
                 <Suspense
-                    fallback={<Skeleton className="h-full w-full rounded-xl" />}
+                    fallback={<Skeleton className="h-full w-full rounded-lg" />}
                 >
                     <Line
                         data={data}
@@ -390,98 +288,42 @@ export default function FitnessPanel({
                     />
                 </Suspense>
             </div>
-
-            <div className="mt-2.5 flex flex-wrap gap-3.5 text-label-micro text-text-2">
-                <span className="inline-flex items-center gap-1.5">
+            <div
+                className="mt-1 flex h-2.5 gap-px overflow-hidden rounded-full"
+                aria-hidden
+            >
+                {runs.map((run) => (
                     <span
-                        aria-hidden
-                        className="h-0.5 w-3 flex-none rounded-full"
-                        style={{ background: ground.line }}
+                        key={run.startDate}
+                        style={{
+                            flexGrow: run.length,
+                            backgroundColor: BAND_COLOR[run.bucket],
+                            opacity: run.bucket === 'balanced' ? 0.35 : 0.7,
+                        }}
                     />
-                    Fitness
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                    <span
-                        aria-hidden
-                        className="h-0 w-3 flex-none border-t-2 border-dashed"
-                        style={{ borderColor: ground.secondaryLine }}
-                    />
-                    Fatigue
-                </span>
-                {hasDeloadMarker && (
-                    <span className="inline-flex items-center gap-1.5">
-                        <span
-                            aria-hidden
-                            className="h-2.5 w-0 flex-none border-l-2 border-dotted"
-                            style={{ borderColor: PALETTE.stone }}
-                        />
-                        Deload week
-                    </span>
-                )}
-                {hasRaceMarker && (
-                    <span className="inline-flex items-center gap-1.5">
-                        <span
-                            aria-hidden
-                            className="h-2.5 w-0 flex-none border-l-2"
-                            style={{ borderColor: PALETTE.ember }}
-                        />
-                        Race day
-                    </span>
-                )}
+                ))}
             </div>
-
-            {chips.length > 0 && (
-                <ul className="mt-3.5 flex flex-wrap gap-1.5">
-                    {chips.map((chip) => (
-                        <li key={chip.key}>
-                            <button
-                                type="button"
-                                aria-pressed={chip.key === selected}
-                                onClick={() =>
-                                    setSelected((cur) =>
-                                        cur === chip.key ? null : chip.key,
-                                    )
-                                }
-                                className={cn(
-                                    'pressable focus-ring inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors',
-                                    chip.key === selected
-                                        ? 'bg-horizon/25 text-foreground'
-                                        : 'bg-muted text-foreground',
-                                )}
-                            >
-                                <Icon
-                                    icon={Medal}
-                                    className={cn(
-                                        'size-3.5',
-                                        RARITY_INK[chip.rarity],
-                                    )}
-                                    aria-hidden
-                                />
-                                {chip.label}
-                            </button>
-                        </li>
+            <div className="mt-2.5 flex flex-wrap items-end justify-between gap-3">
+                <p className="max-w-[34ch] text-xs leading-relaxed text-text-2">
+                    the line is fitness. the strip under it is how you were
+                    holding up.
+                </p>
+                <div className="flex flex-wrap gap-3 text-label-micro text-text-2">
+                    {bucketsPresent.map((bucket) => (
+                        <span
+                            key={bucket}
+                            className="inline-flex items-center gap-1.5"
+                        >
+                            <span
+                                aria-hidden
+                                className="size-2 rounded-full"
+                                style={{ backgroundColor: BAND_COLOR[bucket] }}
+                            />
+                            {BAND_LABEL[bucket]}
+                        </span>
                     ))}
-                </ul>
-            )}
-
-            {active !== null && (
-                <div className="mt-2.5 rounded-lg bg-muted px-3 py-2.5">
-                    <p className="flex items-center gap-1.5 text-sm font-bold text-foreground">
-                        <Icon
-                            icon={Medal}
-                            className={cn(
-                                'size-3.5',
-                                RARITY_INK[active.rarity],
-                            )}
-                            aria-hidden
-                        />
-                        {active.label}
-                    </p>
-                    <p className="mt-0.5 text-xs leading-relaxed text-text-2">
-                        {active.detail}
-                    </p>
                 </div>
-            )}
-        </Card>
+            </div>
+        </div>
     );
 }

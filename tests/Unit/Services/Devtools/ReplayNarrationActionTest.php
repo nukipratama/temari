@@ -30,6 +30,10 @@ function replayBlock(User $user): Analysis
         'subject_type' => 'briefing_user_day',
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::TrendRead,
+        // TrendRead's discriminator is a closed set (just '7d' since #967);
+        // the factory's default date-shaped value would be hidden by
+        // KnownAnalysisTypeScope.
+        'discriminator' => '7d',
     ]);
 }
 

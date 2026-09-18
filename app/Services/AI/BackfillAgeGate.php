@@ -62,9 +62,9 @@ class BackfillAgeGate
             AnalysisType::MonthlyRecap => false,
             // Narrate material that is current whatever its date: the profile
             // voice reads a rolling window as of now and ignores its week key.
-            // TrendRead is the same shape — its discriminator names a range
-            // (7d/30d/90d/12mo), not a date, and it is always read as of now
-            // regardless of how old the user's history is.
+            // TrendRead is the same shape — its discriminator names a range,
+            // not a date, and it is always read as of now regardless of how
+            // old the user's history is.
             AnalysisType::ProfileVoice,
             AnalysisType::TrendRead,
             // The clamp is about this moment's readiness and nothing else, so

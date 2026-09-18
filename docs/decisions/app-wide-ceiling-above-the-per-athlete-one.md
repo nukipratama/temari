@@ -9,7 +9,7 @@ code_refs:
   - app/Services/AI/MaintainerAlerter.php
   - app/Services/AI/TokenUsageReport.php
   - config/azure_openai.php
-  - resources/js/components/narration/CeilingHeader.tsx
+  - resources/js/components/narration/TodayPanel.tsx
 ---
 
 # An app-wide daily ceiling sits above the per-athlete one
@@ -58,13 +58,18 @@ per-athlete ceiling stays silent.
 
 **5. Both are visible.** [TokenUsageReport](app/Services/AI/TokenUsageReport.php#L62) carries
 `totalCeiling` beside the per-athlete figure and
-[CeilingHeader](resources/js/components/narration/CeilingHeader.tsx#L66) renders a bar against
-the same spend.
+[TodayPanel](resources/js/components/narration/TodayPanel.tsx) renders a bar against the same
+spend.
 
 > **2026-09-10:** the gauge that rendered this moved. `/devtools/ai-usage` became
 > `/devtools/narration` and its `BudgetGauge` became the page's `CeilingHeader`, which reads the
 > app-wide ceiling directly rather than beside the derived combined figure. The decision is
 > unchanged; only the component the citation names is.
+>
+> **2026-09-17:** moved again. The #929/A status-board rebuild folded `CeilingHeader` into
+> `TodayPanel`; the capped-athlete count, pause reason and recover action it also used to carry
+> moved to the new `FaultStrip`. The decision is unchanged; only the component the citation names
+> is.
 `dailyCeiling` stays what it was — perUser x athletes, derived, *not* a limit — and now reads as
 the figure the total binds before.
 

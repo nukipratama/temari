@@ -4,89 +4,63 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
-use App\Models\RunCard;
 use App\Models\User;
-use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
-use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Metrics\TrainingLoad;
-use App\Services\Run\Story\BriefingComposer;
-use App\Services\Run\Story\BriefingResult;
+use App\Services\Run\Story\BriefingContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * /trends — a year of running read as lines rather than a list: the headline,
- * the load section Home used to hold behind a disclosure, the range tabs,
- * Temari's read, and one fitness panel carrying the CTL/ATL chart, its stat
- * tiles and the badges earned in the window.
+ * /trends — "am I getting fitter, and at what cost?" Temari's 7-day verdict
+ * up top, then three stacked comparisons: this week against last (the gain
+ * and the cost), fitness now against a month ago (the CTL chart lives here),
+ * and now against race day — or, with no race set, against the athlete's own
+ * year.
  */
 class TrendsController extends Controller
 {
-    /**
-     * The range toggle's own four windows, days ending on today. Wider than
-     * {@see AnalysisType::TREND_READ_RANGES}: the load section follows every
-     * toggle position, narration only the three that are actually generated.
-     *
-     * @var array<string, int>
-     */
-    private const array RANGE_WINDOW_DAYS = ['7d' => 7, '30d' => 30, '90d' => 90, '12mo' => 365];
-
     public function __invoke(
         Request $request,
         TrainingLoad $trainingLoad,
-        SeasonStreakSummaryBuilder $seasonStreakBuilder,
-        BriefingComposer $briefingComposer,
-        ResolveTrailingWeeksAction $trailingWeeks,
     ): Response {
         /** @var User $user */
         $user = $request->user();
         $today = Carbon::today();
 
         return Inertia::render('Trends', [
-            'briefing' => Inertia::defer(fn (): BriefingResult => $briefingComposer->compose($user, $today)),
-            'load' => Inertia::defer(fn (): array => $this->loadByRange($trainingLoad, $user, $today)),
-            'snapshot' => Inertia::defer(fn (): ?WeeklySnapshot => $trailingWeeks(
-                $user->id,
-                $today->copy()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-                1,
-            )->first()),
+            'weekComparison' => Inertia::defer(fn (): array => $this->weekComparison($user, $today)),
+            'load' => Inertia::defer(fn (): ?array => $trainingLoad->summary($user, $today, 7)),
             'ctlTrend' => Inertia::defer(fn (): array => $trainingLoad->ctlTrend($user, 365)),
             'chartAnnotations' => Inertia::defer(fn (): array => $this->chartAnnotations($user, $today)),
-            'badgeMilestones' => Inertia::defer(fn (): array => collect(RunCard::firstEarnedBadgesForUser($user->id))
-                ->map(static fn (array $earned, string $slug): array => [
-                    'key' => $slug,
-                    'date' => $earned['date'],
-                    'rarity' => $earned['rarity'],
-                ])
-                ->values()
-                ->all()),
-            'streak' => Inertia::defer(fn (): array => $seasonStreakBuilder->streakPayload($user, Carbon::today())),
-            'narration' => Inertia::defer(fn (): array => $this->narrationByRange($user)),
+            'narration' => Inertia::defer(fn (): array => $this->narration($user)),
         ]);
     }
 
     /**
-     * The load section's condition read, once per toggle position — mirrors
-     * {@see self::narrationByRange()}'s "compute every range up front" shape
-     * so switching the toggle never round-trips to the server. ATL/CTL/form
-     * are the same across every entry (EWMA time constants, not a window);
-     * only weekly_trimp/monotony/strain move.
+     * The gain half of "vs last week" — km and runs this week against last
+     * week through the same weekday. Reuses BriefingContext rather than a new
+     * query: it already computes this exact comparison for the daily
+     * briefing's tool context.
      *
-     * @return array<string, array<string, mixed>|null>
+     * @return array{this_week_km: float|null, last_week_km: float|null, this_week_runs: int|null, last_week_runs: int|null}
      */
-    private function loadByRange(TrainingLoad $trainingLoad, User $user, Carbon $today): array
+    private function weekComparison(User $user, Carbon $today): array
     {
-        return collect(self::RANGE_WINDOW_DAYS)
-            ->map(fn (int $days): ?array => $trainingLoad->summary($user, $today, $days))
-            ->all();
+        $context = BriefingContext::forUser($user, $today);
+
+        return [
+            'this_week_km' => $context->thisWeekKm,
+            'last_week_km' => $context->lastWeekKm,
+            'this_week_runs' => $context->thisWeekRuns,
+            'last_week_runs' => $context->lastWeekRuns,
+        ];
     }
 
     /**
@@ -120,25 +94,25 @@ class TrendsController extends Controller
     }
 
     /**
-     * @return array<string, array<string, mixed>>
+     * The verdict card's own Analysis payload — the single 7d row. Trends
+     * used to narrate 30d/90d/12mo alongside it; those retired (#967).
+     *
+     * @return array<string, mixed>
      */
-    private function narrationByRange(User $user): array
+    private function narration(User $user): array
     {
-        $narration = [];
-        foreach (AnalysisType::TREND_READ_RANGES as $range) {
-            $row = Analysis::query()
-                ->forSubject(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, $range)
-                ->first();
+        $range = AnalysisType::TREND_READ_RANGES[0];
 
-            $narration[$range] = Analysis::toPayload(
-                $row,
-                AnalysisType::TrendRead,
-                AnalysisType::TREND_READ_SUBJECT_TYPE,
-                $user->id,
-                $range,
-            );
-        }
+        $row = Analysis::query()
+            ->forSubject(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, $range)
+            ->first();
 
-        return $narration;
+        return Analysis::toPayload(
+            $row,
+            AnalysisType::TrendRead,
+            AnalysisType::TREND_READ_SUBJECT_TYPE,
+            $user->id,
+            $range,
+        );
     }
 }

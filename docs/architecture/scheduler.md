@@ -62,7 +62,7 @@ despite that.
 | `plan:regenerate` | Mon 00:26 | 45 | yes | heaviest entry: `Periodizer::regenerate()` + `PlanNarrationRequester` per user | ~1.4s — regenerated for the 1 seeded user; `PlanNarrationRequester` dispatched no LLM calls (Azure unconfigured) |
 | `strava:sync-zones` | monthly 00:10 | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.7s — no eligible connection (the seeded demo `StravaConnection` carries a synthetic token, not a real Strava one, and is excluded) |
 | `ai:monthly-recap` | monthly 05:45 | 30 | yes | per-user dispatch loop, monthly cadence gives ample headroom | ~1.4s — 0 months dispatched (demo excluded) |
-| `ai:trend-read {30d,90d,12mo}` | daily/every-3-days/weekly 06:00 | 20 | yes | one narrator pass across users per range | ~1.2-1.4s each — 0 active users (demo excluded) |
+| `ai:trend-read 7d` | daily 06:00 | 20 | yes | one narrator pass across active users | ~1.2-1.4s — 0 active users (demo excluded) |
 | `ai:self-heal` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s — skipped, generation paused (Azure unset) |
 | `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.5s — created 0 missing kickoff rows |
 | `queue:prune-failed` | daily 02:20 | 15 | yes | one `DELETE` on `failed_jobs` | ~1.6s — 0 entries deleted |
@@ -146,8 +146,9 @@ fails (non-zero exit) never marks itself done, so a failed `streak:settle` corre
 
 ## Cadence derivations (previously qualitative-only)
 
-Four cadences carried a comment explaining the *shape* of the choice but no cited number. Each is
-derived here from a number that already exists in the codebase.
+Three cadences carried a comment explaining the *shape* of the choice but no cited number. Each is
+derived here from a number that already exists in the codebase. A fourth, `ai:trend-read 90d`'s
+every-3-days cadence, was derived the same way but retired with the 90d range itself (#967).
 
 **`strava:sync-zones` — monthly.** HR zones are set from a Strava athlete's configured zones, which
 change only when the athlete deliberately edits them in Strava — there is no measured "zones change
@@ -155,15 +156,6 @@ every N days" figure to derive from. The monthly sweep exists purely as a low-co
 the per-connect `SyncZonesJob` dispatch (the real trigger, on every OAuth connect/reconnect); a
 tighter cadence would add scheduler load for a value that essentially never changes between
 connects. Kept qualitative on purpose — there is no numeric input to derive it from.
-
-**`ai:trend-read 90d` — every 3 days (`cron('0 6 */3 * *')`).** The 90-day range's own view window
-is 90 days; three narrations across that window (day 1, ~day 31-33, ~day 61-63, modulo the
-month-boundary reset the comment already documents) sample it at roughly a third of its own span,
-which is frequent enough that the window's oldest and newest thirds are never more than ~30 days
-stale relative to each other while costing a third of the daily `30d` cadence. The 3-day figure is
-one-third of `TREND_READ_RANGES`'s own **medium** tier relative to its `30d`/`12mo` neighbours
-(daily and weekly respectively) — see the `ai:trend-read` registrations in
-[routes/console.php](../../routes/console.php).
 
 **`queue:prune-failed --hours=168` — 7 days.** `Analysis::MAX_SELF_HEAL_ATTEMPTS` bounds a block to
 a fixed number of hourly `ai:self-heal` attempts before it dead-letters (see

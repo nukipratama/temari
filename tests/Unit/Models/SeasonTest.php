@@ -44,6 +44,19 @@ it('casts starts_at and ends_at to dates', function (): void {
         ->and($season->ends_at)->toBeInstanceOf(Carbon::class);
 });
 
+it('casts under_ready_noted_at and block_goals_appended_at to datetimes, null until stamped', function (): void {
+    $season = Season::factory()->make();
+    $stamped = Season::factory()->make([
+        'under_ready_noted_at' => '2026-08-10 08:00:00',
+        'block_goals_appended_at' => '2026-08-10 08:00:00',
+    ]);
+
+    expect($season->under_ready_noted_at)->toBeNull()
+        ->and($season->block_goals_appended_at)->toBeNull()
+        ->and($stamped->under_ready_noted_at)->toBeInstanceOf(Carbon::class)
+        ->and($stamped->block_goals_appended_at)->toBeInstanceOf(Carbon::class);
+});
+
 it('has many season goals', function (): void {
     $season = Season::factory()->create();
     SeasonGoal::factory()->for($season)->count(3)->create();

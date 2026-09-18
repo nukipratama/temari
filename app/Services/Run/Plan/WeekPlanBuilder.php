@@ -89,6 +89,9 @@ final class WeekPlanBuilder
      *                                        `DAY_TEMPLATES` entirely for this week rather than merely seeding it
      * @param  ?int  $preferredLongOffset  the matching `long_run_day`, always a member of `$preferredOffsets`
      * @param  ?Carbon  $raceDate  the active race's day — reshapes the week it falls in, see {@see self::raceWeekType()}
+     * @param  string  $zone  {@see PhaseSchedule::ZONE_GENERAL}/{@see PhaseSchedule::ZONE_BLOCK} — a race
+     *                        season's general-zone week trains its quality block by base rules
+     *                        regardless of `$phase`, see {@see self::phaseQualitySlots()}
      * @return array<string, array{phase: PlanPhase, session_type: SessionType}> keyed by Y-m-d
      */
     public function build(
@@ -104,6 +107,7 @@ final class WeekPlanBuilder
         ?int $preferredLongOffset = null,
         ?float $projectedRaceSeconds = null,
         ?Carbon $raceDate = null,
+        string $zone = PhaseSchedule::ZONE_BLOCK,
     ): array {
         if ($preferredOffsets !== null && $preferredLongOffset !== null) {
             $trainingOffsets = $preferredOffsets;
@@ -123,13 +127,14 @@ final class WeekPlanBuilder
         $qualityPool = self::awayFromLongRun($nonLongOffsets, $longOffset);
 
         $qualitySlots = self::withQualityDelta(
-            $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds),
+            $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds, $zone),
             $phase,
             $sessionsPerWeek,
             $qualityDelta,
             count($qualityPool),
             $selfScaled,
             $projectedRaceSeconds,
+            $zone,
         );
         $qualityOffsets = array_flip(self::spreadOffsets($qualityPool, count($qualitySlots)));
 
@@ -275,6 +280,16 @@ final class WeekPlanBuilder
     }
 
     /**
+     * Whether this week is a race season's general zone (before the block
+     * opens) rather than self-scaled training, which is `zone: general`
+     * throughout and unaffected by this distinction.
+     */
+    private static function isGeneralZone(bool $selfScaled, string $zone): bool
+    {
+        return ! $selfScaled && $zone === PhaseSchedule::ZONE_GENERAL;
+    }
+
+    /**
      * How many quality (Tempo/Interval) sessions a week of this phase carries
      * — the same count {@see self::withQualityDelta()} materializes into rows,
      * exposed so season-goal generation can sum it across an arc without
@@ -282,9 +297,9 @@ final class WeekPlanBuilder
      * same way {@see self::build()} does, so callers pass the raw race
      * distance rather than duplicating the marathon-distance threshold.
      */
-    public function qualitySlotCount(PlanPhase $phase, int $sessionsPerWeek, ?float $raceDistanceM, bool $selfScaled): int
+    public function qualitySlotCount(PlanPhase $phase, int $sessionsPerWeek, ?float $raceDistanceM, bool $selfScaled, string $zone = PhaseSchedule::ZONE_BLOCK): int
     {
-        return count($this->phaseQualitySlots($phase, $sessionsPerWeek, self::isMarathonDistance($raceDistanceM), $selfScaled, null));
+        return count($this->phaseQualitySlots($phase, $sessionsPerWeek, self::isMarathonDistance($raceDistanceM), $selfScaled, null, $zone));
     }
 
     /**
@@ -293,9 +308,12 @@ final class WeekPlanBuilder
      * only ever drops one. Base, Deload and Taper are exempt in both
      * directions: none exists to carry quality work, a taper's whole job is
      * arriving fresh, and Base is defined as predominantly easy with at most
-     * one threshold session. Adding is further gated on
-     * the week having enough sessions to absorb it, so a 3-day week never
-     * turns into two-thirds quality.
+     * one threshold session. A race season's general-zone week is exempt for
+     * the same reason — it trains by base rules, see
+     * {@see self::phaseQualitySlots()} — regardless of which phase the
+     * self-scaled mesocycle it's borrowing happens to land it on. Adding is
+     * further gated on the week having enough sessions to absorb it, so a
+     * 3-day week never turns into two-thirds quality.
      *
      * A slot is only ever promised where the week can actually place it:
      * `$qualityPoolSize` is how many training days are left once the long run
@@ -305,9 +323,9 @@ final class WeekPlanBuilder
      * @param  list<array{session_type: SessionType}>  $slots
      * @return list<array{session_type: SessionType}>
      */
-    private static function withQualityDelta(array $slots, PlanPhase $phase, int $sessionsPerWeek, int $qualityDelta, int $qualityPoolSize, bool $selfScaled, ?float $projectedRaceSeconds): array
+    private static function withQualityDelta(array $slots, PlanPhase $phase, int $sessionsPerWeek, int $qualityDelta, int $qualityPoolSize, bool $selfScaled, ?float $projectedRaceSeconds, string $zone): array
     {
-        if ($qualityDelta === 0 || in_array($phase, [PlanPhase::Base, PlanPhase::Deload, PlanPhase::Taper], true)) {
+        if ($qualityDelta === 0 || self::isGeneralZone($selfScaled, $zone) || in_array($phase, [PlanPhase::Base, PlanPhase::Deload, PlanPhase::Taper], true)) {
             return $slots;
         }
 
@@ -359,17 +377,20 @@ final class WeekPlanBuilder
      * second slot can hold both, and that needs
      * {@see self::MIN_SESSIONS_FOR_EXTRA_QUALITY} sessions to absorb it.
      * Self-scaled training stays threshold-only throughout — there is no race
-     * pace to sharpen for, and its spec reads "1-2 threshold sessions".
+     * pace to sharpen for, and its spec reads "1-2 threshold sessions". A race
+     * season's general-zone week (before the block opens) trains by these
+     * same Base rules whatever phase the self-scaled mesocycle assigned it —
+     * race-specific interval work waits for the block.
      *
      * @return list<array{session_type: SessionType}>
      */
-    private function phaseQualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, ?float $projectedRaceSeconds): array
+    private function phaseQualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, ?float $projectedRaceSeconds, string $zone = PhaseSchedule::ZONE_BLOCK): array
     {
         if ($phase === PlanPhase::Deload || $sessionsPerWeek < self::MIN_SESSIONS_FOR_QUALITY) {
             return [];
         }
 
-        if ($phase === PlanPhase::Base) {
+        if ($phase === PlanPhase::Base || self::isGeneralZone($selfScaled, $zone)) {
             // "Predominantly easy, at most one threshold session" — and only
             // once there's a session to spare beyond the long run + 2 easy days.
             return $sessionsPerWeek >= 4

@@ -131,8 +131,6 @@ export interface AnalysisPayload {
 
 export interface BriefingResult {
     vibeState: string;
-    vibeLabel: string;
-    vibeEmoji: string;
     mascotVoice: AnalysisPayload;
     /** No briefing has ever been narrated for this athlete — a pending one says so on the Today card. */
     firstRead: boolean;
@@ -302,6 +300,16 @@ export interface TrainingLoad {
     weekly_trimp: number | null;
     monotony: number | null;
     strain: number | null;
+}
+
+/** `TrendsController::weekComparison()` — the gain half of "vs last week":
+ *  km and runs this week against last week, through the same weekday. Any
+ *  field is null when there's no prior-week baseline to compare against. */
+export interface WeekComparison {
+    this_week_km: number | null;
+    last_week_km: number | null;
+    this_week_runs: number | null;
+    last_week_runs: number | null;
 }
 
 export type TrendVerdict =

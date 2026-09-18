@@ -10,6 +10,7 @@ function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
     return {
         week_start: '2026-06-15',
         phase: 'base',
+        zone: 'block',
         type: 'history',
         planned_km: 30,
         actual_km: null,
@@ -30,6 +31,27 @@ const RACE_SEASON: SeasonSummaryWeek[] = [
         week_start: '2026-06-29',
         phase: 'peak',
         planned_km: 50,
+        type: 'lookahead',
+    }),
+];
+
+const GENERAL_ZONE_CURRENT: SeasonSummaryWeek[] = [
+    week({
+        week_start: '2026-05-25',
+        zone: 'general',
+        phase: 'build',
+        type: 'current',
+    }),
+    week({
+        week_start: '2026-06-01',
+        zone: 'general',
+        phase: 'deload',
+        type: 'lookahead',
+    }),
+    week({
+        week_start: '2026-06-08',
+        zone: 'block',
+        phase: 'base',
         type: 'lookahead',
     }),
 ];
@@ -83,6 +105,65 @@ describe('SeasonHeaderCard', () => {
         expect(bars).toHaveLength(3);
         expect(bars[0]).toHaveStyle({ height: '35%' });
         expect(bars[2]).toHaveStyle({ height: '100%' });
+    });
+
+    it('states the under-ready line when the season carries one', () => {
+        const line =
+            "Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built.";
+
+        renderCard({ underReadyLine: line });
+
+        expect(screen.getByText(line)).toBeInTheDocument();
+    });
+
+    it('says nothing about readiness without the line', () => {
+        renderCard({ underReadyLine: null });
+
+        expect(screen.queryByText(/tighter than/)).not.toBeInTheDocument();
+    });
+
+    it('draws the phase ribbon for a season with a race block', () => {
+        renderCard();
+
+        expect(
+            screen.getByRole('button', { name: 'build, current week' }),
+        ).toBeInTheDocument();
+    });
+
+    it('omits the phase ribbon for a season with no race block', () => {
+        renderCard({
+            weeks: RACE_SEASON.map((w) => ({ ...w, zone: 'general' })),
+        });
+
+        expect(
+            screen.queryByRole('button', { name: 'build' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'maintain' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('names the general zone in the header, spanning only the general run, while the current week is in it', () => {
+        renderCard({
+            startsAt: '2026-05-25',
+            endsAt: '2026-08-10',
+            weeks: GENERAL_ZONE_CURRENT,
+        });
+
+        // Not the raw phase ('build'), and not the whole season's span
+        // ('2026-05-25 – 2026-08-10') — just the general run's own dates.
+        expect(
+            screen.getByText('maintain · may 25 – jun 7'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/^build ·/)).not.toBeInTheDocument();
+    });
+
+    it('adds a "maintain" legend entry first, filled while the current week is in it', () => {
+        renderCard({ weeks: GENERAL_ZONE_CURRENT });
+
+        expect(screen.getByText('maintain')).toBeInTheDocument();
+        expect(screen.queryByText('build')).not.toBeInTheDocument();
+        expect(screen.queryByText('deload')).not.toBeInTheDocument();
     });
 
     it('renders Temari’s take when the season narration exists', () => {

@@ -128,7 +128,7 @@ it('returns a null recovery hours label when the user has never run', function (
     expect($result->recoveryHoursLabel)->toBeNull();
 });
 
-it('computes non-LLM fields (vibe label, streak, mood) without an LLM call', function (): void {
+it('computes non-LLM fields (vibe state, streak, mood) without an LLM call', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -138,8 +138,7 @@ it('computes non-LLM fields (vibe label, streak, mood) without an LLM call', fun
 
     $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
 
-    expect($result->vibeLabel)->toBeString()->not->toBeEmpty()
-        ->and($result->vibeEmoji)->toBeString()->not->toBeEmpty()
+    expect($result->vibeState)->toBeString()->not->toBeEmpty()
         ->and($result->mood)->toBeString()->not->toBeEmpty()
         ->and($result->sigilPattern)->toBeString()->not->toBeEmpty()
         ->and($result->recoveryLabel)->toBeString()->not->toBeEmpty()

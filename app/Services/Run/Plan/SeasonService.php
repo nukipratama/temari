@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
-use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\RaceGoal;
 use App\Models\Season;
@@ -15,11 +14,13 @@ use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 
 /**
- * Ensures a user always has a current {@see Season} and generates its 5
- * {@see SeasonGoal} rows once, at creation. Mirrors {@see Periodizer}'s own
+ * Ensures a user always has a current {@see Season}, generates its general
+ * {@see SeasonGoal} rows once at creation, and appends a race season's block
+ * goals on the first call on or after block open. Mirrors {@see Periodizer}'s own
  * "a mode switch takes effect at the next call" rule: this is read fresh
  * (never cached) every time it's called, and a `RaceGoal` set or cleared
  * mid-season only changes the season at the NEXT call, not retroactively.
@@ -53,6 +54,29 @@ final readonly class SeasonService
      */
     private const float REANCHOR_COLLAPSE_FRACTION = 0.25;
 
+    /**
+     * The long run a race distance wants the athlete to reach, as
+     * `[distance_up_to_m, km]` ascending, with the marathon target past the last band.
+     *
+     * @var list<array{0: float, 1: float}>
+     */
+    private const array READINESS_LONG_RUN_BANDS = [
+        [15_000.0, 12.0],
+        [25_000.0, 18.0],
+    ];
+
+    private const float READINESS_LONG_RUN_MARATHON_KM = 30.0;
+
+    /** Every week count short of the longest block, spelled out for the under-ready line. */
+    private const array WEEK_COUNT_WORDS = [
+        'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+        'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen',
+    ];
+
+    private const string RACE_MARGIN_METRIC = 'season_race_goal_met';
+
+    private const string PEAK_WEEKLY_KM_METRIC = 'season_peak_weekly_km';
+
     public function __construct(
         private TrainingBaseline $baseline,
         private PhaseSchedule $phaseSchedule,
@@ -60,6 +84,7 @@ final readonly class SeasonService
         private TrainingLoad $trainingLoad,
         private ResolveActiveRaceAction $activeRace,
         private ResolveSeasonAction $season,
+        private SeasonSummaryBuilder $seasonSummaryBuilder,
     ) {
     }
 
@@ -69,6 +94,9 @@ final readonly class SeasonService
 
         if ($current !== null && $this->isCurrent($current, $race, $today)) {
             $this->reanchorIfCollapsed($current, $user, $today);
+            if ($race !== null) {
+                $this->appendBlockGoals($current, $race, $user, $today);
+            }
 
             return $current;
         }
@@ -79,6 +107,7 @@ final readonly class SeasonService
             $endsAt = $race !== null
                 ? $race->race_date->toDateString()
                 : $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
+            $blockGoalsAppendedAt = $race !== null && self::blockHasOpened($race, $today) ? Carbon::now() : null;
 
             // A mode switch on the very same day the current season started
             // (no history accumulated yet) retargets that row in place,
@@ -90,6 +119,7 @@ final readonly class SeasonService
                     'race_goal_id' => $race?->id,
                     'anchor_weekly_volume_km' => $anchorKm,
                     'opens_with_recovery' => $opensWithRecovery,
+                    'block_goals_appended_at' => $blockGoalsAppendedAt,
                     'ends_at' => $endsAt,
                 ]);
                 SeasonGoal::query()->where('season_id', $current->id)->delete();
@@ -110,6 +140,7 @@ final readonly class SeasonService
                 'race_goal_id' => $race?->id,
                 'anchor_weekly_volume_km' => $anchorKm,
                 'opens_with_recovery' => $opensWithRecovery,
+                'block_goals_appended_at' => $blockGoalsAppendedAt,
                 'starts_at' => $today->toDateString(),
                 'ends_at' => $endsAt,
             ]);
@@ -203,14 +234,15 @@ final readonly class SeasonService
             : $this->phaseSchedule->selfScaled($today, self::SELF_SCALED_WEEKS, $season->opens_with_recovery);
         $weekCount = count($weeks);
 
-        $phases = array_map(fn (array $w): PlanPhase => $w['phase'], $weeks);
-        $multipliers = PhaseSchedule::volumeMultipliers($phases, $race === null);
+        $phases = array_column($weeks, 'phase');
+        $zones = array_column($weeks, 'zone');
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, $race === null, $zones);
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
 
         $qualityTotal = 0;
         $longestLongRunKm = 0.0;
         foreach ($phases as $index => $phase) {
-            $qualityTotal += $this->weekPlanBuilder->qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, $race === null);
+            $qualityTotal += $this->weekPlanBuilder->qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, $race === null, $zones[$index]);
             $longRunKm = SegmentGenerator::coreKmFor(SessionType::Long, isPrimaryEasy: false, longRunBaselineKm: $baselineData['long_run_km'], volumeMultiplier: $multipliers[$index], longRunCapKm: $baselineData['long_run_cap_km']);
             $longestLongRunKm = max($longestLongRunKm, $longRunKm);
         }
@@ -237,7 +269,9 @@ final readonly class SeasonService
                 'title' => 'Run this season\'s longest long run',
                 'metric' => 'season_longest_long_run_km',
                 'metric_key' => null,
-                'target' => max(1.0, round($longestLongRunKm, 1)),
+                'target' => $race !== null
+                    ? min(self::readinessLongRunKm((float) $race->distance_m), $baselineData['long_run_cap_km'])
+                    : max(1.0, round($longestLongRunKm, 1)),
                 'unit' => 'km',
             ],
             [
@@ -249,9 +283,12 @@ final readonly class SeasonService
             ],
         ];
 
-        $goals[] = $race !== null
-            ? $this->raceMarginGoal()
-            : $this->ctlGrowthGoal($user, $today);
+        if ($race === null) {
+            $goals[] = $this->ctlGrowthGoal($user, $today);
+        } elseif (self::blockHasOpened($race, $today)) {
+            $goals[] = self::raceMarginGoal();
+            $goals[] = $this->peakWeeklyKmGoal($season, $race, $user);
+        }
 
         foreach ($goals as $goal) {
             SeasonGoal::query()->create([
@@ -262,18 +299,104 @@ final readonly class SeasonService
     }
 
     /**
+     * The once-only line for a season that opened with less than a full block
+     * left before race week. Stamped as it is served, so it never repeats.
+     */
+    public function takeUnderReadyLine(Season $season): ?string
+    {
+        $race = $season->raceGoal;
+        if ($race === null || $season->under_ready_noted_at !== null) {
+            return null;
+        }
+
+        $raceWeek = $race->race_date->copy()->startOfWeek(Carbon::MONDAY);
+        $blockOpen = PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m);
+        $weeks = (int) $season->starts_at->copy()->startOfWeek(Carbon::MONDAY)->max($blockOpen)->diffInWeeks($raceWeek) + 1;
+
+        if ($weeks >= (int) $blockOpen->diffInWeeks($raceWeek) + 1) {
+            return null;
+        }
+
+        $season->update(['under_ready_noted_at' => Carbon::now()]);
+
+        return self::WEEK_COUNT_WORDS[$weeks - 1].' '.Str::plural('week', $weeks)
+            ." is tighter than I'd pick for this one, so we build what we can and race what we've built.";
+    }
+
+    private static function readinessLongRunKm(float $raceDistanceM): float
+    {
+        foreach (self::READINESS_LONG_RUN_BANDS as [$upTo, $km]) {
+            if ($raceDistanceM <= $upTo) {
+                return $km;
+            }
+        }
+
+        return self::READINESS_LONG_RUN_MARATHON_KM;
+    }
+
+    private static function blockHasOpened(RaceGoal $race, Carbon $today): bool
+    {
+        return ! $today->lessThan(PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m));
+    }
+
+    /**
+     * The race-specific goals for a season opened before its block, added the
+     * first time it is read on or after block open and stamped so later reads skip the database.
+     */
+    private function appendBlockGoals(Season $season, RaceGoal $race, User $user, Carbon $today): void
+    {
+        if ($season->block_goals_appended_at !== null || ! self::blockHasOpened($race, $today)) {
+            return;
+        }
+
+        $existing = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
+
+        if (! in_array(self::RACE_MARGIN_METRIC, $existing, true)) {
+            SeasonGoal::query()->create(['season_id' => $season->id, ...self::raceMarginGoal()]);
+        }
+
+        if (! in_array(self::PEAK_WEEKLY_KM_METRIC, $existing, true)) {
+            SeasonGoal::query()->create(['season_id' => $season->id, ...$this->peakWeeklyKmGoal($season, $race, $user)]);
+        }
+
+        $season->update(['block_goals_appended_at' => Carbon::now()]);
+    }
+
+    /**
      * @return array{title: string, metric: string, metric_key: null, target: float, unit: string}
      */
-    private function raceMarginGoal(): array
+    private static function raceMarginGoal(): array
     {
         $marginPct = (int) round(SeasonGamificationContext::RACE_MARGIN_FRACTION * 100);
 
         return [
             'title' => "Finish within {$marginPct}% of your goal time",
-            'metric' => 'season_race_goal_met',
+            'metric' => self::RACE_MARGIN_METRIC,
             'metric_key' => null,
             'target' => 1.0,
             'unit' => 'race',
+        ];
+    }
+
+    /**
+     * @return array{title: string, metric: string, metric_key: null, target: float, unit: string}
+     */
+    private function peakWeeklyKmGoal(Season $season, RaceGoal $race, User $user): array
+    {
+        $season->setRelation('raceGoal', $race);
+        $peakKm = 0.0;
+        foreach ($this->seasonSummaryBuilder->plannedWeeks($user, $season) as $week) {
+            if ($week['zone'] === PhaseSchedule::ZONE_BLOCK) {
+                $peakKm = max($peakKm, $week['planned_km']);
+            }
+        }
+
+        return [
+            'title' => 'Run your peak training week',
+            'metric' => self::PEAK_WEEKLY_KM_METRIC,
+            'metric_key' => null,
+            'target' => max(1.0, round($peakKm, 1)),
+            'unit' => 'km',
         ];
     }
 

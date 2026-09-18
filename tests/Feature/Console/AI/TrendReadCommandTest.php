@@ -25,7 +25,7 @@ function currentTrendTotals(User $user, string $range): array
     return new TrendRangeTool($user, $range, new TrainingLoad())->handle([]);
 }
 
-it('dispatches the requested range for every active user', function (): void {
+it('dispatches the 7d range for every active user', function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
 
     $user = User::factory()->seenToday()->create();
@@ -41,24 +41,30 @@ it('dispatches the requested range for every active user', function (): void {
         });
     $this->app->instance(AnalysisService::class, $service);
 
-    $this->artisan('ai:trend-read', ['range' => '30d'])
-        ->expectsOutputToContain('Dispatched trend read (30d) for 1 active users.')
+    $this->artisan('ai:trend-read', ['range' => '7d'])
+        ->expectsOutputToContain('Dispatched trend read (7d) for 1 active users.')
         ->assertSuccessful();
 
     expect($requestCalls)->toHaveCount(1)
         ->and($requestCalls[0]['subjectOrType'])->toBe(AnalysisType::TREND_READ_SUBJECT_TYPE)
         ->and($requestCalls[0]['subjectId'])->toBe($user->id)
         ->and($requestCalls[0]['type'])->toBe(AnalysisType::TrendRead)
-        ->and($requestCalls[0]['discriminator'])->toBe('30d');
+        ->and($requestCalls[0]['discriminator'])->toBe('7d');
 
     Carbon::setTestNow();
 });
 
 it('rejects a range outside AnalysisType::TREND_READ_RANGES', function (): void {
     $this->artisan('ai:trend-read', ['range' => '14d'])
-        ->expectsOutputToContain('range must be one of: 7d, 30d, 90d, 12mo')
+        ->expectsOutputToContain('range must be one of: 7d')
         ->assertFailed();
 });
+
+it('rejects a retired range now that only 7d is scheduled', function (string $range): void {
+    $this->artisan('ai:trend-read', ['range' => $range])
+        ->expectsOutputToContain('range must be one of: 7d')
+        ->assertFailed();
+})->with(['30d', '90d', '12mo']);
 
 it('skips the demo user even with recent activity', function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
@@ -69,8 +75,8 @@ it('skips the demo user even with recent activity', function (): void {
     $service->shouldNotReceive('request');
     $this->app->instance(AnalysisService::class, $service);
 
-    $this->artisan('ai:trend-read', ['range' => '30d'])
-        ->expectsOutputToContain('Dispatched trend read (30d) for 0 active users.')
+    $this->artisan('ai:trend-read', ['range' => '7d'])
+        ->expectsOutputToContain('Dispatched trend read (7d) for 0 active users.')
         ->assertSuccessful();
 
     Carbon::setTestNow();
@@ -87,35 +93,12 @@ it('skips a user who has not opened the app in the active window, however recent
     $service->shouldNotReceive('request');
     $this->app->instance(AnalysisService::class, $service);
 
-    $this->artisan('ai:trend-read', ['range' => '30d'])
-        ->expectsOutputToContain('Dispatched trend read (30d) for 0 active users.')
+    $this->artisan('ai:trend-read', ['range' => '7d'])
+        ->expectsOutputToContain('Dispatched trend read (7d) for 0 active users.')
         ->assertSuccessful();
 
     Carbon::setTestNow();
 });
-
-it('dispatches each real range with its own discriminator', function (string $range): void {
-    Carbon::setTestNow('2026-08-17 12:00:00');
-
-    $user = User::factory()->seenToday()->create();
-
-    $requestCalls = [];
-    $service = Mockery::mock(AnalysisService::class);
-    $service->shouldReceive('request')
-        ->once()
-        ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$requestCalls): Analysis {
-            $requestCalls[] = $discriminator;
-
-            return new Analysis();
-        });
-    $this->app->instance(AnalysisService::class, $service);
-
-    $this->artisan('ai:trend-read', ['range' => $range])->assertSuccessful();
-
-    expect($requestCalls)->toBe([$range]);
-
-    Carbon::setTestNow();
-})->with(AnalysisType::TREND_READ_RANGES);
 
 it('re-dispatches a done 7d read whose stored fingerprint is null, exactly once', function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
@@ -192,39 +175,6 @@ it('re-dispatches a done read once when its range material has changed', functio
 
     Bus::assertDispatchedTimes(AnalyzeTrendReadJob::class, 1);
     expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
-
-    Carbon::setTestNow();
-});
-
-it('checks each range against its own stored fingerprint, never another range\'s row', function (): void {
-    Carbon::setTestNow('2026-08-17 12:00:00');
-    Bus::fake();
-
-    $user = User::factory()->seenToday()->create();
-
-    $sevenDayRow = Analysis::factory()->done('7d read')->create([
-        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::TrendRead,
-        'discriminator' => '7d',
-        'content_fingerprint' => MaterialFingerprint::forTrendRead(currentTrendTotals($user, '7d')),
-    ]);
-    $thirtyDayRow = Analysis::factory()->done('30d read')->create([
-        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::TrendRead,
-        'discriminator' => '30d',
-        // Deliberately stale, so only the 30d run should invalidate it.
-        'content_fingerprint' => 'stale-digest-from-before-this-shipped',
-    ]);
-
-    $this->artisan('ai:trend-read', ['range' => '7d'])->assertSuccessful();
-    $this->artisan('ai:trend-read', ['range' => '30d'])->assertSuccessful();
-
-    expect($sevenDayRow->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($thirtyDayRow->fresh()->status)->toBe(AnalysisStatus::Queued);
-
-    Bus::assertDispatchedTimes(AnalyzeTrendReadJob::class, 1);
 
     Carbon::setTestNow();
 });

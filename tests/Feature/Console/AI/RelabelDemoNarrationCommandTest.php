@@ -6,6 +6,7 @@ use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\ServedBy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,7 +34,8 @@ it('restamps a demo row that no token usage ever paid for', function (): void {
         ->expectsOutputToContain('Relabelled 1 demo rows')
         ->assertSuccessful();
 
-    expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased);
+    expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased)
+        ->and($row->fresh()->rule_based_reason)->toBe(AnalysisOrigin::Demo);
 });
 
 it('leaves a non-demo row alone', function (): void {

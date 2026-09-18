@@ -5,20 +5,26 @@ import type { AnalysisPayload } from '@/types/inertia';
 
 import SeasonWeekRow from '@/components/plan/SeasonWeekRow';
 import WeekCluster from '@/components/plan/WeekCluster';
-import { PHASE_LABEL } from '@/lib/plan';
+import { PHASE_LABEL, phaseGroupKey } from '@/lib/plan';
 
 function plural(count: number, noun: string): string {
     return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
-/** The season split into runs of consecutive same-phase weeks, in season order. */
+/**
+ * The season split into runs of consecutive weeks sharing the same displayed
+ * phase, in season order. Grouped by {@see phaseGroupKey} rather than the raw
+ * `phase` so every general-zone week — the self-scaled cycle alternates
+ * Build/Deload before the block opens — folds into one "maintain" run
+ * instead of splitting into alternating Build/Deload runs.
+ */
 function contiguousPhaseRuns(
     weeks: SeasonSummaryWeek[],
 ): SeasonSummaryWeek[][] {
     const runs: SeasonSummaryWeek[][] = [];
     for (const week of weeks) {
         const last = runs[runs.length - 1];
-        if (last && last[0].phase === week.phase) {
+        if (last && phaseGroupKey(last[0]) === phaseGroupKey(week)) {
             last.push(week);
         } else {
             runs.push([week]);
@@ -105,7 +111,7 @@ export default function SeasonTimeline({
         <div className="flex flex-col gap-4">
             <div>
                 <p className="mb-2 text-label-micro text-text-2">
-                    {PHASE_LABEL[current.phase] ?? current.phase} phase
+                    {PHASE_LABEL[phaseGroupKey(current)] ?? current.phase} phase
                 </p>
                 <div className="flex flex-col">
                     {pastInPhase.length > 0 &&
@@ -135,7 +141,7 @@ export default function SeasonTimeline({
                     laterPhaseRuns.map((phaseWeeks) => (
                         <div key={phaseWeeks[0].week_start}>
                             <p className="mb-2 text-label-micro text-text-2">
-                                {PHASE_LABEL[phaseWeeks[0].phase] ??
+                                {PHASE_LABEL[phaseGroupKey(phaseWeeks[0])] ??
                                     phaseWeeks[0].phase}{' '}
                                 phase
                             </p>

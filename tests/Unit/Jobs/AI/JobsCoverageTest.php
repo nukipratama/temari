@@ -165,7 +165,7 @@ it('AnalyzeTrendReadJob returns the trend read for the row\'s range', function (
     $user = User::factory()->create();
     mockNarrator(TrendReadNarrator::class, 'The last 30 days, in one read.');
 
-    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '30d');
+    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '7d');
     new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->content)->toBe('The last 30 days, in one read.')
@@ -176,16 +176,16 @@ it('AnalyzeTrendReadJob stamps the range\'s current fingerprint once done', func
     $user = User::factory()->create();
     mockNarrator(TrendReadNarrator::class, 'The last 30 days, in one read.');
 
-    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '30d');
+    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '7d');
     new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class));
 
-    $totals = new TrendRangeTool($user, '30d', app(TrainingLoad::class))->handle([]);
+    $totals = new TrendRangeTool($user, '7d', app(TrainingLoad::class))->handle([]);
 
     expect($row->fresh()->content_fingerprint)->toBe(MaterialFingerprint::forTrendRead($totals));
 });
 
 it('AnalyzeTrendReadJob marks the row Failed and rethrows when the user is missing', function (): void {
-    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, 99999, AnalysisType::TrendRead, '30d');
+    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, 99999, AnalysisType::TrendRead, '7d');
 
     expect(fn () => new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class)))
         ->toThrow(ModelNotFoundException::class);
@@ -200,7 +200,7 @@ it('AnalyzeTrendReadJob does not re-invoke the narrator when its row is already 
         'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::TrendRead,
-        'discriminator' => '30d',
+        'discriminator' => '7d',
     ]);
 
     $mock = Mockery::mock(TrendReadNarrator::class);
@@ -220,7 +220,7 @@ it('AnalyzeTrendReadJob falls back to rule-based content when generation content
     $mock->shouldReceive('generate')->andThrow(new ContentFilterException('content filtered'));
     app()->instance(TrendReadNarrator::class, $mock);
 
-    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '30d');
+    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '7d');
     new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
@@ -234,7 +234,7 @@ it('AnalyzeTrendReadJob failed() marks a stranded row Failed', function (): void
         'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::TrendRead,
-        'discriminator' => '30d',
+        'discriminator' => '7d',
         'status' => AnalysisStatus::Processing,
     ]);
 

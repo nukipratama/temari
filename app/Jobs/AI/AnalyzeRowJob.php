@@ -8,6 +8,7 @@ use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\ObsoleteAnalysisException;
 use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisSubjectMap;
@@ -73,6 +74,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
                 $row,
                 app(RuleBasedNarrationFiller::class)->fillFor($row),
                 ServedBy::RuleBased,
+                ruleBasedReason: AnalysisOrigin::ContentFilter,
             );
             Log::info('narrator.ai.content_filter_fallback', [
                 'kind' => $row->analysis_type->value,
