@@ -87,9 +87,10 @@ final readonly class TopoPlateRenderer implements CardStyleRenderer
         );
         $out .= Svg::rect($fx, $fy, $fw, $fh, fill: Svg::SURFACE_ELEV, stroke: Svg::LINE, strokeWidth: 2);
 
-        $field = $facts->hasRoute()
-            ? $this->survey($facts, $fx, $fy, $fw, $fh, $story, $level, $rarity)
-            : $this->unsurveyed($facts, $fx, $fy, $fw, $fh, $story);
+        // A polyline that decodes to fewer than two points is as route-less as
+        // no polyline at all, so the survey itself decides which branch runs.
+        $field = $this->survey($facts, $fx, $fy, $fw, $fh, $story, $level, $rarity)
+            ?? $this->unsurveyed($facts, $fx, $fy, $fw, $fh, $story);
         $out .= Svg::group($field, clip: 'url(#plate-field)');
 
         $out .= $this->scaleBar($fx + 28, $fy + $fh - 44, $facts->form === RunForm::Long ? 4 : 2);
@@ -122,8 +123,14 @@ final readonly class TopoPlateRenderer implements CardStyleRenderer
         return $svg;
     }
 
-    private function survey(CardFacts $facts, float $fx, float $fy, float $fw, float $fh, bool $story, int $level, string $rarity): string
+    private function survey(CardFacts $facts, float $fx, float $fy, float $fw, float $fh, bool $story, int $level, string $rarity): ?string
     {
+        $pad = $story ? 70.0 : 56.0;
+        $points = $this->projector->points($facts->polyline, $fw - $pad * 2, $fh - $pad * 2, 0);
+        if ($points === null) {
+            return null;
+        }
+
         $cx = $fx + $fw / 2;
         $cy = $fy + $fh / 2;
         $seed = crc32((string) $facts->serial) % 997;
@@ -149,11 +156,6 @@ final readonly class TopoPlateRenderer implements CardStyleRenderer
             );
         }
 
-        $pad = $story ? 70.0 : 56.0;
-        $points = $this->projector->points($facts->polyline, $fw - $pad * 2, $fh - $pad * 2, 0);
-        if ($points === null) {
-            return $svg;
-        }
         $points = array_map(fn (array $p): array => [$p[0] + $fx + $pad, $p[1] + $fy + $pad], $points);
         $d = Svg::polylinePath($points, close: Svg::isClosedLoop($points, $fw, $fh));
 

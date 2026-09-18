@@ -149,6 +149,16 @@ it('draws the route placeholder rather than a blank panel without GPS', function
         ->and(renderer()->buildSvg($card, CardStyle::TopoPlate, CardAspect::Story))->toContain('UNSURVEYED');
 });
 
+it('treats a polyline that decodes to one point as no route at all', function (): void {
+    // Strava ships these for a very short or paused activity; every style has
+    // to fall back rather than draw an empty route area.
+    $card = makeRunCard(['summary_polyline' => '_p~iF~ps|U']);
+
+    expect(renderer()->buildSvg($card, CardStyle::Broadsheet, CardAspect::Story))->toContain('NO GPS')
+        ->and(renderer()->buildSvg($card, CardStyle::Ticket, CardAspect::Story))->toContain('NO SIGNAL')
+        ->and(renderer()->buildSvg($card, CardStyle::TopoPlate, CardAspect::Story))->toContain('UNSURVEYED');
+});
+
 it('promotes the route and the elevation cell on a long run', function (): void {
     [$detailAttrs, $cardAttrs] = runFormFixtures()['long'];
     $svg = renderer()->buildSvg(makeRunCard($detailAttrs, $cardAttrs), CardStyle::Broadsheet, CardAspect::Story);

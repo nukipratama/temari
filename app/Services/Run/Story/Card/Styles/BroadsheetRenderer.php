@@ -83,9 +83,10 @@ final readonly class BroadsheetRenderer implements CardStyleRenderer
         $routeX = $margin + ($isLong ? -$margin : 40);
         $routeWidth = $width - 2 * $margin + ($isLong ? 2 * $margin : -80);
 
-        $out .= $facts->hasRoute()
-            ? $this->route($facts, $routeX, $routeTop, $routeWidth, $routeHeight, $rarity, $ground)
-            : $this->noSignalBelt($width, $margin, $routeTop, $routeHeight, $story);
+        // A polyline that decodes to fewer than two points is as route-less as
+        // no polyline at all, so the drawing itself decides which branch runs.
+        $out .= $this->route($facts, $routeX, $routeTop, $routeWidth, $routeHeight, $rarity, $ground)
+            ?? $this->noSignalBelt($width, $margin, $routeTop, $routeHeight, $story);
 
         $out .= $this->hero($facts, $width, $margin, $story, $bottom);
 
@@ -153,11 +154,11 @@ final readonly class BroadsheetRenderer implements CardStyleRenderer
             .Svg::text('BIB '.$facts->bib(), $margin, $bandTop + 150, 24, Svg::INK_ON_SKY, tracking: 3);
     }
 
-    private function route(CardFacts $facts, float $x, float $y, float $width, float $height, string $rarity, string $ground): string
+    private function route(CardFacts $facts, float $x, float $y, float $width, float $height, string $rarity, string $ground): ?string
     {
         $points = $this->projector->points($facts->polyline, $width, $height, 0);
         if ($points === null) {
-            return '';
+            return null;
         }
 
         $points = array_map(fn (array $p): array => [$p[0] + $x, $p[1] + $y], $points);
