@@ -73,6 +73,7 @@ class PastYouMatcher
      *   pace_diff_sec: float,
      *   time_diff_sec: float,
      *   hr_diff_bpm: float|null,
+     *   direction: string,
      *   days_ago: int,
      * }|null
      */
@@ -141,12 +142,15 @@ class PastYouMatcher
             assert($past->start_date_local !== null);
 
             $paceDiffSec = $pastPace - $currentPaceSec;
+            $roundedPaceDiffSec = round($paceDiffSec, 1);
+            $hrDiffBpm = $this->hrDiffBpm($detail, $past);
 
             return [
                 'past' => $past,
-                'pace_diff_sec' => round($paceDiffSec, 1),
+                'pace_diff_sec' => $roundedPaceDiffSec,
                 'time_diff_sec' => round($paceDiffSec * $currentKm, 1),
-                'hr_diff_bpm' => $this->hrDiffBpm($detail, $past),
+                'hr_diff_bpm' => $hrDiffBpm,
+                'direction' => PastYouComparison::directionFor($roundedPaceDiffSec, $hrDiffBpm)->value,
                 'days_ago' => (int) $past->start_date_local->copy()->startOfDay()
                     ->diffInDays($startDate->copy()->startOfDay()),
             ];
@@ -160,8 +164,10 @@ class PastYouMatcher
      * couple of descriptors of the matched past run, without the full
      * ActivityDetail model. `pace_diff_sec`/`time_diff_sec` are positive when the
      * current run is faster; `hr_diff_bpm` is positive when HR is higher now.
+     * `direction` (better/worse/flat) is the call to narrate -- it already
+     * resolves the sign, so it is never inferred from the numbers.
      *
-     * @return array{days_ago: int, pace_diff_sec: float, time_diff_sec: float, hr_diff_bpm: float|null, past_km: float, past_date: string|null}|null
+     * @return array{days_ago: int, pace_diff_sec: float, time_diff_sec: float, hr_diff_bpm: float|null, direction: string, past_km: float, past_date: string|null}|null
      */
     public function findMatchContext(Activity $activity, ActivityDetail $detail): ?array
     {
@@ -177,6 +183,7 @@ class PastYouMatcher
             'pace_diff_sec' => $match['pace_diff_sec'],
             'time_diff_sec' => $match['time_diff_sec'],
             'hr_diff_bpm' => $match['hr_diff_bpm'],
+            'direction' => $match['direction'],
             'past_km' => DistanceFormatter::km((float) ($past->distance ?? 0)),
             'past_date' => $past->start_date_local?->toDateString(),
         ];

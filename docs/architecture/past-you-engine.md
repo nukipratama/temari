@@ -55,6 +55,16 @@ threshold, for the same reason.
   run, ties to the older one, so the deltas feeding the verdict are not noise
   from a poorly comparable pairing.
 
+Both paths now hand a caller the same [TrendDirection](app/Enums/TrendDirection.php)
+call rather than a signed number alone:
+[PastYouComparison::directionFor()](app/Services/Run/Story/PastYouComparison.php)
+is the rule shared by `bestMatch()`'s `PastYouComparison::direction()` and by
+`findMatch()`/`findMatchContext()`, whose LLM-facing payload carries it as
+`direction`. Before this, `findMatchContext()`'s `past_you` gave the model only
+`pace_diff_sec`'s bare sign plus a sentence of prose, which the run-narration
+LLM read backwards two times out of three (#1009) — the fix constrains the
+output shape instead of restating the sign rule in prose.
+
 ## The verdict
 
 [PastYouTrendBuilder](app/Services/Run/Story/PastYouTrendBuilder.php) takes the

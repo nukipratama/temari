@@ -26,7 +26,8 @@ final class PastYouTool extends ActivityTool
     public function description(): string
     {
         return "A similar run of the user's own from the past, to compare against this session. "
-            .'pace_diff_sec and time_diff_sec positive = faster now, negative = slower; hr_diff_bpm '
+            .'`direction` (better/worse/flat) is the call to make -- say that, never infer it from '
+            .'the sign of pace_diff_sec/time_diff_sec, which are for size only (seconds). hr_diff_bpm '
             ."positive = HR is higher now. If past_you is missing, there's no good match, and in "
             .'that case never make up a comparison to the past.';
     }

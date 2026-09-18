@@ -58,19 +58,29 @@ final readonly class PastYouComparison
      */
     public function direction(): TrendDirection
     {
-        if ($this->paceDeltaSec >= self::PACE_SIGNAL_SEC) {
+        return self::directionFor($this->paceDeltaSec, $this->hrDeltaBpm);
+    }
+
+    /**
+     * Shared with {@see \App\Services\Run\Story\PastYouMatcher::findMatch()},
+     * which computes the same two deltas outside a {@see PastYouComparison}
+     * instance and needs the identical call.
+     */
+    public static function directionFor(float $paceDeltaSec, ?float $hrDeltaBpm): TrendDirection
+    {
+        if ($paceDeltaSec >= self::PACE_SIGNAL_SEC) {
             return TrendDirection::Better;
         }
 
-        if ($this->paceDeltaSec <= -self::PACE_SIGNAL_SEC) {
+        if ($paceDeltaSec <= -self::PACE_SIGNAL_SEC) {
             return TrendDirection::Worse;
         }
 
-        if ($this->hrDeltaBpm !== null && $this->hrDeltaBpm <= -self::HR_SIGNAL_BPM) {
+        if ($hrDeltaBpm !== null && $hrDeltaBpm <= -self::HR_SIGNAL_BPM) {
             return TrendDirection::Better;
         }
 
-        if ($this->hrDeltaBpm !== null && $this->hrDeltaBpm >= self::HR_SIGNAL_BPM) {
+        if ($hrDeltaBpm !== null && $hrDeltaBpm >= self::HR_SIGNAL_BPM) {
             return TrendDirection::Worse;
         }
 
