@@ -978,14 +978,12 @@ it('folds the full mood mix from its two halves', function (): void {
     // LOOKBACK_WEEKS is 12, so the halfway mark is 6 weeks back.
     $seed = function (string $mood, Carbon $when) use ($user): void {
         $activity = Activity::factory()->for($user)->analyzed()->create();
-        $line = StoryLine::query()->create([
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => $when]);
+        StoryLine::query()->create([
             'user_id' => $user->id, 'activity_id' => $activity->id,
             'kind' => StoryLine::KIND_POST_RUN, 'mood' => $mood,
             'speech' => null, 'sigil_pattern' => 'dddd',
         ]);
-        // created_at is not fillable, so it has to be set after the insert.
-        $line->created_at = $when;
-        $line->save();
     };
 
     $seed('blazing', $asOf->copy()->subWeeks(2));

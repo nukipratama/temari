@@ -15,6 +15,9 @@ use Illuminate\Support\Carbon;
  * bar. The three had grown their own copies of the same group-by; they agreed
  * with each other, but there is no reason for three.
  *
+ * Windows are by the run's `start_date_local`, not the line's `created_at`:
+ * a backfilled run is hydrated long after it was run.
+ *
  * Windows are half-open — `[from, to)` — so adjacent windows tile without
  * double-counting a run on the seam. Callers holding an inclusive end (a
  * `endOfMonth()`, say) must pass the start of the next period instead.
@@ -22,18 +25,18 @@ use Illuminate\Support\Carbon;
 final class MoodMix
 {
     /**
-     * @param  Carbon|null  $to  Open-ended when null, so runs logged moments ago still count.
+     * @param  Carbon|null  $to  Open-ended when null, so runs from moments ago still count.
      * @return list<array{mood: string, count: int, percent: float}>
      */
     public static function between(int $userId, Carbon $from, ?Carbon $to = null): array
     {
         $counts = StoryLine::query()
-            ->where('user_id', $userId)
-            ->whereNotNull('activity_id')
-            ->where('created_at', '>=', $from)
-            ->when($to !== null, fn ($query) => $query->where('created_at', '<', $to))
-            ->selectRaw('mood, COUNT(*) as c')
-            ->groupBy('mood')
+            ->join('activity_details', 'activity_details.activity_id', '=', 'story_lines.activity_id')
+            ->where('story_lines.user_id', $userId)
+            ->where('activity_details.start_date_local', '>=', $from)
+            ->when($to !== null, fn ($query) => $query->where('activity_details.start_date_local', '<', $to))
+            ->selectRaw('story_lines.mood as mood, COUNT(*) as c')
+            ->groupBy('story_lines.mood')
             ->pluck('c', 'mood')
             ->map(fn (mixed $count): int => (int) $count)
             ->all();

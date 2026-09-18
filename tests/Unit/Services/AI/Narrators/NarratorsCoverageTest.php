@@ -1193,10 +1193,10 @@ it('ProfileVoiceNarrator builds a mood-mix percent breakdown from story lines', 
 
     foreach (['blazing', 'blazing', 'blazing', 'chill', 'gassed'] as $mood) {
         $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => $cutoff->copy()->addDay()]);
         StoryLine::factory()->for($user)->create([
             'activity_id' => $activity->id,
             'mood' => $mood,
-            'created_at' => $cutoff->copy()->addDay(),
         ]);
     }
 
@@ -1356,10 +1356,10 @@ it('ProfileVoiceNarrator lets the paragraph quote a mood percentage without a sl
 
     foreach (['blazing', 'blazing', 'blazing', 'chill', 'gassed'] as $mood) {
         $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => $cutoff->copy()->addDay()]);
         StoryLine::factory()->for($user)->create([
             'activity_id' => $activity->id,
             'mood' => $mood,
-            'created_at' => $cutoff->copy()->addDay(),
         ]);
     }
 
