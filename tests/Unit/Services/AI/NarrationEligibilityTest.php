@@ -72,6 +72,18 @@ it('ranks pre-connect above inactive', function (): void {
     expect(ingestVerdict($away, '2026-08-20 06:00:00'))->toBe(NarrationVerdict::PreConnect);
 });
 
+it('narrates a historical run inside the last 7 days instead of deferring to pre-connect', function (): void {
+    $user = eligibilityAthlete(connectedAt: '2026-09-14 12:00:00');
+
+    expect(ingestVerdict($user, '2026-09-10 06:00:00'))->toBe(NarrationVerdict::Eligible);
+});
+
+it('still defers a historical run older than 7 days to pre-connect for an active athlete', function (): void {
+    $user = eligibilityAthlete();
+
+    expect(ingestVerdict($user, '2026-08-20 06:00:00'))->toBe(NarrationVerdict::PreConnect);
+});
+
 it('defers a fresh run of an athlete away past the active window', function (): void {
     $away = eligibilityAthlete(lastSeenDaysAgo: 8);
 

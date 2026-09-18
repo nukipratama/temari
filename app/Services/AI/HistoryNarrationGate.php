@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
@@ -12,9 +13,12 @@ use Illuminate\Support\Carbon;
  *
  * A run the athlete did before they connected Strava is history — it exists only
  * because the first-connect backfill imported it. The backfill hydrates its
- * streams and metrics, but its narration is only ever read if someone opens that
- * run's detail page, so it is filled deterministically and an LLM read is left
- * to the page's own "Try again".
+ * streams and metrics; a historical run inside the last
+ * {@see RecentlyActiveUsers::ACTIVE_WINDOW_DAYS} days still narrates by itself on
+ * ingest, the same window {@see \App\Jobs\AI\NarrateOnReturnJob} applies to a
+ * returning athlete's pending runs, so a day-one backfill's cost is bounded and
+ * identical regardless of how much history it imports. Anything older is filled
+ * deterministically and an LLM read is left to the page's own "Try again".
  *
  * That on-demand read waits until every older run inside the backfill window
  * has finished hydrating, because the narrator's baseline and recent-runs tools
@@ -40,6 +44,15 @@ class HistoryNarrationGate
         $connectedAt = $this->backlog->connectedAt($user->id);
 
         return $connectedAt !== null && $startedAt->lt($connectedAt);
+    }
+
+    /**
+     * Whether a historical run is still recent enough to narrate automatically
+     * on ingest, rather than waiting for the on-demand "Try again".
+     */
+    public function narratesAutomatically(?Carbon $startedAt): bool
+    {
+        return $startedAt !== null && $startedAt->gte(RecentlyActiveUsers::windowStart());
     }
 
     /**
