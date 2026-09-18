@@ -875,3 +875,30 @@ it('awards easy_miles for a genuine easy effort rather than only a recovery jog'
     expect($card->badges)->toContain('easy_miles')
         ->and($card->badges)->not->toContain('all_out');
 });
+
+it('does not claim a PR while an earlier run of the athlete is still awaiting hydration', function (): void {
+    $user = User::factory()->create();
+    $older = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::parse('2026-01-10 07:00:00')]);
+
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5_190,
+        'start_date_local' => Carbon::parse('2026-09-17 17:39:52'),
+    ]);
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'activity_id' => $activity->id]);
+
+    $card = app(RunCardFactory::class)->build($activity, $detail);
+
+    expect($card->pr_set)->toBeFalse()
+        ->and($card->special_move)->not->toBe('Personal Best');
+});
+
+it('takes an explicit PR verdict over the sticky flag', function (): void {
+    $activity = Activity::factory()->analyzed()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2026-09-17 17:39:52')]);
+    RunCard::factory()->create(['activity_id' => $activity->id, 'pr_set' => true]);
+
+    expect(app(RunCardFactory::class)->build($activity, $detail, false)->pr_set)->toBeFalse()
+        ->and(app(RunCardFactory::class)->build($activity, $detail, true)->pr_set)->toBeTrue();
+});

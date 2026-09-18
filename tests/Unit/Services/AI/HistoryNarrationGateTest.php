@@ -76,9 +76,9 @@ it('lets an on-demand read through once every older run in the window is hydrate
         ->toBeFalse();
 });
 
-it('ignores an unhydrated run older than the backfill window', function (): void {
+it('ignores an unhydrated run older than past-you reach', function (): void {
     $user = athleteConnectedAt();
-    historyRunFor($user, '2026-01-05 06:00:00', IngestState::Summary);
+    historyRunFor($user, '2025-08-01 06:00:00', IngestState::Summary);
     $clicked = historyRunFor($user, '2026-08-20 06:00:00');
 
     expect(app(HistoryNarrationGate::class)->awaitsHydration($user, AnalysisType::PostRunSpeech, $clicked->id))
@@ -121,4 +121,37 @@ it('leaves a historical run older than 7 days for the on-demand read', function 
 
 it('does not auto-narrate a null start date', function (): void {
     expect(app(HistoryNarrationGate::class)->narratesAutomatically(null))->toBeFalse();
+});
+
+it('holds automatic narration while an older run within past-you reach still hydrates, inside the grace window', function (): void {
+    $user = athleteConnectedAt('2026-09-15 08:00:00');
+    historyRunFor($user, '2025-11-26 06:00:00', IngestState::Summary);
+
+    expect(app(HistoryNarrationGate::class)->awaitsOlderHydration($user->id, Carbon::parse('2026-09-13 06:00:00')))
+        ->toBeTrue();
+});
+
+it('releases automatic narration once the grace window after connecting has passed', function (): void {
+    $user = athleteConnectedAt('2026-09-13 08:00:00');
+    historyRunFor($user, '2025-11-26 06:00:00', IngestState::Summary);
+
+    expect(app(HistoryNarrationGate::class)->awaitsOlderHydration($user->id, Carbon::parse('2026-09-12 06:00:00')))
+        ->toBeFalse();
+});
+
+it('does not hold automatic narration on history past past-you reach', function (): void {
+    $user = athleteConnectedAt('2026-09-15 08:00:00');
+    historyRunFor($user, '2025-09-01 06:00:00', IngestState::Summary);
+
+    expect(app(HistoryNarrationGate::class)->awaitsOlderHydration($user->id, Carbon::parse('2026-09-13 06:00:00')))
+        ->toBeFalse();
+});
+
+it('makes an on-demand read wait on an unhydrated run older than the backfill window but inside past-you reach', function (): void {
+    $user = athleteConnectedAt();
+    historyRunFor($user, '2025-11-26 06:00:00', IngestState::Summary);
+    $clicked = historyRunFor($user, '2026-08-20 06:00:00');
+
+    expect(app(HistoryNarrationGate::class)->awaitsHydration($user, AnalysisType::PostRunSpeech, $clicked->id))
+        ->toBeTrue();
 });

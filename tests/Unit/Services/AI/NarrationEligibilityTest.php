@@ -140,3 +140,11 @@ it('never defers a manual trigger for inactivity', function (): void {
     expect(app(NarrationEligibility::class)->forManualTrigger($away, AnalysisType::PostRunSpeech, $run->id, null))
         ->toBe(NarrationVerdict::Eligible);
 });
+
+it('holds an ingested run whose older history is still hydrating right after the connect', function (): void {
+    $user = eligibilityAthlete(connectedAt: '2026-09-15 08:00:00');
+    eligibilityRun($user, '2025-11-26 06:00:00', IngestState::Summary);
+
+    expect(ingestVerdict($user, '2026-09-13 06:00:00'))->toBe(NarrationVerdict::AwaitingBacklog)
+        ->and(ingestVerdict($user, '2026-09-15 08:30:00'))->toBe(NarrationVerdict::AwaitingBacklog);
+});
