@@ -52,6 +52,26 @@ code_refs:
 > the same "up to one hourly sweep" [[recap-waits-for-hydration]] already prices in, not a new
 > unbounded wait. **The monthly half is unchanged and still bypasses hydration entirely** — it was
 > out of scope for #1010 and is not known to read a field with the same race (flagged, not fixed).
+>
+> **2026-09-19 — the monthly bypass was investigated by #1018 and left ungated: it reads no field
+> to race.** [KickoffMonthlyRecaps](app/Actions/AI/KickoffMonthlyRecaps.php)'s too-old and
+> pre-connect branches still route straight to `AnalysisService::requestRuleBased()` without
+> consulting [RecapHydrationReadiness](app/Services/AI/RecapHydrationReadiness.php), and that stays
+> correct. Unlike the weekly closer,
+> [RuleBasedNarrationFiller::monthlyRecap()](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php#L513)
+> reads no month-specific data at all: there is no `MonthlySnapshot` model, and the method is a
+> deterministic pick over a static seven-line pool keyed only by
+> `subject_id + crc32($discriminator)` — no distance, run count, `form_status`, or CTL/ATL value
+> is ever touched. A field that is never read cannot be read half-written, so the ordering
+> [[recap-waits-for-hydration]] protects for the weekly closer's `form_status` has nothing to
+> protect here. Confirmed against `rebuilt_main` (the real account #1010's 58-of-58 measurement was
+> about): 25 of 25 completed monthly recaps are `served_by: rule_based`, and their content spans
+> all seven template variants — the opposite signature of a missing-field fallback arm, which
+> would have collapsed onto one line the way the weekly recaps did. No gate was added; a hydration
+> wait here would only delay the recap for no protective effect. Out of scope and not
+> investigated: whether the real-LLM (`narratable`) branch — which also dispatches without an
+> explicit `RecapHydrationReadiness` call — needs one. #1018 was scoped to the rule-based bypass
+> specifically; that branch's safety, if any, comes from elsewhere and was not checked here.
 
 ## Context
 
