@@ -111,3 +111,35 @@ it('resetBreaker force-closes an open breaker', function (): void {
     expect(new StravaCircuitBreaker(new AppConfig())->state())
         ->toBe(StravaCircuitBreaker::STATE_CLOSED);
 });
+
+it('shows maintenance as off by default', function (): void {
+    Livewire::test(SystemControl::class)
+        ->assertOk()
+        ->assertSee('Maintenance')
+        ->assertDontSee('only admins can get in');
+});
+
+it('turns maintenance on and off from the toggle, with a warn badge while it is on', function (): void {
+    Livewire::test(SystemControl::class)
+        ->call('toggleMaintenance')
+        ->assertSee('on · only admins can get in')
+        ->assertSee('health: warn');
+
+    expect(app()->isDownForMaintenance())->toBeTrue();
+
+    Livewire::test(SystemControl::class)->call('toggleMaintenance');
+
+    expect(app()->isDownForMaintenance())->toBeFalse();
+});
+
+it('agrees with artisan down and up, whichever side flips it', function (): void {
+    $this->artisan('down')->assertSuccessful();
+    Livewire::test(SystemControl::class)->assertSee('on · only admins can get in');
+
+    Livewire::test(SystemControl::class)->call('toggleMaintenance');
+    $this->artisan('up')->expectsOutputToContain('already up')->assertSuccessful();
+
+    $this->artisan('down')->assertSuccessful();
+    $this->artisan('up')->expectsOutputToContain('now live')->assertSuccessful();
+    Livewire::test(SystemControl::class)->assertDontSee('only admins can get in');
+});

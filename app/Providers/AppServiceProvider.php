@@ -20,10 +20,12 @@ use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\Vibe;
 use App\Services\Run\Story\VerdictTimeline;
 use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigMaintenanceMode;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Foundation\Events\DiagnosingHealth;
+use Illuminate\Foundation\MaintenanceModeManager;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Routing\Route;
@@ -61,6 +63,10 @@ class AppServiceProvider extends ServiceProvider
         // Scoped so its per-request/per-job read memo collapses repeat lookups but
         // stays fresh across requests and queue jobs (DB remains source of truth).
         $this->app->scoped(AppConfig::class);
+
+        $this->app->afterResolving(MaintenanceModeManager::class, static function (MaintenanceModeManager $manager): void {
+            $manager->extend('app-config', fn (): AppConfigMaintenanceMode => new AppConfigMaintenanceMode());
+        });
 
         // Scoped for the same reason, and specifically so the run-insight toolbox
         // reads the 28-day baseline once. RelativeEffort and RecentBaselineTool

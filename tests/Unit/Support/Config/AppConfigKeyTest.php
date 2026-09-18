@@ -9,6 +9,7 @@ it('exposes a code default for every key', function (AppConfigKey $key, mixed $e
 })->with([
     'ai.enabled' => [AppConfigKey::AiEnabled, true],
     'strava.enabled' => [AppConfigKey::StravaEnabled, true],
+    'app.maintenance' => [AppConfigKey::MaintenanceEnabled, false],
     'breaker threshold' => [AppConfigKey::StravaBreakerThreshold, 5],
     'breaker cooldown' => [AppConfigKey::StravaBreakerCooldownSeconds, 300],
     'breaker state' => [AppConfigKey::StravaBreakerState, 'closed'],
@@ -19,6 +20,7 @@ it('exposes a code default for every key', function (AppConfigKey $key, mixed $e
 it('coerces raw values into the canonical type', function (): void {
     expect(AppConfigKey::AiEnabled->cast(0))->toBeFalse()
         ->and(AppConfigKey::AiEnabled->cast(1))->toBeTrue()
+        ->and(AppConfigKey::MaintenanceEnabled->cast(1))->toBeTrue()
         ->and(AppConfigKey::StravaBreakerThreshold->cast('7'))->toBe(7)
         ->and(AppConfigKey::StravaBreakerState->cast('open'))->toBe('open')
         ->and(AppConfigKey::StravaBreakerOpenedAt->cast(null))->toBeNull()

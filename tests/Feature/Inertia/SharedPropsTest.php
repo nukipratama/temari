@@ -113,6 +113,8 @@ it('loads none of the auth user relations when no prop asks for them', function 
 
 it('runs no queries at all for a guest request', function (): void {
     $props = sharedPropsFor(null);
+    // EnforceMaintenanceMode has already loaded the flag before props resolve.
+    app()->isDownForMaintenance();
 
     $queries = 0;
     DB::listen(function () use (&$queries): void {

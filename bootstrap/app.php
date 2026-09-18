@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\BlockDemoTelegramWrites;
+use App\Http\Middleware\EnforceMaintenanceMode;
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Http\Middleware\EnsureOnboarded;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -10,6 +11,7 @@ use App\Http\Middleware\StampLastSeen;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -38,7 +40,12 @@ return Application::configure(basePath: dirname(__DIR__))
             | Request::HEADER_X_FORWARDED_PROTO
             | Request::HEADER_X_FORWARDED_PORT);
 
+        // Maintenance is enforced inside `web` instead, where the session tells
+        // an admin apart from everyone else (see EnforceMaintenanceMode).
+        $middleware->remove(PreventRequestsDuringMaintenance::class);
+
         $middleware->web(append: [
+            EnforceMaintenanceMode::class,
             HandleInertiaRequests::class,
             SetDefaultNarrationOrigin::class,
             StampLastSeen::class,
