@@ -8,6 +8,7 @@ use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Notifications\DayClampedNotification;
+use App\Services\AI\HydrationBacklog;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -41,6 +42,7 @@ final readonly class RestClampRecorder
         private TrainingBaseline $baseline,
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
+        private HydrationBacklog $hydrationBacklog,
     ) {
     }
 
@@ -89,6 +91,14 @@ final readonly class RestClampRecorder
         // not be excused by one here either.
         if ($session === null || $session->pinned || $session->rest_clamped_at !== null
             || $session->clamped_km !== null || $session->eased_pace_sec_per_km !== null) {
+            return false;
+        }
+
+        // A half-hydrated history reads as no recent load, which bottoms the
+        // ceiling out at Rest for the wrong reason — the rebuild-day bug this
+        // guards against. Wait for the same window {@see ReadinessCeiling}'s
+        // load is scored off before recording anything against it.
+        if ($this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today)) {
             return false;
         }
 

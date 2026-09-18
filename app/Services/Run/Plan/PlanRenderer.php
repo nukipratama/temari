@@ -249,10 +249,18 @@ final class PlanRenderer
         // screens just disagreeing with no explanation.
         $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM);
         $effective = EffectiveSession::of($s, $askedKm);
-        $sessionType = $effective->sessionType;
+        // A recorded ease headlines a PAST row (docs/decisions/the-eased-session-leads.md);
+        // for TODAY, before credit, it renders exactly like an unrecorded
+        // clamp instead — the stored session leads and the ease is the
+        // step-down beside it, so the presentation never depends on whether
+        // the 00:01 recorder beat the render to it. See
+        // docs/decisions/todays-ease-stays-a-stepdown.md.
+        $recordedEaseToday = $isToday && $effective->isEased() && ! $status->isCredited();
+        $headlinesEase = $effective->isEased() && ! $recordedEaseToday;
+        $sessionType = $headlinesEase ? $effective->sessionType : $s->session_type;
         $originalPaceSecPerKm = null;
 
-        if ($effective->isEased()) {
+        if ($headlinesEase) {
             $segments = $sessionType === SessionType::Rest ? [] : SegmentGenerator::easyBlock($effective->coreKm, $paces);
             $askedKm = $distanceKm = $effective->coreKm;
         } else {
@@ -319,8 +327,12 @@ final class PlanRenderer
             'compliance_score' => $s->compliance_score,
             'prescribed_km' => $s->prescribed_km,
             'ran_anyway' => $s->ran_anyway,
-            'clamp' => $isToday && $clamp !== null && ! $effective->isEased() && ! $status->isCredited() ? self::clampPayload($clamp, $clampVoice) : null,
-            'eased_from' => $effective->isEased() ? self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null) : null,
+            'clamp' => match (true) {
+                $recordedEaseToday => self::clampPayload(self::stepDownFromEffective($effective, $paces), $clampVoice),
+                $isToday && $clamp !== null && ! $headlinesEase && ! $status->isCredited() => self::clampPayload($clamp, $clampVoice),
+                default => null,
+            },
+            'eased_from' => $headlinesEase ? self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null) : null,
             'pace_eased_from' => $effective->isPaceEased() ? [
                 'pace_sec_per_km' => $originalPaceSecPerKm,
                 'voice' => $status->isCredited() ? null : ReadinessClamp::paceEaseNote(),
@@ -365,11 +377,32 @@ final class PlanRenderer
     }
 
     /**
-     * A clamp that was never recorded, as a step-down *beside* the day's own
-     * prescription, never in place of it. A recorded one is the day's session
-     * itself (see {@see EffectiveSession} and
-     * `docs/decisions/the-eased-session-leads.md`); this unrecorded one stays
-     * advisory, so the eased version travels as its own object rather than
+     * The eased session as a step-down source, for TODAY's recorded ease
+     * before credit — rendered the same way an unrecorded clamp is, rather
+     * than headlining. See `docs/decisions/todays-ease-stays-a-stepdown.md`.
+     *
+     * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
+     * @return array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}
+     */
+    private static function stepDownFromEffective(EffectiveSession $effective, ?array $paces): array
+    {
+        $original = $effective->easedFromType ?? $effective->sessionType;
+
+        return [
+            'session_type' => $effective->sessionType,
+            'segments' => $effective->sessionType === SessionType::Rest ? [] : SegmentGenerator::easyBlock($effective->coreKm, $paces),
+            'core_km' => $effective->coreKm,
+            'note' => ReadinessClamp::noteFor($original, $effective->impliedCeiling()) ?? '',
+        ];
+    }
+
+    /**
+     * An unrecorded clamp, as a step-down *beside* the day's own
+     * prescription, never in place of it — and, for TODAY only, a recorded
+     * ease before credit too (see `docs/decisions/todays-ease-stays-a-stepdown.md`).
+     * Only a PAST recorded ease headlines as the day's session itself (see
+     * {@see EffectiveSession} and `docs/decisions/the-eased-session-leads.md`).
+     * Either way the eased version travels as its own object rather than
      * overwriting the stored fields. Carries a single
      * pace rather than the full segment list: the step-down is one line, and
      * only the core set's pace is ever shown on it.

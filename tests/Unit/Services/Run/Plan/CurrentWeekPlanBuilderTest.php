@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\IngestState;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -9,6 +10,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SegmentGenerator;
@@ -275,6 +277,47 @@ it('reports the km it renders, so a clamped today cannot disagree with the headl
     Carbon::setTestNow();
 });
 
+/**
+ * The blind-clamp guard, and the rebuild-day bug it exists for: a
+ * half-hydrated history reads as no recent load, which bottoms the ceiling
+ * out at Rest for the wrong reason.
+ * {@see \App\Services\AI\HydrationBacklog::recentLoadAwaitsScoring()} holds
+ * this render-time advisory clamp the same way RestClampRecorder::record()
+ * holds a written one.
+ */
+it('holds todays advisory clamp while a run inside the load window still awaits hydration, and resumes once it lands', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
+    [$row] = tempoToday($user);
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'form_status' => 'overreaching',
+        'monotony' => 1.0,
+    ]);
+    $activity = Activity::factory()->summaryOnly()->for($user)->create();
+    // No heart rate: once hydrated this run must not introduce a competing
+    // live form_status of its own (see BriefingContext::forUser()).
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->copy()->subDays(41)->setTime(7, 0),
+        'has_heartrate' => false,
+        'trimp_edwards' => null,
+    ]);
+
+    $held = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])
+        ->firstWhere('date', Carbon::today()->toDateString());
+
+    $activity->update(['ingest_state' => IngestState::Detailed]);
+
+    $resumed = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])
+        ->firstWhere('date', Carbon::today()->toDateString());
+
+    expect($held['clamp'])->toBeNull()
+        ->and($resumed['clamp'])->not->toBeNull();
+
+    Carbon::setTestNow();
+});
+
 /** @return array{0: PlannedSession, 1: float} today's row turned into a tempo, and its stored core km */
 function tempoToday(User $user): array
 {
@@ -286,11 +329,12 @@ function tempoToday(User $user): array
 }
 
 /**
- * The real case: a tempo day eased to easy at 00:01 with its distance held.
- * Home's week card headlines the easy run, with tempo only as context, and a
- * week total that did not move carries no "eased from" beside it.
+ * The real case, reset by #1047: a tempo day eased to easy at 00:01 with its
+ * distance held. TODAY, before credit, Home's week card still headlines
+ * tempo and steps down to the easy run beside it, exactly like an
+ * unrecorded clamp. See docs/decisions/todays-ease-stays-a-stepdown.md.
  */
-it('headlines a tempo day eased to easy with its distance held, tempo only as context', function (): void {
+it('steps a tempo day eased to easy down on Home today, tempo still leading', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
     seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
@@ -300,17 +344,22 @@ it('headlines a tempo day eased to easy with its distance held, tempo only as co
     $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
     $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
 
-    expect($today['session_type'])->toBe('easy')
+    expect($today['session_type'])->toBe('tempo')
         ->and($today['distance_km'])->toBe($storedKm)
-        ->and($today['clamp'])->toBeNull()
-        ->and($today['eased_from']['session_type'])->toBe('tempo')
-        ->and($today['eased_from']['distance_km'])->toBeNull()
+        ->and($today['eased_from'])->toBeNull()
+        ->and($today['clamp']['session_type'])->toBe('easy')
+        ->and($today['clamp']['distance_km'])->toBe($storedKm)
         ->and($result['planned_km_eased_from'])->toBeNull();
 
     Carbon::setTestNow();
 });
 
-it('totals the week at the eased distance and names the original beside it', function (): void {
+/**
+ * TODAY's step-down no longer subtracts from the week's forecast — the
+ * headline already carries the un-eased distance, so subtracting it again
+ * would disagree with every row on the page, its own included.
+ */
+it('keeps the week total at the un-eased distance while todays ease is only a step-down', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
     seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
@@ -318,10 +367,12 @@ it('totals the week at the eased distance and names the original beside it', fun
     $row->update(['clamped_km' => 1.0]);
 
     $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
     $total = round(array_sum(array_column($result['days'], 'distance_km')), 1);
 
-    expect($result['planned_km_this_week'])->toBe($total)
-        ->and($result['planned_km_eased_from'])->toBe(round($total + $storedKm - 1.0, 1));
+    expect($today['distance_km'])->toBe($storedKm)
+        ->and($result['planned_km_this_week'])->toBe($total)
+        ->and($result['planned_km_eased_from'])->toBeNull();
 
     Carbon::setTestNow();
 });

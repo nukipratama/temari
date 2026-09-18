@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\IngestState;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -413,4 +414,59 @@ it('sends no notification for a pace-only ease', function (): void {
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue();
     Notification::assertNothingSent();
+});
+
+// No heart rate: once hydrated this run must not introduce a competing live
+// form_status of its own (see BriefingContext::forUser()), which would mask
+// whether the guard itself is what changed the outcome.
+function unscoredLoadRunOn(User $user, Carbon $day): Activity
+{
+    $activity = Activity::factory()->summaryOnly()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $day->copy()->setTime(7, 0),
+        'has_heartrate' => false,
+        'trimp_edwards' => null,
+    ]);
+
+    return $activity;
+}
+
+/**
+ * The blind-clamp guard, and the rebuild-day bug it exists for: a
+ * half-hydrated history reads as no recent load, which bottoms the ceiling
+ * out at Rest for the wrong reason.
+ * {@see \App\Services\AI\HydrationBacklog::recentLoadAwaitsScoring()} is the
+ * same "is the load this moment reads off scored yet?" check #1027 uses to
+ * hold a race season's increases.
+ */
+it('records nothing while a run inside the trailing load window still awaits hydration', function (): void {
+    $user = User::factory()->create();
+    bottomOutReadiness($user);
+    $session = todaysSession($user);
+    unscoredLoadRunOn($user, Carbon::today()->subDays(41));
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
+        ->and($session->fresh()->rest_clamped_at)->toBeNull()
+        ->and($session->fresh()->clamped_km)->toBeNull();
+});
+
+it('resumes recording once the run it was held for has hydrated', function (): void {
+    $user = User::factory()->create();
+    bottomOutReadiness($user);
+    $session = todaysSession($user);
+    $activity = unscoredLoadRunOn($user, Carbon::today()->subDays(41));
+    $activity->update(['ingest_state' => IngestState::Detailed]);
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
+        ->and($session->fresh()->rest_clamped_at)->not->toBeNull();
+});
+
+it('ignores an unscored run outside the trailing load window', function (): void {
+    $user = User::factory()->create();
+    bottomOutReadiness($user);
+    $session = todaysSession($user);
+    unscoredLoadRunOn($user, Carbon::today()->subDays(42));
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
+        ->and($session->fresh()->rest_clamped_at)->not->toBeNull();
 });
