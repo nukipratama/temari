@@ -7,6 +7,7 @@ import TodayPanel from './TodayPanel';
 
 const BUDGET: Budget = {
     todayCost: 1.87,
+    tokens: { prompt: 8000, completion: 2000, cached: 6000, total: 10000 },
     dailyCeiling: 2,
     perUserCeiling: 1,
     totalCeiling: 5,
@@ -19,10 +20,10 @@ const BUDGET: Budget = {
 const CHART: CostChart = {
     kinds: [],
     days: [
-        { day: '2026-09-14', cost: 0.3, byKind: {} },
-        { day: '2026-09-15', cost: 1.5, byKind: {} },
-        { day: '2026-09-16', cost: 0.6, byKind: {} },
-        { day: '2026-09-17', cost: 1.87, byKind: {} },
+        { day: '2026-09-14', cost: 0.3, tokens: 1000, byKind: {} },
+        { day: '2026-09-15', cost: 1.5, tokens: 8000, byKind: {} },
+        { day: '2026-09-16', cost: 0.6, tokens: 2000, byKind: {} },
+        { day: '2026-09-17', cost: 1.87, tokens: 10000, byKind: {} },
     ],
 };
 
@@ -33,6 +34,14 @@ describe('TodayPanel', () => {
         expect(screen.getByText('$1.87')).toBeInTheDocument();
         expect(
             screen.getByText('37% of the app-wide ceiling'),
+        ).toBeInTheDocument();
+    });
+
+    it("shows today's token total and its cached slice beside the spend", () => {
+        render(<TodayPanel budget={BUDGET} chart={CHART} />);
+
+        expect(
+            screen.getByText('10,000 tokens · 6,000 cached'),
         ).toBeInTheDocument();
     });
 
@@ -57,14 +66,17 @@ describe('TodayPanel', () => {
 
         expect(screen.getByText('median day, 30d')).toBeInTheDocument();
         expect(screen.getByText('$1.05')).toBeInTheDocument();
+        expect(screen.getByText('5,000 tok')).toBeInTheDocument();
 
         expect(screen.getByText('yesterday')).toBeInTheDocument();
         expect(screen.getByText('$0.60')).toBeInTheDocument();
+        expect(screen.getByText('2,000 tok')).toBeInTheDocument();
 
         expect(
             screen.getByText('busiest day before today'),
         ).toBeInTheDocument();
         expect(screen.getByText('$1.50')).toBeInTheDocument();
+        expect(screen.getByText('8,000 tok')).toBeInTheDocument();
     });
 
     it('excludes today itself from the busiest-prior-day reference', () => {

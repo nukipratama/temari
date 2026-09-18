@@ -49,14 +49,14 @@ class TokenUsageReport
 
     /**
      * @return array{
-     *     totals: array{prompt:int, completion:int, total:int, calls:int, truncated_calls:int, cost:float},
+     *     totals: array{prompt:int, completion:int, total:int, cached:int, calls:int, truncated_calls:int, cost:float},
      *     previousTotals: array{prompt:int, completion:int, total:int, calls:int, cost:float}|null,
-     *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float, avg_steps:float|null, cached_pct:float|null, reasoning_pct:float|null}>,
+     *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, cached:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float, avg_steps:float|null, cached_pct:float|null, reasoning_pct:float|null}>,
      *     byDeployment: list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>,
      *     byOrigin: list<array{origin:string, label:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
  *     availableKinds: list<array{value:string, label:string}>,
  *     availableOrigins: list<array{value:string, label:string}>,
-     *     budget: array{todayCost:float, dailyCeiling:float|null, perUserCeiling:float|null, totalCeiling:float|null, athletes:int, currency:string, trippedAt:string|null, degradedFills:int},
+     *     budget: array{todayCost:float, tokens:array{prompt:int, completion:int, cached:int, total:int}, dailyCeiling:float|null, perUserCeiling:float|null, totalCeiling:float|null, athletes:int, currency:string, trippedAt:string|null, degradedFills:int},
      *     contentFilter: array{trips:int, pct:float|null},
      * }
      */
@@ -91,6 +91,7 @@ class TokenUsageReport
             'availableOrigins' => $this->availableOrigins($from, $to),
             'budget' => [
                 'todayCost' => $this->costCalculator->dailyCost(),
+                'tokens' => $this->todayTokens(),
                 'dailyCeiling' => $perUserCeiling === null ? null : (float) $perUserCeiling * $athletes,
                 'perUserCeiling' => $perUserCeiling === null ? null : (float) $perUserCeiling,
                 'totalCeiling' => $totalCeiling === null ? null : (float) $totalCeiling,
@@ -99,6 +100,31 @@ class TokenUsageReport
                 ...$this->ceilingLedger->today(),
             ],
             'contentFilter' => $this->contentFilter($from, $to, $aggregate['totals']['calls']),
+        ];
+    }
+
+    /**
+     * Raw token totals for today, app-wide, decoupled from the selected range the
+     * same way {@see LlmCostCalculator::dailyCost()} is: it always answers "how
+     * much did today cost", not "how much did the selected window cost".
+     *
+     * @return array{prompt:int, completion:int, cached:int, total:int}
+     */
+    private function todayTokens(): array
+    {
+        $row = TokenUsage::query()->toBase()
+            ->whereBetween('created_at', [Carbon::today()->startOfDay(), Carbon::today()->endOfDay()])
+            ->selectRaw(
+                'SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
+                'SUM(cached_tokens) as cached, SUM(total_tokens) as total'
+            )
+            ->first();
+
+        return [
+            'prompt' => (int) ($row->prompt ?? 0),
+            'completion' => (int) ($row->completion ?? 0),
+            'cached' => (int) ($row->cached ?? 0),
+            'total' => (int) ($row->total ?? 0),
         ];
     }
 
@@ -130,8 +156,8 @@ class TokenUsageReport
      *
      * @param  Builder  $baseQuery
      * @return array{
-     *     totals: array{prompt:int, completion:int, total:int, calls:int, truncated_calls:int, cost:float},
-     *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float, avg_steps:float|null, cached_pct:float|null, reasoning_pct:float|null}>,
+     *     totals: array{prompt:int, completion:int, total:int, cached:int, calls:int, truncated_calls:int, cost:float},
+     *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, cached:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float, avg_steps:float|null, cached_pct:float|null, reasoning_pct:float|null}>,
      *     byDeployment: list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>,
      * }
      */
@@ -148,7 +174,7 @@ class TokenUsageReport
             ->groupBy('kind', 'model')
             ->get();
 
-        $totals = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'truncated_calls' => 0, 'cost' => 0.0];
+        $totals = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'cached' => 0, 'calls' => 0, 'truncated_calls' => 0, 'cost' => 0.0];
 
         /** @var array<string, array{kind:string, prompt:int, completion:int, total:int, calls:int, truncated_calls:int, cached:int, reasoning:int, steps:int, avg_sum:float, latency_calls:int, max_latency_ms:int|null, cost:float}> $kinds */
         $kinds = [];
@@ -206,6 +232,7 @@ class TokenUsageReport
             $totals['prompt'] += $prompt;
             $totals['completion'] += $completion;
             $totals['total'] += (int) $row->total;
+            $totals['cached'] += $cached;
             $totals['calls'] += (int) $row->calls;
             $totals['truncated_calls'] += (int) $row->truncated_calls;
             $totals['cost'] += $cost;
@@ -218,6 +245,7 @@ class TokenUsageReport
                 'prompt' => $entry['prompt'],
                 'completion' => $entry['completion'],
                 'total' => $entry['total'],
+                'cached' => $entry['cached'],
                 'calls' => $entry['calls'],
                 'truncated_calls' => $entry['truncated_calls'],
                 'avg_latency_ms' => $entry['latency_calls'] === 0 ? null : (int) round($entry['avg_sum'] / $entry['latency_calls']),
@@ -428,7 +456,7 @@ class TokenUsageReport
      *
      * @return array{
      *     kinds: list<array{kind:string, label:string, cost:float}>,
-     *     days: list<array{day:string, cost:float, byKind: array<string, float>}>,
+     *     days: list<array{day:string, cost:float, tokens:int, byKind: array<string, float>}>,
      * }
      */
     public function dailyCostByKind(Carbon $from, Carbon $to, ?int $userId = null): array
@@ -444,7 +472,7 @@ class TokenUsageReport
             ->orderBy('day')
             ->get();
 
-        /** @var array<string, array{day:string, cost:float, byKind: array<string, float>}> $days */
+        /** @var array<string, array{day:string, cost:float, tokens:int, byKind: array<string, float>}> $days */
         $days = [];
         /** @var array<string, float> $kindCost */
         $kindCost = [];
@@ -459,8 +487,9 @@ class TokenUsageReport
                 (int) $row->cached,
             );
 
-            $days[$day] ??= ['day' => $day, 'cost' => 0.0, 'byKind' => []];
+            $days[$day] ??= ['day' => $day, 'cost' => 0.0, 'tokens' => 0, 'byKind' => []];
             $days[$day]['cost'] += $cost;
+            $days[$day]['tokens'] += (int) $row->prompt + (int) $row->completion;
             $days[$day]['byKind'][$kind] = ($days[$day]['byKind'][$kind] ?? 0.0) + $cost;
             $kindCost[$kind] = ($kindCost[$kind] ?? 0.0) + $cost;
         }
@@ -503,7 +532,7 @@ class TokenUsageReport
      *
      * @return list<array{
      *     user_id:int, user_name:string|null, is_demo:bool, deleted:bool,
-     *     today:float, last7:float, last30:float, calls:int,
+     *     today:float, last7:float, last30:float, calls:int, tokens:int,
      *     ceiling:float|null, ceiling_overridden:bool, capped:bool,
      *     sparkline: list<array{day:string, cost:float}>,
      *     served: array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, dead_letter:int, content_filter:int, unattributed:int}},
@@ -557,6 +586,7 @@ class TokenUsageReport
                 'last7' => $entry['last7'] ?? 0.0,
                 'last30' => $entry['last30'] ?? 0.0,
                 'calls' => $entry['calls'] ?? 0,
+                'tokens' => $entry['tokens'] ?? 0,
                 'ceiling' => $ceiling,
                 'ceiling_overridden' => $override !== null,
                 'capped' => $ceiling !== null && $ceiling > 0 && $today >= $ceiling,
@@ -596,7 +626,7 @@ class TokenUsageReport
      * Per-athlete spend over the athlete window, in one scan grouped by
      * (user_id, day, model).
      *
-     * @return array<int, array{name:mixed, today:float, last7:float, last30:float, calls:int, daily: array<string, float>}>
+     * @return array<int, array{name:mixed, today:float, last7:float, last30:float, calls:int, tokens:int, daily: array<string, float>}>
      */
     private function athleteSpend(Carbon $windowStart): array
     {
@@ -614,7 +644,7 @@ class TokenUsageReport
         $today = Carbon::today()->toDateString();
         $sevenDaysAgo = Carbon::today()->subDays(6)->toDateString();
 
-        /** @var array<int, array{name:mixed, today:float, last7:float, last30:float, calls:int, daily: array<string, float>}> $spend */
+        /** @var array<int, array{name:mixed, today:float, last7:float, last30:float, calls:int, tokens:int, daily: array<string, float>}> $spend */
         $spend = [];
         foreach ($rows as $row) {
             $userId = (int) $row->user_id;
@@ -628,10 +658,11 @@ class TokenUsageReport
 
             $spend[$userId] ??= [
                 'name' => $row->snapshot_name,
-                'today' => 0.0, 'last7' => 0.0, 'last30' => 0.0, 'calls' => 0, 'daily' => [],
+                'today' => 0.0, 'last7' => 0.0, 'last30' => 0.0, 'calls' => 0, 'tokens' => 0, 'daily' => [],
             ];
             $spend[$userId]['last30'] += $cost;
             $spend[$userId]['calls'] += (int) $row->calls;
+            $spend[$userId]['tokens'] += (int) $row->prompt + (int) $row->completion;
             $spend[$userId]['daily'][$day] = ($spend[$userId]['daily'][$day] ?? 0.0) + $cost;
 
             if ($day >= $sevenDaysAgo) {

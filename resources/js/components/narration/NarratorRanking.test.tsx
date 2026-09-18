@@ -22,6 +22,7 @@ const BY_KIND: UsageRow[] = [
         prompt: 700,
         completion: 300,
         total: 1000,
+        cached: 500,
         calls: 4,
         cost: 0.4,
         truncated_calls: 0,
@@ -36,6 +37,7 @@ const BY_KIND: UsageRow[] = [
         prompt: 100,
         completion: 40,
         total: 140,
+        cached: 20,
         calls: 1,
         cost: 0.1,
         truncated_calls: 0,
@@ -55,7 +57,7 @@ describe('NarratorRanking', () => {
 
         expect(screen.getByText('BriefingMascotVoice')).toBeInTheDocument();
         expect(screen.getByText('$0.40')).toBeInTheDocument();
-        expect(screen.getByText('4 calls')).toBeInTheDocument();
+        expect(screen.getByText('1,000 tok · 4 calls')).toBeInTheDocument();
     });
 
     it('keeps the chart order, most expensive kind first', () => {
@@ -68,9 +70,10 @@ describe('NarratorRanking', () => {
         expect(names[1]).toHaveTextContent('WeeklyRecap');
     });
 
-    it('shows a dash rather than 0 calls when the breakdown has no matching row', () => {
+    it('shows a dash rather than 0 tokens/calls when the breakdown has no matching row', () => {
         render(<NarratorRanking chart={CHART} byKind={[]} currency="USD" />);
 
+        // One dash per kind (2 kinds in CHART).
         expect(screen.getAllByText('—')).toHaveLength(2);
     });
 

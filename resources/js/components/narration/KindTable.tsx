@@ -60,7 +60,7 @@ function AgentSummary({ row }: Readonly<{ row: UsageRow }>) {
             ? `${row.avg_steps.toFixed(1)} steps`
             : null,
         typeof row.cached_pct === 'number'
-            ? `${row.cached_pct.toFixed(0)}% cache`
+            ? `${fmt(row.cached)} cached (${row.cached_pct.toFixed(0)}%)`
             : null,
         typeof row.reasoning_pct === 'number'
             ? `${row.reasoning_pct.toFixed(0)}% reasoning`

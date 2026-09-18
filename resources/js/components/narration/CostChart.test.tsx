@@ -17,9 +17,15 @@ const CHART: CostChartData = {
         {
             day: '2026-09-09',
             cost: 0.3,
+            tokens: 3000,
             byKind: { briefing: 0.2, weekly_recap: 0.1 },
         },
-        { day: '2026-09-10', cost: 0.2, byKind: { briefing: 0.2 } },
+        {
+            day: '2026-09-10',
+            cost: 0.2,
+            tokens: 2000,
+            byKind: { briefing: 0.2 },
+        },
     ],
 };
 
@@ -32,6 +38,7 @@ const ATHLETE: AthleteRow = {
     last7: 0.5,
     last30: 0.5,
     calls: 4,
+    tokens: 5000,
     ceiling: 1,
     ceiling_overridden: false,
     capped: false,

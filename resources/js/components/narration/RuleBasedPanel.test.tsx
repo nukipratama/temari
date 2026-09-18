@@ -15,6 +15,7 @@ function athlete(overrides: Partial<AthleteRow> = {}): AthleteRow {
         last7: 0,
         last30: 0,
         calls: 0,
+        tokens: 0,
         ceiling: null,
         ceiling_overridden: false,
         capped: false,
