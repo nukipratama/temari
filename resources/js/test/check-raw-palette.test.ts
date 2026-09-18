@@ -51,7 +51,7 @@ describe('check-raw-palette rules', () => {
     });
 
     /**
-     * shareCard.ts draws onto a fixed-size raster, where a px font is correct.
+     * A canvas draws onto a fixed-size raster, where a px font is correct.
      * The inline rule matches a `fontSize` property, never a canvas font string.
      */
     it('leaves canvas ctx.font px strings alone', () => {

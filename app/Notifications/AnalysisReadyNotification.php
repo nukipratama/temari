@@ -15,6 +15,8 @@ use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Story\Card\CardAspect;
+use App\Services\Run\Story\Card\CardStyle;
 use App\Services\Run\Story\RunCardImageRenderer;
 use App\Services\Notifications\ChannelRouter;
 use App\Services\Telegram\AnalysisMessagePresenter;
@@ -183,7 +185,10 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
         }
 
         try {
-            return app(RunCardImageRenderer::class)->render($card);
+            // Style A at story, always: nothing stores a last-used style —
+            // remembering the athlete's pick was considered and dropped in the
+            // #915 design round — so the post-run photo takes the default print.
+            return app(RunCardImageRenderer::class)->render($card, CardStyle::Broadsheet, CardAspect::Story);
         } catch (Throwable $e) {
             Log::warning('telegram.card_photo.render_failed', [
                 'analysis_id' => $this->analysis->id,

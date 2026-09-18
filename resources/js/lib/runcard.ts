@@ -70,7 +70,7 @@ export const BADGE_ABILITY: Record<string, string> = {
 };
 
 // Escalating "set symbol" glyph per rarity (circle to star), TCG-style. Colored
-// via RARITY_TEXT. Mirrored as RARITY_SYMBOL in lib/shareCard.ts for the canvas.
+// via RARITY_TEXT. Mirrored as Rarity::symbol() for the server-rendered card.
 export const RARITY_SYMBOL: Record<Rarity, string> = {
     common: '●',
     uncommon: '◆',
@@ -80,8 +80,8 @@ export const RARITY_SYMBOL: Record<Rarity, string> = {
 };
 
 // Loot-ladder rarity hex — mirrors the --color-rarity-* tokens in app.css.
-// Lives here so JS/SVG/canvas (RouteGlyph, Card CSS var, shareCard) all share
-// one source where a CSS var can't reach (inline SVG fill, canvas fillStyle).
+// Lives here so every JS/SVG reader (RouteGlyph, the Card CSS var) shares one
+// source where a CSS var can't reach (an inline SVG fill attribute).
 export const RARITY_HEX: Record<Rarity, string> = {
     common: '#7d8694',
     uncommon: '#2fb350',

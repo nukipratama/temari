@@ -27,17 +27,15 @@ const OFF_TOKEN = [
     '#d99a1a' => 'chartTokens hrZone Z3',
     '#c46f1c' => 'chartTokens hrZone Z4',
     '#b8302f' => 'chartTokens hrZone Z5',
-    '#2a1017' => 'shareCard/RunCardImageRenderer emberDark — the ember hue carried to canvas-background darkness',
-    '#fcf9f3' => 'shareCard paper highlight, lighter than any surface token',
+    '#140d16' => 'Svg PR_GROUND — the broadsheet PR field, sky-deep pulled toward citrus, no token equivalent',
 ];
 
 const MIRROR_FILES = [
     'resources/js/lib/chartTokens.ts',
-    'resources/js/lib/shareCard.ts',
     'resources/js/lib/runcard.ts',
     'resources/views/app.blade.php',
     'resources/views/errors/layout.blade.php',
-    'app/Services/Run/Story/RunCardImageRenderer.php',
+    'app/Services/Run/Story/Card/Svg.php',
     'app/Enums/Rarity.php',
 ];
 

@@ -30,6 +30,7 @@ _Pages_
 
 _Collection_
 - [[cards-collection]] — the Card's reveal + full view (rarities, badges, special moves); browsing/filtering by rarity is inline on [[run-history]]
+- [[share-card]] — the run's share image: one server renderer, three print styles, five run forms, two aspects
 - [[records]] — PRs, progression chart
 
 _Systems_

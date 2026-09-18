@@ -1,103 +1,86 @@
 import { Copy, Share2, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { useModal } from '@/hooks/useModal';
 import { cn } from '@/lib/cn';
-import { RARITY_LABELS } from '@/lib/runcard';
-import {
-    COLORWAYS,
-    drawShareCard,
-    shareCardBlob,
-    type ColorwayId,
-    type Format,
-    type Layout,
-    type ShareCardData,
-} from '@/lib/shareCard';
-import { iconButtonVariants, toggleButtonVariants } from '@/lib/variants';
+import { runCardImageUrl } from '@/lib/routes';
+import { toggleButtonVariants, iconButtonVariants } from '@/lib/variants';
 
-export type { ShareCardData };
+/** What the page hands the modal: the run, and the copy the share sheet uses. */
+export interface ShareCardTarget {
+    activityId: number;
+    name: string;
+    /** Activity detail page URL, the fallback when native file sharing isn't available. */
+    shareUrl: string;
+    /** Temari's card line. It rides along as the share sheet's text, never on the card itself. */
+    quote: string | null;
+}
+
+export const CARD_STYLES = ['broadsheet', 'ticket', 'topo'] as const;
+export type CardStyle = (typeof CARD_STYLES)[number];
+
+const STYLE_LABELS: Record<CardStyle, string> = {
+    broadsheet: 'broadsheet',
+    ticket: 'ticket',
+    topo: 'topo plate',
+};
+
+const ASPECTS = ['story', 'feed'] as const;
+type CardAspect = (typeof ASPECTS)[number];
+
+const FACTS = [
+    { key: 'hr', label: 'heart rate' },
+    { key: 'elevation', label: 'elevation' },
+    { key: 'weather', label: 'weather' },
+    { key: 'badges', label: 'badges' },
+] as const;
+type FactKey = (typeof FACTS)[number]['key'];
+
+const ALL_FACTS: Record<FactKey, boolean> = {
+    hr: true,
+    elevation: true,
+    weather: true,
+    badges: true,
+};
 
 interface ShareCardModalProps {
-    card: ShareCardData | null;
+    card: ShareCardTarget | null;
     onClose: () => void;
 }
-
-function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-        canvas.toBlob(
-            (blob) =>
-                blob ? resolve(blob) : reject(new Error('toBlob failed')),
-            'image/png',
-        );
-    });
-}
-
-const LAYOUTS: Layout[] = ['card', 'route', 'stats'];
-const LAYOUT_LABELS: Record<Layout, string> = {
-    card: 'card',
-    route: 'route',
-    stats: 'stats',
-};
-/** Which templates need a drawable route — the single source of truth for
- *  both the layout picker's visibility and the draw-effect's stale-selection
- *  clamp, replacing the old ad hoc `l !== 'route'` checks in both places. */
-const TEMPLATE_CAPS: Record<Layout, boolean> = {
-    card: false,
-    route: true,
-    stats: false,
-};
-
-function hasRoute(card: ShareCardData): boolean {
-    return card.polyline != null && card.polyline !== '';
-}
-
-const COLORWAYS_LIST: ColorwayId[] = ['navy', 'dawn', 'ember'];
-const COLORWAY_LABELS: Record<ColorwayId, string> = {
-    navy: 'navy',
-    dawn: 'dawn',
-    ember: 'ember',
-};
 
 export default function ShareCardModal({
     card,
     onClose,
 }: Readonly<ShareCardModalProps>) {
-    const [layout, setLayout] = useState<Layout>('card');
-    const [format, setFormat] = useState<Format>('story');
-    const [colorway, setColorway] = useState<ColorwayId>('navy');
+    const [style, setStyle] = useState<CardStyle>('broadsheet');
+    const [aspect, setAspect] = useState<CardAspect>('story');
+    const [facts, setFacts] = useState<Record<FactKey, boolean>>(ALL_FACTS);
+    // Keyed by URL rather than reset in an effect: a new tuple is a new render
+    // attempt, and the old failure says nothing about it.
+    const [failedUrl, setFailedUrl] = useState<string | null>(null);
     // Transient status under the CTAs: confirms a copy/share that has no native
     // UI of its own, or surfaces a failure instead of swallowing it silently.
     const [status, setStatus] = useState<{
         tone: 'ok' | 'err';
         text: string;
     } | null>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const drawRef = useRef<Promise<void> | null>(null);
     const panelRef = useRef<HTMLDivElement>(null);
 
     useModal(card !== null, panelRef, onClose);
 
-    // Repaint the fixed-resolution canvas whenever any knob changes. The canvas
-    // IS the export, so the on-screen preview can never drift from the shared
-    // image, and the output is identical on every device.
-    useEffect(() => {
-        if (card === null || canvasRef.current === null) {
-            return;
-        }
-        // Clamp to a drawable layout: a no-GPS run has no route, so a stale
-        // 'route' selection (carried over from a previous GPS card) must not
-        // paint a blank map.
-        const drawLayout =
-            !TEMPLATE_CAPS[layout] || hasRoute(card) ? layout : 'card';
-        drawRef.current = drawShareCard(canvasRef.current, {
-            card,
-            layout: drawLayout,
-            format,
-            colorway,
-        });
-    }, [card, layout, format, colorway]);
+    const imageUrl = useMemo(
+        () =>
+            card === null
+                ? null
+                : runCardImageUrl(card.activityId, {
+                      style,
+                      aspect,
+                      ...facts,
+                  }),
+        [card, style, aspect, facts],
+    );
 
     // Auto-clear the status line so it reads as a transient toast.
     useEffect(() => {
@@ -106,27 +89,14 @@ export default function ShareCardModal({
         return () => globalThis.clearTimeout(id);
     }, [status]);
 
-    if (card === null) return null;
+    if (card === null || imageUrl === null) return null;
 
-    // Templates that need a polyline are hidden for no-GPS runs.
-    const availableLayouts = hasRoute(card)
-        ? LAYOUTS
-        : LAYOUTS.filter((l) => !TEMPLATE_CAPS[l]);
-    // Clamp so share/copy never export a stale 'route' layout on a no-GPS run.
-    const effectiveLayout: Layout = availableLayouts.includes(layout)
-        ? layout
-        : 'card';
+    const failed = failedUrl === imageUrl;
 
-    const cfg = { card, layout: effectiveLayout, format, colorway };
-
-    // The preview canvas already holds the exact export bitmap at its full
-    // internal resolution, so read it back rather than redrawing every template
-    // into a second canvas. Awaiting the in-flight repaint first, because a tap
-    // can land before it settles and would otherwise export a blank canvas.
-    const captureImage = async (): Promise<Blob> => {
-        await drawRef.current;
-        const canvas = canvasRef.current;
-        return canvas === null ? shareCardBlob(cfg) : canvasToBlob(canvas);
+    const fetchImage = async (): Promise<Blob> => {
+        const response = await fetch(imageUrl);
+        if (!response.ok) throw new Error(`card ${response.status}`);
+        return response.blob();
     };
 
     const handleShare = async () => {
@@ -134,10 +104,13 @@ export default function ShareCardModal({
 
         if (canNativeShare) {
             try {
-                const blob = await captureImage();
-                const file = new File([blob], `${card.name}.png`, {
-                    type: 'image/png',
-                });
+                const file = new File(
+                    [await fetchImage()],
+                    `${card.name}.png`,
+                    {
+                        type: 'image/png',
+                    },
+                );
                 if (navigator.canShare?.({ files: [file] })) {
                     await navigator.share({
                         files: [file],
@@ -148,33 +121,32 @@ export default function ShareCardModal({
             } catch {
                 // fall through to URL share
             }
-        }
-        const url = card.shareUrl;
-        if (canNativeShare) {
             try {
                 await navigator.share({
                     title: `${card.name} · Temari`,
-                    text:
-                        card.quote ??
-                        `${RARITY_LABELS[card.rarity]} card: ${card.name}`,
-                    url,
+                    text: card.quote ?? undefined,
+                    url: card.shareUrl,
                 });
             } catch {
                 // user cancelled or API unavailable
             }
-        } else if (navigator.clipboard?.writeText !== undefined) {
+            return;
+        }
+
+        if (navigator.clipboard?.writeText !== undefined) {
             try {
-                await navigator.clipboard.writeText(url);
+                await navigator.clipboard.writeText(card.shareUrl);
                 setStatus({ tone: 'ok', text: 'activity link copied.' });
             } catch {
                 setStatus({ tone: 'err', text: 'failed to copy link.' });
             }
-        } else {
-            setStatus({
-                tone: 'err',
-                text: "this browser doesn't support sharing.",
-            });
+            return;
         }
+
+        setStatus({
+            tone: 'err',
+            text: "this browser doesn't support sharing.",
+        });
     };
 
     const handleCopy = async () => {
@@ -189,9 +161,8 @@ export default function ShareCardModal({
             return;
         }
         try {
-            const blob = await captureImage();
             await navigator.clipboard.write([
-                new ClipboardItem({ 'image/png': blob }),
+                new ClipboardItem({ 'image/png': await fetchImage() }),
             ]);
             setStatus({ tone: 'ok', text: 'card image copied.' });
         } catch {
@@ -238,32 +209,38 @@ export default function ShareCardModal({
                     <div className="w-8" />
                 </div>
 
-                {/* Body — preview + pickers, scrolls on short screens. */}
+                {/* Body — preview + pickers, scrolls on short screens. The image
+                    IS the export: the same URL feeds the preview, the share sheet
+                    and the copy, so nothing on screen can drift from the file. */}
                 <div className="flex flex-1 flex-col items-center gap-4 overflow-y-auto bg-muted px-5 py-5">
-                    {/* Preview canvas — fixed internal resolution, bounded by HEIGHT so
-                            a tall 9:16 story scales to fit instead of being forced to the
-                            column width. Width derives from the canvas's intrinsic ratio, so
-                            the bitmap is never distorted. This canvas IS the exported image. */}
-                    <canvas
-                        ref={canvasRef}
-                        width={1080}
-                        height={format === 'story' ? 1920 : 1080}
-                        aria-label={`Preview of ${card.name}`}
-                        className="block rounded-lg"
-                        style={{ maxWidth: '100%', maxHeight: '52vh' }}
-                    />
+                    {failed ? (
+                        <p
+                            role="status"
+                            className="py-10 text-center font-sans text-sm text-ember-ink"
+                        >
+                            couldn&apos;t render this card. try another style.
+                        </p>
+                    ) : (
+                        <img
+                            src={imageUrl}
+                            alt={`Preview of ${card.name}`}
+                            onError={() => setFailedUrl(imageUrl)}
+                            className="block rounded-lg"
+                            style={{ maxWidth: '100%', maxHeight: '52vh' }}
+                        />
+                    )}
 
-                    {/* Format picker */}
+                    {/* Aspect picker */}
                     <div className="grid w-full grid-cols-2 gap-2">
-                        {(['story', 'feed'] as Format[]).map((f) => (
+                        {ASPECTS.map((a) => (
                             <button
-                                key={f}
+                                key={a}
                                 type="button"
-                                onClick={() => setFormat(f)}
-                                aria-pressed={format === f}
+                                onClick={() => setAspect(a)}
+                                aria-pressed={aspect === a}
                                 className={cn(
                                     'focus-ring flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-medium transition',
-                                    format === f
+                                    aspect === a
                                         ? 'border-2 border-border-strong bg-card font-semibold text-foreground'
                                         : 'border-2 border-transparent bg-card text-text-2 hover:border-border',
                                 )}
@@ -272,64 +249,58 @@ export default function ShareCardModal({
                                     aria-hidden
                                     className={cn(
                                         'rounded-sm bg-sky/25',
-                                        f === 'story' ? 'h-6 w-3.5' : 'h-5 w-5',
+                                        a === 'story' ? 'h-6 w-3.5' : 'h-5 w-5',
                                     )}
                                 />
-                                {f === 'story'
+                                {a === 'story'
                                     ? 'portrait · 9:16'
                                     : 'square · 1:1'}
                             </button>
                         ))}
                     </div>
 
-                    {/* Style — template picker. Hidden only if a single layout remains
-                            to choose from (e.g. Route needs a polyline the run doesn't have). */}
-                    {availableLayouts.length > 1 && (
-                        <div className="flex w-full gap-2">
-                            {availableLayouts.map((l) => (
-                                <button
-                                    key={l}
-                                    type="button"
-                                    onClick={() => setLayout(l)}
-                                    aria-pressed={effectiveLayout === l}
-                                    className={cn(
-                                        toggleButtonVariants({
-                                            selected: effectiveLayout === l,
-                                            size: 'md',
-                                        }),
-                                        'flex-1',
-                                    )}
-                                >
-                                    {LAYOUT_LABELS[l]}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Colorway — swatch picker. Always 3 choices; unlike the
-                            template picker, colorway never depends on run data. */}
-                    <div className="flex w-full items-center justify-center gap-3">
-                        {COLORWAYS_LIST.map((c) => (
+                    {/* Style picker — all three print styles, always available. */}
+                    <div className="flex w-full gap-2">
+                        {CARD_STYLES.map((s) => (
                             <button
-                                key={c}
+                                key={s}
                                 type="button"
-                                onClick={() => setColorway(c)}
-                                aria-pressed={colorway === c}
-                                aria-label={`Colorway: ${COLORWAY_LABELS[c]}`}
+                                onClick={() => setStyle(s)}
+                                aria-pressed={style === s}
                                 className={cn(
-                                    'focus-ring h-9 w-9 rounded-full border-2 transition',
-                                    colorway === c
-                                        ? 'border-foreground'
-                                        : 'border-transparent hover:border-foreground/40',
+                                    toggleButtonVariants({
+                                        selected: style === s,
+                                        size: 'md',
+                                    }),
+                                    'flex-1',
                                 )}
                             >
-                                <span
-                                    aria-hidden
-                                    className="block h-full w-full rounded-full border border-black/10"
-                                    style={{
-                                        background: COLORWAYS[c].surface,
-                                    }}
-                                />
+                                {STYLE_LABELS[s]}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Optional facts — everything else on the card is always on. */}
+                    <div className="flex w-full flex-wrap justify-center gap-2">
+                        {FACTS.map(({ key, label }) => (
+                            <button
+                                key={key}
+                                type="button"
+                                onClick={() =>
+                                    setFacts((prev) => ({
+                                        ...prev,
+                                        [key]: !prev[key],
+                                    }))
+                                }
+                                aria-pressed={facts[key]}
+                                className={cn(
+                                    toggleButtonVariants({
+                                        selected: facts[key],
+                                        size: 'sm',
+                                    }),
+                                )}
+                            >
+                                {label}
                             </button>
                         ))}
                     </div>

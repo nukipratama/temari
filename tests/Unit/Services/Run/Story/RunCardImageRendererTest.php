@@ -5,323 +5,231 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
+use App\Services\Run\Story\Card\CardAspect;
+use App\Services\Run\Story\Card\CardOptions;
+use App\Services\Run\Story\Card\CardStyle;
 use App\Services\Run\Story\RunCardImageRenderer;
+use Illuminate\Support\Carbon;
 
 /** The 8-byte PNG file signature. */
 const PNG_MAGIC = "\x89PNG\r\n\x1a\n";
 
-function renderCard(RunCard $card): string
-{
-    return app(RunCardImageRenderer::class)->render($card);
-}
+/** A short encoded loop, enough for the projector to draw a real trace. */
+const LOOP_POLYLINE = '_p~iF~ps|U_ulLnnqC_mqNvxq`@';
 
 /**
- * render() only reads $card->activity->detail (loadMissing() is a no-op once
- * the relation is already set), so a persisted chain isn't needed.
- *
- * user_id is pinned to a literal so the Activity factory doesn't fall through
- * to its `User::factory()` default, which persists a real User row even
- * under ->make() (nested belongsTo factory attributes are always create()'d).
+ * The renderer only reads `$card->activity->detail` (loadMissing() is a no-op
+ * once the relation is set), so a persisted chain isn't needed. user_id is
+ * pinned to a literal so the Activity factory doesn't fall through to its
+ * `User::factory()` default, which persists a real User row even under make().
  *
  * @param  array<string, mixed>  $detailAttrs
  * @param  array<string, mixed>  $cardAttrs
  */
-function makeRunCard(array $detailAttrs, array $cardAttrs): RunCard
+function makeRunCard(array $detailAttrs = [], array $cardAttrs = []): RunCard
 {
-    $detail = ActivityDetail::factory()->make(array_merge(['activity_id' => 1], $detailAttrs));
+    $detail = ActivityDetail::factory()->make(array_merge([
+        'activity_id' => 1,
+        'distance' => 5_280.0,
+        'elapsed_time' => 1_938,
+        'average_heartrate' => 142.0,
+        'total_elevation_gain' => 18.0,
+        'summary_polyline' => LOOP_POLYLINE,
+        'location_name' => 'Senayan, Jakarta Pusat, Indonesia',
+        'start_date_local' => Carbon::parse('2026-09-13 05:41:00'),
+        'weather_temp_c' => 29,
+        'weather_wind_speed_kmh' => 8,
+        'workout_type' => 0,
+        'stream_summary' => null,
+    ], $detailAttrs));
+
     $activity = Activity::factory()->make(['id' => 1, 'user_id' => 1]);
     $activity->setRelation('detail', $detail);
 
-    $card = RunCard::factory()->make(array_merge(['activity_id' => 1], $cardAttrs));
+    $card = RunCard::factory()->make(array_merge([
+        'activity_id' => 1,
+        'rarity' => 'common',
+        'badges' => [],
+        'pr_set' => false,
+        'special_move' => 'Senayan Shuffle',
+    ], $cardAttrs));
+    $card->id = 418;
     $card->setRelation('activity', $activity);
 
     return $card;
 }
 
-it('renders valid PNG bytes for a card with a route polyline', function (): void {
-    $card = makeRunCard([
-        'distance' => 5_280,
-        'summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-        'location_name' => 'Yogyakarta',
-    ], ['rarity' => 'epic', 'special_move' => 'Tendangan Balik']);
+/**
+ * The five run forms, as the fixtures that resolve to them.
+ *
+ * @return array<string, array{0: array<string, mixed>, 1: array<string, mixed>}>
+ */
+function runFormFixtures(): array
+{
+    return [
+        'easy' => [[], []],
+        'long' => [['distance' => 18_400.0, 'elapsed_time' => 6_750], ['rarity' => 'uncommon', 'badges' => ['long_slow_distance']]],
+        'race' => [['distance' => 10_000.0, 'elapsed_time' => 3_341, 'workout_type' => 1, 'name' => 'Jakarta City 10K'], ['rarity' => 'rare']],
+        'pr' => [['distance' => 5_020.0, 'elapsed_time' => 1_488], ['rarity' => 'epic', 'pr_set' => true, 'badges' => ['speedster', 'negative_split']]],
+        'nogps' => [['summary_polyline' => null, 'location_name' => null, 'weather_temp_c' => null], []],
+    ];
+}
 
-    $png = renderCard($card);
+function renderer(): RunCardImageRenderer
+{
+    return app(RunCardImageRenderer::class);
+}
 
-    expect(str_starts_with($png, PNG_MAGIC))->toBeTrue()
-        ->and(strlen($png))->toBeGreaterThan(1000);
-});
+it('draws every style at every form and aspect as a well-formed SVG of the right size', function (): void {
+    foreach (runFormFixtures() as $form => [$detailAttrs, $cardAttrs]) {
+        $card = makeRunCard($detailAttrs, $cardAttrs);
 
-it('renders valid PNG bytes for a no-GPS card (fallback layout)', function (): void {
-    $card = makeRunCard([
-        'distance' => 3_000,
-        'summary_polyline' => null,
-    ], ['rarity' => 'common', 'special_move' => 'Steady Tempo']);
+        foreach (CardStyle::cases() as $style) {
+            foreach (CardAspect::cases() as $aspect) {
+                $svg = renderer()->buildSvg($card, $style, $aspect);
+                $where = "{$style->value}/{$form}/{$aspect->value}";
 
-    $png = renderCard($card);
-
-    expect(str_starts_with($png, PNG_MAGIC))->toBeTrue();
-});
-
-it('renders a longer PNG when the footer line gains a weather + wind reading', function (): void {
-    $card = makeRunCard([
-        'distance' => 5_280,
-        'summary_polyline' => null,
-        'location_name' => 'Yogyakarta',
-        'weather_temp_c' => 31,
-        'weather_wind_speed_kmh' => 15,
-    ], ['rarity' => 'epic', 'special_move' => 'Tendangan Balik']);
-
-    $png = renderCard($card);
-
-    expect(str_starts_with($png, PNG_MAGIC))->toBeTrue()
-        ->and(strlen($png))->toBeGreaterThan(1000);
-});
-
-// Asserted on the SVG rather than the rendered PNG: cell text is what's under
-// test, and PNG byte length does not reliably track it across rasterisers.
-it('draws the pace + durasi cells from elapsed_time, not moving_time', function (): void {
-    $svgFor = function (array $timeAttrs): string {
-        $card = makeRunCard([
-            'distance' => 5_000,
-            'summary_polyline' => null,
-            'average_heartrate' => null,
-            ...$timeAttrs,
-        ], ['rarity' => 'common', 'special_move' => 'Steady Tempo']);
-
-        return (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-            ->invoke(app(RunCardImageRenderer::class), $card);
-    };
-
-    // 5 km in 30:00 is 6:00/km; both cells must come from elapsed_time.
-    expect($svgFor(['moving_time' => null, 'elapsed_time' => 1_800]))
-        ->toContain('DURATION')
-        ->toContain('30:00')
-        ->toContain('6:00/km');
-
-    // Only moving_time present: nothing to draw either cell from.
-    expect($svgFor(['moving_time' => 1_800, 'elapsed_time' => null]))
-        ->not->toContain('DURATION')
-        ->not->toContain('PACE');
-});
-
-it('omits the weather footer segment gracefully when temp is absent', function (): void {
-    $card = makeRunCard([
-        'distance' => 5_280,
-        'summary_polyline' => null,
-        'location_name' => 'Yogyakarta',
-        'weather_temp_c' => null,
-        'weather_wind_speed_kmh' => 15,
-    ], ['rarity' => 'epic', 'special_move' => 'Tendangan Balik']);
-
-    $png = renderCard($card);
-
-    expect(str_starts_with($png, PNG_MAGIC))->toBeTrue();
-});
-
-it('shows wind in English, not the old Indonesian "angin" wording', function (): void {
-    $card = makeRunCard([
-        'distance' => 5_280,
-        'summary_polyline' => null,
-        'weather_temp_c' => 31,
-        'weather_wind_speed_kmh' => 15,
-    ], ['rarity' => 'epic', 'special_move' => 'Tendangan Balik']);
-
-    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card);
-
-    expect($svg)->toContain('wind 15 km/h')->not->toContain('angin');
-});
-
-it('shows "Route unavailable" in English on a no-GPS route layout', function (): void {
-    $card = makeRunCard([
-        'distance' => 3_000,
-        'summary_polyline' => null,
-    ], ['rarity' => 'common', 'special_move' => 'Steady Tempo']);
-
-    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card, 'route');
-
-    expect($svg)->toContain('Route unavailable')->not->toContain('tidak tersedia');
-});
-
-it('renders valid PNG bytes for the card layout (no route panel, larger KM hero)', function (): void {
-    $card = makeRunCard([
-        'distance' => 5_280,
-        'summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-    ], ['rarity' => 'rare', 'special_move' => 'Quick Feet']);
-
-    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card, 'card');
-    $png = app(RunCardImageRenderer::class)->render($card, 'card');
-
-    expect(str_starts_with($png, PNG_MAGIC))->toBeTrue()
-        ->and($svg)->toContain('font-size="380"') // the enlarged hero KM figure
-        ->not->toContain('<polyline'); // no route panel, even though the run has a polyline
-});
-
-it('renders valid PNG bytes for the stats layout (2x2 grid, no hero KM, no route panel)', function (): void {
-    $card = makeRunCard([
-        'distance' => 8_400,
-        'elapsed_time' => 2_400,
-        'average_heartrate' => 152,
-        'summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-    ], ['rarity' => 'legendary', 'special_move' => 'Terbang Tinggi']);
-
-    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card, 'stats');
-    $png = app(RunCardImageRenderer::class)->render($card, 'stats');
-
-    expect(str_starts_with($png, PNG_MAGIC))->toBeTrue()
-        ->and($svg)->toContain('DISTANCE')
-        ->toContain('DURATION')
-        ->toContain('HR')
-        ->not->toContain('KILOMETER'); // no single hero number on this branch
-});
-
-it('defaults render() to the original route/navy look when called with no explicit args', function (): void {
-    $card = makeRunCard([
-        'distance' => 5_280,
-        'summary_polyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-    ], ['rarity' => 'epic', 'special_move' => 'Tendangan Balik']);
-
-    $defaultSvg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card);
-    $explicitSvg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card, 'route', 'navy');
-
-    expect($defaultSvg)->toBe($explicitSvg);
-});
-
-it('scales the thread-band accent line count with rarity tier', function (): void {
-    $svgFor = function (string $rarity): string {
-        $card = makeRunCard([
-            'distance' => 5_280,
-        ], ['rarity' => $rarity, 'special_move' => 'Steady Tempo']);
-
-        return (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-            ->invoke(app(RunCardImageRenderer::class), $card);
-    };
-
-    // Common = 1 stitch, Legendary = 5 (3 primary + 2 crossing). Matched on the
-    // stitch's own stroke width: the footer divider is a <line> too, and the
-    // route polyline is also round-capped, so neither marker alone is specific.
-    $stitches = fn (string $rarity): int => substr_count(
-        $svgFor($rarity),
-        'stroke-width="5" stroke-linecap="round"',
-    );
-
-    expect($stitches('common'))->toBe(1)
-        ->and($stitches('uncommon'))->toBe(2)
-        ->and($stitches('rare'))->toBe(3)
-        ->and($stitches('epic'))->toBe(4)
-        ->and($stitches('legendary'))->toBe(5);
-});
-
-it('paints a different card-body fill for each colorway', function (): void {
-    $card = makeRunCard([
-        'distance' => 5_280,
-    ], ['rarity' => 'common', 'special_move' => 'Steady Tempo']);
-
-    $svgFor = fn (string $colorway): string => (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card, 'card', $colorway);
-
-    $navy = $svgFor('navy');
-    $dawn = $svgFor('dawn');
-    $ember = $svgFor('ember');
-
-    // Matched on the body rect itself: navy's #0b1017 is also the elevation's
-    // flood-color, so it appears under every colorway.
-    $body = fn (string $hex): string => "<rect width=\"1080\" height=\"1920\" rx=\"44\" fill=\"{$hex}\"/>";
-
-    expect($navy)->toContain($body('#0b1017'))
-        ->and($dawn)->toContain($body('#f1f5f8'))->not->toContain($body('#0b1017'))
-        ->and($ember)->toContain($body('#2a1017'))->not->toContain($body('#0b1017'));
-});
-
-it('names the three real font families and never the generic sans-serif', function (): void {
-    $card = makeRunCard([
-        'distance' => 5_280,
-        'elapsed_time' => 1_800,
-        'average_heartrate' => 150,
-    ], ['rarity' => 'epic', 'special_move' => 'Tendangan Balik']);
-
-    // These names are resolved by librsvg through fontconfig, so they have to
-    // match font families actually installed in the image (see the font install
-    // in the Dockerfile). 'sans-serif' silently resolved to DejaVu, which is why
-    // the Telegram photo never matched the client-rendered share image.
-    foreach (['route', 'card', 'stats'] as $layout) {
-        $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-            ->invoke(app(RunCardImageRenderer::class), $card, $layout);
-
-        expect($svg)->toContain('font-family="Plus Jakarta Sans"')
-            ->toContain('font-family="JetBrains Mono"')
-            ->not->toContain('sans-serif');
+                expect(simplexml_load_string($svg))->not->toBeFalse("{$where} is not parseable SVG")
+                    ->and($svg)->toContain('width="1080" height="'.$aspect->height().'"')
+                    // Every card carries the wordmark, whatever the style.
+                    ->and($svg)->toContain('>temari<');
+            }
+        }
     }
 });
 
-it('renders the run name in italic Fraunces on the horizon accent, like the client canvas', function (): void {
-    $card = makeRunCard([
-        'distance' => 5_280,
-    ], ['rarity' => 'rare', 'special_move' => 'Quick Feet']);
+it('never captions a block it has no content for', function (): void {
+    // Everything optional withheld at once: nothing a style draws may end up as
+    // an empty text node, which is what a labelled void looks like in the SVG.
+    $options = new CardOptions(heartRate: false, elevation: false, weather: false, badges: false);
+    $withheld = [
+        'start_date_local' => null,
+        'average_heartrate' => null,
+        'total_elevation_gain' => null,
+        'weather_temp_c' => null,
+        'location_name' => null,
+        'stream_summary' => null,
+    ];
 
-    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card);
+    foreach (runFormFixtures() as [$detailAttrs, $cardAttrs]) {
+        $card = makeRunCard([...$detailAttrs, ...$withheld], $cardAttrs);
 
-    expect($svg)->toContain('font-family="Fraunces" font-style="italic"')
-        ->toContain('fill="#ade047">Quick Feet</text>');
+        foreach (CardStyle::cases() as $style) {
+            foreach (CardAspect::cases() as $aspect) {
+                $svg = renderer()->buildSvg($card, $style, $aspect, $options);
+
+                expect($svg)->not->toMatch('/<text[^>]*>\s*<\/text>/');
+            }
+        }
+    }
 });
 
-it('renders at the client canvas story format, 1080x1920', function (): void {
-    $card = makeRunCard(['distance' => 5_280], ['rarity' => 'common', 'special_move' => 'Steady Tempo']);
+it('carries distance, time, pace, date, place and the wordmark on every style', function (): void {
+    $card = makeRunCard();
 
-    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card);
+    foreach (CardStyle::cases() as $style) {
+        $svg = renderer()->buildSvg($card, $style, CardAspect::Story);
 
-    expect($svg)->toContain('width="1080" height="1920"')
-        ->toContain('viewBox="0 0 1080 1920"');
+        expect($svg)->toContain('5.28')                        // distance, 2 decimals
+            ->and($svg)->toContain('32:18')                     // elapsed time
+            ->and($svg)->toContain('6:07')                      // pace
+            ->and($svg)->toContain('SENAYAN')                   // place
+            ->and($svg)->toContain('font-family="Fraunces"');   // the wordmark
+    }
 });
 
-it('mats the card on the app ground at the same inset the client canvas uses', function (): void {
-    $card = makeRunCard(['distance' => 5_280], ['rarity' => 'common', 'special_move' => 'Steady Tempo']);
+it('stamps the date in the app format, and never Temari narration', function (): void {
+    $svg = renderer()->buildSvg(makeRunCard(), CardStyle::Broadsheet, CardAspect::Story);
 
-    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card);
-
-    // These three numbers are the whole parity contract with shareCard.ts's
-    // CARD_GROUND / CARD_SCALE: the ground is --color-cream-deep, the card
-    // takes 90% of each axis, and it sits centred on the leftover mat.
-    expect($svg)->toContain('<rect width="1080" height="1920" fill="#e2e8ee"/>')
-        ->toContain('<g transform="translate(54,96) scale(0.9)">');
+    // formatShortDateId writes "13 sep 2026"; the card sets the same reading in
+    // mono caps. The short stamp is the numeric form of the same date.
+    expect(mb_strtolower($svg))->toContain('13 sep 2026')
+        ->and($svg)->toContain('13.09.26')
+        ->and($svg)->not->toContain('Senayan Shuffle');
 });
 
-it('casts the two --shadow-e4 layers behind the card, at half the token blur', function (): void {
-    $card = makeRunCard(['distance' => 5_280], ['rarity' => 'common', 'special_move' => 'Steady Tempo']);
+it('holds a story card inside the story app safe zone', function (): void {
+    foreach (CardStyle::cases() as $style) {
+        $svg = renderer()->buildSvg(makeRunCard(), $style, CardAspect::Story);
+        preg_match_all('/ y="(-?[\d.]+)"/', $svg, $found);
+        $ys = array_map(floatval(...), array_filter($found[1], fn (string $y): bool => (float) $y > 0));
 
-    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card);
-
-    // --shadow-e4 is `0 24px 56px rgba(23,15,56,.20), 0 8px 20px rgba(23,15,56,.12)`.
-    // feDropShadow's stdDeviation is sigma and a CSS blur radius is 2 sigma, so
-    // each blur halves; the caster carries the filter in unscaled canvas space
-    // so the exported elevation is the token, not 90% of it.
-    expect($svg)->toContain('dy="24" stdDeviation="28" flood-color="#0b1017" flood-opacity="0.20"')
-        ->toContain('dy="8" stdDeviation="10" flood-color="#0b1017" flood-opacity="0.12"')
-        ->toContain('rx="39.6" fill="#0b1017" filter="url(#elevation-deep)"')
-        ->toContain('rx="39.6" fill="#0b1017" filter="url(#elevation-tight)"');
+        expect(min($ys))->toBeGreaterThanOrEqual((float) CardAspect::SAFE_TOP)
+            ->and(max($ys))->toBeLessThanOrEqual((float) CardAspect::SAFE_BOTTOM);
+    }
 });
 
-it('stamps the date once, in the footer rather than the meta line', function (): void {
-    $card = makeRunCard([
-        'distance' => 5_280,
-        'location_name' => 'Alun-alun Kidul, Yogyakarta',
-        'weather_temp_c' => 27,
-    ], ['rarity' => 'common', 'special_move' => 'Steady Tempo']);
+it('strips the emoji emblem off a badge label', function (): void {
+    $card = makeRunCard([], ['badges' => ['heat_tamer']]);
+    $svg = renderer()->buildSvg($card, CardStyle::Ticket, CardAspect::Story);
 
-    $svg = (string) new ReflectionMethod(RunCardImageRenderer::class, 'buildSvg')
-        ->invoke(app(RunCardImageRenderer::class), $card);
+    expect($svg)->toContain('HEAT TAMER')
+        ->and($svg)->not->toContain('🔥');
+});
 
-    $date = $card->activity->detail->start_date_local->translatedFormat('j M Y');
+it('draws the route placeholder rather than a blank panel without GPS', function (): void {
+    $card = makeRunCard(['summary_polyline' => null]);
 
-    expect(substr_count($svg, $date))->toBe(1)
-        ->and($svg)->toContain('Alun-alun Kidul');
+    expect(renderer()->buildSvg($card, CardStyle::Broadsheet, CardAspect::Story))->toContain('NO GPS')
+        ->and(renderer()->buildSvg($card, CardStyle::Ticket, CardAspect::Story))->toContain('NO SIGNAL')
+        ->and(renderer()->buildSvg($card, CardStyle::TopoPlate, CardAspect::Story))->toContain('UNSURVEYED');
+});
+
+it('treats a polyline that decodes to one point as no route at all', function (): void {
+    // Strava ships these for a very short or paused activity; every style has
+    // to fall back rather than draw an empty route area.
+    $card = makeRunCard(['summary_polyline' => '_p~iF~ps|U']);
+
+    expect(renderer()->buildSvg($card, CardStyle::Broadsheet, CardAspect::Story))->toContain('NO GPS')
+        ->and(renderer()->buildSvg($card, CardStyle::Ticket, CardAspect::Story))->toContain('NO SIGNAL')
+        ->and(renderer()->buildSvg($card, CardStyle::TopoPlate, CardAspect::Story))->toContain('UNSURVEYED');
+});
+
+it('promotes the route and the elevation cell on a long run', function (): void {
+    [$detailAttrs, $cardAttrs] = runFormFixtures()['long'];
+    $svg = renderer()->buildSvg(makeRunCard($detailAttrs, $cardAttrs), CardStyle::Broadsheet, CardAspect::Story);
+
+    expect($svg)->toContain('LONG RUN')
+        ->and($svg)->toContain('ELEV')
+        ->and($svg)->not->toContain('AVG HR');
+});
+
+it('turns a race into its own composition on every style', function (): void {
+    [$detailAttrs, $cardAttrs] = runFormFixtures()['race'];
+    $card = makeRunCard($detailAttrs, $cardAttrs);
+
+    expect(renderer()->buildSvg($card, CardStyle::Broadsheet, CardAspect::Story))
+        ->toContain('JAKARTA CITY 10K')->toContain('BIB 0418')
+        ->and(renderer()->buildSvg($card, CardStyle::Ticket, CardAspect::Story))
+        ->toContain('FINISH')->toContain('10K')
+        ->and(renderer()->buildSvg($card, CardStyle::TopoPlate, CardAspect::Story))
+        ->toContain('FINISH');
+});
+
+it('drops a toggled-off fact from the card', function (): void {
+    $card = makeRunCard([], ['badges' => ['heat_tamer']]);
+    $options = new CardOptions(heartRate: false, elevation: false, weather: false, badges: false);
+    $svg = renderer()->buildSvg($card, CardStyle::TopoPlate, CardAspect::Story, $options);
+
+    expect($svg)->not->toContain('AVG HR')
+        ->and($svg)->not->toContain('ELEV')
+        ->and($svg)->not->toContain('HEAT TAMER')
+        ->and($svg)->not->toContain('29°C');
+});
+
+it('rasterises to PNG bytes at the aspect\'s exact pixel size', function (): void {
+    $png = renderer()->render(makeRunCard(), CardStyle::Broadsheet, CardAspect::Feed);
+    $size = getimagesizefromstring($png);
+
+    expect(str_starts_with($png, PNG_MAGIC))->toBeTrue()
+        ->and($size[0])->toBe(1080)
+        ->and($size[1])->toBe(1080);
+});
+
+it('defaults to the broadsheet story card, the shape the Telegram photo takes', function (): void {
+    $card = makeRunCard();
+
+    expect(renderer()->buildSvg($card))->toBe(
+        renderer()->buildSvg($card, CardStyle::Broadsheet, CardAspect::Story),
+    );
 });

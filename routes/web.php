@@ -25,6 +25,7 @@ use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RootController;
+use App\Http\Controllers\RunCardImageController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
 use App\Http\Controllers\SettingsController;
@@ -118,6 +119,8 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/activities/{activity}', [RunController::class, 'show'])
         ->middleware('inertia-etag')
         ->name('activities.show');
+    Route::get('/activities/{activity}/card.png', RunCardImageController::class)
+        ->name('activities.card');
     Route::post('/recaps/weekly/{snapshot}/send', SendWeeklyRecapNotificationController::class)
         ->middleware('block-demo-telegram')
         ->name('recaps.weekly.send');

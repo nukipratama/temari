@@ -55,6 +55,38 @@ enum Rarity: string
     }
 
     /**
+     * The `-ink` tier of the same family, mirrored from the light ground's
+     * `--color-rarity-*-ink` tokens. An exported card has no ground to follow,
+     * so it always takes the light value — the only member of the pair allowed
+     * to carry text on paper.
+     */
+    public function inkColor(): string
+    {
+        return match ($this) {
+            self::Common => '#5f6671',
+            self::Uncommon => '#1f7434',
+            self::Rare => '#2463be',
+            self::Epic => '#8543c4',
+            self::Legendary => '#865b13',
+        };
+    }
+
+    /**
+     * The escalating set symbol, mirrored from `RARITY_SYMBOL`
+     * ({@see resources/js/lib/runcard.ts}).
+     */
+    public function symbol(): string
+    {
+        return match ($this) {
+            self::Common => '●',
+            self::Uncommon => '◆',
+            self::Rare => '★',
+            self::Epic => '✦',
+            self::Legendary => '✺',
+        };
+    }
+
+    /**
      * Thread-band accent density (Slice 9c) for the card's rarity chrome —
      * additive texture on top of the existing border/glow, not a re-hue.
      * Mirrored in the client's `RARITY_BAND_COUNT`

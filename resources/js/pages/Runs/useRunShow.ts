@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import type { ShareCardData } from '@/lib/shareCard';
+import type { ShareCardTarget } from '@/components/card/ShareCardModal';
 import type {
     ActivityDetail,
     AnalysisPayload,
@@ -11,21 +11,12 @@ import type {
     StreamSummary,
 } from '@/types/inertia';
 
-import {
-    formatKm,
-    formatNaiveTimeId,
-    formatPace,
-    formatShortDateId,
-    paceSecPerKm,
-} from '@/lib/pace';
+import { formatKm, formatPace, paceSecPerKm } from '@/lib/pace';
 import {
     avgCadenceFromDetail,
-    badgeEmblem,
-    badgeName,
     fastestKmFromDetail,
     cardPropsFromDetail,
 } from '@/lib/runcard';
-import { districtFromLocation } from '@/pages/Home/helpers';
 
 /** The run's RunCard, enriched with the flavor/edition/share fields this page's
  *  card section needs (see RunController::cardPayload). */
@@ -69,82 +60,17 @@ export function useRunShow({
     const cadence = avgCadenceFromDetail(detail);
     const fastestKm = fastestKmFromDetail(detail);
 
-    const shareDate = detail.start_date_local
-        ? (() => {
-              const time = formatNaiveTimeId(detail.start_date_local);
-              const shortDate = formatShortDateId(detail.start_date_local);
-              return time === null ? shortDate : `${shortDate}\n${time}`;
-          })()
-        : null;
-
-    const shareWeather = (() => {
-        if (detail.weather_temp_c == null) {
-            return null;
-        }
-        const temp = `${Math.round(detail.weather_temp_c)}°C`;
-        const wind =
-            detail.weather_wind_speed_kmh != null
-                ? `, wind ${Math.round(detail.weather_wind_speed_kmh)} km/h`
-                : '';
-        return `${temp}${wind}`;
-    })();
-
-    const shareData: ShareCardData | null = useMemo(
+    const shareData: ShareCardTarget | null = useMemo(
         () =>
             card === null
                 ? null
                 : {
-                      id: card.id,
+                      activityId: detail.activity_id,
                       name: card.special_move,
                       shareUrl: card.public_share_url,
-                      rarity: card.rarity,
-                      mood,
-                      subtitle: cardProps.subtitle,
-                      date: shareDate,
-                      km,
-                      duration: cardProps.duration,
-                      pace: paceSec != null ? formatPace(paceSec) : null,
-                      trimp: cardProps.trimp,
-                      hr: hr != null ? `${hr} bpm` : null,
-                      cadence: cadence != null ? `${cadence} spm` : null,
-                      fastestKm: fastestKm != null ? `${fastestKm}/km` : null,
-                      ascent:
-                          detail.total_elevation_gain != null
-                              ? `${Math.round(detail.total_elevation_gain)} m`
-                              : null,
-                      zonePct: cardProps.zonePct,
-                      location: districtFromLocation(
-                          detail.location_name ?? null,
-                      ),
-                      weather: shareWeather,
-                      wind:
-                          detail.weather_wind_speed_kmh != null
-                              ? `${Math.round(detail.weather_wind_speed_kmh)} km/h`
-                              : null,
-                      tags: cardBadges.map((b) => badgeName(b)),
-                      tagEmojis: cardBadges.map((b) => badgeEmblem(b)),
                       quote: card.flavor_analysis.content ?? null,
-                      polyline: detail.summary_polyline ?? null,
-                      distanceKm:
-                          detail.distance != null
-                              ? detail.distance / 1000
-                              : null,
-                      edition: card.edition ?? null,
                   },
-        [
-            card,
-            mood,
-            cardProps,
-            shareDate,
-            km,
-            paceSec,
-            hr,
-            cadence,
-            fastestKm,
-            detail,
-            shareWeather,
-            cardBadges,
-        ],
+        [card, detail.activity_id],
     );
 
     return {

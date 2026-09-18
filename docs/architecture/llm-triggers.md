@@ -231,7 +231,7 @@ rendered somewhere a user can see — both directions matter, and only one of th
 | `briefing_mascot_voice` | `BriefingMascotVoiceNarrator` | synthetic user+day · `Y-m-d` | scheduled + ingest + signup | `TodaySession` on Home |
 | `post_run_speech` | `PostRunSpeechNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, top of "What Temari says" |
 | `run_insight` | `RunInsightNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, "What stood out" claims |
-| `card_flavor` | `CardFlavorNarrator` | `RunCard` · none | ingest | the line burned into the share card, `ShareCardModal` |
+| `card_flavor` | `CardFlavorNarrator` | `RunCard` · none | ingest | the share sheet's caption in `ShareCardModal`, never printed on the card image |
 | `weekly_recap` | `WeeklyRecapNarrator` | `WeeklySnapshot` · none | staged at ingest, narrated Mon | `WeekSection` and `CalendarWeekRow` |
 | `monthly_recap` | `MonthlyRecapNarrator` | synthetic user+month · `Y-m` | staged at ingest, narrated 1st | calendar month card |
 | `profile_voice` | `ProfileVoiceNarrator` | synthetic user · ISO week | scheduled + ingest | `ProfileHero` |

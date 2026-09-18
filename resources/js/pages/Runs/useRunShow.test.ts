@@ -151,11 +151,12 @@ describe('useRunShow', () => {
 
     it('builds share data from the card, or null when there is no card', () => {
         const { result: withCard } = renderHook(() => useRunShow(hookProps()));
+        // The card itself is server-rendered, so the page hands the modal the
+        // run to fetch and the copy for the share sheet, nothing more.
         expect(withCard.current.shareData).toMatchObject({
-            id: 1,
+            activityId: 99,
             name: 'Iron Lungs',
             shareUrl: '/activities/255',
-            mood: 'blazing',
         });
 
         const { result: withoutCard } = renderHook(() =>
