@@ -1,0 +1,135 @@
+name: Nightly backup
+
+# A deploy backup only exists because a deploy happened — a quiet week between
+# deploys leaves no recovery point at all. This runs on a schedule instead,
+# independent of shipping code, so there is always a recent restorable pair.
+#
+# Off the hour for the same reason nightly-audit.yml is: an on-the-hour cron
+# queues behind everyone else's. 23:40 WIB is chosen because the day's data is
+# complete by then and nothing else runs between 21:00 and midnight —
+# `streak:settle` is 00:00, then eight jobs through 00:26, pruning at
+# 02:20-02:25, weather and trend at 03:15-03:45, the nightly audit at 03:17,
+# `ai:trend-read` at 06:00, the spend digest at 21:00 (see routes/console.php).
+#
+# Disk cleanup rides in the same job, strictly after a successful backup and
+# never before it: a full disk is how backups start failing silently, and the
+# host has no other scheduled trim for the build cache or the sha-tagged
+# images ci.yml's `build` job pushes to GHCR one per merged commit.
+
+on:
+  schedule:
+    - cron: '40 16 * * *' # 23:40 WIB
+  workflow_dispatch:
+
+concurrency:
+  # Shares the deploy job's group: a backup dump must never overlap a deploy's
+  # own migrate step touching the same schemas.
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  nightly-backup:
+    runs-on: [self-hosted, homelab]
+    timeout-minutes: 30
+    env:
+      COMPOSE: docker compose -f compose.prod.yaml
+      BACKUP_DIR: /var/lib/temari-backups
+      APP_IMAGE_REPO: ghcr.io/nukipratama/temari/app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Compute backup timestamp
+        run: echo "NIGHTLY_TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
+
+      # Named distinctly from deploy's `pre-deploy-*`/`analytics-pre-deploy-*` so
+      # the two rotations, pruned independently by verify-and-prune-backup.sh,
+      # never touch each other's files.
+      - name: Backup DB
+        timeout-minutes: 10
+        run: |
+          set -o pipefail
+          mkdir -p "$BACKUP_DIR"
+          out="$BACKUP_DIR/nightly-$NIGHTLY_TIMESTAMP.sql.gz"
+          $COMPOSE exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" "$DB_DATABASE"' \
+            | gzip > "$out"
+          tables=$($COMPOSE exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""' \
+            | tr -d '[:space:]')
+          scripts/deploy/verify-and-prune-backup.sh "Nightly backup" "$out" "$tables" "$BACKUP_DIR/nightly-*.sql.gz" 14
+
+      - name: Backup analytics schema
+        timeout-minutes: 10
+        run: |
+          out="$BACKUP_DIR/analytics-nightly-$NIGHTLY_TIMESTAMP.sql.gz"
+          if $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "USE $adb"' 2>/dev/null; then
+            set -o pipefail
+            $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" --databases "$adb"' \
+              | gzip > "$out"
+            tables=$($COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$adb\""' \
+              | tr -d '[:space:]')
+            scripts/deploy/verify-and-prune-backup.sh "Nightly analytics backup" "$out" "$tables" "$BACKUP_DIR/analytics-nightly-*.sql.gz" 14
+          else
+            echo "Analytics schema not present — skipping."
+          fi
+
+      # From here down is disk hygiene, not backup — a failure here must never
+      # fail the job the backup above already made green.
+      - name: Reclaim disk — build cache
+        continue-on-error: true
+        run: |
+          docker builder prune -f --filter unused-for=168h | tee /tmp/builder-prune.txt
+
+      - name: Reclaim disk — old sha-tagged images
+        continue-on-error: true
+        run: |
+          in_use=$( { docker ps --format '{{.Image}}'; docker ps --format '{{.ID}}'; } )
+          before=$(docker system df --format '{{.Type}}\t{{.Reclaimable}}' | awk -F'\t' '$1=="Images"{print $2}')
+
+          docker images "$APP_IMAGE_REPO" --format '{{.ID}}\t{{.Tag}}' | while IFS=$'\t' read -r id tag; do
+            created=$(docker image inspect "$id" --format '{{.Created}}')
+            printf '%s\t%s\t%s\n' "$created" "$id" "$tag"
+          done \
+            | IN_USE="$in_use" scripts/deploy/select-images-to-prune.sh "$APP_IMAGE_REPO" 10 \
+            | while IFS=$'\t' read -r id ref; do
+                echo "removing $ref ($id)"
+                docker rmi "$id" || true
+              done
+
+          after=$(docker system df --format '{{.Type}}\t{{.Reclaimable}}' | awk -F'\t' '$1=="Images"{print $2}')
+          echo "Images reclaimable before: ${before:-unknown}, after: ${after:-unknown}" | tee /tmp/image-prune.txt
+
+      - name: Reclaim disk summary
+        if: always()
+        run: |
+          {
+            echo "## Nightly backup — disk reclaimed"
+            echo '```'
+            grep -i 'reclaimed space' /tmp/builder-prune.txt 2>/dev/null || echo "build cache: no reclaim line captured"
+            cat /tmp/image-prune.txt 2>/dev/null || echo "images: cleanup step did not run"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Backup-only alert: cleanup uses continue-on-error above, so it can never
+      # be what makes the job's status here "failure".
+      - name: Alert on backup failure
+        if: failure()
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_MAINTAINER_CHAT_ID" ]; then
+            echo "TELEGRAM_BOT_TOKEN / TELEGRAM_MAINTAINER_CHAT_ID not set, skipping the push."
+            exit 0
+          fi
+
+          curl -sS --fail-with-body \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_MAINTAINER_CHAT_ID}" \
+            --data-urlencode text="Nightly backup failed. A silent backup failure is worse than none — check the run: $RUN_URL"
