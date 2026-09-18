@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       backup_sha:
-        description: 'git SHA of the pre-deploy-<sha>.sql.gz pair to restore (default: newest on disk)'
+        description: 'git SHA of the pre-deploy-<sha>-*.sql.gz pair to restore (default: newest on disk)'
         required: false
         default: ''
 
@@ -42,25 +42,28 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Deploy backup names carry a timestamp + run id + run attempt after the
+          # sha (so a re-run never overwrites an earlier backup), so the pairing
+          # is by matching suffix rather than by sha alone: whatever comes after
+          # "pre-deploy-" is identical between a main dump and its analytics
+          # sibling, just under the "analytics-pre-deploy-" prefix instead.
           sha="${{ inputs.backup_sha }}"
           if [ -n "$sha" ]; then
-            app="$BACKUP_DIR/pre-deploy-$sha.sql.gz"
-            [ -f "$app" ] || { echo "::error::no backup at $app"; exit 1; }
+            app=$(ls -1t "$BACKUP_DIR/pre-deploy-$sha-"*.sql.gz 2>/dev/null | head -n1 || true)
+            [ -n "$app" ] || { echo "::error::no backup found for sha $sha in $BACKUP_DIR"; exit 1; }
           else
             app=$(ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz 2>/dev/null | head -n1 || true)
             [ -n "$app" ] || { echo "::error::no pre-deploy-*.sql.gz found in $BACKUP_DIR"; exit 1; }
-            sha=$(basename "$app" .sql.gz)
-            sha=${sha#pre-deploy-}
           fi
 
-          analytics="$BACKUP_DIR/analytics-pre-deploy-$sha.sql.gz"
+          analytics="$BACKUP_DIR/analytics-$(basename "$app")"
           [ -f "$analytics" ] || { echo "::error::no matching analytics backup at $analytics"; exit 1; }
 
           echo "app=$app" >> "$GITHUB_OUTPUT"
           echo "analytics=$analytics" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "label=$(basename "$app")" >> "$GITHUB_OUTPUT"
 
-          echo "Selected pair (sha $sha):"
+          echo "Selected pair ($(basename "$app")):"
           ls -lh "$app" "$analytics"
 
       - name: Bring up the throwaway MySQL
@@ -154,8 +157,8 @@ jobs:
           {
             echo "## Restore dry-run"
             if [ "${{ job.status }}" = "success" ]; then
-              echo "PASS — sha \`${{ steps.pick.outputs.sha }}\` restored clean into a throwaway database and verified against live."
+              echo "PASS — \`${{ steps.pick.outputs.label }}\` restored clean into a throwaway database and verified against live."
             else
-              echo "FAIL — sha \`${{ steps.pick.outputs.sha }}\`, see the Verify step above."
+              echo "FAIL — \`${{ steps.pick.outputs.label }}\`, see the Verify step above."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
