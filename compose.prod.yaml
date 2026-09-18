@@ -139,6 +139,12 @@ services:
     ports:
       # Loopback only — cloudflared on the host reaches it via 127.0.0.1:7001.
       - "127.0.0.1:7001:7001"
+    # FrankenPHP doesn't exit early while connections are open, so it always
+    # rides out the grace period under live traffic (measured at ~10.4s of an
+    # ~11.2s deploy outage against Docker's 10s default). 3s bounds that wait
+    # to what a normal page render finishes well inside, rather than the
+    # default cutting nothing and costing the full ten seconds every deploy.
+    stop_grace_period: 3s
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7001/up"]
       interval: 30s
