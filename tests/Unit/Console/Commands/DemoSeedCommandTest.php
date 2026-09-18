@@ -24,6 +24,9 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\RecapPeriod;
 use App\Services\AI\ServedBy;
 use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Story\Card\CardFacts;
+use App\Services\Run\Story\Card\CardOptions;
+use App\Services\Run\Story\Card\RunForm;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -212,6 +215,19 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     expect($km10Best)->not->toBeNull();
     $expectedGoalTimeSec = (int) (round($km10Best * 0.97 / 15) * 15);
     expect($race->goal_time_sec)->toBe($expectedGoalTimeSec);
+
+    // #979. The 10K that backs that goal is itself flagged as a race, so the
+    // share card's `race` form (bib chassis, chip splits) is reachable on the
+    // demo account instead of unconditionally falling through to the other
+    // four forms.
+    $raceDetail = ActivityDetail::query()
+        ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
+        ->where('name', '10K race-pace effort')
+        ->firstOrFail();
+    expect($raceDetail->workout_type)->toBe(1);
+
+    $raceCard = RunCard::query()->where('activity_id', $raceDetail->activity_id)->firstOrFail();
+    expect(CardFacts::from($raceCard, new CardOptions())->form)->toBe(RunForm::Race);
 
     $preference = TrainingPreference::query()->where('user_id', $user->id)->firstOrFail();
     expect($preference->run_days)->not->toBeEmpty()

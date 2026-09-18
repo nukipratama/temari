@@ -841,6 +841,7 @@ class DemoRunSeeder
             'weather_humidity_pct' => $blueprint->weatherHumidityPct,
             'weather_rain_detected' => $blueprint->weatherRainDetected,
             'weather_wind_speed_kmh' => $blueprint->weatherWindSpeedKmh,
+            'workout_type' => $blueprint->workoutType,
         ]);
 
         ActivityStream::query()->updateOrCreate([
