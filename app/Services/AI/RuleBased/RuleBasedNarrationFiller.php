@@ -20,6 +20,7 @@ use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\SustainedAheadOfRacePace;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Rule-based content per AnalysisType. Reached in production, not only by the
@@ -231,6 +232,19 @@ final readonly class RuleBasedNarrationFiller
 
         $km = DecimalFormatter::decimal((float) $snapshot->distance_km);
         $runs = $snapshot->runs;
+
+        // A ran week with a null form_status means the training-load rollup
+        // never reached this snapshot before the recap read it — the caller
+        // is expected to gate that (see KickoffWeeklyRecaps /
+        // RecapHydrationReadiness), so a hit here past that gate is worth
+        // knowing about rather than a closer that quietly reads as generic.
+        if ($snapshot->form_status === null) {
+            Log::warning('narrator.recap.form_status_missing', [
+                'snapshot_id' => $snapshotId,
+                'runs' => $runs,
+            ]);
+        }
+
         $closer = match ($snapshot->form_status) {
             'fresh' => "you're fresh, with room to add a little on top of that.",
             'optimal' => "that's the range where the work actually banks.",

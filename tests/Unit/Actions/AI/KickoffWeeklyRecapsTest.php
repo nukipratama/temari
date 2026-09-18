@@ -268,6 +268,70 @@ it('leaves an athlete with no hydration backlog untouched', function (): void {
         ->and(array_column($captured, 'subjectId'))->toBe([$week->id]);
 });
 
+it('defers a week past the backfill depth cap that the ingest pipeline is still hydrating', function (): void {
+    config()->set('ai.backfill_max_age_days', 84);
+
+    $user = User::factory()->create();
+    // Connected moments before "now" (2026-05-18 05:30): the grace window
+    // anchors at connect time, not at the (long-past) week's own close.
+    StravaConnection::factory()->for($user)->create(['created_at' => '2026-05-18 05:00:00']);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2025-11-30', 'runs' => 2]);
+    $activity = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2025-11-27')]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 0, 'rule_based' => 0, 'deferred' => 1])
+        ->and($captured)->toBeEmpty()
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::WeeklyRecap)->count())->toBe(0);
+});
+
+/**
+ * The shape #1010 measured: a full-history backfill's kickoff runs before
+ * `strava:hydrate-backlog` has fetched every run's detail, and every week of
+ * a brand-new athlete's history is pre-connect. Filling those rule-based
+ * without the same hydration gate the LLM path uses reads a snapshot whose
+ * `form_status` (and atl/ctl) are still null and bakes the fallback closer in
+ * permanently, since the row is Done and `invalidate: false` never revisits it.
+ */
+it('defers a pre-connect week the ingest pipeline is still hydrating instead of filling it rule-based blind', function (): void {
+    $user = User::factory()->create();
+    // Connected moments before "now": both the backfill and the recap
+    // kickoff that follows it fire in the same breath, per #1010.
+    StravaConnection::factory()->for($user)->create(['created_at' => '2026-05-18 05:00:00']);
+
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'runs' => 3]);
+    $activity = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2026-05-07')]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 0, 'rule_based' => 0, 'deferred' => 1])
+        ->and($captured)->toBeEmpty()
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::WeeklyRecap)->count())->toBe(0);
+});
+
+it('fills the deferred pre-connect week rule-based on the next run once hydration has finished', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => '2026-05-18 05:00:00']);
+
+    $week = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'runs' => 3]);
+    $activity = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2026-05-07')]);
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+    app(KickoffWeeklyRecaps::class)($user->id);
+    expect($captured)->toBeEmpty();
+
+    $activity->update(['ingest_state' => IngestState::Detailed]);
+
+    expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 0, 'rule_based' => 1, 'deferred' => 0])
+        ->and(collect($captured)->firstWhere('subjectId', $week->id)['ruleBased'])->toBeTrue();
+});
+
 it('never defers or dispatches for the demo account, backlog or not', function (): void {
     $demo = User::factory()->demo()->create();
     WeeklySnapshot::factory()->for($demo)->create(['week_ending' => '2026-05-17', 'runs' => 4]);

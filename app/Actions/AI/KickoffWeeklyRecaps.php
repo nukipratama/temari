@@ -21,9 +21,11 @@ use Illuminate\Support\Carbon;
  * follows a first-connect backfill draw from this single query.
  *
  * A week the ingest pipeline is still hydrating is held back by
- * {@see RecapHydrationReadiness} rather than narrated thin. A week that closed
- * before the athlete connected Strava is filled rule-based up front, the same
- * as a week past the backfill depth cap — Temari was not there for it.
+ * {@see RecapHydrationReadiness} rather than narrated thin — for every branch
+ * below, rule-based included, since a rule-based fill is Done immediately and
+ * `invalidate: false` means it is never revisited once written. A week that
+ * closed before the athlete connected Strava is filled rule-based up front,
+ * the same as a week past the backfill depth cap — Temari was not there for it.
  *
  * @see docs/decisions/deferred-recap-windowing.md
  */
@@ -60,8 +62,12 @@ class KickoffWeeklyRecaps
                 ->where('status', AnalysisStatus::Done));
 
         // Weeks older than the backfill depth cap never get a real LLM call —
-        // rule-based fill instead, same as the per-activity cap.
-        $tooOld = $baseQuery()->where('week_ending', '<', $oldestReal)->get();
+        // rule-based fill instead, same as the per-activity cap. A rule-based
+        // fill reads the same snapshot columns (form_status, atl/ctl) the LLM
+        // path does, so it races the same ordering problem and is held to the
+        // same hydration gate rather than reading them half-filled.
+        $tooOldCandidates = $baseQuery()->where('week_ending', '<', $oldestReal)->get();
+        $tooOld = $this->readiness->ready($tooOldCandidates);
         $tooOld->each(fn (WeeklySnapshot $snapshot) => $this->service->requestRuleBased(
             subjectOrType: WeeklySnapshot::class,
             subjectId: (int) $snapshot->id,
@@ -80,7 +86,7 @@ class KickoffWeeklyRecaps
         /** @var list<int> $userIds */
         $userIds = $candidates->pluck('user_id')->map(fn (mixed $id): int => (int) $id)->unique()->values()->all();
         $connectedAt = $this->backlog->connectedAtFor($userIds);
-        $preConnect = $candidates->filter(fn (WeeklySnapshot $snapshot): bool => $this->closedBeforeConnect(
+        $preConnectCandidates = $candidates->filter(fn (WeeklySnapshot $snapshot): bool => $this->closedBeforeConnect(
             $snapshot->week_ending,
             $connectedAt[(int) $snapshot->user_id] ?? null,
         ));
@@ -89,6 +95,7 @@ class KickoffWeeklyRecaps
             $connectedAt[(int) $snapshot->user_id] ?? null,
         ));
 
+        $preConnect = $this->readiness->ready($preConnectCandidates);
         $preConnect->each(fn (WeeklySnapshot $snapshot) => $this->service->requestRuleBased(
             subjectOrType: WeeklySnapshot::class,
             subjectId: (int) $snapshot->id,
@@ -109,10 +116,14 @@ class KickoffWeeklyRecaps
             );
         });
 
+        $deferred = ($tooOldCandidates->count() - $tooOld->count())
+            + ($preConnectCandidates->count() - $preConnect->count())
+            + ($eligible->count() - $snapshots->count());
+
         return [
             'dispatched' => $snapshots->count(),
             'rule_based' => $tooOld->count() + $preConnect->count(),
-            'deferred' => $eligible->count() - $snapshots->count(),
+            'deferred' => $deferred,
         ];
     }
 

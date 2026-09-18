@@ -21,6 +21,7 @@ use App\Services\AI\RuleBased\RuleBasedRunInsights;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -293,6 +294,46 @@ it('weaves the snapshot real numbers into the weekly recap', function (): void {
     expect($recap)->toContain('24.6')
         ->and($recap)->toMatch('/\b4 (runs|sessions|times)\b/')
         ->and($recap)->toContain('recovery next week');
+});
+
+/**
+ * A ran week with a null form_status means the training-load rollup never
+ * reached this snapshot before the recap read it (#1010) — the caller
+ * (KickoffWeeklyRecaps / RecapHydrationReadiness) is expected to hold the
+ * week back until then, so a null here past that gate must be loud rather
+ * than a silently generic "steady. that's the read." closer.
+ */
+it('surfaces a ran week with a missing form_status instead of silently defaulting', function (): void {
+    Log::spy();
+
+    $snapshot = WeeklySnapshot::factory()->create([
+        'distance_km' => 44.7,
+        'runs' => 5,
+        'form_status' => null,
+    ]);
+
+    $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
+
+    expect($recap)->toContain("steady. that's the read.");
+    Log::shouldHaveReceived('warning')
+        ->with('narrator.recap.form_status_missing', Mockery::on(
+            fn (array $context): bool => $context['snapshot_id'] === $snapshot->id && $context['runs'] === 5,
+        ))
+        ->once();
+});
+
+it('does not log for a normally-resolved form_status', function (): void {
+    Log::spy();
+
+    $snapshot = WeeklySnapshot::factory()->create([
+        'distance_km' => 24.6,
+        'runs' => 4,
+        'form_status' => 'optimal',
+    ]);
+
+    app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
+
+    Log::shouldNotHaveReceived('warning');
 });
 
 it('phrases an intent hit as the session doing its job', function (): void {

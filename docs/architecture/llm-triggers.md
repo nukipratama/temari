@@ -96,10 +96,13 @@ behind `ai:weekly-recap`/`ai:monthly-recap` and `KickoffRecapsJob`'s first-conne
 week or month whose close fell before `StravaConnection.created_at` (read through
 [`HydrationBacklog::connectedAt()`](../../app/Services/AI/HydrationBacklog.php#L21) /
 `connectedAtFor()`, the same anchor [[recap-waits-for-hydration]] and [[history-narrates-on-demand]]
-use) to `AnalysisService::requestRuleBased()` alongside the too-old bucket, bypassing the hydration
-wait entirely — a pre-connect period needs no real numbers to fill rule-based. A three-month backfill
-therefore bills nothing for the roughly twelve weekly and three monthly recaps it used to narrate on
-day one for periods Temari never watched. See [[deferred-recap-windowing]].
+use) to `AnalysisService::requestRuleBased()` alongside the too-old bucket instead of the LLM. A
+three-month backfill therefore bills nothing for the roughly twelve weekly and three monthly recaps
+it used to narrate on day one for periods Temari never watched. The weekly bucket still waits on
+[RecapHydrationReadiness](../../app/Services/AI/RecapHydrationReadiness.php) before that rule-based
+fill runs — a pre-connect week's closer reads the snapshot's own `form_status`, so it races the same
+ordering problem the LLM path does (#1010). The monthly bucket bypasses the hydration wait entirely,
+unchanged. See [[deferred-recap-windowing]].
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 and it still runs for every athlete. The narration half then calls

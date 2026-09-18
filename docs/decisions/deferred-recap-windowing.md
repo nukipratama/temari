@@ -34,6 +34,24 @@ code_refs:
 > rule-based up front and never left `Pending`. This matches the shape #989 gives per-run
 > narration and the rule #922 applies on return. The demo account is unaffected: it never reaches
 > either kickoff's `RecentlyActiveUsers` query.
+>
+> **2026-09-18 (later the same day) — that bypass was wrong for the weekly half, corrected by
+> #1010.** "A pre-connect period needs no real numbers to fill rule-based" was false: the weekly
+> rule-based closer reads the snapshot's own `form_status` (fresh/optimal/fatigued/overreaching),
+> exactly the field [[recap-waits-for-hydration]] exists to protect. Bypassing that gate for
+> `requestRuleBased` meant a full-history backfill's kickoff — which runs in the same breath as the
+> backfill, before `strava:hydrate-backlog` has touched a single run — read every week's
+> `form_status` as null and closed all of them with the same generic fallback line, permanently
+> (`Done`, never revisited). Measured on the real account this decision was about: **58 of 58**
+> weekly recaps. [KickoffWeeklyRecaps](app/Actions/AI/KickoffWeeklyRecaps.php) now runs its
+> too-old and pre-connect rule-based buckets through
+> [RecapHydrationReadiness](app/Services/AI/RecapHydrationReadiness.php) too, same as the LLM
+> bucket already did — still zero LLM spend for a pre-connect period (that part of this decision
+> stands), just no longer read before the pipeline finishes writing it. A deferred rule-based week
+> is picked up by the same hourly `ai:catch-up` sweep the LLM path already relied on, so this costs
+> the same "up to one hourly sweep" [[recap-waits-for-hydration]] already prices in, not a new
+> unbounded wait. **The monthly half is unchanged and still bypasses hydration entirely** — it was
+> out of scope for #1010 and is not known to read a field with the same race (flagged, not fixed).
 
 ## Context
 
