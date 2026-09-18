@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Jobs\AI\FlushDeadLetterAlertJob;
+use App\Jobs\AI\SendMaintainerAlertJob;
 use App\Models\TelegramConnection;
 use App\Services\Telegram\TelegramClient;
 use App\Support\Config\AppConfig;
@@ -23,7 +24,10 @@ use Throwable;
  *
  * Best-effort and self-contained: a no-op when Telegram is unconfigured, and a
  * per-chat send failure is logged, never thrown, so an alert can never fail the
- * job/command it is reporting on.
+ * job/command it is reporting on. Every alert's actual Telegram send happens in
+ * {@see \App\Jobs\AI\SendMaintainerAlertJob}, queued by {@see self::broadcast()}
+ * — so no outbound call ever runs inline in whatever fired the alert, a web
+ * request included.
  */
 class MaintainerAlerter
 {
@@ -342,13 +346,29 @@ class MaintainerAlerter
         $this->broadcast($message);
     }
 
-    /** Send $message to every admin's active Telegram chat; no-op when unconfigured. */
+    /**
+     * Queue $message for every admin's active Telegram chat; no-op when
+     * unconfigured. Dispatches rather than sending, so the caller — a web
+     * request resolving a shared prop, a console command, or another queued
+     * job — never makes an outbound Telegram call itself.
+     */
     private function broadcast(string $message): void
     {
         if (blank(config('services.telegram.bot_token'))) {
             return;
         }
 
+        SendMaintainerAlertJob::dispatch($message);
+    }
+
+    /**
+     * The actual send, run from {@see \App\Jobs\AI\SendMaintainerAlertJob}.
+     * Public so the job can call it; every dedupe/throttle decision happens
+     * before {@see self::broadcast()} dispatches the job, so this method
+     * itself never gates — it only delivers.
+     */
+    public function sendToAdmins(string $message): void
+    {
         $connections = TelegramConnection::query()
             ->active()
             ->whereHas('user', fn (Builder $query) => $query->where('is_admin', true))
