@@ -26,10 +26,11 @@ final class PastYouTool extends ActivityTool
     public function description(): string
     {
         return "A similar run of the user's own from the past, to compare against this session. "
-            .'`direction` (better/worse/flat) is the call to make -- say that, never infer it from '
-            .'the sign of pace_diff_sec/time_diff_sec, which are for size only (seconds). hr_diff_bpm '
-            ."positive = HR is higher now. If past_you is missing, there's no good match, and in "
-            .'that case never make up a comparison to the past.';
+            .'pace/time/hr each carry their own relation (pace.relation/time.relation: faster/slower/'
+            ."same; hr.relation: higher/lower/same) -- say that, there is no sign to infer it from: "
+            .'seconds_per_km/seconds/bpm are for size only. `direction` (better/worse/flat) is the '
+            .'overall call. If past_you is missing, there\'s no good match, and in that case never '
+            .'make up a comparison to the past.';
     }
 
     /** @return array<string, mixed> */

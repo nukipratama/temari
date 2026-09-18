@@ -267,6 +267,10 @@ final readonly class BriefingContext
      * Sketch of the deltas, ready to JSON-encode straight into the user
      * message context. Keys are short so they don't bloat token usage.
      *
+     * `volume_ramp` carries no bare sign (#1009, reopened): pct is an
+     * unsigned magnitude and relation (up/down/flat) says which way it went,
+     * rather than handing the model a raw signed percentage to read itself.
+     *
      * @return array<string, mixed>
      */
     public function toArray(): array
@@ -283,9 +287,21 @@ final readonly class BriefingContext
             'time_bucket' => $this->timeBucket,
             'consecutive_weeks_active' => $this->consecutiveWeeksActive,
             'fitness_trend' => $this->fitnessTrend,
-            'volume_ramp_pct' => $this->volumeRampPct,
+            'volume_ramp' => $this->volumeRampPct === null ? null : [
+                'pct' => abs($this->volumeRampPct),
+                'relation' => self::volumeRampRelation($this->volumeRampPct),
+            ],
             'readiness_ceiling' => $this->readinessCeiling,
             'build_nudge' => $this->buildNudge,
         ];
+    }
+
+    private static function volumeRampRelation(float $pct): string
+    {
+        return match (true) {
+            $pct > 0.0 => 'up',
+            $pct < 0.0 => 'down',
+            default => 'flat',
+        };
     }
 }

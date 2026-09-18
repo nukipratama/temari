@@ -121,7 +121,7 @@ The same rule covers narrating the *process*: "I don't want to guess", "I'm just
 
 ## Field names are not words
 
-Column and payload keys — `session_intent`, `volume_ramp_pct`, `form_status`, `ctl_delta_4w` — are labels for whoever is *reading* the data. They must never reach the user, including tidied up as "your session intent" or "your volume ramp".
+Column and payload keys — `session_intent`, `volume_ramp`, `form_status`, `ctl_delta_4w` — are labels for whoever is *reading* the data. They must never reach the user, including tidied up as "your session intent" or "your volume ramp".
 
 This matters more since narrators became agents: prompts and tool descriptions both name keys so the model can identify what it fetched, which makes echoing them the path of least resistance. Say what the number means instead — "your distance this week dropped a lot compared to the 28.5 km last week", not "your volume ramp dropped hard".
 

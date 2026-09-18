@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\StoryLine;
+use App\Models\WeeklySnapshot;
+use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
@@ -445,18 +447,43 @@ it('reads intensity_label heavy when Z3-Z5 together cover at least half the sess
     expect(new HrZonesTool($a, $d->fresh())->handle([])['intensity_label'])->toBe('heavy');
 });
 
-it('reads hr_drift_bpm from the stream summary', function (): void {
+// Regression for #1009 (reopened): hr_drift_bpm reached the model as a bare
+// signed number described as "how much HR climbed", which reads backwards
+// the moment it's negative. hr_drift now carries an unsigned bpm and its own
+// relation, resolved from the sign alone.
+it('reads hr_drift from the stream summary with no signed field', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['hr_drift_bpm' => 7.5]]);
 
-    expect(new HrZonesTool($a, $d->fresh())->handle([])['hr_drift_bpm'])->toBe(7.5);
+    expect(new HrZonesTool($a, $d->fresh())->handle([])['hr_drift'])
+        ->toBe(['bpm' => 7.5, 'relation' => 'up']);
 });
 
-it('reads cadence_drop_spm from the stream summary via RunSummaryTool', function (): void {
+it('reads hr_drift with relation=down when HR fell across the run', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['hr_drift_bpm' => -7.5]]);
+
+    expect(new HrZonesTool($a, $d->fresh())->handle([])['hr_drift'])
+        ->toBe(['bpm' => 7.5, 'relation' => 'down']);
+});
+
+// Regression for #1009 (reopened): same anti-pattern as hr_drift, this time
+// described as "how much step rate fell" while the underlying value can be
+// negative when cadence actually rose.
+it('reads cadence_drop from the stream summary via RunSummaryTool with no signed field', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['cadence_drop_spm' => 4.0]]);
 
-    expect(new RunSummaryTool($a, $d->fresh())->handle([])['cadence_drop_spm'])->toBe(4.0);
+    expect(new RunSummaryTool($a, $d->fresh())->handle([])['cadence_drop'])
+        ->toBe(['spm' => 4.0, 'relation' => 'dropped']);
+});
+
+it('reads cadence_drop with relation=rose when cadence sped up across the run', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['cadence_drop_spm' => -4.0]]);
+
+    expect(new RunSummaryTool($a, $d->fresh())->handle([])['cadence_drop'])
+        ->toBe(['spm' => 4.0, 'relation' => 'rose']);
 });
 
 // ── TerrainTool ───────────────────────────────────────────────────────
@@ -470,9 +497,21 @@ it('reads Strava elevation gain alongside the steepest grade and the flat-adjust
 
     expect(new TerrainTool($a, $d->fresh())->handle([]))->toMatchArray([
         'elevation_gain_m' => 48.0,
-        'max_grade_pct' => 9.5,
+        'max_grade' => ['pct' => 9.5, 'relation' => 'climb'],
         'gap_pace' => '5:40',
     ]);
+});
+
+// Regression for #1009 (reopened): the steepest-sustained-grade reading is
+// signed and can be negative on a net-downhill run, but the tool description
+// only ever framed it as "steepest climb". max_grade now carries its own
+// relation, so a descent can never be misread as a climb.
+it('reads max_grade with relation=descent on a net-downhill run', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['max_grade_pct' => -6.0]]);
+
+    expect(new TerrainTool($a, $d->fresh())->handle([])['max_grade'])
+        ->toBe(['pct' => 6.0, 'relation' => 'descent']);
 });
 
 // ── WeatherTool ───────────────────────────────────────────────────────
@@ -528,6 +567,26 @@ it('reads relative effort with no comparison when the history is still one run d
         ->toBe(['trimp' => 92.4, 'baseline' => null, 'ratio' => null, 'band' => null]);
 });
 
+// Regression for #1009 (reopened): decoupling_pct reached the model with no
+// sign convention stated at all. decoupling now carries an unsigned pct plus
+// its own relation (up/down/flat), reusing DecouplingBands::TIGHT as the flat
+// band rather than inventing a new threshold.
+it('reads decoupling with no signed field, relation=up on a real drift', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['decoupling_pct' => 14.0]]);
+
+    expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['decoupling'])
+        ->toBe(['pct' => 14.0, 'relation' => 'up']);
+});
+
+it('reads decoupling with relation=down when cardiac drift improved', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['stream_summary' => ['decoupling_pct' => -14.0]]);
+
+    expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['decoupling'])
+        ->toBe(['pct' => 14.0, 'relation' => 'down']);
+});
+
 // ── TrainingLoadTool + RecentBaselineTool ─────────────────────────────
 
 it('reads the 28-day baseline and the load state from a prior run', function (): void {
@@ -550,9 +609,13 @@ it('reads the 28-day baseline and the load state from a prior run', function ():
         'runs' => 1,
         'avg_pace_sec_per_km' => 360,
         'avg_hr' => 150,
-        'avg_decoupling_pct' => 6.0,
+        // Regression for #1009 (reopened): no bare signed avg_decoupling_pct.
+        'avg_decoupling' => ['pct' => 6.0, 'relation' => 'up'],
     ])
-        ->and($load)->toHaveKeys(['acute_7d', 'chronic_42d', 'form', 'form_status']);
+        ->and($baseline)->not->toHaveKey('avg_decoupling_pct')
+        ->and($load)->toHaveKeys(['acute_7d', 'chronic_42d', 'form', 'form_status'])
+        // Regression for #1009 (reopened): no bare signed `form`.
+        ->and($load['form'])->toHaveKeys(['value', 'relation']);
 });
 
 it('reads a null training load rather than inventing one with no TRIMP history', function (): void {
@@ -608,7 +671,7 @@ it('formats a sub-4:00 interval pace for a fast runner', function (): void {
 
 // ── PastYouTool ───────────────────────────────────────────────────────
 
-it('reads a comparable past run of the same user, signed so faster reads positive', function (): void {
+it('reads a comparable past run of the same user with no signed field, faster reading as relation=faster', function (): void {
     // Current run: 5 km in 1500 s (5:00/km, threshold band).
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['weather_temp_c' => null]); // don't let the random factory temp gate the match
@@ -626,15 +689,18 @@ it('reads a comparable past run of the same user, signed so faster reads positiv
 
     expect($reading)->not->toBeNull()
         ->and($reading['days_ago'])->toBe(30)
-        ->and($reading['pace_diff_sec'])->toBeGreaterThan(0.0) // current is faster
+        ->and($reading['pace']['seconds_per_km'])->toBeGreaterThan(0.0)
+        ->and($reading['pace']['relation'])->toBe('faster')
+        ->and($reading['time']['relation'])->toBe('faster')
         ->and($reading['direction'])->toBe('better')
         ->and($reading['past_km'])->toBe(5.0);
 });
 
-// Regression for #1009: the tool exposed an exact but unlabelled signed pace
-// delta, which the LLM narrator read backwards on faster runs two times out
-// of three. `direction` must be there and must not be inferred wrong.
-it('reads direction=worse when the current run is slower than the matched past run', function (): void {
+// Regression for #1009 (reopened): a bare signed pace_diff_sec plus a
+// composite `direction` still let the LLM narrator invert the pace on a
+// mixed-signal run (slower pace, lower HR) -- the composite guarded the
+// verdict as a whole, not each field. There is no sign left to invert now.
+it('reads direction=worse and relation=slower when the current run is slower than the matched past run', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['weather_temp_c' => null]); // fixture default: 5 km in 1500 s, 5:00/km
     $past = Activity::factory()->for($a->user)->analyzed()->create();
@@ -649,7 +715,33 @@ it('reads direction=worse when the current run is slower than the matched past r
     $reading = new PastYouTool($a, $d->fresh(), app(PastYouMatcher::class))->handle([])['past_you'];
 
     expect($reading)->not->toBeNull()
-        ->and($reading['pace_diff_sec'])->toBeLessThan(0.0) // current is slower
+        ->and($reading['pace']['seconds_per_km'])->toBeGreaterThan(0.0)
+        ->and($reading['pace']['relation'])->toBe('slower')
+        ->and($reading['time']['relation'])->toBe('slower')
+        ->and($reading['direction'])->toBe('worse');
+});
+
+// The exact mixed-signal shape from the #1009 reopening: slower pace paired
+// with lower HR, which is where the model previously overrode the pace
+// reading to match the story it built off HR alone.
+it('reads pace.relation=slower and hr.relation=lower independently on a mixed-signal past you', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['weather_temp_c' => null, 'average_heartrate' => 150.0]); // 5 km in 1500 s, 5:00/km
+    $past = Activity::factory()->for($a->user)->analyzed()->create();
+    ActivityDetail::factory()->for($past)->create([
+        'start_date_local' => Carbon::today()->subDays(30),
+        'distance' => 5000.0,
+        'moving_time' => 1435, // 4:47/km, 13 s/km faster than the current 5:00/km
+        'elapsed_time' => 1435,
+        'weather_temp_c' => null,
+        'average_heartrate' => 166.0, // 16 bpm higher than the current run's 150
+    ]);
+
+    $reading = new PastYouTool($a, $d->fresh(), app(PastYouMatcher::class))->handle([])['past_you'];
+
+    expect($reading)->not->toBeNull()
+        ->and($reading['pace']['relation'])->toBe('slower')
+        ->and($reading['hr']['relation'])->toBe('lower')
         ->and($reading['direction'])->toBe('worse');
 });
 
@@ -730,7 +822,7 @@ it('reads the whole week picture in one call, since it is produced in one query 
         'this_week_runs', 'last_week_runs', 'this_week_km', 'last_week_km',
         'recovery_hours', 'ran_today', 'days_since_last_run', 'form_status',
         'time_bucket', 'consecutive_weeks_active', 'fitness_trend',
-        'volume_ramp_pct', 'readiness_ceiling', 'build_nudge',
+        'volume_ramp', 'readiness_ceiling', 'build_nudge',
     ]);
 });
 
@@ -791,12 +883,13 @@ it('compares the runner latest run against a similar one of their own', function
 
     expect($reading['past_you'])->not->toBeNull()
         ->and($reading['past_you']['days_ago'])->toBe(30)
+        ->and($reading['past_you']['pace']['relation'])->toBe('faster')
         ->and($reading['past_you']['direction'])->toBe('better');
 });
 
 // Regression for #1009, this tool's own case: the signed delta alone read
 // backwards on a slower run just as easily as on a faster one.
-it('reads direction=worse when the latest run is slower than the matched past run', function (): void {
+it('reads direction=worse and relation=slower when the latest run is slower than the matched past run', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['weather_temp_c' => null]); // fixture default: 5 km in 1500 s, 5:00/km
     $past = Activity::factory()->for($a->user)->analyzed()->create();
@@ -811,7 +904,8 @@ it('reads direction=worse when the latest run is slower than the matched past ru
     $reading = new LatestPastYouTool($a->user, Carbon::today(), app(PastYouMatcher::class))->handle([]);
 
     expect($reading['past_you'])->not->toBeNull()
-        ->and($reading['past_you']['pace_diff_sec'])->toBeLessThan(0.0) // current is slower
+        ->and($reading['past_you']['pace']['seconds_per_km'])->toBeGreaterThan(0.0)
+        ->and($reading['past_you']['pace']['relation'])->toBe('slower')
         ->and($reading['past_you']['direction'])->toBe('worse');
 });
 
@@ -1412,4 +1506,93 @@ it('never counts another athlete plan', function (): void {
     ]);
 
     expect(new PlanAdherenceTool($user, $today, null)->handle([])['prescribed'])->toBe(0);
+});
+
+// ── Structural guard: no tool payload exposes a signed delta (#1009, reopened) ──
+
+/**
+ * Recursively asserts a tool payload carries no bare signed delta: none of
+ * the retired key names show up anywhere in the tree (at any depth, under
+ * any parent), and no numeric leaf is negative -- every delta this fix
+ * touched now carries an unsigned magnitude plus its own relation word
+ * instead. Generic over the whole payload tree on purpose, so a new field
+ * added to any of these tools later is checked for free rather than needing
+ * its own hand-written sign assertion.
+ *
+ * @param  list<string>  $retiredKeys
+ */
+function assertNoSignedDelta(mixed $node, array $retiredKeys): void
+{
+    if (is_array($node)) {
+        foreach ($node as $key => $value) {
+            if (is_string($key)) {
+                expect(in_array($key, $retiredKeys, true))->toBeFalse();
+            }
+            assertNoSignedDelta($value, $retiredKeys);
+        }
+
+        return;
+    }
+
+    if (is_int($node) || is_float($node)) {
+        expect($node)->toBeGreaterThanOrEqual(0);
+    }
+}
+
+it('exposes no signed numeric field across every tool payload touched by the #1009 fix', function (): void {
+    // Every fixture below is deliberately built on the "negative" side of a
+    // converted field, so this test fails on the pre-fix shape (a bare
+    // signed number) instead of passing by accident on all-positive data.
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update([
+        'weather_temp_c' => null,
+        'average_heartrate' => 150.0, // current run: 5 km in 1500 s, 5:00/km
+        'stream_summary' => [
+            'hr_drift_bpm' => -7.5,
+            'cadence_drop_spm' => -4.0,
+            'decoupling_pct' => -14.0,
+            'max_grade_pct' => -6.0,
+        ],
+    ]);
+
+    // The exact mixed-signal shape from the live check that reopened #1009:
+    // pace -13 (slower), HR -16 (lower).
+    $past = Activity::factory()->for($a->user)->analyzed()->create();
+    ActivityDetail::factory()->for($past)->create([
+        'start_date_local' => Carbon::today()->subDays(30),
+        'distance' => 5000.0,
+        'moving_time' => 1435, // 4:47/km, 13 s/km faster than the current 5:00/km
+        'elapsed_time' => 1435,
+        'weather_temp_c' => null,
+        'average_heartrate' => 166.0, // 16 bpm higher than the current run's 150
+    ]);
+
+    $snapshot = WeeklySnapshot::factory()->for($a->user)->create([
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'form' => -8.0,
+        'avg_decoupling' => -6.4,
+    ]);
+
+    $payloads = [
+        new PastYouTool($a, $d->fresh(), app(PastYouMatcher::class))->handle([]),
+        new LatestPastYouTool($a->user, Carbon::today(), app(PastYouMatcher::class))->handle([]),
+        new HrZonesTool($a, $d->fresh())->handle([]),
+        new RunSummaryTool($a, $d->fresh())->handle([]),
+        new TerrainTool($a, $d->fresh())->handle([]),
+        new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([]),
+        new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction())->handle([]),
+        new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad())->handle([]),
+        new WeekTotalsTool($snapshot)->handle([]),
+        new WeekStateTool($a->user, Carbon::today(), new TrainingLoad())->handle([]),
+    ];
+
+    $retiredKeys = [
+        'pace_diff_sec', 'time_diff_sec', 'hr_diff_bpm', 'decoupling_pct',
+        'hr_drift_bpm', 'cadence_drop_spm', 'max_grade_pct', 'avg_decoupling_pct',
+        'volume_ramp_pct',
+    ];
+
+    foreach ($payloads as $payload) {
+        assertNoSignedDelta($payload, $retiredKeys);
+    }
 });

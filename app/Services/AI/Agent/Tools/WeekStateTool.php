@@ -33,11 +33,12 @@ final class WeekStateTool extends UserTool
 
     public function description(): string
     {
-        return "This week's state: runs and km this week vs last week, volume_ramp_pct, how many "
-            .'weeks in a row they\'ve been active, fitness direction, what time of day it is '
-            .'(time_bucket), whether they\'ve already run today, how many hours since their last '
-            .'run, form_status, plus readiness_ceiling and build_nudge which cap how hard you\'re '
-            .'allowed to suggest. Call this before suggesting anything.';
+        return "This week's state: runs and km this week vs last week, volume_ramp (pct plus its own "
+            .'relation: up/down/flat, no sign to read yourself), how many weeks in a row they\'ve been '
+            .'active, fitness direction, what time of day it is (time_bucket), whether they\'ve already '
+            .'run today, how many hours since their last run, form_status, plus readiness_ceiling and '
+            .'build_nudge which cap how hard you\'re allowed to suggest. Call this before suggesting '
+            .'anything.';
     }
 
     /** @return array<string, mixed> */
