@@ -13,6 +13,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
+use App\Services\AI\HydrationBacklog;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Gamification\SeasonStreakSummaryBuilder;
 use App\Services\Run\Metrics\DistanceFormatter;
@@ -54,6 +55,7 @@ final class PlanPageAssembler
         private readonly PlanNarrationRequester $narrationRequester,
         private readonly ResolveActiveRaceAction $activeRace,
         private readonly ResolveWeekAdaptationAction $weekAdaptation,
+        private readonly HydrationBacklog $hydrationBacklog,
     ) {
     }
 
@@ -182,9 +184,10 @@ final class PlanPageAssembler
         $fallbackStatuses = $this->fallbackStatuses($user, $sessions, $today, $baselineData, $multiplierByWeek, $primaryEasyDateByWeek);
 
         // Readiness clamp: TODAY's row only — a future day's readiness isn't
-        // knowable today, so clamping never reaches past this one row.
+        // knowable today, so clamping never reaches past this one row. Held
+        // back while recent load is still unscored, same guard as RestClampRecorder::record().
         $todaySession = $sessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
-        $clamp = ($todaySession !== null && ! $todaySession->pinned)
+        $clamp = ($todaySession !== null && ! $todaySession->pinned && ! $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today))
             ? ReadinessClamp::apply(
                 $todaySession->session_type,
                 $todaySession->phase,

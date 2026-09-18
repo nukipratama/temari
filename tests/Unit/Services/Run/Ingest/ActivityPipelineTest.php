@@ -464,13 +464,14 @@ it('computes stream_summary + Edwards TRIMP from the streams blob', function ():
         ->and($detail->stream_summary)->toHaveKey('time_in_zone_pct');
 });
 
-it('writes weather columns when streams expose a lat/lng', function (): void {
+it('writes weather columns from detail coords when streams omit lat/lng', function (): void {
     $activity = makeActivityWithConnection();
 
     Http::fake([
         'strava.com/api/v3/activities/999' => Http::response([
             'name' => 'Morning Run',
             'start_date_local' => '2026-05-10 06:00:00',
+            'start_latlng' => [-6.2253, 106.8090],
             'distance' => 5000,
             'moving_time' => 1800,
             'elapsed_time' => 1800,
@@ -478,7 +479,6 @@ it('writes weather columns when streams expose a lat/lng', function (): void {
         ]),
         'strava.com/api/v3/activities/999/streams*' => Http::response([
             'time' => ['data' => [0, 60, 120]],
-            'latlng' => ['data' => [[-6.2, 106.8]]],
         ]),
         'api.open-meteo.com/*' => Http::response([
             'hourly' => [
@@ -504,12 +504,12 @@ it('leaves weather columns null when Open-Meteo returns nothing', function (): v
     Http::fake([
         'strava.com/api/v3/activities/999' => Http::response([
             'name' => 'Run', 'start_date_local' => '2026-05-10 06:00:00',
+            'start_latlng' => [-6.2253, 106.8090],
             'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
             'splits_metric' => [],
         ]),
         'strava.com/api/v3/activities/999/streams*' => Http::response([
             'time' => ['data' => [0, 60]],
-            'latlng' => ['data' => [[-6.2, 106.8]]],
         ]),
         'api.open-meteo.com/*' => Http::response([], 500),
     ]);
@@ -532,12 +532,12 @@ it('does NOT fail ingest when the weather lookup throws (best-effort)', function
     Http::fake([
         'strava.com/api/v3/activities/999' => Http::response([
             'name' => 'Run', 'start_date_local' => '2026-05-10 06:00:00',
+            'start_latlng' => [-6.2253, 106.8090],
             'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
             'splits_metric' => [],
         ]),
         'strava.com/api/v3/activities/999/streams*' => Http::response([
             'time' => ['data' => [0, 60]],
-            'latlng' => ['data' => [[-6.2, 106.8]]],
         ]),
     ]);
 

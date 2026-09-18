@@ -17,7 +17,7 @@ This is the engine behind the dashboard's training-load read-out and the [[run-h
 
 ## TRIMP: the unit of training stress
 
-Everything is built on **Edwards TRIMP** — a single number for how hard one run was. The [[run-ingest-pipeline]] buckets a run's heart rate into HR zones (see [[stream-analysis]]) and hands the minutes-per-zone to [edwardsTrimp](app/Services/Run/Metrics/TrainingLoad.php#L32), which weights each zone by its intensity (the higher the zone, the heavier the weight; see [zoneWeight](app/Services/Run/Metrics/TrainingLoad.php#L347)) and sums them. The result is written onto the activity at [ActivityPipeline](app/Services/Run/Ingest/ActivityPipeline.php#L258) as `trimp_edwards`, so each run carries its own stress score.
+Everything is built on **Edwards TRIMP** — a single number for how hard one run was. The [[run-ingest-pipeline]] buckets a run's heart rate into HR zones (see [[stream-analysis]]) and hands the minutes-per-zone to [edwardsTrimp](app/Services/Run/Metrics/TrainingLoad.php#L32), which weights each zone by its intensity (the higher the zone, the heavier the weight; see [zoneWeight](app/Services/Run/Metrics/TrainingLoad.php#L347)) and sums them. The result is written onto the activity at [ActivityPipeline](app/Services/Run/Ingest/ActivityPipeline.php#L479) as `trimp_edwards`, so each run carries its own stress score.
 
 Because the weights and the zone math depend on the runner's HR zones, recomputing with new zones (see [[settings-hr-zones]]) re-derives TRIMP without re-fetching from Strava — that's what [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L495) does.
 

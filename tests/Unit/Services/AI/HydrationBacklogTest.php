@@ -70,3 +70,21 @@ it('tells whether a run dated inside a range still awaits hydration', function (
         ->and($backlog->awaitsHydrationBefore($user->id, Carbon::parse('2026-04-01'), Carbon::parse('2026-03-15')))->toBeFalse()
         ->and($backlog->awaitsHydrationBefore($user->id, null))->toBeFalse();
 });
+
+it('reports whether a run inside the trailing CTL window still awaits hydration', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::parse('2026-09-15');
+    $recent = Activity::factory()->for($user)->create(['ingest_state' => IngestState::Summary]);
+    ActivityDetail::factory()->for($recent)->create(['start_date_local' => $today->copy()->subDays(41)->setTime(7, 0)]);
+
+    expect(app(HydrationBacklog::class)->recentLoadAwaitsScoring($user->id, $today))->toBeTrue();
+});
+
+it('ignores an unscored run outside the trailing CTL window', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::parse('2026-09-15');
+    $old = Activity::factory()->for($user)->create(['ingest_state' => IngestState::Summary]);
+    ActivityDetail::factory()->for($old)->create(['start_date_local' => $today->copy()->subDays(42)->setTime(7, 0)]);
+
+    expect(app(HydrationBacklog::class)->recentLoadAwaitsScoring($user->id, $today))->toBeFalse();
+});
