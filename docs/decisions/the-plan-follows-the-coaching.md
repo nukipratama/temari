@@ -11,6 +11,8 @@ code_refs:
   - app/Services/Run/Plan/Periodizer.php
 ---
 
+> **Partly superseded (2026-09-18) by [[a-race-block-never-prescribes-below-habit]].** A scheduled recovery week that would land on the ramp's last week now moves one week earlier, so a Build week always precedes Peak. The rest of this decision stands.
+
 # The plan follows the coaching, not just the arithmetic
 
 **Status:** Accepted (2026-09-07)

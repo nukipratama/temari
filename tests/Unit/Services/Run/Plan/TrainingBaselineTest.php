@@ -16,6 +16,8 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\TrainingBaseline;
+use App\Services\Run\Plan\WeekPlanBuilder;
+use App\Services\Run\Plan\SeasonSummaryBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use App\Actions\Run\Plan\ResolveSeasonAction;
@@ -49,6 +51,7 @@ function baselineWithEasyPace(?int $easySecPerKm): TrainingBaseline
         new ResolveTrainingPreferenceAction(),
         new ResolveTrailingWeeksAction(),
         new ResolveSeasonAction(),
+        new WeekPlanBuilder(),
     );
 }
 
@@ -155,7 +158,7 @@ it('caps the long run by race distance, the ratio inverting as the race lengthen
     'marathon' => [42_195, 35.0],
 ]);
 
-it('floors the long run so the arc reaches the race distance at its own peak', function (): void {
+it('floors the long run so the arc reaches its readiness distance at its own peak', function (): void {
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 26.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2026-10-03']);
@@ -166,10 +169,10 @@ it('floors the long run so the arc reaches the race distance at its own peak', f
     ]);
 
     // The share alone gives 26.0 x 0.35 = 9.1 km, and this eight-week arc
-    // only ever ramps to 1.075 — not enough to carry 9.1 km to the race
-    // distance. The floor lifts the baseline to 9.4, which the ramp then
-    // takes past 10 km, rather than handing over 10 km in week one.
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.4);
+    // only ever ramps to 1.075. A 10K's readiness long run is 12 km, under
+    // this athlete's 13 km half-the-week cap, so the floor lifts the baseline
+    // to 12 / 1.075 = 11.2 and the ramp carries it to 12 at the peak.
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(11.2);
 });
 
 it('sizes the race floor off the block ramp alone, not the general weeks before it', function (): void {
@@ -187,7 +190,7 @@ it('sizes the race floor off the block ramp alone, not the general weeks before 
     expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(15.8);
 });
 
-it('leaves a marathon goal to its own coaching rather than flooring at race distance', function (): void {
+it('floors a marathon at its readiness distance rather than the race distance, within half the week', function (): void {
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 26.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => 42_195, 'race_date' => '2026-10-03']);
@@ -197,7 +200,8 @@ it('leaves a marathon goal to its own coaching rather than flooring at race dist
         'ends_at' => '2026-10-03',
     ]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.1);
+    // 30 km readiness, bounded by the 13 km half-the-week cap, never 42 km.
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(13.0);
 });
 
 it('never lets the floor take more than half the week', function (): void {
@@ -400,4 +404,90 @@ it('reports self_scaled true with no active race and false with one', function (
 
     expect($this->baseline->forUser($withoutRace, Carbon::today())['self_scaled'])->toBeTrue()
         ->and($this->baseline->forUser($withRace, Carbon::today())['self_scaled'])->toBeFalse();
+});
+
+function blockMeanKm(User $user, Season $season): float
+{
+    $block = array_filter(
+        app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season->fresh()),
+        fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK,
+    );
+
+    return array_sum(array_column($block, 'planned_km')) / count($block);
+}
+
+function flooredRaceSeason(User $user, float $anchorKm, ?float $floorKm, string $raceDate = '2026-11-01'): Season
+{
+    weeksOf($user, array_fill(0, 6, $anchorKm));
+    $race = RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => $raceDate]);
+
+    return Season::factory()->for($user)->create([
+        'race_goal_id' => $race->id,
+        'anchor_weekly_volume_km' => $anchorKm,
+        'volume_floor_km' => $floorKm,
+        'starts_at' => '2026-08-10',
+        'ends_at' => $raceDate,
+    ]);
+}
+
+/**
+ * The audit case: a 24.4 km anchor under a 25.91 km twelve-week mean planned
+ * a block averaging 22.05 km.
+ */
+it('lifts the long run until the race block averages the season\'s volume floor', function (): void {
+    $user = User::factory()->create();
+    $season = flooredRaceSeason($user, 20.0, 27.0);
+
+    $mean = blockMeanKm($user, $season);
+
+    expect($mean)->toBeGreaterThanOrEqual(27.0)
+        ->and($mean)->toBeLessThan(27.5);
+});
+
+it('leaves the long run to the share and the readiness distance when the season has no floor', function (): void {
+    $user = User::factory()->create();
+    flooredRaceSeason($user, 20.0, null);
+
+    // Half of a 20 km week caps the 12 km readiness long run at 10, and the
+    // twelve-week block peaks at 1.075^2: 10 / 1.155625 rounds up to 8.7.
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(8.7);
+});
+
+it('sizes half the week off the floor when the floor asks for the bigger week', function (): void {
+    $user = User::factory()->create();
+    flooredRaceSeason($user, 20.0, 27.0);
+
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_cap_km'])->toBe(13.5);
+});
+
+it('averages the last twelve logged weeks, plainly, for the floor', function (): void {
+    $user = User::factory()->create();
+    weeksOf($user, [...array_fill(0, 11, 20.0), 44.0, 90.0]);
+
+    expect($this->baseline->recentWeeklyMeanKm($user, Carbon::today()))->toBe(22.0)
+        ->and($this->baseline->recentWeeklyMeanKm(User::factory()->create(), Carbon::today()))->toBeNull();
+});
+
+it('matches each training week to the floor, never above it, while its increases are held', function (): void {
+    $held = User::factory()->create();
+    flooredRaceSeason($held, 20.0, 27.0)->update(['increases_held' => true]);
+    $released = User::factory()->create();
+    flooredRaceSeason($released, 20.0, 27.0);
+
+    $weeks = app(SeasonSummaryBuilder::class)->plannedWeeks($held, Season::query()->where('user_id', $held->id)->firstOrFail());
+    $trainingWeeksKm = array_column(array_filter($weeks, fn (array $week): bool => ! in_array($week['phase'], [PlanPhase::Deload, PlanPhase::Taper], true)), 'planned_km');
+
+    // Base and Build weeks mix their sessions differently, so they straddle the mean by about 1%.
+    expect(array_sum($trainingWeeksKm) / count($trainingWeeksKm))->toBeGreaterThanOrEqual(26.8)
+        ->and(max(array_column($weeks, 'planned_km')))->toBeLessThanOrEqual(27.0 * 1.02)
+        ->and($this->baseline->forUser($held, Carbon::today())['long_run_km'])
+        ->toBeLessThan($this->baseline->forUser($released, Carbon::today())['long_run_km']);
+});
+
+it('drops the readiness climb while a floorless block\'s increases are held', function (): void {
+    $user = User::factory()->create();
+    flooredRaceSeason($user, 20.0, null)->update(['increases_held' => true]);
+
+    // 20 x 0.35 = 7.0 km, with neither the 12 km readiness target nor the 10 km race distance lifting it.
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(7.0);
 });
