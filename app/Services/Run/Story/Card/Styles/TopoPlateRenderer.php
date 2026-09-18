@@ -346,8 +346,10 @@ final readonly class TopoPlateRenderer implements CardStyleRenderer
         if ($facts->elevation !== null) {
             $second[] = ['ELEV', $facts->elevation.' M'];
         }
-        $svg .= $this->titleRow($x, $y, $width, $second, big: false);
-        $y += $story ? 96 : 90;
+        $secondRow = $this->titleRow($x, $y, $width, $second, big: false);
+        $svg .= $secondRow;
+        // A row that drew nothing leaves no gap behind it: what follows moves up.
+        $y += $secondRow === '' ? 0 : ($story ? 96 : 90);
 
         if (! $story) {
             return $svg;
@@ -399,6 +401,11 @@ final readonly class TopoPlateRenderer implements CardStyleRenderer
      */
     private function titleRow(float $x, float $y, float $width, array $items, bool $big): string
     {
+        $items = Svg::filledCells($items);
+        if ($items === []) {
+            return '';
+        }
+
         $svg = Svg::line($x, $y, $x + $width, $y, Svg::INK, width: 2);
         $cellWidth = $width / count($items);
 

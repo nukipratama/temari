@@ -98,6 +98,32 @@ it('draws every style at every form and aspect as a well-formed SVG of the right
     }
 });
 
+it('never captions a block it has no content for', function (): void {
+    // Everything optional withheld at once: nothing a style draws may end up as
+    // an empty text node, which is what a labelled void looks like in the SVG.
+    $options = new CardOptions(heartRate: false, elevation: false, weather: false, badges: false);
+    $withheld = [
+        'start_date_local' => null,
+        'average_heartrate' => null,
+        'total_elevation_gain' => null,
+        'weather_temp_c' => null,
+        'location_name' => null,
+        'stream_summary' => null,
+    ];
+
+    foreach (runFormFixtures() as [$detailAttrs, $cardAttrs]) {
+        $card = makeRunCard([...$detailAttrs, ...$withheld], $cardAttrs);
+
+        foreach (CardStyle::cases() as $style) {
+            foreach (CardAspect::cases() as $aspect) {
+                $svg = renderer()->buildSvg($card, $style, $aspect, $options);
+
+                expect($svg)->not->toMatch('/<text[^>]*>\s*<\/text>/');
+            }
+        }
+    }
+});
+
 it('carries distance, time, pace, date, place and the wordmark on every style', function (): void {
     $card = makeRunCard();
 

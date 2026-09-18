@@ -151,7 +151,11 @@ final readonly class TicketRenderer implements CardStyleRenderer
             return $svg.$this->window($facts, $bx, $cy, $bw, $perfY - $cy - 46, $rarity);
         }
 
-        return $svg.$this->chipSplits($facts, $bx, $cy, $bw, $perfY - $cy - 30);
+        // No splits, no panel: the window is the block that always has
+        // something to draw, even if that something is the cancelled hatch.
+        return $svg.($facts->splits === []
+            ? $this->window($facts, $bx, $cy, $bw, $perfY - $cy - 30, $rarity)
+            : $this->chipSplits($facts, $bx, $cy, $bw, $perfY - $cy - 30));
     }
 
     private function storyBody(CardFacts $facts, float $bx, float $bw, float $cy, float $perfY, string $rarity): string
@@ -328,6 +332,11 @@ final readonly class TicketRenderer implements CardStyleRenderer
      */
     private function cells(float $x, float $y, float $width, float $height, array $items): string
     {
+        $items = Svg::filledCells($items);
+        if ($items === []) {
+            return '';
+        }
+
         $svg = Svg::rect($x, $y, $width, $height, stroke: Svg::LINE, strokeWidth: 2);
         $cellWidth = $width / count($items);
 
@@ -347,9 +356,6 @@ final readonly class TicketRenderer implements CardStyleRenderer
     {
         $svg = Svg::rect($x, $y, $width, $height, fill: Svg::SURFACE_ELEV, stroke: Svg::LINE, strokeWidth: 2);
         $svg .= Svg::text('CHIP SPLITS', $x + 20, $y + 36, 20, Svg::INK_3, tracking: 4);
-        if ($facts->splits === []) {
-            return $svg;
-        }
 
         $cellWidth = ($width - 40) / count($facts->splits);
         foreach ($facts->splits as $i => [$label, $value]) {

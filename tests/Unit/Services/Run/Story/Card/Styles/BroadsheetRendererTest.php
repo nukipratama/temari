@@ -112,6 +112,18 @@ it('prints a race\'s splits as a right-anchored column', function (): void {
         ->toContain('4K  11:02');
 });
 
+it('drops a stat cell it cannot fill rather than ruling an empty one', function (): void {
+    $svg = broadsheet()->render(
+        cardFacts(heartRate: null, elevation: null, clock: ''),
+        CardAspect::Story,
+    );
+
+    expect($svg)->toContain('>TIME<')
+        ->toContain('>PACE<')
+        ->not->toContain('>START<')
+        ->not->toContain('>AVG HR<');
+});
+
 it('draws the feed card at the square size', function (): void {
     expect(broadsheet()->render(cardFacts(), CardAspect::Feed))
         ->toContain('width="1080" height="1080" viewBox="0 0 1080 1080"');

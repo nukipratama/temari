@@ -99,6 +99,13 @@ final class Svg
         ?float $opacity = null,
         ?string $transform = null,
     ): string {
+        // A label with nothing to say draws nothing. Guarding here rather than
+        // at each of the three styles' call sites means no block can ship a
+        // caption over an empty value.
+        if (trim($value) === '') {
+            return '';
+        }
+
         return self::tag('text', [
             'x' => self::num($x),
             'y' => self::num($y),
@@ -356,6 +363,18 @@ final class Svg
         }
 
         return $joined;
+    }
+
+    /**
+     * A label/value list with the empty-valued entries dropped, so a ruled row
+     * never divides its width by a cell it cannot fill.
+     *
+     * @param  list<array{0: string, 1: string}>  $cells
+     * @return list<array{0: string, 1: string}>
+     */
+    public static function filledCells(array $cells): array
+    {
+        return array_values(array_filter($cells, fn (array $cell): bool => trim($cell[1]) !== ''));
     }
 
     /** Hard character budget for a variable-length label, with no ellipsis tail. */

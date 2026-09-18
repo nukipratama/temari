@@ -307,6 +307,11 @@ final readonly class BroadsheetRenderer implements CardStyleRenderer
             $cells[0] = ['DISTANCE', $facts->km.' km'];
         }
 
+        $cells = Svg::filledCells($cells);
+        if ($cells === []) {
+            return '';
+        }
+
         $top = $bottom - ($story ? 190 : 176);
         $svg = Svg::line($margin, $top, $width - $margin, $top, Svg::CREAM, width: 2, opacity: 0.22);
         $cellWidth = ($width - 2 * $margin) / count($cells);

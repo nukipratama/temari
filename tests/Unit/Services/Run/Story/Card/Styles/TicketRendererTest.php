@@ -110,6 +110,27 @@ it('sits the ticket inside the story safe zone and fills the square feed card', 
         ->toContain('width="1080" height="1080" viewBox="0 0 1080 1080"');
 });
 
+it('reflows the race feed to the route window when there are no chip splits', function (): void {
+    $svg = ticket()->render(cardFacts(form: RunForm::Race), CardAspect::Feed);
+
+    expect($svg)->not->toContain('CHIP SPLITS')
+        ->toContain('>ROUTE<');
+});
+
+it('drops a stat cell it cannot fill rather than ruling an empty one', function (): void {
+    // No heart rate, no elevation and no start clock leaves the flex cell with
+    // nothing: the row rules two cells, not a labelled void.
+    $svg = ticket()->render(
+        cardFacts(heartRate: null, elevation: null, clock: ''),
+        CardAspect::Story,
+    );
+
+    expect($svg)->toContain('>TIME<')
+        ->toContain('>PACE<')
+        ->not->toContain('>START<')
+        ->not->toContain('>AVG HR<');
+});
+
 it('boxes a badge chip from the mono advance', function (): void {
     // "HEAT TAMER" at 22px with 2 tracking: 10 * (13.2 + 2) + 46.
     expect(ticket()->render(cardFacts(badges: ['Heat Tamer']), CardAspect::Story))

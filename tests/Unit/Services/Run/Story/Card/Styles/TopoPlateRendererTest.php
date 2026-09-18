@@ -116,6 +116,30 @@ it('keeps the legend from colliding: whole badges only, never half a name', func
         ->not->toContain('NEGATIVE SPL<');
 });
 
+it('rules no metadata row at all when every cell in it is empty', function (): void {
+    // Route-less too, so the field's own START node cannot supply that label.
+    $svg = topoPlate()->render(
+        cardFacts(polyline: null, heartRate: null, elevation: null, dateShort: '', clock: ''),
+        CardAspect::Story,
+    );
+
+    expect($svg)->not->toContain('>DATE<')
+        ->not->toContain('>START<')
+        ->not->toContain('AVG HR')
+        ->not->toContain('>ELEV<')
+        // The big row above it still rules, and the route placeholder is a
+        // deliberate block rather than an empty one.
+        ->toContain('>DISTANCE<')
+        ->toContain('UNSURVEYED');
+});
+
+it('leaves no caption behind a legend line it has no value for', function (): void {
+    $svg = topoPlate()->render(cardFacts(weather: null, badges: []), CardAspect::Story);
+
+    expect($svg)->not->toContain('<text></text>')
+        ->toContain('>temari<');
+});
+
 it('sits the plate inside the story safe zone and fills the square feed card', function (): void {
     expect(topoPlate()->render(cardFacts(), CardAspect::Story))
         ->toContain('y="270" width="972" height="1378"')
