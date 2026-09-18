@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Support\Config;
 
 use Illuminate\Contracts\Foundation\MaintenanceMode;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
+use PDOException;
 
 /**
  * Laravel maintenance driver backed by the durable `app_config` flag, so the
@@ -33,7 +36,20 @@ class AppConfigMaintenanceMode implements MaintenanceMode
         $config = $this->config();
         $config->forget(AppConfigKey::MaintenanceEnabled);
 
-        return $config->boolean(AppConfigKey::MaintenanceEnabled);
+        try {
+            return $config->boolean(AppConfigKey::MaintenanceEnabled);
+        } catch (QueryException|PDOException $e) {
+            // A missing table or an unreachable DB can't mean the flag was
+            // switched on, and everything that needs the DB fails on its own
+            // anyway — so treat maintenance as off rather than lock everyone
+            // (including the endpoints meant to survive an outage) out. Memoise
+            // it so a later direct read this request (SharedProps) doesn't repeat
+            // the doomed query.
+            Log::warning('maintenance.flag_unreadable', ['reason' => $e->getMessage()]);
+            $config->remember(AppConfigKey::MaintenanceEnabled, false);
+
+            return false;
+        }
     }
 
     /**

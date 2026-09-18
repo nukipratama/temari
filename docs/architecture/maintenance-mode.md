@@ -31,11 +31,9 @@ Laravel's maintenance driver is [AppConfigMaintenanceMode](app/Support/Config/Ap
 
 ## Who gets in
 
-Laravel's global `PreventRequestsDuringMaintenance` is removed ([bootstrap/app.php](bootstrap/app.php#L45)). It runs before the session starts, so it would 503 the admin on the Pulse page that switches maintenance off. [EnforceMaintenanceMode](app/Http/Middleware/EnforceMaintenanceMode.php) runs inside `web` instead and lets through:
+Laravel's global `PreventRequestsDuringMaintenance` is removed ([bootstrap/app.php](bootstrap/app.php#L45)). It runs before the session starts, so it would 503 the admin on the Pulse page that switches maintenance off. [EnforceMaintenanceMode](app/Http/Middleware/EnforceMaintenanceMode.php) runs inside `web` instead and checks the [named routes](app/Http/Middleware/EnforceMaintenanceMode.php#L33) for sign-in, the Strava and Telegram webhooks (which only enqueue) and the client-error sink, plus every [devtools-gated route](app/Http/Middleware/EnforceMaintenanceMode.php#L71) (Pulse, Horizon, the Livewire update endpoint, `/devtools`, which keeps its own password gate) **before** it reads the flag — an exempt request returns early with zero queries, so these endpoints stay reachable even when the `app_config` table or the DB itself is the thing that's down. A signed-in `is_admin` user gets through everything else too.
 
-- a signed-in `is_admin` user, for everything;
-- the [named routes](app/Http/Middleware/EnforceMaintenanceMode.php#L31) for sign-in and the Strava and Telegram webhooks, which only enqueue;
-- every [devtools-gated route](app/Http/Middleware/EnforceMaintenanceMode.php#L67) (Pulse, Horizon, the Livewire update endpoint, `/devtools`), which keeps its own password gate.
+If reading the flag itself throws (`QueryException`/`PDOException` — a missing table, an unreachable DB), [AppConfigMaintenanceMode::active()](app/Support/Config/AppConfigMaintenanceMode.php#L29) treats maintenance as off and logs a `maintenance.flag_unreadable` warning rather than 503ing the whole app: a missing table or a down DB can't mean the owner switched maintenance on, and everything that needs the DB fails on its own anyway. This is the one place the flag is read, so web, queue workers and the scheduler all fail open the same way.
 
 `/up` sits outside `web`, and Caddy serves the PWA assets from disk, so the deploy smoke test and healthcheck keep passing. Everyone else gets [the maintenance page](resources/views/maintenance.blade.php) with a 503 and `Retry-After`. An open Inertia app gets a hard reload, so it lands on the page too.
 

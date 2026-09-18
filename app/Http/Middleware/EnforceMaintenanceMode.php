@@ -23,8 +23,10 @@ class EnforceMaintenanceMode
     public const int RETRY_AFTER_SECONDS = 300;
 
     /**
-     * Admin sign-in (the Strava callback refuses new athletes itself) and the
-     * webhooks, which only enqueue work that drains once maintenance lifts.
+     * Admin sign-in (the Strava callback refuses new athletes itself), the
+     * webhooks (which only enqueue work that drains once maintenance lifts),
+     * and the client-error sink (a browser crash report must always land) —
+     * checked before the flag is read, so these never touch the DB.
      *
      * @var list<string>
      */
@@ -35,14 +37,16 @@ class EnforceMaintenanceMode
         'strava.webhook.verify',
         'strava.webhook.handle',
         'telegram.webhook.handle',
+        'client-errors',
     ];
 
     public function handle(Request $request, Closure $next): Response
     {
-        if (! app()->isDownForMaintenance()
-            || $request->user()?->is_admin === true
-            || $request->routeIs(...self::REACHABLE_ROUTES)
-            || self::isDevtoolsRoute($request)) {
+        if ($request->routeIs(...self::REACHABLE_ROUTES) || self::isDevtoolsRoute($request)) {
+            return $next($request);
+        }
+
+        if (! app()->isDownForMaintenance() || $request->user()?->is_admin === true) {
             return $next($request);
         }
 

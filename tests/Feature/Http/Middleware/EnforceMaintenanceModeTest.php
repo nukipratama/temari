@@ -8,8 +8,11 @@ use App\Models\User;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia as Assert;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -159,4 +162,68 @@ it('does nothing while maintenance is off', function (): void {
     $this->actingAs(User::factory()->create())
         ->get(route('history'))
         ->assertOk();
+});
+
+it('makes zero database queries reaching the Telegram webhook while maintenance is on', function (): void {
+    Bus::fake();
+    config(['services.telegram.webhook_secret' => 'top-secret']);
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $this->postJson(route('telegram.webhook.handle'), ['update_id' => 1], ['X-Telegram-Bot-Api-Secret-Token' => 'top-secret'])
+        ->assertOk();
+
+    expect($queries)->toBe(0);
+});
+
+it('makes zero database queries reaching the Telegram webhook while maintenance is off', function (): void {
+    app()->maintenanceMode()->deactivate();
+    Bus::fake();
+    config(['services.telegram.webhook_secret' => 'top-secret']);
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $this->postJson(route('telegram.webhook.handle'), ['update_id' => 1], ['X-Telegram-Bot-Api-Secret-Token' => 'top-secret'])
+        ->assertOk();
+
+    expect($queries)->toBe(0);
+});
+
+it('makes zero database queries reaching the client-error sink while maintenance is on', function (): void {
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $this->postJson(route('client-errors'), ['message' => 'boom'])->assertNoContent();
+
+    expect($queries)->toBe(0);
+});
+
+it('makes zero database queries reaching the client-error sink while maintenance is off', function (): void {
+    app()->maintenanceMode()->deactivate();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $this->postJson(route('client-errors'), ['message' => 'boom'])->assertNoContent();
+
+    expect($queries)->toBe(0);
+});
+
+it('serves the request and logs a warning when the app_config table is missing', function (): void {
+    Log::spy();
+    Schema::drop('app_config');
+
+    $this->get('/')->assertSuccessful();
+
+    Log::shouldHaveReceived('warning')->once()->with('maintenance.flag_unreadable', Mockery::type('array'));
 });
