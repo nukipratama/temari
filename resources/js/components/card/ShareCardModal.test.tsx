@@ -110,14 +110,14 @@ describe('ShareCardModal', () => {
         await openModal();
 
         expect(
-            screen.getByText('shaded bands = what instagram covers'),
+            screen.getByText('shaded bands = what story apps cover'),
         ).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /feed/ }));
 
         await waitFor(() =>
             expect(
-                screen.queryByText('shaded bands = what instagram covers'),
+                screen.queryByText('shaded bands = what story apps cover'),
             ).not.toBeInTheDocument(),
         );
     });
