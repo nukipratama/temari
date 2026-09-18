@@ -28,7 +28,8 @@ it('aggregates run count, total km and the first-run timestamp', function (): vo
     expect($stats['total_runs'])->toBe(2)
         ->and($stats['total_km'])->toBe(13.0)
         ->and($stats['longest_km'])->toBe(8.0)
-        ->and($stats['first_run_at'])->not->toBeNull();
+        ->and($stats['first_run_at'])->not->toBeNull()
+        ->and($stats['has_activity'])->toBeTrue();
 });
 
 it('counts only analyzed runs belonging to the user', function (): void {
@@ -45,7 +46,16 @@ it('counts only analyzed runs belonging to the user', function (): void {
 
     expect($stats['total_runs'])->toBe(0)
         ->and($stats['total_km'])->toBe(0.0)
-        ->and($stats['first_run_at'])->toBeNull();
+        ->and($stats['first_run_at'])->toBeNull()
+        ->and($stats['has_activity'])->toBeFalse();
+});
+
+it('reports has_activity as false for a brand-new athlete with no analyzed runs at all', function (): void {
+    $user = User::factory()->create();
+
+    $stats = new LifetimeStats()->forUser($user);
+
+    expect($stats['has_activity'])->toBeFalse();
 });
 
 it('caches the aggregate under a per-user key', function (): void {

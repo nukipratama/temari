@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\Activity;
+use App\Models\Analytics\StravaSyncLog;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\Run\Ingest\SyncOrchestrator;
@@ -14,6 +15,7 @@ use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -162,4 +164,31 @@ it('retries with backoff so a transient Strava blip does not lose the sync', fun
 
     expect($job->tries)->toBe(3)
         ->and($job->backoff)->toBe([30, 120]);
+});
+
+it('logs and closes the sync log with a terminal status once $tries is exhausted', function (): void {
+    Log::spy();
+    $user = User::factory()->create();
+
+    new SyncActivitiesJob($user->id)->failed(new RuntimeException('boom'));
+
+    Log::shouldHaveReceived('warning')->once()->withArgs(
+        fn (string $message, array $context): bool => $message === 'strava.sync.failed'
+            && $context['user_id'] === $user->id
+            && $context['reason'] === 'boom',
+    );
+
+    $log = StravaSyncLog::query()->where('user_id', $user->id)->latest('id')->first();
+
+    expect($log->status)->toBe('failed')
+        ->and($log->error_message)->toBe('boom');
+});
+
+it('records the failure against the given user even when nothing was ever resolved', function (): void {
+    Log::spy();
+
+    new SyncActivitiesJob(999_999)->failed(new RuntimeException('database hiccup'));
+
+    expect(StravaSyncLog::query()->where('user_id', 999_999)->where('status', 'failed')->exists())
+        ->toBeTrue();
 });

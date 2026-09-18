@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Activity;
+use App\Models\Analytics\StravaSyncLog;
 use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
 use App\Models\User;
@@ -59,7 +60,31 @@ it('reports the sync state the UI branches on', function (Closure $arrange, stri
         },
         'ready',
     ],
+    'connected, last sync attempt exhausted its retries' => [
+        function (User $user): void {
+            StravaConnection::factory()->for($user)->create();
+            StravaSyncLog::log($user->id, 'failed', error: 'boom');
+        },
+        'failed',
+    ],
 ]);
+
+it('keeps syncing rather than failed on a routine error from a typed, self-recovering exception', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    StravaSyncLog::log($user->id, 'error', error: 'rate limited');
+
+    expect((stravaPropsFor($user)['stravaSync'])()['state'])->toBe('syncing');
+});
+
+it('stays ready once a run has landed, even if a later sync attempt failed', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    Activity::factory()->for($user)->create();
+    StravaSyncLog::log($user->id, 'failed', error: 'boom');
+
+    expect((stravaPropsFor($user)['stravaSync'])()['state'])->toBe('ready');
+});
 
 it('exposes the most recent Strava pull as last_synced_at', function (): void {
     $user = User::factory()->create();

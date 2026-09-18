@@ -87,4 +87,15 @@ describe('StravaSyncButton', () => {
         const { container } = render(<StravaSyncButton state="syncing" />);
         expect(container).toBeEmptyDOMElement();
     });
+
+    it('posts to /strava/sync as a retry when the last sync failed', () => {
+        vi.mocked(router.post).mockReset();
+        render(<StravaSyncButton state="failed" />);
+        fireEvent.click(screen.getByText('sync now'));
+        expect(router.post).toHaveBeenCalledWith(
+            '/strava/sync',
+            {},
+            expect.objectContaining({ preserveScroll: true }),
+        );
+    });
 });

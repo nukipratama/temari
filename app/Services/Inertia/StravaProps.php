@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Inertia;
 
 use App\Models\Activity;
+use App\Models\Analytics\StravaSyncLog;
 use App\Models\User;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -122,6 +123,8 @@ final readonly class StravaProps
      * "connected" from this, so it is not shipped separately):
      *  - `disconnected`: no Strava connection at all.
      *  - `revoked`: connection exists but was revoked (token rejected / deauthorized).
+     *  - `failed`: connected, nothing ingested yet, and the last sync attempt
+     *    exhausted its retries (SyncActivitiesJob::failed()).
      *  - `syncing`: connected, but no analyzed run has landed yet (backfill in flight).
      *  - `ready`: at least one analyzed run is on the dashboard.
      *
@@ -154,9 +157,28 @@ final readonly class StravaProps
             ->where('user_id', $user->id)
             ->exists();
 
+        if (! $hasAnalyzed && $this->lastSyncPermanentlyFailed($user->id)) {
+            return ['state' => 'failed', 'last_synced_at' => $latest?->toIso8601String()];
+        }
+
         return [
             'state' => $hasAnalyzed ? 'ready' : 'syncing',
             'last_synced_at' => $latest?->toIso8601String(),
         ];
+    }
+
+    /**
+     * True only once a sync attempt has given up for good. The routine 'error'
+     * rows logged for the five typed, self-recovering Strava exceptions (rate
+     * limit, circuit breaker, token hiccups) must not trip this — they keep the
+     * athlete in `syncing` since a later attempt (release/backoff or the hourly
+     * poll) still resolves them.
+     */
+    private function lastSyncPermanentlyFailed(int $userId): bool
+    {
+        return StravaSyncLog::query()
+            ->where('user_id', $userId)
+            ->orderByDesc('id')
+            ->value('status') === 'failed';
     }
 }

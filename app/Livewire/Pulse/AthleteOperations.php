@@ -56,7 +56,7 @@ class AthleteOperations extends Card
         });
 
         $failing = $rows->contains(
-            fn (array $row): bool => in_array($row['syncStatus'], ['error', 'revoked'], true)
+            fn (array $row): bool => in_array($row['syncStatus'], ['error', 'failed', 'revoked'], true)
                 || collect($row['channels'])->contains('status', 'failed'),
         );
 

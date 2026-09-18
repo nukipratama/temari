@@ -16,9 +16,10 @@ interface StravaSyncButtonProps {
 
 /**
  * The state-driven Strava call to action shared by the empty states: a connect
- * link when disconnected/revoked, a "Sync now" button when ready, and nothing
- * while a sync is already in flight. The OAuth redirect is a plain `<a>` (full
- * navigation to an external 302), not an Inertia visit.
+ * link when disconnected/revoked, a "Sync now" button when ready or a previous
+ * attempt failed, and nothing while a sync is already in flight. The OAuth
+ * redirect is a plain `<a>` (full navigation to an external 302), not an
+ * Inertia visit.
  *
  * The "Sync now" branch is wrapped in {@link StravaAction}; the connect link is
  * not, since OAuth still completes while the kill-switch is off.
@@ -44,7 +45,7 @@ export default function StravaSyncButton({
         );
     }
 
-    if (state === 'ready') {
+    if (state === 'ready' || state === 'failed') {
         return (
             <StravaAction>
                 <button
