@@ -55,31 +55,38 @@ threshold, for the same reason.
   run, ties to the older one, so the deltas feeding the verdict are not noise
   from a poorly comparable pairing.
 
-Both paths now hand a caller the same [TrendDirection](app/Enums/TrendDirection.php)
+Both paths hand a caller the same [TrendDirection](app/Enums/TrendDirection.php)
 call rather than a signed number alone:
 [PastYouComparison::directionFor()](app/Services/Run/Story/PastYouComparison.php)
 is the rule shared by `bestMatch()`'s `PastYouComparison::direction()` and by
-`findMatch()`, whose UI-facing payload (`RunController` → `PastYouCard.tsx`)
-carries it as `direction` alongside the plain signed `pace_diff_sec` /
-`time_diff_sec` / `hr_diff_bpm` a React component can render without
-ambiguity.
+`findMatch()`.
 
 [findMatchContext()](app/Services/Run/Story/PastYouMatcher.php) is the
-LLM-facing shape (`get_past_you` / `get_latest_past_you`) and, since #1009
-reopened, carries **no signed field at all**. The first fix (#1016) added
-`direction` here too but left `pace_diff_sec` / `time_diff_sec` / `hr_diff_bpm`
-as bare signed numbers with the convention in prose; a live check found the
-model still inverting a field two times out of four — on a mixed-signal pair
-(pace slower, HR lower) it read the lower HR as the headline, decided the run
-was better, and stated the pace backwards to fit that story, overriding the
-`direction` composite it was handed. A composite verdict on the pair as a
-whole does not stop a model from inverting one field inside it. Every delta
-now travels as its own unsigned magnitude plus its own `relation` word —
-`pace`/`time`: `{seconds_per_km|seconds, relation: faster/slower/same}`;
-`hr`: `{bpm, relation: higher/lower/same}` — banded by the same
-`PACE_SIGNAL_SEC`/`HR_SIGNAL_BPM` constants `directionFor()` already used, so
-there is no sign left for a narrator to interpret, let alone invert.
-`direction` still travels as the overall call.
+unsigned shape built on top of `findMatch()`: every delta travels as its own
+magnitude plus its own `relation` word — `pace`/`time`:
+`{seconds_per_km|seconds, relation: faster/slower/same}`; `hr`: `{bpm,
+relation: higher/lower/same}` — banded by the same
+`PACE_SIGNAL_SEC`/`HR_SIGNAL_BPM` constants `directionFor()` already used.
+`direction` travels alongside as the overall call. It was originally the
+`get_past_you` / `get_latest_past_you` tool payload, added by #1016 (a signed
+`pace_diff_sec`/`time_diff_sec`/`hr_diff_bpm` plus a `direction` composite)
+and reshaped by #1033 (the unsigned-plus-relation shape above) to stop a
+narrator inverting a field's sign — on a mixed-signal pair (pace slower, HR
+lower), a model would read the lower HR as the headline, decide the run was
+better, and state the pace backwards to fit that story, overriding whatever
+composite verdict it was handed. Both re-encodings still let a live check
+catch the same inversion about half the time, because the model states the
+comparison to fit a mood it built from the rest of the context regardless of
+how the delta is shaped. **#1009's decision: no narrator states this
+comparison at all.** `get_past_you` and `get_latest_past_you` are retired (see
+[[llm-triggers]]'s Retired surfaces); `findMatchContext()` survives as a plain
+data source `RunController` reads directly to render the fact line
+[PastYouCard.tsx](resources/js/components/run/PastYouCard.tsx) shows on the
+run-detail page, next to `PostRunSpeechNarrator`'s narration and never inside
+it, built from the same `relation` words rather than a UI-side recompute of
+direction. `PostRunSpeechNarrator` and `BriefingMascotVoiceNarrator`'s prompts
+now forbid stating a comparison to a specific past run, numbers or direction
+words alike.
 
 ## The verdict
 

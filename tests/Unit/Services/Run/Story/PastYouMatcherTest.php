@@ -116,6 +116,22 @@ it('exposes findMatchContext with relation=faster and no signed field on a faste
         ->and($context['direction'])->toBe('better');
 });
 
+// #1009 (decision): findMatchContext() is no longer only an LLM tool payload
+// -- RunController reads it directly to render the run-detail fact line, so
+// it needs to link back to the matched run, not just describe the delta.
+it('exposes past_activity_id and past_name so a caller can link to the matched run', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27];
+    $past = seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, array_merge($temp, ['name' => 'Evening tempo']));
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_140, $temp);
+    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+
+    expect($context)->not->toHaveKey('past_date')
+        ->and($context['past_activity_id'])->toBe($past->activity_id)
+        ->and($context['past_name'])->toBe('Evening tempo');
+});
+
 it('exposes findMatchContext with relation=slower on a slower run', function (): void {
     $user = User::factory()->create();
     $temp = ['weather_temp_c' => 27];

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\Run\Story\MoodMix;
@@ -11,9 +12,12 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
-function moodLine(User $user, string $mood, Carbon $when, bool $withActivity = true): StoryLine
+function moodLine(User $user, string $mood, Carbon $when, bool $withActivity = true, ?Carbon $hydratedAt = null): StoryLine
 {
     $activity = $withActivity ? Activity::factory()->for($user)->analyzed()->create() : null;
+    if ($activity !== null) {
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => $when]);
+    }
 
     $line = StoryLine::query()->create([
         'user_id' => $user->id,
@@ -25,7 +29,7 @@ function moodLine(User $user, string $mood, Carbon $when, bool $withActivity = t
     ]);
 
     // created_at is not fillable, so it has to be set after the insert.
-    $line->created_at = $when;
+    $line->created_at = $hydratedAt ?? $when;
     $line->save();
 
     return $line;
@@ -106,6 +110,35 @@ it('excludes runs before the window starts', function (): void {
     moodLine($user, 'blazing', Carbon::parse('2026-04-30 23:59:59'));
 
     expect(MoodMix::between($user->id, Carbon::parse('2026-05-01 00:00:00')))->toBe([]);
+});
+
+// A first-connect backfill hydrates runs weeks after they were run, so the
+// line's own created_at says nothing about which window the run belongs to.
+it('windows by when the run happened, not when its story line was written', function (): void {
+    $user = User::factory()->create();
+    $may = Carbon::parse('2026-05-01 00:00:00');
+    $june = Carbon::parse('2026-06-01 00:00:00');
+
+    moodLine($user, 'blazing', Carbon::parse('2026-05-20 06:00:00'), hydratedAt: Carbon::parse('2026-06-10 09:00:00'));
+
+    expect(MoodMix::between($user->id, $may, $june))
+        ->toBe([['mood' => 'blazing', 'count' => 1, 'percent' => 100.0]])
+        ->and(MoodMix::between($user->id, $june))->toBe([]);
+});
+
+// start_date_local is a naive local wall-clock value, compared as-is against
+// the caller's bounds -- a run late on the last day of the month must still
+// land in that month's window, not slip into the next.
+it('counts a run late on the last day of the month in that month, not the next', function (): void {
+    $user = User::factory()->create();
+    $may = Carbon::parse('2026-05-01 00:00:00');
+    $june = Carbon::parse('2026-06-01 00:00:00');
+
+    moodLine($user, 'blazing', Carbon::parse('2026-05-31 23:59:59'));
+
+    expect(MoodMix::between($user->id, $may, $june))
+        ->toBe([['mood' => 'blazing', 'count' => 1, 'percent' => 100.0]])
+        ->and(MoodMix::between($user->id, $june))->toBe([]);
 });
 
 // ── merge ────────────────────────────────────────────────────────────

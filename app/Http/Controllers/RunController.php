@@ -104,9 +104,9 @@ class RunController extends Controller
             'speechAnalysis' => fn (): array => $payloadFor(AnalysisType::PostRunSpeech),
             'runInsight' => fn (): array => $payloadFor(AnalysisType::RunInsight),
             'pastYou' => function () use ($matcher, $hydrator, $activity, $detail): ?array {
-                $match = $matcher->findMatch($activity, $detail);
+                $match = $matcher->findMatchContext($activity, $detail);
                 if ($match !== null) {
-                    $hydrator->hydrate($match['past']->activity_id);
+                    $hydrator->hydrate($match['past_activity_id']);
                 }
 
                 return $match;

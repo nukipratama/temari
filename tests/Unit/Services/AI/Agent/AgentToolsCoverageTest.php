@@ -16,9 +16,7 @@ use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
 use App\Services\AI\Agent\Tools\LapsTool;
-use App\Services\AI\Agent\Tools\LatestPastYouTool;
 use App\Services\AI\Agent\Tools\RecentRunsTool;
-use App\Services\AI\Agent\Tools\PastYouTool;
 use App\Services\AI\Agent\Tools\PersonalRecordsTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
@@ -41,7 +39,6 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
-use App\Services\Run\Story\PastYouMatcher;
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -669,88 +666,6 @@ it('formats a sub-4:00 interval pace for a fast runner', function (): void {
         ->and($reading['interval_pace_formatted'])->toBe(PaceFormatter::format((float) $reading['interval_pace_sec']));
 });
 
-// ── PastYouTool ───────────────────────────────────────────────────────
-
-it('reads a comparable past run of the same user with no signed field, faster reading as relation=faster', function (): void {
-    // Current run: 5 km in 1500 s (5:00/km, threshold band).
-    ['activity' => $a, 'detail' => $d] = agentToolFixture();
-    $d->update(['weather_temp_c' => null]); // don't let the random factory temp gate the match
-    // A comparable run 30 days earlier: same distance band + threshold pace, but slower.
-    $past = Activity::factory()->for($a->user)->analyzed()->create();
-    ActivityDetail::factory()->for($past)->create([
-        'start_date_local' => Carbon::today()->subDays(30),
-        'distance' => 5000.0,
-        'moving_time' => 1560, // 5:12/km, slower than the current 5:00/km
-        'elapsed_time' => 1560,
-        'weather_temp_c' => null,
-    ]);
-
-    $reading = new PastYouTool($a, $d->fresh(), app(PastYouMatcher::class))->handle([])['past_you'];
-
-    expect($reading)->not->toBeNull()
-        ->and($reading['days_ago'])->toBe(30)
-        ->and($reading['pace']['seconds_per_km'])->toBeGreaterThan(0.0)
-        ->and($reading['pace']['relation'])->toBe('faster')
-        ->and($reading['time']['relation'])->toBe('faster')
-        ->and($reading['direction'])->toBe('better')
-        ->and($reading['past_km'])->toBe(5.0);
-});
-
-// Regression for #1009 (reopened): a bare signed pace_diff_sec plus a
-// composite `direction` still let the LLM narrator invert the pace on a
-// mixed-signal run (slower pace, lower HR) -- the composite guarded the
-// verdict as a whole, not each field. There is no sign left to invert now.
-it('reads direction=worse and relation=slower when the current run is slower than the matched past run', function (): void {
-    ['activity' => $a, 'detail' => $d] = agentToolFixture();
-    $d->update(['weather_temp_c' => null]); // fixture default: 5 km in 1500 s, 5:00/km
-    $past = Activity::factory()->for($a->user)->analyzed()->create();
-    ActivityDetail::factory()->for($past)->create([
-        'start_date_local' => Carbon::today()->subDays(30),
-        'distance' => 5000.0,
-        'moving_time' => 1440, // 4:48/km, faster than the current 5:00/km
-        'elapsed_time' => 1440,
-        'weather_temp_c' => null,
-    ]);
-
-    $reading = new PastYouTool($a, $d->fresh(), app(PastYouMatcher::class))->handle([])['past_you'];
-
-    expect($reading)->not->toBeNull()
-        ->and($reading['pace']['seconds_per_km'])->toBeGreaterThan(0.0)
-        ->and($reading['pace']['relation'])->toBe('slower')
-        ->and($reading['time']['relation'])->toBe('slower')
-        ->and($reading['direction'])->toBe('worse');
-});
-
-// The exact mixed-signal shape from the #1009 reopening: slower pace paired
-// with lower HR, which is where the model previously overrode the pace
-// reading to match the story it built off HR alone.
-it('reads pace.relation=slower and hr.relation=lower independently on a mixed-signal past you', function (): void {
-    ['activity' => $a, 'detail' => $d] = agentToolFixture();
-    $d->update(['weather_temp_c' => null, 'average_heartrate' => 150.0]); // 5 km in 1500 s, 5:00/km
-    $past = Activity::factory()->for($a->user)->analyzed()->create();
-    ActivityDetail::factory()->for($past)->create([
-        'start_date_local' => Carbon::today()->subDays(30),
-        'distance' => 5000.0,
-        'moving_time' => 1435, // 4:47/km, 13 s/km faster than the current 5:00/km
-        'elapsed_time' => 1435,
-        'weather_temp_c' => null,
-        'average_heartrate' => 166.0, // 16 bpm higher than the current run's 150
-    ]);
-
-    $reading = new PastYouTool($a, $d->fresh(), app(PastYouMatcher::class))->handle([])['past_you'];
-
-    expect($reading)->not->toBeNull()
-        ->and($reading['pace']['relation'])->toBe('slower')
-        ->and($reading['hr']['relation'])->toBe('lower')
-        ->and($reading['direction'])->toBe('worse');
-});
-
-it('reads a null past you rather than reaching for an incomparable run', function (): void {
-    ['activity' => $a, 'detail' => $d] = agentToolFixture();
-
-    expect(new PastYouTool($a, $d, app(PastYouMatcher::class))->handle([])['past_you'])->toBeNull();
-});
-
 // ── PersonalRecordsTool ───────────────────────────────────────────────
 
 it('reads the records this run broke', function (): void {
@@ -865,57 +780,6 @@ it('reads an empty recent-runs list for a runner with no history', function (): 
         ->toBe([]);
 });
 
-// ── LatestPastYouTool ─────────────────────────────────────────────────
-
-it('compares the runner latest run against a similar one of their own', function (): void {
-    ['activity' => $a, 'detail' => $d] = agentToolFixture();
-    $d->update(['weather_temp_c' => null]);
-    $past = Activity::factory()->for($a->user)->analyzed()->create();
-    ActivityDetail::factory()->for($past)->create([
-        'start_date_local' => Carbon::today()->subDays(30),
-        'distance' => 5000.0,
-        'moving_time' => 1560,
-        'elapsed_time' => 1560,
-        'weather_temp_c' => null,
-    ]);
-
-    $reading = new LatestPastYouTool($a->user, Carbon::today(), app(PastYouMatcher::class))->handle([]);
-
-    expect($reading['past_you'])->not->toBeNull()
-        ->and($reading['past_you']['days_ago'])->toBe(30)
-        ->and($reading['past_you']['pace']['relation'])->toBe('faster')
-        ->and($reading['past_you']['direction'])->toBe('better');
-});
-
-// Regression for #1009, this tool's own case: the signed delta alone read
-// backwards on a slower run just as easily as on a faster one.
-it('reads direction=worse and relation=slower when the latest run is slower than the matched past run', function (): void {
-    ['activity' => $a, 'detail' => $d] = agentToolFixture();
-    $d->update(['weather_temp_c' => null]); // fixture default: 5 km in 1500 s, 5:00/km
-    $past = Activity::factory()->for($a->user)->analyzed()->create();
-    ActivityDetail::factory()->for($past)->create([
-        'start_date_local' => Carbon::today()->subDays(30),
-        'distance' => 5000.0,
-        'moving_time' => 1440, // 4:48/km, faster than the current 5:00/km
-        'elapsed_time' => 1440,
-        'weather_temp_c' => null,
-    ]);
-
-    $reading = new LatestPastYouTool($a->user, Carbon::today(), app(PastYouMatcher::class))->handle([]);
-
-    expect($reading['past_you'])->not->toBeNull()
-        ->and($reading['past_you']['pace']['seconds_per_km'])->toBeGreaterThan(0.0)
-        ->and($reading['past_you']['pace']['relation'])->toBe('slower')
-        ->and($reading['past_you']['direction'])->toBe('worse');
-});
-
-it('reads a null past you when the runner has never run', function (): void {
-    $user = User::factory()->create();
-
-    expect(new LatestPastYouTool($user, Carbon::today(), app(PastYouMatcher::class))->handle([])['past_you'])
-        ->toBeNull();
-});
-
 // ── ProgressionSignalTool ────────────────────────────────────────────
 
 it('names the distance the runner has improved most, from one series build', function (): void {
@@ -978,14 +842,12 @@ it('folds the full mood mix from its two halves', function (): void {
     // LOOKBACK_WEEKS is 12, so the halfway mark is 6 weeks back.
     $seed = function (string $mood, Carbon $when) use ($user): void {
         $activity = Activity::factory()->for($user)->analyzed()->create();
-        $line = StoryLine::query()->create([
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => $when]);
+        StoryLine::query()->create([
             'user_id' => $user->id, 'activity_id' => $activity->id,
             'kind' => StoryLine::KIND_POST_RUN, 'mood' => $mood,
             'speech' => null, 'sigil_pattern' => 'dddd',
         ]);
-        // created_at is not fillable, so it has to be set after the insert.
-        $line->created_at = $when;
-        $line->save();
     };
 
     $seed('blazing', $asOf->copy()->subWeeks(2));
@@ -1555,18 +1417,6 @@ it('exposes no signed numeric field across every tool payload touched by the #10
         ],
     ]);
 
-    // The exact mixed-signal shape from the live check that reopened #1009:
-    // pace -13 (slower), HR -16 (lower).
-    $past = Activity::factory()->for($a->user)->analyzed()->create();
-    ActivityDetail::factory()->for($past)->create([
-        'start_date_local' => Carbon::today()->subDays(30),
-        'distance' => 5000.0,
-        'moving_time' => 1435, // 4:47/km, 13 s/km faster than the current 5:00/km
-        'elapsed_time' => 1435,
-        'weather_temp_c' => null,
-        'average_heartrate' => 166.0, // 16 bpm higher than the current run's 150
-    ]);
-
     $snapshot = WeeklySnapshot::factory()->for($a->user)->create([
         'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
         'form' => -8.0,
@@ -1574,8 +1424,6 @@ it('exposes no signed numeric field across every tool payload touched by the #10
     ]);
 
     $payloads = [
-        new PastYouTool($a, $d->fresh(), app(PastYouMatcher::class))->handle([]),
-        new LatestPastYouTool($a->user, Carbon::today(), app(PastYouMatcher::class))->handle([]),
         new HrZonesTool($a, $d->fresh())->handle([]),
         new RunSummaryTool($a, $d->fresh())->handle([]),
         new TerrainTool($a, $d->fresh())->handle([]),

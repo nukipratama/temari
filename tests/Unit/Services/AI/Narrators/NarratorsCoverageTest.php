@@ -55,7 +55,6 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\ProgressionSeriesBuilder;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
-use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -102,7 +101,7 @@ function monthlyRecapNarrator(StructuredChatCaller $caller): MonthlyRecapNarrato
 
 function postRunNarrator(StructuredChatCaller $caller): PostRunSpeechNarrator
 {
-    return new PostRunSpeechNarrator($caller, app(PastYouMatcher::class), app(TrainingLoad::class), app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    return new PostRunSpeechNarrator($caller, app(TrainingLoad::class), app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
 }
 
 function cardFlavorNarrator(StructuredChatCaller $caller): CardFlavorNarrator
@@ -304,7 +303,6 @@ it('PostRunSpeechNarrator is not offered the splits or zones its insights alread
         'get_terrain',
         'get_weather',
         'get_personal_records',
-        'get_past_you',
         'get_week_state',
         'get_planned_sessions',
     ]);
@@ -560,12 +558,23 @@ it('RunInsightNarrator prompt tells the model to fetch its own numbers and not i
         ->and($prompt)->toContain('NEVER make up');
 });
 
-it('BriefingMascotVoiceNarrator reads the day, the last run, the 28d baseline and what was prescribed', function (): void {
+it('BriefingMascotVoiceNarrator reads the day, the 28d baseline and what was prescribed', function (): void {
     $user = User::factory()->create();
     $narrator = app(BriefingMascotVoiceNarrator::class);
 
     expect(array_column($narrator->toolbox($user, Carbon::today())->definitions(), 'name'))
-        ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_latest_past_you', 'get_recent_baseline', 'get_planned_sessions']);
+        ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_recent_baseline', 'get_planned_sessions']);
+});
+
+// Regression for #1009 (decision): the tool that let this narrator see a
+// specific past run's comparison numbers is gone, and the prompt no longer
+// invites stating one -- see the PostRunSpeechNarrator equivalent below for
+// the fuller structural guard.
+it('BriefingMascotVoiceNarrator prompt forbids comparing today or the last run to a specific past run', function (): void {
+    $prompt = narratorPrompt(BriefingMascotVoiceNarrator::class);
+
+    expect($prompt)->toContain('NEVER compare')
+        ->and($prompt)->not->toContain('get_latest_past_you');
 });
 
 it('BriefingMascotVoiceNarrator prompt tells the model to fetch its own numbers and not invent the rest', function (): void {
@@ -1193,10 +1202,10 @@ it('ProfileVoiceNarrator builds a mood-mix percent breakdown from story lines', 
 
     foreach (['blazing', 'blazing', 'blazing', 'chill', 'gassed'] as $mood) {
         $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => $cutoff->copy()->addDay()]);
         StoryLine::factory()->for($user)->create([
             'activity_id' => $activity->id,
             'mood' => $mood,
-            'created_at' => $cutoff->copy()->addDay(),
         ]);
     }
 
@@ -1356,10 +1365,10 @@ it('ProfileVoiceNarrator lets the paragraph quote a mood percentage without a sl
 
     foreach (['blazing', 'blazing', 'blazing', 'chill', 'gassed'] as $mood) {
         $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => $cutoff->copy()->addDay()]);
         StoryLine::factory()->for($user)->create([
             'activity_id' => $activity->id,
             'mood' => $mood,
-            'created_at' => $cutoff->copy()->addDay(),
         ]);
     }
 
@@ -1433,7 +1442,6 @@ function bootMascotNarrator(string $content): BriefingMascotVoiceNarrator
         app(TrainingLoad::class),
         app(VerdictNarrator::class),
         fakeCaller($content),
-        app(PastYouMatcher::class),
         app(ResolveRunBaselineAction::class),
         app(TrainingBaseline::class),
         app(VdotEstimator::class),
@@ -1857,4 +1865,46 @@ it('CardFlavorNarrator prompt names rarity in English, not Indonesian', function
         ->not->toContain('Langka')
         ->not->toContain('Istimewa')
         ->not->toContain('Legendaris');
+});
+
+// ── Structural guard: no swept narrator invites a past-run comparison (#1009, decision) ──
+
+/**
+ * #1016 and #1033 both re-encoded the past-you delta (a signed number plus a
+ * composite direction, then an unsigned magnitude plus a relation word) and
+ * both still let a narrator invert a fact about half the time in a live
+ * check: the model builds a mood from the rest of the context, then states
+ * the comparison to fit that story. The only reliable fix is that no
+ * narrator ever states one -- the comparison is rendered by code as its own
+ * fact line next to the narration instead. This guard covers every narrator
+ * #1009 found wired to past-you data (PostRunSpeechNarrator,
+ * BriefingMascotVoiceNarrator); no other narrator's toolbox or context()
+ * touches PastYouMatcher.
+ */
+it('never invites a past-run comparison and never wires the retired past-you tools', function (string $class): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt($class));
+
+    expect($prompt)
+        ->toContain('NEVER compare')
+        ->not->toContain('get_past_you')
+        ->not->toContain('get_latest_past_you');
+})->with([
+    'PostRunSpeechNarrator' => [PostRunSpeechNarrator::class],
+    'BriefingMascotVoiceNarrator' => [BriefingMascotVoiceNarrator::class],
+]);
+
+it('never wires the retired past-you tools into a narrator toolbox', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+
+    $postRunNames = array_column(
+        postRunNarrator(fakeCaller('{"speech":"x"}'))->toolbox($a, $d)->definitions(),
+        'name',
+    );
+    $briefingNames = array_column(
+        app(BriefingMascotVoiceNarrator::class)->toolbox($a->user, Carbon::today())->definitions(),
+        'name',
+    );
+
+    expect($postRunNames)->not->toContain('get_past_you')
+        ->and($briefingNames)->not->toContain('get_latest_past_you');
 });

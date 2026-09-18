@@ -7,7 +7,6 @@ namespace App\Services\AI\Narrators;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Services\AI\Agent\AgentToolbox;
-use App\Services\AI\Agent\Tools\PastYouTool;
 use App\Services\AI\Agent\Tools\PersonalRecordsTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
@@ -22,7 +21,6 @@ use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\TrainingBaseline;
-use App\Services\Run\Story\PastYouMatcher;
 use Illuminate\Support\Carbon;
 
 class PostRunSpeechNarrator
@@ -40,9 +38,8 @@ class PostRunSpeechNarrator
 
         Your part is what they can't touch: what this run MEANS. The atmosphere
         (time of day, weather, terrain), where it sits in the user's journey
-        (compared to similar past sessions, compared to records, compared to the
-        last run), and how it felt. They answer "what happened"; you answer "why
-        this run mattered".
+        (compared to records, against the plan for the day), and how it felt.
+        They answer "what happened"; you answer "why this run mattered".
 
         Because of that, NEVER dissect pacing, per-km splits, cadence, decoupling, or
         zone breakdown. Not because the data's secret, but because the block next to
@@ -62,10 +59,10 @@ class PostRunSpeechNarrator
 
         YOUR SCOREBOARD IS THE JOURNEY, NOT THE MECHANICS. You keep score here too,
         just not on splits and zones. Your comparisons are RUN-SCOPED first, because
-        this block is read on the page for THIS run: get_past_you (a similar run
-        they already did), get_personal_records (what this run actually beat), and
-        get_planned_sessions (what was asked against what they ran). Name the number
-        and the direction. If it went the wrong way, say it went the wrong way.
+        this block is read on the page for THIS run: get_personal_records (what
+        this run actually beat) and get_planned_sessions (what was asked against
+        what they ran). Name the number and the direction. If it went the wrong
+        way, say it went the wrong way.
 
         get_week_state IS THE LAST RESORT, NEVER THE OPENER. Its week-over-week
         counts are the same pair the home page's daily briefing already leads with,
@@ -108,24 +105,22 @@ class PostRunSpeechNarrator
         (distance, consistency, finishing, or the weather), not a PR that doesn't
         exist.
 
-        PAST YOU: if `past_you` from get_past_you is populated (a similar run exists
-        in the past), fine to use it as a personal opening or closing hook, e.g.
-        "compared to a similar session {days_ago} days ago, your pace is
-        {pace.seconds_per_km} seconds {pace.relation}". Say which way it went from
-        `pace.relation`/`time.relation` (faster/slower/same) and `hr.relation`
-        (higher/lower/same), or the overall `direction` (better/worse/flat) --
-        there is no sign to infer any of this from, seconds_per_km/seconds/bpm are
-        for size only (be honest about it, don't spin a `worse` as winning). If
-        `past_you` is null, NEVER make up a comparison to the past.
+        PAST YOU: NEVER compare this run's pace, time, or HR to a past run --
+        no numbers, and no direction word either ("quicker than last time" is
+        still a claim that can be wrong, even without a figure attached). The
+        page already shows that comparison in its own line, built by code, not
+        by you. Don't reference it, restate it, or hedge around it either
+        ("as you can see above" and similar). Talk about this run on its own
+        terms.
 
         Good examples of the range this block should cover:
         - "first run in eleven days. the week barely existed until this one, and now
           it does."
-        - "You've run this loop before, 41 days ago, 12 seconds per km slower. same
-          legs, different engine."
+        - "cut short at 20 minutes, sore knee. finishing wasn't the assignment
+          today, listening was."
         - "wet, dark, and you went anyway. that's the whole story of this one."
-        - "slower than the last time you ran this far, by about 20 seconds a km. some
-          days the route wins."
+        - "quiet Tuesday morning, nobody else on the trail. the kind of run that
+          doesn't need to prove anything."
 
         ANTI-PATTERN:
         - Closing on a warm line because the paragraph felt like it needed one. If
@@ -141,7 +136,6 @@ class PostRunSpeechNarrator
 
     public function __construct(
         private readonly StructuredChatCaller $caller,
-        private readonly PastYouMatcher $pastYou,
         private readonly TrainingLoad $trainingLoad,
         private readonly TrainingBaseline $trainingBaseline,
         private readonly VdotEstimator $vdotEstimator,
@@ -195,8 +189,12 @@ class PostRunSpeechNarrator
      * breakdown. Handing it either would produce a fourth telling of the same
      * run alongside the three lenses that already told it, on a page where all
      * four sit side by side. What is left is the material for the one lens the
-     * others cannot hold: where this run sits against the athlete's own
-     * history, and what the day around it was like.
+     * others cannot hold: what this run beat, what the plan asked of it, and
+     * what the day around it was like. Where this run sits against a past one
+     * is deliberately not here any more (#1009): that comparison is rendered
+     * by code from {@see \App\Services\Run\Story\PastYouMatcher::findMatchContext},
+     * next to this narration, and a narrator that never sees the numbers
+     * cannot state them wrongly.
      */
     public function toolbox(Activity $activity, ActivityDetail $detail): AgentToolbox
     {
@@ -207,7 +205,6 @@ class PostRunSpeechNarrator
             new TerrainTool($activity, $detail),
             new WeatherTool($activity, $detail),
             new PersonalRecordsTool($activity, $detail),
-            new PastYouTool($activity, $detail, $this->pastYou),
             new WeekStateTool($activity->user, $asOf, $this->trainingLoad),
             new PlanContextTool($activity->user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->paceCalculator),
         ]);

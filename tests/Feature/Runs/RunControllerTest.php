@@ -214,7 +214,7 @@ it('does not run the past-you match or the relative-effort baseline on an insigh
     // version, which legitimately invokes both collaborators.
     $headers = insightOnlyHeaders($this->actingAs($user), $activity->id);
 
-    $this->mock(PastYouMatcher::class, fn ($mock) => $mock->shouldNotReceive('findMatch'));
+    $this->mock(PastYouMatcher::class, fn ($mock) => $mock->shouldNotReceive('findMatchContext'));
 
     $response = $this->actingAs($user)->get("/activities/{$activity->id}", $headers)->assertSuccessful();
 
@@ -279,7 +279,7 @@ it('still runs the past-you match and the relative-effort baseline on a full run
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
 
-    $this->mock(PastYouMatcher::class, fn ($mock) => $mock->shouldReceive('findMatch')->once()->andReturn(null));
+    $this->mock(PastYouMatcher::class, fn ($mock) => $mock->shouldReceive('findMatchContext')->once()->andReturn(null));
 
     $this->actingAs($user)->get("/activities/{$activity->id}")
         ->assertSuccessful()
