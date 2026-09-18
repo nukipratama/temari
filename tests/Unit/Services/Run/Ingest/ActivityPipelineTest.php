@@ -1087,3 +1087,49 @@ it('leaves the config default alone when a profile-less run stays under it', fun
 
     expect($activity->user->fresh()->runnerProfile)->toBeNull();
 });
+
+it('clears a backfill phantom PR, and its mood, once the older faster run it never saw lands', function (): void {
+    $older = makeActivityWithConnection();
+    $newer = Activity::factory()->for($older->user)->analyzed()->create();
+    $perKm = [];
+    for ($k = 1; $k <= 5; $k++) {
+        $perKm[] = ['km' => $k, 'pace' => '7:14', 'elapsed_sec' => 434, 'distance_m' => 1000];
+    }
+    ActivityDetail::factory()->for($newer)->create([
+        'start_date_local' => Carbon::parse('2026-09-17 17:39:52'),
+        'distance' => 5190,
+        'stream_summary' => ['per_km' => $perKm],
+    ]);
+    RunCard::factory()->create(['activity_id' => $newer->id, 'pr_set' => true, 'special_move' => 'Personal Best']);
+    StoryLine::factory()->create([
+        'user_id' => $newer->user_id,
+        'activity_id' => $newer->id,
+        'kind' => StoryLine::KIND_POST_RUN,
+        'mood' => 'blazing',
+    ]);
+    PersonalRecord::factory()->for($newer->user)->create(['category' => '5km', 'value_sec' => 2170.0, 'activity_id' => $newer->id]);
+
+    $splits = [];
+    for ($k = 1; $k <= 5; $k++) {
+        $splits[] = ['split' => $k, 'distance' => 1000, 'moving_time' => 360, 'elapsed_time' => 360];
+    }
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Tempo 5K',
+            'start_date_local' => '2025-11-26 06:30:00',
+            'distance' => 5000,
+            'moving_time' => 1800,
+            'elapsed_time' => 1800,
+            'splits_metric' => $splits,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+
+    $this->pipeline->ingest($older);
+
+    $newerCard = RunCard::query()->where('activity_id', $newer->id)->firstOrFail();
+    expect($newerCard->pr_set)->toBeFalse()
+        ->and($newerCard->special_move)->not->toBe('Personal Best')
+        ->and(StoryLine::query()->where('activity_id', $newer->id)->value('mood'))->not->toBe('blazing')
+        ->and(RunCard::query()->where('activity_id', $older->id)->value('pr_set'))->toBeTrue();
+});

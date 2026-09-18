@@ -240,3 +240,26 @@ it('rebuildForUser drops orphaned records and re-detects from surviving runs', f
         ->and($km->value_sec)->toEqualWithDelta(300.0, 0.01)
         ->and($km->activity_id)->toBe($activity->id);
 });
+
+it('names the runs that set a record on their own day, judged against every earlier run', function (): void {
+    $user = User::factory()->create();
+    $run = function (string $date, int $secPerKm) use ($user): Activity {
+        $activity = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => 5000,
+            'stream_summary' => ['per_km' => evenPerKm(5, $secPerKm)],
+            'start_date_local' => $date,
+        ]);
+
+        return $activity;
+    };
+    $first = $run('2026-01-01 07:00:00', 330);
+    $faster = $run('2026-02-01 07:00:00', 300);
+    $easy = $run('2026-09-01 07:00:00', 430);
+
+    $setters = $this->records->recordSettingActivityIds($user);
+
+    expect($setters)->toBe([$first->id, $faster->id])
+        ->and($setters)->not->toContain($easy->id)
+        ->and(PersonalRecord::query()->count())->toBe(0);
+});

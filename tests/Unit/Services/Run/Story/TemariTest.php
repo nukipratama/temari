@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
+use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\Run\Story\Temari;
@@ -54,19 +55,32 @@ it('persists a post_run story line with mood + sigil + null speech (LLM async)',
     expect(Analysis::query()->count())->toBe(0);
 });
 
-it('picks glow mood when this activity broke a PR', function (): void {
+it('picks glow mood when this activity\'s card set a PR', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5_000,
         'stream_summary' => ['time_in_zone_pct' => ['Z2' => 50, 'Z3' => 50]],
     ]);
+    RunCard::factory()->create(['activity_id' => $activity->id, 'pr_set' => true]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_NYALA);
+});
+
+it('does not glow on a record row its card was judged not to have set', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5_000,
+        'stream_summary' => ['time_in_zone_pct' => ['Z2' => 50, 'Z3' => 50]],
+    ]);
+    RunCard::factory()->create(['activity_id' => $activity->id, 'pr_set' => false]);
     PersonalRecord::factory()->for($activity->user)->create([
         'category' => '5km',
         'activity_id' => $activity->id,
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_NYALA);
+        ->not->toBe(Temari::MOOD_NYALA);
 });
 
 it('picks overloaded mood on a hard grind (≥80% Z3+ time) without a controlled finish', function (): void {

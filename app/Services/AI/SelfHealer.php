@@ -24,6 +24,8 @@ use Illuminate\Support\Collection;
  * drops out to the /devtools/narration dead-letter instead of re-billing forever.
  * Every family sweeps only {@see RecentlyActiveUsers}: an athlete away from the
  * app is caught up by {@see \App\Jobs\AI\NarrateOnReturnJob} when they come back.
+ * A run or card whose older history is still hydrating waits for a later sweep
+ * ({@see HistoryNarrationGate::awaitsOlderHydration()}).
  */
 class SelfHealer
 {
@@ -53,6 +55,7 @@ class SelfHealer
         private readonly BackfillAgeGate $ages,
         private readonly RecapHydrationReadiness $readiness,
         private readonly RecentlyActiveUsers $activeUsers,
+        private readonly HistoryNarrationGate $history,
     ) {
     }
 
@@ -116,6 +119,10 @@ class SelfHealer
                         $service->requestActivityGroupRuleBased($earliest);
                         $resumed++;
 
+                        continue;
+                    }
+
+                    if ($this->history->awaitsOlderHydration((int) $row->user_id, $startedAt)) {
                         continue;
                     }
 
@@ -273,9 +280,14 @@ class SelfHealer
             ->where('ai_analyses.analysis_type', AnalysisType::CardFlavor)
             ->join('run_cards', 'run_cards.id', '=', 'ai_analyses.subject_id')
             ->join('activities', 'activities.id', '=', 'run_cards.activity_id')
+            ->leftJoin('activity_details', 'activity_details.activity_id', '=', 'activities.id')
             ->whereIn('activities.user_id', $this->activeUsers->query()->select('id'))
             ->orderBy('ai_analyses.subject_id')
-            ->get(['ai_analyses.subject_id', 'activities.user_id'])
+            ->get(['ai_analyses.subject_id', 'activities.user_id', 'activity_details.start_date_local'])
+            ->reject(fn (Analysis $row): bool => $this->history->awaitsOlderHydration(
+                (int) $row->getAttribute('user_id'),
+                Carbon::make($row->getAttribute('start_date_local')),
+            ))
             ->groupBy('user_id')
             ->flatMap(fn ($rows) => $rows->take(self::NONCASCADING_DRAIN_BATCH));
 

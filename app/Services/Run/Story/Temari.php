@@ -6,7 +6,7 @@ namespace App\Services\Run\Story;
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\PersonalRecord;
+use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\Run\Metrics\DecouplingBands;
@@ -100,7 +100,7 @@ class Temari
 
     private static function hasPr(Activity $activity): bool
     {
-        return PersonalRecord::query()->where('activity_id', $activity->id)->exists();
+        return RunCard::query()->where('activity_id', $activity->id)->where('pr_set', true)->exists();
     }
 
     // Order matters — first matching rule wins, most-prestigious mood first.

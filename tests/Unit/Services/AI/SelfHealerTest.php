@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlanAdaptation;
 use App\Models\RunCard;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
@@ -16,6 +17,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\HydrationBacklog;
 use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\SelfHealer;
@@ -80,7 +82,7 @@ function nonDispatchingResumeService(): AnalysisService
 
 function selfHealer(AnalysisService $service): SelfHealer
 {
-    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers());
+    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HistoryNarrationGate(new BackfillAgeGate(), new HydrationBacklog()));
 }
 
 /** Seed an activity for $user dated $startDate whose post-run speech is Pending. */
@@ -714,4 +716,48 @@ it('resumes that weekly link on the first sweep after hydration finishes', funct
     expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1)
         ->and($captured)->toHaveCount(1)
         ->and($captured[0]['type'])->toBe(AnalysisType::WeeklyRecap);
+});
+
+/** A user who connected Strava an hour ago with one older run still summary-only. */
+function athleteMidBackfill(string $olderRunDate): User
+{
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
+    $older = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::parse($olderRunDate)]);
+
+    return $user;
+}
+
+it('holds a per-activity group while older history within past-you reach still hydrates', function (): void {
+    $user = athleteMidBackfill('2025-11-26 06:00:00');
+    pendingActivityChainLink($user, '2026-06-15 06:00:00');
+
+    expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
+});
+
+it('releases the held per-activity group once the grace window after connecting has passed', function (): void {
+    $user = athleteMidBackfill('2025-11-26 06:00:00');
+    $link = pendingActivityChainLink($user, '2026-06-15 06:00:00');
+    Carbon::setTestNow(Carbon::now()->addHours(49));
+
+    $captured = [];
+    selfHealer(captureResumeRequests($captured))->run();
+
+    expect(array_column($captured, 'subjectId'))->toContain($link->id);
+});
+
+it('holds a stalled card flavor while older history within past-you reach still hydrates', function (): void {
+    $user = athleteMidBackfill('2025-11-26 06:00:00');
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2026-06-15 06:00:00')]);
+    $card = RunCard::factory()->for($activity)->create();
+    Analysis::factory()->create([
+        'subject_type' => RunCard::class,
+        'subject_id' => $card->id,
+        'analysis_type' => AnalysisType::CardFlavor,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
 });

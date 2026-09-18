@@ -58,3 +58,15 @@ it('scopes the backlog to the athletes asked about', function (): void {
 
     expect(app(HydrationBacklog::class)->awaitingHydration([$mine->id])->exists())->toBeFalse();
 });
+
+it('tells whether a run dated inside a range still awaits hydration', function (): void {
+    $user = User::factory()->create();
+    $pending = Activity::factory()->for($user)->create(['ingest_state' => IngestState::Summary, 'analyzed_at' => null]);
+    ActivityDetail::factory()->for($pending)->create(['start_date_local' => Carbon::parse('2026-03-01 06:00:00')]);
+    $backlog = app(HydrationBacklog::class);
+
+    expect($backlog->awaitsHydrationBefore($user->id, Carbon::parse('2026-04-01')))->toBeTrue()
+        ->and($backlog->awaitsHydrationBefore($user->id, Carbon::parse('2026-02-01')))->toBeFalse()
+        ->and($backlog->awaitsHydrationBefore($user->id, Carbon::parse('2026-04-01'), Carbon::parse('2026-03-15')))->toBeFalse()
+        ->and($backlog->awaitsHydrationBefore($user->id, null))->toBeFalse();
+});

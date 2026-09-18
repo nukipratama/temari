@@ -12,7 +12,8 @@ use Illuminate\Support\Carbon;
  * The one place that ranks the reasons a run's narration is kept from the LLM:
  * demo, then too old, then pre-connect history older than the last
  * {@see \App\Actions\AI\RecentlyActiveUsers::ACTIVE_WINDOW_DAYS} days (awaiting
- * its backlog, on a manual trigger), then an athlete away from the app. A
+ * its backlog, on a manual trigger), then a run whose older history is still
+ * hydrating, then an athlete away from the app. A
  * historical run inside that window narrates like any other ingest — see
  * {@see HistoryNarrationGate::narratesAutomatically()}.
  *
@@ -35,6 +36,7 @@ final readonly class NarrationEligibility
             $this->ages->isTooOld($startedAt) => NarrationVerdict::TooOld,
             $this->history->isHistorical($user, $startedAt)
                 && ! $this->history->narratesAutomatically($startedAt) => NarrationVerdict::PreConnect,
+            $this->history->awaitsOlderHydration($user->id, $startedAt) => NarrationVerdict::AwaitingBacklog,
             ! $this->activeUsers->includes($user) => NarrationVerdict::Inactive,
             default => NarrationVerdict::Eligible,
         };

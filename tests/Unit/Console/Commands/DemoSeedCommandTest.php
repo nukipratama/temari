@@ -28,7 +28,10 @@ use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\Card\RunForm;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Testing\Fakes\NotificationFake;
@@ -64,20 +67,112 @@ function channelsUsedBy(NotificationFake $notifications): array
     return array_values(array_unique($channels));
 }
 
-it('seeds a complete, login-ready demo dataset and stays idempotent across re-runs', function (): void {
+/**
+ * Commits whatever the current test just seeded for real — outside the
+ * per-test transaction RefreshDatabase wraps every test in — then reopens
+ * that transaction so the running test's own further writes still roll back
+ * normally at teardown. This is what lets the fixture below outlive the one
+ * test that seeds it.
+ */
+function commitSharedDemoFixture(): void
+{
+    DB::connection('mysql')->commit();
+    DB::connection('analytics')->commit();
+    DB::connection('mysql')->beginTransaction();
+    DB::connection('analytics')->beginTransaction();
+}
+
+/**
+ * Seeds the bare demo dataset exactly once per test process: a real `demo:seed`
+ * run, committed for good outside any per-test transaction. Every test that
+ * needs the bare dataset calls this first — only the one that actually runs
+ * it (normally the first test below, in file order) pays the cost; the rest
+ * see already-committed rows. releaseSharedDemoFixture(), called by the last
+ * test in this file, hands the schema back clean.
+ */
+function ensureBareDemoSeeded(): void
+{
+    static $done = false;
+
+    if ($done) {
+        return;
+    }
+
     // Token set + queue/notifications faked: seeding must never reach *out*, so a
     // configured token cannot turn a seed run into real Telegram or push traffic.
     // Since the unlock sweep went, the seed notifies nobody at all — it writes
-    // the demo's inbox rows straight to the table (asserted further down), so
-    // any channel here would mean a send path crept back in.
+    // the demo's inbox rows straight to the table, so any channel here would
+    // mean a send path crept back in.
     config()->set('services.telegram.bot_token', 'test-token');
     Queue::fake();
     $notifications = Notification::fake();
 
-    $exitCode = $this->artisan('demo:seed')->run();
+    $exitCode = Artisan::call('demo:seed');
+    expect($exitCode)->toBe(0);
+    expect(channelsUsedBy($notifications))->toBe([]);
+
+    commitSharedDemoFixture();
+
+    $done = true;
+}
+
+/**
+ * Layers --with-edge-states on top of the shared bare fixture, exactly once
+ * per test process, for the same reason and by the same mechanism as
+ * ensureBareDemoSeeded().
+ */
+function ensureEdgeStatesSeeded(): void
+{
+    static $done = false;
+
+    if ($done) {
+        return;
+    }
+
+    ensureBareDemoSeeded();
+
+    $exitCode = Artisan::call('demo:seed', ['--with-edge-states' => true]);
     expect($exitCode)->toBe(0);
 
-    expect(channelsUsedBy($notifications))->toBe([]);
+    commitSharedDemoFixture();
+
+    $done = true;
+}
+
+/**
+ * Commits the shared fixture connections one last time *without* reopening a
+ * transaction, called at the end of the last test in this file. RefreshDatabase's
+ * own teardown then finds each connection's PDO not mid-transaction and, per
+ * its own beginDatabaseTransaction() callback, flips RefreshDatabaseState::$migrated
+ * back to false — which makes the next RefreshDatabase test in this process
+ * (whichever file that belongs to) run a fresh migrate:fresh before it does
+ * anything else. That's Laravel's own schema-reset path, reused here instead
+ * of hand-rolling a second one, so nothing this file committed for real
+ * outlives it.
+ */
+function releaseSharedDemoFixture(): void
+{
+    DB::connection('mysql')->commit();
+    DB::connection('analytics')->commit();
+}
+
+/**
+ * Backstop for releaseSharedDemoFixture(): PHPUnit always calls afterAll()
+ * once, after the last test of this file that actually ran — even when that
+ * is not the test below (an earlier test fails before reaching it, or a
+ * `--filter`/TIA-narrowed run never selects it at all). Flipping the flag
+ * directly needs no live Application, unlike a throwaway-Application
+ * `migrate:fresh`: it is the same plain static property RefreshDatabase's own
+ * teardown already reads before every test, so whichever RefreshDatabase test
+ * this process runs next always re-migrates instead of trusting whatever this
+ * file left committed.
+ */
+afterAll(function (): void {
+    RefreshDatabaseState::$migrated = false;
+});
+
+it('seeds a complete, login-ready demo dataset and stays idempotent across re-runs', function (): void {
+    ensureBareDemoSeeded();
 
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
 
@@ -299,7 +394,7 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
 });
 
 it('leaves every analysis done and rule-based-served unless --with-edge-states is passed', function (): void {
-    $this->artisan('demo:seed')->assertSuccessful();
+    ensureBareDemoSeeded();
 
     expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())
         ->toBe(0, 'The public demo must not render a pending or failed block.');
@@ -311,9 +406,7 @@ it('leaves every analysis done and rule-based-served unless --with-edge-states i
 });
 
 it('seeds the pending, processing and failed states the audits cannot otherwise reach', function (): void {
-    // demo:seed --with-edge-states already runs the full seed() before applying
-    // edge states, so a plain seed() call first would just redo it for nothing.
-    $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
+    ensureEdgeStatesSeeded();
 
     $statuses = Analysis::query()
         ->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Processing, AnalysisStatus::Failed])
@@ -334,7 +427,7 @@ it('seeds the pending, processing and failed states the audits cannot otherwise 
 });
 
 it('applies the edge states at most once across re-runs', function (): void {
-    $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
+    ensureEdgeStatesSeeded();
     $first = Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count();
 
     $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
@@ -343,9 +436,12 @@ it('applies the edge states at most once across re-runs', function (): void {
 });
 
 it('clears the producer on a row whose content the edge states blank', function (): void {
-    // See the previous test: --with-edge-states already seeds first.
-    $this->artisan('demo:seed', ['--with-edge-states' => true])->assertSuccessful();
+    try {
+        ensureEdgeStatesSeeded();
 
-    expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->whereNotNull('served_by')->count())
-        ->toBe(0);
+        expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->whereNotNull('served_by')->count())
+            ->toBe(0);
+    } finally {
+        releaseSharedDemoFixture();
+    }
 });
