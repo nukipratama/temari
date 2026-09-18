@@ -286,7 +286,7 @@ export function easedFromDelta(
         typeTo: toType,
         distanceFrom:
             easedFrom.distance_km === null ? null : `${easedFrom.distance_km}`,
-        distanceTo: `${day.distance_km} km`,
+        distanceTo: `${day.distance_km}`,
         direction:
             easedFrom.distance_km === null
                 ? 'down'
@@ -351,14 +351,14 @@ export function paceLabel(day: PlanDay): string | null {
 
 /**
  * The pace-only step-down as a delta: the original pace and the day's own
- * (already eased) one. The day's own segments already carry the slower
- * pace, so this only supplies the pace it replaced — no session type or
- * distance to name since neither moved.
+ * (already eased, effective) one — the day's own segments already carry the
+ * eased pace, so this only supplies the pace it replaced. No direction: a
+ * bigger pace number is an easier day, not a "worse" one, so this never
+ * carries an up/down arrow — render it with `DeltaPair`'s `neutral` direction.
  */
 export interface PaceEaseDelta {
     from: string;
     to: string;
-    direction: DeltaDirection;
 }
 
 export function paceEaseDelta(
@@ -373,7 +373,6 @@ export function paceEaseDelta(
     return {
         from: formatPace(paceEasedFrom.pace_sec_per_km),
         to: `${formatPace(toSec)}/km`,
-        direction: deltaDirection(paceEasedFrom.pace_sec_per_km, toSec),
     };
 }
 

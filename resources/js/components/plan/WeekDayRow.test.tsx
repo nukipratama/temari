@@ -146,20 +146,26 @@ describe('WeekDayRow', () => {
      * The week-adjustment arrow used to always point down, even when the
      * number went up (#975). It must point the way the ask actually moved.
      */
-    it("shows the week-fit delta pointing down when the week's redistribution shrank the ask", () => {
+    it("tags the collapsed row 'week fit' but keeps the old value out of it, then shows the delta pointing down once expanded", () => {
         renderRow({ day: day({ distance_km: 3, asked_km: 8 }) });
 
-        expect(screen.getByText('8')).toBeInTheDocument();
-        expect(screen.getByText('3 km')).toBeInTheDocument();
         expect(screen.getByText('week fit')).toBeInTheDocument();
+        expect(screen.queryByText('8')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /tempo/i }));
+
+        expect(screen.getByText('km')).toBeInTheDocument();
+        expect(screen.getByText('8')).toBeInTheDocument();
+        expect(screen.getByText('3')).toBeInTheDocument();
         expect(screen.getByText('↓')).toHaveClass('text-ember-ink');
     });
 
     it("shows the week-fit delta pointing up when the week's redistribution raised the ask", () => {
         renderRow({ day: day({ distance_km: 4.1, asked_km: 3.6 }) });
+        fireEvent.click(screen.getByRole('button', { name: /tempo/i }));
 
         expect(screen.getByText('3.6')).toBeInTheDocument();
-        expect(screen.getByText('4.1 km')).toBeInTheDocument();
+        expect(screen.getByText('4.1')).toBeInTheDocument();
         expect(screen.getByText('↑')).toHaveClass('text-leaf-ink');
     });
 
@@ -562,11 +568,15 @@ describe('WeekDayRow', () => {
         fireEvent.click(trigger);
 
         expect(screen.getByText('6.4 km · 6:43/km')).toBeInTheDocument();
-        // The type change leads the delta line: the replaced type struck
-        // through, the eased-into type at normal weight — no distance shown
-        // since it held.
-        expect(trigger).toHaveTextContent(/tempo\s*→\s*easy/);
-        expect(screen.getByText('eased')).toBeInTheDocument();
+        // The collapsed row already carried the "eased" tag before the
+        // click, and the expanded row carries its own copy alongside it.
+        expect(screen.getAllByText('eased')).toHaveLength(2);
+        // The type change is a labelled row in the expanded panel: the
+        // replaced type struck through, the eased-into type at normal
+        // weight — no distance row since it held.
+        expect(screen.getByText('type')).toBeInTheDocument();
+        expect(screen.queryByText('km')).not.toBeInTheDocument();
+        expect(document.body).toHaveTextContent(/tempo\s*→\s*easy/);
         expect(
             screen.getByText(
                 'legs are still carrying the weekend, so today runs easy.',
@@ -595,7 +605,7 @@ describe('WeekDayRow', () => {
             }),
             narration: narrationPayload(),
         });
-        expand();
+        fireEvent.click(screen.getByRole('button', { name: /easy/i }));
 
         const reason = screen.getByText(
             'legs are still carrying the weekend, so today runs easy.',
@@ -649,9 +659,16 @@ describe('WeekDayRow', () => {
         fireEvent.click(trigger);
 
         expect(screen.getByText('20 km · 6:40/km')).toBeInTheDocument();
-        expect(trigger).toHaveTextContent('6:00');
-        expect(trigger).toHaveTextContent('6:40/km');
-        expect(screen.getByText('eased')).toBeInTheDocument();
+        expect(screen.getByText('pace')).toBeInTheDocument();
+        expect(document.body).toHaveTextContent('6:00');
+        expect(document.body).toHaveTextContent('6:40/km');
+        // Pace never gets a directional arrow or colour — a bigger number is
+        // an easier day, not a "down" one.
+        expect(screen.getByText('→')).toHaveClass('text-text-2');
+        expect(screen.queryByText('↑')).not.toBeInTheDocument();
+        expect(screen.queryByText('↓')).not.toBeInTheDocument();
+        // One "eased" tag on the collapsed row, one on the expanded row.
+        expect(screen.getAllByText('eased')).toHaveLength(2);
         expect(
             screen.queryByText('eased from long run'),
         ).not.toBeInTheDocument();
@@ -662,7 +679,7 @@ describe('WeekDayRow', () => {
         ).toBeInTheDocument();
     });
 
-    it('drops the pace-ease voice, but keeps the pace arrow, once the day is credited', () => {
+    it('drops the pace-ease voice, but keeps the pace delta, once the day is credited', () => {
         renderRow({
             day: day({
                 date: '2026-06-15',
@@ -685,8 +702,8 @@ describe('WeekDayRow', () => {
         const trigger = screen.getByRole('button', { name: /long run/i });
         fireEvent.click(trigger);
 
-        expect(trigger).toHaveTextContent('6:00');
-        expect(trigger).toHaveTextContent('6:40/km');
+        expect(document.body).toHaveTextContent('6:00');
+        expect(document.body).toHaveTextContent('6:40/km');
     });
 
     /**
@@ -721,20 +738,35 @@ describe('WeekDayRow', () => {
             }),
         });
 
+        // Collapsed: current numbers plus at most two small tags — never
+        // more, and never the old values or the arrows.
         const trigger = screen.getByRole('button', { name: /easy/i });
-
-        // Session-type change leads its line, distance delta follows.
-        expect(trigger).toHaveTextContent(/tempo\s*→\s*easy/);
-        expect(trigger).toHaveTextContent(/5\.9\s*[↑↓]\s*4\.1 km/);
-        // The pace-ease delta.
-        expect(trigger).toHaveTextContent(/6:00\s*[↑↓]\s*6:40\/km/);
-        // The week-fit delta.
-        expect(trigger).toHaveTextContent(/3\.6\s*[↑↓]\s*4\.1 km/);
-        expect(screen.getAllByText('eased')).toHaveLength(2);
+        expect(trigger).toHaveTextContent('4.1 km · 6:40/km');
+        expect(screen.getByText('eased')).toBeInTheDocument();
         expect(screen.getByText('week fit')).toBeInTheDocument();
+        expect(trigger).not.toHaveTextContent('5.9');
+        expect(trigger).not.toHaveTextContent('3.6');
+        expect(trigger).not.toHaveTextContent('tempo');
+
+        fireEvent.click(trigger);
+
+        // Expanded: one labelled row per changed thing, each its own short
+        // line rather than a paragraph.
+        expect(document.body).toHaveTextContent(/tempo\s*→\s*easy/);
+        expect(document.body).toHaveTextContent(/5\.9\s*[↑↓]\s*4\.1/);
+        expect(document.body).toHaveTextContent(/6:00\s*→\s*6:40\/km/);
+        expect(document.body).toHaveTextContent(/3\.6\s*[↑↓]\s*4\.1/);
+        expect(screen.getByText('type')).toBeInTheDocument();
+        expect(screen.getAllByText('km')).toHaveLength(2); // the eased-distance row and the week-fit row
+        expect(screen.getByText('pace')).toBeInTheDocument();
+        // "eased" tags the collapsed row plus the type/km/pace rows (4); "week
+        // fit" tags the collapsed row plus its own row (2) — never more than
+        // two tags on any one line.
+        expect(screen.getAllByText('eased')).toHaveLength(4);
+        expect(screen.getAllByText('week fit')).toHaveLength(2);
     });
 
-    it('keeps the accessible name informative about what changed', () => {
+    it('keeps the collapsed row informative via its tags, and reveals the full detail once expanded', () => {
         renderRow({
             day: day({
                 date: TODAY,
@@ -749,10 +781,13 @@ describe('WeekDayRow', () => {
         });
 
         const trigger = screen.getByRole('button', { name: /easy/i });
-        expect(trigger).toHaveAccessibleName(/tempo/);
-        expect(trigger).toHaveAccessibleName(/easy/);
-        expect(trigger).toHaveAccessibleName(/5\.9/);
-        expect(trigger).toHaveAccessibleName(/4\.1/);
+        expect(trigger).toHaveAccessibleName(/eased/);
+        expect(trigger).not.toHaveAccessibleName(/tempo/);
+
+        fireEvent.click(trigger);
+
+        expect(document.body).toHaveTextContent(/tempo\s*→\s*easy/);
+        expect(document.body).toHaveTextContent(/5\.9\s*[↑↓]\s*4\.1/);
     });
 
     /** The server decides what the step-down is for; the row must not hardcode

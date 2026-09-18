@@ -3,7 +3,7 @@ import { Bed, ChevronRight, Feather, Flag, Flame } from 'lucide-react';
 
 import type { WeekPlan, WeekPlanDay, WeeklySnapshot } from '@/types/inertia';
 
-import { EasedDelta } from '@/components/plan/DeltaPair';
+import { ChangeRow } from '@/components/plan/DeltaPair';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
@@ -262,14 +262,16 @@ export default function WeekPlanWidget({
                 <div className="flex flex-col items-center text-center">
                     <PlanFigure value={kmValue} label="km" />
                     {weekPlan.planned_km_eased_from !== null && (
-                        <EasedDelta
+                        <ChangeRow
                             className="font-mono text-[0.5625rem] text-text-2"
+                            label="km"
                             from={weekPlan.planned_km_eased_from.toFixed(1)}
                             to={weekPlan.planned_km_this_week.toFixed(1)}
                             direction={deltaDirection(
                                 weekPlan.planned_km_eased_from,
                                 weekPlan.planned_km_this_week,
                             )}
+                            tag="eased"
                         />
                     )}
                 </div>

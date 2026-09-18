@@ -2,7 +2,7 @@ import { ArrowDown } from 'lucide-react';
 
 import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
 
-import { AskedRanResult, EasedDelta } from '@/components/plan/DeltaPair';
+import { AskedRanResult, ChangeRow } from '@/components/plan/DeltaPair';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { renderNarration } from '@/components/temari/Citation';
 import FaceIcon from '@/components/temari/FaceIcon';
@@ -110,21 +110,29 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
             )}
             {sessionDelta && (
                 <div className="mt-2 border-l-2 border-border-strong pl-3">
-                    <EasedDelta
-                        typeFrom={sessionDelta.typeFrom}
-                        typeTo={sessionDelta.typeTo}
-                        from={sessionDelta.distanceFrom ?? undefined}
-                        to={
-                            sessionDelta.distanceFrom === null
-                                ? undefined
-                                : sessionDelta.distanceTo
-                        }
-                        direction={
-                            sessionDelta.distanceFrom === null
-                                ? undefined
-                                : sessionDelta.direction
-                        }
-                    />
+                    {sessionDelta.typeFrom !== null && (
+                        <ChangeRow
+                            label="type"
+                            from={sessionDelta.typeFrom}
+                            to={sessionDelta.typeTo}
+                            direction="neutral"
+                            tag="eased"
+                        />
+                    )}
+                    {sessionDelta.distanceFrom !== null && (
+                        <ChangeRow
+                            className={
+                                sessionDelta.typeFrom !== null
+                                    ? 'mt-1.5'
+                                    : undefined
+                            }
+                            label="km"
+                            from={sessionDelta.distanceFrom}
+                            to={sessionDelta.distanceTo}
+                            direction={sessionDelta.direction}
+                            tag="eased"
+                        />
+                    )}
                     {day.eased_from?.voice !== null && (
                         <p className="mt-1 text-sm leading-relaxed text-text-2">
                             {day.eased_from?.voice}
@@ -134,10 +142,12 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
             )}
             {paceDelta && (
                 <div className="mt-2 border-l-2 border-border-strong pl-3">
-                    <EasedDelta
+                    <ChangeRow
+                        label="pace"
                         from={paceDelta.from}
                         to={paceDelta.to}
-                        direction={paceDelta.direction}
+                        direction="neutral"
+                        tag="eased"
                     />
                     {day.pace_eased_from?.voice !== null && (
                         <p className="mt-1 text-sm leading-relaxed text-text-2">

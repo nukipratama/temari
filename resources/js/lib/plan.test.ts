@@ -246,7 +246,7 @@ describe('easedFromDelta', () => {
             typeFrom: 'tempo',
             typeTo: 'easy',
             distanceFrom: '5.9',
-            distanceTo: '4.1 km',
+            distanceTo: '4.1',
             direction: 'down',
         });
     });
@@ -262,7 +262,7 @@ describe('easedFromDelta', () => {
             typeFrom: 'tempo',
             typeTo: 'easy',
             distanceFrom: null,
-            distanceTo: '4.1 km',
+            distanceTo: '4.1',
             direction: 'down',
         });
     });
@@ -512,7 +512,7 @@ describe('paceEaseDelta', () => {
     it("pairs the original pace with the day's own (already eased) pace", () => {
         expect(
             paceEaseDelta({ pace_sec_per_km: 360, voice: null }, planDay()),
-        ).toEqual({ from: '6:00', to: '6:00/km', direction: 'up' });
+        ).toEqual({ from: '6:00', to: '6:00/km' });
 
         expect(
             paceEaseDelta(
@@ -530,7 +530,37 @@ describe('paceEaseDelta', () => {
                     ],
                 }),
             ),
-        ).toEqual({ from: '6:00', to: '6:15/km', direction: 'up' });
+        ).toEqual({ from: '6:00', to: '6:15/km' });
+    });
+
+    /**
+     * Regression: `eased_pace_sec_per_km` is the SLOW END of the easy band
+     * (`RestClampRecorder` writes `TrainingPaceCalculator::easySlowEndFromVdotResult()`
+     * there) and `PlanRenderer` builds the day's own `segments` from it — so
+     * the day's own pace (what the row reads via `corePaceSecPerKm`) is
+     * always the EASED, slower figure, never the original. `pace_eased_from`
+     * is independently recomputed from the athlete's un-eased paces, so it is
+     * always the faster, replaced one. A pace ease is never a speed-up: `to`
+     * (the day's own pace) must read slower than `from` (the replaced one).
+     */
+    it('reads the day’s own (eased) pace as the slower figure, never the original', () => {
+        const delta = paceEaseDelta(
+            { pace_sec_per_km: 380, voice: null }, // original: 6:20/km
+            planDay({
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 22.6,
+                        zone: 'Z2',
+                        pace_label: 'easy',
+                        km: 2.7,
+                        pace_sec_per_km: 502, // eased slow end: 8:22/km
+                    },
+                ],
+            }),
+        );
+
+        expect(delta).toEqual({ from: '6:20', to: '8:22/km' });
     });
 
     it('has nothing to show without a recorded original pace', () => {

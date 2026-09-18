@@ -60,46 +60,39 @@ export function DeltaTag({ children }: Readonly<{ children: string }>) {
 }
 
 /**
- * A recorded readiness ease, tagged `eased`: the session-type change (if any)
- * leads, then the changed value's delta pair. Shared by every surface that
- * shows an eased day or an eased-pace day, so the pairing is assembled once.
+ * One changed thing, labelled: `type`, `km` or `pace`, its delta pair, and
+ * the tag naming why. Lives in a day's expanded panel — the collapsed row
+ * shows only the current numbers and the tags themselves (see `DeltaTag`
+ * usage at each call site), never the old value or the arrow.
  */
-export function EasedDelta({
-    typeFrom = null,
-    typeTo,
+export function ChangeRow({
+    label,
     from,
     to,
     direction,
+    tag,
     className,
 }: Readonly<{
-    /** The replaced session type, when the type itself changed. */
-    typeFrom?: string | null;
-    typeTo?: string;
-    /** The changed value's delta — absent when this line has nothing but the
-     *  type change (or, called from a header that already shows that, just
-     *  the tag) to show. */
-    from?: string;
-    to?: string;
-    direction?: DeltaDirection;
+    label: string;
+    from: string;
+    to: string;
+    direction: DeltaPairDirection;
+    tag: string;
     className?: string;
 }>) {
     return (
-        <span
+        <p
             className={cn(
-                'flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-label-micro',
+                'flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs',
                 className,
             )}
         >
-            {typeFrom !== null && typeTo !== undefined && (
-                <DeltaPair from={typeFrom} to={typeTo} direction="neutral" />
-            )}
-            {from !== undefined &&
-                to !== undefined &&
-                direction !== undefined && (
-                    <DeltaPair from={from} to={to} direction={direction} />
-                )}
-            <DeltaTag>eased</DeltaTag>
-        </span>
+            <span className="text-label-micro inline-block min-w-10 text-text-3">
+                {label}
+            </span>
+            <DeltaPair from={from} to={to} direction={direction} />
+            <DeltaTag>{tag}</DeltaTag>
+        </p>
     );
 }
 

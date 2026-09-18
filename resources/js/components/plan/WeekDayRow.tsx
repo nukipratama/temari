@@ -14,9 +14,8 @@ import type { AnalysisPayload, PlanDayClamp } from '@/types/inertia';
 
 import {
     AskedRanResult,
-    DeltaPair,
+    ChangeRow,
     DeltaTag,
-    EasedDelta,
 } from '@/components/plan/DeltaPair';
 import MiniSessionBar, { zoneColor } from '@/components/plan/MiniSessionBar';
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
@@ -151,7 +150,7 @@ export default function WeekDayRow({
             ? null
             : {
                   from: `${adjustedFrom}`,
-                  to: `${day.distance_km} km`,
+                  to: `${day.distance_km}`,
                   direction: deltaDirection(adjustedFrom, day.distance_km),
               };
     const sessionDelta = day.eased_from
@@ -175,10 +174,15 @@ export default function WeekDayRow({
 
     // A rest day with nothing logged, no note, no clamp and no read has
     // nothing an expanded panel would show — a future day with a session
-    // type but no segments yet (no VDOT to size them) is the same case.
+    // type but no segments yet (no VDOT to size them) is the same case. A
+    // changed day is always expandable: the full old -> new pairs live only
+    // in the panel now, never in the collapsed row.
     const hasSegments = day.segments.some((s) => (s.minutes ?? 0) > 0);
     const expandable =
         hasSegments ||
+        sessionDelta !== null ||
+        paceDelta !== null ||
+        weekFitDelta !== null ||
         Boolean(day.eased_from?.voice) ||
         Boolean(day.pace_eased_from?.voice) ||
         narration !== null ||
@@ -187,6 +191,17 @@ export default function WeekDayRow({
         day.activities.length > 0 ||
         canMove ||
         canSkip;
+
+    // Small mono tags on the collapsed row — never the old value or the
+    // arrow, which live in the expanded panel's labelled rows instead.
+    const tags = Array.from(
+        new Set(
+            [
+                sessionDelta !== null || paceDelta !== null ? 'eased' : null,
+                weekFitDelta !== null ? 'week fit' : null,
+            ].filter((tag): tag is string => tag !== null),
+        ),
+    );
 
     const weekdayAndIcon = (
         <span className="flex w-9 flex-none flex-col items-center gap-1">
@@ -205,15 +220,7 @@ export default function WeekDayRow({
     const summary = (
         <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold text-foreground">
-                {sessionDelta?.typeFrom != null ? (
-                    <DeltaPair
-                        from={sessionDelta.typeFrom}
-                        to={sessionDelta.typeTo}
-                        direction="neutral"
-                    />
-                ) : (
-                    (SESSION_TYPE_LABEL[day.session_type] ?? day.session_type)
-                )}
+                {SESSION_TYPE_LABEL[day.session_type] ?? day.session_type}
             </span>
             {!isRest && judged !== null && (
                 <AskedRanResult
@@ -229,38 +236,11 @@ export default function WeekDayRow({
                     {pace !== null && ` · ${pace}`}
                 </span>
             )}
-            {sessionDelta && (
-                <EasedDelta
-                    className="mt-0.5"
-                    from={sessionDelta.distanceFrom ?? undefined}
-                    to={
-                        sessionDelta.distanceFrom === null
-                            ? undefined
-                            : sessionDelta.distanceTo
-                    }
-                    direction={
-                        sessionDelta.distanceFrom === null
-                            ? undefined
-                            : sessionDelta.direction
-                    }
-                />
-            )}
-            {paceDelta && (
-                <EasedDelta
-                    className="mt-0.5"
-                    from={paceDelta.from}
-                    to={paceDelta.to}
-                    direction={paceDelta.direction}
-                />
-            )}
-            {weekFitDelta && (
-                <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-label-micro">
-                    <DeltaPair
-                        from={weekFitDelta.from}
-                        to={weekFitDelta.to}
-                        direction={weekFitDelta.direction}
-                    />
-                    <DeltaTag>week fit</DeltaTag>
+            {tags.length > 0 && (
+                <span className="mt-0.5 flex flex-wrap gap-1.5">
+                    {tags.map((tag) => (
+                        <DeltaTag key={tag}>{tag}</DeltaTag>
+                    ))}
                 </span>
             )}
             {ranAnyway && (
@@ -330,25 +310,56 @@ export default function WeekDayRow({
                 />
             </div>
             <CollapsibleContent className="border-t border-border-strong px-4 py-3">
+                {sessionDelta?.typeFrom != null && (
+                    <ChangeRow
+                        label="type"
+                        from={sessionDelta.typeFrom}
+                        to={sessionDelta.typeTo}
+                        direction="neutral"
+                        tag="eased"
+                    />
+                )}
+                {sessionDelta?.distanceFrom != null && (
+                    <ChangeRow
+                        className="mt-1.5"
+                        label="km"
+                        from={sessionDelta.distanceFrom}
+                        to={sessionDelta.distanceTo}
+                        direction={sessionDelta.direction}
+                        tag="eased"
+                    />
+                )}
                 {day.eased_from?.voice && (
-                    <p className="flex items-start gap-1.5 text-xs italic text-text-2">
-                        <Icon
-                            icon={ArrowDown}
-                            className="mt-0.5 size-3 flex-none"
-                            aria-hidden
-                        />
+                    <p className="mt-1 text-xs italic text-text-2">
                         {day.eased_from.voice}
                     </p>
                 )}
+                {paceDelta && (
+                    <ChangeRow
+                        className={sessionDelta ? 'mt-2' : undefined}
+                        label="pace"
+                        from={paceDelta.from}
+                        to={paceDelta.to}
+                        direction="neutral"
+                        tag="eased"
+                    />
+                )}
                 {day.pace_eased_from?.voice && (
-                    <p className="flex items-start gap-1.5 text-xs italic text-text-2">
-                        <Icon
-                            icon={ArrowDown}
-                            className="mt-0.5 size-3 flex-none"
-                            aria-hidden
-                        />
+                    <p className="mt-1 text-xs italic text-text-2">
                         {day.pace_eased_from.voice}
                     </p>
+                )}
+                {weekFitDelta && (
+                    <ChangeRow
+                        className={
+                            sessionDelta || paceDelta ? 'mt-2' : undefined
+                        }
+                        label="km"
+                        from={weekFitDelta.from}
+                        to={weekFitDelta.to}
+                        direction={weekFitDelta.direction}
+                        tag="week fit"
+                    />
                 )}
                 {narration && (
                     <TemariTake
@@ -356,7 +367,11 @@ export default function WeekDayRow({
                         label="Temari's read"
                         allowReanalyze={false}
                         className={
-                            day.eased_from?.voice || day.pace_eased_from?.voice
+                            sessionDelta ||
+                            paceDelta ||
+                            weekFitDelta ||
+                            day.eased_from?.voice ||
+                            day.pace_eased_from?.voice
                                 ? 'mt-2'
                                 : undefined
                         }

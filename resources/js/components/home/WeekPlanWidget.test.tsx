@@ -118,6 +118,8 @@ describe('WeekPlanWidget', () => {
         await waitFor(() => {
             expect(screen.getByText('18.2 of 24.6')).toBeInTheDocument();
         });
+        // "km" labels both the ring's own PlanFigure caption and the delta row.
+        expect(screen.getAllByText('km')).toHaveLength(2);
         expect(screen.getByText('26.9')).toBeInTheDocument();
         expect(screen.getByText('24.6')).toBeInTheDocument();
         expect(screen.getByText('eased')).toBeInTheDocument();

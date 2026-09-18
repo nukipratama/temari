@@ -282,9 +282,11 @@ describe('TodaySession', () => {
         );
 
         expect(screen.getByText('easy · 6.4 km · 6:43/km')).toBeInTheDocument();
-        // The type change reads as a delta — the replaced type struck
-        // through, the eased-into type at normal weight.
+        // The type change reads as a labelled delta — the replaced type
+        // struck through, the eased-into type at normal weight.
+        expect(screen.getByText('type')).toBeInTheDocument();
         expect(container).toHaveTextContent(/tempo\s*→\s*easy/);
+        expect(screen.queryByText('km')).not.toBeInTheDocument();
         expect(screen.getByText('eased')).toBeInTheDocument();
         expect(
             screen.getByText('you ran hard yesterday, so today runs easy.'),
@@ -321,8 +323,13 @@ describe('TodaySession', () => {
         expect(
             screen.getByText('long run · 20 km · 6:40/km'),
         ).toBeInTheDocument();
+        expect(screen.getByText('pace')).toBeInTheDocument();
         expect(container).toHaveTextContent('6:00');
         expect(container).toHaveTextContent('6:40/km');
+        // No directional arrow or colour for a pace delta.
+        expect(screen.getByText('→')).toHaveClass('text-text-2');
+        expect(screen.queryByText('↑')).not.toBeInTheDocument();
+        expect(screen.queryByText('↓')).not.toBeInTheDocument();
         expect(screen.getByText('eased')).toBeInTheDocument();
         expect(
             screen.getByText(

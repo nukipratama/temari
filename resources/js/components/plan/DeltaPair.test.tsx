@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { AskedRanResult, DeltaPair, DeltaTag, EasedDelta } from './DeltaPair';
+import { AskedRanResult, ChangeRow, DeltaPair, DeltaTag } from './DeltaPair';
 
 describe('DeltaPair', () => {
     it('reads both values with the old one struck through', () => {
@@ -73,44 +73,52 @@ describe('DeltaTag', () => {
     });
 });
 
-describe('EasedDelta', () => {
-    it('tags a plain value-only ease', () => {
+describe('ChangeRow', () => {
+    it('labels the changed thing and tags the reason', () => {
         const { container } = render(
-            <EasedDelta from="6:00" to="6:15/km" direction="up" />,
+            <ChangeRow
+                label="pace"
+                from="6:00"
+                to="6:15/km"
+                direction="neutral"
+                tag="eased"
+            />,
         );
 
+        expect(screen.getByText('pace')).toBeInTheDocument();
         expect(container).toHaveTextContent('6:00');
         expect(container).toHaveTextContent('6:15/km');
         expect(screen.getByText('eased')).toBeInTheDocument();
     });
 
-    it('leads with the type change when the type moved too', () => {
+    it('carries a distance delta with its own direction', () => {
         const { container } = render(
-            <EasedDelta
-                typeFrom="tempo"
-                typeTo="easy"
+            <ChangeRow
+                label="km"
                 from="5.9"
-                to="4.1 km"
+                to="4.1"
                 direction="down"
+                tag="eased"
             />,
         );
 
-        expect(container).toHaveTextContent(/tempo\s*→\s*easy/);
-        expect(container).toHaveTextContent(/5\.9\s*↓\s*4\.1 km/);
-        expect(screen.getByText('eased')).toBeInTheDocument();
+        expect(screen.getByText('km')).toBeInTheDocument();
+        expect(container).toHaveTextContent(/5\.9\s*↓\s*4\.1/);
     });
 
-    it('omits the type delta when the type held', () => {
+    it('renders a different tag for a different reason', () => {
         render(
-            <EasedDelta
-                typeFrom={null}
-                from="5.9"
-                to="4.1 km"
+            <ChangeRow
+                label="km"
+                from="8"
+                to="3"
                 direction="down"
+                tag="week fit"
             />,
         );
 
-        expect(screen.queryByText('tempo')).not.toBeInTheDocument();
+        expect(screen.getByText('week fit')).toBeInTheDocument();
+        expect(screen.queryByText('eased')).not.toBeInTheDocument();
     });
 });
 
