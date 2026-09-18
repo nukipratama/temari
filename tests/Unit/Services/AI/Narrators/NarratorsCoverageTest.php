@@ -64,11 +64,6 @@ use OpenAI\Testing\ClientFake;
 
 uses(RefreshDatabase::class);
 
-// TEMPORARY — proving #1021's merged-coverage gate goes red (reverted next commit).
-// Skips rather than removes the file: deleting it instead trips TiaWatchMapTest's
-// watch-map assertion, which is a different guard than the one being proven here.
-beforeEach(fn () => test()->markTestSkipped('temporary: proving the merged coverage gate on #1021'));
-
 beforeEach(function (): void {
     config()->set('azure_openai.uri', 'https://x.openai.azure.com/openai/deployments/x/chat/completions?api-version=2024-10-21');
     config()->set('azure_openai.api_key', 'fake-key');
