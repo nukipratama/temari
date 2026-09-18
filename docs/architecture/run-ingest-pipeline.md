@@ -59,7 +59,7 @@ A summary-only run is hydrated when the deeper data is about to be looked at. [D
 1. **Fetch detail** `/activities/{id}` → upsert [ActivityDetail](app/Models/ActivityDetail.php) via [storeDetail()](app/Services/Run/Ingest/ActivityPipeline.php). First the detail's `sport_type` is checked against [RunSportType](app/Services/Strava/RunSportType.php) (shared with the poll-path filter): a non-run upload (ride/walk/swim reaching ingest via the webhook, which fires for every type) has its stub **deleted** here so it never mints a bogus PR/card/snapshot or bills the narrator.
 2. **Fetch streams** (time/distance/HR/cadence/velocity/altitude/latlng) → upsert [ActivityStream](app/Models/ActivityStream.php). Best-effort: a 4xx (404 = no streams, treadmill/manual) is logged and ingest continues.
 3. **Compute summary** — [StreamAnalysis::compute()](app/Services/Run/Ingest/StreamAnalysis.php) derives HR time-in-zone, best-effort paces, decoupling, cadence distribution, per-km splits, etc. (see [[stream-analysis]]); [TrainingLoad::edwardsTrimp()](app/Services/Run/Metrics/TrainingLoad.php) folds zone minutes into a TRIMP (the load engine is [[training-load-metrics]]). Both land on the detail row.
-4. **Weather** — [lookupWeather()](app/Services/Run/Ingest/ActivityPipeline.php) reverse-looks the start coords from the stream; best-effort, never blocks. See [[weather-integration]].
+4. **Weather** — [lookupWeather()](app/Services/Run/Ingest/ActivityPipeline.php) uses the detail payload's stored start coords; best-effort, never blocks. See [[weather-integration]].
 
 The HTTP fetches above all run **outside** any transaction.
 
