@@ -162,12 +162,23 @@ class PastYouMatcher
     /**
      * Compact, LLM-safe shape of {@see findMatch}: the comparison deltas plus a
      * couple of descriptors of the matched past run, without the full
-     * ActivityDetail model. `pace_diff_sec`/`time_diff_sec` are positive when the
-     * current run is faster; `hr_diff_bpm` is positive when HR is higher now.
-     * `direction` (better/worse/flat) is the call to narrate -- it already
-     * resolves the sign, so it is never inferred from the numbers.
+     * ActivityDetail model.
      *
-     * @return array{days_ago: int, pace_diff_sec: float, time_diff_sec: float, hr_diff_bpm: float|null, direction: string, past_km: float, past_date: string|null}|null
+     * Regression for #1009 (reopened): {@see findMatch}'s bare signed
+     * `pace_diff_sec`/`time_diff_sec`/`hr_diff_bpm` plus a `direction`
+     * composite still let the narrator invert a field's sign -- `direction`
+     * is a verdict on the pair as a whole, not a guard on each number, and a
+     * model reading a mixed-signal pair (slower pace, lower HR) read the pace
+     * backwards to fit whichever number it decided was the headline. No
+     * signed number reaches the model here: `pace`/`time` carry an unsigned
+     * magnitude plus their own `relation` (faster/slower/same, `time` always
+     * agreeing with `pace` in sign since it is the same delta scaled by
+     * distance), banded by {@see PastYouComparison::PACE_SIGNAL_SEC}; `hr`
+     * carries bpm plus higher/lower/same, banded by
+     * {@see PastYouComparison::HR_SIGNAL_BPM}. `direction` still travels
+     * alongside as the composite call to narrate.
+     *
+     * @return array{days_ago: int, pace: array{seconds_per_km: float, relation: string}, time: array{seconds: float, relation: string}, hr: array{bpm: float, relation: string}|null, direction: string, past_km: float, past_date: string|null}|null
      */
     public function findMatchContext(Activity $activity, ActivityDetail $detail): ?array
     {
@@ -177,16 +188,38 @@ class PastYouMatcher
         }
 
         $past = $match['past'];
+        $paceDiffSec = $match['pace_diff_sec'];
+        $hrDiffBpm = $match['hr_diff_bpm'];
+        $paceRelation = self::paceRelation($paceDiffSec);
 
         return [
             'days_ago' => $match['days_ago'],
-            'pace_diff_sec' => $match['pace_diff_sec'],
-            'time_diff_sec' => $match['time_diff_sec'],
-            'hr_diff_bpm' => $match['hr_diff_bpm'],
+            'pace' => ['seconds_per_km' => abs($paceDiffSec), 'relation' => $paceRelation],
+            'time' => ['seconds' => abs($match['time_diff_sec']), 'relation' => $paceRelation],
+            'hr' => $hrDiffBpm === null ? null : ['bpm' => abs($hrDiffBpm), 'relation' => self::hrRelation($hrDiffBpm)],
             'direction' => $match['direction'],
             'past_km' => DistanceFormatter::km((float) ($past->distance ?? 0)),
             'past_date' => $past->start_date_local?->toDateString(),
         ];
+    }
+
+    /** `time_diff_sec` is `pace_diff_sec` scaled by a positive distance, so it always shares this sign. */
+    private static function paceRelation(float $paceDiffSec): string
+    {
+        return match (true) {
+            $paceDiffSec >= PastYouComparison::PACE_SIGNAL_SEC => 'faster',
+            $paceDiffSec <= -PastYouComparison::PACE_SIGNAL_SEC => 'slower',
+            default => 'same',
+        };
+    }
+
+    private static function hrRelation(float $hrDiffBpm): string
+    {
+        return match (true) {
+            $hrDiffBpm >= PastYouComparison::HR_SIGNAL_BPM => 'higher',
+            $hrDiffBpm <= -PastYouComparison::HR_SIGNAL_BPM => 'lower',
+            default => 'same',
+        };
     }
 
     public function paceBand(float $secPerKm): string

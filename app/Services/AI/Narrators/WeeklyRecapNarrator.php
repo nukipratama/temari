@@ -77,15 +77,17 @@ class WeeklyRecapNarrator
         - runs, distance_km: how much and how regularly.
         - pace_sec_per_km: only interesting if it changed noticeably.
         - weekly_trimp: weekly load.
-        - form (CTL - ATL): positive = fresh, negative = fatigued.
+        - form (CTL - ATL): form.relation says fresh or fatigued already, form.value
+          is the size of it -- there's no sign to read yourself.
         - monotony: > 2 = too uniform, encourage variety.
         - strain: > 500 = heavy.
         - weekly_trimp, monotony and strain are null when no run that week carried
           heart rate. That is unknown load, not zero load and not a rest week. Tell
           the week on distance and runs instead, and never report a null as a zero.
-        - avg_decoupling: average cardiac drift (%). Low = good aerobic efficiency
-          (heart stayed steady through the run); high (above 8-10%) = endurance
-          still needs work.
+        - avg_decoupling: average cardiac drift. avg_decoupling.relation says up,
+          down or flat already (up = HR drifted for the same pace, endurance still
+          needs work; down = good aerobic efficiency); avg_decoupling.pct is just
+          the size of it.
 
         Good examples of the shape, not sentences to reuse:
         - "28.4 km, up from 19 last week. biggest jump you've made all year, and
@@ -97,7 +99,7 @@ class WeeklyRecapNarrator
         ANTI-PATTERN:
         - Repeating a raw number with no context.
         - Stacking several metrics in one sentence: "28.4 km across 4 runs, TRIMP
-          312, form -8, monotony 1.8." That's a table, not a story.
+          312, form fatigued by 8, monotony 1.8." That's a table, not a story.
         - Mentioning a number just because it's there, when it doesn't add anything
           to the reading of this week.
         - "Your rhythm was pretty steady this week" with no specifics.

@@ -59,11 +59,27 @@ Both paths now hand a caller the same [TrendDirection](app/Enums/TrendDirection.
 call rather than a signed number alone:
 [PastYouComparison::directionFor()](app/Services/Run/Story/PastYouComparison.php)
 is the rule shared by `bestMatch()`'s `PastYouComparison::direction()` and by
-`findMatch()`/`findMatchContext()`, whose LLM-facing payload carries it as
-`direction`. Before this, `findMatchContext()`'s `past_you` gave the model only
-`pace_diff_sec`'s bare sign plus a sentence of prose, which the run-narration
-LLM read backwards two times out of three (#1009) — the fix constrains the
-output shape instead of restating the sign rule in prose.
+`findMatch()`, whose UI-facing payload (`RunController` → `PastYouCard.tsx`)
+carries it as `direction` alongside the plain signed `pace_diff_sec` /
+`time_diff_sec` / `hr_diff_bpm` a React component can render without
+ambiguity.
+
+[findMatchContext()](app/Services/Run/Story/PastYouMatcher.php) is the
+LLM-facing shape (`get_past_you` / `get_latest_past_you`) and, since #1009
+reopened, carries **no signed field at all**. The first fix (#1016) added
+`direction` here too but left `pace_diff_sec` / `time_diff_sec` / `hr_diff_bpm`
+as bare signed numbers with the convention in prose; a live check found the
+model still inverting a field two times out of four — on a mixed-signal pair
+(pace slower, HR lower) it read the lower HR as the headline, decided the run
+was better, and stated the pace backwards to fit that story, overriding the
+`direction` composite it was handed. A composite verdict on the pair as a
+whole does not stop a model from inverting one field inside it. Every delta
+now travels as its own unsigned magnitude plus its own `relation` word —
+`pace`/`time`: `{seconds_per_km|seconds, relation: faster/slower/same}`;
+`hr`: `{bpm, relation: higher/lower/same}` — banded by the same
+`PACE_SIGNAL_SEC`/`HR_SIGNAL_BPM` constants `directionFor()` already used, so
+there is no sign left for a narrator to interpret, let alone invert.
+`direction` still travels as the overall call.
 
 ## The verdict
 

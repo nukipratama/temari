@@ -216,9 +216,10 @@ class BriefingMascotVoiceNarrator
           recovery number on a run day. `ran_today` true = already ran today,
           frame it as appreciation / recovery, NOT "feeling wiped".
           `days_since_last_run` = days since the last run.
-        - `volume_ramp_pct`: this week's volume change vs last week through
-          the same weekday (percent, like-for-like). A big spike = be careful
-          about adding more load.
+        - `volume_ramp`: this week's volume change vs last week through the
+          same weekday (like-for-like). relation is up/down/flat, already
+          resolved -- there's no sign to read yourself; pct is the size of
+          it. A big up = be careful about adding more load.
         - `time_bucket`: ONLY for tone nuance (early morning/morning =
           brighter, night = calmer). NOT for saying "this session" or
           assuming the user's about to run at that hour.
@@ -233,7 +234,7 @@ class BriefingMascotVoiceNarrator
           while the ceiling allows more is a coast: name the streak of easy
           sessions and put something bigger on the table.
         - `recent_baseline_28d` from get_recent_baseline (runs, avg_pace_sec_per_km, avg_hr,
-          avg_decoupling_pct): the user's normal pace/HR over the last 28
+          avg_decoupling): the user's normal pace/HR over the last 28
           days. MUST anchor execution cues to this when it's there, so they're
           relative and personal (e.g. "easy around your normal pace", "tempo a
           bit faster than your average pace"). If it's missing (not enough

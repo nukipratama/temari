@@ -33,4 +33,20 @@ final class DecouplingBands
 
     /** Far enough past {@see self::HIGH} that the day is not a rounding error on the week. */
     public const float EGREGIOUS = 15.0;
+
+    /**
+     * Which way a decoupling reading points, for a caller that must not
+     * invert a raw signed percentage the way #1009 (reopened) found a
+     * narrator doing with a signed pace delta: 'up' when HR drifted up for
+     * the same pace, 'down' when it improved, 'flat' under {@see self::TIGHT}
+     * either way -- the same band that already means "barely moved" above.
+     */
+    public static function relationFor(float $pct): string
+    {
+        return match (true) {
+            abs($pct) < self::TIGHT => 'flat',
+            $pct > 0.0 => 'up',
+            default => 'down',
+        };
+    }
 }

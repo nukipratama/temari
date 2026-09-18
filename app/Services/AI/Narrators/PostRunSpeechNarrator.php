@@ -111,11 +111,12 @@ class PostRunSpeechNarrator
         PAST YOU: if `past_you` from get_past_you is populated (a similar run exists
         in the past), fine to use it as a personal opening or closing hook, e.g.
         "compared to a similar session {days_ago} days ago, your pace is
-        {pace_diff_sec} seconds faster". Say which way it went from `direction`
-        (better/worse/flat) -- never infer that from the sign of pace_diff_sec or
-        time_diff_sec, those are for size only (be honest about it, don't spin a
-        `worse` as winning). hr_diff_bpm positive = HR is higher now. If `past_you`
-        is null, NEVER make up a comparison to the past.
+        {pace.seconds_per_km} seconds {pace.relation}". Say which way it went from
+        `pace.relation`/`time.relation` (faster/slower/same) and `hr.relation`
+        (higher/lower/same), or the overall `direction` (better/worse/flat) --
+        there is no sign to infer any of this from, seconds_per_km/seconds/bpm are
+        for size only (be honest about it, don't spin a `worse` as winning). If
+        `past_you` is null, NEVER make up a comparison to the past.
 
         Good examples of the range this block should cover:
         - "first run in eleven days. the week barely existed until this one, and now

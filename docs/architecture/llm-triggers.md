@@ -367,24 +367,24 @@ inline in its `toolbox()` method.
 
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
-| `RunSummaryTool` · `get_run_summary` | `started_at_local`, `distance_km`, `elapsed_time_sec`, `elapsed_time_formatted`, `pace_sec_per_km`, `pace_formatted`, `avg_hr`, `max_hr`, `avg_cadence_spm`, `cadence_drop_spm` | `ActivityNarrationContext`, `PaceCalculator`; cadence drop from the stored `stream_summary` |
+| `RunSummaryTool` · `get_run_summary` | `started_at_local`, `distance_km`, `elapsed_time_sec`, `elapsed_time_formatted`, `pace_sec_per_km`, `pace_formatted`, `avg_hr`, `max_hr`, `avg_cadence_spm`, `cadence_drop` (`{spm, relation}`, no bare sign — #1009) | `ActivityNarrationContext`, `PaceCalculator`; cadence drop from the stored `stream_summary` |
 | `KmSplitsTool` · `get_km_splits` | `per_km` (sampled rows), `omitted_km`, `fastest_km`, `slowest_km`, `finish_partial`, `negative_split`, `pace_consistency` | stored `stream_summary` via `StreamSummary`; label from `PaceConsistency` |
 | `LapsTool` · `get_laps` | `lap_count`, `laps`, `fastest_lap`, `slowest_lap`, `rep_count`, `recovery_sec`, `pause_count`, `paused_laps` | `StreamSummary::laps()`, `KmSplitBuilder`, `PaceCalculator`, `IntervalDetector` |
-| `HrZonesTool` · `get_hr_zones` | `zone_pct`, `time_in_zone_min`, `trimp`, `hr_drift_bpm`, `intensity_label` | stored `stream_summary` via `StreamSummary`; the label thresholds in-tool |
-| `TerrainTool` · `get_terrain` | `elevation_gain_m`, `max_grade_pct`, `gap_pace` | stored detail attributes and `stream_summary` |
+| `HrZonesTool` · `get_hr_zones` | `zone_pct`, `time_in_zone_min`, `trimp`, `hr_drift` (`{bpm, relation}`, no bare sign — #1009), `intensity_label` | stored `stream_summary` via `StreamSummary`; the label thresholds in-tool |
+| `TerrainTool` · `get_terrain` | `elevation_gain_m`, `max_grade` (`{pct, relation}`, no bare sign — #1009), `gap_pace` | stored detail attributes and `stream_summary` |
 | `WeatherTool` · `get_weather` | `weather_temp_c`, `weather_humidity_pct`, `weather_rain`, `weather_rain_source`, `weather_wind_speed_kmh`, `weather_wind_gust_kmh`, `weather_wind_direction_deg` | `ActivityNarrationContext` over the stored weather snapshot |
-| `EffortContextTool` · `get_effort_context` | `session_intent`, `relative_effort`, `decoupling_pct` | `SessionIntent`, `RelativeEffort`; decoupling from `stream_summary` |
-| `PastYouTool` · `get_past_you` | `past_you`: `days_ago`, `pace_diff_sec`, `time_diff_sec`, `hr_diff_bpm`, `past_km`, `past_date` | `PastYouMatcher` |
+| `EffortContextTool` · `get_effort_context` | `session_intent`, `relative_effort`, `decoupling` (`{pct, relation}`, no bare sign — #1009) | `SessionIntent`, `RelativeEffort`; decoupling from `stream_summary`, relation via `DecouplingBands::relationFor()` |
+| `PastYouTool` · `get_past_you` | `past_you`: `days_ago`, `pace`/`time`/`hr` (each `{magnitude, relation}`, no bare sign — #1009, reopened), `direction`, `past_km`, `past_date` | `PastYouMatcher` |
 | `PersonalRecordsTool` · `get_personal_records` | `personal_records`: list of `{category, value_sec}` | stored `PersonalRecord` rows, written by `PersonalRecords` |
 
 ### Bound to a user and an as-of date (`UserTool`)
 
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
-| `WeekStateTool` · `get_week_state` | `this_week_runs`, `last_week_runs`, `this_week_km`, `last_week_km`, `recovery_hours`, `ran_today`, `days_since_last_run`, `form_status`, `time_bucket`, `consecutive_weeks_active`, `fitness_trend`, `volume_ramp_pct`, `readiness_ceiling`, `build_nudge` | `BriefingContext` over `TrainingLoad`, `RecoveryWindow` and `Readiness` |
-| `TrainingLoadTool` · `get_training_load` | `training_load`: `acute_7d`, `chronic_42d`, `form`, `form_status` | `TrainingLoad::summary()` |
+| `WeekStateTool` · `get_week_state` | `this_week_runs`, `last_week_runs`, `this_week_km`, `last_week_km`, `recovery_hours`, `ran_today`, `days_since_last_run`, `form_status`, `time_bucket`, `consecutive_weeks_active`, `fitness_trend`, `volume_ramp` (`{pct, relation}`, no bare sign — #1009), `readiness_ceiling`, `build_nudge` | `BriefingContext` over `TrainingLoad`, `RecoveryWindow` and `Readiness` |
+| `TrainingLoadTool` · `get_training_load` | `training_load`: `acute_7d`, `chronic_42d`, `form` (`{value, relation}`, no bare sign — #1009), `form_status` | `TrainingLoad::summary()`; relation via `TrainingLoad::formRelation()` |
 | `TrainingPacesTool` · `get_training_paces` | `easy_pace_sec`, `marathon_pace_sec`, `threshold_pace_sec`, `interval_pace_sec` | `VdotEstimator` into `TrainingPaceCalculator` |
-| `RecentBaselineTool` · `get_recent_baseline` | `recent_baseline_28d`: rolling pace / HR / decoupling averages | `ResolveRunBaselineAction` |
+| `RecentBaselineTool` · `get_recent_baseline` | `recent_baseline_28d`: rolling pace / HR averages, `avg_decoupling` (`{pct, relation}`, no bare sign — #1009) | `ResolveRunBaselineAction` |
 | `RecentRunsTool` · `get_recent_runs` | `recent_runs`: up to 5 × `{mood, km, intensity, oneline}` | `VerdictNarrator::recent()` |
 | `LatestPastYouTool` · `get_latest_past_you` | `past_you`, same shape as `PastYouTool` but for the latest run | `PastYouMatcher` |
 | `LifetimeStatsTool` · `get_lifetime_stats` | `name`, `total_runs`, `total_km`, `longest_run_km`, `months_running`, `pr_count`, `weekly_streak`, `favorite_time`, `strava_connected`, `form_status` | `LifetimeStats`, `WeeklySnapshot::consecutiveWeekStreak()` / `::latestFormStatus()` |
@@ -395,7 +395,7 @@ inline in its `toolbox()` method.
 
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
-| `WeekTotalsTool` · `get_week_totals` | `week_ending`, `runs`, `distance_km`, `pace_sec_per_km`, `weekly_trimp`, `ctl_42d`, `atl_7d`, `form`, `form_status`, `monotony`, `strain`, `avg_decoupling`, plus the previous week's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km` | stored `WeeklySnapshot` rows, written by `WeeklyAggregator`; pace via `PaceCalculator` |
+| `WeekTotalsTool` · `get_week_totals` | `week_ending`, `runs`, `distance_km`, `pace_sec_per_km`, `weekly_trimp`, `ctl_42d`, `atl_7d`, `form` (`{value, relation}`, no bare sign — #1009), `form_status`, `monotony`, `strain`, `avg_decoupling` (`{pct, relation}`, no bare sign — #1009), plus the previous week's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km` | stored `WeeklySnapshot` rows, written by `WeeklyAggregator`; pace via `PaceCalculator`; relations via `TrainingLoad::formRelation()` / `DecouplingBands::relationFor()` |
 | `MonthTotalsTool` · `get_month_totals` | `month`, `total_runs`, `total_distance_km`, `longest_run_km`, `pr_count`, `weekly_distance_km`, `mood_mix`, `fitness` (`ctl_start`, `ctl_end`, `form_status_end`) | `DistanceFormatter`, `MoodMix`, stored `WeeklySnapshot` rows |
 | `TrendRangeTool` · `get_trend_range_totals` | `range`, `current` and `comparison` (`runs`, `distance_km`, `trimp_total`), `ctl_start`, `ctl_end`, `vdot_start`, `vdot_end`, `avg_monotony`, `avg_strain` | `TrainingLoad::ctlTrend()` / `::strainMonotonyTrend()`, `TrendDailySnapshot` |
 | `CardIdentityTool` · `get_card_identity` | `rarity`, `rarity_label`, `special_move`, `badges` | stored `RunCard` attributes; labels from `Badge::promptLabelsFor()` |

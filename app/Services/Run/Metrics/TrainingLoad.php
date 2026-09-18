@@ -238,6 +238,23 @@ class TrainingLoad
     }
 
     /**
+     * Which way `form` (CTL - ATL) points, on its sign alone. {@see formStatus()}
+     * also needs `ctl` and answers the finer fresh/optimal/fatigued/overreaching
+     * question; this is the plain two-way call a narrator prompt used to spell
+     * out in prose ("positive = fresh, negative = fatigued") before #1009
+     * (reopened) -- resolved here instead, so no signed `form` has to travel
+     * to the model for the sign to be read at all.
+     */
+    public static function formRelation(float $form): string
+    {
+        return match (true) {
+            $form > 0.0 => 'fresh',
+            $form < 0.0 => 'fatigued',
+            default => 'balanced',
+        };
+    }
+
+    /**
      * Rolls a continuous ATL/CTL EWMA from the first day of the supplied map
      * through $today and returns only the final day's pair. Missing days
      * contribute zero TRIMP so a rest day reduces fatigue but doesn't reduce

@@ -60,9 +60,11 @@ class CardFlavorNarrator
         some drizzle"), don't claim "heavy rain".
 
         PACING: negative_split true = the second half was faster, fine to praise.
-        Low decoupling_pct = good aerobic efficiency. But if these two fields aren't
-        present (no stream data), NEVER make any claim about pacing or negative
-        splits at all, focus on the badge, weather, or special move instead.
+        decoupling.relation "flat" or "down" = good aerobic efficiency, "up" past a
+        big decoupling.pct is the opposite -- there is no sign to read yourself,
+        that call is already made. But if these two fields aren't present (no
+        stream data), NEVER make any claim about pacing or negative splits at all,
+        focus on the badge, weather, or special move instead.
 
         WHAT IT BEAT: get_personal_records lists the records this run actually broke.
         A card backed by a real PR is the best flavor line available, so use it when

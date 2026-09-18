@@ -20,8 +20,9 @@ final class RunSummaryTool extends ActivityTool
     public function description(): string
     {
         return "This session's core numbers: when the run was, distance, duration, pace, average "
-            .'and max HR, cadence, and cadence_drop_spm (how much step rate fell from the first half '
-            .'to the second). elapsed_time_formatted (h:mm:ss) and pace_formatted (mm:ss/km) are the '
+            .'and max HR, cadence, and cadence_drop (how much step rate moved from the first half to '
+            .'the second): spm plus its own relation (dropped/rose/steady) -- there is no sign to '
+            .'read yourself. elapsed_time_formatted (h:mm:ss) and pace_formatted (mm:ss/km) are the '
             .'only forms to quote -- matches what the app shows; elapsed_time_sec and pace_sec_per_km '
             .'are raw seconds, for judging size, never for quoting. Start here.';
     }
@@ -31,6 +32,7 @@ final class RunSummaryTool extends ActivityTool
     {
         $shared = ActivityNarrationContext::fromDetail($this->detail);
         $paceSecPerKm = PaceCalculator::secPerKm($shared->distanceMeters, $this->detail->elapsed_time);
+        $cadenceDropSpm = $this->summary()->cadenceDropSpm();
 
         return [
             'started_at_local' => $this->detail->start_date_local?->toDateTimeString(),
@@ -46,7 +48,19 @@ final class RunSummaryTool extends ActivityTool
             'avg_cadence_spm' => $this->detail->average_cadence !== null
                 ? (int) round((float) $this->detail->average_cadence * 2)
                 : null,
-            'cadence_drop_spm' => $this->summary()->cadenceDropSpm(),
+            'cadence_drop' => $cadenceDropSpm === null ? null : [
+                'spm' => abs($cadenceDropSpm),
+                'relation' => self::cadenceDropRelation($cadenceDropSpm),
+            ],
         ];
+    }
+
+    private static function cadenceDropRelation(float $spm): string
+    {
+        return match (true) {
+            $spm > 0.0 => 'dropped',
+            $spm < 0.0 => 'rose',
+            default => 'steady',
+        };
     }
 }
