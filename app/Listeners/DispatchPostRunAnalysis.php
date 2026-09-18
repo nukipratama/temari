@@ -16,7 +16,6 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\NarrationEligibility;
 use App\Services\AI\NarrationVerdict;
 use App\Services\Run\Plan\ComplianceScorer;
@@ -44,7 +43,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly RestClampRecorder $restClampRecorder,
         private readonly PlanNarrationRequester $planNarration,
         private readonly ComplianceScorer $complianceScorer,
-        private readonly HistoryNarrationGate $history,
     ) {
     }
 
@@ -69,7 +67,12 @@ class DispatchPostRunAnalysis implements ShouldQueue
             NarrationVerdict::Inactive => false,
         };
         $athleteAway = $verdict === NarrationVerdict::Inactive;
-        $stageOnly = $athleteAway || $verdict === NarrationVerdict::AwaitingBacklog;
+        // AwaitingBacklog no longer stages: a fresh connect's recent run
+        // narrates right away, ahead of its own older history — see
+        // docs/decisions/history-narrates-on-demand.md. AnalysisService::markDone()
+        // is what actually detects the early pass (live, at generation time) and
+        // flags the row for SettleEarlyNarrationAction's one-time replay.
+        $stageOnly = $athleteAway;
 
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
@@ -188,22 +191,17 @@ class DispatchPostRunAnalysis implements ShouldQueue
     }
 
     /**
-     * The daily briefing's own narrator reads past-you's bounded reach
-     * (get_latest_past_you, {@see \App\Services\Run\Story\PastYouMatcher::MAX_GAP_DAYS}),
-     * the same reach {@see HistoryNarrationGate::awaitsOlderHydration()} already
-     * gates per-run narration on, so it reuses that gate unchanged, anchored on
-     * now rather than the ingested run's own date: the briefing is always for
-     * today, whichever day's run just triggered this ingest. Held means staged
-     * Pending, not skipped — ai:self-heal releases it once that history lands.
+     * The daily briefing narrates right away even while its own past-you reach
+     * (get_latest_past_you, {@see \App\Services\Run\Story\PastYouMatcher::MAX_GAP_DAYS})
+     * is still hydrating — a fresh connect's early pass, per
+     * docs/decisions/history-narrates-on-demand.md. AnalysisService::markDone()
+     * detects that live (via {@see \App\Services\AI\HistoryNarrationGate::awaitsOlderHydration()},
+     * anchored on now rather than the ingested run's own date) and flags the
+     * row for SettleEarlyNarrationAction's one-time replay once that history
+     * lands.
      */
     private function requestBriefingHeldForHydration(User $user, string $today, bool $isToday, int $delaySec): void
     {
-        if ($this->history->awaitsOlderHydration($user->id, Carbon::now())) {
-            $this->analysisService->requestDeferred(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, $today);
-
-            return;
-        }
-
         $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
     }
 
@@ -212,19 +210,15 @@ class DispatchPostRunAnalysis implements ShouldQueue
      * (get_lifetime_stats, get_progression_signal's full PR table,
      * get_plan_adherence with no $from), so past-you's 365-day reach is the
      * wrong bound: a run outside it can still be the one this narrator reads.
-     * It waits for {@see HistoryNarrationGate::awaitsFullHydration()} instead —
-     * the whole backlog, not just the bounded reach — under the same grace-
-     * window cap. Held means staged Pending, not skipped.
+     * It narrates right away too during a fresh connect's early pass;
+     * AnalysisService::markDone() detects that live via
+     * {@see \App\Services\AI\HistoryNarrationGate::awaitsFullHydration()} — the whole backlog,
+     * not just the bounded reach — and flags the row for
+     * SettleEarlyNarrationAction's one-time replay.
      */
     private function requestProfileVoiceHeldForHydration(User $user, int $delaySec): void
     {
         $isoWeek = AnalysisType::currentIsoWeek();
-
-        if ($this->history->awaitsFullHydration($user->id)) {
-            $this->analysisService->requestDeferred(AnalysisType::ProfileVoice->subjectType(), $user->id, AnalysisType::ProfileVoice, $isoWeek);
-
-            return;
-        }
 
         $this->analysisService->request(
             subjectOrType: AnalysisType::ProfileVoice->subjectType(),

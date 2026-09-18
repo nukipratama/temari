@@ -15,6 +15,10 @@ code_refs:
   - app/Console/Commands/AI/DailyBriefingCommand.php
   - app/Console/Commands/AI/WeeklyProfileCommand.php
   - app/Services/AI/SelfHealer.php
+  - app/Actions/AI/SettleEarlyNarrationAction.php
+  - app/Services/Run/Ingest/ActivityPipeline.php
+  - app/Console/Commands/Strava/HydrateBacklogCommand.php
+  - app/Jobs/Strava/HydrateBacklogForUserJob.php
 ---
 
 # History narrates on demand
@@ -85,6 +89,34 @@ code_refs:
 > "narrated thin" for "never narrated, no route to get one" — worse, and a false-hope Pending skeleton
 > with nothing behind it. Building that release path is a separate, larger change; tracked as a
 > follow-up rather than folded in here.
+
+> **2026-09-19 — the per-run, briefing and profile-voice holds above are lifted for a fresh
+> connect's recent runs; a one-time replay closes the gap (#1054).** #1057 hydrates a fresh
+> connect's last `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS` days first (recent-first), then the
+> rest oldest-first as before ([[hydrate-on-connect]]). `awaitsOlderHydration()` /
+> `awaitsFullHydration()` are unchanged, but `DispatchPostRunAnalysis`, `RequestTodaysBriefing`,
+> `DailyBriefingCommand` and `WeeklyProfileCommand` no longer stage a row Pending when they're
+> true: the run, the day's briefing and the profile voice narrate right away, with two things
+> withheld rather than prompted away — a prompt rule already proved unreliable here. PR
+> detection (`PersonalRecords::detectAndStore()`) is skipped in `ActivityPipeline::ingest()` for
+> a run still inside `awaitsOlderHydration()`'s reach, so no PR row, card badge or notification
+> is ever minted off an incomplete past. `TrainingLoadTool`, `WeekStateTool`/`BriefingContext`,
+> `LifetimeStatsTool` and `PersonaMixTool` return `history_loading: true` and withhold
+> CTL/ATL/form/monotony/volume-trend instead of computing them from a partial history.
+> `AnalysisService::markDone()` detects the same condition live (at generation time, not
+> dispatch time) and stamps `Analysis::$narrated_early_at` plus `User::$history_replay_due_at`;
+> it also skips the notification, since every channel's delivery claim is keyed on the row's id
+> for good and would otherwise permanently spend it on a run that couldn't yet know it set a PR.
+> `ActivityPipeline::ingest()` stamps the same user flag directly when it defers PR detection, so
+> the replay still runs even if narration itself finishes after the drain (and so was never
+> marked early at all).
+> Once the drain empties, `SettleEarlyNarrationAction` (triggered from the same
+> `ActivityPipeline::ingest()` that already runs the #1022 card replay) rebuilds PRs
+> (`PersonalRecords::rebuildForUser()`), re-judges cards (`RecomputeCardClaimsAction`), and
+> regenerates every marked row exactly once — its claim is one locked transaction that clears
+> both markers, so a second drain-complete signal or a later `ai:self-heal` sweep claims nothing
+> and bills nothing more. A long-connected athlete never satisfies `awaitsOlderHydration()` /
+> `awaitsFullHydration()` in the first place, so none of this fires for them.
 
 ## Context
 

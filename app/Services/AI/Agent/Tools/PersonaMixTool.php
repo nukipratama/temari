@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Models\WeeklySnapshot;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Story\MoodMix;
 
 /**
@@ -24,7 +25,9 @@ final class PersonaMixTool extends UserTool
     {
         return "The user's mood distribution over the last 12 weeks, plus the recent half and the "
             .'earlier half broken out separately so a shift is visible, and their latest '
-            .'form_status. An empty list means there aren\'t enough runs yet to read.';
+            .'form_status. An empty list means there aren\'t enough runs yet to read. If '
+            .'history_loading is true, their history is still being imported and form_status is '
+            .'withheld.';
     }
 
     /** @return array<string, mixed> */
@@ -38,6 +41,10 @@ final class PersonaMixTool extends UserTool
         $recent = MoodMix::between($this->user->id, $halfway);
         $earlier = MoodMix::between($this->user->id, $windowStart, $halfway);
         $mix = MoodMix::merge($recent, $earlier);
+        // A fresh connect's early pass: some of the history this reads from is
+        // still hydrating, so the latest form reading isn't handed over — see
+        // docs/decisions/history-narrates-on-demand.md.
+        $historyLoading = app(HistoryNarrationGate::class)->awaitsFullHydration($this->user->id);
 
         return [
             'lookback_weeks' => self::LOOKBACK_WEEKS,
@@ -45,7 +52,8 @@ final class PersonaMixTool extends UserTool
             'persona_mix' => $mix,
             'persona_mix_recent' => $recent,
             'persona_mix_earlier' => $earlier,
-            'form_status' => WeeklySnapshot::latestFormStatus($this->user->id),
+            'form_status' => $historyLoading ? null : WeeklySnapshot::latestFormStatus($this->user->id),
+            ...($historyLoading ? ['history_loading' => true] : []),
         ];
     }
 }

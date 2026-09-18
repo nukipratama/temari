@@ -14,6 +14,7 @@ use App\Services\AI\Agent\Tools\RecentRunsTool;
 use App\Services\AI\Agent\Tools\TrainingLoadTool;
 use App\Services\AI\Agent\Tools\WeekStateTool;
 use App\Services\AI\ChatCallOptions;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Models\PlannedSession;
@@ -350,7 +351,9 @@ class BriefingMascotVoiceNarrator
             AnalysisType::BriefingMascotVoice,
             $asOf,
         );
-        $briefing = BriefingContext::forUser($user, $asOf, $this->trainingLoad->summary($user, $asOf));
+        $historyLoading = app(HistoryNarrationGate::class)->awaitsOlderHydration($user->id, $asOf);
+        $load = $historyLoading ? [] : ($this->trainingLoad->summary($user, $asOf) ?? []);
+        $briefing = BriefingContext::forUser($user, $asOf, $load, $historyLoading);
 
         return [
             'name' => $user->firstName(),
@@ -358,6 +361,7 @@ class BriefingMascotVoiceNarrator
             'date' => $asOf->toDateString(),
             'readiness_ceiling' => $briefing->readinessCeiling,
             'build_nudge' => $briefing->buildNudge,
+            ...($historyLoading ? ['history_loading' => true] : []),
             ...NarratorContinuity::fields($prevNarrative),
         ];
     }

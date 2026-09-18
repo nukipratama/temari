@@ -8,8 +8,6 @@ use App\Actions\AI\RecentlyActiveUsers;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisType;
-use App\Services\AI\HistoryNarrationGate;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -26,7 +24,6 @@ class DailyBriefingCommand extends Command
         RestClampRecorder $restClampRecorder,
         PlanNarrationRequester $planNarration,
         RecentlyActiveUsers $activeUsers,
-        HistoryNarrationGate $history,
     ): int {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
@@ -43,17 +40,10 @@ class DailyBriefingCommand extends Command
             // behind it, which the ingest listener never sees.
             $planNarration->requestClampVoice($user, Carbon::today());
 
-            // A first connect late enough in the day that its drain crosses
-            // this 00:01 kickoff must not have this cadence write the same
-            // thin briefing DispatchPostRunAnalysis already holds — see
-            // HistoryNarrationGate::awaitsOlderHydration(). Held means staged
-            // Pending, not skipped; ai:self-heal releases it once history lands.
-            if ($history->awaitsOlderHydration($user->id, Carbon::now())) {
-                $service->requestDeferred(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, $today);
-
-                continue;
-            }
-
+            // A first connect whose backlog is still draining narrates the
+            // early pass right away too: AnalysisService::markDone() detects
+            // that live and flags the row for SettleEarlyNarrationAction's
+            // one-time replay once that history lands.
             $service->requestBriefing($user, $today);
         }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Models\User;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Support\Carbon;
@@ -38,14 +39,17 @@ final class WeekStateTool extends UserTool
             .'active, fitness direction, what time of day it is (time_bucket), whether they\'ve already '
             .'run today, how many hours since their last run, form_status, plus readiness_ceiling and '
             .'build_nudge which cap how hard you\'re allowed to suggest. Call this before suggesting '
-            .'anything.';
+            .'anything. If history_loading is true, their history is still being imported: form_status, '
+            .'fitness direction, volume_ramp and the ceiling all reflect that unknown rather than a '
+            .'partial past.';
     }
 
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
-        $load = $this->trainingLoad->summary($this->user, $this->asOf) ?? [];
+        $historyLoading = app(HistoryNarrationGate::class)->awaitsOlderHydration($this->user->id, $this->asOf);
+        $load = $historyLoading ? [] : ($this->trainingLoad->summary($this->user, $this->asOf) ?? []);
 
-        return BriefingContext::forUser($this->user, $this->asOf, $load)->toArray();
+        return BriefingContext::forUser($this->user, $this->asOf, $load, $historyLoading)->toArray();
     }
 }

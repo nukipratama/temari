@@ -35,7 +35,7 @@ It shipped because the tests asserted `pauseReason()` for the reasons it *did* i
 
 ## Decision
 
-**1. One ordered list, two callers.** `blockingReason()` ([`blockingReason()`](app/Services/AI/AnalysisService.php#L749)) returns the first condition stopping a dispatch, or `null`. `pauseReason()` ([`pauseReason()`](app/Services/AI/AnalysisService.php#L742)) *is* that list; `autoDispatchEnabled()` ([`autoDispatchEnabled()`](app/Services/AI/AnalysisService.php#L747)) and `dispatchAllowedIgnoringBudget()` ([`dispatchAllowedIgnoringBudget()`](app/Services/AI/AnalysisService.php#L752)) ask whether it returned `null`. Adding a stop condition changes one list and both answers follow, so the reported reason cannot drift from the decision again.
+**1. One ordered list, two callers.** `blockingReason()` ([`blockingReason()`](app/Services/AI/AnalysisService.php#L828)) returns the first condition stopping a dispatch, or `null`. `pauseReason()` ([`pauseReason()`](app/Services/AI/AnalysisService.php#L804)) *is* that list; `autoDispatchEnabled()` ([`autoDispatchEnabled()`](app/Services/AI/AnalysisService.php#L809)) and `dispatchAllowedIgnoringBudget()` ([`dispatchAllowedIgnoringBudget()`](app/Services/AI/AnalysisService.php#L814)) ask whether it returned `null`. Adding a stop condition changes one list and both answers follow, so the reported reason cannot drift from the decision again.
 
 **2. The two real asymmetries are parameters, not duplicated code.** The lists differed for two legitimate reasons, and collapsing them naively would have broken both:
 

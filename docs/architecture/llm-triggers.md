@@ -60,7 +60,7 @@ whose origin is not `User` (a webhook, a devtools re-arm) still declares itself 
 wins because it runs after the middleware default. A job or console command, which never runs
 through that middleware, always declares itself with
 [`NarrationOrigin::set()`](../../app/Services/AI/NarrationOrigin.php#L32). Either way,
-[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L427) writes the current
+[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L503) writes the current
 [`AnalysisOrigin`](../../app/Services/AI/AnalysisOrigin.php#L19) onto the job it dispatches, and the
 job restores it before generating, so the metering row records what started the call rather than
 only which narrator answered. A dispatch site that is not an authenticated web request and declares
@@ -79,9 +79,9 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 
 | when | command | what it dispatches |
 |---|---|---|
-| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L39) | one `BriefingMascotVoice` per active non-demo user — staged `Pending` instead for a first connect whose backlog drain crosses this kickoff ([[history-narrates-on-demand]], #1032) |
+| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L39) | one `BriefingMascotVoice` per active non-demo user — narrates right away even for a first connect whose backlog is still draining ([[history-narrates-on-demand]], #1054) |
 | Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php#L53) | `WeeklyRecap`, oldest unfinished link first |
-| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L60) | `ProfileVoice`, keyed by ISO week — staged `Pending` instead under the same first-connect condition |
+| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L60) | `ProfileVoice`, keyed by ISO week — narrates right away under the same first-connect condition |
 | **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php#L90) | **up to 9 rows per user — see below** |
 | 1st 05:45 | [`ai:monthly-recap`](../../routes/console.php#L98) | `MonthlyRecap`, oldest first |
 | daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php#L118) | `TrendRead`, discriminator `7d` — the only range since #967 |
@@ -128,19 +128,17 @@ leaves a Done row alone, so without `invalidate: true` the first briefing would 
 about an account with no runs in it. The demo account reaches neither as an LLM call — both route
 through `shouldServeRuleBased()` to the filler, per [[demo-triggers-served-rule-based]].
 
-**Both entry points are held (#1032), not just the ingest cascade.** `atSignup()` fires from the
-onboarding wizard, before the backfill sync has written a single Activity row, so
-[`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php)
-would vacuously read "nothing awaiting hydration" and let it straight through — there is nothing
-for the row-based gate to find yet. `users.backfilled_at` (stamped by `KickoffRecapsJob` right
-before it calls `afterBackfill()`) closes that gap: `RequestTodaysBriefing` treats a null
-`backfilled_at` as held outright, then falls back to the same bounded gate `DispatchPostRunAnalysis`
-uses for the remaining (detail-hydration) window `afterBackfill()` can still land inside. A held
-request stages the row `Pending` (`AnalysisService::requestDeferred()`) instead of generating, and
-`SelfHealer::resumeSingleRowType(BriefingMascotVoice)` releases it once the gate clears — no second
-release mechanism. The once-per-day `Cache::add` guard in `afterBackfill()` only runs *after* that
-check, so a re-run of the connect chain while held never spends the day's one real request; it just
-re-stages the same idempotent row.
+**Both entry points are held (#1032) only while there is no history at all yet.** `atSignup()`
+fires from the onboarding wizard, before the backfill sync has written a single Activity row, so
+there is nothing yet to narrate against. `users.backfilled_at` (stamped by `KickoffRecapsJob`
+right before it calls `afterBackfill()`) is null for exactly that window; `RequestTodaysBriefing`
+holds on it alone. Once it's set, the briefing narrates right away even if older history is
+still hydrating (#1054): `AnalysisService::markDone()` detects that live, at generation time
+([`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php)),
+and flags the row for `SettleEarlyNarrationAction`'s one-time replay once that history lands — see
+[[history-narrates-on-demand]]. The once-per-day `Cache::add` guard in `afterBackfill()` only runs
+*after* the `backfilled_at` check, so a re-run of the connect chain before it's set never spends
+the day's one real request; it just re-stages the same idempotent row.
 
 **A brand-new account narrates its season once, off-schedule.** Onboarding and the first-connect
 backfill chain race, and whichever finishes second calls
@@ -208,14 +206,16 @@ too old, or pre-connect and older than the last 7 days (see *the history gate* b
 voice, clamp voice, Temari's read) when the athlete is away from the app, until origin 5 catches them
 up — then `BriefingMascotVoice` (invalidated only when the
 run is today's), then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
-never re-bills. Both of those two are also **held** — staged `Pending`, not dispatched — while
-history their own narrator reads is still hydrating: the briefing on past-you's bounded reach
-([`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
-anchored on now rather than the ingested run's own date), the profile voice on the whole backlog
-([`HistoryNarrationGate::awaitsFullHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
-since it reads lifetime stats and the full PR table). Both holds are bounded by the same
-`ai.recap_hydration_grace_hours` window as the history gate below, so a long-connected athlete sees
-no change, and `ai:self-heal` releases a held row once its history lands (#1032). `WeeklyRecap` and
+never re-bills. Both of those two narrate right away even while history their own narrator reads
+is still hydrating (#1054) — a fresh connect's early pass, per [[history-narrates-on-demand]]:
+`AnalysisService::markDone()` detects it live, at generation time (the briefing on past-you's
+bounded reach via [`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+anchored on now rather than the ingested run's own date; the profile voice on the whole backlog via
+[`HistoryNarrationGate::awaitsFullHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+since it reads lifetime stats and the full PR table), withholds load/form data from the narrator's
+tools, and flags the row for `SettleEarlyNarrationAction`'s one-time replay once that history
+lands. Both conditions are bounded by the same `ai.recap_hydration_grace_hours` window as the
+history gate below, so a long-connected athlete sees no change. `WeeklyRecap` and
 `MonthlyRecap` rows are **staged `Pending` and not narrated here** — the scheduled commands above
 narrate them once the window closes, which is why a pending recap row is not a backlog. See
 [[deferred-recap-windowing]].
@@ -292,16 +292,16 @@ is the one people misremember.
 | **daily cost ceiling** | **`Done`, rule-based** | no | **no — clears on the clock** |
 
 All three pauses resolve through
-[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L752), and an in-flight job reverts
+[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L828), and an in-flight job reverts
 its rows via [`haltForPausedGeneration()`](../../app/Jobs/AI/AnalyzeBaseJob.php#L193) without burning
 an attempt.
 
 **The cost ceiling is the exception in three ways.** It does not pause: a `pending` row is filled
 from the rule-based filler and marked `Done` by
-[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L806), so a capped day is not a
+[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L882), so a capped day is not a
 day of empty blocks. A `Failed` row is explicitly excluded and stays failed, keeping its dead-letter
 visibility. And a *manual* trigger past the ceiling is refused with a 409 rather than degraded,
-because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L717) asks with the budget
+because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L793) asks with the budget
 included while auto-dispatch asks without it. Two ceilings reach that behaviour through the same
 path — the per-athlete slice and the app-wide total above it, which gates callers holding no
 athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
@@ -309,9 +309,9 @@ athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
 
 Three more limits:
 
-- **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L85) filters the AI kickoff commands
+- **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L102) filters the AI kickoff commands
   and every `SelfHealer` sweep, and
-  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L682) serves a demo user's
+  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L744) serves a demo user's
   manual trigger from the filler *before* any pause check — so the public demo spends nothing while
   still feeling live. See [[demo-triggers-served-rule-based]].
 - **The backfill age gate**, [84 days](../../config/ai.php#L43). The only limit that gates automatic

@@ -14,6 +14,7 @@ use App\Models\AI\Analysis;
 use App\Models\AI\AnalysisVersion;
 use App\Models\AI\TokenUsage;
 use App\Models\Feedback;
+use App\Models\StravaConnection;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -1322,6 +1323,109 @@ it('markDone sends no notification for a narration requested on the athlete retu
     $this->service->markDone($row, 'Run story.', ServedBy::Llm);
 
     Notification::assertNothingSent();
+});
+
+it('markDone marks the row early and skips the notification during a fresh connect\'s early pass', function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token', 'services.telegram.notify_max_age_days' => 14]);
+    Notification::fake();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create();
+    StravaConnection::factory()->for($user)->create();
+    $olderBacklog = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($olderBacklog)->create(['start_date_local' => now()->subDays(3)]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()->subDay()]);
+    $row = Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    $this->service->markDone($row, 'Run story.', ServedBy::Llm);
+
+    Notification::assertNothingSent();
+    expect($row->fresh()->narrated_early_at)->not->toBeNull()
+        ->and($user->fresh()->history_replay_due_at)->not->toBeNull();
+});
+
+it('markDone leaves narrated_early_at null and notifies normally for a long-connected athlete', function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token', 'services.telegram.notify_max_age_days' => 14]);
+    Notification::fake();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => now()->subDays(90)]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
+    $row = Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    $this->service->markDone($row, 'Run story.', ServedBy::Llm);
+
+    Notification::assertSentTo($user, AnalysisReadyNotification::class);
+    expect($row->fresh()->narrated_early_at)->toBeNull()
+        ->and($user->fresh()->history_replay_due_at)->toBeNull();
+});
+
+it('markDone never marks a rule-based fill early, even for a run inside the early-pass window', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    $olderBacklog = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($olderBacklog)->create(['start_date_local' => now()->subDays(3)]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()->subDay()]);
+    $row = Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    $this->service->markDone($row, 'filler.', ServedBy::RuleBased);
+
+    expect($row->fresh()->narrated_early_at)->toBeNull()
+        ->and($user->fresh()->history_replay_due_at)->toBeNull();
+});
+
+it('markDone marks the daily briefing early while older history is hydrating', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    $olderBacklog = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($olderBacklog)->create(['start_date_local' => now()->subDays(3)]);
+    $row = Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => now()->toDateString(),
+    ]);
+
+    $this->service->markDone($row, 'Halo!', ServedBy::Llm);
+
+    expect($row->fresh()->narrated_early_at)->not->toBeNull();
+});
+
+it('markDone marks the profile voice early while any history at all is hydrating, even past past-you\'s reach', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    $olderBacklog = Activity::factory()->for($user)->summaryOnly()->create();
+    // Beyond PastYouMatcher::MAX_GAP_DAYS (365): awaitsOlderHydration() would
+    // ignore this, but the profile voice reads the whole lifetime, so
+    // awaitsFullHydration() must still catch it.
+    ActivityDetail::factory()->for($olderBacklog)->create(['start_date_local' => now()->subDays(400)]);
+    $row = Analysis::factory()->create([
+        'subject_type' => AnalysisType::ProfileVoice->subjectType(),
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::ProfileVoice,
+        'discriminator' => AnalysisType::currentIsoWeek(),
+    ]);
+
+    $this->service->markDone($row, 'Profile voice.', ServedBy::Llm);
+
+    expect($row->fresh()->narrated_early_at)->not->toBeNull();
 });
 
 it('markDone does not notify for a non-notifiable type', function (): void {

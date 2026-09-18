@@ -54,15 +54,24 @@ final readonly class BriefingContext
         public string $readinessCeiling,
         /** Gentle "build, don't coast" flag for the fresh-but-detraining case. */
         public bool $buildNudge,
+        /** A fresh connect's early pass: older history is still hydrating. */
+        public bool $historyLoading = false,
     ) {
     }
 
     /**
      * @param  array<string, mixed>|null  $load  Live TrainingLoad summary (form_status/monotony);
      *                                            when null, readiness falls back to the weekly snapshot.
+     * @param  bool  $historyLoading  A fresh connect's early pass: older history
+     *                                (this week's and last week's snapshots, the CTL
+     *                                slope) is still hydrating, so form, fitness_trend,
+     *                                volume_ramp and the readiness ceiling they'd drive
+     *                                are computed from nothing rather than a partial
+     *                                past — the same neutral path a brand-new account
+     *                                with no snapshots yet already takes.
      */
     #[NoDiscard]
-    public static function forUser(User $user, Carbon $asOf, ?array $load = null): self
+    public static function forUser(User $user, Carbon $asOf, ?array $load = null, bool $historyLoading = false): self
     {
         $thisWeekEnd = $asOf->copy()->endOfWeek(Carbon::SUNDAY);
         $lastWeekEnd = $thisWeekEnd->copy()->subWeek();
@@ -83,31 +92,35 @@ final readonly class BriefingContext
         $lastWeek = $byDate[$lastWeekEnd->toDateString()] ?? null;
 
         $snapshotFormStatus = null;
-        if ($thisWeek !== null && $thisWeek->form_status !== null) {
+        if (! $historyLoading && $thisWeek !== null && $thisWeek->form_status !== null) {
             $snapshotFormStatus = $thisWeek->form_status;
-        } elseif ($lastWeek !== null) {
+        } elseif (! $historyLoading && $lastWeek !== null) {
             $snapshotFormStatus = $lastWeek->form_status;
         }
 
         $recovery = RecoveryWindow::forUser($user, $asOf);
         $lastWeekStart = $lastWeekEnd->copy()->subDays(6)->startOfDay();
         $lastWeekToDate = self::lastWeekToDate($user, $lastWeek, $lastWeekStart, $asOf);
-        $volumeRampPct = self::volumeRampPct($thisWeek?->distance_km, $lastWeekToDate['km']);
-        $fitnessTrend = self::fitnessTrend($byDate);
+        // Both are load-trend reads of a history still hydrating during the
+        // early pass, computed from nothing rather than a partial past — the
+        // same neutral path Readiness::assess() already takes for a brand-new
+        // account with no weekly snapshots yet.
+        $volumeRampPct = $historyLoading ? null : self::volumeRampPct($thisWeek?->distance_km, $lastWeekToDate['km']);
+        $fitnessTrend = $historyLoading ? 'plateau' : self::fitnessTrend($byDate);
 
         // Readiness keys off the live load when we have it (same numbers the LLM
         // sees), falling back to the weekly snapshot otherwise.
         $snapshotMonotony = null;
-        if ($thisWeek !== null && $thisWeek->monotony !== null) {
+        if (! $historyLoading && $thisWeek !== null && $thisWeek->monotony !== null) {
             $snapshotMonotony = $thisWeek->monotony;
-        } elseif ($lastWeek !== null) {
+        } elseif (! $historyLoading && $lastWeek !== null) {
             $snapshotMonotony = $lastWeek->monotony;
         }
         // The form_status shown to the LLM and the one readiness caps off must
         // be the same source, or the prompt sees a snapshot form that
         // contradicts the ceiling. Prefer the live load, fall back to snapshot.
-        $formStatus = self::stringOrNull($load['form_status'] ?? null) ?? $snapshotFormStatus;
-        $readinessMonotony = self::floatOrNull($load['monotony'] ?? null) ?? $snapshotMonotony;
+        $formStatus = $historyLoading ? null : (self::stringOrNull($load['form_status'] ?? null) ?? $snapshotFormStatus);
+        $readinessMonotony = $historyLoading ? null : (self::floatOrNull($load['monotony'] ?? null) ?? $snapshotMonotony);
 
         $readiness = Readiness::assess(
             formStatus: $formStatus,
@@ -133,6 +146,7 @@ final readonly class BriefingContext
             volumeRampPct: $volumeRampPct,
             readinessCeiling: $readiness->ceiling->value,
             buildNudge: $readiness->buildNudge,
+            historyLoading: $historyLoading,
         );
     }
 
@@ -293,6 +307,7 @@ final readonly class BriefingContext
             ],
             'readiness_ceiling' => $this->readinessCeiling,
             'build_nudge' => $this->buildNudge,
+            ...($this->historyLoading ? ['history_loading' => true] : []),
         ];
     }
 

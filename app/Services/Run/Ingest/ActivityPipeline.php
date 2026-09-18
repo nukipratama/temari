@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Actions\Gamification\DetectActivityMilestonesAction;
 use App\Actions\Run\Story\RecomputeCardClaimsAction;
 use App\Enums\IngestState;
@@ -15,6 +16,7 @@ use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\HydrationBacklog;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\HeartRateZones;
@@ -59,6 +61,8 @@ class ActivityPipeline
         private readonly AppConfig $config,
         private readonly HydrationBacklog $backlog,
         private readonly RecomputeCardClaimsAction $recomputeCardClaims,
+        private readonly HistoryNarrationGate $history,
+        private readonly SettleEarlyNarrationAction $settleEarlyNarration,
     ) {
     }
 
@@ -122,25 +126,39 @@ class ActivityPipeline
         $this->computeAndStoreSummary($activity, $detailModel, $streams);
         $this->lookupWeather($detailModel, $streams);
 
+        // A run whose older history (within past-you's reach) hasn't hydrated
+        // yet would mint a PR off an incomplete past — every early run would
+        // look like a best. Deferred here, made whole by
+        // SettleEarlyNarrationAction once that history lands.
+        $deferPrDetection = $detailModel->start_date_local !== null
+            && $this->history->awaitsOlderHydration($activity->user_id, $detailModel->start_date_local);
+
         // Wrapped in a transaction so analyzed_at rolls back with the story layer:
         // a PR / card / Temari / milestone throw must leave the stub drainable,
         // never stranded "analyzed" with a half-built story and no AI cascade.
-        DB::transaction(function () use ($activity, $detailModel): void {
+        DB::transaction(function () use ($activity, $detailModel, $deferPrDetection): void {
             $activity->update([
                 'analyzed_at' => now(),
                 'ingest_state' => IngestState::Detailed,
                 'detail_fail_count' => 0,
             ]);
 
-            $newPrCategories = $this->personalRecords->detectAndStore($activity, $detailModel);
+            $newPrCategories = $deferPrDetection ? [] : $this->personalRecords->detectAndStore($activity, $detailModel);
 
             // Story layer must run after PR detection — Temari mood reads PR rows.
             $this->cardFactory->build($activity, $detailModel);
             $this->temari->postRunLine($activity, $detailModel);
             ($this->milestoneDetector)($activity, $detailModel, $newPrCategories);
+
+            if ($deferPrDetection) {
+                User::query()->whereKey($activity->user_id)->whereNull('history_replay_due_at')->update([
+                    'history_replay_due_at' => now(),
+                ]);
+            }
         });
 
         $this->recomputeCardClaimsOnceHistoryLands($activity, $detailModel);
+        ($this->settleEarlyNarration)($activity->user);
         $this->dispatchIngestedEvent($activity);
         $this->scheduleLocationResolution($detailModel);
     }

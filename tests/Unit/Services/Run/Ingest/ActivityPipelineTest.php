@@ -1181,3 +1181,58 @@ it('lands each card\'s PR flag and mood correctly at ingest when hydrated oldest
         ->and(StoryLine::query()->where('activity_id', $newer->id)->value('mood'))->not->toBe('blazing')
         ->and($olderCard->fresh()->pr_set)->toBeTrue();
 });
+
+it('defers PR detection for a run hydrated ahead of its older history (the early pass), and restores it once the drain empties', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create([
+        'access_token' => 'tok',
+        'token_expires_at' => Carbon::now()->addHours(2),
+    ]);
+    // A plain backlog row: summary-only, with the date already known (as a
+    // real backfill's SummaryIngest would leave it) but not yet detail-hydrated.
+    $older = Activity::factory()->for($user)->summaryOnly()->create(['strava_external_id' => 601]);
+    ActivityDetail::factory()->for($older)->create(['start_date_local' => '2025-11-26 06:30:00']);
+    $recent = Activity::factory()->for($user)->stub()->create(['strava_external_id' => 602]);
+
+    $fastSplits = [];
+    for ($k = 1; $k <= 5; $k++) {
+        $fastSplits[] = ['split' => $k, 'distance' => 1000, 'moving_time' => 360, 'elapsed_time' => 360];
+    }
+
+    Http::fake([
+        'strava.com/api/v3/activities/602' => Http::response([
+            'name' => 'Fast 5K', 'start_date_local' => '2026-09-17 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'splits_metric' => $fastSplits, 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/602/streams*' => Http::response([]),
+    ]);
+
+    // recentFirst: the recent run hydrates while $older (dated well before it)
+    // is still a plain summary-only stub, awaiting its own hydration.
+    $this->pipeline->ingest($recent);
+
+    expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->exists())->toBeFalse()
+        ->and(RunCard::query()->where('activity_id', $recent->id)->value('pr_set'))->toBeFalse()
+        ->and($user->fresh()->history_replay_due_at)->not->toBeNull();
+
+    // The older run finishes hydrating: the drain empties, so
+    // SettleEarlyNarrationAction rebuilds PRs and replays cards.
+    Http::fake([
+        'strava.com/api/v3/activities/601' => Http::response([
+            'name' => 'Easy jog', 'start_date_local' => '2025-11-26 06:30:00',
+            'distance' => 3000, 'moving_time' => 1200, 'elapsed_time' => 1200,
+            'splits_metric' => [], 'map' => null,
+        ]),
+        'strava.com/api/v3/activities/601/streams*' => Http::response([]),
+    ]);
+    $this->pipeline->ingest($older);
+
+    expect(PersonalRecord::query()
+        ->where('user_id', $user->id)
+        ->where('category', '5km')
+        ->where('activity_id', $recent->id)
+        ->exists())->toBeTrue()
+        ->and(RunCard::query()->where('activity_id', $recent->id)->value('pr_set'))->toBeTrue()
+        ->and($user->fresh()->history_replay_due_at)->toBeNull();
+});

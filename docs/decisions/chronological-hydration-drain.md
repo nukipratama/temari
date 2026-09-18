@@ -88,10 +88,13 @@ that run would dispatch to the LLM at all. Both call sites that read
 `$delaySec` — `requestCardFlavor()`'s real-narration branch and
 `dispatchActivityGroup()`'s chain-advance branch — are gated behind
 `! $ruleBased && ! $stageOnly`, so a rule-based fill (`TooOld`, `PreConnect`,
-`Demo`) or a staged/held row (`AwaitingBacklog`, `Inactive`) never reads the
-value it just reserved. The reservation is a single shared per-user "next
-slot" cache entry (`StaggerBackfillAction`), so every wasted call still
-advanced it.
+`Demo`) or a staged/held row (`Inactive`) never reads the value it just
+reserved. The reservation is a single shared per-user "next slot" cache entry
+(`StaggerBackfillAction`), so every wasted call still advanced it.
+`AwaitingBacklog` used to be staged/held here too; since #1054 it dispatches
+like `Eligible` (the fresh-connect early pass, narrated ahead of its own older
+history — see docs/decisions/history-narrates-on-demand.md), so it reads
+`$delaySec` same as any other real dispatch.
 
 Under newest-first this was mostly harmless: a backfill's LLM-eligible runs
 (bounded to the last `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS` before connect,

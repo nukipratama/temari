@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\IngestState;
 use App\Models\User;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
@@ -849,25 +848,18 @@ it('narrates the run of an athlete seen on the edge of the active window exactly
     Bus::assertDispatched(AnalyzeProfileVoiceJob::class);
 });
 
-it('stages a recent run Pending, never narrated or templated, while its older history is still hydrating', function (): void {
+it('narrates a recent run right away (the early pass) while its older history is still hydrating', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $activity = analyzedActivity('2026-06-05 06:00:00');
     StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-06-10 08:00:00')]);
-    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+    RunCard::factory()->create(['activity_id' => $activity->id]);
     $older = Activity::factory()->for($activity->user)->summaryOnly()->create();
     ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::parse('2025-11-26 06:00:00')]);
 
     fire($activity);
 
-    Bus::assertNotDispatched(AnalyzeActivityJob::class);
-    Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
-    $held = Analysis::query()
-        ->where(fn ($query) => $query
-            ->where(fn ($q) => $q->where('subject_type', Activity::class)->where('subject_id', $activity->id))
-            ->orWhere(fn ($q) => $q->where('subject_type', RunCard::class)->where('subject_id', $card->id)))
-        ->get();
-    expect($held)->not->toBeEmpty()
-        ->and($held->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Pending))->toBeTrue();
+    Bus::assertDispatched(AnalyzeActivityJob::class);
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class);
 
     Carbon::setTestNow();
 });
@@ -892,7 +884,7 @@ function profileVoiceRow(int $userId, string $isoWeek): ?Analysis
         ->first();
 }
 
-it('holds the daily briefing pending while a run within past-you\'s reach is still hydrating (#1032)', function (): void {
+it('narrates the daily briefing right away while a run within past-you\'s reach is still hydrating (#1054)', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $today = '2026-06-10';
     $activity = analyzedActivity('2026-06-10 06:00:00');
@@ -903,56 +895,27 @@ it('holds the daily briefing pending while a run within past-you\'s reach is sti
 
     fire($activity);
 
-    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    expect(briefingRow($activity->user_id, $today)?->status)->toBe(AnalysisStatus::Pending);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    expect(briefingRow($activity->user_id, $today)?->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });
 
-it('holds the profile voice pending while any run of the backlog awaits hydration, even outside past-you\'s reach (#1032)', function (): void {
+it('narrates the profile voice right away while any run of the backlog awaits hydration, even outside past-you\'s reach (#1054)', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $isoWeek = AnalysisType::currentIsoWeek();
     $activity = analyzedActivity('2026-06-10 06:00:00');
     StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-06-10 08:00:00')]);
     // Well outside past-you's 365-day reach, but the profile voice reads the
-    // whole history (lifetime stats, the full PR table), so it still holds.
+    // whole history (lifetime stats, the full PR table).
     $ancient = Activity::factory()->for($activity->user)->summaryOnly()->create();
     ActivityDetail::factory()->for($ancient)->create(['start_date_local' => Carbon::parse('2022-01-01 06:00:00')]);
 
     fire($activity);
 
-    // The briefing's narrower reach is unaffected by history this old.
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    Bus::assertNotDispatched(AnalyzeProfileVoiceJob::class);
-    expect(profileVoiceRow($activity->user_id, $isoWeek)?->status)->toBe(AnalysisStatus::Pending);
-
-    Carbon::setTestNow();
-});
-
-it('releases the held briefing and profile voice exactly once, on the ingest after their history lands (#1032)', function (): void {
-    Carbon::setTestNow('2026-06-10 09:00:00');
-    $today = '2026-06-10';
-    $isoWeek = AnalysisType::currentIsoWeek();
-    $activity = analyzedActivity('2026-06-10 06:00:00');
-    StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-06-10 08:00:00')]);
-    $older = Activity::factory()->for($activity->user)->summaryOnly()->create();
-    ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::parse('2025-11-26 06:00:00')]);
-
-    fire($activity);
-
-    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    Bus::assertNotDispatched(AnalyzeProfileVoiceJob::class);
-
-    // The older run finishes hydrating.
-    $older->update(['ingest_state' => IngestState::Detailed]);
-    Bus::fake();
-
-    fire($activity);
-
-    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
-    Bus::assertDispatchedTimes(AnalyzeProfileVoiceJob::class, 1);
-    expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->where('discriminator', $today)->count())->toBe(1)
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::ProfileVoice)->where('discriminator', $isoWeek)->count())->toBe(1);
+    Bus::assertDispatched(AnalyzeProfileVoiceJob::class);
+    expect(profileVoiceRow($activity->user_id, $isoWeek)?->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });
