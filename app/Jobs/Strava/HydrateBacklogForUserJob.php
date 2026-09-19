@@ -13,18 +13,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * Starts one athlete's backlog drain the moment their summary backfill lands,
- * instead of waiting for the next `strava:hydrate-backlog` tick. Reuses
- * {@see HydrateBacklogCommand::budget()} and
- * {@see HydrateBacklogCommand::hydrateFor()}, paced by the same background
- * read headroom, with one difference: this connect-triggered drain asks for
- * the last {@see \App\Actions\AI\RecentlyActiveUsers::ACTIVE_WINDOW_DAYS} days
- * first (`$recentFirst`), then continues oldest-first — see
- * docs/decisions/history-narrates-on-demand.md. The cron tick never passes
- * this, so it stays plain oldest-first. A concurrent cron tick hydrating the
- * same runs collapses onto this job's dispatches via {@see IngestActivityJob}'s
- * existing `ShouldBeUnique` lock — nothing new is needed to keep the two from
- * double-hydrating.
+ * Starts one athlete's backlog drain immediately after their summary backfill
+ * lands, recent-first (`$recentFirst`) unlike the plain oldest-first cron
+ * tick — see docs/decisions/history-narrates-on-demand.md.
  */
 class HydrateBacklogForUserJob implements ShouldQueue
 {

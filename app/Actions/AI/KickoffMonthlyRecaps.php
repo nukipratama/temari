@@ -70,13 +70,12 @@ class KickoffMonthlyRecaps
             $preConnect = $narratable->filter(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
             $narratable = $narratable->reject(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
 
-            // A month within LLM reach whose own runs are still hydrating (a
-            // fresh connect's backlog drain) is a load/fitness read of an
-            // incomplete past. Staged Pending instead — never rule-based, this
-            // month deserves the real thing — and the hourly self-heal sweep
-            // resumes it once the drain empties (#1054).
-            $stillHydrating = $narratable->filter(fn (string $month): bool => $this->backlog->monthAwaitsHydration((int) $id, $month))->values();
-            $narratable = $narratable->reject(fn (string $month): bool => $this->backlog->monthAwaitsHydration((int) $id, $month))->values();
+            // A month still hydrating stages Pending instead of rule-based; the
+            // hourly self-heal sweep resumes it once the drain empties.
+            $hydrationSplit = $narratable
+                ->partition(fn (string $month): bool => $this->backlog->monthAwaitsHydration((int) $id, $month));
+            $stillHydrating = $hydrationSplit->get(0, new Collection())->values();
+            $narratable = $hydrationSplit->get(1, new Collection())->values();
             $stillHydrating->each(fn (string $month) => $this->service->requestDeferred(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                 subjectId: (int) $id,

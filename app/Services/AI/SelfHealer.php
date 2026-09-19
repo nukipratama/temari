@@ -247,7 +247,7 @@ class SelfHealer
                 continue;
             }
 
-            // A month whose own runs are still hydrating (#1054/KickoffMonthlyRecaps'
+            // A month whose own runs are still hydrating (KickoffMonthlyRecaps'
             // own deferral) is left for the next sweep rather than resumed.
             if ($link->discriminator !== null && $this->backlog->monthAwaitsHydration($link->subjectId, $link->discriminator)) {
                 continue;

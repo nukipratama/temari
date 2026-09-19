@@ -8,12 +8,10 @@ use App\Actions\AI\KickoffMonthlyRecaps;
 use App\Actions\AI\KickoffWeeklyRecaps;
 use App\Actions\AI\RequestTodaysBriefing;
 use App\Jobs\Strava\HydrateBacklogForUserJob;
-use App\Models\Activity;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisType;
 use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
@@ -82,40 +80,19 @@ class KickoffRecapsJob implements ShouldQueue
     }
 
     /**
-     * The Trends read (just `7d` since #967, was `7d`/`30d`/`90d`/`12mo`)
-     * refreshes on its own daily cron, which only reaches athletes who
-     * already existed when it last ran. A Friday signup therefore waited up
-     * to a day for its first read, on exactly the day a new account forms
-     * its impression of the app.
-     *
-     * `AnalysisService::request()` is idempotent, so the cron that comes round
-     * later finds these already done and bills nothing. Skipped entirely for an
-     * athlete whose backfill found no runs: there is no range to read.
-     *
-     * It is entirely a load/fitness/form read (#1054/#1046), so it must not be
-     * requested while any of this athlete's backlog is still hydrating — the
-     * same reasoning behind withholding CTL/ATL/form from the early-pass
-     * narrators. Deferred here rather than staged:
-     * {@see \App\Actions\AI\SettleEarlyNarrationAction} requests it again,
-     * exactly once, the moment the drain empties.
+     * The Trends read's own daily cron only reaches athletes who already
+     * existed when it last ran, so it is kicked off here too for a same-day
+     * first read. Held while this athlete's backlog is still hydrating — a
+     * load/fitness/form read of an incomplete past — and requested again,
+     * exactly once, by {@see \App\Actions\AI\SettleEarlyNarrationAction} the
+     * moment the drain empties.
      */
     private function kickoffTrendReads(AnalysisService $analysis, User $user, HistoryNarrationGate $history): void
     {
-        if (! Activity::query()->where('user_id', $user->id)->exists()) {
-            return;
-        }
-
         if ($history->awaitsFullHydration($user->id)) {
             return;
         }
 
-        foreach (AnalysisType::TREND_READ_RANGES as $range) {
-            $analysis->request(
-                subjectOrType: AnalysisType::TrendRead->subjectType(),
-                subjectId: $user->id,
-                type: AnalysisType::TrendRead,
-                discriminator: $range,
-            );
-        }
+        $analysis->requestTrendReads($user);
     }
 }

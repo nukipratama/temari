@@ -40,10 +40,9 @@ class DailyBriefingCommand extends Command
             // behind it, which the ingest listener never sees.
             $planNarration->requestClampVoice($user, Carbon::today());
 
-            // A first connect whose backlog is still draining narrates the
-            // early pass right away too: AnalysisService::markDone() detects
-            // that live and flags the row for SettleEarlyNarrationAction's
-            // one-time replay once that history lands.
+            // A first connect's still-draining backlog narrates right away
+            // too; markDone() flags the row for SettleEarlyNarrationAction's
+            // replay if it's still early.
             $service->requestBriefing($user, $today);
         }
 

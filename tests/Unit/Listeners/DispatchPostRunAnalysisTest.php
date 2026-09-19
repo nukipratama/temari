@@ -884,7 +884,7 @@ function profileVoiceRow(int $userId, string $isoWeek): ?Analysis
         ->first();
 }
 
-it('narrates the daily briefing right away while a run within past-you\'s reach is still hydrating (#1054)', function (): void {
+it('narrates the daily briefing right away while a run within past-you\'s reach is still hydrating', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $today = '2026-06-10';
     $activity = analyzedActivity('2026-06-10 06:00:00');
@@ -901,7 +901,7 @@ it('narrates the daily briefing right away while a run within past-you\'s reach 
     Carbon::setTestNow();
 });
 
-it('narrates the profile voice right away while any run of the backlog awaits hydration, even outside past-you\'s reach (#1054)', function (): void {
+it('narrates the profile voice right away while any run of the backlog awaits hydration, even outside past-you\'s reach', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $isoWeek = AnalysisType::currentIsoWeek();
     $activity = analyzedActivity('2026-06-10 06:00:00');

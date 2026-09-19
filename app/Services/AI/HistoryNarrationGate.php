@@ -79,10 +79,7 @@ class HistoryNarrationGate
      */
     public function awaitsOlderHydration(int $userId, ?Carbon $startedAt): bool
     {
-        $connectedAt = $this->backlog->connectedAt($userId);
-        $graceHours = (int) config('ai.recap_hydration_grace_hours', 48);
-
-        if ($startedAt === null || $connectedAt === null || Carbon::now()->gte($connectedAt->addHours($graceHours))) {
+        if ($startedAt === null || ! $this->backlog->withinHydrationGrace($userId)) {
             return false;
         }
 
@@ -112,10 +109,7 @@ class HistoryNarrationGate
      */
     public function awaitsFullHydration(int $userId): bool
     {
-        $connectedAt = $this->backlog->connectedAt($userId);
-        $graceHours = (int) config('ai.recap_hydration_grace_hours', 48);
-
-        if ($connectedAt === null || Carbon::now()->gte($connectedAt->addHours($graceHours))) {
+        if (! $this->backlog->withinHydrationGrace($userId)) {
             return false;
         }
 

@@ -78,8 +78,8 @@ The neighbour it collides with is not on that page at all. `get_week_state` serv
 
 [BriefingContext](app/Services/Run/Story/BriefingContext.php) is the dashboard briefing's personalisation layer, built per user as-of a moment ([`forUser`](app/Services/Run/Story/BriefingContext.php#L65)) and serialised straight into the LLM user message ([`toArray`](app/Services/Run/Story/BriefingContext.php#L290), with short keys to keep token cost down). It collects this-week / last-week run-count + km deltas, recovery hours, and form status, plus two computed heuristics:
 
-- the **time-of-day bucket** (`early_morning` / `morning` / `midday` / `evening` / `night`) so a morning briefing reads differently from an evening one ([`bucketFor`](app/Services/Run/Story/BriefingContext.php#L253));
-- **consecutive weeks active** — a streak proxy reusing the `WeeklySnapshot` rows we already keep, since we don't track a day-level streak ([`countConsecutiveActiveWeeks`](app/Services/Run/Story/BriefingContext.php#L237)).
+- the **time-of-day bucket** (`early_morning` / `morning` / `midday` / `evening` / `night`) so a morning briefing reads differently from an evening one ([`bucketFor`](app/Services/Run/Story/BriefingContext.php#L277));
+- **consecutive weeks active** — a streak proxy reusing the `WeeklySnapshot` rows we already keep, since we don't track a day-level streak ([`countConsecutiveActiveWeeks`](app/Services/Run/Story/BriefingContext.php#L261)).
 
 The last-week half of that pair, and `volume_ramp_pct`, are never the full prior week: [`lastWeekToDate`](app/Services/Run/Story/BriefingContext.php#L146) sums real activity through the same weekday `$asOf` falls on this week, queried straight off `ActivityDetail` rather than the `WeeklySnapshot` row, so a two-day-old week is compared against a two-day-old week rather than a full seven-day one. [Readiness](app/Services/Run/Metrics/Readiness.php)'s ramp guardrail reads the same like-for-like figure.
 

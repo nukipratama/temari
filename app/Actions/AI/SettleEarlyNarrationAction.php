@@ -19,7 +19,6 @@ use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * The replay a fresh connect's early pass owes once its history finishes
@@ -28,15 +27,10 @@ use Illuminate\Support\Facades\DB;
  * docs/decisions/history-narrates-on-demand.md.
  *
  * Called from every point an ingest or a give-up can leave the backlog empty
- * ({@see \App\Services\Run\Ingest\ActivityPipeline}). It is a no-op unless the
- * backlog is actually empty and the athlete is still inside the hydration
- * grace window, so a long-connected athlete's every ingest returns
- * immediately. The claim is per row: an early row is only ever picked up by
- * the call that clears its own `narrated_early_at`, so a second call (a
- * racing ingest, an unrelated sweep) finds nothing left to claim. The PR
- * rebuild and card recompute run on every successful call regardless, since
- * both are idempotent and PR detection can be deferred even when its
- * narration finishes late enough to never need marking at all.
+ * ({@see \App\Services\Run\Ingest\ActivityPipeline}); a no-op unless the
+ * backlog is actually empty, so a long-connected athlete's every ingest
+ * returns immediately. The claim is per row, so a second call (a racing
+ * ingest, an unrelated sweep) finds nothing left to claim.
  */
 class SettleEarlyNarrationAction
 {
@@ -51,22 +45,33 @@ class SettleEarlyNarrationAction
 
     public function __invoke(User $user): void
     {
-        if (! $this->backlog->withinHydrationGrace($user->id)
-            || $this->backlog->awaitingHydration([$user->id])->exists()) {
+        if ($this->backlog->awaitingHydration([$user->id])->exists()) {
             return;
         }
 
-        /** @var Collection<int, Analysis> $claimed */
-        $claimed = DB::transaction(fn (): Collection => $this->claimEarlyRows($user));
+        $claimableRows = AnalysisSubjectMap::whereOwnedBy(Analysis::query(), $user->id)
+            ->whereNotNull('narrated_early_at');
 
+        // Past the grace window this only proceeds if there is still
+        // something left to claim, so a drain that outran the grace window
+        // gets its one replay instead of being silently skipped forever.
+        if (! $this->backlog->withinHydrationGrace($user->id) && ! $claimableRows->exists()) {
+            return;
+        }
+
+        // Rebuilt and recomputed before the claim, and unconditionally: both
+        // are idempotent, and PR detection can be deferred even when its
+        // narration finishes late enough to never need marking at all.
         $this->personalRecords->rebuildForUser($user);
         ($this->recomputeCardClaims)($user);
+
+        $claimed = $this->claimEarlyRows($user);
 
         if ($claimed->isNotEmpty()) {
             $this->regenerate($user, $claimed);
         }
 
-        $this->requestDeferredTrendReads($user);
+        $this->analysisService->requestTrendReads($user);
     }
 
     /**
@@ -74,22 +79,24 @@ class SettleEarlyNarrationAction
      * a lone early RunInsight or PostRunSpeech with its sibling so the
      * per-activity group's representative row is never left Done while the
      * other resets alone — {@see AnalyzeActivityJob}'s chain advance and
-     * SelfHealer both key on PostRunSpeech's status.
+     * SelfHealer both key on PostRunSpeech's status. Each row is claimed by
+     * its own single-row conditional UPDATE rather than a bulk lockForUpdate,
+     * so a concurrent settle for the same user cannot deadlock against
+     * PersonalRecords's own row locking.
      *
      * @return Collection<int, Analysis>
      */
     private function claimEarlyRows(User $user): Collection
     {
-        $rows = AnalysisSubjectMap::whereOwnedBy(Analysis::query(), $user->id)
+        $candidates = AnalysisSubjectMap::whereOwnedBy(Analysis::query(), $user->id)
             ->whereNotNull('narrated_early_at')
-            ->lockForUpdate()
             ->get();
 
-        if ($rows->isEmpty()) {
-            return $rows;
+        if ($candidates->isEmpty()) {
+            return $candidates;
         }
 
-        $activityIds = $rows
+        $activityIds = $candidates
             ->filter(fn (Analysis $row): bool => in_array($row->analysis_type, [AnalysisType::PostRunSpeech, AnalysisType::RunInsight], true))
             ->pluck('subject_id')
             ->unique();
@@ -99,49 +106,44 @@ class SettleEarlyNarrationAction
                 ->where('subject_type', AnalyzeActivityJob::subjectType())
                 ->whereIn('analysis_type', [AnalysisType::PostRunSpeech, AnalysisType::RunInsight])
                 ->whereIn('subject_id', $activityIds)
-                ->lockForUpdate()
                 ->get();
 
-            $rows = $rows->merge($siblings)->unique('id')->values();
+            $candidates = $candidates->merge($siblings)->unique('id')->values();
         }
 
-        Analysis::query()->whereIn('id', $rows->pluck('id'))->update([
-            'narrated_early_at' => null,
-            'error' => null,
-        ]);
-
-        // PlanDayVoice is the exception: requestDayVoiceIfChanged() decides for
-        // itself whether the day's material changed, and has no SelfHealer
-        // recovery family, so pre-flipping it to Pending here could strand it.
-        $toPending = $rows->reject(fn (Analysis $row): bool => $row->analysis_type === AnalysisType::PlanDayVoice);
-        if ($toPending->isNotEmpty()) {
-            Analysis::query()->whereIn('id', $toPending->pluck('id'))->update([
-                'status' => AnalysisStatus::Pending,
-            ]);
-        }
-
-        return $rows;
+        return $candidates->filter(fn (Analysis $row): bool => $this->claimRow($row));
     }
 
     /**
-     * Mirrors {@see \App\Jobs\AI\KickoffRecapsJob::kickoffTrendReads()}'s own
-     * guard: skipped for an athlete whose backfill found no runs, and a no-op
-     * for a range already requested (`request()`'s own idempotent upsert).
+     * One conditional UPDATE per row: clears `narrated_early_at` and, unless
+     * this is a PlanDayVoice row, sends it back to Pending. PlanDayVoice is
+     * the exception — requestDayVoiceIfChanged() decides for itself whether
+     * the day's material changed, and has no SelfHealer recovery family, so
+     * pre-flipping it to Pending here could strand it. A sibling swept in
+     * alongside its own early-marked pair (see claimEarlyRows) may already
+     * have no `narrated_early_at` of its own, so only a row that has one is
+     * required to still have it — that's the only row a second caller could
+     * otherwise race. Returns whether this call actually claimed the row.
      */
-    private function requestDeferredTrendReads(User $user): void
+    private function claimRow(Analysis $row): bool
     {
-        if (! Activity::query()->where('user_id', $user->id)->exists()) {
-            return;
+        $attributes = ['narrated_early_at' => null, 'error' => null];
+        if ($row->analysis_type !== AnalysisType::PlanDayVoice) {
+            $attributes['status'] = AnalysisStatus::Pending;
         }
 
-        foreach (AnalysisType::TREND_READ_RANGES as $range) {
-            $this->analysisService->request(
-                subjectOrType: AnalysisType::TrendRead->subjectType(),
-                subjectId: $user->id,
-                type: AnalysisType::TrendRead,
-                discriminator: $range,
-            );
+        $query = Analysis::query()->whereKey($row->getKey());
+        if ($row->narrated_early_at !== null) {
+            $query->whereNotNull('narrated_early_at');
         }
+
+        $claimed = $query->update($attributes) === 1;
+
+        if ($claimed) {
+            $row->forceFill($attributes)->syncOriginal();
+        }
+
+        return $claimed;
     }
 
     /**
@@ -177,9 +179,8 @@ class SettleEarlyNarrationAction
             };
         }
 
-        // The claimed activities are contiguous Pending links (drain complete
-        // means nothing older is left): dispatching the earliest lets
-        // AnalyzeActivityJob's own chain-advance walk the rest forward.
+        // Dispatching the earliest claimed activity lets AnalyzeActivityJob's
+        // own chain-advance walk the rest forward.
         if ($activityIds === []) {
             return;
         }

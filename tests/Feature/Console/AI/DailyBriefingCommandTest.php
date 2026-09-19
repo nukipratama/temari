@@ -145,7 +145,7 @@ it('skips an athlete who is running but not opening the app', function (): void 
 
 // A first connect late enough in the evening for its backlog drain to cross
 // this 00:01 kickoff still gets today's briefing right away — the early
-// pass, per docs/decisions/history-narrates-on-demand.md (#1054).
+// pass, per docs/decisions/history-narrates-on-demand.md.
 it('narrates the briefing right away for a first connect whose history is still hydrating', function (): void {
     Carbon::setTestNow('2026-06-10 00:01:00');
     $today = Carbon::today()->toDateString();

@@ -90,7 +90,12 @@ final readonly class BriefingContext
         $thisWeek = $byDate[$thisWeekEnd->toDateString()] ?? null;
         $lastWeek = $byDate[$lastWeekEnd->toDateString()] ?? null;
 
-        $snapshotFormStatus = $thisWeek->form_status ?? $lastWeek?->form_status;
+        $snapshotFormStatus = null;
+        if ($thisWeek !== null && $thisWeek->form_status !== null) {
+            $snapshotFormStatus = $thisWeek->form_status;
+        } elseif ($lastWeek !== null) {
+            $snapshotFormStatus = $lastWeek->form_status;
+        }
 
         $recovery = RecoveryWindow::forUser($user, $asOf);
         $lastWeekStart = $lastWeekEnd->copy()->subDays(6)->startOfDay();
@@ -100,7 +105,12 @@ final readonly class BriefingContext
 
         // Readiness keys off the live load when we have it (same numbers the LLM
         // sees), falling back to the weekly snapshot otherwise.
-        $snapshotMonotony = $thisWeek->monotony ?? $lastWeek?->monotony;
+        $snapshotMonotony = null;
+        if ($thisWeek !== null && $thisWeek->monotony !== null) {
+            $snapshotMonotony = $thisWeek->monotony;
+        } elseif ($lastWeek !== null) {
+            $snapshotMonotony = $lastWeek->monotony;
+        }
         // The form_status shown to the LLM and the one readiness caps off must
         // be the same source, or the prompt sees a snapshot form that
         // contradicts the ceiling. Prefer the live load, fall back to snapshot.

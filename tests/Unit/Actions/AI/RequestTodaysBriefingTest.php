@@ -140,7 +140,7 @@ it('re-requests again the next day', function (): void {
     Carbon::setTestNow();
 });
 
-// --- #1054: narrates right away (the early pass) once the backfill has landed ---
+// --- narrates right away (the early pass) once the backfill has landed ---
 
 it('narrates from afterBackfill() right away even while detail hydration is still in progress', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');

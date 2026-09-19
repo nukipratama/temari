@@ -1388,8 +1388,12 @@ it('markDone never marks a rule-based fill early, even for a run inside the earl
     expect($row->fresh()->narrated_early_at)->toBeNull();
 });
 
-it('marks a row early from $startedEarly even once the backlog has finished hydrating by markDone (the straddling row, B4)', function (): void {
+it('re-requests a straddling row once instead of marking it early', function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token', 'services.telegram.notify_max_age_days' => 14]);
+    Notification::fake();
+    Bus::fake();
     $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create();
     StravaConnection::factory()->for($user)->create();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()]);
@@ -1402,10 +1406,20 @@ it('marks a row early from $startedEarly even once the backlog has finished hydr
 
     // No unhydrated backlog exists right now, so isEarlyPassRow() alone would
     // say this row is not early — but its generation started while it was
-    // (e.g. a slow Azure call spanning the moment the drain emptied).
+    // (e.g. a slow Azure call spanning the moment the drain emptied). The
+    // replay that would ever regenerate an early row has already run by now,
+    // so this row asks for itself again instead of being left early.
     $this->service->markDone($row, 'Run story.', ServedBy::Llm, startedEarly: true);
 
-    expect($row->fresh()->narrated_early_at)->not->toBeNull();
+    expect($row->fresh()->narrated_early_at)->toBeNull()
+        ->and($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    // No notification on this pass either — it fires once, on the
+    // re-requested pass that finally reads the complete history.
+    Notification::assertNothingSent();
+    Bus::assertDispatched(
+        AnalyzeActivityJob::class,
+        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id,
+    );
 });
 
 it('never marks a rule-based fill early from $startedEarly either', function (): void {
@@ -1461,7 +1475,7 @@ it('markDone marks the profile voice early while any history at all is hydrating
     expect($row->fresh()->narrated_early_at)->not->toBeNull();
 });
 
-it('markDone marks the plan-day voice early while older history is hydrating (#1044)', function (): void {
+it('markDone marks the plan-day voice early while older history is hydrating', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
     $olderBacklog = Activity::factory()->for($user)->summaryOnly()->create();

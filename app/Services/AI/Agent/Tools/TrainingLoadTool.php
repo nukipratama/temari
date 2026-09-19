@@ -36,10 +36,8 @@ final class TrainingLoadTool extends UserTool
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
-        // A fresh connect's early pass: the athlete's older history is still
-        // hydrating, so CTL/ATL/form would be computed off an incomplete
-        // history — never handed to the model, per
-        // docs/decisions/history-narrates-on-demand.md.
+        // History still hydrating from a fresh connect: CTL/ATL/form would be
+        // computed off an incomplete past — see docs/decisions/history-narrates-on-demand.md.
         if (app(HistoryNarrationGate::class)->awaitsOlderHydration($this->user->id, $this->asOf)) {
             return ['training_load' => null, 'history_loading' => true];
         }

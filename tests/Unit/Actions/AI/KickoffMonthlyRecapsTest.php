@@ -144,7 +144,7 @@ it('fills a month that closed before the athlete connected rule-based, and narra
         ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
 });
 
-it('defers a narratable month whose own runs are still hydrating (#1054)', function (): void {
+it('defers a narratable month whose own runs are still hydrating', function (): void {
     // Connected the evening before the month closed (post-connect, so the
     // month is narratable in principle) and still within the 48h hydration
     // grace as of "now".
@@ -163,7 +163,7 @@ it('defers a narratable month whose own runs are still hydrating (#1054)', funct
     Carbon::setTestNow();
 });
 
-it('defers a hydrating month past the grace window too if a run there truly never hydrates (#1054)', function (): void {
+it('narrates a still-hydrating month once past the grace window, instead of deferring it forever', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create(['created_at' => '2020-01-01 00:00:00']);
     unhydratedRunInMonth($user, '2026-05');

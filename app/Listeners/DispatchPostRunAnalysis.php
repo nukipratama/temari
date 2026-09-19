@@ -67,10 +67,8 @@ class DispatchPostRunAnalysis implements ShouldQueue
         };
         $athleteAway = $verdict === NarrationVerdict::Inactive;
         // AwaitingBacklog no longer stages: a fresh connect's recent run
-        // narrates right away, ahead of its own older history — see
-        // docs/decisions/history-narrates-on-demand.md. AnalysisService::markDone()
-        // is what actually detects the early pass (live, at generation time) and
-        // flags the row for SettleEarlyNarrationAction's one-time replay.
+        // narrates right away, and AnalysisService::markDone() flags the row
+        // for SettleEarlyNarrationAction's replay if it's still early.
         $stageOnly = $athleteAway;
 
         $today = Carbon::today()->toDateString();
@@ -91,13 +89,9 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         $this->dispatchActivityGroup($activity, $isBackfill, $ruleBased, $stageOnly, $delaySec);
 
-        // Daily cadence: when the ingested run is today's, refresh the whole
-        // daily AI set so each block narrates with every run done so far
-        // today. Backfill of a previous day leaves the Done rows untouched, so
-        // re-ingesting old days never re-bills. Both narrate right away even
-        // during a fresh connect's early pass — AnalysisService::markDone()
-        // detects that live and flags the row for SettleEarlyNarrationAction's
-        // one-time replay.
+        // Daily cadence: refresh the whole daily AI set when today's run
+        // lands, so each block narrates with everything done so far today;
+        // backfill of an older day leaves Done rows untouched.
         if (! $athleteAway) {
             $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
             $this->analysisService->request(

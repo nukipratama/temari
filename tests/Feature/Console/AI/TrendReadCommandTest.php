@@ -55,7 +55,7 @@ it('dispatches the 7d range for every active user', function (): void {
     Carbon::setTestNow();
 });
 
-it('holds the trend read for an athlete whose backlog is still hydrating (B5)', function (): void {
+it('holds the trend read for an athlete whose backlog is still hydrating', function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
 
     $user = User::factory()->seenToday()->create();

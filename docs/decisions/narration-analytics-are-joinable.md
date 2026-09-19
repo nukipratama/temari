@@ -74,7 +74,7 @@ not to replay them.
 an LLM was billed, so it can never record that the rule-based filler answered — that is precisely
 the case with no usage row. The producer is a property of the content, so it belongs beside the
 content. [ServedBy](app/Services/AI/ServedBy.php) is written by every path that settles a row
-Done, funnelled through [`markDone()`](app/Services/AI/AnalysisService.php#L224): `llm` by
+Done, funnelled through [`markDone()`](app/Services/AI/AnalysisService.php#L257): `llm` by
 default, `rule_based` from
 [`fillRuleBased()`](app/Services/AI/AnalysisService.php#L892) (demo seed, demo triggers, the
 ceiling degrade) and from the two content-filter fallbacks

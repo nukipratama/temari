@@ -45,9 +45,8 @@ final class LifetimeStatsTool extends UserTool
         // The cached aggregate /calendar also reads, so the two surfaces cannot drift.
         $lifetime = $this->lifetimeStats->forUser($this->user);
         $firstRunAt = $lifetime['first_run_at'];
-        // A fresh connect's early pass: some of the history this reads from is
-        // still hydrating, so the latest form reading isn't handed over — see
-        // docs/decisions/history-narrates-on-demand.md.
+        // History still hydrating from a fresh connect: withhold the latest
+        // form reading — see docs/decisions/history-narrates-on-demand.md.
         $historyLoading = app(HistoryNarrationGate::class)->awaitsFullHydration($this->user->id);
 
         return [

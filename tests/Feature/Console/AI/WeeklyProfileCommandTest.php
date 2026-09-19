@@ -107,7 +107,7 @@ it('skips an athlete who is running but not opening the app', function (): void 
 
 // A first connect whose backlog drain crosses this Monday kickoff still gets
 // its profile voice right away — the early pass, per
-// docs/decisions/history-narrates-on-demand.md (#1054).
+// docs/decisions/history-narrates-on-demand.md.
 it('narrates the profile voice right away while any run of the backlog awaits hydration', function (): void {
     Bus::fake();
     Carbon::setTestNow('2026-05-18 00:05:00');

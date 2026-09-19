@@ -17,6 +17,8 @@ use App\Events\ActivityIngested;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Actions\Gamification\DetectActivityMilestonesAction;
 use App\Actions\Run\Story\RecomputeCardClaimsAction;
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Run\Metrics\PersonalRecords;
@@ -375,6 +377,36 @@ it('drops a non-run activity (ride) without minting a run', function (): void {
         ->and(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
     // Only the detail fetch fired; we bail before the streams call.
     Http::assertSentCount(1);
+});
+
+it('fires the replay when a non-run upload empties the backlog, not just a successful ingest', function (): void {
+    $activity = makeActivityWithConnection();
+    $row = Analysis::factory()->done()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $activity->user_id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => Carbon::today()->toDateString(),
+        'narrated_early_at' => Carbon::now(),
+    ]);
+
+    $this->mock(PersonalRecords::class)->shouldReceive('rebuildForUser')->once();
+    $this->mock(RecomputeCardClaimsAction::class)->shouldReceive('__invoke')->once()
+        ->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
+    $this->pipeline = app(ActivityPipeline::class);
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Evening Ride',
+            'sport_type' => 'Ride',
+            'distance' => 20000,
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    expect($row->fresh()->narrated_early_at)->toBeNull()
+        ->and($row->fresh()->status)->toBe(AnalysisStatus::Queued);
 });
 
 it('revokes the connection without burning detail_fail_count on a 401 (auth revoked)', function (): void {
@@ -1239,7 +1271,7 @@ it('defers PR detection for a run hydrated ahead of its older history (the early
         ->and(RunCard::query()->where('activity_id', $recent->id)->value('pr_set'))->toBeTrue();
 });
 
-it('fires the replay when the drain ends by give-up, not just success (#1063 B3)', function (): void {
+it('fires the replay when the drain ends by give-up, not just success', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create([
         'access_token' => 'tok',
@@ -1283,7 +1315,7 @@ it('fires the replay when the drain ends by give-up, not just success (#1063 B3)
             ->exists())->toBeTrue();
 });
 
-it('drains 5+ runs recent-first then oldest-first, settling the replay exactly once with no mid-drain loop (#1063)', function (): void {
+it('drains 5+ runs recent-first then oldest-first, settling the replay exactly once with no mid-drain loop', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create([
         'access_token' => 'tok',
@@ -1310,17 +1342,17 @@ it('drains 5+ runs recent-first then oldest-first, settling the replay exactly o
         ]);
     };
 
-    // rebuildForUser only ever runs from SettleEarlyNarrationAction, so
-    // Mockery's `once()` (it fails the test the moment a second call happens)
-    // is the direct proof B1's mid-drain re-billing loop is gone: on the old
-    // code this ran on nearly every one of the 5 ingests. RecomputeCardClaimsAction
-    // legitimately runs twice on the final ingest — once from ActivityPipeline's
-    // own per-run recompute (B2), once from the replay — both idempotent.
+    // rebuildForUser and the card recompute only ever run from
+    // SettleEarlyNarrationAction, so Mockery's `once()` (it fails the test the
+    // moment a second call happens) is the direct proof the mid-drain
+    // re-billing loop is gone: on the old code this ran on nearly every one
+    // of the 5 ingests.
     $personalRecords = $this->mock(PersonalRecords::class);
     $personalRecords->shouldReceive('detectAndStore')->andReturn([]);
     $personalRecords->shouldReceive('rebuildForUser')->once();
     $this->mock(RecomputeCardClaimsAction::class)
         ->shouldReceive('__invoke')
+        ->once()
         ->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
     $this->pipeline = app(ActivityPipeline::class);
 

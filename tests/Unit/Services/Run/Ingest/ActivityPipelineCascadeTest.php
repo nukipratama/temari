@@ -76,7 +76,7 @@ it('queues no AI job from inside the ingest transaction', function (): void {
     // request now belongs to the post-commit listener, so nothing from it is
     // billable until the watermark is durable. A TrendRead row can still
     // exist here — SettleEarlyNarrationAction runs post-commit too, and this
-    // single-run user's backlog is trivially empty (#1063).
+    // single-run user's backlog is trivially empty.
     Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
     expect(Analysis::query()->where('analysis_type', '!=', AnalysisType::TrendRead)->count())->toBe(0);
 });

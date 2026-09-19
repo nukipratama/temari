@@ -104,6 +104,32 @@ it('does nothing for a long-connected athlete, even with a stuck backlog straggl
     app(SettleEarlyNarrationAction::class)($user);
 });
 
+it('rebuilds PRs and regenerates a still-claimable row even past the grace window', function (): void {
+    // The drain outran the 48h hydration grace window before this settle
+    // ever ran, leaving a narrated_early_at row unclaimed — this must still
+    // get its one replay rather than being skipped forever.
+    Bus::fake();
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subDays(5)]);
+    $row = Analysis::factory()->done()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => Carbon::today()->toDateString(),
+        'narrated_early_at' => Carbon::now()->subDays(5),
+    ]);
+
+    $this->mock(PersonalRecords::class)->shouldReceive('rebuildForUser')->once();
+    $this->mock(RecomputeCardClaimsAction::class)->shouldReceive('__invoke')->once()
+        ->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
+
+    app(SettleEarlyNarrationAction::class)($user);
+
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    expect($row->fresh()->narrated_early_at)->toBeNull()
+        ->and($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+});
+
 it('rebuilds PRs and replays cards once the backlog is empty, even when nothing was ever marked for narration', function (): void {
     // PR detection can be deferred by ActivityPipeline even when the
     // narration for that same run finishes after the drain already landed —
@@ -164,7 +190,7 @@ it('rebuilds PRs, replays cards, and regenerates every early-marked row exactly 
             ->count())->toBe(2);
 });
 
-it('pairs a lone early RunInsight with its own PostRunSpeech row so the group is never left stranded (B4)', function (): void {
+it('pairs a lone early RunInsight with its own PostRunSpeech row so the group is never left stranded', function (): void {
     Bus::fake();
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
@@ -205,7 +231,7 @@ it('pairs a lone early RunInsight with its own PostRunSpeech row so the group is
         ->and($insight->fresh()->narrated_early_at)->toBeNull();
 });
 
-it('requests the deferred Trends read once the drain empties (#1046)', function (): void {
+it('requests the deferred Trends read once the drain empties', function (): void {
     Bus::fake();
     Carbon::setTestNow('2026-06-17 05:30:00');
     $user = User::factory()->create();
@@ -228,7 +254,7 @@ it('requests the deferred Trends read once the drain empties (#1046)', function 
     Carbon::setTestNow();
 });
 
-it('regenerates a thin plan-day voice exactly once when history lands (#1044)', function (): void {
+it('regenerates a thin plan-day voice exactly once when history lands', function (): void {
     Bus::fake();
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);

@@ -39,7 +39,7 @@ class TrendReadCommand extends Command
 
         foreach ($users as $user) {
             // A load/fitness/form read of a backlog still hydrating (a fresh
-            // connect) — the same hold #1046 gave the backfill-time request.
+            // connect) — the same hold the backfill-time request gets.
             if ($history->awaitsFullHydration($user->id)) {
                 continue;
             }

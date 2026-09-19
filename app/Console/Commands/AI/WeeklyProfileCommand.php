@@ -38,9 +38,8 @@ class WeeklyProfileCommand extends Command
 
         foreach ($users as $user) {
             // A first connect whose backlog drain crosses this Monday kickoff
-            // narrates the early pass right away too: AnalysisService::markDone()
-            // detects that live and flags the row for
-            // SettleEarlyNarrationAction's one-time replay once history lands.
+            // still narrates right away; markDone() flags the row for
+            // SettleEarlyNarrationAction's replay if it's still early.
             $service->requestProfileVoice($user, $isoWeek);
         }
 

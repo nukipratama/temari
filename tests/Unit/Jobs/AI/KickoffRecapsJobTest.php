@@ -210,7 +210,7 @@ it('reads no trends for an athlete whose backfill found no runs', function (): v
     expect(Analysis::query()->where('analysis_type', AnalysisType::TrendRead)->count())->toBe(0);
 });
 
-it('defers the Trends read while the backlog is still hydrating (#1046)', function (): void {
+it('defers the Trends read while the backlog is still hydrating', function (): void {
     Bus::fake();
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
