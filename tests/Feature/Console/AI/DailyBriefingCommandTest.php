@@ -144,9 +144,9 @@ it('skips an athlete who is running but not opening the app', function (): void 
 });
 
 // A first connect late enough in the evening for its backlog drain to cross
-// this 00:01 kickoff must not have the scheduled cadence write the same thin
-// briefing the ingest-time hold already protects against (#1032).
-it('stages the briefing Pending instead of generating while a first connect\'s history is still hydrating', function (): void {
+// this 00:01 kickoff still gets today's briefing right away — the early
+// pass, per docs/decisions/history-narrates-on-demand.md.
+it('narrates the briefing right away for a first connect whose history is still hydrating', function (): void {
     Carbon::setTestNow('2026-06-10 00:01:00');
     $today = Carbon::today()->toDateString();
 
@@ -162,14 +162,14 @@ it('stages the briefing Pending instead of generating while a first connect\'s h
         ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 1 active users.')
         ->assertSuccessful();
 
-    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 
     $row = Analysis::query()
         ->where('subject_id', $user->id)
         ->where('analysis_type', AnalysisType::BriefingMascotVoice)
         ->where('discriminator', $today)
         ->firstOrFail();
-    expect($row->status)->toBe(AnalysisStatus::Pending);
+    expect($row->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });

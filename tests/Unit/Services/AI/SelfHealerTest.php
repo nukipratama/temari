@@ -82,7 +82,7 @@ function nonDispatchingResumeService(): AnalysisService
 
 function selfHealer(AnalysisService $service): SelfHealer
 {
-    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HistoryNarrationGate(new BackfillAgeGate(), new HydrationBacklog()));
+    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HistoryNarrationGate(new BackfillAgeGate(), new HydrationBacklog()), new HydrationBacklog());
 }
 
 /** Seed an activity for $user dated $startDate whose post-run speech is Pending. */
@@ -762,7 +762,9 @@ it('holds a stalled card flavor while older history within past-you reach still 
     expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
 });
 
-it('does not resume a held daily-briefing row while a run within past-you reach still awaits hydration (#1032)', function (): void {
+it('resumes a stalled daily-briefing row even while a run within past-you reach still awaits hydration', function (): void {
+    // BriefingMascotVoice/ProfileVoice narrate right away during the early
+    // pass, so self-heal resuming a stalled row never waits on hydration.
     $user = athleteMidBackfill('2025-11-26 06:00:00');
     Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
@@ -771,20 +773,6 @@ it('does not resume a held daily-briefing row while a run within past-you reach 
         'discriminator' => '2026-06-17',
         'status' => AnalysisStatus::Pending,
     ]);
-
-    expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
-});
-
-it('resumes a held daily-briefing row once its older history lands (#1032)', function (): void {
-    $user = athleteMidBackfill('2025-11-26 06:00:00');
-    Analysis::factory()->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => '2026-06-17',
-        'status' => AnalysisStatus::Pending,
-    ]);
-    Activity::query()->where('user_id', $user->id)->update(['ingest_state' => IngestState::Detailed]);
 
     $captured = [];
 
@@ -793,10 +781,7 @@ it('resumes a held daily-briefing row once its older history lands (#1032)', fun
         ->and($captured[0]['type'])->toBe(AnalysisType::BriefingMascotVoice);
 });
 
-it('does not resume a held profile-voice row while any run of the backlog awaits hydration, even outside past-you reach (#1032)', function (): void {
-    // 2022-01-01 sits well outside past-you's 365-day reach from 2026-06-17,
-    // so the briefing (bounded) resumes while the profile voice (whole
-    // backlog) still holds.
+it('resumes a stalled profile-voice row even while any run of the backlog awaits hydration, outside past-you reach', function (): void {
     $user = athleteMidBackfill('2022-01-01 06:00:00');
     Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
@@ -815,27 +800,8 @@ it('does not resume a held profile-voice row while any run of the backlog awaits
 
     $captured = [];
 
-    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1);
-    expect($captured)->toHaveCount(1)
-        ->and($captured[0]['type'])->toBe(AnalysisType::BriefingMascotVoice);
-});
-
-it('resumes a held profile-voice row once the whole backlog has hydrated (#1032)', function (): void {
-    $user = athleteMidBackfill('2022-01-01 06:00:00');
-    Analysis::factory()->create([
-        'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::ProfileVoice,
-        'discriminator' => '2026-W25',
-        'status' => AnalysisStatus::Pending,
-    ]);
-    Activity::query()->where('user_id', $user->id)->update(['ingest_state' => IngestState::Detailed]);
-
-    $captured = [];
-
-    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1);
-    expect($captured)->toHaveCount(1)
-        ->and($captured[0]['type'])->toBe(AnalysisType::ProfileVoice);
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(2);
+    expect(array_column($captured, 'type'))->toEqualCanonicalizing([AnalysisType::BriefingMascotVoice, AnalysisType::ProfileVoice]);
 });
 
 it('resumes both a briefing and a profile-voice row for a long-connected athlete despite a stuck old backlog entry (#1032)', function (): void {

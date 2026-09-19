@@ -73,6 +73,19 @@ it('hydrates oldest-first', function (): void {
     Queue::assertPushed(IngestActivityJob::class, 1);
 });
 
+it('stays oldest-first even across the last-7-days window the connect-triggered job prioritizes', function (): void {
+    $this->travelTo('2026-09-19 12:00:00');
+    $user = drainUser();
+    $older = backlogRun($user, '2026-06-01 06:00:00');
+    $recent = backlogRun($user, '2026-09-18 06:00:00');
+
+    $this->artisan('strava:hydrate-backlog', ['--batch' => 2])->assertSuccessful();
+
+    $order = Queue::pushed(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
+
+    expect($order)->toBe([$older->id, $recent->id]);
+});
+
 it('hydrates a mixed-date-order backlog oldest-first', function (): void {
     $user = drainUser();
     $middle = backlogRun($user, '2023-03-01 06:00:00');

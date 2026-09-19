@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\AI\RequestTodaysBriefing;
-use App\Enums\IngestState;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -141,47 +140,24 @@ it('re-requests again the next day', function (): void {
     Carbon::setTestNow();
 });
 
-// --- #1032: held while the athlete's history is still hydrating ---
+// --- narrates right away (the early pass) once the backfill has landed ---
 
-it('stages the briefing instead of re-narrating from afterBackfill() while detail hydration is still in progress', function (): void {
+it('narrates from afterBackfill() right away even while detail hydration is still in progress', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     // backfilled_at is set (KickoffRecapsJob stamps it right before calling
-    // afterBackfill()), but the summary-only activity below still awaits the
-    // detail hydration strava:hydrate-backlog runs separately.
+    // afterBackfill()); the summary-only activity below still awaits the
+    // detail hydration strava:hydrate-backlog runs separately, but that no
+    // longer holds the briefing — see docs/decisions/history-narrates-on-demand.md.
     $user = User::factory()->create(['backfilled_at' => Carbon::now()]);
     StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()]);
     $activity = Activity::factory()->for($user)->summaryOnly()->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subDay()]);
 
     Bus::fake();
-    app(RequestTodaysBriefing::class)->afterBackfill($user);
-
-    Bus::assertNothingDispatched();
-    expect(todaysBriefingRows($user)->first()?->status)->toBe(AnalysisStatus::Pending);
-
-    Carbon::setTestNow();
-});
-
-it('releases the held briefing exactly once as soon as detail hydration completes, despite the once-per-day guard already having been consumed while held (#1032)', function (): void {
-    Carbon::setTestNow('2026-06-10 09:00:00');
-    $user = User::factory()->create(['backfilled_at' => Carbon::now()]);
-    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()]);
-    $activity = Activity::factory()->for($user)->summaryOnly()->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subDay()]);
-
-    Bus::fake();
-    // Simulates the connect chain re-running (e.g. a retried KickoffRecapsJob)
-    // more than once the same day while hydration is still in progress: the
-    // once-per-day guard must never be the reason the eventual real request
-    // never happens.
-    app(RequestTodaysBriefing::class)->afterBackfill($user);
-    app(RequestTodaysBriefing::class)->afterBackfill($user);
-    Bus::assertNothingDispatched();
-
-    $activity->update(['ingest_state' => IngestState::Detailed]);
     app(RequestTodaysBriefing::class)->afterBackfill($user);
 
     Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
+    expect(todaysBriefingRows($user)->first()?->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });

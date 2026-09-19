@@ -12,6 +12,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
@@ -104,17 +105,18 @@ it('skips an athlete who is running but not opening the app', function (): void 
     Carbon::setTestNow();
 });
 
-// A first connect whose backlog drain crosses this Monday kickoff must not
-// have the scheduled cadence write the profile voice against a still-
-// hydrating backlog, the same hold the ingest-time path already applies (#1032).
-it('stages the profile voice Pending instead of generating while any run of the backlog awaits hydration', function (): void {
+// A first connect whose backlog drain crosses this Monday kickoff still gets
+// its profile voice right away — the early pass, per
+// docs/decisions/history-narrates-on-demand.md.
+it('narrates the profile voice right away while any run of the backlog awaits hydration', function (): void {
+    Bus::fake();
     Carbon::setTestNow('2026-05-18 00:05:00');
     $isoWeek = AnalysisType::currentIsoWeek();
 
     $user = User::factory()->seenToday()->create();
     StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()]);
     // Well outside past-you's reach too — the profile voice reads the whole
-    // history, so it holds regardless of how old the unhydrated run is.
+    // history, so it narrates early regardless of how old the unhydrated run is.
     $ancient = Activity::factory()->for($user)->summaryOnly()->create();
     ActivityDetail::factory()->for($ancient)->create(['start_date_local' => Carbon::parse('2022-01-01 06:00:00')]);
 
@@ -127,7 +129,7 @@ it('stages the profile voice Pending instead of generating while any run of the 
         ->where('analysis_type', AnalysisType::ProfileVoice)
         ->where('discriminator', $isoWeek)
         ->firstOrFail();
-    expect($row->status)->toBe(AnalysisStatus::Pending);
+    expect($row->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });

@@ -56,6 +56,7 @@ class SelfHealer
         private readonly RecapHydrationReadiness $readiness,
         private readonly RecentlyActiveUsers $activeUsers,
         private readonly HistoryNarrationGate $history,
+        private readonly HydrationBacklog $backlog,
     ) {
     }
 
@@ -246,6 +247,12 @@ class SelfHealer
                 continue;
             }
 
+            // A month whose own runs are still hydrating (KickoffMonthlyRecaps'
+            // own deferral) is left for the next sweep rather than resumed.
+            if ($link->discriminator !== null && $this->backlog->monthAwaitsHydration($link->subjectId, $link->discriminator)) {
+                continue;
+            }
+
             $this->service->request(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                 subjectId: $link->subjectId,
@@ -310,8 +317,7 @@ class SelfHealer
      * without this sweep. subject_id is the user id directly for both types, so
      * no join is needed to scope by user. Stalled + budget-bounded; demo
      * excluded; re-dispatched against the stalled row's own discriminator
-     * rather than a recomputed one. A row {@see self::stillHeldForHydration()}
-     * still holds is left Pending for the next sweep rather than resumed.
+     * rather than a recomputed one.
      *
      * Both discriminators are zero-padded date/week strings, so a plain string
      * ORDER BY is chronological.
@@ -325,8 +331,7 @@ class SelfHealer
             ->whereIn('subject_id', $this->activeUsers->query()->select('id'))
             ->orderBy('discriminator')
             ->get(['subject_id', 'discriminator'])
-            ->unique('subject_id')
-            ->reject(fn ($row): bool => $this->stillHeldForHydration($type, (int) $row->subject_id));
+            ->unique('subject_id');
 
         $earliestPerUser->values()->each(fn ($row, int $index) => $this->service->request(
             subjectOrType: $type->subjectType(),
@@ -340,19 +345,4 @@ class SelfHealer
         return $earliestPerUser->count();
     }
 
-    /**
-     * The two single-row types wait on different reaches of the same athlete's
-     * history, mirroring {@see \App\Listeners\DispatchPostRunAnalysis}'s own hold: the daily
-     * briefing on past-you's bounded reach ({@see HistoryNarrationGate::awaitsOlderHydration()},
-     * anchored on now rather than any particular run), the profile voice on
-     * the whole backlog ({@see HistoryNarrationGate::awaitsFullHydration()}).
-     */
-    private function stillHeldForHydration(AnalysisType $type, int $userId): bool
-    {
-        return match ($type) {
-            AnalysisType::BriefingMascotVoice => $this->history->awaitsOlderHydration($userId, Carbon::now()),
-            AnalysisType::ProfileVoice => $this->history->awaitsFullHydration($userId),
-            default => false,
-        };
-    }
 }

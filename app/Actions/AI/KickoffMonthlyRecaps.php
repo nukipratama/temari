@@ -70,6 +70,19 @@ class KickoffMonthlyRecaps
             $preConnect = $narratable->filter(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
             $narratable = $narratable->reject(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
 
+            // A month still hydrating stages Pending instead of rule-based; the
+            // hourly self-heal sweep resumes it once the drain empties.
+            $hydrationSplit = $narratable
+                ->partition(fn (string $month): bool => $this->backlog->monthAwaitsHydration((int) $id, $month));
+            $stillHydrating = $hydrationSplit->get(0, new Collection())->values();
+            $narratable = $hydrationSplit->get(1, new Collection())->values();
+            $stillHydrating->each(fn (string $month) => $this->service->requestDeferred(
+                subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+                subjectId: (int) $id,
+                type: AnalysisType::MonthlyRecap,
+                discriminator: $month,
+            ));
+
             $tooOld->each(fn (string $month) => $this->service->requestRuleBased(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                 subjectId: (int) $id,

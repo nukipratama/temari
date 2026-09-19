@@ -76,4 +76,33 @@ class HydrationBacklog
             $today->copy()->subDays(TrainingLoad::CTL_TAU - 1)->startOfDay(),
         );
     }
+
+    /**
+     * Whether $userId is still inside the grace window every hydration hold is
+     * bounded by, counted from Strava connect. False once connected long ago
+     * (or never), so a stuck drain cannot hold anything forever.
+     */
+    public function withinHydrationGrace(int $userId): bool
+    {
+        $connectedAt = $this->connectedAt($userId);
+        $graceHours = (int) config('ai.recap_hydration_grace_hours', 48);
+
+        return $connectedAt !== null && Carbon::now()->lt($connectedAt->copy()->addHours($graceHours));
+    }
+
+    /**
+     * Whether any run dated inside $month (Y-m) still awaits detail hydration,
+     * grace-bounded like every other hold, so a long-connected athlete's one
+     * never-hydrating summary run can't stick a month Pending forever.
+     */
+    public function monthAwaitsHydration(int $userId, string $month): bool
+    {
+        if (! $this->withinHydrationGrace($userId)) {
+            return false;
+        }
+
+        $start = Carbon::parse($month.'-01')->startOfMonth();
+
+        return $this->awaitsHydrationBefore($userId, $start->copy()->addMonthNoOverflow(), $start);
+    }
 }

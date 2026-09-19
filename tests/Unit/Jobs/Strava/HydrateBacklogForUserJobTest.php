@@ -84,6 +84,21 @@ it('hydrates that user oldest-first', function (): void {
     expect($order)->toBe([$oldest->id, $newest->id]);
 });
 
+it('hydrates the last 7 days before older history, then stays oldest-first within each half', function (): void {
+    $this->travelTo('2026-09-19 12:00:00');
+    $user = drainJobUser();
+    $oldest = drainJobBacklogRun($user, '2025-01-01 06:00:00');
+    $middleOld = drainJobBacklogRun($user, '2026-06-01 06:00:00');
+    $olderRecent = drainJobBacklogRun($user, '2026-09-14 06:00:00');
+    $newestRecent = drainJobBacklogRun($user, '2026-09-18 06:00:00');
+
+    runHydrateBacklogForUser($user->id);
+
+    $order = Queue::pushed(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
+
+    expect($order)->toBe([$olderRecent->id, $newestRecent->id, $oldest->id, $middleOld->id]);
+});
+
 it('does not touch another user\'s backlog', function (): void {
     $user = drainJobUser();
     $other = drainJobUser();

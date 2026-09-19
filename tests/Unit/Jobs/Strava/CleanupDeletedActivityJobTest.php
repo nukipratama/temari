@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 use Carbon\CarbonInterface;
+use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Models\RunCard;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Services\Run\Metrics\PersonalRecords;
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\Strava\CleanupDeletedActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -14,6 +16,7 @@ use App\Models\PersonalRecord;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Strava\StravaClient;
@@ -85,6 +88,7 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
         app(PersonalRecords::class),
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
+        app(SettleEarlyNarrationAction::class),
     );
 
     expect(Activity::query()->withStubs()->whereKey($doomed->id)->exists())->toBeFalse()
@@ -99,6 +103,31 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
         ->and(Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $survivor->id)->exists())->toBeTrue()
         // The deleted card's CardFlavor analysis is purged too.
         ->and(Analysis::query()->where('subject_type', RunCard::class)->where('subject_id', $doomedCard->id)->exists())->toBeFalse();
+});
+
+it('fires the replay when deleting the last backlog row empties it', function (): void {
+    $user = User::factory()->create();
+    $doomed = makeCleanupRun($user, 7_020, 5_000, now()->startOfWeek()->addDay());
+    fakeStravaConfirms404($user, 7_020);
+    $row = Analysis::factory()->done()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => now()->toDateString(),
+        'narrated_early_at' => now(),
+    ]);
+
+    new CleanupDeletedActivityJob($user->id, 7_020)->handle(
+        app(WeeklyAggregator::class),
+        app(PersonalRecords::class),
+        app(StravaClient::class),
+        app(ResolveTrailingWeeksAction::class),
+        app(SettleEarlyNarrationAction::class),
+    );
+
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    expect($row->fresh()->narrated_early_at)->toBeNull()
+        ->and($row->fresh()->status)->toBe(AnalysisStatus::Queued);
 });
 
 it('purges a retired-type row too, not just the ones KnownAnalysisTypeScope shows by default', function (): void {
@@ -122,6 +151,7 @@ it('purges a retired-type row too, not just the ones KnownAnalysisTypeScope show
         app(PersonalRecords::class),
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
+        app(SettleEarlyNarrationAction::class),
     );
 
     expect(DB::table('ai_analyses')->where('subject_id', $doomed->id)->count())->toBe(0);
@@ -143,7 +173,7 @@ it('prunes a now-empty weekly snapshot when the deleted run was the last one', f
     $personalRecords = Mockery::mock(PersonalRecords::class);
     $personalRecords->shouldReceive('rebuildForUser')->once();
 
-    new CleanupDeletedActivityJob($user->id, 7_003)->handle($weekly, $personalRecords, app(StravaClient::class), app(ResolveTrailingWeeksAction::class));
+    new CleanupDeletedActivityJob($user->id, 7_003)->handle($weekly, $personalRecords, app(StravaClient::class), app(ResolveTrailingWeeksAction::class), app(SettleEarlyNarrationAction::class));
 
     expect(Activity::query()->withStubs()->whereKey($sole->id)->exists())->toBeFalse()
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(0);
@@ -157,6 +187,7 @@ it('no-ops when the activity is already gone', function (): void {
         app(PersonalRecords::class),
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
+        app(SettleEarlyNarrationAction::class),
     );
 
     expect(true)->toBeTrue();
@@ -175,6 +206,7 @@ it('does NOT delete when Strava still returns the activity (forged delete event)
         app(PersonalRecords::class),
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
+        app(SettleEarlyNarrationAction::class),
     );
 
     expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue()
@@ -191,6 +223,7 @@ it('does NOT delete when there is no live connection to verify against', functio
         app(PersonalRecords::class),
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
+        app(SettleEarlyNarrationAction::class),
     );
 
     expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue();

@@ -44,6 +44,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             return;
         }
 
+        $startedEarly = $service->isEarlyPassRow($row);
         $service->markProcessing($row);
 
         try {
@@ -51,7 +52,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
                 $row->id,
                 fn (): string => $this->generateContent($row),
             );
-            $service->markDone($row, $content, ServedBy::Llm, fingerprint: $this->fingerprintFor($row));
+            $service->markDone($row, $content, ServedBy::Llm, fingerprint: $this->fingerprintFor($row), startedEarly: $startedEarly);
             $this->afterDone($row, $service);
         } catch (ObsoleteAnalysisException $e) {
             // The subject is gone for good, so the row describes nothing. Left

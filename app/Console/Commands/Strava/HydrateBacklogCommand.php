@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Strava;
 
+use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\Scopes\AnalyzedScope;
@@ -111,12 +112,22 @@ class HydrateBacklogCommand extends Command
      * subquery rather than a join so {@see AnalyzedScope} and the
      * `summaryOnly` scope keep their own qualified columns. Public for the
      * same reason as {@see self::budget()}.
+     *
+     * $recentFirst puts the last {@see RecentlyActiveUsers::ACTIVE_WINDOW_DAYS}
+     * days ahead of the rest, oldest-first within each half — the fresh-connect
+     * immediate drain's own ordering (see docs/decisions/history-narrates-on-demand.md).
+     * The cron tick never passes it, so its drain stays plain oldest-first.
      */
-    public function hydrateFor(DetailHydrator $hydrator, int $userId, int $take): int
+    public function hydrateFor(DetailHydrator $hydrator, int $userId, int $take, bool $recentFirst = false): int
     {
         return Activity::query()
             ->where('user_id', $userId)
             ->tap($this->hydratable(...))
+            ->when($recentFirst, fn (Builder $query) => $query->orderByRaw(
+                '(select activity_details.start_date_local < ? from activity_details'
+                    .' where activity_details.activity_id = activities.id)',
+                [RecentlyActiveUsers::windowStart()],
+            ))
             ->orderBy(
                 ActivityDetail::query()
                     ->select('start_date_local')
