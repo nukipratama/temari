@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\AI;
 
 use App\Actions\Run\Story\RecomputeCardClaimsAction;
+use App\Enums\IngestState;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
@@ -28,9 +29,11 @@ use Illuminate\Support\Carbon;
  *
  * Called from every point an ingest or a give-up can leave the backlog empty
  * ({@see \App\Services\Run\Ingest\ActivityPipeline}); a no-op unless the
- * backlog is actually empty, so a long-connected athlete's every ingest
- * returns immediately. The claim is per row, so a second call (a racing
- * ingest, an unrelated sweep) finds nothing left to claim.
+ * backlog is actually empty, so a long-connected athlete's every in-order
+ * ingest returns immediately — except a backdated one landing behind an
+ * already-hydrated later run, which still gets its card recompute. The claim
+ * is per row, so a second call (a racing ingest, an unrelated sweep) finds
+ * nothing left to claim.
  */
 class SettleEarlyNarrationAction
 {
@@ -43,7 +46,7 @@ class SettleEarlyNarrationAction
     ) {
     }
 
-    public function __invoke(User $user): void
+    public function __invoke(User $user, ?Carbon $startedAt = null): void
     {
         if ($this->backlog->awaitingHydration([$user->id])->exists()) {
             return;
@@ -56,6 +59,10 @@ class SettleEarlyNarrationAction
         // something left to claim, so a drain that outran the grace window
         // gets its one replay instead of being silently skipped forever.
         if (! $this->backlog->withinHydrationGrace($user->id) && ! $claimableRows->exists()) {
+            if ($startedAt !== null && $this->laterRunLanded($user, $startedAt)) {
+                ($this->recomputeCardClaims)($user);
+            }
+
             return;
         }
 
@@ -195,5 +202,20 @@ class SettleEarlyNarrationAction
         if ($earliest !== null) {
             $this->analysisService->requestActivityGroup($earliest, invalidate: false);
         }
+    }
+
+    /**
+     * Whether this athlete already has a hydrated later run than $startedAt —
+     * a backfill or backdated upload landing behind it can change which of
+     * those later runs set a PR on their day.
+     */
+    private function laterRunLanded(User $user, Carbon $startedAt): bool
+    {
+        return Activity::query()
+            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activities.user_id', $user->id)
+            ->where('activities.ingest_state', IngestState::Detailed)
+            ->where('activity_details.start_date_local', '>', $startedAt)
+            ->exists();
     }
 }

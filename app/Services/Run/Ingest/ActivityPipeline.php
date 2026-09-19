@@ -147,7 +147,7 @@ class ActivityPipeline
             ($this->milestoneDetector)($activity, $detailModel, $newPrCategories);
         });
 
-        ($this->settleEarlyNarration)($activity->user);
+        ($this->settleEarlyNarration)($activity->user, $detailModel->start_date_local);
         $this->dispatchIngestedEvent($activity);
         $this->scheduleLocationResolution($detailModel);
     }

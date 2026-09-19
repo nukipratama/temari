@@ -104,6 +104,45 @@ it('does nothing for a long-connected athlete, even with a stuck backlog straggl
     app(SettleEarlyNarrationAction::class)($user);
 });
 
+function backdatableRun(User $user, string $date, int $secPerKm, bool $prSet): Activity
+{
+    $activity = Activity::factory()->for($user)->create();
+    $perKm = [];
+    for ($k = 1; $k <= 5; $k++) {
+        $perKm[] = ['km' => $k, 'pace' => sprintf('%d:%02d', intdiv($secPerKm, 60), $secPerKm % 60), 'elapsed_sec' => $secPerKm, 'distance_m' => 1000];
+    }
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse($date),
+        'distance' => 5000,
+        'stream_summary' => ['per_km' => $perKm],
+    ]);
+    RunCard::factory()->create(['activity_id' => $activity->id, 'pr_set' => $prSet]);
+
+    return $activity;
+}
+
+it('re-judges a later card when a backdated run lands behind it, for a long-connected athlete outside the grace window', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subDays(90)]);
+    backdatableRun($user, '2026-01-02 06:00:00', 360, false);
+    $day3 = backdatableRun($user, '2026-01-03 06:00:00', 330, true);
+    $day1 = backdatableRun($user, '2026-01-01 06:00:00', 300, false);
+
+    app(SettleEarlyNarrationAction::class)($user, $day1->detail->start_date_local);
+
+    expect($day3->runCard()->value('pr_set'))->toBeFalse();
+});
+
+it('does not recompute cards on a normal in-order ingest for a long-connected athlete', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subDays(90)]);
+    $activity = backdatableRun($user, '2026-01-01 06:00:00', 360, true);
+
+    $this->mock(RecomputeCardClaimsAction::class)->shouldNotReceive('__invoke');
+
+    app(SettleEarlyNarrationAction::class)($user, $activity->detail->start_date_local);
+});
+
 it('rebuilds PRs and regenerates a still-claimable row even past the grace window', function (): void {
     // The drain outran the 48h hydration grace window before this settle
     // ever ran, leaving a narrated_early_at row unclaimed — this must still
