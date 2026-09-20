@@ -60,8 +60,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(NarrationOrigin::class);
         $this->app->scoped(NarratedAnalysis::class);
 
-        // Scoped so its per-request/per-job read memo collapses repeat lookups but
-        // stays fresh across requests and queue jobs (DB remains source of truth).
         $this->app->scoped(AppConfig::class);
 
         $this->app->afterResolving(MaintenanceModeManager::class, static function (MaintenanceModeManager $manager): void {

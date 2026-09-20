@@ -17,6 +17,7 @@ use App\Services\AI\AzureOpenAIClient;
 use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\StructuredChatCaller;
+use App\Support\Config\AppConfigKey;
 use App\Actions\AI\RecordTokenUsageAction;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -130,6 +131,9 @@ pest()->beforeEach(function (): void {
     // AnalysisService::generationPaused() must not read a stale answer cached
     // by a previous test's mock.
     Cache::forget('ai-paused');
+    foreach (AppConfigKey::cases() as $key) {
+        Cache::forget($key->cacheKey());
+    }
     // Pest CI skips `npm run build`; neutralize @vite() so Inertia roots render.
     $this->withoutVite();
 

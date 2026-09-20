@@ -7,23 +7,7 @@
     <title>back soon · Temari</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
-    {{-- Same ground resolution as app.blade.php: a stored explicit choice wins,
-         anything else follows prefers-color-scheme. --}}
-    <script>
-        (function () {
-            var stored = null;
-            try {
-                stored = localStorage.getItem('temari-theme');
-            } catch (e) {}
-            var resolved = stored === 'light' || stored === 'dark'
-                ? stored
-                : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            document.documentElement.dataset.theme = resolved;
-            document.documentElement.style.colorScheme = resolved;
-        })();
-    </script>
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1017">
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f1f5f8">
+    @include('partials.theme-resolution')
     @vite(['resources/css/fonts.css', 'resources/css/app.css'])
 </head>
 <body class="bg-background font-sans text-foreground antialiased">

@@ -34,6 +34,11 @@ enum AppConfigKey: string
     // pause on/off transition is alerted once, not re-sent every self-heal run.
     case AiLastPauseReason = 'ai.last_pause_reason';
 
+    public function cacheKey(): string
+    {
+        return 'app-config:'.$this->value;
+    }
+
     public function default(): mixed
     {
         return match ($this) {

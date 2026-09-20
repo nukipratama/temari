@@ -3,14 +3,10 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\EnforceMaintenanceMode;
-use App\Jobs\Telegram\HandleTelegramUpdateJob;
 use App\Models\User;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -54,7 +50,7 @@ it('lets an admin reach the Pulse page in production, so maintenance can always 
     $this->actingAs(User::factory()->admin()->create())
         ->get('/devtools/pulse', ['PHP_AUTH_USER' => 'owner', 'PHP_AUTH_PW' => 'secret'])
         ->assertOk()
-        ->assertSee('Maintenance');
+        ->assertSee('maintenance');
 });
 
 it('lets the Pulse toggle switch maintenance off over HTTP while it is on', function (): void {
@@ -76,12 +72,16 @@ it('lets the Pulse toggle switch maintenance off over HTTP while it is on', func
     expect(app()->isDownForMaintenance())->toBeFalse();
 });
 
-it('keeps the password-gated devtools reachable without an admin session', function (): void {
+it('requires an authenticated admin in addition to the devtools password', function (): void {
     config(['devtools.password' => 'secret']);
     app()->detectEnvironment(fn (): string => 'production');
 
-    $this->get('/devtools/pulse', ['PHP_AUTH_USER' => 'owner', 'PHP_AUTH_PW' => 'secret'])->assertOk();
-    $this->get('/devtools/pulse')->assertUnauthorized();
+    $this->get('/devtools/pulse', ['PHP_AUTH_USER' => 'owner', 'PHP_AUTH_PW' => 'secret'])
+        ->assertServiceUnavailable();
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->get('/devtools/pulse')
+        ->assertUnauthorized();
 });
 
 it('keeps the deploy smoke test and health check green', function (): void {
@@ -131,14 +131,11 @@ it('keeps the Strava webhook handshake answering', function (): void {
     ]))->assertOk()->assertExactJson(['hub.challenge' => 'challenge-abc']);
 });
 
-it('keeps accepting Telegram updates onto the queue', function (): void {
-    Bus::fake();
+it('blocks Telegram updates during maintenance', function (): void {
     config(['services.telegram.webhook_secret' => 'top-secret']);
 
     $this->postJson(route('telegram.webhook.handle'), ['update_id' => 1], ['X-Telegram-Bot-Api-Secret-Token' => 'top-secret'])
-        ->assertOk();
-
-    Bus::assertDispatched(HandleTelegramUpdateJob::class);
+        ->assertServiceUnavailable();
 });
 
 it('answers JSON callers with a JSON 503', function (): void {
@@ -146,7 +143,7 @@ it('answers JSON callers with a JSON 503', function (): void {
         ->getJson(route('history'))
         ->assertServiceUnavailable()
         ->assertHeader('Retry-After')
-        ->assertJson(['message' => 'Temari is under maintenance.']);
+        ->assertJson(['message' => 'temari is under maintenance.']);
 });
 
 it('sends an open Inertia app to a full page load so the maintenance page replaces it', function (): void {
@@ -164,66 +161,12 @@ it('does nothing while maintenance is off', function (): void {
         ->assertOk();
 });
 
-it('makes zero database queries reaching the Telegram webhook while maintenance is on', function (): void {
-    Bus::fake();
-    config(['services.telegram.webhook_secret' => 'top-secret']);
-
-    $queries = 0;
-    DB::listen(function () use (&$queries): void {
-        $queries++;
-    });
-
-    $this->postJson(route('telegram.webhook.handle'), ['update_id' => 1], ['X-Telegram-Bot-Api-Secret-Token' => 'top-secret'])
-        ->assertOk();
-
-    expect($queries)->toBe(0);
+it('blocks client error reports during maintenance', function (): void {
+    $this->postJson(route('client-errors'), ['message' => 'boom'])->assertServiceUnavailable();
 });
 
-it('makes zero database queries reaching the Telegram webhook while maintenance is off', function (): void {
-    app()->maintenanceMode()->deactivate();
-    Bus::fake();
-    config(['services.telegram.webhook_secret' => 'top-secret']);
-
-    $queries = 0;
-    DB::listen(function () use (&$queries): void {
-        $queries++;
-    });
-
-    $this->postJson(route('telegram.webhook.handle'), ['update_id' => 1], ['X-Telegram-Bot-Api-Secret-Token' => 'top-secret'])
-        ->assertOk();
-
-    expect($queries)->toBe(0);
-});
-
-it('makes zero database queries reaching the client-error sink while maintenance is on', function (): void {
-    $queries = 0;
-    DB::listen(function () use (&$queries): void {
-        $queries++;
-    });
-
-    $this->postJson(route('client-errors'), ['message' => 'boom'])->assertNoContent();
-
-    expect($queries)->toBe(0);
-});
-
-it('makes zero database queries reaching the client-error sink while maintenance is off', function (): void {
-    app()->maintenanceMode()->deactivate();
-
-    $queries = 0;
-    DB::listen(function () use (&$queries): void {
-        $queries++;
-    });
-
-    $this->postJson(route('client-errors'), ['message' => 'boom'])->assertNoContent();
-
-    expect($queries)->toBe(0);
-});
-
-it('serves the request and logs a warning when the app_config table is missing', function (): void {
-    Log::spy();
+it('keeps intentional maintenance active from the last-known value when MySQL is missing', function (): void {
     Schema::drop('app_config');
 
-    $this->get('/')->assertSuccessful();
-
-    Log::shouldHaveReceived('warning')->once()->with('maintenance.flag_unreadable', Mockery::type('array'));
+    $this->get('/')->assertServiceUnavailable();
 });

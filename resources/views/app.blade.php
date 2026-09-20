@@ -26,53 +26,7 @@
     <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
 
-    {{-- Two-ground theme persistence (F2). Blocking and inline, ahead of every
-         other resource in <head>, so `data-theme` is on <html> before the
-         stylesheet applies — a deferred/external script here would let the
-         light default paint for one frame before flipping to the resolved
-         ground, which is the flash decision 6's toggle explicitly must not
-         have. Resolution order: an explicit stored 'light'/'dark' wins;
-         everything else — a stored 'system', a first visit, storage
-         unavailable, a stale value — resolves from prefers-color-scheme. F4
-         wires the live prefers-color-scheme listener for an open tab in
-         'system' mode and S11 builds the Settings control; both read/write
-         the same 'temari-theme' localStorage key this script reads.
-
-         Sets `style.colorScheme` directly rather than a <meta
-         name="color-scheme">: the meta tag can only ever hold one static
-         value, where this needs to vary per resolved theme. The bare
-         `html { color-scheme: light dark }` rule in app.css is the fallback
-         for the (here, purely theoretical — this is an Inertia/React app with
-         no no-JS render path) case where this script cannot run at all. --}}
-    <script>
-        (function () {
-            var STORAGE_KEY = 'temari-theme';
-            var stored = null;
-            try {
-                stored = localStorage.getItem(STORAGE_KEY);
-            } catch (e) {
-                // Storage can throw in a locked-down/private context; fall
-                // through to the OS preference below.
-            }
-            var resolved;
-            if (stored === 'light' || stored === 'dark') {
-                resolved = stored;
-            } else {
-                resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            }
-            document.documentElement.dataset.theme = resolved;
-            document.documentElement.style.colorScheme = resolved;
-        })();
-    </script>
-
-    {{-- Android/Chrome uses this to tint its toolbar. iOS does not use it for
-         the standalone status bar at all, which is why two rounds of retinting
-         it never touched the dark band around the notch. One per ground, so the
-         toolbar matches the surface AppShell paints under the whole app;
-         public/manifest.webmanifest pins the dark value, having no way to vary.
-         Fixed rather than following the dawn-shift. --}}
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1017">
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f1f5f8">
+    @include('partials.theme-resolution')
 
     {{-- PWA: installable + standalone; push works once added to the Home Screen via Safari. --}}
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">

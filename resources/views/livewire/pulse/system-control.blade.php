@@ -52,12 +52,12 @@
                     </div>
 
                     <div @class([
-                        'col-span-2 flex items-center justify-between rounded-sm p-2',
+                        'pad-panel col-span-2 flex items-center justify-between rounded-sm',
                         'bg-leaf/10' => ! $maintenance,
                         'bg-ember/15 ring-2 ring-ember' => $maintenance,
                     ])>
                         <div>
-                            <div class="text-sm font-bold text-foreground">Maintenance</div>
+                            <div class="text-sm font-bold text-foreground">maintenance</div>
                             <div class="text-label-micro {{ $maintenance ? 'text-ember-ink' : 'text-leaf-ink' }}">
                                 {{ $maintenance ? 'on · only admins can get in' : 'off' }}
                             </div>
@@ -65,11 +65,11 @@
                         <button
                             wire:click="toggleMaintenance"
                             @unless ($maintenance)
-                                wire:confirm="Take Temari down for everyone but admins? The queue and scheduler pause too."
+                                wire:confirm="take temari down for everyone but admins? the queue and scheduler pause too."
                             @endunless
                             class="rounded-sm bg-sky px-2 py-1 text-xs font-semibold text-cream hover:bg-sky-deep"
                         >
-                            {{ $maintenance ? 'Disable' : 'Enable' }}
+                            {{ $maintenance ? 'disable' : 'enable' }}
                         </button>
                     </div>
                 </div>

@@ -115,7 +115,7 @@ it('resetBreaker force-closes an open breaker', function (): void {
 it('shows maintenance as off by default', function (): void {
     Livewire::test(SystemControl::class)
         ->assertOk()
-        ->assertSee('Maintenance')
+        ->assertSee('maintenance')
         ->assertDontSee('only admins can get in');
 });
 

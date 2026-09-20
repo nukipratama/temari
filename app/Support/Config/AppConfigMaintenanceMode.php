@@ -9,11 +9,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use PDOException;
 
-/**
- * Laravel maintenance driver backed by the durable `app_config` flag, so the
- * Pulse toggle and `artisan down` / `up` flip one value that the web, Horizon
- * and scheduler containers all read.
- */
+/** Laravel maintenance driver backed by the durable `app_config` flag. */
 class AppConfigMaintenanceMode implements MaintenanceMode
 {
     /**
@@ -31,24 +27,12 @@ class AppConfigMaintenanceMode implements MaintenanceMode
 
     public function active(): bool
     {
-        // A paused queue worker never resets its scoped instances, so a memoised
-        // read would keep it paused after maintenance lifts.
-        $config = $this->config();
-        $config->forget(AppConfigKey::MaintenanceEnabled);
-
         try {
-            return $config->boolean(AppConfigKey::MaintenanceEnabled);
+            return $this->config()->boolean(AppConfigKey::MaintenanceEnabled);
         } catch (QueryException|PDOException $e) {
-            // A missing table or an unreachable DB can't mean the flag was
-            // switched on, and everything that needs the DB fails on its own
-            // anyway — so treat maintenance as off rather than lock everyone
-            // (including the endpoints meant to survive an outage) out. Memoise
-            // it so a later direct read this request (SharedProps) doesn't repeat
-            // the doomed query.
             Log::warning('maintenance.flag_unreadable', ['reason' => $e->getMessage()]);
-            $config->remember(AppConfigKey::MaintenanceEnabled, false);
 
-            return false;
+            return true;
         }
     }
 

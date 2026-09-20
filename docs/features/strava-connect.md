@@ -3,7 +3,7 @@ title: Strava connection (OAuth, sync, webhook)
 description: Connecting Strava, the manual "Sync now" button, and the live push webhook.
 tags: [feature, strava]
 status: living
-reviewed: 2026-09-09
+reviewed: 2026-09-20
 code_refs:
   - resources/js/pages/Auth/Login.tsx
   - app/Http/Controllers/Auth/StravaAuthController.php
@@ -40,7 +40,7 @@ The login screen is the front door. [Login.tsx](../../resources/js/pages/Auth/Lo
 Socialite drives the handshake in [StravaAuthController](../../app/Http/Controllers/Auth/StravaAuthController.php):
 
 - `redirect()` requests scopes `read` and `activity:read_all`.
-- `callback()` reads the *granted* scopes from Strava's `scope` query param (not what we asked for), then `upsertUser()` creates-or-updates the `User` + [StravaConnection](../../app/Models/StravaConnection.php) keyed on `strava_athlete_id`. A partial grant still saves but logs `strava.scopes.partial`.
+- `callback()` reads the *granted* scopes from Strava's `scope` query param (not what we asked for), then `upsertUser()` creates-or-updates the `User` + [StravaConnection](../../app/Models/StravaConnection.php) keyed on `strava_athlete_id`. A partial grant still saves but logs `strava.scopes.partial`. During maintenance a returning athlete still signs in, but a new athlete is refused before either row is written and the new grant is immediately deauthorized so it does not occupy a Strava athlete slot.
 - On a *first-ever* connection it dispatches `SyncActivitiesJob` immediately so the dashboard isn't empty before the hourly poll, then redirects to the [[onboarding]] wizard instead of the dashboard; re-logins skip the backfill and land straight on `dashboard` (the per-user lock makes a redundant sync dispatch harmless anyway). That backfill is unbounded on purpose and still cheap: the walk pages 200 activity *summaries* per read and stores the athlete's whole history from them, so it costs a handful of Strava calls rather than two per run — see [[run-ingest-pipeline]]. The dispatch is a `Bus::chain` whose last link, [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php), stamps `users.backfilled_at` — the connect-completed marker, since the chain's own position is unreadable from outside it — and, if onboarding has already written a plan, re-sizes it against the history that just landed before narrating the athlete's first week (see [[plan-periodizer]]). Rows that predate the column stay null: nothing observed their backfill land.
 - `logout()` clears the session — it does **not** revoke the Strava token.
 
@@ -67,10 +67,11 @@ The `/devtools/pulse` Strava kill-switch (`AppConfigKey::StravaEnabled`) is enfo
 
 ## Releasing the grant
 
-Marking a connection revoked is a local fact only — it stops Temari reading, and changes nothing on Strava, where the athlete goes on occupying one of the app's athlete slots. [StravaClient::deauthorize()](../../app/Services/Strava/StravaClient.php) is what actually frees it, POSTing the athlete's access token to `oauth/deauthorize`. Two callers:
+Marking a connection revoked is a local fact only — it stops Temari reading, and changes nothing on Strava, where the athlete goes on occupying one of the app's athlete slots. [StravaClient::deauthorize()](../../app/Services/Strava/StravaClient.php) is what actually frees it, POSTing the athlete's access token to `oauth/deauthorize`. Three callers:
 
 - **Account deletion.** [UserEraser](../../app/Services/User/UserEraser.php) releases the grant before it removes anything, so an athlete who deletes their account stops counting against the app. Best effort, and it cannot be otherwise: nobody who asked to be deleted stays undeleted because Strava was unreachable, so `deauthorize()` reports a refusal as `false` and logs it rather than throwing.
 - **`strava:remove-athlete {user}`** ([RemoveAthleteCommand](../../app/Console/Commands/Strava/RemoveAthleteCommand.php)) releases one athlete on Strava and then removes the account itself, through the same `UserEraser` the in-app delete button and `user:remove` use — the operator asked for that athlete to be gone, and a freed slot behind an account that still exists is half the job. It prints what will go before asking (`--force` skips the prompt), refuses the demo account, and removes the account even when Strava declines the deauthorize, since nobody stays half-removed because Strava was unreachable. An athlete whose grant is already revoked has nothing to release and is still removed. The command calls `UserEraser::releaseStravaGrant()` directly so the operator is told whether Strava took it; `erase()` then meets a connection that call already marked revoked and skips its own best-effort release. The demo refusal, confirm-or-abort gate and closing token-usage note are shared with `user:remove` via `App\Console\Commands\Concerns\ConfirmsPermanentRemoval`.
+- **Maintenance refusal.** A new OAuth callback during maintenance has no local account to retain or delete, so [StravaAuthController](../../app/Http/Controllers/Auth/StravaAuthController.php) deauthorizes the just-issued grant before returning the guest to the maintenance page. Returning athletes keep their existing grant and can sign in.
 
 The call sits outside `StravaClient::get()`'s gauntlet, like the webhook subscription calls: it spends none of the read budget those buckets meter, and a refused revocation says nothing about Strava's health, so it must not move the circuit breaker. Note the dated obligation in [[strava-data-compliance]] — `oauth/deauthorize` becomes `oauth/revoke` on 2027-06-01.
 

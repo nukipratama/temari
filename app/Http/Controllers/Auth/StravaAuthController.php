@@ -63,7 +63,6 @@ class StravaAuthController extends Controller
 
         $upserted = $this->upsertUser($stravaUser, $grantedScopes);
 
-        // Refused during maintenance: the guest lands on the maintenance page.
         if ($upserted === null) {
             return redirect()->route('dashboard');
         }
@@ -186,12 +185,7 @@ class StravaAuthController extends Controller
         return [$user, true, false];
     }
 
-    /**
-     * Hand the grant straight back so a refused athlete doesn't hold one of the
-     * app's Strava athlete slots with no account behind it.
-     *
-     * @param  array<string, mixed>  $connectionAttributes
-     */
+    /** @param array<string, mixed> $connectionAttributes */
     private function refuseNewAthlete(SocialiteUser $stravaUser, array $connectionAttributes): void
     {
         $deauthorized = app(StravaClient::class)->deauthorize(new StravaConnection($connectionAttributes));

@@ -6,7 +6,10 @@ use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use App\Support\Config\AppConfigMaintenanceMode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
 
@@ -30,15 +33,34 @@ it('is off until activated, and stores the flag in the durable app_config table'
     expect($driver->active())->toBeFalse();
 });
 
-it('sees a flip made by another container even after the same process has read the flag', function (): void {
+it('sees a write-through flip made by another container even after the same process has read the flag', function (): void {
     $driver = new AppConfigMaintenanceMode();
     $driver->activate([]);
     expect(app(AppConfig::class)->boolean(AppConfigKey::MaintenanceEnabled))->toBeTrue();
 
-    // A paused queue worker never flushes its scoped AppConfig, so a stale memo
-    // would hold it paused forever. Flip the row the way `artisan up` in
-    // another container would.
-    DB::table('app_config')->where('key', AppConfigKey::MaintenanceEnabled->value)->update(['value' => 'false']);
+    new AppConfig()->set(AppConfigKey::MaintenanceEnabled, false);
 
     expect($driver->active())->toBeFalse();
+});
+
+it('keeps maintenance active from the cached last-known value during a MySQL outage', function (): void {
+    $driver = new AppConfigMaintenanceMode();
+    $driver->activate([]);
+    Schema::drop('app_config');
+
+    expect($driver->active())->toBeTrue();
+});
+
+it('fails closed when neither Redis nor MySQL can answer', function (): void {
+    Log::spy();
+    Schema::drop('app_config');
+    Cache::shouldReceive('get')
+        ->once()
+        ->with(AppConfigKey::MaintenanceEnabled->cacheKey())
+        ->andThrow(new RuntimeException('redis down'));
+
+    expect(new AppConfigMaintenanceMode()->active())->toBeTrue();
+
+    Log::shouldHaveReceived('warning')->with('app_config.cache_unavailable', Mockery::type('array'));
+    Log::shouldHaveReceived('warning')->with('maintenance.flag_unreadable', Mockery::type('array'));
 });
