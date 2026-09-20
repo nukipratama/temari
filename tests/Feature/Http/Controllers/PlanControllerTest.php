@@ -395,8 +395,9 @@ it('paints the Plan shell inside its query budget', function (): void {
 
     $this->actingAs($user)->get('/plan')->assertSuccessful();
 
-    // 27: a race season's creation asks whether its recent load is scored yet,
-    // plus the maintenance flag read on every request.
+    // 27: 26 since a race season's creation asks whether its recent load is
+    // scored yet, +1 since aiCatchingUp now also asks the hydration gate
+    // whether this athlete's history is still coming in.
     expect($queries)->toBeLessThanOrEqual(27);
 });
 

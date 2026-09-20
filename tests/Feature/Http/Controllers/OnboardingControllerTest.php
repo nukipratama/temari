@@ -200,12 +200,30 @@ it('creates no training_preferences row when the preferences step is skipped', f
 // account created at any other hour met an empty Today card until midnight.
 it('asks for today\'s briefing when the wizard is finished', function (): void {
     Bus::fake();
-    $user = User::factory()->needsOnboarding()->create();
+    // backfilled_at set: the Strava backfill already landed by the time the
+    // wizard finishes, so the request is not held (#1032 covers the other
+    // case below, and RequestTodaysBriefingTest covers the hold itself).
+    $user = User::factory()->needsOnboarding()->create(['backfilled_at' => Carbon::now()]);
 
     $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
 
     expect(briefingRowsFor($user))->toHaveCount(1);
     Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
+});
+
+// The far more common case: the wizard finishes before the Strava backfill
+// has landed. The briefing must stage Pending rather than narrate against
+// zero history (#1032) — ai:self-heal releases it once the backfill lands.
+it('stages the briefing Pending instead of narrating against zero history when the wizard finishes before the backfill lands', function (): void {
+    Bus::fake();
+    $user = User::factory()->needsOnboarding()->create();
+
+    $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
+
+    $row = briefingRowsFor($user)->first();
+    expect($row)->not->toBeNull()
+        ->and($row->status)->toBe(AnalysisStatus::Pending);
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
 it('does not stage a second briefing row on a resubmitted wizard', function (): void {

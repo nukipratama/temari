@@ -82,7 +82,7 @@ function nonDispatchingResumeService(): AnalysisService
 
 function selfHealer(AnalysisService $service): SelfHealer
 {
-    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HistoryNarrationGate(new BackfillAgeGate(), new HydrationBacklog()));
+    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HistoryNarrationGate(new BackfillAgeGate(), new HydrationBacklog()), new HydrationBacklog());
 }
 
 /** Seed an activity for $user dated $startDate whose post-run speech is Pending. */
@@ -760,4 +760,73 @@ it('holds a stalled card flavor while older history within past-you reach still 
     ]);
 
     expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
+});
+
+it('resumes a stalled daily-briefing row even while a run within past-you reach still awaits hydration', function (): void {
+    // BriefingMascotVoice/ProfileVoice narrate right away during the early
+    // pass, so self-heal resuming a stalled row never waits on hydration.
+    $user = athleteMidBackfill('2025-11-26 06:00:00');
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-06-17',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1);
+    expect($captured)->toHaveCount(1)
+        ->and($captured[0]['type'])->toBe(AnalysisType::BriefingMascotVoice);
+});
+
+it('resumes a stalled profile-voice row even while any run of the backlog awaits hydration, outside past-you reach', function (): void {
+    $user = athleteMidBackfill('2022-01-01 06:00:00');
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-06-17',
+        'status' => AnalysisStatus::Pending,
+    ]);
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::ProfileVoice,
+        'discriminator' => '2026-W25',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(2);
+    expect(array_column($captured, 'type'))->toEqualCanonicalizing([AnalysisType::BriefingMascotVoice, AnalysisType::ProfileVoice]);
+});
+
+it('resumes both a briefing and a profile-voice row for a long-connected athlete despite a stuck old backlog entry (#1032)', function (): void {
+    $user = User::factory()->create();
+    // Connected well past the hydration grace window (default 48h).
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::parse('2026-01-01 00:00:00')]);
+    $stuck = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($stuck)->create(['start_date_local' => Carbon::parse('2025-12-01 06:00:00')]);
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-06-17',
+        'status' => AnalysisStatus::Pending,
+    ]);
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::ProfileVoice,
+        'discriminator' => '2026-W25',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(2);
+    expect(array_column($captured, 'type'))->toEqualCanonicalizing([AnalysisType::BriefingMascotVoice, AnalysisType::ProfileVoice]);
 });

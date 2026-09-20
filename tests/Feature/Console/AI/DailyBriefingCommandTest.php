@@ -6,6 +6,7 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -138,6 +139,37 @@ it('skips an athlete who is running but not opening the app', function (): void 
     $this->artisan('ai:daily-briefing')
         ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 0 active users.')
         ->assertSuccessful();
+
+    Carbon::setTestNow();
+});
+
+// A first connect late enough in the evening for its backlog drain to cross
+// this 00:01 kickoff still gets today's briefing right away — the early
+// pass, per docs/decisions/history-narrates-on-demand.md.
+it('narrates the briefing right away for a first connect whose history is still hydrating', function (): void {
+    Carbon::setTestNow('2026-06-10 00:01:00');
+    $today = Carbon::today()->toDateString();
+
+    $user = User::factory()->seenToday()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()]);
+    // Within past-you's 365-day reach, still awaiting hydration.
+    $older = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::now()->subDay()]);
+
+    Bus::fake();
+
+    $this->artisan('ai:daily-briefing')
+        ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 1 active users.')
+        ->assertSuccessful();
+
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+
+    $row = Analysis::query()
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::BriefingMascotVoice)
+        ->where('discriminator', $today)
+        ->firstOrFail();
+    expect($row->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });

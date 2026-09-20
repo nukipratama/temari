@@ -35,6 +35,7 @@ use Override;
  * @property AnalysisOrigin|null $rule_based_reason  Why the rule-based filler wrote it; only ever Return today, null for every other rule-based reason and whenever served_by is Llm.
  * @property string|null $error
  * @property Carbon|null $generated_at
+ * @property Carbon|null $narrated_early_at  Stamped when this row was narrated during a fresh connect's early pass, before its full history landed; cleared on the next markDone(), whether that is the one-time replay or an ordinary re-narration.
  * @property Carbon|null $queued_at
  * @property int $attempts
  * @property Carbon $created_at
@@ -53,6 +54,7 @@ use Override;
     'rule_based_reason',
     'error',
     'generated_at',
+    'narrated_early_at',
     'queued_at',
     'attempts',
 ])]
@@ -94,6 +96,7 @@ class Analysis extends Model
             'served_by' => ServedBy::class,
             'rule_based_reason' => AnalysisOrigin::class,
             'generated_at' => 'datetime',
+            'narrated_early_at' => 'datetime',
             'queued_at' => 'datetime',
             'attempts' => 'integer',
         ];

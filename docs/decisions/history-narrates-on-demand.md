@@ -11,6 +11,17 @@ code_refs:
   - app/Services/AI/BackfillAgeGate.php
   - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
   - app/Actions/AI/RecentlyActiveUsers.php
+  - app/Actions/AI/RequestTodaysBriefing.php
+  - app/Console/Commands/AI/DailyBriefingCommand.php
+  - app/Console/Commands/AI/WeeklyProfileCommand.php
+  - app/Services/AI/SelfHealer.php
+  - app/Actions/AI/SettleEarlyNarrationAction.php
+  - app/Services/Run/Ingest/ActivityPipeline.php
+  - app/Console/Commands/Strava/HydrateBacklogCommand.php
+  - app/Jobs/AI/KickoffRecapsJob.php
+  - app/Actions/AI/KickoffMonthlyRecaps.php
+  - app/Services/AI/PlanNarrationRequester.php
+  - app/Jobs/Strava/HydrateBacklogForUserJob.php
 ---
 
 # History narrates on demand
@@ -43,6 +54,87 @@ code_refs:
 > hydration, bounded by the same grace window. Oldest-first only changes *when* that condition clears —
 > now monotonically, as the drain works forward through the window, rather than depending on the drain
 > reaching backward into it.
+
+> **2026-09-19 — correction (#1044): the briefing narrator never calls `get_latest_past_you`.**
+> The note below says the daily briefing's own narrator reads past-you's bounded reach through
+> that tool; it doesn't — `BriefingMascotVoiceNarrator` calls `get_week_state` / `get_training_load`
+> / `get_recent_runs`, none of them past-you. The bound was chosen for consistency with the per-run
+> hold ({@see \App\Services\Run\Story\PastYouMatcher::MAX_GAP_DAYS}), not because the briefing reads
+> that comparison itself. The gate and its grace-window bound are otherwise exactly as described.
+
+> **2026-09-19 — the daily briefing and the weekly profile voice hold the same way (#1032).**
+> `DispatchPostRunAnalysis` requested both unconditionally for every non-away athlete, so a first-day
+> backfill's first briefing and first-week profile read were written against whatever sliver of
+> history had landed at connect time. The briefing reuses `awaitsOlderHydration()` unchanged, anchored
+> on now rather than the ingested run's own date, because its own narrator reads exactly past-you's
+> bounded reach (`get_latest_past_you`). The profile voice needed a wider gate —
+> `HistoryNarrationGate::awaitsFullHydration()` — because it reads the athlete's whole history
+> (`get_lifetime_stats`, the full PR table, all-time plan adherence), so a run outside past-you's
+> 365-day reach can still be exactly the one it misreads. Both holds are bounded by the same
+> `ai.recap_hydration_grace_hours` window, so a long-connected athlete's timing is unchanged; `ai:self-heal`
+> releases a held row once its history lands, same as the per-run hold above.
+
+> **2026-09-19 — the connect/signup briefing paths and the two scheduled kickoffs hold too (#1032
+> re-check).** The previous note only closed the ingest-time gap; `RequestTodaysBriefing::atSignup()`
+> and `::afterBackfill()` still bypassed it, and so did the `ai:daily-briefing`/`ai:weekly-profile`
+> 00:01/Monday kickoffs. `atSignup()` fires from the onboarding wizard before the backfill sync has
+> written a single `Activity` row, so `awaitsOlderHydration()` would vacuously read "nothing awaiting
+> hydration" — there is nothing yet for the row-based gate to find. `users.backfilled_at` (stamped by
+> `KickoffRecapsJob` immediately before it calls `afterBackfill()`) closes that gap: a null
+> `backfilled_at` holds outright, then the same bounded gate takes over for the remaining
+> detail-hydration window `afterBackfill()` can still land inside. Both entry points stage `Pending`
+> (`AnalysisService::requestDeferred()`) instead of generating while held, and the existing
+> `SelfHealer::resumeSingleRowType()` releases the row — no second release mechanism. `afterBackfill()`'s
+> once-per-day `Cache::add` guard, which exists only to stop a re-run connect chain from re-billing,
+> now runs *after* the hold check, so it can never consume the day's one real request while the row is
+> still held. `DailyBriefingCommand`/`WeeklyProfileCommand` gained the same two checks for a first
+> connect late enough that its backlog drain crosses the kickoff — staging instead of generating, same
+> release path. `PlanNarrationRequester::requestClampVoice()`/`requestDayVoiceIfChanged()` were checked
+> too: both do read hydrated history (the clamp voice through `TrainingLoad`'s 365-day-converged
+> ATL/CTL; the day voice through `TrainingBaseline`'s trailing-weeks average and `SessionMatcher`'s
+> credited-km read), so by this decision's own reasoning they belong on the same hold. Left unfixed
+> here: unlike `BriefingMascotVoice`/`ProfileVoice`, neither has a `SelfHealer` recovery family — each
+> fires only from the ingest listener's `isToday` branch (the clamp also from the 00:01 kickoff, for
+> a new day, never a retroactive re-check of a held one). Holding them with no release path would trade
+> "narrated thin" for "never narrated, no route to get one" — worse, and a false-hope Pending skeleton
+> with nothing behind it. Building that release path is a separate, larger change; tracked as a
+> follow-up rather than folded in here.
+
+> **2026-09-19 — the per-run, briefing and profile-voice holds above are lifted for a fresh
+> connect's recent runs; a one-time replay closes the gap (#1054, reworked from an
+> earlier `users.history_replay_due_at` design that re-fired on nearly every ingest).**
+> #1057 hydrates a fresh connect's last `RecentlyActiveUsers::ACTIVE_WINDOW_DAYS` days first
+> (recent-first), then the rest oldest-first ([[hydrate-on-connect]]). `DispatchPostRunAnalysis`,
+> `RequestTodaysBriefing`, `DailyBriefingCommand` and `WeeklyProfileCommand` no longer stage a row
+> Pending while `awaitsOlderHydration()` / `awaitsFullHydration()` hold true: the run, the day's
+> briefing and the profile voice narrate right away, withholding CTL/ATL/form/monotony/volume-trend
+> (`history_loading: true` from `TrainingLoadTool`, `WeekStateTool`/`BriefingContext`,
+> `LifetimeStatsTool`, `PersonaMixTool`) instead. PR detection is skipped in
+> `ActivityPipeline::ingest()` for the same reach, so no PR row, card badge or notification mints
+> off an incomplete past. `AnalysisService::markDone()` stamps `Analysis::$narrated_early_at` when
+> the row was early either at generation start or completion (a row can straddle the drain
+> finishing mid-generation).
+>
+> The replay has no flag of its own: `SettleEarlyNarrationAction` fires from every point an ingest
+> or a give-up can leave the backlog empty ({@see HydrationBacklog::withinHydrationGrace()} +
+> `awaitingHydration()`), and is a no-op otherwise — a long-connected athlete's connect date is
+> always past grace, so every one of their ingests returns immediately. The claim is per row: an
+> `UPDATE ... WHERE narrated_early_at IS NOT NULL` clears the marker, so a second drain-complete
+> signal (a racing ingest, `ai:self-heal`) claims nothing; the PR rebuild
+> (`PersonalRecords::rebuildForUser()`) and card recompute (`RecomputeCardClaimsAction`) run on
+> every successful call regardless, since both are idempotent. A lone early `RunInsight` or
+> `PostRunSpeech` pulls its sibling into the same reset, since `AnalyzeActivityJob`'s chain advance
+> and `SelfHealer` both key on `PostRunSpeech`'s status.
+>
+> Two more surfaces hold outright rather than narrate early, since neither has anything safe to
+> say thin: `ai:trend-read` and `KickoffRecapsJob::kickoffTrendReads()` skip the Trends read while
+> `HistoryNarrationGate::awaitsFullHydration()` holds; `KickoffMonthlyRecaps` stages a narratable
+> month `Pending` while `HydrationBacklog::monthAwaitsHydration()` (grace-bounded) holds, and the
+> hourly `ai:self-heal` sweep resumes it once that clears. `PlanDayVoice` is narrated early instead
+> (#939 already made a credited day's own read a same-day event), but the replay leaves its row
+> Done rather than pre-flipping it Pending — it has no `SelfHealer` recovery family, and
+> `requestDayVoiceIfChanged()`'s own fingerprint check decides whether the now-real baseline
+> actually moved the read.
 
 ## Context
 

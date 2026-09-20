@@ -31,6 +31,16 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
      */
     private array $pendingRowIds = [];
 
+    /**
+     * Whether each pending row (by AnalysisType value) was an early-pass row
+     * at the moment generation started, captured before markProcessing so a
+     * row that straddles the drain finishing mid-generation is still caught
+     * by {@see AnalysisService::markDone()}'s `$startedEarly`.
+     *
+     * @var array<string, bool>
+     */
+    private array $startedEarlyByType = [];
+
     public function __construct(
         public readonly int $subjectId,
         public readonly ?string $discriminator = null,
@@ -75,6 +85,10 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 
             return;
         }
+
+        $this->startedEarlyByType = $pending->mapWithKeys(
+            fn (Analysis $row): array => [$row->analysis_type->value => $service->isEarlyPassRow($row)],
+        )->all();
 
         foreach ($pending as $row) {
             $service->markProcessing($row);
@@ -191,7 +205,14 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
     ): void {
         DB::transaction(function () use ($pending, $payload, $service, $fingerprint, $servedBy, $ruleBasedReason): void {
             foreach ($pending as $key => $row) {
-                $service->markDone($row, $payload[$key], $servedBy, fingerprint: $fingerprint, ruleBasedReason: $ruleBasedReason);
+                $service->markDone(
+                    $row,
+                    $payload[$key],
+                    $servedBy,
+                    fingerprint: $fingerprint,
+                    ruleBasedReason: $ruleBasedReason,
+                    startedEarly: $this->startedEarlyByType[$key] ?? false,
+                );
             }
         });
     }

@@ -350,7 +350,7 @@ class BriefingMascotVoiceNarrator
             AnalysisType::BriefingMascotVoice,
             $asOf,
         );
-        $briefing = BriefingContext::forUser($user, $asOf, $this->trainingLoad->summary($user, $asOf));
+        $briefing = BriefingContext::forBriefingNarrator($user, $asOf);
 
         return [
             'name' => $user->firstName(),
@@ -358,6 +358,7 @@ class BriefingMascotVoiceNarrator
             'date' => $asOf->toDateString(),
             'readiness_ceiling' => $briefing->readinessCeiling,
             'build_nudge' => $briefing->buildNudge,
+            ...($briefing->historyLoading ? ['history_loading' => true] : []),
             ...NarratorContinuity::fields($prevNarrative),
         ];
     }
@@ -391,7 +392,7 @@ class BriefingMascotVoiceNarrator
     public function toolbox(User $user, Carbon $asOf): AgentToolbox
     {
         return new AgentToolbox([
-            new WeekStateTool($user, $asOf, $this->trainingLoad),
+            new WeekStateTool($user, $asOf),
             new RecentRunsTool($user, $asOf, $this->verdictNarrator),
             new TrainingLoadTool($user, $asOf, $this->trainingLoad),
             new RecentBaselineTool($user, $asOf, $this->runBaseline),

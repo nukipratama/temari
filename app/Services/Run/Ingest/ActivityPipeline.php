@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Actions\Gamification\DetectActivityMilestonesAction;
-use App\Actions\Run\Story\RecomputeCardClaimsAction;
 use App\Enums\IngestState;
 use App\Enums\StravaReadPriority;
 use App\Events\ActivityIngested;
@@ -15,7 +15,7 @@ use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\StravaConnection;
 use App\Models\User;
-use App\Services\AI\HydrationBacklog;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\HeartRateZones;
 use App\Services\Run\Metrics\StreamSummary;
@@ -57,8 +57,8 @@ class ActivityPipeline
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly DetectActivityMilestonesAction $milestoneDetector,
         private readonly AppConfig $config,
-        private readonly HydrationBacklog $backlog,
-        private readonly RecomputeCardClaimsAction $recomputeCardClaims,
+        private readonly HistoryNarrationGate $history,
+        private readonly SettleEarlyNarrationAction $settleEarlyNarration,
     ) {
     }
 
@@ -95,13 +95,13 @@ class ActivityPipeline
             // instead of revoking a healthy connection.
             throw $e;
         } catch (Throwable $e) {
-            $this->handleDetailFailure($activity, $e);
+            $this->settleIfGaveUp($activity, $this->handleDetailFailure($activity, $e));
 
             return;
         }
 
         if (! is_array($detail)) {
-            $this->handleDetailFailure($activity, new RuntimeException('Strava returned non-array detail'));
+            $this->settleIfGaveUp($activity, $this->handleDetailFailure($activity, new RuntimeException('Strava returned non-array detail')));
 
             return;
         }
@@ -120,19 +120,26 @@ class ActivityPipeline
         }
 
         $this->computeAndStoreSummary($activity, $detailModel, $streams);
-        $this->lookupWeather($detailModel, $streams);
+        $this->lookupWeather($detailModel);
+
+        // A run whose older history (within past-you's reach) hasn't hydrated
+        // yet would mint a PR off an incomplete past — every early run would
+        // look like a best. Deferred here, made whole by
+        // SettleEarlyNarrationAction once that history lands.
+        $deferPrDetection = $detailModel->start_date_local !== null
+            && $this->history->awaitsOlderHydration($activity->user_id, $detailModel->start_date_local);
 
         // Wrapped in a transaction so analyzed_at rolls back with the story layer:
         // a PR / card / Temari / milestone throw must leave the stub drainable,
         // never stranded "analyzed" with a half-built story and no AI cascade.
-        DB::transaction(function () use ($activity, $detailModel): void {
+        DB::transaction(function () use ($activity, $detailModel, $deferPrDetection): void {
             $activity->update([
                 'analyzed_at' => now(),
                 'ingest_state' => IngestState::Detailed,
                 'detail_fail_count' => 0,
             ]);
 
-            $newPrCategories = $this->personalRecords->detectAndStore($activity, $detailModel);
+            $newPrCategories = $deferPrDetection ? [] : $this->personalRecords->detectAndStore($activity, $detailModel);
 
             // Story layer must run after PR detection — Temari mood reads PR rows.
             $this->cardFactory->build($activity, $detailModel);
@@ -140,34 +147,9 @@ class ActivityPipeline
             ($this->milestoneDetector)($activity, $detailModel, $newPrCategories);
         });
 
-        $this->recomputeCardClaimsOnceHistoryLands($activity, $detailModel);
+        ($this->settleEarlyNarration)($activity->user, $detailModel->start_date_local);
         $this->dispatchIngestedEvent($activity);
         $this->scheduleLocationResolution($detailModel);
-    }
-
-    /**
-     * A run landing behind already-hydrated later runs (a backfill, a backdated
-     * upload) can change which of those later runs set a PR on their day. Once
-     * nothing earlier is left to hydrate, every card is re-judged, before the
-     * ingested event can release narration that reads the flags.
-     */
-    private function recomputeCardClaimsOnceHistoryLands(Activity $activity, ActivityDetail $detail): void
-    {
-        $startedAt = $detail->start_date_local;
-        if ($startedAt === null || $this->backlog->awaitsHydrationBefore($activity->user_id, $startedAt)) {
-            return;
-        }
-
-        $laterRunLanded = Activity::query()
-            ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
-            ->where('activities.user_id', $activity->user_id)
-            ->where('activities.ingest_state', IngestState::Detailed)
-            ->where('activity_details.start_date_local', '>', $startedAt)
-            ->exists();
-
-        if ($laterRunLanded) {
-            ($this->recomputeCardClaims)($activity->user);
-        }
     }
 
     /**
@@ -232,7 +214,9 @@ class ActivityPipeline
             'activity_id' => $activity->id,
             'sport_type' => $detail['sport_type'] ?? $detail['type'] ?? null,
         ]);
+        $user = $activity->user;
         $activity->delete();
+        ($this->settleEarlyNarration)($user);
     }
 
     /**
@@ -490,19 +474,12 @@ class ActivityPipeline
     }
 
     /**
-     * Best-effort weather lookup. Reads first lat/lng from the streams blob;
-     * if either coords or start time are missing, no weather is stored.
-     *
-     * @param  array<string, mixed>|null  $streams
+     * Best-effort weather lookup. If either coords or start time are missing,
+     * no weather is stored.
      */
-    private function lookupWeather(ActivityDetail $detail, ?array $streams): void
+    private function lookupWeather(ActivityDetail $detail): void
     {
-        if ($streams === null || $detail->start_date_local === null) {
-            return;
-        }
-
-        $latlng = $streams['latlng']['data'][0] ?? null;
-        if (! is_array($latlng) || count($latlng) !== 2) {
+        if ($detail->start_lat === null || $detail->start_lng === null || $detail->start_date_local === null) {
             return;
         }
 
@@ -510,8 +487,8 @@ class ActivityPipeline
 
         try {
             $snapshot = $this->weather->fetchForActivity(
-                (float) $latlng[0],
-                (float) $latlng[1],
+                (float) $detail->start_lat,
+                (float) $detail->start_lng,
                 $startedAt,
             );
         } catch (Throwable $e) {
@@ -532,12 +509,19 @@ class ActivityPipeline
         $detail->update($snapshot->toActivityDetailAttributes());
     }
 
-    private function handleDetailFailure(Activity $activity, Throwable $reason): void
+    /**
+     * @return bool  whether this attempt gave up for good (detail_fail_count
+     *               reached {@see Activity::MAX_DETAIL_FETCH_ATTEMPTS}), which
+     *               can leave the athlete's backlog empty.
+     */
+    private function handleDetailFailure(Activity $activity, Throwable $reason): bool
     {
         $status = $this->httpStatus($reason);
+        $count = $activity->detail_fail_count + 1;
+
         if ($this->isPermanentClientError($status)) {
             $activity->update([
-                'detail_fail_count' => $activity->detail_fail_count + 1,
+                'detail_fail_count' => $count,
                 'analyzed_at' => now(),
             ]);
             Log::info('detail fetch hit a permanent 4xx; marking handled', [
@@ -546,10 +530,8 @@ class ActivityPipeline
                 'reason' => $reason->getMessage(),
             ]);
 
-            return;
+            return $count >= Activity::MAX_DETAIL_FETCH_ATTEMPTS;
         }
-
-        $count = $activity->detail_fail_count + 1;
 
         if ($count >= Activity::MAX_DETAIL_FETCH_ATTEMPTS) {
             $activity->update([
@@ -562,7 +544,7 @@ class ActivityPipeline
                 'reason' => $reason->getMessage(),
             ]);
 
-            return;
+            return true;
         }
 
         $activity->update(['detail_fail_count' => $count]);
@@ -571,5 +553,18 @@ class ActivityPipeline
             'attempts' => $count,
             'reason' => $reason->getMessage(),
         ]);
+
+        return false;
+    }
+
+    /**
+     * A give-up removes the activity from the backlog same as a success would
+     * — see {@see SettleEarlyNarrationAction}.
+     */
+    private function settleIfGaveUp(Activity $activity, bool $gaveUp): void
+    {
+        if ($gaveUp) {
+            ($this->settleEarlyNarration)($activity->user);
+        }
     }
 }

@@ -101,7 +101,7 @@ function monthlyRecapNarrator(StructuredChatCaller $caller): MonthlyRecapNarrato
 
 function postRunNarrator(StructuredChatCaller $caller): PostRunSpeechNarrator
 {
-    return new PostRunSpeechNarrator($caller, app(TrainingLoad::class), app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    return new PostRunSpeechNarrator($caller, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
 }
 
 function cardFlavorNarrator(StructuredChatCaller $caller): CardFlavorNarrator

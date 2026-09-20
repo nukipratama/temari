@@ -16,7 +16,7 @@ interface PageContainerProps {
  * one-line swap.
  */
 const CONTAINER =
-    'mx-auto w-full px-4 py-6 min-[900px]:max-w-column min-[900px]:px-6 min-[1280px]:max-w-column-wide';
+    'mx-auto w-full px-4 pb-6 pt-4 min-[900px]:max-w-column min-[900px]:px-6 min-[1280px]:max-w-column-wide';
 
 export default function PageContainer({
     children,

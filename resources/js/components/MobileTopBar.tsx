@@ -55,7 +55,7 @@ export default function MobileTopBar() {
     return (
         <header
             data-testid="mobile-top-bar"
-            className="mx-auto flex w-full max-w-column items-center justify-between gap-3 px-4 pb-2.5 pt-[max(1rem,env(safe-area-inset-top))] min-[900px]:px-6 min-[1280px]:max-w-column-wide"
+            className="mx-auto flex w-full max-w-column items-center justify-between gap-3 px-4 pt-[max(1rem,env(safe-area-inset-top))] min-[900px]:px-6 min-[1280px]:max-w-column-wide"
         >
             {back ? (
                 // Real href, not history.back(): a deep link can open this cold with nothing behind it.

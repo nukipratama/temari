@@ -10,8 +10,10 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\Readiness;
+use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
 /**
@@ -54,30 +56,36 @@ final readonly class BriefingContext
         public string $readinessCeiling,
         /** Gentle "build, don't coast" flag for the fresh-but-detraining case. */
         public bool $buildNudge,
+        /** A fresh connect's early pass: older history is still hydrating. */
+        public bool $historyLoading = false,
     ) {
     }
 
     /**
      * @param  array<string, mixed>|null  $load  Live TrainingLoad summary (form_status/monotony);
      *                                            when null, readiness falls back to the weekly snapshot.
+     * @param  bool  $historyLoading  A fresh connect's early pass: older history is still hydrating.
      */
     #[NoDiscard]
-    public static function forUser(User $user, Carbon $asOf, ?array $load = null): self
+    public static function forUser(User $user, Carbon $asOf, ?array $load = null, bool $historyLoading = false): self
     {
         $thisWeekEnd = $asOf->copy()->endOfWeek(Carbon::SUNDAY);
         $lastWeekEnd = $thisWeekEnd->copy()->subWeek();
 
-        // Bound to weeks at or before the briefing week so a backdated recompute
-        // (self-heal / dead-letter retry) reads fitness_trend from the state as
-        // of $asOf, not from weeks that came after it.
+        // A fresh connect's early pass reads null snapshots and no live load,
+        // the same neutral path a brand-new account with nothing yet already
+        // takes — never a partial past. Bound to weeks at or before the
+        // briefing week otherwise, so a backdated recompute (self-heal /
+        // dead-letter retry) reads fitness_trend from the state as of $asOf.
         /** @var array<string, WeeklySnapshot> $byDate */
-        $byDate = app(ResolveTrailingWeeksAction::class)(
+        $byDate = $historyLoading ? [] : app(ResolveTrailingWeeksAction::class)(
             $user->id,
             $thisWeekEnd->toDateString(),
             ResolveTrailingWeeksAction::MAX_WEEKS,
         )
             ->keyBy(fn (WeeklySnapshot $row): string => $row->week_ending->toDateString())
             ->all();
+        $load = $historyLoading ? null : $load;
 
         $thisWeek = $byDate[$thisWeekEnd->toDateString()] ?? null;
         $lastWeek = $byDate[$lastWeekEnd->toDateString()] ?? null;
@@ -133,7 +141,23 @@ final readonly class BriefingContext
             volumeRampPct: $volumeRampPct,
             readinessCeiling: $readiness->ceiling->value,
             buildNudge: $readiness->buildNudge,
+            historyLoading: $historyLoading,
         );
+    }
+
+    /**
+     * {@see self::forUser()} for the briefing narrator's own tools
+     * (`get_week_state`, the daily voice's own context build): resolves
+     * `$historyLoading` and the live load itself, so both call sites stop
+     * duplicating the same two-line gate/load lookup.
+     */
+    #[NoDiscard]
+    public static function forBriefingNarrator(User $user, Carbon $asOf): self
+    {
+        $historyLoading = app(HistoryNarrationGate::class)->awaitsOlderHydration($user->id, $asOf);
+        $load = $historyLoading ? null : (app(TrainingLoad::class)->summary($user, $asOf) ?? []);
+
+        return self::forUser($user, $asOf, $load, $historyLoading);
     }
 
     /**
@@ -293,6 +317,7 @@ final readonly class BriefingContext
             ],
             'readiness_ceiling' => $this->readinessCeiling,
             'build_nudge' => $this->buildNudge,
+            ...($this->historyLoading ? ['history_loading' => true] : []),
         ];
     }
 

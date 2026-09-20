@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Run\Plan\Periodizer;
@@ -230,6 +231,7 @@ it('fills the backfilled history rule-based since it closed before the connectio
         app(AnalysisService::class),
         app(Periodizer::class),
         app(RequestTodaysBriefing::class),
+        app(HistoryNarrationGate::class),
     );
 
     // The backfill already wrote the weekly snapshot and the summary detail rows

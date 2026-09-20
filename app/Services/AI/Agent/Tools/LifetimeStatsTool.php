@@ -8,6 +8,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\LifetimeStats;
 use Illuminate\Support\Carbon;
 
@@ -33,7 +34,9 @@ final class LifetimeStatsTool extends UserTool
     {
         return "The user's whole running history: name, total runs and km, longest run, how many "
             .'months they\'ve been running, PR count, weekly streak, their favorite time to run, '
-            ."whether Strava's connected, and the latest form_status. Start here.";
+            ."whether Strava's connected, and the latest form_status. Start here. If history_loading "
+            .'is true, their history is still being imported and form_status is withheld rather than '
+            .'read off a partial past.';
     }
 
     /** @return array<string, mixed> */
@@ -42,6 +45,9 @@ final class LifetimeStatsTool extends UserTool
         // The cached aggregate /calendar also reads, so the two surfaces cannot drift.
         $lifetime = $this->lifetimeStats->forUser($this->user);
         $firstRunAt = $lifetime['first_run_at'];
+        // History still hydrating from a fresh connect: withhold the latest
+        // form reading — see docs/decisions/history-narrates-on-demand.md.
+        $historyLoading = app(HistoryNarrationGate::class)->awaitsFullHydration($this->user->id);
 
         return [
             'name' => $this->user->first_name ?? $this->user->name,
@@ -55,7 +61,8 @@ final class LifetimeStatsTool extends UserTool
             'weekly_streak' => WeeklySnapshot::consecutiveWeekStreak($this->user->id),
             'favorite_time' => $this->favoriteTimeBucket(),
             'strava_connected' => $this->user->stravaConnection !== null,
-            'form_status' => WeeklySnapshot::latestFormStatus($this->user->id),
+            'form_status' => $historyLoading ? null : WeeklySnapshot::latestFormStatus($this->user->id),
+            ...($historyLoading ? ['history_loading' => true] : []),
         ];
     }
 
