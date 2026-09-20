@@ -66,7 +66,10 @@ class DispatchPostRunAnalysis implements ShouldQueue
             NarrationVerdict::Inactive => false,
         };
         $athleteAway = $verdict === NarrationVerdict::Inactive;
-        $stageOnly = $athleteAway || $verdict === NarrationVerdict::AwaitingBacklog;
+        // AwaitingBacklog no longer stages: a fresh connect's recent run
+        // narrates right away, and AnalysisService::markDone() flags the row
+        // for SettleEarlyNarrationAction's replay if it's still early.
+        $stageOnly = $athleteAway;
 
         $today = Carbon::today()->toDateString();
         $isBackfill = $this->isBackfill($detail);
@@ -86,13 +89,11 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         $this->dispatchActivityGroup($activity, $isBackfill, $ruleBased, $stageOnly, $delaySec);
 
-        // Daily cadence: when the ingested run is today's, refresh the whole
-        // daily AI set so each block narrates with every run done so far today.
-        // Backfill of a previous day leaves the Done rows untouched, so
-        // re-ingesting old days never re-bills.
+        // Daily cadence: refresh the whole daily AI set when today's run
+        // lands, so each block narrates with everything done so far today;
+        // backfill of an older day leaves Done rows untouched.
         if (! $athleteAway) {
             $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
-
             $this->analysisService->request(
                 subjectOrType: AnalysisType::ProfileVoice->subjectType(),
                 subjectId: $user->id,

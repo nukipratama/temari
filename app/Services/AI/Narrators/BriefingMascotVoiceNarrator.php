@@ -8,7 +8,6 @@ use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentToolbox;
-use App\Services\AI\Agent\Tools\LatestPastYouTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RecentRunsTool;
@@ -27,7 +26,6 @@ use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Story\BriefingContext;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
-use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -216,9 +214,10 @@ class BriefingMascotVoiceNarrator
           recovery number on a run day. `ran_today` true = already ran today,
           frame it as appreciation / recovery, NOT "feeling wiped".
           `days_since_last_run` = days since the last run.
-        - `volume_ramp_pct`: this week's volume change vs last week through
-          the same weekday (percent, like-for-like). A big spike = be careful
-          about adding more load.
+        - `volume_ramp`: this week's volume change vs last week through the
+          same weekday (like-for-like). relation is up/down/flat, already
+          resolved -- there's no sign to read yourself; pct is the size of
+          it. A big up = be careful about adding more load.
         - `time_bucket`: ONLY for tone nuance (early morning/morning =
           brighter, night = calmer). NOT for saying "this session" or
           assuming the user's about to run at that hour.
@@ -233,19 +232,19 @@ class BriefingMascotVoiceNarrator
           while the ceiling allows more is a coast: name the streak of easy
           sessions and put something bigger on the table.
         - `recent_baseline_28d` from get_recent_baseline (runs, avg_pace_sec_per_km, avg_hr,
-          avg_decoupling_pct): the user's normal pace/HR over the last 28
+          avg_decoupling): the user's normal pace/HR over the last 28
           days. MUST anchor execution cues to this when it's there, so they're
           relative and personal (e.g. "easy around your normal pace", "tempo a
           bit faster than your average pace"). If it's missing (not enough
           data), NEVER make up an absolute pace/HR number, give a by-feel cue
           instead (breathing, effort, cadence).
-        - `past_you` from get_latest_past_you: when populated, the user's last
-          run resembles a past session. Use `direction` (better/worse/flat) as
-          an input signal for how you size and tone TODAY's session (better =
-          capacity to hold or nudge up; worse = a reason to ease off), never as
-          a narrated recap of the last run itself -- the Last Run card on the
-          dashboard already tells that story in detail. If it's missing, NEVER
-          make up a comparison to the past.
+
+        NEVER compare today's session, or the user's last run, to any specific
+        past run -- no numbers, and no direction word either ("quicker than
+        last time" is still a claim that can be wrong, even without a figure
+        attached). Size and tone today's session from `fitness_trend`,
+        `form_status`, `volume_ramp` and `recent_runs` instead -- they already
+        carry that read without naming one specific run against another.
 
         Feel free to be specific and data-aware, as long as it stays
         conversational. NEVER read dry like a textbook, NEVER time-locked. The
@@ -282,7 +281,6 @@ class BriefingMascotVoiceNarrator
         private readonly TrainingLoad $trainingLoad,
         private readonly VerdictNarrator $verdictNarrator,
         private readonly StructuredChatCaller $caller,
-        private readonly PastYouMatcher $pastYou,
         private readonly ResolveRunBaselineAction $runBaseline,
         private readonly TrainingBaseline $trainingBaseline,
         private readonly VdotEstimator $vdotEstimator,
@@ -352,7 +350,7 @@ class BriefingMascotVoiceNarrator
             AnalysisType::BriefingMascotVoice,
             $asOf,
         );
-        $briefing = BriefingContext::forUser($user, $asOf, $this->trainingLoad->summary($user, $asOf));
+        $briefing = BriefingContext::forBriefingNarrator($user, $asOf);
 
         return [
             'name' => $user->firstName(),
@@ -360,6 +358,7 @@ class BriefingMascotVoiceNarrator
             'date' => $asOf->toDateString(),
             'readiness_ceiling' => $briefing->readinessCeiling,
             'build_nudge' => $briefing->buildNudge,
+            ...($briefing->historyLoading ? ['history_loading' => true] : []),
             ...NarratorContinuity::fields($prevNarrative),
         ];
     }
@@ -393,10 +392,9 @@ class BriefingMascotVoiceNarrator
     public function toolbox(User $user, Carbon $asOf): AgentToolbox
     {
         return new AgentToolbox([
-            new WeekStateTool($user, $asOf, $this->trainingLoad),
+            new WeekStateTool($user, $asOf),
             new RecentRunsTool($user, $asOf, $this->verdictNarrator),
             new TrainingLoadTool($user, $asOf, $this->trainingLoad),
-            new LatestPastYouTool($user, $asOf, $this->pastYou),
             new RecentBaselineTool($user, $asOf, $this->runBaseline),
             new PlanContextTool($user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->paceCalculator),
         ]);

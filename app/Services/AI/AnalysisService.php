@@ -14,6 +14,7 @@ use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\AnalysisVersion;
 use App\Models\Feedback;
+use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Notifications\AnalysisReadyNotification;
@@ -56,6 +57,7 @@ class AnalysisService
         private readonly CostCeilingLedger $ceilingLedger,
         private readonly NarrationOrigin $origin,
         private readonly CeilingOverride $ceilingOverride,
+        private readonly HistoryNarrationGate $history,
     ) {
     }
 
@@ -223,6 +225,27 @@ class AnalysisService
         );
     }
 
+    /**
+     * Request every Trends range for a user with runs, an idempotent no-op for
+     * a range already requested. Shared by {@see \App\Jobs\AI\KickoffRecapsJob}
+     * and {@see \App\Actions\AI\SettleEarlyNarrationAction}.
+     */
+    public function requestTrendReads(User $user): void
+    {
+        if (! Activity::query()->where('user_id', $user->id)->exists()) {
+            return;
+        }
+
+        foreach (AnalysisType::TREND_READ_RANGES as $range) {
+            $this->request(
+                subjectOrType: AnalysisType::TrendRead->subjectType(),
+                subjectId: $user->id,
+                type: AnalysisType::TrendRead,
+                discriminator: $range,
+            );
+        }
+    }
+
     public function markProcessing(Analysis $row): void
     {
         $row->update([
@@ -238,9 +261,17 @@ class AnalysisService
         ?Carbon $generatedAt = null,
         ?string $fingerprint = null,
         ?AnalysisOrigin $ruleBasedReason = null,
+        bool $startedEarly = false,
     ): void {
         $this->archivePreviousVersion($row);
         $this->supersedeFeedback($row);
+
+        // Only an LLM serve can be "early". $isEarlyNow is the live check;
+        // a row that started early but finished after the drain emptied
+        // (straddled) is not marked, since the replay that would ever
+        // regenerate it has already run — it re-requests itself instead.
+        $isEarlyNow = $servedBy === ServedBy::Llm && $this->isEarlyPassRow($row);
+        $straddled = $servedBy === ServedBy::Llm && $startedEarly && ! $isEarlyNow;
 
         $row->update([
             'status' => AnalysisStatus::Done,
@@ -248,19 +279,17 @@ class AnalysisService
             'error' => null,
             'served_by' => $servedBy,
             // Only a rule-based fill ever carries a reason, and only when its
-            // caller declares one (NarrateOnReturnJob's own catch-up calls); an
-            // LLM serve always clears it, so a Reread on an away-filled block
-            // drops the cue the moment it re-narrates.
+            // caller declares one; an LLM serve always clears it.
             'rule_based_reason' => $servedBy === ServedBy::RuleBased ? $ruleBasedReason : null,
             'generated_at' => $generatedAt ?? Carbon::now(),
-            // Only per-run activity groups pass a fingerprint; write the existing
-            // value back for other narration types (they don't drive a resync
-            // refresh) so the column is simply untouched.
+            // Only per-run activity groups pass a fingerprint; other types
+            // write the existing value back untouched.
             'content_fingerprint' => $fingerprint ?? $row->content_fingerprint,
+            // Cleared by an ordinary re-narration once history has landed —
+            // see SettleEarlyNarrationAction.
+            'narrated_early_at' => $isEarlyNow ? Carbon::now() : null,
         ]);
 
-        // Start the re-trigger cooldown so a "Reread" can't re-fire the LLM
-        // for the same block within the window (covers both auto and manual).
         // Skipped under withoutDispatching (demo seed) so a freshly seeded demo
         // stays instantly re-narratable on demand. afterCommit: AnalyzeGroupJob
         // wraps several markDone() calls in one DB::transaction(), and the
@@ -270,20 +299,63 @@ class AnalysisService
             DB::afterCommit(fn () => $row->startCooldown());
         }
 
-        // Fan out a notification for the notifiable types. Suppressed under
-        // withoutDispatching (demo seed) and for narration the athlete's return
-        // caught up on, which they are already in the app to read; the notification's via() owns every guard
-        // (demo / recency / opt-in / channel wired) and the channel owns idempotency,
-        // so a demo or opted-out user resolves to no channels at all while an
-        // unwired one still gets the inbox record. afterCommit so the queued send
-        // can't run before the row it reads is committed.
-        if (! $this->dispatchSuppressed
+        if ($straddled) {
+            // The straddling row's own content may have read a history that
+            // finished landing mid-generation; ask for it once more now,
+            // rather than trust the replay that already ran without it.
+            if (! $this->dispatchSuppressed) {
+                DB::afterCommit(fn () => $this->request(
+                    $row->subject_type,
+                    $row->subject_id,
+                    $row->analysis_type,
+                    $row->discriminator,
+                    invalidate: true,
+                ));
+            }
+        } elseif (! $this->dispatchSuppressed
+            && ! $isEarlyNow
             && $this->origin->current() !== AnalysisOrigin::Return
             && $this->eligibility->isNotifiable($row)) {
+            // Suppressed while early: every channel's delivery claim is keyed
+            // on this row's id for good, so notifying now would permanently
+            // spend it on a run that cannot yet know whether it set a PR —
+            // the replay's regeneration is the row's one real send.
             $this->eligibility->resolveUser($row)?->notify(
                 new AnalysisReadyNotification($row)->afterCommit(),
             );
         }
+    }
+
+    /**
+     * Whether $row is being narrated during a fresh connect's early pass: its
+     * own reference date still has older history (or, for the whole-history
+     * types, any history at all) awaiting hydration. Evaluated live against
+     * current hydration state, so a row that generates after the drain has
+     * already finished is never marked — it simply reads the real thing.
+     */
+    public function isEarlyPassRow(Analysis $row): bool
+    {
+        return match ($row->analysis_type) {
+            AnalysisType::PostRunSpeech, AnalysisType::RunInsight => $this->earlyPassForActivity(
+                Activity::query()->with('detail')->find($row->subject_id),
+            ),
+            AnalysisType::CardFlavor => $this->earlyPassForActivity(
+                RunCard::query()->with('activity.detail')->find($row->subject_id)?->activity,
+            ),
+            AnalysisType::BriefingMascotVoice => $this->history->awaitsOlderHydration($row->subject_id, Carbon::now()),
+            AnalysisType::ProfileVoice => $this->history->awaitsFullHydration($row->subject_id),
+            AnalysisType::PlanDayVoice => $row->discriminator !== null
+                && $this->history->awaitsOlderHydration($row->subject_id, Carbon::parse($row->discriminator)),
+            default => false,
+        };
+    }
+
+    private function earlyPassForActivity(?Activity $activity): bool
+    {
+        $startedAt = $activity?->detail?->start_date_local;
+
+        return $activity !== null && $startedAt !== null
+            && $this->history->awaitsOlderHydration($activity->user_id, $startedAt);
     }
 
     /**

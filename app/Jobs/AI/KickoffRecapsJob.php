@@ -7,12 +7,12 @@ namespace App\Jobs\AI;
 use App\Actions\AI\KickoffMonthlyRecaps;
 use App\Actions\AI\KickoffWeeklyRecaps;
 use App\Actions\AI\RequestTodaysBriefing;
-use App\Models\Activity;
+use App\Jobs\Strava\HydrateBacklogForUserJob;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisType;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
@@ -23,9 +23,13 @@ use Illuminate\Support\Carbon;
 /**
  * The last link of the first-connect chain: weekly + monthly recap and Trends
  * kickoff for a single user, so a new athlete's history narrates on day one
- * instead of waiting for the Monday / 1st-of-month sweep. Reads only rows the
- * backfill already wrote, so it spends no Strava budget, and the kickoff
- * actions skip every Done recap, so a re-run bills nothing.
+ * instead of waiting for the Monday / 1st-of-month sweep. Recap and Trends
+ * reads touch only rows the backfill already wrote, so those bill no Strava
+ * budget; the one exception is the immediate {@see HydrateBacklogForUserJob}
+ * this dispatches, bounded by the same background read headroom the
+ * `strava:hydrate-backlog` cron shares, so the backlog drain starts now
+ * instead of waiting for the next tick. The kickoff actions skip every Done
+ * recap, so a re-run bills nothing.
  *
  * Being last, it is also where `users.backfilled_at` is stamped — the marker
  * nothing else could supply, since the chain's own position is unreadable from
@@ -49,6 +53,7 @@ class KickoffRecapsJob implements ShouldQueue
         AnalysisService $analysis,
         Periodizer $periodizer,
         RequestTodaysBriefing $briefing,
+        HistoryNarrationGate $history,
     ): void {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
 
@@ -60,11 +65,13 @@ class KickoffRecapsJob implements ShouldQueue
             return;
         }
 
+        HydrateBacklogForUserJob::dispatch($user->id);
+
         $user->markBackfilled();
 
         $briefing->afterBackfill($user);
 
-        $this->kickoffTrendReads($analysis, $user);
+        $this->kickoffTrendReads($analysis, $user, $history);
 
         if (PlannedSession::query()->where('user_id', $user->id)->exists()) {
             $periodizer->regenerate($user);
@@ -73,29 +80,19 @@ class KickoffRecapsJob implements ShouldQueue
     }
 
     /**
-     * The Trends read (just `7d` since #967, was `7d`/`30d`/`90d`/`12mo`)
-     * refreshes on its own daily cron, which only reaches athletes who
-     * already existed when it last ran. A Friday signup therefore waited up
-     * to a day for its first read, on exactly the day a new account forms
-     * its impression of the app.
-     *
-     * `AnalysisService::request()` is idempotent, so the cron that comes round
-     * later finds these already done and bills nothing. Skipped entirely for an
-     * athlete whose backfill found no runs: there is no range to read.
+     * The Trends read's own daily cron only reaches athletes who already
+     * existed when it last ran, so it is kicked off here too for a same-day
+     * first read. Held while this athlete's backlog is still hydrating — a
+     * load/fitness/form read of an incomplete past — and requested again,
+     * exactly once, by {@see \App\Actions\AI\SettleEarlyNarrationAction} the
+     * moment the drain empties.
      */
-    private function kickoffTrendReads(AnalysisService $analysis, User $user): void
+    private function kickoffTrendReads(AnalysisService $analysis, User $user, HistoryNarrationGate $history): void
     {
-        if (! Activity::query()->where('user_id', $user->id)->exists()) {
+        if ($history->awaitsFullHydration($user->id)) {
             return;
         }
 
-        foreach (AnalysisType::TREND_READ_RANGES as $range) {
-            $analysis->request(
-                subjectOrType: AnalysisType::TrendRead->subjectType(),
-                subjectId: $user->id,
-                type: AnalysisType::TrendRead,
-                discriminator: $range,
-            );
-        }
+        $analysis->requestTrendReads($user);
     }
 }

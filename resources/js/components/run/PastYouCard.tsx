@@ -8,37 +8,26 @@ import { cn } from '@/lib/cn';
 import { formatDuration } from '@/lib/pace';
 import { activityUrl } from '@/lib/routes';
 
+type Relation = 'faster' | 'slower' | 'same' | 'higher' | 'lower';
+
 export interface PastYouMatch {
-    past: {
-        start_date_local: string | null;
-        activity_id?: number | null;
-        name?: string | null;
-        distance?: number | null;
-    };
-    /** Positive = faster now. */
-    pace_diff_sec: number;
-    /** Positive = higher now. Null when either run has no HR. */
-    hr_diff_bpm: number | null;
-    /** Positive = this run finished sooner over the same distance. */
-    time_diff_sec?: number;
     days_ago: number;
+    pace: { seconds_per_km: number; relation: 'faster' | 'slower' | 'same' };
+    time: { seconds: number; relation: 'faster' | 'slower' | 'same' };
+    hr: { bpm: number; relation: 'higher' | 'lower' | 'same' } | null;
+    direction: 'better' | 'worse' | 'flat';
+    past_km: number;
+    past_activity_id: number;
+    past_name: string | null;
 }
 
-/** A delta where "up" is the bad direction, e.g. HR at the same effort. */
-function lowerIsBetter(delta: number): string {
-    if (delta === 0) {
+/** `same` reads as neutral; otherwise `betterWhen` is the relation that tones green. */
+function relationTone(relation: Relation, betterWhen: Relation): string {
+    if (relation === 'same') {
         return 'text-text-2';
     }
 
-    return delta < 0 ? 'text-leaf-ink' : 'text-citrus-ink';
-}
-
-function higherIsBetter(delta: number): string {
-    if (delta === 0) {
-        return 'text-text-2';
-    }
-
-    return delta > 0 ? 'text-leaf-ink' : 'text-citrus-ink';
+    return relation === betterWhen ? 'text-leaf-ink' : 'text-citrus-ink';
 }
 
 /**
@@ -46,6 +35,11 @@ function higherIsBetter(delta: number): string {
  * prototype does: its own card directly under the hero, leading with the pace
  * delta and linking to the run it is measured against. No match means no card,
  * not an empty state.
+ *
+ * The wording is built entirely from the `relation` words
+ * {@see PastYouMatcher::findMatchContext} already computes (banded against
+ * noise, per #1009) — this component never re-derives a direction from a raw
+ * sign.
  */
 export default function PastYouCard({
     match,
@@ -55,14 +49,8 @@ export default function PastYouCard({
         return null;
     }
 
-    const paceDelta = Math.round(match.pace_diff_sec);
-    const evenPace = paceDelta === 0;
-    const pastKm =
-        match.past.distance != null ? match.past.distance / 1000 : null;
-    const timeDelta =
-        match.time_diff_sec != null ? Math.round(match.time_diff_sec) : null;
-    const hrDelta =
-        match.hr_diff_bpm != null ? Math.round(match.hr_diff_bpm) : null;
+    const { pace, hr, time } = match;
+    const evenPace = pace.relation === 'same';
 
     return (
         <Card as="section" padding="hero" className={className}>
@@ -77,59 +65,47 @@ export default function PastYouCard({
                 ) : (
                     <>
                         <span className="text-stat-sm">
-                            {Math.abs(paceDelta)}
+                            {Math.round(pace.seconds_per_km)}
                         </span>
                         <span className="font-sans text-quote-sm font-semibold text-text-2">
-                            sec/km {paceDelta > 0 ? 'faster' : 'slower'}
+                            sec/km {pace.relation}
                         </span>
                     </>
                 )}
             </p>
             <p className="mt-1 font-sans text-xs leading-relaxed text-text-2">
-                than{' '}
-                {pastKm != null
-                    ? `the same ${pastKm.toFixed(1)} km`
-                    : 'the same run'}
-                , {match.days_ago} days ago
-                {match.past.name != null && ` · ${match.past.name}`}
+                than the same {match.past_km.toFixed(1)} km, {match.days_ago}{' '}
+                days ago
+                {match.past_name != null && ` · ${match.past_name}`}
             </p>
 
-            {match.past.activity_id != null && (
-                <Link
-                    href={activityUrl({ activity_id: match.past.activity_id })}
-                    className="focus-ring mt-2 inline-flex items-center gap-1 rounded font-sans text-xs font-bold text-icon-accent"
-                >
-                    View that run
-                    <Icon
-                        icon={ArrowRight}
-                        width={12}
-                        height={12}
-                        aria-hidden
-                    />
-                </Link>
-            )}
+            <Link
+                href={activityUrl({ activity_id: match.past_activity_id })}
+                className="focus-ring mt-2 inline-flex items-center gap-1 rounded font-sans text-xs font-bold text-icon-accent"
+            >
+                View that run
+                <Icon icon={ArrowRight} width={12} height={12} aria-hidden />
+            </Link>
 
             <dl className="mt-4 grid grid-cols-2 gap-3">
-                {hrDelta !== null && (
+                {hr !== null && (
                     <Delta
                         label="Heart rate"
-                        value={`${Math.abs(hrDelta)} bpm`}
+                        value={`${Math.round(hr.bpm)} bpm`}
                         suffix={
-                            hrDelta === 0
-                                ? 'the same'
-                                : hrDelta < 0
-                                  ? 'lower'
-                                  : 'higher'
+                            hr.relation === 'same' ? 'the same' : hr.relation
                         }
-                        toneClass={lowerIsBetter(hrDelta)}
+                        toneClass={relationTone(hr.relation, 'lower')}
                     />
                 )}
-                {timeDelta !== null && timeDelta !== 0 && (
+                {time.relation !== 'same' && (
                     <Delta
                         label="Over the distance"
-                        value={formatDuration(Math.abs(timeDelta))}
-                        suffix={timeDelta > 0 ? 'quicker' : 'slower'}
-                        toneClass={higherIsBetter(timeDelta)}
+                        value={formatDuration(Math.round(time.seconds))}
+                        suffix={
+                            time.relation === 'faster' ? 'quicker' : 'slower'
+                        }
+                        toneClass={relationTone(time.relation, 'faster')}
                     />
                 )}
             </dl>

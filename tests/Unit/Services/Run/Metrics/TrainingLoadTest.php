@@ -88,6 +88,15 @@ it('uses wide thresholds for veteran runners', function (): void {
         ->and($this->load->formStatus(25, 60))->toBe('fresh');
 });
 
+// Regression for #1009 (reopened): a narrator prompt used to spell out
+// "form (CTL - ATL): positive = fresh, negative = fatigued" and hand the
+// model the bare signed form. formRelation() resolves that sign server-side.
+it('resolves formRelation from the sign of form alone, independent of formStatus', function (): void {
+    expect(TrainingLoad::formRelation(8.0))->toBe('fresh')
+        ->and(TrainingLoad::formRelation(-8.0))->toBe('fatigued')
+        ->and(TrainingLoad::formRelation(0.0))->toBe('balanced');
+});
+
 it('uses moderate thresholds exactly at the low-CTL boundary (ctl=20), not narrow', function (): void {
     // At ctl=20, narrow(5.0) would call -10 "overreaching" (not > -10);
     // moderate(15.0) — the correct tier at this boundary — calls it "optimal".

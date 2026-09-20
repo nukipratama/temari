@@ -10,6 +10,7 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
+use App\Services\AI\HistoryNarrationGate;
 use App\Support\SharedPropCacheKey;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,8 +23,10 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final readonly class AiProps
 {
-    public function __construct(private AnalysisService $analyses)
-    {
+    public function __construct(
+        private AnalysisService $analyses,
+        private HistoryNarrationGate $history,
+    ) {
     }
 
     /**
@@ -66,13 +69,25 @@ final readonly class AiProps
     /**
      * Whether this user has at least one synced activity still waiting on its
      * per-activity narration (a backfill chain hasn't reached it yet, or a
-     * failed attempt is still under retry budget), so the UI can show a soft
-     * "still catching up" reassurance instead of an empty-looking run. A
-     * dead-lettered row (retry budget exhausted, needs a manual re-arm on
-     * /devtools/narration) is deliberately excluded — it will not resolve on its own, so
-     * counting it here would make the banner a false promise. Skipped
-     * entirely while generation is globally paused: {@see self::aiPausedFor()}
-     * already explains that case.
+     * failed attempt is still under retry budget), or has narration held
+     * behind the still-hydrating history gate ({@see HistoryNarrationGate::awaitsFullHydration()}),
+     * so the UI can show a soft "still catching up" reassurance instead of an
+     * empty-looking run. `awaitsFullHydration()` is the widest of the gate's
+     * checks — any unhydrated run at any age, not just one narrator's bounded
+     * reach — which makes it a superset of every narrower hold
+     * (`awaitsOlderHydration()`, per-run `awaitsHydration()`) the pipeline
+     * applies to this athlete, so this one check stands in for "is this
+     * athlete's narration held by hydration" without restating any of them.
+     * It carries its own grace-window cap, so a long-connected athlete or a
+     * stuck drain past that window is unaffected. A dead-lettered row (retry
+     * budget exhausted, needs a manual re-arm on /devtools/narration) is
+     * deliberately excluded — it will not resolve on its own, so counting it
+     * here would make the banner a false promise. A deferred recap `pending`
+     * row for an open week or month is excluded the same way: it is not a
+     * `queued`/`processing`/stalled row and the hydration gate does not
+     * govern it, so it never lights this banner. Skipped entirely while
+     * generation is globally paused: {@see self::aiPausedFor()} already
+     * explains that case.
      */
     private function aiCatchingUpFor(?User $user): bool
     {
@@ -82,14 +97,15 @@ final readonly class AiProps
 
         return SharedPropCacheKey::AiCatchingUp->remember(
             $user->id,
-            fn (): bool => Analysis::query()
-                ->where('subject_type', Activity::class)
-                ->whereIn('analysis_type', array_column(AnalyzeActivityJob::groupedTypes(), 'value'))
-                ->whereIn('subject_id', Activity::query()->where('user_id', $user->id)->select('id'))
-                ->where(fn (Builder $q) => $q
-                    ->whereIn('status', [AnalysisStatus::Queued, AnalysisStatus::Processing])
-                    ->orWhere(fn (Builder $q2) => $q2->stalled()))
-                ->exists(),
+            fn (): bool => $this->history->awaitsFullHydration($user->id)
+                || Analysis::query()
+                    ->where('subject_type', Activity::class)
+                    ->whereIn('analysis_type', array_column(AnalyzeActivityJob::groupedTypes(), 'value'))
+                    ->whereIn('subject_id', Activity::query()->where('user_id', $user->id)->select('id'))
+                    ->where(fn (Builder $q) => $q
+                        ->whereIn('status', [AnalysisStatus::Queued, AnalysisStatus::Processing])
+                        ->orWhere(fn (Builder $q2) => $q2->stalled()))
+                    ->exists(),
         );
     }
 }

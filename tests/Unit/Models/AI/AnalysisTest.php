@@ -176,6 +176,8 @@ it('deadLettered() is only Failed rows at or over the retry budget', function ()
 });
 
 it('payloadsForSubjects reports the same retry_after_seconds as a per-row toPayload', function (): void {
+    $this->freezeTime();
+
     $snapshots = WeeklySnapshot::factory()->count(3)->create();
     $rows = [];
     foreach ($snapshots as $index => $snapshot) {

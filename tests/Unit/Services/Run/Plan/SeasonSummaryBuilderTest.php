@@ -204,23 +204,52 @@ function seasonSummaryTempoToday(User $user): array
     return [$row, PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled'])];
 }
 
-it('takes an eased day off the current week\'s target and names the original', function (): void {
+/** Today's step-down no longer subtracts from the arc's current-week target. */
+it('keeps the current week\'s target at the un-eased distance while todays ease is only a step-down', function (): void {
     $user = User::factory()->create();
     $season = Season::factory()->for($user)->create([
         'race_goal_id' => null,
         'starts_at' => '2026-08-03',
         'ends_at' => '2026-10-26',
     ]);
-    [$row, $storedKm] = seasonSummaryTempoToday($user);
+    [$row] = seasonSummaryTempoToday($user);
+    $row->update(['clamped_km' => 1.0]);
+
+    $currentWeekStart = Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString();
+    $rawWeek = collect($this->builder->plannedWeeks($user, $season))
+        ->first(fn (array $w): bool => $w['week_start']->toDateString() === $currentWeekStart);
+    $weeks = $this->builder->build($user, $season, Carbon::today());
+    $current = collect($weeks)->firstWhere('type', 'current');
+
+    expect($current['eased_from_km'])->toBeNull()
+        ->and($current['planned_km'])->toBe(round($rawWeek['planned_km'], 1))
+        ->and($weeks[0]['eased_from_km'])->toBeNull()
+        ->and($weeks[2]['eased_from_km'])->toBeNull();
+});
+
+/** A past day's recorded ease, unlike today's, still counts toward the week total. */
+it('still takes a past day\'s recorded ease off the current week\'s target', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00'); // Wednesday of the same week as beforeEach's Monday
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create([
+        'race_goal_id' => null,
+        'starts_at' => '2026-08-03',
+        'ends_at' => '2026-10-26',
+    ]);
+    $row = PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-10',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+    ]);
+    $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
+    $storedKm = PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled']);
     $row->update(['clamped_km' => 1.0]);
 
     $weeks = $this->builder->build($user, $season, Carbon::today());
     $current = collect($weeks)->firstWhere('type', 'current');
 
     expect($current['eased_from_km'])->not->toBeNull()
-        ->and($current['planned_km'])->toBe(round($current['eased_from_km'] - ($storedKm - 1.0), 1))
-        ->and($weeks[0]['eased_from_km'])->toBeNull()
-        ->and($weeks[2]['eased_from_km'])->toBeNull();
+        ->and($current['planned_km'])->toBe(round($current['eased_from_km'] - ($storedKm - 1.0), 1));
 });
 
 it('names nothing on a week whose eased day kept its distance', function (): void {

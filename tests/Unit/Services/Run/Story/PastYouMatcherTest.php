@@ -95,6 +95,103 @@ it('reports direction=worse when the current run is slower, matching the sign of
         ->and($match['direction'])->toBe('worse');
 });
 
+// Regression for #1009 (reopened): findMatchContext() -- the LLM-facing shape
+// -- used to carry the same bare signed pace_diff_sec/hr_diff_bpm as
+// findMatch() plus a `direction` composite, and a model reading a
+// mixed-signal pair inverted a field to fit whichever number it picked as
+// the headline. No field here has a sign left to invert.
+it('exposes findMatchContext with relation=faster and no signed field on a faster run', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27];
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $temp); // 420 s/km
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_140, $temp); // 414 s/km, 6 s/km faster
+    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+
+    expect($context)->not->toBeNull()
+        ->and($context)->not->toHaveKeys(['pace_diff_sec', 'time_diff_sec', 'hr_diff_bpm'])
+        ->and($context['pace']['seconds_per_km'])->toBe(6.0)
+        ->and($context['pace']['relation'])->toBe('faster')
+        ->and($context['time']['relation'])->toBe('faster')
+        ->and($context['direction'])->toBe('better');
+});
+
+// #1009 (decision): findMatchContext() is no longer only an LLM tool payload
+// -- RunController reads it directly to render the run-detail fact line, so
+// it needs to link back to the matched run, not just describe the delta.
+it('exposes past_activity_id and past_name so a caller can link to the matched run', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27];
+    $past = seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, array_merge($temp, ['name' => 'Evening tempo']));
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_140, $temp);
+    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+
+    expect($context)->not->toHaveKey('past_date')
+        ->and($context['past_activity_id'])->toBe($past->activity_id)
+        ->and($context['past_name'])->toBe('Evening tempo');
+});
+
+it('exposes findMatchContext with relation=slower on a slower run', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27];
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $temp); // 420 s/km
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_260, $temp); // 426 s/km, 6 s/km slower
+    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+
+    expect($context['pace']['seconds_per_km'])->toBe(6.0)
+        ->and($context['pace']['relation'])->toBe('slower')
+        ->and($context['time']['relation'])->toBe('slower')
+        ->and($context['direction'])->toBe('worse');
+});
+
+it('exposes findMatchContext with relation=same when the gap sits inside the noise band', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27, 'average_heartrate' => 151];
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_220, $temp); // 422 s/km, HR 151
+
+    // 420 s/km (2 s/km faster, under the 5s signal) and HR 150 (1 bpm lower, under the 3bpm signal).
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200, array_merge($temp, ['average_heartrate' => 150]));
+    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+
+    expect($context['pace']['relation'])->toBe('same')
+        ->and($context['hr']['relation'])->toBe('same')
+        ->and($context['direction'])->toBe('flat');
+});
+
+// The exact mixed-signal shape from the live check that reopened #1009: pace
+// -13 (slower) paired with HR -16 (lower). The model previously read the
+// lower HR as the headline, decided the run was "better", then stated the
+// pace backwards to fit that story -- overriding the `direction` composite it
+// was handed. pace.relation is resolved from pace alone, hr.relation from HR
+// alone, so neither can be talked out of what it says by the other.
+it('reports pace.relation=slower and hr.relation=lower independently on a mixed-signal match', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27, 'average_heartrate' => 166];
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_070, $temp); // 407 s/km, HR 166
+
+    // 420 s/km (13 s/km slower) and HR 150 (16 bpm lower than the past run).
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200, array_merge($temp, ['average_heartrate' => 150]));
+    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+
+    expect($context)->not->toBeNull()
+        ->and($context['pace']['relation'])->toBe('slower')
+        ->and($context['hr']['relation'])->toBe('lower')
+        ->and($context['direction'])->toBe('worse');
+});
+
+it('exposes a null hr in findMatchContext when one side is missing average_heartrate', function (): void {
+    $user = User::factory()->create();
+    $temp = ['weather_temp_c' => 27, 'average_heartrate' => null];
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $temp);
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_140, array_merge($temp, ['average_heartrate' => 150]));
+    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+
+    expect($context['hr'])->toBeNull();
+});
+
 it('rejects matches less than 21 days apart', function (): void {
     $user = User::factory()->create();
     seedRun($user, Carbon::today()->subDays(10), 10_000, 4_200);

@@ -24,6 +24,7 @@ use App\Services\AI\ServedBy;
 use App\Actions\AI\StaggerBackfillAction;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\NarrationEligibility;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
@@ -613,6 +614,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         app(RestClampRecorder::class),
         app(PlanNarrationRequester::class),
         app(ComplianceScorer::class),
+        app(HistoryNarrationGate::class),
     );
 
     $listener->handle(new ActivityIngested($activity->id));
@@ -846,25 +848,91 @@ it('narrates the run of an athlete seen on the edge of the active window exactly
     Bus::assertDispatched(AnalyzeProfileVoiceJob::class);
 });
 
-it('stages a recent run Pending, never narrated or templated, while its older history is still hydrating', function (): void {
+it('narrates a recent run right away (the early pass) while its older history is still hydrating', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $activity = analyzedActivity('2026-06-05 06:00:00');
     StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-06-10 08:00:00')]);
-    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+    RunCard::factory()->create(['activity_id' => $activity->id]);
     $older = Activity::factory()->for($activity->user)->summaryOnly()->create();
     ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::parse('2025-11-26 06:00:00')]);
 
     fire($activity);
 
-    Bus::assertNotDispatched(AnalyzeActivityJob::class);
-    Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
-    $held = Analysis::query()
-        ->where(fn ($query) => $query
-            ->where(fn ($q) => $q->where('subject_type', Activity::class)->where('subject_id', $activity->id))
-            ->orWhere(fn ($q) => $q->where('subject_type', RunCard::class)->where('subject_id', $card->id)))
-        ->get();
-    expect($held)->not->toBeEmpty()
-        ->and($held->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Pending))->toBeTrue();
+    Bus::assertDispatched(AnalyzeActivityJob::class);
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class);
+
+    Carbon::setTestNow();
+});
+
+function briefingRow(int $userId, string $today): ?Analysis
+{
+    return Analysis::query()
+        ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
+        ->where('subject_id', $userId)
+        ->where('analysis_type', AnalysisType::BriefingMascotVoice)
+        ->where('discriminator', $today)
+        ->first();
+}
+
+function profileVoiceRow(int $userId, string $isoWeek): ?Analysis
+{
+    return Analysis::query()
+        ->where('subject_type', AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $userId)
+        ->where('analysis_type', AnalysisType::ProfileVoice)
+        ->where('discriminator', $isoWeek)
+        ->first();
+}
+
+it('narrates the daily briefing right away while a run within past-you\'s reach is still hydrating', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $today = '2026-06-10';
+    $activity = analyzedActivity('2026-06-10 06:00:00');
+    StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-06-10 08:00:00')]);
+    // Within past-you's 365-day reach, still awaiting hydration.
+    $older = Activity::factory()->for($activity->user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::parse('2025-11-26 06:00:00')]);
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    expect(briefingRow($activity->user_id, $today)?->status)->toBe(AnalysisStatus::Queued);
+
+    Carbon::setTestNow();
+});
+
+it('narrates the profile voice right away while any run of the backlog awaits hydration, even outside past-you\'s reach', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $isoWeek = AnalysisType::currentIsoWeek();
+    $activity = analyzedActivity('2026-06-10 06:00:00');
+    StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-06-10 08:00:00')]);
+    // Well outside past-you's 365-day reach, but the profile voice reads the
+    // whole history (lifetime stats, the full PR table).
+    $ancient = Activity::factory()->for($activity->user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($ancient)->create(['start_date_local' => Carbon::parse('2022-01-01 06:00:00')]);
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    Bus::assertDispatched(AnalyzeProfileVoiceJob::class);
+    expect(profileVoiceRow($activity->user_id, $isoWeek)?->status)->toBe(AnalysisStatus::Queued);
+
+    Carbon::setTestNow();
+});
+
+it('narrates a long-connected athlete\'s briefing and profile voice on schedule despite a stuck old backlog entry (#1032)', function (): void {
+    Carbon::setTestNow('2026-06-10 09:00:00');
+    $activity = analyzedActivity('2026-06-10 06:00:00');
+    // Connected well past the hydration grace window (default 48h).
+    StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-01-01 00:00:00')]);
+    // A stuck backlog entry that never finished hydrating.
+    $stuck = Activity::factory()->for($activity->user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($stuck)->create(['start_date_local' => Carbon::parse('2025-12-01 06:00:00')]);
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    Bus::assertDispatched(AnalyzeProfileVoiceJob::class);
 
     Carbon::setTestNow();
 });

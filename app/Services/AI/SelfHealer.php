@@ -56,6 +56,7 @@ class SelfHealer
         private readonly RecapHydrationReadiness $readiness,
         private readonly RecentlyActiveUsers $activeUsers,
         private readonly HistoryNarrationGate $history,
+        private readonly HydrationBacklog $backlog,
     ) {
     }
 
@@ -246,6 +247,12 @@ class SelfHealer
                 continue;
             }
 
+            // A month whose own runs are still hydrating (KickoffMonthlyRecaps'
+            // own deferral) is left for the next sweep rather than resumed.
+            if ($link->discriminator !== null && $this->backlog->monthAwaitsHydration($link->subjectId, $link->discriminator)) {
+                continue;
+            }
+
             $this->service->request(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
                 subjectId: $link->subjectId,
@@ -337,4 +344,5 @@ class SelfHealer
 
         return $earliestPerUser->count();
     }
+
 }

@@ -23,6 +23,9 @@ code_refs:
   - app/Models/AI/TokenUsage.php
   - app/Actions/AI/RecordTokenUsageAction.php
   - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
+  - app/Actions/AI/KickoffMonthlyRecaps.php
+  - app/Jobs/AI/KickoffRecapsJob.php
+  - app/Actions/AI/SettleEarlyNarrationAction.php
   - tests/Unit/Architecture/LlmInventoryDocTest.php
 ---
 
@@ -60,7 +63,7 @@ whose origin is not `User` (a webhook, a devtools re-arm) still declares itself 
 wins because it runs after the middleware default. A job or console command, which never runs
 through that middleware, always declares itself with
 [`NarrationOrigin::set()`](../../app/Services/AI/NarrationOrigin.php#L32). Either way,
-[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L427) writes the current
+[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L503) writes the current
 [`AnalysisOrigin`](../../app/Services/AI/AnalysisOrigin.php#L19) onto the job it dispatches, and the
 job restores it before generating, so the metering row records what started the call rather than
 only which narrator answered. A dispatch site that is not an authenticated web request and declares
@@ -79,9 +82,9 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 
 | when | command | what it dispatches |
 |---|---|---|
-| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L39) | one `BriefingMascotVoice` per active non-demo user |
+| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L39) | one `BriefingMascotVoice` per active non-demo user — narrates right away even for a first connect whose backlog is still draining ([[history-narrates-on-demand]], #1054) |
 | Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php#L53) | `WeeklyRecap`, oldest unfinished link first |
-| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L60) | `ProfileVoice`, keyed by ISO week |
+| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L60) | `ProfileVoice`, keyed by ISO week — narrates right away under the same first-connect condition |
 | **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php#L90) | **up to 9 rows per user — see below** |
 | 1st 05:45 | [`ai:monthly-recap`](../../routes/console.php#L98) | `MonthlyRecap`, oldest first |
 | daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php#L118) | `TrendRead`, discriminator `7d` — the only range since #967 |
@@ -101,8 +104,11 @@ three-month backfill therefore bills nothing for the roughly twelve weekly and t
 it used to narrate on day one for periods Temari never watched. The weekly bucket still waits on
 [RecapHydrationReadiness](../../app/Services/AI/RecapHydrationReadiness.php) before that rule-based
 fill runs — a pre-connect week's closer reads the snapshot's own `form_status`, so it races the same
-ordering problem the LLM path does (#1010). The monthly bucket bypasses the hydration wait entirely,
-unchanged. See [[deferred-recap-windowing]].
+ordering problem the LLM path does (#1010). The monthly bucket's rule-based fill still bypasses the
+hydration wait, unchanged — but a month that closed after connecting and would otherwise get a real
+LLM read is staged Pending instead while `HydrationBacklog::monthAwaitsHydration()` (grace-bounded)
+holds (#1054), and the hourly `ai:self-heal` sweep resumes it once that clears.
+See [[deferred-recap-windowing]] and [[history-narrates-on-demand]].
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 and it still runs for every athlete. The narration half then calls
@@ -115,18 +121,30 @@ the ingest listener right after the day is credited.
 **A brand-new account also gets today's briefing on the day it signs up.** `BriefingMascotVoice`
 is keyed by the day, and the only thing that used to stage it was the 00:01 kickoff, so an account
 created at any other hour met a silent Today card until the next midnight. Two triggers close that,
-both through [RequestTodaysBriefing](../../app/Actions/AI/RequestTodaysBriefing.php#L23) and both
+both through [RequestTodaysBriefing](../../app/Actions/AI/RequestTodaysBriefing.php#L30) and both
 reusing `AnalysisService::requestBriefing()`, the same upsert the kickoff and `ai:catch-up` share:
 
 | when | entry point | origin | what it dispatches |
 |---|---|---|---|
-| the onboarding wizard is submitted | [`RequestTodaysBriefing::atSignup()`](../../app/Actions/AI/RequestTodaysBriefing.php#L29) from [OnboardingController::store](../../app/Http/Controllers/OnboardingController.php#L53) | user | one `BriefingMascotVoice` for today — one mini call per new athlete, never a second row |
-| the first-connect backfill lands | [`RequestTodaysBriefing::afterBackfill()`](../../app/Actions/AI/RequestTodaysBriefing.php#L43) from [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php#L65) | ingest | the same row, invalidated, so a briefing narrated against an empty history is re-read once — at most one re-run per athlete per day |
+| the onboarding wizard is submitted | [`RequestTodaysBriefing::atSignup()`](../../app/Actions/AI/RequestTodaysBriefing.php#L38) from [OnboardingController::store](../../app/Http/Controllers/OnboardingController.php#L53) | user | one `BriefingMascotVoice` for today — one mini call per new athlete, never a second row |
+| the first-connect backfill lands | [`RequestTodaysBriefing::afterBackfill()`](../../app/Actions/AI/RequestTodaysBriefing.php#L55) from [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php#L65) | ingest | the same row, invalidated, so a briefing narrated against an empty history is re-read once — at most one re-run per athlete per day |
 
 The second exists because `BriefingMascotVoice` stamps no `MaterialFingerprint`: a plain request
 leaves a Done row alone, so without `invalidate: true` the first briefing would keep whatever it said
 about an account with no runs in it. The demo account reaches neither as an LLM call — both route
 through `shouldServeRuleBased()` to the filler, per [[demo-triggers-served-rule-based]].
+
+**Both entry points are held (#1032) only while there is no history at all yet.** `atSignup()`
+fires from the onboarding wizard, before the backfill sync has written a single Activity row, so
+there is nothing yet to narrate against. `users.backfilled_at` (stamped by `KickoffRecapsJob`
+right before it calls `afterBackfill()`) is null for exactly that window; `RequestTodaysBriefing`
+holds on it alone. Once it's set, the briefing narrates right away even if older history is
+still hydrating (#1054): `AnalysisService::markDone()` detects that live, at generation time
+([`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php)),
+and flags the row for `SettleEarlyNarrationAction`'s one-time replay once that history lands — see
+[[history-narrates-on-demand]]. The once-per-day `Cache::add` guard in `afterBackfill()` only runs
+*after* the `backfilled_at` check, so a re-run of the connect chain before it's set never spends
+the day's one real request; it just re-stages the same idempotent row.
 
 **A brand-new account narrates its season once, off-schedule.** Onboarding and the first-connect
 backfill chain race, and whichever finishes second calls
@@ -194,9 +212,19 @@ too old, or pre-connect and older than the last 7 days (see *the history gate* b
 voice, clamp voice, Temari's read) when the athlete is away from the app, until origin 5 catches them
 up — then `BriefingMascotVoice` (invalidated only when the
 run is today's), then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
-never re-bills. `WeeklyRecap` and `MonthlyRecap` rows are **staged `Pending` and not narrated here** —
-the scheduled commands above narrate them once the window closes, which is why a pending recap row
-is not a backlog. See [[deferred-recap-windowing]].
+never re-bills. Both of those two narrate right away even while history their own narrator reads
+is still hydrating (#1054) — a fresh connect's early pass, per [[history-narrates-on-demand]]:
+`AnalysisService::markDone()` detects it live, at generation time (the briefing on past-you's
+bounded reach via [`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+anchored on now rather than the ingested run's own date; the profile voice on the whole backlog via
+[`HistoryNarrationGate::awaitsFullHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+since it reads lifetime stats and the full PR table), withholds load/form data from the narrator's
+tools, and flags the row for `SettleEarlyNarrationAction`'s one-time replay once that history
+lands. Both conditions are bounded by the same `ai.recap_hydration_grace_hours` window as the
+history gate below, so a long-connected athlete sees no change. `WeeklyRecap` and
+`MonthlyRecap` rows are **staged `Pending` and not narrated here** — the scheduled commands above
+narrate them once the window closes, which is why a pending recap row is not a backlog. See
+[[deferred-recap-windowing]].
 
 ### 3. User-initiated
 
@@ -270,16 +298,16 @@ is the one people misremember.
 | **daily cost ceiling** | **`Done`, rule-based** | no | **no — clears on the clock** |
 
 All three pauses resolve through
-[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L752), and an in-flight job reverts
+[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L828), and an in-flight job reverts
 its rows via [`haltForPausedGeneration()`](../../app/Jobs/AI/AnalyzeBaseJob.php#L193) without burning
 an attempt.
 
 **The cost ceiling is the exception in three ways.** It does not pause: a `pending` row is filled
 from the rule-based filler and marked `Done` by
-[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L806), so a capped day is not a
+[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L882), so a capped day is not a
 day of empty blocks. A `Failed` row is explicitly excluded and stays failed, keeping its dead-letter
 visibility. And a *manual* trigger past the ceiling is refused with a 409 rather than degraded,
-because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L717) asks with the budget
+because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L793) asks with the budget
 included while auto-dispatch asks without it. Two ceilings reach that behaviour through the same
 path — the per-athlete slice and the app-wide total above it, which gates callers holding no
 athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
@@ -287,9 +315,9 @@ athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
 
 Three more limits:
 
-- **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L85) filters the AI kickoff commands
+- **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L102) filters the AI kickoff commands
   and every `SelfHealer` sweep, and
-  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L682) serves a demo user's
+  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L744) serves a demo user's
   manual trigger from the filler *before* any pause check — so the public demo spends nothing while
   still feeling live. See [[demo-triggers-served-rule-based]].
 - **The backfill age gate**, [84 days](../../config/ai.php#L43). The only limit that gates automatic
@@ -367,26 +395,24 @@ inline in its `toolbox()` method.
 
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
-| `RunSummaryTool` · `get_run_summary` | `started_at_local`, `distance_km`, `elapsed_time_sec`, `elapsed_time_formatted`, `pace_sec_per_km`, `pace_formatted`, `avg_hr`, `max_hr`, `avg_cadence_spm`, `cadence_drop_spm` | `ActivityNarrationContext`, `PaceCalculator`; cadence drop from the stored `stream_summary` |
+| `RunSummaryTool` · `get_run_summary` | `started_at_local`, `distance_km`, `elapsed_time_sec`, `elapsed_time_formatted`, `pace_sec_per_km`, `pace_formatted`, `avg_hr`, `max_hr`, `avg_cadence_spm`, `cadence_drop` (`{spm, relation}`, no bare sign — #1009) | `ActivityNarrationContext`, `PaceCalculator`; cadence drop from the stored `stream_summary` |
 | `KmSplitsTool` · `get_km_splits` | `per_km` (sampled rows), `omitted_km`, `fastest_km`, `slowest_km`, `finish_partial`, `negative_split`, `pace_consistency` | stored `stream_summary` via `StreamSummary`; label from `PaceConsistency` |
 | `LapsTool` · `get_laps` | `lap_count`, `laps`, `fastest_lap`, `slowest_lap`, `rep_count`, `recovery_sec`, `pause_count`, `paused_laps` | `StreamSummary::laps()`, `KmSplitBuilder`, `PaceCalculator`, `IntervalDetector` |
-| `HrZonesTool` · `get_hr_zones` | `zone_pct`, `time_in_zone_min`, `trimp`, `hr_drift_bpm`, `intensity_label` | stored `stream_summary` via `StreamSummary`; the label thresholds in-tool |
-| `TerrainTool` · `get_terrain` | `elevation_gain_m`, `max_grade_pct`, `gap_pace` | stored detail attributes and `stream_summary` |
+| `HrZonesTool` · `get_hr_zones` | `zone_pct`, `time_in_zone_min`, `trimp`, `hr_drift` (`{bpm, relation}`, no bare sign — #1009), `intensity_label` | stored `stream_summary` via `StreamSummary`; the label thresholds in-tool |
+| `TerrainTool` · `get_terrain` | `elevation_gain_m`, `max_grade` (`{pct, relation}`, no bare sign — #1009), `gap_pace` | stored detail attributes and `stream_summary` |
 | `WeatherTool` · `get_weather` | `weather_temp_c`, `weather_humidity_pct`, `weather_rain`, `weather_rain_source`, `weather_wind_speed_kmh`, `weather_wind_gust_kmh`, `weather_wind_direction_deg` | `ActivityNarrationContext` over the stored weather snapshot |
-| `EffortContextTool` · `get_effort_context` | `session_intent`, `relative_effort`, `decoupling_pct` | `SessionIntent`, `RelativeEffort`; decoupling from `stream_summary` |
-| `PastYouTool` · `get_past_you` | `past_you`: `days_ago`, `pace_diff_sec`, `time_diff_sec`, `hr_diff_bpm`, `past_km`, `past_date` | `PastYouMatcher` |
+| `EffortContextTool` · `get_effort_context` | `session_intent`, `relative_effort`, `decoupling` (`{pct, relation}`, no bare sign — #1009) | `SessionIntent`, `RelativeEffort`; decoupling from `stream_summary`, relation via `DecouplingBands::relationFor()` |
 | `PersonalRecordsTool` · `get_personal_records` | `personal_records`: list of `{category, value_sec}` | stored `PersonalRecord` rows, written by `PersonalRecords` |
 
 ### Bound to a user and an as-of date (`UserTool`)
 
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
-| `WeekStateTool` · `get_week_state` | `this_week_runs`, `last_week_runs`, `this_week_km`, `last_week_km`, `recovery_hours`, `ran_today`, `days_since_last_run`, `form_status`, `time_bucket`, `consecutive_weeks_active`, `fitness_trend`, `volume_ramp_pct`, `readiness_ceiling`, `build_nudge` | `BriefingContext` over `TrainingLoad`, `RecoveryWindow` and `Readiness` |
-| `TrainingLoadTool` · `get_training_load` | `training_load`: `acute_7d`, `chronic_42d`, `form`, `form_status` | `TrainingLoad::summary()` |
+| `WeekStateTool` · `get_week_state` | `this_week_runs`, `last_week_runs`, `this_week_km`, `last_week_km`, `recovery_hours`, `ran_today`, `days_since_last_run`, `form_status`, `time_bucket`, `consecutive_weeks_active`, `fitness_trend`, `volume_ramp` (`{pct, relation}`, no bare sign — #1009), `readiness_ceiling`, `build_nudge` | `BriefingContext` over `TrainingLoad`, `RecoveryWindow` and `Readiness` |
+| `TrainingLoadTool` · `get_training_load` | `training_load`: `acute_7d`, `chronic_42d`, `form` (`{value, relation}`, no bare sign — #1009), `form_status` | `TrainingLoad::summary()`; relation via `TrainingLoad::formRelation()` |
 | `TrainingPacesTool` · `get_training_paces` | `easy_pace_sec`, `marathon_pace_sec`, `threshold_pace_sec`, `interval_pace_sec` | `VdotEstimator` into `TrainingPaceCalculator` |
-| `RecentBaselineTool` · `get_recent_baseline` | `recent_baseline_28d`: rolling pace / HR / decoupling averages | `ResolveRunBaselineAction` |
+| `RecentBaselineTool` · `get_recent_baseline` | `recent_baseline_28d`: rolling pace / HR averages, `avg_decoupling` (`{pct, relation}`, no bare sign — #1009) | `ResolveRunBaselineAction` |
 | `RecentRunsTool` · `get_recent_runs` | `recent_runs`: up to 5 × `{mood, km, intensity, oneline}` | `VerdictNarrator::recent()` |
-| `LatestPastYouTool` · `get_latest_past_you` | `past_you`, same shape as `PastYouTool` but for the latest run | `PastYouMatcher` |
 | `LifetimeStatsTool` · `get_lifetime_stats` | `name`, `total_runs`, `total_km`, `longest_run_km`, `months_running`, `pr_count`, `weekly_streak`, `favorite_time`, `strava_connected`, `form_status` | `LifetimeStats`, `WeeklySnapshot::consecutiveWeekStreak()` / `::latestFormStatus()` |
 | `PersonaMixTool` · `get_persona_mix` | `lookback_weeks`, `total_runs`, `persona_mix`, `persona_mix_recent`, `persona_mix_earlier`, `form_status` | `MoodMix`, `WeeklySnapshot::latestFormStatus()` |
 | `ProgressionSignalTool` · `get_progression_signal` | `progression_signal`: `{label, delta_sec}` | `ProgressionSeriesBuilder` over `PersonalRecord` rows |
@@ -395,7 +421,7 @@ inline in its `toolbox()` method.
 
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
-| `WeekTotalsTool` · `get_week_totals` | `week_ending`, `runs`, `distance_km`, `pace_sec_per_km`, `weekly_trimp`, `ctl_42d`, `atl_7d`, `form`, `form_status`, `monotony`, `strain`, `avg_decoupling`, plus the previous week's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km` | stored `WeeklySnapshot` rows, written by `WeeklyAggregator`; pace via `PaceCalculator` |
+| `WeekTotalsTool` · `get_week_totals` | `week_ending`, `runs`, `distance_km`, `pace_sec_per_km`, `weekly_trimp`, `ctl_42d`, `atl_7d`, `form` (`{value, relation}`, no bare sign — #1009), `form_status`, `monotony`, `strain`, `avg_decoupling` (`{pct, relation}`, no bare sign — #1009), plus the previous week's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km` | stored `WeeklySnapshot` rows, written by `WeeklyAggregator`; pace via `PaceCalculator`; relations via `TrainingLoad::formRelation()` / `DecouplingBands::relationFor()` |
 | `MonthTotalsTool` · `get_month_totals` | `month`, `total_runs`, `total_distance_km`, `longest_run_km`, `pr_count`, `weekly_distance_km`, `mood_mix`, `fitness` (`ctl_start`, `ctl_end`, `form_status_end`) | `DistanceFormatter`, `MoodMix`, stored `WeeklySnapshot` rows |
 | `TrendRangeTool` · `get_trend_range_totals` | `range`, `current` and `comparison` (`runs`, `distance_km`, `trimp_total`), `ctl_start`, `ctl_end`, `vdot_start`, `vdot_end`, `avg_monotony`, `avg_strain` | `TrainingLoad::ctlTrend()` / `::strainMonotonyTrend()`, `TrendDailySnapshot` |
 | `CardIdentityTool` · `get_card_identity` | `rarity`, `rarity_label`, `special_move`, `badges` | stored `RunCard` attributes; labels from `Badge::promptLabelsFor()` |
@@ -410,9 +436,9 @@ inline in its `toolbox()` method.
 |---|---|
 | `RunInsightNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` |
 | `RunQuestionNarrator` | `RunSummaryTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` always; `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool` only once the run is `Detailed` |
-| `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `PastYouTool`, `WeekStateTool`, `PlanContextTool` |
+| `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `WeekStateTool`, `PlanContextTool` |
 | `CardFlavorNarrator` | `CardIdentityTool` always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool`, `PlanContextTool` when the run has detail |
-| `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `LatestPastYouTool`, `RecentBaselineTool`, `PlanContextTool` |
+| `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `RecentBaselineTool`, `PlanContextTool` |
 | `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool`, `PlanAdherenceTool` |
 | `WeeklyRecapNarrator` | `WeekTotalsTool`, `PlanContextTool` |
 | `MonthlyRecapNarrator` | `MonthTotalsTool`, `PlanContextTool` |
@@ -420,7 +446,7 @@ inline in its `toolbox()` method.
 | `PlanDayVoiceNarrator` | `PlanDayTool` |
 | `PlanSeasonVoiceNarrator` | `PlanSeasonTool` |
 
-Every one of the 26 tools is carried by at least one narrator; none is orphaned.
+Every one of the 24 tools is carried by at least one narrator; none is orphaned.
 
 ## The deterministic half
 
@@ -490,6 +516,20 @@ schedule entirely: it is now one call per run day, requested after scoring, so i
 runs logged rather than weeks swept.
 
 ## Retired surfaces
+
+**`PastYouTool` / `LatestPastYouTool`** (cut 2026-09-19, #1009). Two live checks
+(#1016, #1033) each re-encoded the past-you delta the tools handed
+`PostRunSpeechNarrator` and `BriefingMascotVoiceNarrator` — a signed number plus
+a composite direction, then an unsigned magnitude plus a relation word — and
+each still let the narrator invert a fact about half the time: the model
+builds a mood from the rest of the context, then states the comparison to fit
+that story, regardless of how the numbers are shaped. The decision was that no
+narrator states this comparison at all, so nothing legitimate was left for
+either tool to hand over. `PastYouMatcher::findMatchContext()` survives —
+`RunController` reads it directly to render the fact line on the run-detail
+page (`PastYouCard.tsx`), no LLM involved. `PostRunSpeechNarrator` and
+`BriefingMascotVoiceNarrator` are otherwise unaffected; their prompts now
+forbid comparing to a specific past run instead of inviting it.
 
 **`plan_week_voice`** (cut 2026-09-17, #947). Ahead-of-time plan narration was decided against for
 the week-adaptation surface specifically: the week's headline/detail/deload/quality chips already

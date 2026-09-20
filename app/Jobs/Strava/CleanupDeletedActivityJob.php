@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Strava;
 
+use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
@@ -45,6 +46,7 @@ class CleanupDeletedActivityJob implements ShouldQueue
         PersonalRecords $personalRecords,
         StravaClient $client,
         ResolveTrailingWeeksAction $weeklySnapshots,
+        SettleEarlyNarrationAction $settleEarlyNarration,
     ): void {
         $user = User::query()->with('stravaConnection')->find($this->userId);
         if ($user === null) {
@@ -124,6 +126,10 @@ class CleanupDeletedActivityJob implements ShouldQueue
                     ->delete();
             }
         });
+
+        // Deleting the last row in the athlete's backlog can leave it empty
+        // same as a successful hydration would — see SettleEarlyNarrationAction.
+        ($settleEarlyNarration)($user);
 
         Log::info('strava.webhook cleaned up deleted activity', [
             'user_id' => $user->id,

@@ -5,16 +5,14 @@ import PastYouCard, { type PastYouMatch } from './PastYouCard';
 
 function match(overrides: Partial<PastYouMatch> = {}): PastYouMatch {
     return {
-        past: {
-            start_date_local: '2026-04-01T07:00',
-            activity_id: 42,
-            name: 'Morning easy',
-            distance: 10400,
-        },
-        pace_diff_sec: 47,
-        hr_diff_bpm: -6,
-        time_diff_sec: 112,
         days_ago: 21,
+        pace: { seconds_per_km: 47, relation: 'faster' },
+        time: { seconds: 112, relation: 'faster' },
+        hr: { bpm: 6, relation: 'lower' },
+        direction: 'better',
+        past_km: 10.4,
+        past_activity_id: 42,
+        past_name: 'Morning easy',
         ...overrides,
     };
 }
@@ -35,42 +33,36 @@ describe('PastYouCard', () => {
         ).toBeInTheDocument();
     });
 
-    it('says slower when the past run was quicker', () => {
-        render(<PastYouCard match={match({ pace_diff_sec: -12 })} />);
+    it('says slower purely from the relation word, never a recomputed sign', () => {
+        render(
+            <PastYouCard
+                match={match({
+                    pace: { seconds_per_km: 12, relation: 'slower' },
+                    time: { seconds: 28, relation: 'slower' },
+                })}
+            />,
+        );
         expect(screen.getByText('12')).toBeInTheDocument();
         expect(screen.getByText('sec/km slower')).toBeInTheDocument();
     });
 
-    it('reads "Dead even" rather than a signed zero', () => {
-        render(<PastYouCard match={match({ pace_diff_sec: 0 })} />);
+    it('reads "Dead even" for a same-pace relation', () => {
+        render(
+            <PastYouCard
+                match={match({
+                    pace: { seconds_per_km: 2, relation: 'same' },
+                })}
+            />,
+        );
         expect(screen.getByText('Dead even')).toBeInTheDocument();
         expect(screen.queryByText(/sec\/km/)).not.toBeInTheDocument();
     });
 
-    it('falls back to "the same run" when the past distance is unknown', () => {
-        render(
-            <PastYouCard
-                match={match({
-                    past: { start_date_local: null, distance: null },
-                })}
-            />,
-        );
-        expect(
-            screen.getByText(/the same run, 21 days ago/),
-        ).toBeInTheDocument();
-    });
-
-    it('links to the matched run only when it has an id', () => {
-        const { unmount } = render(<PastYouCard match={match()} />);
+    it('links to the matched run', () => {
+        render(<PastYouCard match={match()} />);
         expect(
             screen.getByRole('link', { name: /View that run/ }),
         ).toHaveAttribute('href', '/activities/42');
-        unmount();
-
-        render(
-            <PastYouCard match={match({ past: { start_date_local: null } })} />,
-        );
-        expect(screen.queryByText('View that run')).not.toBeInTheDocument();
     });
 
     it('tones a lower heart rate as good and a higher one as a warning', () => {
@@ -78,17 +70,23 @@ describe('PastYouCard', () => {
         expect(screen.getByText('6 bpm lower')).toHaveClass('text-leaf-ink');
         unmount();
 
-        render(<PastYouCard match={match({ hr_diff_bpm: 4 })} />);
+        render(
+            <PastYouCard
+                match={match({ hr: { bpm: 4, relation: 'higher' } })}
+            />,
+        );
         expect(screen.getByText('4 bpm higher')).toHaveClass('text-citrus-ink');
     });
 
     it('calls an unchanged heart rate "the same", neither good nor bad', () => {
-        render(<PastYouCard match={match({ hr_diff_bpm: 0 })} />);
+        render(
+            <PastYouCard match={match({ hr: { bpm: 0, relation: 'same' } })} />,
+        );
         expect(screen.getByText('0 bpm the same')).toHaveClass('text-text-2');
     });
 
     it('omits the heart-rate delta when either run had no HR', () => {
-        render(<PastYouCard match={match({ hr_diff_bpm: null })} />);
+        render(<PastYouCard match={match({ hr: null })} />);
         expect(screen.queryByText('Heart rate')).not.toBeInTheDocument();
     });
 
@@ -99,12 +97,51 @@ describe('PastYouCard', () => {
     });
 
     it('omits the time delta when the two runs finished level', () => {
-        render(<PastYouCard match={match({ time_diff_sec: 0 })} />);
+        render(
+            <PastYouCard
+                match={match({ time: { seconds: 0, relation: 'same' } })}
+            />,
+        );
         expect(screen.queryByText('Over the distance')).not.toBeInTheDocument();
     });
 
     it('marks a slower finish over the same distance', () => {
-        render(<PastYouCard match={match({ time_diff_sec: -90 })} />);
+        render(
+            <PastYouCard
+                match={match({ time: { seconds: 90, relation: 'slower' } })}
+            />,
+        );
         expect(screen.getByText(/slower/)).toHaveClass('text-citrus-ink');
+    });
+
+    it('renders the mixed case: slower pace against a lower heart rate (run 652)', () => {
+        render(
+            <PastYouCard
+                match={match({
+                    pace: { seconds_per_km: 13, relation: 'slower' },
+                    time: { seconds: 33, relation: 'slower' },
+                    hr: { bpm: 16, relation: 'lower' },
+                    direction: 'worse',
+                })}
+            />,
+        );
+        expect(screen.getByText('sec/km slower')).toBeInTheDocument();
+        expect(screen.getByText('16 bpm lower')).toHaveClass('text-leaf-ink');
+    });
+
+    it('renders the mixed case: slower pace against a lower heart rate (run 648)', () => {
+        render(
+            <PastYouCard
+                match={match({
+                    pace: { seconds_per_km: 43.1, relation: 'slower' },
+                    time: { seconds: 120, relation: 'slower' },
+                    hr: { bpm: 16, relation: 'lower' },
+                    direction: 'worse',
+                })}
+            />,
+        );
+        expect(screen.getByText('43')).toBeInTheDocument();
+        expect(screen.getByText('sec/km slower')).toBeInTheDocument();
+        expect(screen.getByText('16 bpm lower')).toHaveClass('text-leaf-ink');
     });
 });

@@ -220,10 +220,14 @@ describe('Runs/Show', () => {
         renderShow({
             awaitingDetail: true,
             pastYou: {
-                past: { start_date_local: '2026-04-01T07:00' },
-                pace_diff_sec: 10,
-                hr_diff_bpm: -3,
                 days_ago: 30,
+                pace: { seconds_per_km: 10, relation: 'faster' },
+                time: { seconds: 24, relation: 'faster' },
+                hr: { bpm: 3, relation: 'lower' },
+                direction: 'better',
+                past_km: 10,
+                past_activity_id: 99,
+                past_name: null,
             },
         });
         // The hero and the provenance footer still render; the rest would only
@@ -243,10 +247,14 @@ describe('Runs/Show', () => {
     it('slots the past-you card between the hero and the narration', () => {
         renderShow({
             pastYou: {
-                past: { start_date_local: '2026-04-01T07:00' },
-                pace_diff_sec: 10,
-                hr_diff_bpm: -3,
                 days_ago: 30,
+                pace: { seconds_per_km: 10, relation: 'faster' },
+                time: { seconds: 24, relation: 'faster' },
+                hr: { bpm: 3, relation: 'lower' },
+                direction: 'better',
+                past_km: 10,
+                past_activity_id: 99,
+                past_name: null,
             },
         });
         expect(screen.getByText('You vs past you')).toBeInTheDocument();

@@ -19,8 +19,12 @@ use App\Services\AI\NarrationOrigin;
 #[Description('Dispatch the daily briefing set for each active user (last 7 days)')]
 class DailyBriefingCommand extends Command
 {
-    public function handle(AnalysisService $service, RestClampRecorder $restClampRecorder, PlanNarrationRequester $planNarration, RecentlyActiveUsers $activeUsers): int
-    {
+    public function handle(
+        AnalysisService $service,
+        RestClampRecorder $restClampRecorder,
+        PlanNarrationRequester $planNarration,
+        RecentlyActiveUsers $activeUsers,
+    ): int {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
         $today = Carbon::today()->toDateString();
@@ -36,6 +40,9 @@ class DailyBriefingCommand extends Command
             // behind it, which the ingest listener never sees.
             $planNarration->requestClampVoice($user, Carbon::today());
 
+            // A first connect's still-draining backlog narrates right away
+            // too; markDone() flags the row for SettleEarlyNarrationAction's
+            // replay if it's still early.
             $service->requestBriefing($user, $today);
         }
 
