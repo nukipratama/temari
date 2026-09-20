@@ -27,6 +27,8 @@ abstract class TestCase extends BaseTestCase
         foreach (AppConfigKey::cases() as $key) {
             Cache::forget($key->cacheKey());
         }
+
+        Cache::forever(AppConfigKey::MaintenanceEnabled->cacheKey(), ['__config' => false]);
     }
 
     /**
