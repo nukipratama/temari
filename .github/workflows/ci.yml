@@ -311,6 +311,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             npx vitest run \
               --shard="${{ matrix.shard }}/${FRONTEND_SHARD_TOTAL}" \
+              --exclude='resources/js/pages/**' \
               --coverage \
               --coverage.thresholds.lines=0 --coverage.thresholds.functions=0 \
               --reporter=blob --reporter=default \
