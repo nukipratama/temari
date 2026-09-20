@@ -3,11 +3,13 @@ title: Local gate vs. CI
 description: What composer gate / check:full run locally, what pre-commit runs, and what CI runs — and why they differ
 tags: [architecture, toolchain]
 status: living
-reviewed: 2026-09-09
+reviewed: 2026-09-21
 code_refs:
   - scripts/gate.sh
   - .githooks/pre-commit
   - .github/workflows/ci.yml
+  - .github/workflows/backend-ci.yml
+  - .github/workflows/frontend-ci.yml
   - composer.json
 ---
 
@@ -41,24 +43,20 @@ Rector pass was the slowest single step the hook ever carried, so it moved to th
 
 ## CI: the full gate, plus deploy
 
-[.github/workflows/ci.yml](../../.github/workflows/ci.yml) does not shell out to `gate.sh`; its jobs
-run the same checks directly so each can be its own job with its own cache and log — structural
-Pest ([ci.yml](../../.github/workflows/ci.yml#L153)), the Vitest structure test, Pint and PHPStan
-(`--test`/no dry-run, [ci.yml](../../.github/workflows/ci.yml#L429) and
-[ci.yml](../../.github/workflows/ci.yml#L432)), and more. **CI is the authoritative full gate** — a green
-`composer gate` locally is a fast pre-push signal, not a substitute for CI passing. On `push` to
-`main`, `deploy` additionally builds and rolls the image once `ci-gate` and `build` both pass; see
-[[deployment]] for that half.
+[.github/workflows/ci.yml](../../.github/workflows/ci.yml) orchestrates the unconditional guards,
+build and deployment while [backend-ci.yml](../../.github/workflows/backend-ci.yml) and
+[frontend-ci.yml](../../.github/workflows/frontend-ci.yml) run each suite's tests, coverage and
+static analysis directly. They do not shell out to `gate.sh`, so every check gets its own cache and
+log. **CI is the authoritative full gate** — a green `composer gate` locally is a fast pre-push
+signal, not a substitute for CI passing. On `push` to `main`, `deploy` additionally builds and
+rolls the image once `ci-gate` and `build` both pass; see [[deployment]] for that half.
 
-The full Pest suite with coverage only runs on a PR (a push is already-gated, having landed via
-one), and is the critical-path cost: pcov instrumentation roughly doubles it. It's split across
-`SHARD_TOTAL` parallel jobs (`backend-tests-shard`, [ci.yml](../../.github/workflows/ci.yml#L196)),
-each writing its own raw coverage object via `--coverage-php`; `backend-coverage-merge`
-([ci.yml](../../.github/workflows/ci.yml#L289)) merges them with `phpcov` and applies `--min=95`
-once, to the merged whole — never per shard, since a shard only ever covers its own slice. A push
-runs the unsharded, uninstrumented suite instead ([ci.yml](../../.github/workflows/ci.yml#L117)).
-`ci-gate` requires every shard and the merge step, so a missing, cancelled or failed shard reds the
-gate the same as any other required job — see
+Both test suites run three parallel shards on PRs and main pushes. PR shards collect coverage;
+their `coverage` jobs merge the whole-suite totals and apply the configured thresholds exactly
+once. Main-push shards skip instrumentation and the merge jobs because the change was already
+coverage-gated before merge. Each reusable workflow's `gate` requires all of its shards and static
+analysis on both events, plus coverage on PRs, and the top-level `ci-gate` requires each changed
+suite as a unit. A missing, cancelled or failed shard therefore reds the gate — see
 [docs/decisions/sharded-pr-coverage.md](../decisions/sharded-pr-coverage.md).
 
 See also: [[deployment]].
