@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 use App\Http\Middleware\EnforceMaintenanceMode;
 use App\Models\User;
-use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -16,7 +14,6 @@ use Symfony\Component\HttpFoundation\Response;
 uses(RefreshDatabase::class);
 
 beforeEach(fn () => app()->maintenanceMode()->activate([]));
-afterEach(fn () => Cache::forget(AppConfigKey::MaintenanceEnabled->cacheKey()));
 
 it('serves the maintenance page to a guest with a 503 and Retry-After', function (): void {
     $this->get('/')
