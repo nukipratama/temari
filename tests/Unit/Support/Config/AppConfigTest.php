@@ -8,7 +8,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
 
@@ -88,17 +87,20 @@ it('keeps a successful MySQL write when the cache write fails', function (): voi
         ->toBe('false');
 });
 
-it('serves the last known cached value when MySQL is unavailable', function (): void {
+it('serves the last known cached value without consulting MySQL', function (): void {
     $config = new AppConfig();
     $config->set(AppConfigKey::MaintenanceEnabled, true);
-    Schema::drop('app_config');
+    DB::shouldReceive('table')->never();
 
     expect(new AppConfig()->boolean(AppConfigKey::MaintenanceEnabled))->toBeTrue();
 });
 
 it('surfaces a MySQL failure when the cache is also unavailable', function (): void {
-    Schema::drop('app_config');
     Cache::shouldReceive('get')->once()->andThrow(new RuntimeException('redis down'));
+    DB::shouldReceive('table')
+        ->once()
+        ->with('app_config')
+        ->andThrow(new QueryException('mysql', 'select value from app_config', [], new PDOException('mysql down')));
 
     expect(fn () => new AppConfig()->boolean(AppConfigKey::AiEnabled))
         ->toThrow(QueryException::class);

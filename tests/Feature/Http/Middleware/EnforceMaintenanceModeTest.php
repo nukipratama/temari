@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 use App\Http\Middleware\EnforceMaintenanceMode;
 use App\Models\User;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia as Assert;
 use Symfony\Component\HttpFoundation\Response;
 
 uses(RefreshDatabase::class);
 
 beforeEach(fn () => app()->maintenanceMode()->activate([]));
+afterEach(fn () => Cache::forget(AppConfigKey::MaintenanceEnabled->cacheKey()));
 
 it('serves the maintenance page to a guest with a 503 and Retry-After', function (): void {
     $this->get('/')
@@ -163,10 +165,4 @@ it('does nothing while maintenance is off', function (): void {
 
 it('blocks client error reports during maintenance', function (): void {
     $this->postJson(route('client-errors'), ['message' => 'boom'])->assertServiceUnavailable();
-});
-
-it('keeps intentional maintenance active from the last-known value when MySQL is missing', function (): void {
-    Schema::drop('app_config');
-
-    $this->get('/')->assertServiceUnavailable();
 });

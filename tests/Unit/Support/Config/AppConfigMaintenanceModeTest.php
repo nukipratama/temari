@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\QueryException;
 
 uses(RefreshDatabase::class);
 
@@ -43,21 +43,24 @@ it('sees a write-through flip made by another container even after the same proc
     expect($driver->active())->toBeFalse();
 });
 
-it('keeps maintenance active from the cached last-known value during a MySQL outage', function (): void {
+it('keeps maintenance active from the cached last-known value without consulting MySQL', function (): void {
     $driver = new AppConfigMaintenanceMode();
     $driver->activate([]);
-    Schema::drop('app_config');
+    DB::shouldReceive('table')->never();
 
     expect($driver->active())->toBeTrue();
 });
 
 it('fails closed when neither Redis nor MySQL can answer', function (): void {
     Log::spy();
-    Schema::drop('app_config');
     Cache::shouldReceive('get')
         ->once()
         ->with(AppConfigKey::MaintenanceEnabled->cacheKey())
         ->andThrow(new RuntimeException('redis down'));
+    DB::shouldReceive('table')
+        ->once()
+        ->with('app_config')
+        ->andThrow(new QueryException('mysql', 'select value from app_config', [], new PDOException('mysql down')));
 
     expect(new AppConfigMaintenanceMode()->active())->toBeTrue();
 
