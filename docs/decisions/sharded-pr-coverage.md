@@ -1,23 +1,24 @@
 ---
-title: PR backend coverage is sharded, not moved off the PR
-description: The 95% gate stays on pull_request; pcov's ~150s cost is cut by splitting backend tests across parallel shards and merging their coverage, not by relocating the gate to main or push.
+title: Backend and frontend tests are sharded on PRs and main pushes
+description: Both suites use one sharded path on PRs and main pushes; only PR shards collect coverage, and their merged totals retain the existing thresholds.
 tags: [decision, ci]
 status: accepted
-reviewed: 2026-09-18
+reviewed: 2026-09-21
 code_refs:
   - .github/workflows/ci.yml
   - tests/.pest/shards.json
 ---
 
-# PR backend coverage is sharded, not moved off the PR
+# Backend and frontend tests are sharded on PRs and main pushes
 
 **Status:** Accepted (decided 2026-09-18)
 
-Coverage roughly doubled `backend-tests` on every pull request (186–340s vs ~145s on a push),
-making it the PR's critical path by two to three minutes. `pcov` is loaded only in the PR-only
-shard job ([ci.yml](../../.github/workflows/ci.yml#L227)); the push job never carries it
-([ci.yml](../../.github/workflows/ci.yml#L144)), because a push only ever lands via a PR that
-already ran the gate.
+Coverage roughly doubled backend tests on every pull request (186–340s vs ~145s on a push),
+making them the PR's critical path by two to three minutes. Frontend tests were also near the
+critical path because per-file jsdom setup dominated their runtime. Both suites now use the same
+sharded jobs on PRs and main pushes. Coverage is the only event-specific difference: PR shards
+collect it and merge the whole-suite totals, while push shards run without instrumentation or a
+merge step.
 
 Two alternatives were rejected:
 
@@ -29,8 +30,8 @@ Two alternatives were rejected:
 
 ## What changed
 
-Backend tests with coverage are split across `SHARD_TOTAL` (3) parallel GitHub-hosted jobs on a
-PR only (`backend-tests-shard`, [ci.yml](../../.github/workflows/ci.yml#L196)), using Pest's
+Backend tests are split across `SHARD_TOTAL` (3) parallel GitHub-hosted jobs
+(`backend-tests-shard`, [ci.yml](../../.github/workflows/ci.yml)), using Pest's
 `--shard=i/N` ([Shard plugin](https://github.com/pestphp/pest)). Plain round-robin (by test-class
 index, no timing data) put one file — `DemoSeedCommandTest`, the single heaviest file in the suite
 even after [#1019](https://github.com/nukipratama/temari/issues/1019) — alongside enough other
@@ -40,25 +41,28 @@ per-class wall-time timing, and every `--shard` run then uses LPT bin-packing to
 *total* time close to equal rather than just its file count. Regenerate it (`--update-shards
 --exclude-group=structure`, same flags as the real run) when the suite's shape changes enough that
 balance drifts — Pest warns (doesn't fail) when it sees test classes the file doesn't know about.
-Each shard writes its own raw coverage object with a plain PHPUnit
+On PRs, each shard writes its own raw coverage object with a plain PHPUnit
 `--coverage-php` (not Pest's own `--coverage`/`--min`, which hardcodes an internal temp path and
 deletes it after printing a single-run report); ParaTest — Pest's `--parallel` implementation —
 already merges each of its own worker processes' coverage into that one file, so a shard ends up
 with one combined object regardless of how many parallel workers ran inside it.
 
-`backend-coverage-merge` ([ci.yml](../../.github/workflows/ci.yml#L289)) downloads all shards'
+`backend-coverage-merge` ([ci.yml](../../.github/workflows/ci.yml)) downloads all PR shards'
 `.cov` artifacts, merges them with `phpunit/phpcov merge` into a Clover report, and applies
 `--min=95` exactly once against the merged project-level `<metrics statements coveredstatements>`
 totals — the same executable-lines basis Pest's own `--min` uses. **The threshold is never
 checked per shard**: a shard covering only its own slice of the suite is expected to sit well
 under 95%, and that must not fail it on its own.
 
-`ci-gate` ([ci.yml](../../.github/workflows/ci.yml#L456)) requires every shard and the merge step
-the same way it requires any other job — a missing, cancelled or failed shard reds the gate, never
-a partial pass. A push still runs the plain, unsharded, uninstrumented suite in `backend-tests`
-([ci.yml](../../.github/workflows/ci.yml#L117)); sharding a push wasn't measured to help (see the
-PR that introduced this for the before/after numbers) and the owner's instruction was to leave it
-alone absent a measured benefit there too.
+Frontend tests use the same three-way shape in `frontend-tests-shard`. PR shards write Vitest blob
+reports with their individual thresholds disabled; `frontend-coverage-merge` combines them and
+applies the configured whole-suite thresholds once. Main-push shards run without coverage, and
+shard 1 retains the asset build and entry-chunk budget checks that previously lived in the
+unsharded push job.
+
+`ci-gate` ([ci.yml](../../.github/workflows/ci.yml)) requires every backend and frontend shard on
+both events, plus both coverage merge jobs on PRs. A missing, cancelled or failed shard reds the
+gate, never a partial pass.
 
 `phpunit/phpcov` was added as a pinned dev dependency (`composer.json`) purely to merge the
 shards' coverage; it isn't used anywhere else in the toolchain.
