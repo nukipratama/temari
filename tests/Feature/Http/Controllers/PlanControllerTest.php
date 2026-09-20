@@ -387,7 +387,6 @@ it('leaves the eager block alone on the request that only fetches the deferred p
 // plan engine, the season service and the narration requester all run there.
 it('paints the Plan shell inside its query budget', function (): void {
     $user = planBudgetFixture();
-    app()->isDownForMaintenance();
 
     $queries = 0;
     DB::listen(function () use (&$queries): void {

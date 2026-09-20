@@ -16,11 +16,14 @@ it('returns the code default when no row exists', function (): void {
         ->and(new AppConfig()->get(AppConfigKey::StravaBreakerThreshold))->toBe(5);
 });
 
-it('lets a stored row override the default', function (): void {
-    $config = new AppConfig();
-    $config->set(AppConfigKey::AiEnabled, false);
+it('reads a stored override from MySQL', function (): void {
+    DB::table('app_config')->insert([
+        'key' => AppConfigKey::AiEnabled->value,
+        'value' => 'false',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 
-    // Fresh instance proves it round-tripped through the DB, not just the memo.
     expect(new AppConfig()->get(AppConfigKey::AiEnabled))->toBeFalse();
 });
 
@@ -139,7 +142,7 @@ it('setMany writes multiple keys atomically in a single call', function (): void
         ->and($fresh->boolean(AppConfigKey::AiEnabled))->toBeFalse();
 });
 
-it('reflects a set value immediately on the same instance (memo updated)', function (): void {
+it('reflects a write-through value immediately on the same instance', function (): void {
     $config = new AppConfig();
     expect($config->boolean(AppConfigKey::StravaEnabled))->toBeTrue();
 

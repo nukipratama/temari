@@ -28,8 +28,7 @@ $alertOnFailure = static fn (Event $event, string $command): Event => $event->on
 // the write is one idempotent SETEX, and the scheduler mutex would take a lock
 // on the evictable cache store every minute for nothing. No $alertOnFailure
 // either: while Redis is down this would fail every 60s, and the alerter's own
-// cooldown is Redis-backed. The only task that runs during maintenance: a
-// paused scheduler is working as intended and must not go unhealthy.
+// cooldown is Redis-backed. Keep the scheduler healthcheck alive during maintenance.
 Schedule::command('schedule:heartbeat')->everyMinute()->onOneServer()->evenInMaintenanceMode();
 
 // 00:01: daily kickoff for active users (last 7 days) — one briefing_mascot_voice

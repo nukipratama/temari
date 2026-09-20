@@ -110,10 +110,7 @@ return [
     | Maintenance Mode Driver
     |--------------------------------------------------------------------------
     |
-    | The "app-config" driver (AppConfigMaintenanceMode) keeps the flag in the
-    | durable `app_config` table shared by every container. It is not read from
-    | the environment: a host env file still carrying the old "file" value would
-    | otherwise silently scope maintenance to a single container again.
+    | The "app-config" driver keeps maintenance shared across every container.
     |
     */
 
