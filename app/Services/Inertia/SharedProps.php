@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Inertia;
 
 use App\Models\User;
+use App\Support\Config\AppConfig;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Http\Request;
 
 /**
@@ -54,7 +56,9 @@ final readonly class SharedProps
                 'error' => fn () => $request->session()->get('error'),
                 'info' => fn () => $request->session()->get('info'),
             ],
-            'demoLoginEnabled' => (bool) config('demo.login_enabled'),
+            // Reads the flag EnforceMaintenanceMode already loaded this request.
+            'demoLoginEnabled' => fn (): bool => (bool) config('demo.login_enabled')
+                && ! app(AppConfig::class)->boolean(AppConfigKey::MaintenanceEnabled),
             // Public VAPID key only — the client needs it to subscribe; the private
             // key never leaves the server.
             'webPushPublicKey' => (string) config('webpush.vapid.public_key'),

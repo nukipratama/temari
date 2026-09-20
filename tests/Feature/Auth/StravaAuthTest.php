@@ -14,6 +14,7 @@ use App\Support\DataUseStatement;
 use App\Support\TrainingDisclaimer;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
@@ -227,6 +228,60 @@ it('creates a new user from the strava callback and logs them in', function (): 
         fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === null,
     );
     Bus::assertChained([SyncActivitiesJob::class, KickoffRecapsJob::class]);
+});
+
+it('refuses a new athlete during maintenance, writes nothing and hands the grant back to Strava', function (): void {
+    Http::preventStrayRequests();
+    Http::fake(['https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'access-token-xyz'])]);
+    Log::spy();
+    app()->maintenanceMode()->activate([]);
+
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'access-token-xyz';
+    $stravaUser->refreshToken = 'refresh-token-xyz';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('987654');
+    $stravaUser->shouldReceive('getName')->andReturn('Ada Lovelace');
+    $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/avatar.png');
+
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->get(route('auth.strava.callback'))->assertRedirect(route('dashboard'));
+
+    $this->assertGuest();
+    expect(User::count())->toBe(0)
+        ->and(StravaConnection::count())->toBe(0);
+    Http::assertSent(fn (HttpRequest $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
+        && $request['access_token'] === 'access-token-xyz');
+    Log::shouldHaveReceived('info')->with('strava.registration.refused_during_maintenance', ['athlete_id' => '987654', 'deauthorized' => true]);
+    Bus::assertNothingDispatched();
+
+    // The redirect lands the refused guest on the maintenance page.
+    $this->get(route('dashboard'))->assertServiceUnavailable()->assertSee('back in a bit');
+});
+
+it('signs a returning athlete in during maintenance', function (): void {
+    Http::preventStrayRequests();
+    $existingUser = User::factory()->create();
+    StravaConnection::factory()->for($existingUser)->create(['strava_athlete_id' => 987654]);
+    app()->maintenanceMode()->activate([]);
+
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'new-access';
+    $stravaUser->refreshToken = 'new-refresh';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('987654');
+    $stravaUser->shouldReceive('getName')->andReturn('Ada Lovelace');
+    $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/avatar.png');
+
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->get(route('auth.strava.callback'))->assertRedirect(route('dashboard'));
+
+    $this->assertAuthenticatedAs($existingUser);
+    expect($existingUser->stravaConnection()->firstOrFail()->access_token)->toBe('new-access');
 });
 
 it('still connects on a fresh connect while the strava kill switch is off, without fetching zones', function (): void {

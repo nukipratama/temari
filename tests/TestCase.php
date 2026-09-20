@@ -2,9 +2,11 @@
 
 namespace Tests;
 
-use Override;
+use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Override;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -16,6 +18,18 @@ abstract class TestCase extends BaseTestCase
      * @var array<int, string>
      */
     protected $connectionsToTransact = ['mysql', 'analytics'];
+
+    #[Override]
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        foreach (AppConfigKey::cases() as $key) {
+            Cache::forget($key->cacheKey());
+        }
+
+        Cache::forever(AppConfigKey::MaintenanceEnabled->cacheKey(), ['__config' => false]);
+    }
 
     /**
      * Point the `analytics` connection at the default test database (including

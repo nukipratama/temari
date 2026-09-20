@@ -15,8 +15,8 @@ use Laravel\Pulse\Livewire\Card;
 
 /**
  * Superadmin control panel on /pulse: live ingest-backlog + circuit-breaker
- * state, plus the runtime kill-switches for AI and Strava. The toggle/reset
- * actions write to the durable app_config control plane.
+ * state, plus the runtime kill-switches for AI and Strava and the maintenance
+ * switch. The toggle/reset actions write to the durable app_config control plane.
  *
  * Not lazy: cheap count queries + control-plane reads, so deferring buys nothing.
  */
@@ -34,6 +34,13 @@ class SystemControl extends Card
     {
         $this->toggle(AppConfigKey::StravaEnabled);
         SharedPropCacheKey::StravaPaused->forget();
+    }
+
+    public function toggleMaintenance(): void
+    {
+        $maintenance = app()->maintenanceMode();
+
+        $maintenance->active() ? $maintenance->deactivate() : $maintenance->activate([]);
     }
 
     public function resetBreaker(): void
@@ -55,6 +62,7 @@ class SystemControl extends Card
 
         $breaker = app(StravaCircuitBreaker::class)->snapshot();
         $stranded = (int) ($backlog->stranded ?? 0);
+        $maintenance = app()->isDownForMaintenance();
 
         return View::make('livewire.pulse.system-control', [
             'cols' => $this->cols,
@@ -62,12 +70,13 @@ class SystemControl extends Card
             'class' => $this->class,
             'aiEnabled' => $config->boolean(AppConfigKey::AiEnabled),
             'stravaEnabled' => $config->boolean(AppConfigKey::StravaEnabled),
+            'maintenance' => $maintenance,
             'breaker' => $breaker,
             'pending' => (int) ($backlog->pending ?? 0),
             'stranded' => $stranded,
             'severity' => match (true) {
                 $breaker['state'] === 'open' || $stranded > 0 => 'alert',
-                $breaker['state'] === 'half_open' => 'warn',
+                $maintenance || $breaker['state'] === 'half_open' => 'warn',
                 default => 'ok',
             },
         ]);

@@ -50,6 +50,28 @@
                             {{ $stravaEnabled ? 'Disable' : 'Enable' }}
                         </button>
                     </div>
+
+                    <div @class([
+                        'pad-panel col-span-2 flex items-center justify-between rounded-sm',
+                        'bg-leaf/10' => ! $maintenance,
+                        'bg-ember/15 ring-2 ring-ember' => $maintenance,
+                    ])>
+                        <div>
+                            <div class="text-sm font-bold text-foreground">maintenance</div>
+                            <div class="text-label-micro {{ $maintenance ? 'text-ember-ink' : 'text-leaf-ink' }}">
+                                {{ $maintenance ? 'on · only admins can get in' : 'off' }}
+                            </div>
+                        </div>
+                        <button
+                            wire:click="toggleMaintenance"
+                            @unless ($maintenance)
+                                wire:confirm="take temari down for everyone but admins? the queue and scheduler pause too."
+                            @endunless
+                            class="rounded-sm bg-sky px-2 py-1 text-xs font-semibold text-cream hover:bg-sky-deep"
+                        >
+                            {{ $maintenance ? 'disable' : 'enable' }}
+                        </button>
+                    </div>
                 </div>
             </div>
 

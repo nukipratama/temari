@@ -5,25 +5,31 @@ declare(strict_types=1);
 namespace App\Support\Config;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
- * Read-through accessor for the durable runtime control plane (`app_config`).
- *
- * Bound `scoped`, so the per-request/per-job memo collapses repeat reads to one
- * query and is flushed between requests (Octane) and queue jobs — keeping the DB
- * the single source of truth without a Redis layer that LRU eviction could lose.
+ * Cached accessor for the durable runtime control plane (`app_config`).
  */
 class AppConfig
 {
     private const string TABLE = 'app_config';
 
-    /** @var array<string, mixed> */
-    private array $memo = [];
+    private const string ENVELOPE = '__config';
+
+    public const int CACHE_TTL_SECONDS = 60;
 
     public function get(AppConfigKey $key): mixed
     {
-        if (array_key_exists($key->value, $this->memo)) {
-            return $this->memo[$key->value];
+        try {
+            $cached = Cache::get($key->cacheKey());
+
+            if (is_array($cached) && array_key_exists(self::ENVELOPE, $cached)) {
+                return $key->cast($cached[self::ENVELOPE]);
+            }
+        } catch (Throwable $e) {
+            $this->logCacheFailure('read', $key, $e);
         }
 
         $stored = DB::table(self::TABLE)->where('key', $key->value)->value('value');
@@ -32,7 +38,9 @@ class AppConfig
             ? $key->default()
             : $key->cast(json_decode((string) $stored, true));
 
-        return $this->memo[$key->value] = $resolved;
+        $this->cache($key, $resolved);
+
+        return $resolved;
     }
 
     public function boolean(AppConfigKey $key): bool
@@ -45,13 +53,13 @@ class AppConfig
         return (int) $this->get($key);
     }
 
-    /**
-     * Drop a key from the per-request memo so the next get() re-reads from the DB.
-     * Used by the circuit breaker to read fresh counter state under its lock.
-     */
     public function forget(AppConfigKey $key): void
     {
-        unset($this->memo[$key->value]);
+        try {
+            Cache::forget($key->cacheKey());
+        } catch (Throwable $e) {
+            $this->logCacheFailure('forget', $key, $e);
+        }
     }
 
     public function set(AppConfigKey $key, mixed $value): void
@@ -78,9 +86,30 @@ class AppConfig
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
-            $this->memo[$key->value] = $cast;
         }
 
         DB::table(self::TABLE)->upsert($rows, ['key'], ['value', 'updated_at']);
+
+        foreach ($pairs as [$key, $value]) {
+            $this->cache($key, $key->cast($value));
+        }
+    }
+
+    private function cache(AppConfigKey $key, mixed $value): void
+    {
+        try {
+            Cache::put($key->cacheKey(), [self::ENVELOPE => $value], self::CACHE_TTL_SECONDS);
+        } catch (Throwable $e) {
+            $this->logCacheFailure('write', $key, $e);
+        }
+    }
+
+    private function logCacheFailure(string $operation, AppConfigKey $key, Throwable $e): void
+    {
+        Log::warning('app_config.cache_unavailable', [
+            'operation' => $operation,
+            'key' => $key->value,
+            'reason' => $e->getMessage(),
+        ]);
     }
 }

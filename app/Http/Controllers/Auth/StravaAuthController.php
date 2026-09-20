@@ -10,6 +10,7 @@ use App\Jobs\Strava\SyncActivitiesJob;
 use App\Jobs\Strava\SyncZonesJob;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Services\Strava\StravaClient;
 use App\Support\LocalRedirectPath;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\RedirectResponse;
@@ -60,7 +61,13 @@ class StravaAuthController extends Controller
         // in the `scope` query param. Store those, not what we requested.
         $grantedScopes = (string) $request->query('scope', '');
 
-        [$user, $isFreshConnection, $zoneScopeNewlyGranted] = $this->upsertUser($stravaUser, $grantedScopes);
+        $upserted = $this->upsertUser($stravaUser, $grantedScopes);
+
+        if ($upserted === null) {
+            return redirect()->route('dashboard');
+        }
+
+        [$user, $isFreshConnection, $zoneScopeNewlyGranted] = $upserted;
 
         Auth::login($user, remember: true);
 
@@ -120,10 +127,11 @@ class StravaAuthController extends Controller
      * time (so the caller can kick off a one-time history backfill), and a flag
      * that is true when this callback newly granted `profile:read_all` on an
      * already-existing connection (so the caller can kick off a zone sync).
+     * Returns null when a new athlete is refused during maintenance.
      *
-     * @return array{0: User, 1: bool, 2: bool}
+     * @return array{0: User, 1: bool, 2: bool}|null
      */
-    private function upsertUser(SocialiteUser $stravaUser, string $grantedScopes = ''): array
+    private function upsertUser(SocialiteUser $stravaUser, string $grantedScopes = ''): ?array
     {
         $scopes = $grantedScopes !== '' ? $grantedScopes : implode(',', self::SCOPES);
 
@@ -162,6 +170,12 @@ class StravaAuthController extends Controller
             return [$connection->user, false, $zoneScopeNewlyGranted];
         }
 
+        if (app()->isDownForMaintenance()) {
+            $this->refuseNewAthlete($stravaUser, $connectionAttributes);
+
+            return null;
+        }
+
         $user = User::create($userAttributes);
         $user->stravaConnection()->create([
             'strava_athlete_id' => $stravaUser->getId(),
@@ -169,5 +183,16 @@ class StravaAuthController extends Controller
         ]);
 
         return [$user, true, false];
+    }
+
+    /** @param array<string, mixed> $connectionAttributes */
+    private function refuseNewAthlete(SocialiteUser $stravaUser, array $connectionAttributes): void
+    {
+        $deauthorized = app(StravaClient::class)->deauthorize(new StravaConnection($connectionAttributes));
+
+        Log::info('strava.registration.refused_during_maintenance', [
+            'athlete_id' => $stravaUser->getId(),
+            'deauthorized' => $deauthorized,
+        ]);
     }
 }

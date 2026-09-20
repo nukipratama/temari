@@ -10,7 +10,7 @@ const LOGO = new URL('./logo/', import.meta.url);
 const PUBLIC = new URL('../../public/', import.meta.url);
 
 /* apple-touch-icon is 180 by convention; the manifest declares 192 and 512.
-   The maskable variant is the same art: the mark occupies the middle ~55% of
+   The maskable variant is the same art: the mark occupies the middle ~68% of
    the 1024 canvas, well inside the 80% safe zone a maskable icon must respect,
    so it needs no separately-padded source. */
 const PNGS = [
