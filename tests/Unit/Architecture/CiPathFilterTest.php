@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\File;
  * failure mode of getting that wrong is the worst kind: tests silently stop
  * running and nothing goes red.
  *
- * The trap this guards is specific. `backend-tests-shard` runs the structure group,
+ * The trap this guards is specific. The backend reusable workflow runs the structure group,
  * which includes DesignTokenMirrorsTest and DesignTokenDocsTest — and those
  * read files that look like frontend or documentation. A filter written from
  * the obvious intuition ("only markdown changed, skip the tests") would stop
@@ -54,7 +54,7 @@ it('runs the backend jobs for every file the token-mirror test reads', function 
 
     expect($unguarded->all())->toBe(
         [],
-        "These files are asserted by DesignTokenMirrorsTest, which runs in backend-tests-shard, but the CI\n".
+        "These files are asserted by DesignTokenMirrorsTest, which runs in backend CI, but the CI\n".
         "path filter does not classify them as backend — changing one would skip the test that guards it:\n  ".
         $unguarded->implode("\n  "),
     );

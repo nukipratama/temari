@@ -1,0 +1,219 @@
+name: Backend CI
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  PHP_VERSION: '8.5'
+  SHARD_TOTAL: 3
+
+jobs:
+  tests:
+    name: tests (shard ${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: temari_testing
+          MYSQL_USER: sail
+          MYSQL_PASSWORD: password
+        ports: ['0:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -ppassword"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+          --tmpfs /var/lib/mysql:rw
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/show-runner-resources
+        with:
+          workers-label: test workers
+
+      - uses: ./.github/actions/setup-php
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: ${{ github.event_name == 'pull_request' && 'pcov' || 'none' }}
+          classmap-authoritative: 'true'
+
+      - name: Stub .env for file-scanning tests
+        run: cp .env.example .env
+
+      - name: Check {@see} references resolve
+        run: php scripts/check-see-references.php
+
+      - name: Class/test 1:1 structure check
+        run: ./vendor/bin/pest --no-tia --group=structure
+
+      - name: Tests
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+          DB_DATABASE: temari_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+        run: |
+          coverage_args=()
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            coverage_args+=(--coverage-php="coverage-shard-${{ matrix.shard }}.cov")
+          fi
+
+          ./vendor/bin/pest --no-tia --parallel --processes="$(nproc)" \
+            --shard="${{ matrix.shard }}/${SHARD_TOTAL}" \
+            "${coverage_args[@]}" \
+            --exclude-group=structure \
+            --fail-on-warning --fail-on-notice \
+            --fail-on-deprecation --fail-on-risky \
+            --fail-on-phpunit-warning --fail-on-phpunit-notice \
+            --fail-on-phpunit-deprecation 2>&1 | tee /tmp/pest-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Pest summary
+        if: always()
+        run: |
+          {
+            echo "### Backend · Tests (Pest, shard ${{ matrix.shard }}/${{ env.SHARD_TOTAL }})"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' /tmp/pest-output.txt \
+              | grep -E "^[[:space:]]*(Tests|Duration|Parallel|Shard):" \
+              | sed -E 's/^[[:space:]]*([A-Za-z]+):[[:space:]]*/| \1 | /; s/$/ |/'
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          name: coverage-shard-${{ matrix.shard }}
+          path: coverage-shard-${{ matrix.shard }}.cov
+          retention-days: 1
+
+  coverage:
+    name: coverage (merged)
+    needs: tests
+    if: github.event_name == 'pull_request' && needs.tests.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-php
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: 'none'
+          classmap-authoritative: 'true'
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: coverage-shard-*
+          path: coverage-shards
+          merge-multiple: true
+
+      - name: Merge shard coverage and check --min=95 on the whole suite
+        run: |
+          ./vendor/bin/phpcov merge --clover=coverage-merged-clover.xml coverage-shards
+
+          php -r '
+            $xml = simplexml_load_file("coverage-merged-clover.xml");
+            $metrics = $xml->project->metrics;
+            $statements = (int) $metrics["statements"];
+            $covered = (int) $metrics["coveredstatements"];
+            $pct = $statements > 0 ? ($covered / $statements) * 100 : 100.0;
+            printf("Merged coverage: %.2f%% (%d/%d executable lines)\n", $pct, $covered, $statements);
+            $min = 95.0;
+            if ($pct < $min) {
+              fwrite(STDERR, sprintf("FAIL: merged coverage %.1f%% is below the required %.1f%%.\n", floor($pct * 10) / 10, $min));
+              exit(1);
+            }
+          '
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Backend · Coverage (merged, ${{ env.SHARD_TOTAL }}-way shard)"
+            echo ""
+            [ -f coverage-merged-clover.xml ] && php -r '
+              $xml = @simplexml_load_file("coverage-merged-clover.xml");
+              if ($xml === false) { exit(0); }
+              $metrics = $xml->project->metrics;
+              $statements = (int) $metrics["statements"];
+              $covered = (int) $metrics["coveredstatements"];
+              $pct = $statements > 0 ? ($covered / $statements) * 100 : 100.0;
+              echo "| | |\n| --- | --- |\n";
+              printf("| Lines | %.1f%% (%d/%d) |\n", $pct, $covered, $statements);
+            '
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  static-analysis:
+    name: static analysis (${{ matrix.tool }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [pint, phpstan, rector]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-php
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+
+      - name: Stub .env for tools that boot the app
+        run: cp .env.example .env
+
+      - name: Cache PHPStan analyser cache
+        if: matrix.tool == 'phpstan'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+        with:
+          path: .phpstan-cache
+          key: phpstan-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}
+          restore-keys: phpstan-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
+      - name: Cache Rector analyser cache
+        if: matrix.tool == 'rector'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+        with:
+          path: .rector-cache
+          key: rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}
+          restore-keys: rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+
+      - name: Pint (code style)
+        if: matrix.tool == 'pint'
+        run: vendor/bin/pint --test
+
+      - name: PHPStan
+        if: matrix.tool == 'phpstan'
+        run: vendor/bin/phpstan analyse --no-progress
+
+      - name: Rector (dry-run)
+        if: matrix.tool == 'rector'
+        run: vendor/bin/rector --dry-run --no-progress-bar
+
+  gate:
+    name: gate
+    needs: [tests, coverage, static-analysis]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all backend checks
+        run: |
+          [ "${{ needs.tests.result }}" = "success" ] || { echo "::error::backend tests did not pass (${{ needs.tests.result }})"; exit 1; }
+          [ "${{ needs.static-analysis.result }}" = "success" ] || { echo "::error::backend static analysis did not pass (${{ needs.static-analysis.result }})"; exit 1; }
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            [ "${{ needs.coverage.result }}" = "success" ] || { echo "::error::backend coverage merge did not pass (${{ needs.coverage.result }})"; exit 1; }
+          fi

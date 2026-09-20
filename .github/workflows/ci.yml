@@ -16,12 +16,6 @@ concurrency:
 env:
   PHP_VERSION: '8.5'
   APP_IMAGE: ghcr.io/${{ github.repository }}/app
-  # Backend test shard count (see backend-tests-shard). Keep in
-  # sync with that job's `strategy.matrix.shard` list.
-  SHARD_TOTAL: 3
-  # Frontend test shard count (see frontend-tests-shard). Keep in
-  # sync with that job's `strategy.matrix.shard` list.
-  FRONTEND_SHARD_TOTAL: 3
 
 # Least-privilege default for GITHUB_TOKEN across every job; a job that needs
 # more widens it in its own permissions block.
@@ -114,330 +108,23 @@ jobs:
       - name: Check doc citations resolve
         run: php scripts/check-doc-citations.php
 
-  # Both events run the same N shards. PR shards collect coverage for the
-  # merged 95% gate below; main-push shards skip pcov and artifacts.
-  backend-tests-shard:
+  # Suite internals live in reusable workflows so this file stays focused on
+  # orchestration, deployment, and the one required branch-protection check.
+  backend:
+    name: backend
     needs: [changes, secret-scan, repo-guards]
     if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && needs.changes.outputs.backend == 'true' }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3]
-    services:
-      mysql:
-        image: mysql:8.4
-        env:
-          MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: temari_testing
-          MYSQL_USER: sail
-          MYSQL_PASSWORD: password
-        ports: ['0:3306']
-        options: >-
-          --health-cmd="mysqladmin ping -ppassword"
-          --health-interval=5s --health-timeout=2s --health-retries=10
-          --tmpfs /var/lib/mysql:rw
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    uses: ./.github/workflows/backend-ci.yml
 
-      - uses: ./.github/actions/show-runner-resources
-        with:
-          workers-label: test workers
-
-      - uses: ./.github/actions/setup-php
-        with:
-          php-version: ${{ env.PHP_VERSION }}
-          coverage: ${{ github.event_name == 'pull_request' && 'pcov' || 'none' }}
-          classmap-authoritative: 'true'
-
-      - name: Stub .env for file-scanning tests
-        run: cp .env.example .env
-
-      - name: Check {@see} references resolve
-        run: php scripts/check-see-references.php
-
-      - name: Class/test 1:1 structure check
-        run: ./vendor/bin/pest --no-tia --group=structure
-
-      - name: Tests (shard ${{ matrix.shard }}/${{ env.SHARD_TOTAL }})
-        env:
-          APP_ENV: testing
-          DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1
-          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
-          DB_DATABASE: temari_testing
-          DB_USERNAME: root
-          DB_PASSWORD: password
-          CACHE_STORE: array
-          SESSION_DRIVER: array
-        run: |
-          coverage_args=()
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            coverage_args+=(--coverage-php="coverage-shard-${{ matrix.shard }}.cov")
-          fi
-
-          ./vendor/bin/pest --no-tia --parallel --processes="$(nproc)" \
-            --shard="${{ matrix.shard }}/${SHARD_TOTAL}" \
-            "${coverage_args[@]}" \
-            --exclude-group=structure \
-            --fail-on-warning --fail-on-notice \
-            --fail-on-deprecation --fail-on-risky \
-            --fail-on-phpunit-warning --fail-on-phpunit-notice \
-            --fail-on-phpunit-deprecation 2>&1 | tee /tmp/pest-output.txt
-          exit ${PIPESTATUS[0]}
-
-      - name: Pest summary
-        if: always()
-        run: |
-          {
-            echo "### Backend · Tests (Pest, shard ${{ matrix.shard }}/${{ env.SHARD_TOTAL }})"
-            echo ""
-            echo "| | |"
-            echo "| --- | --- |"
-            sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' /tmp/pest-output.txt \
-              | grep -E "^[[:space:]]*(Tests|Duration|Parallel|Shard):" \
-              | sed -E 's/^[[:space:]]*([A-Za-z]+):[[:space:]]*/| \1 | /; s/$/ |/'
-            echo ""
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: github.event_name == 'pull_request'
-        with:
-          name: coverage-shard-${{ matrix.shard }}
-          path: coverage-shard-${{ matrix.shard }}.cov
-          retention-days: 1
-
-  # Merges the N shards' raw coverage objects with phpcov and applies the 95%
-  # gate exactly once, to the merged whole-suite total.
-  backend-coverage-merge:
-    needs: backend-tests-shard
-    if: github.event_name == 'pull_request' && needs.backend-tests-shard.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: ./.github/actions/setup-php
-        with:
-          php-version: ${{ env.PHP_VERSION }}
-          coverage: 'none'
-          classmap-authoritative: 'true'
-
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: coverage-shard-*
-          path: coverage-shards
-          merge-multiple: true
-
-      - name: Merge shard coverage and check --min=95 on the whole suite
-        run: |
-          ./vendor/bin/phpcov merge --clover=coverage-merged-clover.xml coverage-shards
-
-          php -r '
-            $xml = simplexml_load_file("coverage-merged-clover.xml");
-            $metrics = $xml->project->metrics;
-            $statements = (int) $metrics["statements"];
-            $covered = (int) $metrics["coveredstatements"];
-            $pct = $statements > 0 ? ($covered / $statements) * 100 : 100.0;
-            printf("Merged coverage: %.2f%% (%d/%d executable lines)\n", $pct, $covered, $statements);
-            $min = 95.0;
-            if ($pct < $min) {
-              fwrite(STDERR, sprintf("FAIL: merged coverage %.1f%% is below the required %.1f%%.\n", floor($pct * 10) / 10, $min));
-              exit(1);
-            }
-          '
-
-      - name: Coverage summary
-        if: always()
-        run: |
-          {
-            echo "### Backend · Coverage (merged, ${{ env.SHARD_TOTAL }}-way shard)"
-            echo ""
-            [ -f coverage-merged-clover.xml ] && php -r '
-              $xml = @simplexml_load_file("coverage-merged-clover.xml");
-              if ($xml === false) { exit(0); }
-              $metrics = $xml->project->metrics;
-              $statements = (int) $metrics["statements"];
-              $covered = (int) $metrics["coveredstatements"];
-              $pct = $statements > 0 ? ($covered / $statements) * 100 : 100.0;
-              echo "| | |\n| --- | --- |\n";
-              printf("| Lines | %.1f%% (%d/%d) |\n", $pct, $covered, $statements);
-            '
-            echo ""
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # Coverage instrumentation adds only ~15s (measured: ~144s Vitest
-  # step with --coverage vs ~129s without, on the same runners), but Vitest's
-  # own per-file jsdom environment setup dominates the rest — profiled
-  # locally, "environment" time swamped transform/setup/test-body time by a
-  # wide margin. Disabling test isolation (--no-isolate) cut wall-clock by
-  # more than half but broke 117 tests via cross-file state leaks (mocks and
-  # module state are not meant to survive across files), so that's not a safe
-  # cheaper fix here. Switching the worker pool from the default `forks` to
-  # `threads` made it *five times slower* locally (356s vs 78s) and produced
-  # 3 errors, so that's rejected too. Sharding the whole run (not just
-  # coverage) across N parallel jobs — mirroring backend-tests-shard — is what
-  # the profile actually supports: each shard writes a Vitest "blob" report
-  # (test results + raw v8 coverage) with its own per-shard threshold checks
-  # disabled; frontend-coverage-merge below merges the blobs with
-  # `--mergeReports` and applies the real thresholds once, against the merged
-  # whole — never per shard (a shard only sees a slice of the suite, so its
-  # own coverage is expected to sit well under the threshold). Main pushes run
-  # the same shards without coverage; shard 1 retains the build/chunk gates.
-  frontend-tests-shard:
+  frontend:
+    name: frontend
     needs: [changes, secret-scan, repo-guards]
     if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && needs.changes.outputs.frontend == 'true' }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: ./.github/actions/show-runner-resources
-        with:
-          workers-label: vitest workers
-
-      - uses: ./.github/actions/setup-node
-
-      - name: Component/test 1:1 structure check
-        run: npx vitest run resources/js/test/structure.test.ts
-
-      - name: Raw Tailwind palette guard
-        run: npm run check:palette
-
-      - name: Vitest (shard ${{ matrix.shard }}/${{ env.FRONTEND_SHARD_TOTAL }})
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            npx vitest run \
-              --shard="${{ matrix.shard }}/${FRONTEND_SHARD_TOTAL}" \
-              --coverage \
-              --coverage.thresholds.lines=0 --coverage.thresholds.functions=0 \
-              --reporter=blob --reporter=default \
-              --outputFile=".vitest-reports/blob-${{ matrix.shard }}.json"
-          else
-            npx vitest run --shard="${{ matrix.shard }}/${FRONTEND_SHARD_TOTAL}"
-          fi
-
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: github.event_name == 'pull_request'
-        with:
-          name: vitest-blob-${{ matrix.shard }}
-          path: .vitest-reports/blob-${{ matrix.shard }}.json
-          retention-days: 1
-
-      # The PR merge job runs these once after coverage. A main push has no
-      # merge job, so shard 1 keeps both existing gates on the deploy path.
-      - name: Build assets
-        if: github.event_name != 'pull_request' && matrix.shard == 1
-        run: npm run build
-
-      - name: Entry chunk guard (first-paint budget)
-        if: github.event_name != 'pull_request' && matrix.shard == 1
-        run: npm run check:chunks
-
-  # Merges the N shards' blob reports (test results + raw coverage) and
-  # applies the real coverage thresholds exactly once, to the merged
-  # whole-suite total.
-  frontend-coverage-merge:
-    needs: frontend-tests-shard
-    if: github.event_name == 'pull_request' && needs.frontend-tests-shard.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: ./.github/actions/setup-node
-
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: vitest-blob-*
-          path: .vitest-reports
-          merge-multiple: true
-
-      - name: Merge shard reports and check coverage thresholds on the whole suite
-        run: npx vitest run --mergeReports=.vitest-reports --coverage
-
-      - name: Vitest summary
-        if: always()
-        run: |
-          if [ -f coverage/coverage-summary.json ]; then
-            {
-              echo "### Frontend · Tests (Vitest, ${{ env.FRONTEND_SHARD_TOTAL }}-way shard)"
-              echo ""
-              echo "| Metric | % | Covered / Total |"
-              echo "| --- | --- | --- |"
-              jq -r '.total | to_entries[] | select(.key as $k | ["lines","functions","statements","branches"] | index($k)) | "| \(.key | ascii_upcase[0:1] + .[1:]) | \(.value.pct)% | \(.value.covered) / \(.value.total) |"' coverage/coverage-summary.json
-              echo ""
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      # The only gate that reads the built bundle: without it a stray static
-      # import can put a chart or animation library back on first paint silently.
-      - name: Build assets
-        run: npm run build
-
-      - name: Entry chunk guard (first-paint budget)
-        run: npm run check:chunks
-
-  # A cold checkout: local caches skip unchanged files, so this is the only
-  # place new drift reliably surfaces. phpstan-baseline.neon holds the old
-  # findings; this blocks new ones.
-  backend-static-analysis:
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.backend == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: ./.github/actions/setup-php
-        with:
-          php-version: ${{ env.PHP_VERSION }}
-
-      - name: Stub .env (larastan boots the app to resolve types)
-        run: cp .env.example .env
-
-      # Both tools hash their own inputs internally and refuse a cache whose
-      # content doesn't match, so a stale restore is safe by construction —
-      # the key below only needs to be a good starting point, not exact.
-      - name: Cache PHPStan/Rector analyser caches
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
-        with:
-          path: |
-            .phpstan-cache
-            .rector-cache
-          key: analyser-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon', 'rector.php') }}
-          restore-keys: analyser-${{ runner.os }}-php${{ env.PHP_VERSION }}-
-
-      - name: Pint (code style)
-        run: vendor/bin/pint --test
-
-      - name: PHPStan
-        run: vendor/bin/phpstan analyse --no-progress
-
-      - name: Rector (dry-run)
-        run: vendor/bin/rector --dry-run --no-progress-bar
-
-  frontend-static-analysis:
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.frontend == 'true') }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: ./.github/actions/setup-node
-
-      - name: TypeScript
-        run: npm run typecheck
-
-      - name: ESLint
-        run: npm run lint
-
-      - name: Prettier (format check)
-        run: npm run format:check
+    uses: ./.github/workflows/frontend-ci.yml
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [changes, backend-tests-shard, backend-coverage-merge, frontend-tests-shard, frontend-coverage-merge, backend-static-analysis, frontend-static-analysis, build, secret-scan, repo-guards]
+    needs: [changes, backend, frontend, build, secret-scan, repo-guards]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -452,17 +139,10 @@ jobs:
             fi
           }
 
-          require_if_changed "${{ needs.changes.outputs.backend }}" "${{ needs.backend-tests-shard.result }}" backend-tests-shard
-          require_if_changed "${{ needs.changes.outputs.frontend }}" "${{ needs.frontend-tests-shard.result }}" frontend-tests-shard
+          require_if_changed "${{ needs.changes.outputs.backend }}" "${{ needs.backend.result }}" backend
+          require_if_changed "${{ needs.changes.outputs.frontend }}" "${{ needs.frontend.result }}" frontend
 
-          # Main pushes deliberately have no coverage merge. PRs require the
-          # corresponding merge whenever that suite is in scope.
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            require_if_changed "${{ needs.changes.outputs.backend }}" "${{ needs.backend-coverage-merge.result }}" backend-coverage-merge
-            require_if_changed "${{ needs.changes.outputs.frontend }}" "${{ needs.frontend-coverage-merge.result }}" frontend-coverage-merge
-          fi
-
-          for r in "${{ needs.backend-static-analysis.result }}" "${{ needs.frontend-static-analysis.result }}" "${{ needs.build.result }}"; do
+          for r in "${{ needs.build.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
           for r in "${{ needs.secret-scan.result }}" "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do
