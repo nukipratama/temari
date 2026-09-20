@@ -45,6 +45,10 @@ jobs:
             npx vitest run --shard="${{ matrix.shard }}/${FRONTEND_SHARD_TOTAL}"
           fi
 
+      - name: Prove a failed shard reds every gate (temporary)
+        if: matrix.shard == 2
+        run: exit 1
+
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: github.event_name == 'pull_request'
         with:
