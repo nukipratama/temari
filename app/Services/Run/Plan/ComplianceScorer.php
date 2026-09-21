@@ -83,8 +83,9 @@ final readonly class ComplianceScorer
             $baselineData = $longRunKmByDate[$date] ??= $this->baseline->forUser($user, $row->date);
             $longRunKm = (float) $baselineData['long_run_km'];
             $capKm = (float) $baselineData['long_run_cap_km'];
+            $progressionCapKm = (float) $baselineData['long_run_progression_cap_km'];
             $selfScaled = $baselineData['self_scaled'];
-            $byDate = $kmByBaseline["{$longRunKm}:{$capKm}:{$selfScaled}"] ??= PlanRenderer::plannedKmByDate($contextRows, $longRunKm, $capKm, $selfScaled);
+            $byDate = $kmByBaseline["{$longRunKm}:{$capKm}:{$progressionCapKm}:{$selfScaled}"] ??= PlanRenderer::plannedKmByDate($contextRows, $longRunKm, $capKm, $selfScaled, $progressionCapKm);
             if (array_key_exists($date, $byDate)) {
                 $effectiveByDate[$date] = EffectiveSession::of($row, $byDate[$date]);
                 $plannedKmByDate[$date] = $effectiveByDate[$date]->coreKm;

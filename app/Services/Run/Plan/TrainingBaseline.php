@@ -7,6 +7,7 @@ namespace App\Services\Run\Plan;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Actions\Run\Plan\ResolveRecentLongestRunAction;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\TrainingPreference;
@@ -130,6 +131,10 @@ final readonly class TrainingBaseline
 
     private const float MIN_LONG_RUN_KM = 3.0;
 
+    private const int RECENT_RUN_WINDOW_DAYS = 30;
+
+    private const float MAX_RECENT_LONG_RUN_INCREASE = 1.1;
+
     /**
      * Below the marathon threshold the long run should reach the race
      * distance itself at some point in the arc. The volume share alone never
@@ -175,13 +180,14 @@ final readonly class TrainingBaseline
         private ResolveActiveRaceAction $activeRace,
         private ResolveTrainingPreferenceAction $trainingPreference,
         private ResolveTrailingWeeksAction $weeklySnapshots,
+        private ResolveRecentLongestRunAction $recentLongestRun,
         private ResolveSeasonAction $season,
         private WeekPlanBuilder $weekPlanBuilder,
     ) {
     }
 
     /**
-     * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, self_scaled: bool}
+     * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}
      */
     public function forUser(User $user, Carbon $asOf): array
     {
@@ -212,6 +218,7 @@ final readonly class TrainingBaseline
             'weekly_volume_km' => $weeklyVolumeKm,
             'long_run_km' => $this->longRunKm($race, $weeklyVolumeKm, $season, $longRunCapKm, $sessionsPerWeek),
             'long_run_cap_km' => $longRunCapKm,
+            'long_run_progression_cap_km' => $this->recentLongRunCapKm($user, $asOf),
             'self_scaled' => $race === null,
         ];
     }
@@ -337,6 +344,17 @@ final readonly class TrainingBaseline
             $this->timeCapKm($user, $asOf),
             $weeklyVolumeKm * self::MAX_LONG_RUN_SHARE_OF_WEEK,
         ));
+    }
+
+    private function recentLongRunCapKm(User $user, Carbon $asOf): float
+    {
+        $longestDistanceM = ($this->recentLongestRun)($user->id, $asOf, self::RECENT_RUN_WINDOW_DAYS);
+
+        if ($longestDistanceM === null) {
+            return INF;
+        }
+
+        return max(self::MIN_LONG_RUN_KM, round($longestDistanceM / 1000 * self::MAX_RECENT_LONG_RUN_INCREASE, 1));
     }
 
     /**

@@ -57,6 +57,23 @@ it('EasyOnly scales a long day down to a shorter easy run, sized Medium like the
         ->and($clamp['segments'])->toEqual($expectedSegments);
 });
 
+it('never turns a progression-capped Long into a longer Easy run', function (): void {
+    $clamp = ReadinessClamp::apply(
+        SessionType::Long,
+        PlanPhase::Build,
+        null,
+        CLAMP_BASELINE_KM,
+        CLAMP_MULTIPLIER,
+        INF,
+        CLAMP_PACES,
+        ReadinessCeiling::EasyOnly,
+        longRunProgressionCapKm: 5.0,
+    );
+
+    expect($clamp['core_km'])->toBe(5.0)
+        ->and(SegmentGenerator::segmentSumKm($clamp['segments']))->toBe(5.0);
+});
+
 it('EasyOnly scales quality work down to a short easy run', function (): void {
     $clamp = applyClamp(SessionType::Interval, ReadinessCeiling::EasyOnly);
     $expectedSegments = SegmentGenerator::generate(SessionType::Easy, PlanPhase::Build, null, false, CLAMP_BASELINE_KM, CLAMP_MULTIPLIER, INF, CLAMP_PACES);

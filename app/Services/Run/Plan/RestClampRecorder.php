@@ -144,6 +144,7 @@ final readonly class RestClampRecorder
             (float) $baselineData['long_run_cap_km'],
             null,
             $ceiling,
+            (float) $baselineData['long_run_progression_cap_km'],
         );
         if ($clamp !== null) {
             $session->update(['clamped_km' => $clamp['core_km']]);

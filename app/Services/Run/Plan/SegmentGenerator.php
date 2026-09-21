@@ -98,6 +98,7 @@ final class SegmentGenerator
      *
      * @param  float  $longRunCapKm  {@see TrainingBaseline}'s `long_run_cap_km`
      * @param  ?float  $raceDistanceM  the active {@see \App\Models\RaceGoal}'s distance, required only on a `Race` day
+     * @param  float  $longRunProgressionCapKm  {@see TrainingBaseline}'s `long_run_progression_cap_km`
      */
     public static function coreKmFor(
         SessionType $sessionType,
@@ -106,6 +107,7 @@ final class SegmentGenerator
         float $volumeMultiplier,
         float $longRunCapKm,
         ?float $raceDistanceM = null,
+        float $longRunProgressionCapKm = INF,
     ): float {
         if ($sessionType === SessionType::Rest) {
             return 0.0;
@@ -118,7 +120,7 @@ final class SegmentGenerator
         $effectiveLong = min($longRunBaselineKm * $volumeMultiplier, $longRunCapKm);
 
         return match ($sessionType) {
-            SessionType::Long => round($effectiveLong, 1),
+            SessionType::Long => round(min($effectiveLong, $longRunProgressionCapKm), 1),
             SessionType::Tempo => round($effectiveLong * self::MEDIUM_FRACTION_OF_LONG, 1),
             SessionType::Interval => round($effectiveLong * self::SHORT_FRACTION_OF_LONG, 1),
             SessionType::Easy => round($effectiveLong * ($isPrimaryEasy ? self::MEDIUM_FRACTION_OF_LONG : self::SHORT_FRACTION_OF_LONG), 1),
@@ -166,6 +168,7 @@ final class SegmentGenerator
      * @param  float  $longRunCapKm  {@see TrainingBaseline}'s `long_run_cap_km`
      * @param  float  $volumeScale  from {@see VolumeRedistributor} — 1.0 outside a redistributed week
      * @param  ?int  $raceGoalTimeSec  the active race's `goal_time_sec`, which is what a `Race` day is run at
+     * @param  float  $longRunProgressionCapKm  {@see TrainingBaseline}'s `long_run_progression_cap_km`
      * @return list<SessionSegment>
      */
     public static function generate(
@@ -179,16 +182,24 @@ final class SegmentGenerator
         ?array $paces,
         float $volumeScale = 1.0,
         ?int $raceGoalTimeSec = null,
+        float $longRunProgressionCapKm = INF,
     ): array {
-        $coreKm = self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, $raceDistanceM);
+        $coreKm = self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm);
 
         // The race is the distance it is: a redistributed week may scale the
-        // training around it, never the event itself.
+        // training around it, never the event itself. A Long day remains under
+        // both hard ceilings after redistribution rather than scaling through
+        // them.
+        $scaledCoreKm = $sessionType === SessionType::Race ? $coreKm : $coreKm * $volumeScale;
+        if ($sessionType === SessionType::Long) {
+            $scaledCoreKm = min($scaledCoreKm, $longRunCapKm, $longRunProgressionCapKm);
+        }
+
         return self::forCoreKm(
             $sessionType,
             $phase,
             $raceDistanceM,
-            $sessionType === SessionType::Race ? $coreKm : $coreKm * $volumeScale,
+            $scaledCoreKm,
             $paces,
             $raceGoalTimeSec,
         );

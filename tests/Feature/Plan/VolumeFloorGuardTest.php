@@ -131,6 +131,7 @@ function unscoredRecentRuns(User $user): void
         $activity = Activity::factory()->summaryOnly()->for($user)->create();
         ActivityDetail::factory()->for($activity)->create([
             'start_date_local' => Carbon::today()->subDays($daysAgo)->setTime(7, 0),
+            'distance' => 10_000.0,
             'trimp_edwards' => null,
         ]);
     }
@@ -141,7 +142,7 @@ function storedLongRunsKm(User $user): array
 {
     $sessions = PlannedSession::query()->where('user_id', $user->id)->orderBy('date')->get();
     $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
-    $kmByDate = PlanRenderer::plannedKmByDate($sessions, $baseline['long_run_km'], $baseline['long_run_cap_km'], false);
+    $kmByDate = PlanRenderer::plannedKmByDate($sessions, $baseline['long_run_km'], $baseline['long_run_cap_km'], false, $baseline['long_run_progression_cap_km']);
 
     return array_values(array_map(
         fn (PlannedSession $s): float => $kmByDate[$s->date->toDateString()],
@@ -193,7 +194,7 @@ it('lets the ramp and the long-run climb in at the next regeneration once that l
 
     expect(Season::query()->where('user_id', $user->id)->value('increases_held'))->toBeFalse()
         ->and(storedMaxMultiplier($user))->toBeGreaterThan(1.0)
-        ->and(max($longRuns))->toBe(12.0)
-        ->and($longRuns[0])->toBeLessThan(12.0)
+        ->and(max($longRuns))->toBe(11.0)
+        ->and($longRuns[0])->toBeLessThan(11.0)
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->where('week_start', '2026-09-28')->value('increases_held'))->toBeFalse();
 });
