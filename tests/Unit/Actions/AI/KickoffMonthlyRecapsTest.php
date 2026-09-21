@@ -163,6 +163,23 @@ it('defers a narratable month whose own runs are still hydrating', function (): 
     Carbon::setTestNow();
 });
 
+it('defers a pre-connect month whose own runs are still hydrating instead of filling it rule-based', function (): void {
+    Carbon::setTestNow('2026-06-01 10:00:00');
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => '2026-06-01 05:00:00']);
+    unhydratedRunInMonth($user, '2026-05');
+
+    $captured = [];
+    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
+
+    expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 0, 'rule_based' => 0]);
+
+    expect(collect($captured)->firstWhere('discriminator', '2026-05'))
+        ->toMatchArray(['ruleBased' => false, 'invalidate' => null]);
+
+    Carbon::setTestNow();
+});
+
 it('narrates a still-hydrating month once past the grace window, instead of deferring it forever', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create(['created_at' => '2020-01-01 00:00:00']);

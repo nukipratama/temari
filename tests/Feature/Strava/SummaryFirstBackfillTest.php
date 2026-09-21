@@ -202,7 +202,7 @@ it('renders the feed and calendar for a summary-only run without inventing a zer
         ->and($runCells->first()['trimp'])->toBeNull();
 });
 
-it('fills the backfilled history rule-based since it closed before the connection, without one extra Strava read', function (): void {
+it('defers backfilled recap history until hydration finishes, without one extra Strava read', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
     Bus::fake();
 
@@ -239,37 +239,37 @@ it('fills the backfilled history rule-based since it closed before the connectio
     Http::assertSentCount(1);
 
     // The connection lands in June; every backfilled run closed in May, before
-    // it. #993: both recaps are routed rule-based, never the LLM — Temari was
-    // not there for that period. #1010: the weekly half still reads the same
-    // WeeklySnapshot columns (form_status, atl/ctl) the LLM path does, so it
-    // is held to the same hydration gate rather than filled blind against a
-    // backfill that just landed as summary-only rows — hence deferred here,
-    // not yet in $captured. The monthly half is unaffected by that fix (see
-    // docs/decisions/recap-waits-for-hydration.md's "monthly is unchanged").
+    // it. Both recaps stay rule-based, but neither may permanently record the
+    // summary-only snapshot or month totals before hydration finishes. Weekly
+    // leaves no row here; monthly stages a deferred row for the calendar UI.
     $monthly = collect($captured)->firstWhere('type', AnalysisType::MonthlyRecap);
 
     expect(collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap))->toBeNull()
         ->and($monthly)->not->toBeNull()
-        ->and($monthly['ruleBased'])->toBeTrue()
+        ->and($monthly['ruleBased'])->toBeFalse()
+        ->and($monthly['invalidate'])->toBeNull()
         ->and($monthly['subjectId'])->toBe($user->id)
         ->and($monthly['discriminator'])->toBe('2026-05');
 
-    // Once hydration finishes, the deferred weekly recap resolves rule-based
-    // on the next sweep — the connect-date gate decided LLM-vs-rule-based,
-    // hydration decided only when, same as any other pre-connect period.
+    // Once hydration finishes, both deferred recaps resolve rule-based on the
+    // next sweep. Connect date decides LLM-vs-rule-based; hydration decides when.
     Activity::query()->withStubs()->where('user_id', $user->id)->update(['ingest_state' => IngestState::Detailed]);
 
     $captured = [];
     $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
 
     app(KickoffWeeklyRecaps::class)($user->id);
+    app(KickoffMonthlyRecaps::class)($user->id);
     Http::assertSentCount(1);
 
     $weekly = collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap);
+    $monthly = collect($captured)->firstWhere('type', AnalysisType::MonthlyRecap);
 
     expect($weekly)->not->toBeNull()
         ->and($weekly['subjectOrType'])->toBe(WeeklySnapshot::class)
-        ->and($weekly['ruleBased'])->toBeTrue();
+        ->and($weekly['ruleBased'])->toBeTrue()
+        ->and($monthly)->not->toBeNull()
+        ->and($monthly['ruleBased'])->toBeTrue();
 
     Carbon::setTestNow();
 });

@@ -15,6 +15,7 @@ use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\RunCard;
 use App\Models\Season;
+use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RuleBased\RuleBasedRunInsights;
@@ -45,6 +46,15 @@ function seededCard(Rarity $rarity, string $move, array $badges = [], float $dis
         'rarity' => $rarity,
         'special_move' => $move,
         'badges' => $badges,
+    ]);
+}
+
+function monthlyRunForFiller(User $user, string $date, float $distance): void
+{
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse($date),
+        'distance' => $distance,
     ]);
 }
 
@@ -113,27 +123,55 @@ it('varies the ecosystem briefing voices by seed deterministically', function ()
         ->and($voiceA)->not->toBe($voiceB);
 });
 
-it('varies discriminator-keyed copy across discriminators for the same subject', function (): void {
+it("states each month's distance, run count, longest run, and volume band", function (): void {
+    $user = User::factory()->create();
+    monthlyRunForFiller($user, '2026-04-04 06:00:00', 5000.0);
+    monthlyRunForFiller($user, '2026-05-03 06:00:00', 7000.0);
+    monthlyRunForFiller($user, '2026-05-17 06:00:00', 12_500.0);
+    monthlyRunForFiller($user, '2026-06-07 06:00:00', 10_000.0);
     $filler = app(RuleBasedNarrationFiller::class);
 
-    // The discriminator folds into the seed, so the same subject reads
-    // differently across months. Assert variety across a spread of discriminators
-    // (robust to pool size) rather than two specific months, which can collide
-    // on the modulo for any given pool count.
-    $copies = collect(['2026-02', '2026-03', '2026-05', '2026-08', '2026-11'])
-        ->map(fn (string $month): string => $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 1, $month)))
-        ->unique();
+    $april = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, $user->id, '2026-04'));
+    $may = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, $user->id, '2026-05'));
+    $june = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, $user->id, '2026-06'));
 
-    expect($copies->count())->toBeGreaterThan(1);
+    expect($april)->toContain('5.0 km')
+        ->and($april)->toMatch('/\b1 (run|session)\b/')
+        ->and($april)->not->toMatch('/\b1 (runs|sessions)\b/')
+        ->and($april)->toContain('longest')
+        ->and($may)->toContain('19.5 km')
+        ->and($may)->toMatch('/\b2 (runs|sessions)\b/')
+        ->and($may)->toContain('12.5 km')
+        ->and($may)->toContain('above your usual month')
+        ->and($may)->not->toBe($april)
+        ->and($june)->toContain('right around your usual month');
 });
 
 it('is deterministic for the same subject and discriminator', function (): void {
+    $user = User::factory()->create();
+    monthlyRunForFiller($user, '2026-03-08 06:00:00', 8200.0);
     $filler = app(RuleBasedNarrationFiller::class);
 
-    $first = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 7, '2026-03'));
-    $second = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 7, '2026-03'));
+    $first = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, $user->id, '2026-03'));
+    $second = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, $user->id, '2026-03'));
 
     expect($first)->toBe($second);
+});
+
+it('does not praise a month well below the athlete usual volume', function (): void {
+    $user = User::factory()->create();
+    monthlyRunForFiller($user, '2026-02-08 06:00:00', 30_000.0);
+    monthlyRunForFiller($user, '2026-03-08 06:00:00', 32_000.0);
+    monthlyRunForFiller($user, '2026-04-08 06:00:00', 28_000.0);
+    monthlyRunForFiller($user, '2026-05-08 06:00:00', 3000.0);
+
+    $recap = app(RuleBasedNarrationFiller::class)->fillFor(
+        fillerRow(AnalysisType::MonthlyRecap, $user->id, '2026-05'),
+    );
+
+    expect($recap)->toContain('below your usual month')
+        ->and($recap)->not->toContain('above your usual month')
+        ->and($recap)->not->toContain('work actually banks');
 });
 
 it('keeps the subject-only seed when the discriminator is null', function (): void {
@@ -143,7 +181,7 @@ it('keeps the subject-only seed when the discriminator is null', function (): vo
     // non-discriminated determinism (and the first-variant default) is preserved.
     $copy = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 0, null));
 
-    expect($copy)->toBe("the rhythm held all month. you didn't force it and you didn't disappear either.");
+    expect($copy)->toBe("no dated runs found for this month. there's nothing honest to recap yet.");
 });
 
 it('returns deterministic copy for every subject-free analysis arm', function (AnalysisType $type, string $expected): void {
@@ -155,7 +193,7 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
     'run insight (no detail)' => [AnalysisType::RunInsight, '[]'],
     'weekly recap' => [AnalysisType::WeeklyRecap, "nothing in the log this week. a gap is a gap, I'm not going to call it anything else."],
     'profile voice' => [AnalysisType::ProfileVoice, "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it."],
-    'monthly recap' => [AnalysisType::MonthlyRecap, "the rhythm held all month. you didn't force it and you didn't disappear either."],
+    'monthly recap' => [AnalysisType::MonthlyRecap, "no dated runs found for this month. there's nothing honest to recap yet."],
     'trend read' => [AnalysisType::TrendRead, "steady is the read.\n\nnothing in this window moved sharply enough to call out on its own. the rhythm held, which is its own kind of answer."],
 ]);
 
