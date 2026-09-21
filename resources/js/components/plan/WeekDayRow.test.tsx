@@ -255,6 +255,16 @@ describe('WeekDayRow', () => {
         ).toBeInTheDocument();
     });
 
+    it('renders no read wrapper while the day narration is pending', () => {
+        renderRow({
+            day: day({ status: 'done' }),
+            narration: narrationPayload({ status: 'pending', content: null }),
+        });
+        expand();
+
+        expect(screen.queryByText("Temari's read")).not.toBeInTheDocument();
+    });
+
     it('offers move and skip on a day still ahead', () => {
         renderRow();
         expand();

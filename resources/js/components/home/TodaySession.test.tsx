@@ -142,11 +142,12 @@ describe('TodaySession', () => {
         const later = briefing('', 'pending');
         later.mascotVoice.content = null;
 
-        render(<TodaySession briefing={later} />);
+        const { container } = render(<TodaySession briefing={later} />);
 
         expect(
             screen.queryByText('temari is reading your first week\u2026'),
         ).not.toBeInTheDocument();
+        expect(container.querySelector('section')?.children).toHaveLength(1);
     });
 
     it('labels the block as today', () => {
