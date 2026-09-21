@@ -2,8 +2,9 @@
 title: A weekly recap waits for its week to finish hydrating
 description: The recap kickoff and the self-heal sweep hold a week back while the ingest pipeline still owes it a detail fetch, bounded by a wall-clock grace window rather than a deferral counter.
 tags: [decision, ai, run, strava]
-status: accepted
+status: superseded
 reviewed: 2026-09-09
+superseded_by: weekly-recaps-resume-at-drain-completion
 code_refs:
   - app/Services/AI/RecapHydrationReadiness.php
   - app/Actions/AI/KickoffWeeklyRecaps.php
