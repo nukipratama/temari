@@ -9,6 +9,7 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
+use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Enums\PlannedSessionStatus;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -17,8 +18,10 @@ use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\SelfHealer;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -289,6 +292,48 @@ it('requests the deferred Trends read once the drain empties', function (): void
         ->where('analysis_type', AnalysisType::TrendRead)
         ->pluck('discriminator')
         ->all())->toEqualCanonicalizing(AnalysisType::TREND_READ_RANGES);
+
+    Carbon::setTestNow();
+});
+
+it('requests a hydrated closed-week recap when the drain empties without touching the open week', function (): void {
+    Bus::fake();
+    Carbon::setTestNow('2026-06-15 06:00:00');
+    $user = User::factory()->create(['last_seen_at' => Carbon::now()]);
+    StravaConnection::factory()->for($user)->create(['created_at' => '2026-06-14 06:00:00']);
+    $closedWeek = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-06-14', 'runs' => 3]);
+    $openWeek = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-06-21', 'runs' => 1]);
+
+    foreach ([$closedWeek, $openWeek] as $snapshot) {
+        Analysis::factory()->create([
+            'subject_type' => WeeklySnapshot::class,
+            'subject_id' => $snapshot->id,
+            'analysis_type' => AnalysisType::WeeklyRecap,
+            'discriminator' => null,
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }
+
+    $this->mock(PersonalRecords::class)->shouldReceive('rebuildForUser')->once();
+    $this->mock(RecomputeCardClaimsAction::class)->shouldReceive('__invoke')->once()
+        ->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
+
+    app(SettleEarlyNarrationAction::class)($user);
+
+    $closedRow = Analysis::query()->forSubject(WeeklySnapshot::class, $closedWeek->id, AnalysisType::WeeklyRecap)->firstOrFail();
+    $openRow = Analysis::query()->forSubject(WeeklySnapshot::class, $openWeek->id, AnalysisType::WeeklyRecap)->firstOrFail();
+
+    Bus::assertDispatched(
+        AnalyzeWeeklyRecapJob::class,
+        fn (AnalyzeWeeklyRecapJob $job): bool => $job->analysisId === $closedRow->id,
+    );
+    expect($closedRow->fresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($openRow->fresh()->status)->toBe(AnalysisStatus::Pending);
+
+    app(SelfHealer::class)->run();
+
+    Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
+    expect($openRow->fresh()->status)->toBe(AnalysisStatus::Pending);
 
     Carbon::setTestNow();
 });

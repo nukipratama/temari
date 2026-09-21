@@ -43,6 +43,7 @@ class SettleEarlyNarrationAction
         private readonly AnalysisService $analysisService,
         private readonly PlanNarrationRequester $planNarration,
         private readonly HydrationBacklog $backlog,
+        private readonly KickoffWeeklyRecaps $weeklyRecaps,
     ) {
     }
 
@@ -78,6 +79,7 @@ class SettleEarlyNarrationAction
             $this->regenerate($user, $claimed);
         }
 
+        ($this->weeklyRecaps)($user->id);
         $this->analysisService->requestTrendReads($user);
     }
 
