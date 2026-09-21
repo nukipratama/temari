@@ -101,12 +101,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - name: Set up PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: ${{ env.PHP_VERSION }}
       - name: Check doc citations resolve
         run: php scripts/check-doc-citations.php
+
+      - name: Reject unmarked destructive migrations
+        env:
+          MIGRATION_DIFF_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: php scripts/check-migration-safety.php --base "$MIGRATION_DIFF_BASE"
 
   # Suite internals live in reusable workflows so this file stays focused on
   # orchestration, deployment, and the one required branch-protection check.
@@ -240,6 +247,17 @@ jobs:
         # actually recreates it here, before the app rolls and starts authing to it.
         run: $COMPOSE up -d --remove-orphans --wait --wait-timeout 300 mysql redis redis-cache
 
+      - name: Record pre-deploy maintenance state
+        run: |
+          echo "MAINTENANCE_WAS_ACTIVE=true" >> "$GITHUB_ENV"
+          echo "DEPLOY_ENABLED_MAINTENANCE=false" >> "$GITHUB_ENV"
+          state=$($COMPOSE run --rm app php artisan tinker --execute='echo app()->isDownForMaintenance() ? "active" : "inactive";' | tail -n 1)
+          case "$state" in
+            active) echo "Maintenance was already active; this deploy will not lift it." ;;
+            inactive) echo "MAINTENANCE_WAS_ACTIVE=false" >> "$GITHUB_ENV" ;;
+            *) echo "::error::Could not determine maintenance state: $state"; exit 1 ;;
+          esac
+
       - name: Tag new image with git SHA
         run: docker tag temari/app:latest temari/app:${{ github.sha }}
 
@@ -302,6 +320,17 @@ jobs:
           echo "MIGRATIONS_APPLIED=$applied" >> "$GITHUB_ENV"
           echo "Migrations pending this deploy: $applied"
 
+      - name: Enter maintenance for pending migrations
+        run: |
+          if [ "$MIGRATIONS_APPLIED" = "true" ] && [ "$MAINTENANCE_WAS_ACTIVE" = "false" ]; then
+            echo "DEPLOY_ENABLED_MAINTENANCE=true" >> "$GITHUB_ENV"
+            $COMPOSE run --rm app php artisan down
+          elif [ "$MIGRATIONS_APPLIED" = "true" ]; then
+            echo "Migrations pending; preserving owner maintenance."
+          else
+            echo "No migrations pending; staying live."
+          fi
+
       - name: Migrate (one-shot, on the new image)
         timeout-minutes: 10
         run: $COMPOSE run --rm app php artisan migrate --force
@@ -310,9 +339,8 @@ jobs:
         timeout-minutes: 10
         run: $COMPOSE run --rm app php artisan migrate --database=analytics --path=database/migrations/analytics --force
 
-      # Roll app + workers together: /up (VerifyDependencies) 500s unless Horizon is
-      # running, so the healthcheck can't gate the app alone. A boot-broken image is
-      # caught by the healthcheck and reverted by the failure-path auto-rollback below.
+      # Roll app + workers together. /ready proves the app can serve; /up remains
+      # the separate whole-stack check and requires Horizon to be running.
       # Pulse is deliberately not in this list — it's a monitoring daemon, not on
       # the healthcheck's dependency graph, so it rolls after the deploy is green
       # (below), the same way `scheduler` does.
@@ -324,9 +352,12 @@ jobs:
 
       - name: Healthcheck
         run: |
+          scripts/deploy/poll-health.sh http://127.0.0.1:7001/ready \
+            && echo "Readiness passed" \
+            || { echo "Readiness failed"; exit 1; }
           scripts/deploy/poll-health.sh http://127.0.0.1:7001/up \
-            && echo "Healthcheck passed" \
-            || { echo "Healthcheck failed"; exit 1; }
+            && echo "Dependency health passed" \
+            || { echo "Dependency health failed"; exit 1; }
 
       - name: Smoke test
         run: |
@@ -357,6 +388,14 @@ jobs:
       - name: Roll Pulse daemon (deploy green)
         run: $COMPOSE up -d --no-deps pulse
 
+      - name: Leave deploy-owned maintenance
+        run: |
+          if [ "$DEPLOY_ENABLED_MAINTENANCE" = "true" ]; then
+            $COMPOSE exec -T app php artisan up
+          else
+            echo "Maintenance was not enabled by this deploy; leaving its state unchanged."
+          fi
+
       - name: Roll back on failure
         if: failure()
         timeout-minutes: 6
@@ -365,7 +404,7 @@ jobs:
 
           # App rollback is safe only when no migration ran this deploy.
           if [ "${MIGRATIONS_APPLIED:-true}" = "true" ]; then
-            echo "::error::Deploy failed with migrations applied — not auto-rolling back. Recover with the 'Rollback prod' workflow, plus ./scripts/restore-db.sh <backup> if a migration was destructive."
+            echo "::error::Deploy failed on the migration path — not auto-rolling back and leaving maintenance active. Recover with the 'Rollback prod' workflow, plus ./scripts/restore-db.sh <backup> if a migration was destructive."
           elif docker image inspect temari/app:previous >/dev/null 2>&1; then
             docker tag temari/app:previous temari/app:latest
             $COMPOSE up -d --no-deps app horizon pulse scheduler

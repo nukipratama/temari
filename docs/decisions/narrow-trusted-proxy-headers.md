@@ -33,7 +33,7 @@ Nothing legitimate depends on them. With `X-Forwarded-Host` untrusted, `getHost(
 
 `trustHosts` was the other candidate and was **rejected**. It works by rejecting requests whose `Host` is not on an allowlist, and this stack makes several legitimate requests with an unroutable Host:
 
-- the container healthcheck is `wget -qO- http://127.0.0.1:7001/up` ([compose.prod.yaml](compose.prod.yaml#L142)), sending `Host: 127.0.0.1:7001`;
+- the container healthcheck is `wget -qO- http://127.0.0.1:7001/ready` ([compose.prod.yaml](compose.prod.yaml)), sending `Host: 127.0.0.1:7001`;
 - the deploy's healthcheck and smoke tests curl the same address from the runner ([.github/workflows/ci.yml](.github/workflows/ci.yml#L412)).
 
 An allowlist holding only the public domain would 403 all of those, mark the container unhealthy and fail the deploy. Adding `127.0.0.1` back to the allowlist would restore the deploy and simultaneously hand the control back to anyone who can set a Host header. Narrowing the header set needs no allowlist, cannot reject a request, and additionally covers `X-Forwarded-Prefix`, which `trustHosts` does not touch.
