@@ -40,10 +40,10 @@ use Illuminate\Support\Facades\Log;
  */
 final readonly class RuleBasedNarrationFiller
 {
-    /** Weekly-recap volume bands, as a ratio of the week's distance to the athlete's usual week. */
-    private const float LIGHT_WEEK_RATIO = 0.5;
+    /** Recap volume bands, as a ratio of the period's distance to the athlete's usual volume. */
+    private const float LIGHT_VOLUME_RATIO = 0.5;
 
-    private const float BIG_WEEK_RATIO = 1.5;
+    private const float BIG_VOLUME_RATIO = 1.5;
 
     public function __construct(
         private SessionMatcher $sessionMatcher,
@@ -62,7 +62,7 @@ final readonly class RuleBasedNarrationFiller
             AnalysisType::WeeklyRecap => $this->weeklyRecap($seed),
             AnalysisType::CardFlavor => $this->cardFlavor($seed),
             AnalysisType::ProfileVoice => $this->profileVoice($seed),
-            AnalysisType::MonthlyRecap => $this->monthlyRecap($seed),
+            AnalysisType::MonthlyRecap => $this->monthlyRecap($row->subject_id, $row->discriminator, $seed),
             AnalysisType::TrendRead => $this->trendRead($seed),
             AnalysisType::PlanDayVoice => $this->planDayVoice($row),
             AnalysisType::PlanClampVoice => $this->planClampVoice($seed),
@@ -306,8 +306,8 @@ final readonly class RuleBasedNarrationFiller
         $ratio = $km / $usualKm;
 
         return match (true) {
-            $ratio < self::LIGHT_WEEK_RATIO => 'light',
-            $ratio > self::BIG_WEEK_RATIO => 'big',
+            $ratio < self::LIGHT_VOLUME_RATIO => 'light',
+            $ratio > self::BIG_VOLUME_RATIO => 'big',
             default => 'usual',
         };
     }
@@ -559,16 +559,61 @@ final readonly class RuleBasedNarrationFiller
         ], $seed);
     }
 
-    private function monthlyRecap(int $seed): string
+    private function monthlyRecap(int $userId, ?string $month, int $seed): string
     {
+        if ($month === null) {
+            return "no dated runs found for this month. there's nothing honest to recap yet.";
+        }
+
+        $start = Carbon::createFromFormat('Y-m', $month)?->startOfMonth();
+        if ($start === null) {
+            return "no dated runs found for this month. there's nothing honest to recap yet.";
+        }
+
+        $details = ActivityDetail::query()
+            ->forUser($userId)
+            ->whereBetween('start_date_local', [$start, $start->copy()->endOfMonth()])
+            ->get(['distance']);
+
+        if ($details->isEmpty()) {
+            return "no dated runs found for this month. there's nothing honest to recap yet.";
+        }
+
+        $runs = $details->count();
+        $runWord = $runs === 1 ? 'run' : 'runs';
+        $sessionWord = $runs === 1 ? 'session' : 'sessions';
+        $totalKm = DistanceFormatter::km((float) $details->sum('distance'));
+        $km = DecimalFormatter::decimal($totalKm);
+        $longestKm = DistanceFormatter::kmString((float) $details->max('distance'));
+        $usualKm = $this->usualMonthlyKm($userId, $start);
+        $closer = $usualKm === null
+            ? 'no usual month yet to compare it with. this one sets the line.'
+            : match ($this->volumeBand($totalKm, $usualKm)) {
+                'light' => "well below your usual month. that's the number, not a verdict on it.",
+                'big' => 'well above your usual month. the volume is the headline.',
+                default => "right around your usual month. that's the range where the work actually banks.",
+            };
+
         return $this->select([
-            "the rhythm held all month. you didn't force it and you didn't disappear either.",
-            'a full month of regular running. the volume made sense and the effort stayed in hand.',
-            'no real gaps this month. showed up, ran, went home, repeatedly.',
-            "this month traded intensity for consistency. that's a trade, not a free win.",
-            "you kept showing up this month without being fast about it. the total says what the paces didn't.",
-            'a clean month. volume on track, effort never forced, nothing to untangle.',
-            'this month leaned patient. that works right up until patient turns into a habit.',
+            "{$km} km across {$runs} {$runWord} this month. the longest run was {$longestKm} km. {$closer}",
+            "the month came to {$km} km from {$runs} {$sessionWord}. longest run: {$longestKm} km. {$closer}",
+            "{$runs} {$runWord}, {$km} km in total, and {$longestKm} km was the longest. {$closer}",
+            "{$km} km over {$runs} {$sessionWord} this month. the longest was {$longestKm} km. {$closer}",
         ], $seed);
+    }
+
+    /** The trailing mean of up to six prior active months' distance. */
+    private function usualMonthlyKm(int $userId, Carbon $monthStart): ?float
+    {
+        $distances = ActivityDetail::query()
+            ->forUser($userId)
+            ->where('start_date_local', '<', $monthStart)
+            ->selectRaw("DATE_FORMAT(start_date_local, '%Y-%m') as month, SUM(COALESCE(distance, 0)) / 1000 as distance_km")
+            ->groupBy('month')
+            ->orderByDesc('month')
+            ->limit(6)
+            ->pluck('distance_km');
+
+        return $distances->isEmpty() ? null : (float) $distances->avg();
     }
 }

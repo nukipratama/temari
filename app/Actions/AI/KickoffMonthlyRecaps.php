@@ -59,6 +59,20 @@ class KickoffMonthlyRecaps
         foreach ($userIds as $id) {
             $months = $this->completedMonthsNotDone((int) $id, $lastClosedMonth);
 
+            // Every path below can permanently finish a recap, including the
+            // rule-based branches. Hold the whole month back until its own
+            // runs finish hydrating so each path reads the same final facts.
+            $hydrationSplit = $months
+                ->partition(fn (string $month): bool => $this->backlog->monthAwaitsHydration((int) $id, $month));
+            $stillHydrating = $hydrationSplit->get(0, new Collection())->values();
+            $months = $hydrationSplit->get(1, new Collection())->values();
+            $stillHydrating->each(fn (string $month) => $this->service->requestDeferred(
+                subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+                subjectId: (int) $id,
+                type: AnalysisType::MonthlyRecap,
+                discriminator: $month,
+            ));
+
             // Months older than the backfill depth cap never get a real LLM
             // call — rule-based fill instead, same as the per-activity cap.
             $tooOld = $months->filter(fn (string $month): bool => $month < $oldestRealMonth)->values();
@@ -69,19 +83,6 @@ class KickoffMonthlyRecaps
             $connectedAt = $this->backlog->connectedAt((int) $id);
             $preConnect = $narratable->filter(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
             $narratable = $narratable->reject(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
-
-            // A month still hydrating stages Pending instead of rule-based; the
-            // hourly self-heal sweep resumes it once the drain empties.
-            $hydrationSplit = $narratable
-                ->partition(fn (string $month): bool => $this->backlog->monthAwaitsHydration((int) $id, $month));
-            $stillHydrating = $hydrationSplit->get(0, new Collection())->values();
-            $narratable = $hydrationSplit->get(1, new Collection())->values();
-            $stillHydrating->each(fn (string $month) => $this->service->requestDeferred(
-                subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-                subjectId: (int) $id,
-                type: AnalysisType::MonthlyRecap,
-                discriminator: $month,
-            ));
 
             $tooOld->each(fn (string $month) => $this->service->requestRuleBased(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
