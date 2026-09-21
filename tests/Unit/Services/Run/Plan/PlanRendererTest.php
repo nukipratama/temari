@@ -775,6 +775,20 @@ it('sessionDistanceKm falls back to the volume-scaled budget when no segment car
         ->toBe(round($budget * 0.8, 1));
 });
 
+it('sessionDistanceKm does not let fallback redistribution exceed a Long ceiling', function (): void {
+    expect(PlanRenderer::sessionDistanceKm(
+        [],
+        SessionType::Long,
+        false,
+        20.0,
+        1.0,
+        15.0,
+        null,
+        volumeScale: 1.35,
+        longRunProgressionCapKm: 8.8,
+    ))->toBe(8.8);
+});
+
 it('coreKmForSession scales by its own week\'s stamped multiplier, not a flat 1.0', function (): void {
     $session = PlannedSession::factory()->create([
         'date' => '2026-09-07',
@@ -784,6 +798,23 @@ it('coreKmForSession scales by its own week\'s stamped multiplier, not a flat 1.
     ]);
 
     expect(PlanRenderer::coreKmForSession($session, 20.0, INF, selfScaled: false))->toBe(round(20.0 * 1.3, 1));
+});
+
+it('applies the recent-capacity ceiling only to Long sessions', function (): void {
+    $user = User::factory()->create();
+    $long = PlannedSession::factory()->for($user)->create([
+        'date' => '2026-09-07',
+        'session_type' => SessionType::Long,
+        'volume_multiplier' => 1.0,
+    ]);
+    $tempo = PlannedSession::factory()->for($user)->create([
+        'date' => '2026-09-09',
+        'session_type' => SessionType::Tempo,
+        'volume_multiplier' => 1.0,
+    ]);
+
+    expect(PlanRenderer::coreKmForSession($long, 20.0, INF, false, 8.8))->toBe(8.8)
+        ->and(PlanRenderer::coreKmForSession($tempo, 20.0, INF, false, 8.8))->toBe(13.0);
 });
 
 it('coreKmForSession sizes the week\'s primary easy day at the medium fraction, a later one at the short fraction', function (): void {

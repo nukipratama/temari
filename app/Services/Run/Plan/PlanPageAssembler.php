@@ -197,6 +197,7 @@ final class PlanPageAssembler
                 $baselineData['long_run_cap_km'],
                 $paces,
                 $ceiling,
+                $baselineData['long_run_progression_cap_km'],
             )
             : null;
 
@@ -214,6 +215,7 @@ final class PlanPageAssembler
             $baselineData['long_run_km'],
             $multiplierByWeek[$currentWeekKey] ?? 1.0,
             $baselineData['long_run_cap_km'],
+            $baselineData['long_run_progression_cap_km'],
             $primaryEasyDateByWeek->get($currentWeekKey),
             $todaySession,
             $clamp,
@@ -249,6 +251,7 @@ final class PlanPageAssembler
                     $activityByDate[$s->date->toDateString()] ?? null,
                     $clampVoice,
                     $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
+                    $baselineData['long_run_progression_cap_km'],
                 ))->all(),
             ];
         }
@@ -274,7 +277,7 @@ final class PlanPageAssembler
      * for those dates rather than the whole range.
      *
      * @param  Collection<int, PlannedSession>  $sessions
-     * @param  array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, self_scaled: bool}  $baselineData
+     * @param  array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}  $baselineData
      * @param  array<string, float>  $multiplierByWeek
      * @param  Collection<string, string|null>  $primaryEasyDateByWeek
      * @return array<string, PlannedSessionStatus>
@@ -306,6 +309,7 @@ final class PlanPageAssembler
                 $multiplierByWeek[$weekKey] ?? 1.0,
                 $baselineData['long_run_cap_km'],
                 $s->race_distance_m === null ? null : (float) $s->race_distance_m,
+                $baselineData['long_run_progression_cap_km'],
             ))->coreKm;
             $staleExcused[$date] = $s->isExcused();
         }
@@ -331,6 +335,7 @@ final class PlanPageAssembler
         float $longRunKm,
         float $multiplier,
         float $longRunCapKm,
+        float $longRunProgressionCapKm,
         ?string $primaryEasyDate,
         ?PlannedSession $todaySession,
         ?array $clamp,
@@ -345,6 +350,7 @@ final class PlanPageAssembler
             $longRunKm,
             $multiplier,
             $longRunCapKm,
+            longRunProgressionCapKm: $longRunProgressionCapKm,
         ))->coreKm;
 
         $weekTargetKm = $currentWeekSessions->sum($kmFor);

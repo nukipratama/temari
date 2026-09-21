@@ -339,6 +339,23 @@ it('never scales a race by a redistributed week, since the event is the distance
     expect($scaled[0]->km)->toBe($full[0]->km);
 });
 
+it('never redistributes a Long day through its hard ceilings', function (): void {
+    $segments = SegmentGenerator::generate(
+        SessionType::Long,
+        PlanPhase::Build,
+        null,
+        false,
+        20.0,
+        1.0,
+        15.0,
+        PACES,
+        volumeScale: 1.35,
+        longRunProgressionCapKm: 8.8,
+    );
+
+    expect(SegmentGenerator::segmentSumKm($segments))->toBe(8.8);
+});
+
 /**
  * The old name `prescribedKm()` collided with `planned_sessions.prescribed_km`
  * — a persisted compliance denominator written once by ComplianceScorer —

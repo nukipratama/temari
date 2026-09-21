@@ -92,6 +92,7 @@ final readonly class CurrentWeekPlanBuilder
                 $currentWeekMultiplier,
                 $baselineData['long_run_cap_km'],
                 $s->race_distance_m === null ? null : (float) $s->race_distance_m,
+                $baselineData['long_run_progression_cap_km'],
             ));
             $plannedKmByDate[$s->date->toDateString()] = $effective->coreKm;
             $easedAwayKmByDate[$s->date->toDateString()] = $effective->easedAwayKm();
@@ -138,6 +139,7 @@ final readonly class CurrentWeekPlanBuilder
                 $baselineData['long_run_cap_km'],
                 $paces,
                 $ceiling,
+                $baselineData['long_run_progression_cap_km'],
             )
             : null;
 
@@ -161,6 +163,7 @@ final readonly class CurrentWeekPlanBuilder
             $activityByDate[$s->date->toDateString()] ?? null,
             $clampVoice,
             $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
+            $baselineData['long_run_progression_cap_km'],
         ))->values()->all();
 
         // A rest day asks for nothing and always scores Done, so counting it

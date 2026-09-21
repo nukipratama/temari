@@ -143,7 +143,7 @@ final class PlanRenderer
      * @param  Collection<int, PlannedSession>  $sessions
      * @return array<string, float>  Y-m-d => core km
      */
-    public static function plannedKmByDate(Collection $sessions, float $longRunBaselineKm, float $longRunCapKm, bool $selfScaled): array
+    public static function plannedKmByDate(Collection $sessions, float $longRunBaselineKm, float $longRunCapKm, bool $selfScaled, float $longRunProgressionCapKm = INF): array
     {
         $sessionsByWeek = $sessions->groupBy(
             fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
@@ -163,6 +163,7 @@ final class PlanRenderer
                 $multiplierByWeek[$weekKey] ?? 1.0,
                 $longRunCapKm,
                 self::raceDistanceOf($s),
+                $longRunProgressionCapKm,
             );
         }
 
@@ -176,7 +177,7 @@ final class PlanRenderer
      * Still the plain, unredistributed figure: no {@see VolumeRedistributor}
      * scale reaches this.
      */
-    public static function coreKmForSession(PlannedSession $session, float $longRunBaselineKm, float $longRunCapKm, bool $selfScaled): float
+    public static function coreKmForSession(PlannedSession $session, float $longRunBaselineKm, float $longRunCapKm, bool $selfScaled, float $longRunProgressionCapKm = INF): float
     {
         $weekStart = $session->date->copy()->startOfWeek(Carbon::MONDAY);
         $weekSessions = PlannedSession::query()
@@ -184,8 +185,8 @@ final class PlanRenderer
             ->whereBetween('date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
             ->get();
 
-        return self::plannedKmByDate($weekSessions, $longRunBaselineKm, $longRunCapKm, $selfScaled)[$session->date->toDateString()]
-            ?? SegmentGenerator::coreKmFor($session->session_type, false, $longRunBaselineKm, 1.0, $longRunCapKm, self::raceDistanceOf($session));
+        return self::plannedKmByDate($weekSessions, $longRunBaselineKm, $longRunCapKm, $selfScaled, $longRunProgressionCapKm)[$session->date->toDateString()]
+            ?? SegmentGenerator::coreKmFor($session->session_type, false, $longRunBaselineKm, 1.0, $longRunCapKm, self::raceDistanceOf($session), $longRunProgressionCapKm);
     }
 
     /**
@@ -207,9 +208,19 @@ final class PlanRenderer
         float $longRunCapKm,
         ?float $raceDistanceM,
         float $volumeScale = 1.0,
+        float $longRunProgressionCapKm = INF,
     ): float {
-        return SegmentGenerator::segmentSumKm($segments)
-            ?? round(SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM) * $volumeScale, 1);
+        $segmentKm = SegmentGenerator::segmentSumKm($segments);
+        if ($segmentKm !== null) {
+            return $segmentKm;
+        }
+
+        $distanceKm = SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm) * $volumeScale;
+        if ($sessionType === SessionType::Long) {
+            $distanceKm = min($distanceKm, $longRunCapKm, $longRunProgressionCapKm);
+        }
+
+        return round($distanceKm, 1);
     }
 
     /**
@@ -236,6 +247,7 @@ final class PlanRenderer
         ?array $activity = null,
         ?string $clampVoice = null,
         ?int $raceGoalTimeSec = null,
+        float $longRunProgressionCapKm = INF,
     ): array {
         $isToday = $s->date->isSameDay($today);
         $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
@@ -247,7 +259,7 @@ final class PlanRenderer
         // the day's own narration is sized from (see PlanDayTool). Exposed so
         // the Plan page can say why `distance_km` moved, rather than the two
         // screens just disagreeing with no explanation.
-        $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM);
+        $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm);
         $effective = EffectiveSession::of($s, $askedKm);
         // Today, before credit, a recorded ease renders as a step-down beside the original session, not a headline swap.
         $recordedEaseToday = $isToday && $effective->isEased() && ! $status->isCredited();
@@ -275,6 +287,7 @@ final class PlanRenderer
                     $paces,
                     $volumeScale,
                     $raceGoalTimeSec,
+                    $longRunProgressionCapKm,
                 ));
                 $pacesForSegments = [
                     'easy' => $effective->easedPaceSecPerKm,
@@ -295,6 +308,7 @@ final class PlanRenderer
                 $pacesForSegments,
                 $volumeScale,
                 $raceGoalTimeSec,
+                $longRunProgressionCapKm,
             );
             $distanceKm = self::sessionDistanceKm(
                 $segments,
@@ -305,6 +319,7 @@ final class PlanRenderer
                 $longRunCapKm,
                 $raceDistanceM,
                 $volumeScale,
+                $longRunProgressionCapKm,
             );
         }
 

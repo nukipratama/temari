@@ -289,6 +289,23 @@ it('asks for exactly the long run the plan builds to, which reaches a 10K\'s 12 
         ->and($goal)->toBe(planLongestLongRunKm($user, $season->raceGoal));
 });
 
+it('keeps the season long-run goal aimed at the arc beyond the first staged step', function (): void {
+    $user = User::factory()->create();
+    seasonServiceWeeks($user, 24.4);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->subDay(),
+        'distance' => 5_000.0,
+    ]);
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString(), 'distance_m' => 10_000]);
+
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $goal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_longest_long_run_km')->value('target');
+
+    expect($goal)->toBe(12.0)
+        ->and($goal)->toBeGreaterThan(app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_progression_cap_km']);
+});
+
 it('freezes a race season\'s twelve-week actual mean as its volume floor, and gives a self-scaled one none', function (): void {
     $racer = User::factory()->create();
     foreach (range(0, 13) as $i) {

@@ -925,6 +925,33 @@ it('scales today\'s reported distance by the week\'s own volume multiplier', fun
         ->not->toBe($flatOldReading);
 });
 
+it('caps a narrated Long day at recent single-run capacity', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->subDay(),
+        'distance' => 2_000.0,
+    ]);
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Long,
+    ]);
+
+    expect(planDayTool($session, app(TrainingBaseline::class))->handle([])['distance_km'])->toBe(3.0);
+});
+
+it('reads a graded day from the prescription persisted by the scorer', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Long,
+        'status' => PlannedSessionStatus::Done,
+        'prescribed_km' => 4.2,
+    ]);
+
+    expect(planDayTool($session, app(TrainingBaseline::class), 4.2)->handle([])['distance_km'])->toBe(4.2);
+});
+
 /**
  * The verdict a narrator reads has to be the exact one the grade persisted —
  * see `docs/decisions/a-day-is-graded-on-distance-and-intent.md`.
@@ -1103,6 +1130,22 @@ it('scales the fallback distance by the week\'s own volume multiplier', function
     expect($reading['distance_km'])
         ->toBe(round($longRunKm * 1.3, 1))
         ->not->toBe($flatOldReading);
+});
+
+it('caps a planned-session fallback at recent single-run capacity', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->subDay(),
+        'distance' => 2_000.0,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Long,
+        'prescribed_km' => null,
+    ]);
+
+    expect(planContextTool($user, Carbon::today(), Carbon::today())->handle([])['days'][0]['distance_km'])->toBe(3.0);
 });
 
 /**

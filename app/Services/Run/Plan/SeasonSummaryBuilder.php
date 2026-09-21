@@ -139,6 +139,7 @@ final readonly class SeasonSummaryBuilder
                     $multipliers[$i],
                     $baselineData['long_run_cap_km'],
                     $raceDistanceM,
+                    $baselineData['long_run_progression_cap_km'],
                 );
                 if ($row['session_type'] !== SessionType::Rest) {
                     $sessions++;
@@ -174,7 +175,7 @@ final readonly class SeasonSummaryBuilder
         }
 
         $baselineData = $this->baseline->forUser($user, $today);
-        $storedKmByDate = PlanRenderer::plannedKmByDate($rows, $baselineData['long_run_km'], $baselineData['long_run_cap_km'], $baselineData['self_scaled']);
+        $storedKmByDate = PlanRenderer::plannedKmByDate($rows, $baselineData['long_run_km'], $baselineData['long_run_cap_km'], $baselineData['self_scaled'], $baselineData['long_run_progression_cap_km']);
 
         return $eased->sum(function (PlannedSession $row) use ($today, $storedKmByDate): float {
             // Today's uncredited ease is only a step-down, so it shouldn't shrink the week total.

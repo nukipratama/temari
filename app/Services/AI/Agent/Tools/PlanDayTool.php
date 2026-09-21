@@ -83,9 +83,18 @@ final class PlanDayTool extends NoArgumentTool
     public function handle(array $arguments): array
     {
         $baselineData = $this->baseline->forUser($this->session->user, Carbon::today());
+        $storedCoreKm = $this->session->prescribed_km === null || EffectiveSession::isRecordedOn($this->session)
+            ? PlanRenderer::coreKmForSession(
+                $this->session,
+                $baselineData['long_run_km'],
+                $baselineData['long_run_cap_km'],
+                $baselineData['self_scaled'],
+                $baselineData['long_run_progression_cap_km'],
+            )
+            : round((float) $this->session->prescribed_km, 1);
         $effective = EffectiveSession::of(
             $this->session,
-            PlanRenderer::coreKmForSession($this->session, $baselineData['long_run_km'], $baselineData['long_run_cap_km'], $baselineData['self_scaled']),
+            $storedCoreKm,
         );
         $easedFrom = $effective->easedFromForNarration();
         $paceFields = [];

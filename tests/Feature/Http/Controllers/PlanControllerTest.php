@@ -395,10 +395,11 @@ it('paints the Plan shell inside its query budget', function (): void {
 
     $this->actingAs($user)->get('/plan')->assertSuccessful();
 
-    // 27: 26 since a race season's creation asks whether its recent load is
+    // 28: 26 since a race season's creation asks whether its recent load is
     // scored yet, +1 since aiCatchingUp now also asks the hydration gate
-    // whether this athlete's history is still coming in.
-    expect($queries)->toBeLessThanOrEqual(27);
+    // whether this athlete's history is still coming in, +1 for recent
+    // single-run capacity.
+    expect($queries)->toBeLessThanOrEqual(28);
 });
 
 it('resolves the deferred Plan props inside their query budget', function (): void {
@@ -417,7 +418,7 @@ it('resolves the deferred Plan props inside their query budget', function (): vo
 
     $this->actingAs($user)->get('/plan', $headers)->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(14);
+    expect($queries)->toBeLessThanOrEqual(15);
 });
 
 function planBudgetFixture(): User
