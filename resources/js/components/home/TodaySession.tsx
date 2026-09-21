@@ -191,6 +191,12 @@ export default function TodaySession({
     /** From {@link drawnHomeAnchors} — which citations this page can honour. */
     drawnAnchors?: ReadonlySet<string>;
 }>) {
+    const voice = briefing.mascotVoice;
+    const showsVoice =
+        briefing.firstRead ||
+        (voice.status !== 'pending' &&
+            !(voice.status === 'done' && voice.content === null));
+
     return (
         <Card as="section" className="border-today-accent">
             <div className="flex items-start gap-3">
@@ -205,18 +211,23 @@ export default function TodaySession({
                     {today !== null && <TodayPrescription day={today} />}
                 </div>
             </div>
-            <div className="mt-3">
-                <AnalysisStatus
-                    analysis={briefing.mascotVoice}
-                    inertiaReloadProps={['briefing']}
-                    allowReanalyze={false}
-                    awaitingSchedule={briefing.firstRead}
-                    awaitingScheduleLabel="temari is reading your first week…"
-                    renderContent={(text) => (
-                        <SessionVoice text={text} drawnAnchors={drawnAnchors} />
-                    )}
-                />
-            </div>
+            {showsVoice && (
+                <div className="mt-3">
+                    <AnalysisStatus
+                        analysis={voice}
+                        inertiaReloadProps={['briefing']}
+                        allowReanalyze={false}
+                        awaitingSchedule={briefing.firstRead}
+                        awaitingScheduleLabel="temari is reading your first week…"
+                        renderContent={(text) => (
+                            <SessionVoice
+                                text={text}
+                                drawnAnchors={drawnAnchors}
+                            />
+                        )}
+                    />
+                </div>
+            )}
         </Card>
     );
 }

@@ -178,6 +178,10 @@ export default function WeekDayRow({
     // changed day is always expandable: the full old -> new pairs live only
     // in the panel now, never in the collapsed row.
     const hasSegments = day.segments.some((s) => (s.minutes ?? 0) > 0);
+    const showsNarration =
+        narration !== null &&
+        narration.status !== 'pending' &&
+        !(narration.status === 'done' && narration.content === null);
     const expandable =
         hasSegments ||
         sessionDelta !== null ||
@@ -185,7 +189,7 @@ export default function WeekDayRow({
         weekFitDelta !== null ||
         Boolean(day.eased_from?.voice) ||
         Boolean(day.pace_eased_from?.voice) ||
-        narration !== null ||
+        showsNarration ||
         day.clamp !== null ||
         Boolean(day.credit_note) ||
         day.activities.length > 0 ||
@@ -361,7 +365,7 @@ export default function WeekDayRow({
                         tag="week fit"
                     />
                 )}
-                {narration && (
+                {showsNarration && (
                     <TemariTake
                         analysis={narration}
                         label="Temari's read"
