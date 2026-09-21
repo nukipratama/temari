@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use Throwable;
+use App\Enums\IntentVerdict;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
@@ -65,7 +67,7 @@ final readonly class PlanRecalibrationService
             }
 
             return $result;
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
@@ -134,7 +136,7 @@ final readonly class PlanRecalibrationService
             ->orderBy('starts_at')
             ->get();
 
-        /** @var array<string, array{date: Carbon, verdict: \App\Enums\IntentVerdict, hard_minutes: int}> $recent */
+        /** @var array<string, array{date: Carbon, verdict: IntentVerdict, hard_minutes: int}> $recent */
         $recent = [];
         /** @var array<string, array{distance_m: int, goal_time_sec: int}|null> $raceByDate */
         $raceByDate = [];

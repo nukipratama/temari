@@ -156,6 +156,7 @@ it('responds with the flat payload shape at the top level, not a resource-wrappe
         'id', 'status', 'content', 'type', 'is_zone_dependent',
         'subject_type', 'subject_id', 'discriminator', 'attempts',
         'generated_at', 'retry_after_seconds', 'flagged', 'unread_while_away',
+        'is_stale', 'stale_at',
     ]);
 });
 

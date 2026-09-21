@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use LogicException;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SegmentKey;
@@ -503,7 +504,7 @@ final class SegmentGenerator
         $pace = $prescription->paceBand;
         $secPerKm = $prescription->paceSecPerKm;
         if ($pace === null) {
-            throw new \LogicException('A hard prescription requires a pace.');
+            throw new LogicException('A hard prescription requires a pace.');
         }
 
         return new SessionSegment(

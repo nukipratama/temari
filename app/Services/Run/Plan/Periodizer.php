@@ -8,6 +8,7 @@ use App\Enums\FeedbackSubject;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Models\Feedback;
 use App\Models\PlanAdaptation;
@@ -276,7 +277,7 @@ final readonly class Periodizer
             $prescription = $prescriptions[$date];
             if (! $prescription->isEasy()) {
                 $segments = SegmentGenerator::forPrescription($row['session_type'], $row['phase'], $kmByDate[$date], $inputs->paces, $prescription);
-                $hasHard = array_any($segments, static fn (SessionSegment $segment): bool => in_array($segment->key, [\App\Enums\SegmentKey::Main, \App\Enums\SegmentKey::Interval], true) && $segment->paceLabel !== \App\Enums\PaceBand::Easy);
+                $hasHard = array_any($segments, static fn (SessionSegment $segment): bool => in_array($segment->key, [SegmentKey::Main, SegmentKey::Interval], true) && $segment->paceLabel !== PaceBand::Easy);
                 if (! $hasHard) {
                     $prescription = new IntensityPrescription(0, null, null, 'easy because the outing cannot safely fit the minimum quality structure', $prescription->raceContext);
                 }

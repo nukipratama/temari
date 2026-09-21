@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
+use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
@@ -125,7 +126,7 @@ final readonly class PlanInputsGatherer
         return ['pinned' => $pinned, 'settled' => $settled];
     }
 
-    /** @return array<string, array{verdict: \App\Enums\IntentVerdict, hard_minutes: int}> */
+    /** @return array<string, array{verdict: IntentVerdict, hard_minutes: int}> */
     private function recentPrescriptions(User $user, Carbon $today): array
     {
         $rows = PlannedSession::query()

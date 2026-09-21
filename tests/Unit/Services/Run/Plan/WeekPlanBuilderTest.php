@@ -67,8 +67,8 @@ it('Base phase stays quality-free below 4 sessions/week, adds one Tempo at 4+', 
     expect(collect($withQuality)->pluck('session_type'))->toContain(SessionType::Tempo);
 });
 
-it('Build phase mixes Tempo and Interval once sessions/week exceeds 4, race-oriented', function (): void {
-    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 42_195.0, false);
+it('Build phase mixes Tempo and Interval once sessions/week exceeds 4 for a sub-marathon race', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false);
     $types = collect($rows)->pluck('session_type');
 
     expect($types)->toContain(SessionType::Tempo)
