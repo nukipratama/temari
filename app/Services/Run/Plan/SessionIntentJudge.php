@@ -41,7 +41,9 @@ final class SessionIntentJudge
         return match ($sessionType) {
             SessionType::Tempo => self::tempo($segments, $runs),
             SessionType::Interval => self::interval($segments, $runs),
-            SessionType::Long => self::hasHardBlock($segments) ? self::tempo($segments, $runs) : self::steady($segments, $paces, $runs),
+            SessionType::Long => self::hasHardBlock($segments) && count($segments) > 1
+                ? self::tempo($segments, $runs)
+                : self::steady($segments, $paces, $runs),
             SessionType::Easy => self::steady($segments, $paces, $runs),
             SessionType::Rest, SessionType::Race => self::reading(IntentVerdict::Unknown),
         };
