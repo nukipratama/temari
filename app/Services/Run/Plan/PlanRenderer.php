@@ -265,6 +265,10 @@ final class PlanRenderer
         $recordedEaseToday = $isToday && $effective->isEased() && ! $status->isCredited();
         $headlinesEase = $effective->isEased() && ! $recordedEaseToday;
         $sessionType = $headlinesEase ? $effective->sessionType : $s->session_type;
+        $storedPrescription = IntensityPrescription::fromSession($s);
+        if (! $headlinesEase && $storedPrescription?->isEasy() === true && in_array($sessionType, [SessionType::Tempo, SessionType::Interval], true)) {
+            $sessionType = SessionType::Easy;
+        }
         $originalPaceSecPerKm = null;
 
         if ($headlinesEase) {
@@ -276,7 +280,8 @@ final class PlanRenderer
             // for the recorded slow end, which is why type/distance never move.
             $pacesForSegments = $paces;
             if ($effective->easedPaceSecPerKm !== null && $paces !== null) {
-                $originalPaceSecPerKm = self::corePaceOf(SegmentGenerator::generate(
+                $originalPaceSecPerKm = self::corePaceOf(self::segmentsFor(
+                    $s,
                     $sessionType,
                     $s->phase,
                     $raceDistanceM,
@@ -297,7 +302,8 @@ final class PlanRenderer
                 ];
             }
 
-            $segments = SegmentGenerator::generate(
+            $segments = self::segmentsFor(
+                $s,
                 $sessionType,
                 $s->phase,
                 $raceDistanceM,
@@ -337,6 +343,7 @@ final class PlanRenderer
             'compliance_score' => $s->compliance_score,
             'prescribed_km' => $s->prescribed_km,
             'ran_anyway' => $s->ran_anyway,
+            'prescription_reason' => $s->prescription_reason,
             'clamp' => match (true) {
                 $recordedEaseToday => self::clampPayload(self::stepDownFromEffective($effective, $paces), $clampVoice),
                 $isToday && $clamp !== null && ! $headlinesEase && ! $status->isCredited() => self::clampPayload($clamp, $clampVoice),
@@ -358,6 +365,42 @@ final class PlanRenderer
             ),
             'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
         ];
+    }
+
+    /**
+     * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
+     * @return list<SessionSegment>
+     */
+    private static function segmentsFor(
+        PlannedSession $session,
+        SessionType $sessionType,
+        PlanPhase $phase,
+        ?float $raceDistanceM,
+        bool $isPrimaryEasy,
+        float $longRunKm,
+        float $multiplier,
+        float $longRunCapKm,
+        ?array $paces,
+        float $volumeScale,
+        ?int $raceGoalTimeSec,
+        float $longRunProgressionCapKm,
+    ): array {
+        $prescription = IntensityPrescription::fromSession($session);
+        if ($prescription?->isEasy() === true && $sessionType === SessionType::Easy && in_array($session->session_type, [SessionType::Tempo, SessionType::Interval], true)) {
+            $km = SegmentGenerator::coreKmFor($session->session_type, false, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm) * $volumeScale;
+
+            return SegmentGenerator::easyBlock(round($km, 1), $paces);
+        }
+        if ($prescription === null || ! in_array($sessionType, [SessionType::Tempo, SessionType::Interval, SessionType::Long], true)) {
+            return SegmentGenerator::generate($sessionType, $phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm);
+        }
+
+        $km = SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm) * $volumeScale;
+        if ($sessionType === SessionType::Long) {
+            $km = min($km, $longRunCapKm, $longRunProgressionCapKm);
+        }
+
+        return SegmentGenerator::forPrescription($sessionType, $phase, round($km, 1), $paces, $prescription);
     }
 
     /** The distance a `Race` row stores for itself, and null on every other day. */

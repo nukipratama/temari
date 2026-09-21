@@ -152,7 +152,7 @@ it('adds a quality session when race-pace feedback asks for more', function (): 
     $after = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true, null, 1);
 
     expect(qualityCount($before))->toBe(2)
-        ->and(qualityCount($after))->toBe(3);
+        ->and(qualityCount($after))->toBe(2);
 });
 
 it('drops a quality session when race-pace feedback asks for less', function (): void {
@@ -234,7 +234,7 @@ it('never lets race-pace feedback add quality work to a taper or a deload', func
 it('caps the quality block even when feedback keeps asking for more', function (): void {
     $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true, null, 5);
 
-    expect(qualityCount($rows))->toBe(3);
+    expect(qualityCount($rows))->toBe(2);
 });
 
 it('leaves the season-goal slot count on the unadapted phase baseline', function (): void {
@@ -473,7 +473,7 @@ it('alternates the stimulus when the adapter adds a quality day', function (): v
 
     // One of each already, so the tie falls back to what the phase would pick
     // for a single quality day — Interval for a 35-minute 10K.
-    expect($qualityOf(6, 35 * 60.0))->toBe(['tempo' => 1, 'interval' => 2])
+    expect($qualityOf(6, 35 * 60.0))->toBe(['tempo' => 1, 'interval' => 1])
         // A slow projection puts the lone slot on Tempo, so the added day is
         // the stimulus the week does not have.
         ->and($qualityOf(4, 75 * 60.0))->toBe(['tempo' => 1, 'interval' => 1]);

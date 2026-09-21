@@ -10,6 +10,18 @@ This is the canonical project guidance shared by agents. Runtime entrypoints may
 - Run long commands in the foreground, never background them; never `artisan tinker <file>`, use `--execute`. Stop tests, builds, and servers when their task ends.
 - Work items, agent briefs and decisions live in GitHub issues and the [kanban board](https://github.com/users/nukipratama/projects/1), not in local files: find them with `gh issue list --label wave:*` and `gh issue view <n>`, and the decision log is issue #916. A card moves Ready → In progress on dispatch → In review when its PR opens → Done on merge, and every PR carries `Closes #<n>`. `.planning/` is gitignored scratch space only.
 
+### PR handoff standard
+
+Every pull request is a reviewer handoff, not just a change list. Keep the description aligned with the issue and include:
+
+- the user-visible outcome and the settled decision or acceptance criteria it implements;
+- a concise map of the affected files/subsystems, including migrations, jobs, queues, backfills, or external-service effects;
+- exact verification commands and their results, plus any checks that could not run;
+- a reviewer path: fixtures, flags, routes, screenshots, or focused tests that make the behavior easy to reproduce;
+- rollout, privacy, failure, rollback, and follow-up notes, including demo-data exclusions where relevant.
+
+Use `Closes #<n>` in the PR body, keep issue/PR text free of secrets and identifying athlete data, and update the description when later pushes change scope or verification.
+
 ## Claude Code notes
 
 Runtime-specific detail for the Claude Code agent; other agents can skip this section.

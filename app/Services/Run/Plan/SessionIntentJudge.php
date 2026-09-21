@@ -41,7 +41,8 @@ final class SessionIntentJudge
         return match ($sessionType) {
             SessionType::Tempo => self::tempo($segments, $runs),
             SessionType::Interval => self::interval($segments, $runs),
-            SessionType::Easy, SessionType::Long => self::steady($segments, $paces, $runs),
+            SessionType::Long => self::hasHardBlock($segments) ? self::tempo($segments, $runs) : self::steady($segments, $paces, $runs),
+            SessionType::Easy => self::steady($segments, $paces, $runs),
             SessionType::Rest, SessionType::Race => self::reading(IntentVerdict::Unknown),
         };
     }
@@ -53,15 +54,21 @@ final class SessionIntentJudge
      */
     private static function tempo(array $segments, array $runs): array
     {
-        $block = array_find($segments, static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Main && in_array($segment->paceLabel, [PaceBand::Threshold, PaceBand::Marathon], true));
+        $blocks = array_values(array_filter($segments, static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Main && in_array($segment->paceLabel, [PaceBand::Threshold, PaceBand::Marathon], true)));
+        $block = $blocks[0] ?? null;
         if ($block?->minutes === null || $block->paceSecPerKm === null) {
             return self::reading(IntentVerdict::Unknown);
         }
 
         $summary = self::summaryOf(self::longest($runs));
-        $evidence = ['block_minutes' => $block->minutes, 'target_pace_sec' => $block->paceSecPerKm, 'tolerance_sec' => self::PACE_TOLERANCE_SEC];
+        $totalMinutes = array_sum(array_map(static fn (SessionSegment $segment): float => $segment->minutes ?? 0.0, $blocks));
+        $longestMinutes = 0.0;
+        foreach ($blocks as $candidate) {
+            $longestMinutes = max($longestMinutes, $candidate->minutes ?? 0.0);
+        }
+        $evidence = ['block_minutes' => $totalMinutes, 'target_pace_sec' => $block->paceSecPerKm, 'tolerance_sec' => self::PACE_TOLERANCE_SEC];
 
-        [$window, $windowPace] = self::bestWindow($summary, $block->minutes);
+        [$window, $windowPace] = self::bestWindow($summary, $longestMinutes);
         if ($window !== null && $windowPace !== null) {
             $evidence += ['window' => $window, 'window_pace_sec' => $windowPace];
             if ($windowPace <= $block->paceSecPerKm + self::PACE_TOLERANCE_SEC) {
@@ -69,7 +76,13 @@ final class SessionIntentJudge
             }
         }
 
-        return self::onHeartRate($summary, $block->zone, $block->minutes, $windowPace !== null, $evidence);
+        return self::onHeartRate($summary, $block->zone, $totalMinutes, $windowPace !== null, $evidence);
+    }
+
+    /** @param list<SessionSegment> $segments */
+    private static function hasHardBlock(array $segments): bool
+    {
+        return array_any($segments, static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Main && $segment->paceLabel !== PaceBand::Easy);
     }
 
     /**

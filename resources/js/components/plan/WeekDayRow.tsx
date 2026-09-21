@@ -171,6 +171,9 @@ export default function WeekDayRow({
 
     const canMove = editable && !isRest && weekDays.some(isValidMoveTarget);
     const canSkip = editable && !isRest && !day.skipped;
+    const showsPrescriptionReason =
+        day.prescription_reason !== null &&
+        ['tempo', 'interval', 'long'].includes(day.session_type);
 
     // A rest day with nothing logged, no note, no clamp and no read has
     // nothing an expanded panel would show — a future day with a session
@@ -190,6 +193,7 @@ export default function WeekDayRow({
         Boolean(day.eased_from?.voice) ||
         Boolean(day.pace_eased_from?.voice) ||
         showsNarration ||
+        showsPrescriptionReason ||
         day.clamp !== null ||
         Boolean(day.credit_note) ||
         day.activities.length > 0 ||
@@ -365,6 +369,22 @@ export default function WeekDayRow({
                         tag="week fit"
                     />
                 )}
+                {showsPrescriptionReason && (
+                    <div
+                        className={cn(
+                            sessionDelta || paceDelta || weekFitDelta
+                                ? 'mt-2'
+                                : undefined,
+                        )}
+                    >
+                        <p className="text-label-micro text-text-3">
+                            why this dose
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-text-2">
+                            {day.prescription_reason}
+                        </p>
+                    </div>
+                )}
                 {showsNarration && (
                     <TemariTake
                         analysis={narration}
@@ -374,6 +394,7 @@ export default function WeekDayRow({
                             sessionDelta ||
                             paceDelta ||
                             weekFitDelta ||
+                            showsPrescriptionReason ||
                             day.eased_from?.voice ||
                             day.pace_eased_from?.voice
                                 ? 'mt-2'

@@ -58,6 +58,11 @@ interface PlanProps {
     planNarration?: PlanNarration;
     /** Seconds left before Regenerate may run again, or null when it's free to click. */
     regenerateCooldownSeconds?: number | null;
+    planRecalibration?: {
+        pending: boolean;
+        started_at: string | null;
+        completed_at: string | null;
+    };
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -86,6 +91,7 @@ export default function Plan({
     disclaimer,
     planNarration = PLAN_NARRATION_DEFAULT,
     regenerateCooldownSeconds = null,
+    planRecalibration,
 }: Readonly<PlanProps>) {
     const [regenerating, setRegenerating] = useState(false);
     const today = todayLocalIso();
@@ -170,6 +176,28 @@ export default function Plan({
                 </p>
 
                 <PlanRaceTabs active="plan" className="mb-4" />
+
+                {planRecalibration?.pending && (
+                    <div
+                        role="status"
+                        className="mb-4 flex items-start gap-2 rounded-md border border-border-strong bg-muted pad-panel"
+                    >
+                        <Icon
+                            icon={RefreshCw}
+                            className="mt-0.5 size-3.5 flex-none text-horizon-ink"
+                            aria-hidden
+                        />
+                        <div>
+                            <p className="text-xs font-semibold text-foreground">
+                                rechecking your plan
+                            </p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-text-2">
+                                the current plan stays in place while your
+                                latest HR zones are applied.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 <Deferred
                     data={[

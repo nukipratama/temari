@@ -554,6 +554,26 @@ describe('AnalysisStatus', () => {
         });
     });
 
+    it('keeps stale plan narration visible and labels it as earlier-plan context', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    status: 'done',
+                    content: 'the old read remains useful context.',
+                    is_stale: true,
+                    stale_at: NEW_TS,
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText('the old read remains useful context.'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('based on an earlier plan'),
+        ).toBeInTheDocument();
+    });
+
     it('draws the flag at the end of the "generated" meta line', () => {
         vi.useFakeTimers();
         const now = new Date('2026-07-07T12:00:00Z');

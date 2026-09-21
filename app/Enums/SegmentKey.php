@@ -17,6 +17,7 @@ enum SegmentKey: string
 {
     case Warmup = 'warmup';
     case Main = 'main';
+    case Easy = 'easy';
     case Interval = 'interval';
     case Recovery = 'recovery';
 }

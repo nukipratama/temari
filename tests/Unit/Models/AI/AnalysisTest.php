@@ -66,6 +66,16 @@ it('toPayload surfaces retry_after_seconds from the active window', function ():
     expect($payload['retry_after_seconds'])->toBeGreaterThan(0)->toBeLessThanOrEqual(Cooldown::WINDOW_SECONDS);
 });
 
+it('toPayload exposes explicit narration staleness', function (): void {
+    $staleAt = now()->subMinute();
+    $row = Analysis::factory()->done('old plan read')->make(['stale_at' => $staleAt]);
+
+    $payload = Analysis::toPayload($row, $row->analysis_type, $row->subject_type, $row->subject_id, $row->discriminator);
+
+    expect($payload['is_stale'])->toBeTrue()
+        ->and($payload['stale_at'])->toBe($staleAt->toIso8601String());
+});
+
 it('notificationCooldownRemaining is null for a missing or not-Done payload', function (): void {
     expect(Analysis::notificationCooldownRemaining(['id' => null, 'status' => 'done']))->toBeNull()
         ->and(Analysis::notificationCooldownRemaining(['id' => 7, 'status' => 'pending']))->toBeNull();

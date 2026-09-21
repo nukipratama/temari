@@ -181,7 +181,7 @@ fingerprint gate takes over from there.
 **A day's own read re-bills only where the verdict actually changed.** It is requested separately
 from the season, by
 [`requestDayVoiceIfChanged()`](../../app/Services/AI/PlanNarrationRequester.php#L83) right after
-[`ComplianceScorer::creditIfEarned()`](../../app/Services/Run/Plan/ComplianceScorer.php#L182)
+[`ComplianceScorer::creditIfEarned()`](../../app/Services/Run/Plan/ComplianceScorer.php#L199)
 credits the day, and only when the day is actually credited — a day still ahead asks for nothing.
 Each row carries a [`MaterialFingerprint`](../../app/Services/AI/MaterialFingerprint.php#L26) of
 what it describes, stamped by the job through

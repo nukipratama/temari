@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdateHrZonesRequest;
 use App\Jobs\Strava\SyncZonesJob;
 use App\Models\User;
+use App\Services\Run\Plan\PlanRecalibrationDispatch;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Http\RedirectResponse;
@@ -39,6 +40,7 @@ class RunnerZonesController extends Controller
                 'source' => 'manual',
             ],
         );
+        PlanRecalibrationDispatch::forUserId($user->id);
 
         return back()->with('success', 'Your HR zones are saved, and will apply to every run from here on.');
     }
@@ -55,6 +57,7 @@ class RunnerZonesController extends Controller
         $user = $request->user();
 
         $user->runnerProfile()->delete();
+        PlanRecalibrationDispatch::forUserId($user->id);
 
         return back()->with('success', 'Your HR zones are back to the default.');
     }

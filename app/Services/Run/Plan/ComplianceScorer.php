@@ -51,9 +51,10 @@ final readonly class ComplianceScorer
      * day that was never credited.
      *
      * @param  Collection<int, PlannedSession>  $rows  the rows to judge
+     * @param  array<string, array{distance_m: int, goal_time_sec: int}|null>|null  $raceByDate
      * @return array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool, distance_score: int|null, prescribed_km: float|null, intent: array{verdict: IntentVerdict, evidence: array<string, int|float|string>}|null}>  Y-m-d => verdict
      */
-    public function verdictsFor(User $user, Collection $rows, Carbon $today): array
+    public function verdictsFor(User $user, Collection $rows, Carbon $today, ?array $raceByDate = null): array
     {
         $first = $rows->first();
         if ($first === null) {
@@ -97,7 +98,7 @@ final readonly class ComplianceScorer
         )->all();
 
         $verdicts = $this->sessionMatcher->scoreRange($user, $plannedKmByDate, $excusedByDate, $today);
-        $intents = $this->intentsFor($user, $rows, $effectiveByDate, $verdicts);
+        $intents = $this->intentsFor($user, $rows, $effectiveByDate, $verdicts, $raceByDate);
 
         $graded = [];
         foreach ($verdicts as $date => $verdict) {
@@ -117,9 +118,10 @@ final readonly class ComplianceScorer
      * @param  Collection<int, PlannedSession>  $rows
      * @param  array<string, EffectiveSession>  $effectiveByDate
      * @param  array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>  $verdicts
+     * @param  array<string, array{distance_m: int, goal_time_sec: int}|null>|null  $raceByDate
      * @return array<string, array{verdict: IntentVerdict, evidence: array<string, int|float|string>}>
      */
-    private function intentsFor(User $user, Collection $rows, array $effectiveByDate, array $verdicts): array
+    private function intentsFor(User $user, Collection $rows, array $effectiveByDate, array $verdicts, ?array $raceByDate = null): array
     {
         $judged = $rows->filter(static fn (PlannedSession $row): bool => ($verdicts[$row->date->toDateString()]['status'] ?? null)?->isCredited() === true
             && in_array($effectiveByDate[$row->date->toDateString()]->sessionType, [SessionType::Easy, SessionType::Long, SessionType::Tempo, SessionType::Interval], true));
@@ -128,17 +130,29 @@ final readonly class ComplianceScorer
         }
 
         $runsByDate = $this->runsByDate($user, $judged->first()->date, $judged->last()->date);
-        $raceDistanceM = ($this->activeRace)($user->id)?->distance_m;
-
         $intents = [];
         foreach ($judged as $row) {
             $date = $row->date->toDateString();
             $effective = $effectiveByDate[$date];
             $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $row->date));
-            $segments = $effective->isEased()
-                ? SegmentGenerator::easyBlock($effective->coreKm, $paces)
-                : SegmentGenerator::forCoreKm($effective->sessionType, $row->phase, $raceDistanceM === null ? null : (float) $raceDistanceM, $effective->coreKm, $paces);
-            $intents[$date] = SessionIntentJudge::judge($effective->sessionType, $segments, $paces, $runsByDate[$date] ?? []);
+            $race = $raceByDate !== null && array_key_exists($date, $raceByDate)
+                ? $raceByDate[$date]
+                : null;
+            $activeRace = $raceByDate !== null && array_key_exists($date, $raceByDate)
+                ? null
+                : ($this->activeRace)($user->id);
+            $raceDistanceM = $race['distance_m'] ?? $activeRace?->distance_m;
+            $raceGoalTimeSec = $race['goal_time_sec'] ?? $activeRace?->goal_time_sec;
+            $prescription = IntensityPrescription::fromSession($row);
+            $judgedType = $prescription?->isEasy() === true && in_array($effective->sessionType, [SessionType::Tempo, SessionType::Interval], true)
+                ? SessionType::Easy
+                : $effective->sessionType;
+            $segments = match (true) {
+                $effective->isEased() => SegmentGenerator::easyBlock($effective->coreKm, $paces),
+                $prescription !== null => SegmentGenerator::forPrescription($effective->sessionType, $row->phase, $effective->coreKm, $paces, $prescription),
+                default => SegmentGenerator::forCoreKm($effective->sessionType, $row->phase, $raceDistanceM === null ? null : (float) $raceDistanceM, $effective->coreKm, $paces, $raceGoalTimeSec),
+            };
+            $intents[$date] = SessionIntentJudge::judge($judgedType, $segments, $paces, $runsByDate[$date] ?? []);
         }
 
         return $intents;

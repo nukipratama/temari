@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Enums\IntentVerdict;
 use App\Enums\PlanPhase;
+use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use Database\Factories\PlannedSessionFactory;
@@ -51,6 +52,11 @@ use Override;
  * @property int|null $eased_pace_sec_per_km
  * @property float|null $volume_multiplier
  * @property int|null $race_distance_m
+ * @property int|null $prescribed_hard_minutes
+ * @property PaceBand|null $prescribed_pace_band
+ * @property int|null $prescribed_pace_sec_per_km
+ * @property string|null $prescription_reason
+ * @property array<string, int|float|string>|null $prescription_race_context
  * @property bool $pinned
  * @property bool $skipped
  * @property PlannedSessionStatus $status
@@ -68,6 +74,11 @@ use Override;
     'phase',
     'session_type',
     'race_distance_m',
+    'prescribed_hard_minutes',
+    'prescribed_pace_band',
+    'prescribed_pace_sec_per_km',
+    'prescription_reason',
+    'prescription_race_context',
     'pinned',
     'skipped',
     'status',
@@ -162,6 +173,11 @@ class PlannedSession extends Model
             'phase' => PlanPhase::class,
             'session_type' => SessionType::class,
             'race_distance_m' => 'integer',
+            'prescribed_hard_minutes' => 'integer',
+            'prescribed_pace_band' => PaceBand::class,
+            'prescribed_pace_sec_per_km' => 'integer',
+            'prescription_reason' => 'string',
+            'prescription_race_context' => 'array',
             'pinned' => 'boolean',
             'skipped' => 'boolean',
             'status' => PlannedSessionStatus::class,

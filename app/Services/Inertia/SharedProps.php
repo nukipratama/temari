@@ -65,10 +65,26 @@ final readonly class SharedProps
             // '' when unconfigured; the run map falls back to plain OSM tiles rather
             // than a watermarked CARTO map.
             'cartoApiKey' => (string) config('services.carto.api_key'),
+            'planRecalibration' => fn (): array => $this->planRecalibrationFor($user),
             ...$this->gamification->forUser($user),
             ...$this->strava->forUser($user),
             ...$this->notifications->forUser($user),
             ...$this->ai->forUser($user),
+        ];
+    }
+
+    /**
+     * @return array{pending: bool, started_at: string|null, completed_at: string|null}
+     */
+    private function planRecalibrationFor(?User $user): array
+    {
+        $started = $user?->plan_recalibration_started_at;
+        $completed = $user?->plan_recalibration_completed_at;
+
+        return [
+            'pending' => $started !== null && $completed === null,
+            'started_at' => $started?->toIso8601String(),
+            'completed_at' => $completed?->toIso8601String(),
         ];
     }
 }

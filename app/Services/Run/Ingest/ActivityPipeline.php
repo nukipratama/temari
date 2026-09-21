@@ -21,6 +21,7 @@ use App\Services\Run\Metrics\HeartRateZones;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Plan\PlanRecalibrationDispatch;
 use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
@@ -381,6 +382,7 @@ class ActivityPipeline
 
             // The relation cached a null before the row existed.
             $user->unsetRelation('runnerProfile');
+            PlanRecalibrationDispatch::forUserId($user->id);
 
             return;
         }
@@ -390,6 +392,7 @@ class ActivityPipeline
         $profile->update($profile->hasExplicitZones()
             ? ['max_hr' => $observed]
             : ['max_hr' => $observed, 'hr_zones' => HeartRateZones::derive($observed, $restingHr)]);
+        PlanRecalibrationDispatch::forUserId($user->id);
     }
 
     /**
