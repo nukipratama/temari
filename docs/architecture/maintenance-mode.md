@@ -3,7 +3,7 @@ title: Maintenance mode
 description: One durable app_config flag behind Laravel's maintenance driver, switched from Pulse or artisan down/up, that closes the app to everyone but admins and pauses the queue and scheduler
 tags: [architecture, infra]
 status: living
-reviewed: 2026-09-20
+reviewed: 2026-09-21
 code_refs:
   - app/Support/Config/AppConfigMaintenanceMode.php
   - app/Http/Middleware/EnforceMaintenanceMode.php
@@ -13,6 +13,7 @@ code_refs:
   - config/app.php
   - routes/console.php
   - resources/views/maintenance.blade.php
+  - .github/workflows/ci.yml
 ---
 
 # Maintenance mode
@@ -31,16 +32,18 @@ Failure behavior is explicit. If Redis is unavailable, reads fall back to MySQL 
 - **The scheduler** skips every task except `schedule:heartbeat` ([routes/console.php](routes/console.php#L33)), which keeps the scheduler container's healthcheck green.
 - **`artisan down` / `artisan up`** flip the same flag as the Pulse toggle. Their `--secret`, `--render`, `--redirect` and `--retry` options are ignored.
 
-`horizon:pause` is never used: `/up` checks Horizon's master supervisor, and a paused one fails the health check. Idle workers under a running master are the intended state.
+`horizon:pause` is never used: `/up` checks Horizon's master supervisor, and a paused one fails the deep health check. Idle workers under a running master are the intended state.
 
 ## Who gets in
 
-Laravel's global `PreventRequestsDuringMaintenance` is removed ([bootstrap/app.php](bootstrap/app.php)). It runs before the session starts, so it would 503 the admin on the Pulse page that switches maintenance off. [EnforceMaintenanceMode](app/Http/Middleware/EnforceMaintenanceMode.php) runs inside `web` instead. Login, the OAuth routes and the Strava webhook remain reachable; `/up` sits outside the web group. Everything else, including Telegram, the client-error sink, Pulse and devtools, first requires an authenticated `is_admin` user while maintenance is active. Devtools routes retain their existing password gate as a second check.
+Laravel's global `PreventRequestsDuringMaintenance` is removed ([bootstrap/app.php](bootstrap/app.php)). It runs before the session starts, so it would 503 the admin on the Pulse page that switches maintenance off. [EnforceMaintenanceMode](app/Http/Middleware/EnforceMaintenanceMode.php) runs inside `web` instead. Login, the OAuth routes and the Strava webhook remain reachable; `/up` and `/ready` sit outside the web group. Everything else, including Telegram, the client-error sink, Pulse and devtools, first requires an authenticated `is_admin` user while maintenance is active. Devtools routes retain their existing password gate as a second check.
 
-`/up` sits outside `web`, and Caddy serves the PWA assets from disk, so the deploy smoke test and healthcheck keep passing. Everyone else gets [the maintenance page](resources/views/maintenance.blade.php) with a 503 and `Retry-After`. An open Inertia app gets a hard reload, so it lands on the page too.
+`/ready` is the shallow container probe: it proves Laravel booted and can dispatch a request without querying MySQL, Redis or Horizon. `/up` remains the separate whole-system probe through `VerifyDependencies`. Both sit outside `web`, and Caddy serves the PWA assets from disk, so readiness, dependency health and the deploy smoke test keep passing during maintenance. Everyone else gets [the maintenance page](resources/views/maintenance.blade.php) with a 503 and `Retry-After`. An open Inertia app gets a hard reload, so it lands on the page too.
 
 The demo button hides and `/auth/demo` is refused. A new athlete finishing the Strava connect is [refused before any row is written](app/Http/Controllers/Auth/StravaAuthController.php#L174) and [deauthorized on Strava](app/Http/Controllers/Auth/StravaAuthController.php#L195), so they don't hold one of the app's athlete slots. Returning athletes sign in as usual and then see the page.
 
 ## What pausing costs
 
 Scheduled tasks don't catch up once maintenance lifts. A window across a task's slot skips that run: `trend:snapshot-daily` leaves a day with no row, and `streak:settle` skips settling a week that closes during the window. Running them during maintenance would be worse, since activities still sitting in the paused queue would count as missing runs.
+
+The deploy reads the flag before changing anything. With no pending migration it never touches maintenance. With a pending app or analytics migration it enables maintenance before either migrator runs, rolls and checks the release, starts scheduler and Pulse, then lifts only the flag it enabled itself. Owner-enabled maintenance is never lifted. A failure anywhere on the migration path keeps maintenance active because that path deliberately refuses automatic image rollback after schema work may have started.

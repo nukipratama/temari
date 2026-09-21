@@ -192,4 +192,4 @@ USER www-data
 EXPOSE 7001
 
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-    CMD wget -qO- http://127.0.0.1:7001/up || exit 1
+    CMD wget -qO- http://127.0.0.1:7001/ready || exit 1

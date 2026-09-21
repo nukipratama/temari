@@ -106,7 +106,7 @@ Nothing is excluded from coverage: `phpunit.xml` measures all of `app/`, service
 | CI — `lint`     | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |
 | CI — `pest`     | `pest` against mysql:8.4 + redis:8-alpine services — `--coverage --min=95` on pull requests, bare on the `main` push |
 | CI — `vitest`   | `npm run test:coverage` — 95% lines + functions, jsdom only            |
-| CI — `deploy`   | On push to `main`: build prod image, migrate, roll containers, recycle Horizon, healthcheck `/up` |
+| CI — `deploy`   | On push to `main`: build, migration-only maintenance, migrate, roll, check `/ready` + `/up` |
 | Nightly         | `composer audit` + `npm audit` (prod deps, high+) — scheduled, off the PR/deploy path so an upstream advisory can't block an unrelated change |
 
 ## Branch workflow
@@ -152,7 +152,7 @@ Defined in [compose.prod.yaml](compose.prod.yaml) + [Dockerfile](Dockerfile) + [
 1. PR merges to `main`.
 2. The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) waits for `lint` + `pest` to pass.
 3. The job runs on a containerized self-hosted runner registered for this repo, connecting outbound-only (no inbound port).
-4. On the host, the job: tags the current `:latest` as `:previous`, builds a new image, tags it with the git SHA, runs `migrate --force`, rolls `app`/`horizon`/`scheduler`, runs `artisan optimize`, recycles Horizon workers via `horizon:terminate`, healthchecks `/up`, and prunes images older than 7 days.
+4. On the host, the job preserves owner maintenance, enables deploy-owned maintenance only when migrations are pending, migrates, rolls the services, checks shallow `/ready` and deep `/up`, smoke-tests the release, then lifts only deploy-owned maintenance.
 
 ### Setup (one-time, on the host)
 
