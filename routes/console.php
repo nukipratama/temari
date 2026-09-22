@@ -49,11 +49,11 @@ Schedule::command('demo:daily-refresh')->dailyAt('00:13')->withoutOverlapping(10
 // Monday 00:16: narrate last week's recap once per user, on final data. The
 // per-ingest cascade only stages the row Pending (weekly cadence) — this is
 // the single scheduled LLM call that fills it. Chained after streak:settle
-// (00:00), which it reads consecutiveWeekStreak() from: the ->when() below
-// refuses to start until streak:settle's onSuccess callback has marked itself
-// done for today, so a slow or failed settle can never let a stale streak get
-// narrated. 00:16 is a spacing fallback, not the enforcement — see the Monday
-// ordering table in docs/architecture/scheduler.md.
+// (00:00), which it reads consecutiveWeekStreak() from: the ->when() gate
+// refuses to start until the settlement jobs have marked every athlete current,
+// so a slow or failed settle can never let a stale streak get narrated. 00:16
+// is a spacing fallback, not the enforcement — see the Monday ordering table
+// in docs/architecture/scheduler.md.
 $alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer()
     ->when(static fn (): bool => SchedulerChain::prerequisitesMet('ai:weekly-recap')), 'ai:weekly-recap');
 
@@ -204,13 +204,13 @@ Schedule::command('weather:backfill')->dailyAt('03:30')->withoutOverlapping(55)-
 // claim table makes a same-week re-run a no-op, not a second push.
 Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->withoutOverlapping(15)->onOneServer();
 
-// Monday 00:00: settle the week that just closed — mint a rest token every 4th
-// streak week, or spend one to forgive a runless week. Chained ahead of
-// ai:weekly-recap (00:16) via its onSuccess callback below marking itself done
-// for today, which ai:weekly-recap's ->when() gate requires before it narrates
-// a streak this command might be about to restore. No LLM and no Strava call.
-Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer()
-    ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE));
+// Monday 00:00: queue settlement of the week that just closed — mint a rest
+// token every 4th streak week, or spend one to forgive a runless week. Each
+// per-user job advances a durable cursor and the final job marks the prerequisite
+// done only after every athlete is current, which ai:weekly-recap's ->when() gate
+// requires before it narrates a streak this command might restore. No LLM and
+// no Strava call.
+Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer();
 
 // 18:00 daily (Asia/Jakarta, the app timezone): tell an athlete whose goal race
 // is tomorrow that it is tomorrow, while there is still an evening left to act

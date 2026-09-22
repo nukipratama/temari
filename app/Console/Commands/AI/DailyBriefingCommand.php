@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\AI;
 
 use App\Actions\AI\RecentlyActiveUsers;
-use App\Services\AI\PlanNarrationRequester;
-use App\Services\Run\Plan\RestClampRecorder;
+use App\Actions\AI\RunDailyBriefingSideEffects;
 use App\Services\AI\AnalysisService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -21,8 +20,7 @@ class DailyBriefingCommand extends Command
 {
     public function handle(
         AnalysisService $service,
-        RestClampRecorder $restClampRecorder,
-        PlanNarrationRequester $planNarration,
+        RunDailyBriefingSideEffects $sideEffects,
         RecentlyActiveUsers $activeUsers,
     ): int {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
@@ -32,13 +30,7 @@ class DailyBriefingCommand extends Command
         $users = $activeUsers();
 
         foreach ($users as $user) {
-            // The other place today's readiness ceiling is computed. Covers a
-            // clamp that fires on carried-over fatigue, with no run to trigger
-            // the ingest listener.
-            $restClampRecorder->record($user, Carbon::today());
-            // Covers a clamp that fires on carried-over fatigue with no run
-            // behind it, which the ingest listener never sees.
-            $planNarration->requestClampVoice($user, Carbon::today());
+            ($sideEffects)($user, Carbon::today());
 
             // A first connect's still-draining backlog narrates right away
             // too; markDone() flags the row for SettleEarlyNarrationAction's

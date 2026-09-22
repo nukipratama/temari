@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Models\AI\Analysis;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Services\Gamification\StreakSettlementService;
 use Database\Factories\WeeklySnapshotFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -58,9 +59,14 @@ class WeeklySnapshot extends Model
         $bust = function (WeeklySnapshot $row): void {
             app(ResolveTrailingWeeksAction::class)->forget($row->user_id);
         };
+        $markStreakDirty = function (WeeklySnapshot $row): void {
+            app(StreakSettlementService::class)->markDirty($row->user_id, $row->week_ending);
+        };
 
         static::saved($bust);
         static::deleted($bust);
+        static::saved($markStreakDirty);
+        static::deleted($markStreakDirty);
     }
 
     /**

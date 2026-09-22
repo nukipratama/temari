@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Actions\Gamification\SettleStreakRestTokensAction;
 use App\Models\RaceGoal;
 use App\Models\StreakRestToken;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\SeasonStreakSummaryBuilder;
+use App\Services\Gamification\StreakSettlementService;
 use App\Services\Run\Plan\SeasonService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -64,7 +64,7 @@ it('reports the weekly streak with its open week and no rest weeks held', functi
         ->toBe([
             'weeks' => 1,
             'rest_weeks_held' => 0,
-            'rest_weeks_cap' => SettleStreakRestTokensAction::MAX_HELD,
+            'rest_weeks_cap' => StreakSettlementService::MAX_HELD,
             'weeks_to_next_rest_week' => 3,
             'ran_this_week' => true,
             'week_ends_on' => '2026-08-16',
@@ -74,7 +74,7 @@ it('reports the weekly streak with its open week and no rest weeks held', functi
 
 it('stops forecasting the next rest week once the held ones are capped, and names the last forgiven week', function (): void {
     $user = User::factory()->create();
-    foreach (range(1, SettleStreakRestTokensAction::MAX_HELD) as $offset) {
+    foreach (range(1, StreakSettlementService::MAX_HELD) as $offset) {
         StreakRestToken::factory()->create([
             'user_id' => $user->id,
             'earned_for_week_ending' => Carbon::parse('2026-08-09')->subWeeks($offset)->toDateString(),
@@ -88,7 +88,7 @@ it('stops forecasting the next rest week once the held ones are capped, and name
 
     $payload = $this->builder->streakPayload($user, Carbon::today());
 
-    expect($payload['rest_weeks_held'])->toBe(SettleStreakRestTokensAction::MAX_HELD)
+    expect($payload['rest_weeks_held'])->toBe(StreakSettlementService::MAX_HELD)
         ->and($payload['weeks_to_next_rest_week'])->toBeNull()
         ->and($payload['last_forgiven_week'])->toBe('2026-07-05');
 });

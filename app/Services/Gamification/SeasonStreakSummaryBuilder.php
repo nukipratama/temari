@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
-use App\Actions\Gamification\SettleStreakRestTokensAction;
 use App\Models\Season;
 use App\Models\StreakRestToken;
 use App\Models\User;
@@ -62,7 +61,7 @@ final readonly class SeasonStreakSummaryBuilder
     /**
      * The weekly streak, its stakes for the open week, and the rest weeks that
      * stand between a runless week and a reset. Spending is automatic at week
-     * close ({@see SettleStreakRestTokensAction}), so nothing here is an
+     * close ({@see StreakSettlementService}), so nothing here is an
      * affordance the user could act on.
      *
      * @return array{weeks: int, rest_weeks_held: int, rest_weeks_cap: int, weeks_to_next_rest_week: int|null, ran_this_week: bool, week_ends_on: string, last_forgiven_week: string|null}
@@ -73,8 +72,8 @@ final readonly class SeasonStreakSummaryBuilder
         $held = StreakRestToken::unspentCountForUser($user->id);
         $weekEndsOn = $today->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
-        $accrual = SettleStreakRestTokensAction::ACCRUAL_EVERY_WEEKS;
-        $atCap = $held >= SettleStreakRestTokensAction::MAX_HELD;
+        $accrual = StreakSettlementService::ACCRUAL_EVERY_WEEKS;
+        $atCap = $held >= StreakSettlementService::MAX_HELD;
 
         $lastForgiven = StreakRestToken::query()
             ->where('user_id', $user->id)
@@ -85,7 +84,7 @@ final readonly class SeasonStreakSummaryBuilder
         return [
             'weeks' => $weeks,
             'rest_weeks_held' => $held,
-            'rest_weeks_cap' => SettleStreakRestTokensAction::MAX_HELD,
+            'rest_weeks_cap' => StreakSettlementService::MAX_HELD,
             'weeks_to_next_rest_week' => $atCap ? null : $accrual - ($weeks % $accrual),
             'ran_this_week' => WeeklySnapshot::query()
                 ->where('user_id', $user->id)

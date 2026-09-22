@@ -39,6 +39,10 @@ it('lets ai:weekly-recap pass its when() gate once streak:settle succeeds today'
 
     $settle->finish(app(), 0);
 
+    expect($recap->filtersPass(app()))->toBeFalse();
+
+    SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE);
+
     expect($recap->filtersPass(app()))->toBeTrue();
 });
 

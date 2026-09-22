@@ -69,11 +69,11 @@ despite that.
 | `analytics:prune` | daily 02:25 | 15 | yes | four `DELETE`s — three on the `analytics` connection, one on `analysis_versions` | ~1.7s — 0 rows pruned |
 | `strava:sync` / `strava:ingest` / `strava:hydrate-backlog` | see `routes/console.php` | 55/10/14 (unchanged) | yes | already guarded pre-DF-1 | ~1.3-1.4s each — no real Strava connection to poll/drain against locally (needs live Strava credentials); cannot be meaningfully measured in this worktree |
 | `geo:backfill-locations` / `weather:correct-forecast` / `weather:backfill` | see `routes/console.php` | 55/55/55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s each — 0 rows to backfill; `weather:*` additionally need a live Open-Meteo call to exercise the fetch path |
-| `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | already guarded pre-DF-1 | reconciles seven closed rows per user; ingest repairs backdated ranges |
+| `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | queues durable closed-date recovery in 365-day chunks; `--days=N` remains the focused mode | scheduled recovery advances each user's cursor through yesterday; ingest repairs backdated ranges |
 | `race:remind` | daily 18:00 | 15 | yes | one race-goal sweep, same shape and cost as `streak:remind` | not measured — added after this pass; the sweep is one indexed `race_date` query plus one notify per athlete racing tomorrow |
 | `briefing:morning-push` | every 15 min | 14 | yes | one median-start-time sweep, sized like the other quarter-hourly drain; sends only, generates nothing | not measured — added after this pass; the median is cached per athlete per day (`UsualRunTime`), so only the first tick to see a given athlete that day pays the indexed read, every later tick that day is a cache hit |
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep | ~2.0s — dispatched to 0 users |
-| `streak:settle` | Mon 00:00 | 20 | yes | per-user token settle over users with a `WeeklySnapshot` | ~1.5s — minted 0, spent 0 |
+| `streak:settle` | Mon 00:00 | 20 | yes | queues chronological per-user settlement; recap creation remains gated until all cursors are current | queues one settlement job per user with a `WeeklySnapshot` |
 
 Values marked "unchanged" already had `withoutOverlapping()` before this pass and keep their
 existing TTL; only `onOneServer()` was added to those.
@@ -110,13 +110,14 @@ step:
 The two hard dependencies — `streak:settle` → `ai:weekly-recap`, and
 `plan:close-finished-races` + `plan:score-compliance` → `plan:regenerate` — are now **chained**, not
 just spaced: [SchedulerChain](../../app/Console/SchedulerChain.php) is a tiny "prerequisite done
-today" cache flag. Each prerequisite marks itself done via `->onSuccess()` when its exit code is 0;
-each dependent's `->when()` gate refuses to run until every prerequisite it needs has marked itself
-done for the current date. Concretely, in `routes/console.php`:
+today" cache flag. The plan prerequisites mark themselves done via `->onSuccess()` when their exit
+code is 0. Streak settlement marks itself done from the final successful per-user job, after every
+athlete's durable cursor reaches the latest closed week. Each dependent's `->when()` gate refuses
+to run until every prerequisite it needs has marked itself done for the current date. Concretely,
+in `routes/console.php`:
 
 ```php
-Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer()
-    ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE));
+Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer();
 
 Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer()
     ->when(static fn (): bool => SchedulerChain::prerequisitesMet('ai:weekly-recap'));
@@ -131,7 +132,9 @@ it runs (`schedule:list` still shows `ai:weekly-recap` at its own `16 0 * * 1`, 
 `streak:settle`'s entry), while still making the dependency load-bearing rather than assumed. The
 existing `withoutOverlapping()`/`onOneServer()` guards on every event are untouched — `->when()` is
 an additional filter Laravel checks via `Event::filtersPass()` before a due event runs, not a
-replacement for the overlap/single-host locks.
+replacement for the overlap/single-host locks. A settlement job that fails or reaches the safety
+bound leaves the cache flag unset; its retry or next scheduled invocation must finish before the
+recap gate opens.
 
 The staggered times (00:00 → 00:16 → 00:21 → 00:26) stay as a **fallback**, not the enforcement: in
 practice the flag is almost always already set by the time the dependent's own cron tick fires,
@@ -140,9 +143,10 @@ its own generous `withoutOverlapping` TTL (see the measured-locally column in th
 spacing alone would still work at today's scale, but the `->when()` gate is what makes it correct
 rather than merely likely, and is what protects the ordering once a slow run, a retry, or a future
 higher user count makes "usually finishes first" no longer safe to assume. A prerequisite that
-fails (non-zero exit) never marks itself done, so a failed `streak:settle` correctly holds back
-`ai:weekly-recap` for that Monday rather than letting it narrate a streak the settle never applied
-— it picks back up automatically the following Monday once the prerequisite succeeds again.
+fails never marks itself done, so a failed `streak:settle` correctly holds back `ai:weekly-recap`
+rather than letting it narrate a streak the settle never applied. The per-user settlement jobs retry
+and self-dispatch while behind; if a job remains failed, the next Monday's scheduled command queues
+it again.
 
 ## Cadence derivations (previously qualitative-only)
 

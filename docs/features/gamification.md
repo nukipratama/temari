@@ -18,7 +18,7 @@ code_refs:
   - resources/js/components/trends/panels/FitnessPanel.tsx
   - app/Models/RunCard.php
   - app/Models/StreakRestToken.php
-  - app/Actions/Gamification/SettleStreakRestTokensAction.php
+  - app/Services/Gamification/StreakSettlementService.php
   - app/Console/Commands/Gamification/SettleStreakTokensCommand.php
   - app/Models/PersonalRecord.php
 ---
@@ -93,12 +93,12 @@ Goal targets are generated scaled to the season's own length ([SeasonService](..
 
 The weekly streak (`WeeklySnapshot::consecutiveWeekStreak()`) hard-resets to 0 as soon as one full week closes with no run. A **rest token** forgives exactly one such week, so a week lost to illness or a taper does not cost the streak.
 
-- **Accrual** — one token every 4th streak week, matching the periodizer's own 3-build-1-deload cycle (`PhaseSchedule`), so a token lands as a deload week comes due. At most `SettleStreakRestTokensAction::MAX_HELD` are held at once, which is what stops a long streak banking enough weeks to make itself meaningless.
+- **Accrual** — one token every 4th streak week, matching the periodizer's own 3-build-1-deload cycle (`PhaseSchedule`), so a token lands as a deload week comes due. At most `StreakSettlementService::MAX_HELD` are held at once, which is what stops a long streak banking enough weeks to make itself meaningless.
 - **Spending is automatic**, at week close, and only when forgiving the week would actually bridge to a week the user ran — a token is never burned by a user with no streak to save. There is no surface on which a user could play one, and a token you have to remember would fail the runner it exists to protect.
 - **A forgiven week bridges the streak without counting toward it.** The user did not run, so the number does not grow.
 - Nothing is revoked when a streak breaks; the counter resets and the collection is untouched.
 
-[SettleStreakTokensCommand](../../app/Console/Commands/Gamification/SettleStreakTokensCommand.php) (`streak:settle`, Monday 00:00) settles the closed week. It is scheduled **ahead of `ai:weekly-recap` (00:01)**, which reads the streak and would otherwise narrate one this command is about to restore; that ordering is asserted, not just commented.
+[SettleStreakTokensCommand](../../app/Console/Commands/Gamification/SettleStreakTokensCommand.php) (`streak:settle`, Monday 00:00) queues chronological settlement from each athlete's durable cursor. A first run deterministically rebuilds available history; later runs process bounded batches until the cursor reaches the latest closed week. The final job marks the scheduler prerequisite done only when every athlete is current, so `ai:weekly-recap` cannot narrate a partially settled fleet. The command is scheduled **ahead of `ai:weekly-recap`**, which reads the streak and would otherwise narrate one this command is about to restore; that ordering is asserted and the hourly kickoff sweep respects the same durable gate.
 
 The streak, the open week's stake, and the held rest weeks render on Profile's season & streak panel — with no control to play a rest week, since there is nothing to play. The mobile-UX port's `plan/README.md` §5 ("Streak feature redesign") moved this off the Plan tab; the prototype-parity program's P25/P27 then cut Trends' badge board too, so the week streak survives on Trends as a single chip inside [FitnessPanel](../../resources/js/components/trends/panels/FitnessPanel.tsx). See [[plan-periodizer]] and [[profile]].
 
