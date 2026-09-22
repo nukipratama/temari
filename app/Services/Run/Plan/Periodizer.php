@@ -201,9 +201,8 @@ final readonly class Periodizer
     {
         $firstEasy = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Easy);
         $kmByDate = [];
-        $totalMinutes = 0.0;
         foreach ($rows as $date => $row) {
-            $km = SegmentGenerator::coreKmFor(
+            $kmByDate[$date] = SegmentGenerator::coreKmFor(
                 $row['session_type'],
                 $date === $firstEasy,
                 $inputs->longRunBaselineKm,
@@ -212,12 +211,6 @@ final readonly class Periodizer
                 $inputs->raceDistanceM,
                 $inputs->longRunProgressionCapKm,
             );
-            $kmByDate[$date] = $km;
-            if ($inputs->paces !== null && $row['session_type'] === SessionType::Race && $inputs->raceGoalTimeSec !== null) {
-                $totalMinutes += $inputs->raceGoalTimeSec / 60;
-            } elseif ($inputs->paces !== null) {
-                $totalMinutes += $km * $inputs->paces['easy'] / 60;
-            }
         }
 
         $prescriptions = [];
@@ -241,7 +234,7 @@ final readonly class Periodizer
 
         // Without VDOT there is no trustworthy time denominator. Keep the
         // phase/day caps, but do not invent a weekly percentage ceiling.
-        $hardCeiling = $inputs->paces === null ? null : (int) floor($totalMinutes * 0.3);
+        $hardCeiling = $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs);
         while ($hardCeiling !== null && array_sum(array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions)) > $hardCeiling) {
             $hardMinutes = array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions);
             $largestHardMinutes = $hardMinutes === [] ? 0 : max($hardMinutes);
@@ -271,6 +264,8 @@ final readonly class Periodizer
             if ($prescriptions[$date]->hardMinutes === $current->hardMinutes) {
                 break;
             }
+
+            $hardCeiling = $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs);
         }
 
         foreach ($rows as $date => &$row) {
@@ -287,6 +282,32 @@ final readonly class Periodizer
         unset($row);
 
         return $rows;
+    }
+
+    /** @param array<string, array{session_type: SessionType, phase: PlanPhase, ...}> $rows
+     *  @param array<string, float> $kmByDate
+     *  @param array<string, IntensityPrescription> $prescriptions
+     */
+    private function hardCeiling(array $rows, array $kmByDate, array $prescriptions, PlanInputs $inputs): ?int
+    {
+        if ($inputs->paces === null) {
+            return null;
+        }
+
+        $totalMinutes = 0.0;
+        foreach ($rows as $date => $row) {
+            $segments = $row['session_type']->isQuality()
+                ? SegmentGenerator::forPrescription($row['session_type'], $row['phase'], $kmByDate[$date], $inputs->paces, $prescriptions[$date])
+                : SegmentGenerator::forCoreKm($row['session_type'], $row['phase'], $inputs->raceDistanceM, $kmByDate[$date], $inputs->paces, $inputs->raceGoalTimeSec);
+
+            foreach ($segments as $segment) {
+                if ($segment->minutes !== null) {
+                    $totalMinutes += $segment->minutes;
+                }
+            }
+        }
+
+        return (int) floor($totalMinutes * 0.3);
     }
 
     /**

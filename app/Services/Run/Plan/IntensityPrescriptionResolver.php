@@ -39,7 +39,7 @@ final class IntensityPrescriptionResolver
         ?int $previousHardMinutes = null,
         ?int $hardMinutesAvailable = null,
     ): IntensityPrescription {
-        if (! in_array($type, [SessionType::Tempo, SessionType::Interval, SessionType::Long], true)) {
+        if (! $type->isQuality()) {
             return new IntensityPrescription(0, null, null, 'easy volume');
         }
 
@@ -53,7 +53,7 @@ final class IntensityPrescriptionResolver
             : ($raceContext === null ? 20 : 15);
         $minutes = $previousHardMinutes === null
             ? min($target, $coldStart)
-            : $this->progressed($previousHardMinutes, $previousVerdict, $type, $phase);
+            : $this->progressed($previousHardMinutes, $previousVerdict, $type, $phase, $target);
         $reason = $previousHardMinutes === null ? 'conservative start with sparse comparable evidence' : match ($previousVerdict) {
             IntentVerdict::Hit => 'progressed after the latest comparable session was hit',
             IntentVerdict::TooHard => 'stepped down after the latest comparable session was too hard',
@@ -62,7 +62,7 @@ final class IntensityPrescriptionResolver
 
         $minutes = min($target, $minutes);
         if ($hardMinutesAvailable !== null && $minutes > $hardMinutesAvailable) {
-            $minutes = max(0, $hardMinutesAvailable);
+            $minutes = $this->wholeWorkUnits($type, $phase, $target, $hardMinutesAvailable);
             $reason = 'bounded by this week’s easy-time reserve';
         }
         if ($type === SessionType::Interval) {
@@ -116,7 +116,7 @@ final class IntensityPrescriptionResolver
         return [self::THRESHOLD_TARGETS[$phase->value] ?? 0, PaceBand::Threshold, null];
     }
 
-    private function progressed(int $minutes, ?IntentVerdict $verdict, SessionType $type, PlanPhase $phase): int
+    private function progressed(int $minutes, ?IntentVerdict $verdict, SessionType $type, PlanPhase $phase, int $target): int
     {
         if ($type === SessionType::Interval) {
             $rep = self::INTERVAL_REP_MINUTES[$phase->value] ?? 3;
@@ -128,11 +128,20 @@ final class IntensityPrescriptionResolver
             };
         }
 
+        $workUnit = SegmentGenerator::workUnitMinutes($type, $phase, $target);
+
         return match ($verdict) {
             IntentVerdict::Hit => (int) round($minutes * 1.1),
-            IntentVerdict::TooHard => max(10, $minutes - 5),
+            IntentVerdict::TooHard => max(0, $minutes - $workUnit),
             default => $minutes,
         };
+    }
+
+    private function wholeWorkUnits(SessionType $type, PlanPhase $phase, int $target, int $available): int
+    {
+        $unit = SegmentGenerator::workUnitMinutes($type, $phase, $target);
+
+        return intdiv(max(0, $available), $unit) * $unit;
     }
 
     /**

@@ -21,14 +21,36 @@ it('starts conservatively then progresses or steps down from comparable evidence
 
     expect($cold->hardMinutes)->toBe(20)
         ->and($hit->hardMinutes)->toBe(22)
-        ->and($tooHard->hardMinutes)->toBe(15);
+        ->and($tooHard->isEasy())->toBeTrue();
+});
+
+it('steps tempo down by one phase-shaped work block', function (): void {
+    $base = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Base, null, null, PRESCRIPTION_PACES, IntentVerdict::TooHard, 20);
+    $build = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Build, null, null, PRESCRIPTION_PACES, IntentVerdict::TooHard, 20);
+    $taper = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Taper, null, null, PRESCRIPTION_PACES, IntentVerdict::TooHard, 20);
+
+    expect($base->hardMinutes)->toBe(13)
+        ->and($build->isEasy())->toBeTrue()
+        ->and($taper->hardMinutes)->toBe(10);
 });
 
 it('uses whole interval repetitions and the phase target', function (): void {
     $prescription = $this->resolver->resolve(SessionType::Interval, PlanPhase::Peak, null, null, PRESCRIPTION_PACES, IntentVerdict::Hit, 12);
+    $rounded = $this->resolver->resolve(SessionType::Interval, PlanPhase::Peak, null, null, PRESCRIPTION_PACES, IntentVerdict::Unknown, 13);
 
     expect($prescription->hardMinutes)->toBe(16)
+        ->and($rounded->hardMinutes)->toBe(12)
         ->and($prescription->paceBand)->toBe(PaceBand::Interval);
+});
+
+it('clips every quality type to whole work units when the weekly reserve binds', function (): void {
+    $tempo = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Build, null, null, PRESCRIPTION_PACES, hardMinutesAvailable: 19);
+    $interval = $this->resolver->resolve(SessionType::Interval, PlanPhase::Build, null, null, PRESCRIPTION_PACES, hardMinutesAvailable: 5);
+    $long = $this->resolver->resolve(SessionType::Long, PlanPhase::Build, 42_195, 12_000, PRESCRIPTION_PACES, hardMinutesAvailable: 10);
+
+    expect($tempo->hardMinutes)->toBe(15)
+        ->and($interval->isEasy())->toBeTrue()
+        ->and($long->isEasy())->toBeTrue();
 });
 
 it('uses the slower supported marathon pace and a credible ultra goal pace', function (): void {

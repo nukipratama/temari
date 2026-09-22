@@ -391,7 +391,7 @@ final class PlanRenderer
 
             return SegmentGenerator::easyBlock(round($km, 1), $paces);
         }
-        if ($prescription === null || ! in_array($sessionType, [SessionType::Tempo, SessionType::Interval, SessionType::Long], true)) {
+        if ($prescription === null || ! $sessionType->isQuality()) {
             return SegmentGenerator::generate($sessionType, $phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm);
         }
 

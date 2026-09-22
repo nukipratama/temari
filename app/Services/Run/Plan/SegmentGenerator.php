@@ -83,6 +83,21 @@ final class SegmentGenerator
         'taper' => [2.0, 3.0],
     ];
 
+    public static function workUnitMinutes(SessionType $sessionType, PlanPhase $phase, int $workBasisMinutes): int
+    {
+        if ($sessionType === SessionType::Long) {
+            return max(1, $workBasisMinutes);
+        }
+
+        if ($sessionType === SessionType::Interval) {
+            return (int) (self::INTERVAL_REP_TABLE[$phase->value][0] ?? 3.0);
+        }
+
+        [$blocks] = self::TEMPO_BLOCK_TABLE[$phase->value] ?? self::TEMPO_BLOCK_TABLE['build'];
+
+        return max(1, (int) ceil($workBasisMinutes / $blocks));
+    }
+
     /**
      * The WHOLE distance this session asks for, warmup included, before any
      * redistribution scale — the direct replacement for the retired
@@ -248,7 +263,7 @@ final class SegmentGenerator
         ?array $paces,
         IntensityPrescription $prescription,
     ): array {
-        if ($prescription->isEasy() || ! in_array($sessionType, [SessionType::Tempo, SessionType::Interval, SessionType::Long], true)) {
+        if ($prescription->isEasy() || ! $sessionType->isQuality()) {
             return self::easyBlock($coreKm, $paces);
         }
 
@@ -256,6 +271,7 @@ final class SegmentGenerator
             SessionType::Tempo => self::prescribedTempoSegments($phase, $coreKm, $paces, $prescription),
             SessionType::Interval => self::prescribedIntervalSegments($phase, $coreKm, $paces, $prescription),
             SessionType::Long => self::prescribedLongSegments($coreKm, $paces, $prescription),
+            default => self::easyBlock($coreKm, $paces),
         };
     }
 

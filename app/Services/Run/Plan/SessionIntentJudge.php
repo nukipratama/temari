@@ -56,7 +56,7 @@ final class SessionIntentJudge
      */
     private static function tempo(array $segments, array $runs): array
     {
-        $blocks = array_values(array_filter($segments, static fn (SessionSegment $segment): bool => in_array($segment->key, [SegmentKey::Main, SegmentKey::Easy], true) && in_array($segment->paceLabel, [PaceBand::Threshold, PaceBand::Marathon], true)));
+        $blocks = array_values(array_filter($segments, static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Main && in_array($segment->paceLabel, [PaceBand::Threshold, PaceBand::Marathon], true)));
         $block = $blocks[0] ?? null;
         if ($block?->minutes === null || $block->paceSecPerKm === null) {
             return self::reading(IntentVerdict::Unknown);

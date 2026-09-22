@@ -3,10 +3,13 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
+use App\Enums\IntentVerdict;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
+use App\Services\Run\Plan\IntensityPrescription;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanInputs;
+use App\Services\Run\Plan\SegmentGenerator;
 use Illuminate\Support\Carbon;
 
 /** The Monday the arc opens on, and the Saturday the goal race is run. */
@@ -164,4 +167,65 @@ it('holds a race block flat outside its dips while its increases are held', func
     sort($multipliers);
 
     expect($multipliers)->toBe([0.4, 0.65, 1.0]);
+});
+
+it('keeps prescribed hard work inside the real weekly time budget', function (): void {
+    $inputs = arcInputs(today: '2026-09-21');
+    $inputs = new PlanInputs(...[
+        ...get_object_vars($inputs),
+        'sessionsPerWeek' => 5,
+        'raceDistanceM' => 10_000.0,
+        'raceGoalTimeSec' => 3_600,
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 28.0,
+        'longRunCapKm' => 28.0,
+        'longRunProgressionCapKm' => 28.0,
+        'recentPrescriptions' => [
+            'tempo' => ['verdict' => IntentVerdict::Hit, 'hard_minutes' => 30],
+            'interval' => ['verdict' => IntentVerdict::Hit, 'hard_minutes' => 12],
+        ],
+    ]);
+
+    $weekStart = Carbon::parse('2026-09-21');
+    $weekRows = array_filter(
+        app(Periodizer::class)->rowsFor($inputs),
+        static fn (array $row, string $date): bool => $date >= $weekStart->toDateString() && $date <= $weekStart->copy()->addDays(6)->toDateString(),
+        ARRAY_FILTER_USE_BOTH,
+    );
+    $firstEasy = array_find_key($weekRows, static fn (array $row): bool => $row['session_type'] === SessionType::Easy);
+    $totalMinutes = 0.0;
+    $hardMinutes = 0;
+    $hardDays = 0;
+
+    foreach ($weekRows as $date => $row) {
+        $km = SegmentGenerator::coreKmFor(
+            $row['session_type'],
+            $date === $firstEasy,
+            $inputs->longRunBaselineKm,
+            $row['volume_multiplier'],
+            $inputs->longRunCapKm,
+            $inputs->raceDistanceM,
+            $inputs->longRunProgressionCapKm,
+        );
+        $prescription = new IntensityPrescription(
+            $row['prescribed_hard_minutes'],
+            $row['prescribed_pace_band'],
+            $row['prescribed_pace_sec_per_km'],
+            $row['prescription_reason'],
+            $row['prescription_race_context'],
+        );
+        $segments = $row['session_type']->isQuality()
+            ? SegmentGenerator::forPrescription($row['session_type'], $row['phase'], $km, $inputs->paces, $prescription)
+            : SegmentGenerator::forCoreKm($row['session_type'], $row['phase'], $inputs->raceDistanceM, $km, $inputs->paces, $inputs->raceGoalTimeSec);
+        foreach ($segments as $segment) {
+            $totalMinutes += $segment->minutes ?? 0.0;
+        }
+        if ($prescription->hardMinutes > 0) {
+            $hardMinutes += $prescription->hardMinutes;
+            $hardDays++;
+        }
+    }
+
+    expect($hardMinutes)->toBeLessThanOrEqual((int) floor($totalMinutes * 0.3))
+        ->and($hardDays)->toBeLessThanOrEqual(2);
 });
