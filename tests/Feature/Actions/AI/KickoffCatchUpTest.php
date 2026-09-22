@@ -49,6 +49,7 @@ function rowFor(AnalysisType $type, int $subjectId, ?string $discriminator): ?An
 it('creates every kickoff row a missed 00:01 and Monday block would have created, and dispatches none of them', function (): void {
     $user = activeAthlete();
     $lastWeek = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+    $user->forceFill(['streak_settled_through' => '2026-05-17'])->saveQuietly();
 
     $created = app(KickoffCatchUp::class)();
 
@@ -69,6 +70,7 @@ it('creates every kickoff row a missed 00:01 and Monday block would have created
 it('creates nothing on a second run', function (): void {
     $user = activeAthlete();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+    $user->forceFill(['streak_settled_through' => '2026-05-17'])->saveQuietly();
 
     app(KickoffCatchUp::class)();
 

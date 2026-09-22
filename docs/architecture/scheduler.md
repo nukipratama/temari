@@ -69,11 +69,11 @@ despite that.
 | `analytics:prune` | daily 02:25 | 15 | yes | four `DELETE`s — three on the `analytics` connection, one on `analysis_versions` | ~1.7s — 0 rows pruned |
 | `strava:sync` / `strava:ingest` / `strava:hydrate-backlog` | see `routes/console.php` | 55/10/14 (unchanged) | yes | already guarded pre-DF-1 | ~1.3-1.4s each — no real Strava connection to poll/drain against locally (needs live Strava credentials); cannot be meaningfully measured in this worktree |
 | `geo:backfill-locations` / `weather:correct-forecast` / `weather:backfill` | see `routes/console.php` | 55/55/55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s each — 0 rows to backfill; `weather:*` additionally need a live Open-Meteo call to exercise the fetch path |
-| `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | already guarded pre-DF-1 | reconciles seven closed rows per user; ingest repairs backdated ranges |
+| `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | queues durable closed-date recovery in 365-day chunks; `--days=N` remains the focused mode | scheduled recovery advances each user's cursor through yesterday; ingest repairs backdated ranges |
 | `race:remind` | daily 18:00 | 15 | yes | one race-goal sweep, same shape and cost as `streak:remind` | not measured — added after this pass; the sweep is one indexed `race_date` query plus one notify per athlete racing tomorrow |
 | `briefing:morning-push` | every 15 min | 14 | yes | one median-start-time sweep, sized like the other quarter-hourly drain; sends only, generates nothing | not measured — added after this pass; the median is cached per athlete per day (`UsualRunTime`), so only the first tick to see a given athlete that day pays the indexed read, every later tick that day is a cache hit |
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep | ~2.0s — dispatched to 0 users |
-| `streak:settle` | Mon 00:00 | 20 | yes | per-user token settle over users with a `WeeklySnapshot` | ~1.5s — minted 0, spent 0 |
+| `streak:settle` | Mon 00:00 | 20 | yes | queues chronological per-user settlement; recap creation remains gated until all cursors are current | queues one settlement job per user with a `WeeklySnapshot` |
 
 Values marked "unchanged" already had `withoutOverlapping()` before this pass and keep their
 existing TTL; only `onOneServer()` was added to those.

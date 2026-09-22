@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\StreakRestToken;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Gamification\StreakSettlementService;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,16 +32,20 @@ it('mints for a user who completed a cycle and spends for one who went runless',
     settleWeeks($earner, 4);
 
     $rester = User::factory()->create();
-    settleWeeks($rester, 3, '2026-05-24');
+    settleWeeks($rester, 4, '2026-05-24');
     StreakRestToken::factory()->for($rester)->create(['earned_for_week_ending' => '2026-05-10']);
 
     $this->artisan('streak:settle')
-        ->expectsOutputToContain('minted 1 rest tokens, spent 1')
+        ->expectsOutputToContain('Queued streak settlement for 2 users.')
         ->assertSuccessful();
+
+    $settlement = app(StreakSettlementService::class);
+    $settlement->settle($earner);
+    $settlement->settle($rester);
 
     expect(StreakRestToken::unspentCountForUser($earner->id))->toBe(1)
         ->and(StreakRestToken::unspentCountForUser($rester->id))->toBe(0)
-        ->and(WeeklySnapshot::consecutiveWeekStreak($rester->id))->toBe(3);
+        ->and(WeeklySnapshot::consecutiveWeekStreak($rester->id))->toBe(4);
 });
 
 it('leaves a user with no snapshots alone', function (): void {

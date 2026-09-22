@@ -209,8 +209,7 @@ Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->without
 // ai:weekly-recap (00:16) via its onSuccess callback below marking itself done
 // for today, which ai:weekly-recap's ->when() gate requires before it narrates
 // a streak this command might be about to restore. No LLM and no Strava call.
-Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer()
-    ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE));
+Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer();
 
 // 18:00 daily (Asia/Jakarta, the app timezone): tell an athlete whose goal race
 // is tomorrow that it is tomorrow, while there is still an evening left to act

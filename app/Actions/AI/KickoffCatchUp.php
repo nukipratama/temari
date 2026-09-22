@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Actions\AI;
 
 use App\Models\AI\Analysis;
+use App\Services\Gamification\StreakSettlementService;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use Illuminate\Support\Carbon;
 
 /**
- * Creates the kickoff rows a missed scheduler minute never created, and nothing
- * else. See docs/decisions/kickoff-catch-up-is-upsert-only.md.
+ * Creates the kickoff rows a missed scheduler minute never created and records
+ * the deterministic readiness side effects needed by next-day compliance.
  *
  * The three types here are exactly the per-user kickoff types
  * {@see \App\Services\AI\SelfHealer} already resumes — filling is left to that
@@ -24,6 +25,8 @@ class KickoffCatchUp
         private readonly AnalysisService $service,
         private readonly RecentlyActiveUsers $activeUsers,
         private readonly KickoffWeeklyRecaps $weeklyRecaps,
+        private readonly RunDailyBriefingSideEffects $sideEffects,
+        private readonly StreakSettlementService $streakSettlement,
     ) {
     }
 
@@ -39,13 +42,16 @@ class KickoffCatchUp
             $isoWeek = AnalysisType::currentIsoWeek();
 
             foreach (($this->activeUsers)() as $user) {
+                ($this->sideEffects)($user, Carbon::today());
                 $created += (int) $this->service->requestBriefing($user, $today)->wasRecentlyCreated;
                 $created += (int) $this->service->requestProfileVoice($user, $isoWeek)->wasRecentlyCreated;
             }
 
-            $recapsBefore = $this->recapRowCount();
-            ($this->weeklyRecaps)();
-            $created += $this->recapRowCount() - $recapsBefore;
+            if ($this->streakSettlement->allUsersSettled()) {
+                $recapsBefore = $this->recapRowCount();
+                ($this->weeklyRecaps)();
+                $created += $this->recapRowCount() - $recapsBefore;
+            }
         });
 
         return $created;
