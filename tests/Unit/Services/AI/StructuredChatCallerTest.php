@@ -260,6 +260,30 @@ it('meters the call against the origin the entry point declared, not the narrato
     expect(TokenUsage::query()->first()->origin)->toBe(AnalysisOrigin::Recovery);
 });
 
+it('records trend_read analytics with the initiating ingest or recovery origin', function (AnalysisOrigin $origin): void {
+    app(NarrationOrigin::class)->set($origin);
+
+    structuredCaller(
+        json_encode(['reading' => 'load', 'title' => 'A steady week', 'description' => 'The load held steady.'], JSON_THROW_ON_ERROR),
+        ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15],
+    )->call(
+        'trend_read',
+        'sys',
+        [],
+        'schema',
+        ['reading', 'title', 'description'],
+        options: new ChatCallOptions(userId: 42),
+    );
+
+    $row = TokenUsage::query()->sole();
+    expect($row->kind)->toBe('trend_read')
+        ->and($row->origin)->toBe($origin)
+        ->and($row->user_id)->toBe(42);
+})->with([
+    'ingest' => AnalysisOrigin::Ingest,
+    'recovery' => AnalysisOrigin::Recovery,
+]);
+
 it('meters an undeclared entry point as unattributed rather than guessing', function (): void {
     $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'completed', null, 10, 5)]);
 

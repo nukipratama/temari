@@ -7,8 +7,10 @@ use App\Events\TrendSnapshotsSettled;
 use App\Listeners\RefreshTrendReadOnSnapshotsSettled;
 use App\Models\AI\Analysis;
 use App\Models\User;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\HistoryNarrationGate;
+use App\Services\AI\NarrationOrigin;
 use App\Services\AI\TrendReadFingerprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -21,7 +23,8 @@ it('debounces by user and requests only an active athlete trend read', function 
         ->once()
         ->withArgs(fn (string $subjectOrType, int $subjectId, mixed $type, ?string $discriminator, ?int $delaySeconds, bool $invalidate): bool => $subjectId === $user->id
             && $discriminator === '7d'
-            && $invalidate === false)
+            && $invalidate === false
+            && app(NarrationOrigin::class)->current() === AnalysisOrigin::Ingest)
         ->andReturn(new Analysis());
     $listener = new RefreshTrendReadOnSnapshotsSettled(
         $service,
