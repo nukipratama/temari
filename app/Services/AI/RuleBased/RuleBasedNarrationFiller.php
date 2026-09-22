@@ -6,6 +6,7 @@ namespace App\Services\AI\RuleBased;
 
 use App\Enums\Badge;
 use App\Enums\IntentVerdict;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -14,6 +15,7 @@ use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\Season;
 use App\Models\WeeklySnapshot;
+use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
@@ -49,6 +51,13 @@ final readonly class RuleBasedNarrationFiller
 
     private const float BIG_VOLUME_RATIO = 1.5;
 
+    /** @var non-empty-list<string> */
+    private const array POST_RUN_BRIEFINGS = [
+        "{distance_line}{verdict_line}.\n\nthat's the session accounted for, so the rest of today is recovery. drink, eat something decent, and keep the legs out of another session.\n\nif they still feel loaded, make mobility gentle and call it there.",
+        "{distance_line}{verdict_line}.\n\nno second effort today. recovery is the move; let the work settle, get some food and water in, and leave the scoreboard alone for a bit.\n\nheavy legs or an odd HR response later means the quiet option wins.",
+        "{distance_line}{verdict_line}.\n\ntoday's work is done. recovery is the useful move now: fluids, food, and nothing heroic added to the log.\n\nif the body stays louder than the numbers suggest, keep the rest of the day easy.",
+    ];
+
     public function __construct(
         private SessionMatcher $sessionMatcher,
         private SustainedAheadOfRacePace $sustainedAheadOfRacePace,
@@ -73,6 +82,13 @@ final readonly class RuleBasedNarrationFiller
             AnalysisType::PlanClampVoice => $this->planClampVoice($seed),
             AnalysisType::PlanSeasonVoice => $this->planSeasonVoice($row),
         };
+    }
+
+    public function postRunBriefing(User $user, Carbon $date): ?string
+    {
+        $date = $date->toDateString();
+
+        return $this->postRunBriefingFor($user->id, $date, $user->id + (int) crc32($date));
     }
 
     /**
@@ -110,7 +126,7 @@ final readonly class RuleBasedNarrationFiller
 
     private function briefingMascotVoice(Analysis $row, int $seed): string
     {
-        return $this->postRunBriefing($row, $seed) ?? $this->select([
+        return $this->postRunBriefingFor($row->subject_id, $row->discriminator, $seed) ?? $this->select([
             "Easy tempo, 35-45 minutes.\n\nnothing quality has gone into the log since last week and your rhythm's been flat and steady the whole time, so today's the day to break that up. 10 minutes easy to warm up, 15-20 minutes a bit quicker than your usual pace, then cool down. cadence 175+.\n\nWhat to watch: if HR climbs fast at easy pace, drop it to a 15-25 minute run-walk and stop at the cooldown. Brutal heat is reason enough to run the whole thing easy instead.",
             "Easy run, 30-40 minutes.\n\nyour last two sessions both read heavy and the gap since then is short, so today is easy, and I mean actually easy. hold your normal pace, breathing loose enough to talk, cadence 170+ so the steps stay light.\n\nWhat to watch: legs still heavy or HR up early means the recovery isn't finished. A brisk 20-minute walk covers the day.",
             "Long run, 8-12 km easy.\n\nyour weekly distance has crept up every week this month, and this is the session that closes it out. conversational pace the whole way, don't go chasing a time, take water if it's hot.\n\nWhat to watch: if km 5 already feels like work, cut it at 6-8. short and clean beats long and ugly.",
@@ -120,22 +136,14 @@ final readonly class RuleBasedNarrationFiller
         ], $seed);
     }
 
-    /** @var non-empty-list<string> */
-    private const array POST_RUN_BRIEFINGS = [
-        "{distance_line}{verdict_line}.\n\nthat's the session accounted for, so the rest of today is recovery. drink, eat something decent, and keep the legs out of another session.\n\nif they still feel loaded, make mobility gentle and call it there.",
-        "{distance_line}{verdict_line}.\n\nno second effort today. recovery is the move; let the work settle, get some food and water in, and leave the scoreboard alone for a bit.\n\nheavy legs or an odd HR response later means the quiet option wins.",
-        "{distance_line}{verdict_line}.\n\ntoday's work is done. recovery is the useful move now: fluids, food, and nothing heroic added to the log.\n\nif the body stays louder than the numbers suggest, keep the rest of the day easy.",
-    ];
-
-    private function postRunBriefing(Analysis $row, int $seed): ?string
+    private function postRunBriefingFor(int $userId, ?string $date, int $seed): ?string
     {
-        $date = $row->discriminator;
         if ($date === null) {
             return null;
         }
 
         $activities = Activity::query()
-            ->where('user_id', $row->subject_id)
+            ->where('user_id', $userId)
             ->detailed()
             ->whereHas('detail', fn ($query) => $query->whereDate('start_date_local', $date))
             ->with('detail')
@@ -144,12 +152,14 @@ final readonly class RuleBasedNarrationFiller
             return null;
         }
 
-        $actualKm = round($activities->sum(
-            fn (Activity $activity): float => DistanceFormatter::km((float) $activity->detail?->distance),
-        ), 1);
-        $actual = DistanceFormatter::kmString($actualKm * 1000) ?? '0.0';
+        $distancesM = $activities->map(
+            fn (Activity $activity): float => (float) $activity->detail?->distance,
+        );
+        $actualMeters = $distancesM->sum();
+        $actualKm = DistanceFormatter::km($actualMeters);
+        $actual = DistanceFormatter::kmString($actualMeters) ?? '0.0';
         $planned = PlannedSession::query()
-            ->where('user_id', $row->subject_id)
+            ->where('user_id', $userId)
             ->whereDate('date', $date)
             ->first();
         $plannedKm = $planned?->prescribed_km;
@@ -166,18 +176,23 @@ final readonly class RuleBasedNarrationFiller
                 ),
             )->coreKm;
         }
+        $creditedKm = $planned === null ? null : round(SessionMatcher::creditedKm($planned->session_type, [
+            'sum' => DistanceFormatter::km($actualMeters),
+            'longest' => DistanceFormatter::km((float) $distancesM->max()),
+        ]), 1);
         $distanceLine = match (true) {
             $plannedKm === null => "{$actual} km logged, no plan for today",
             $plannedKm <= 0 => "{$actual} km logged on a planned rest day",
+            $creditedKm !== null && $creditedKm !== $actualKm => "{$actual} km logged, ".(DistanceFormatter::kmString($creditedKm * 1000) ?? '?').' km credited against '.(DistanceFormatter::kmString($plannedKm * 1000) ?? '?').' km planned',
             default => "{$actual} km done against ".(DistanceFormatter::kmString($plannedKm * 1000) ?? '?').' km planned',
         };
-        $status = $planned?->status?->value;
-        $intent = $planned?->intent_verdict?->value;
+        $status = $planned?->status;
+        $intent = $planned?->intent_verdict;
         $distanceStatus = match (true) {
             $plannedKm !== null && $plannedKm <= 0 => null,
-            $status === 'planned', $status === 'skip' => null,
-            $intent === 'missed' => null,
-            $status === 'overreached' && ($planned->distance_score === null
+            $status === PlannedSessionStatus::Planned, $status === PlannedSessionStatus::Skip => null,
+            $intent === IntentVerdict::Missed => null,
+            $status === PlannedSessionStatus::Overreached && ($planned->distance_score === null
                 || $planned->distance_score < SessionMatcher::OVERREACHED_FRACTION * 100) => null,
             default => $status,
         };
@@ -185,7 +200,7 @@ final readonly class RuleBasedNarrationFiller
             $distanceStatus === null
                 ? ($planned?->distance_score === null ? null : 'distance '.$planned->distance_score.'% of planned')
                 : 'distance '.$this->postRunStatus($distanceStatus),
-            $intent === null ? null : 'intent '.str_replace('_', ' ', $intent),
+            $intent === null ? null : 'intent '.str_replace('_', ' ', $intent->value),
         ]));
 
         return strtr($this->select(self::POST_RUN_BRIEFINGS, $seed), [
@@ -194,15 +209,9 @@ final readonly class RuleBasedNarrationFiller
         ]);
     }
 
-    private function postRunStatus(string $status): string
+    private function postRunStatus(PlannedSessionStatus $status): string
     {
-        return match ($status) {
-            'done' => 'met',
-            'partial' => 'partial',
-            'missed' => 'missed',
-            'overreached' => 'overreached',
-            default => $status,
-        };
+        return $status === PlannedSessionStatus::Done ? 'met' : $status->value;
     }
 
     private function detailFor(int $activityId): ?ActivityDetail

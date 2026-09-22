@@ -6,22 +6,21 @@ namespace App\Services\AI\Narrators;
 
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Models\Activity;
-use App\Models\AI\Analysis;
+use App\Models\PlannedSession;
 use App\Models\User;
-use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentToolbox;
-use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RecentRunsTool;
 use App\Services\AI\Agent\Tools\TrainingLoadTool;
 use App\Services\AI\Agent\Tools\WeekStateTool;
-use App\Services\AI\ChatCallOptions;
-use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
-use App\Services\AI\StructuredChatCaller;
-use App\Models\PlannedSession;
 use App\Services\AI\Anchor\CitationValidator;
 use App\Services\AI\Anchor\DayAnchorResolver;
+use App\Services\AI\AnalysisType;
+use App\Services\AI\ChatCallOptions;
+use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
+use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
+use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -69,7 +68,9 @@ class BriefingMascotVoiceNarrator
 
         THE PLAN: this athlete is following a training plan.
         get_planned_sessions returns what it prescribed for today, the target
-        pace, and how they did on days already graded. Start from what was
+        pace, and how they did on days already graded. completed_km is the
+        day's total; credited_km is the distance used by distance_score.
+        Start from what was
         prescribed. If your reading of their condition says it's too much, step
         it down and say plainly what was on the board and why you're moving off
         it. An empty list means no plan covers today, and the session is yours
@@ -289,8 +290,9 @@ class BriefingMascotVoiceNarrator
 
         DATA: call get_week_state and get_planned_sessions. The plan read
         carries today's planned distance, completed_km from detailed ingest,
-        status, distance_score, compliance_score, and the persisted intent
-        verdict when one exists. Use distance_score for the distance verdict:
+        credited_km used by distance_score, status, distance_score,
+        compliance_score, and the persisted intent verdict when one exists.
+        Use credited_km with distance_score for the distance verdict:
         status may be overreached because the intent was too hard even when
         distance was met exactly. Never make up a number or an intent verdict.
         If there is no plan row, acknowledge the completed distance without
@@ -328,6 +330,7 @@ class BriefingMascotVoiceNarrator
         private readonly TrainingLoad $trainingLoad,
         private readonly VerdictNarrator $verdictNarrator,
         private readonly StructuredChatCaller $caller,
+        private readonly RuleBasedNarrationFiller $ruleBasedNarrationFiller,
         private readonly ResolveRunBaselineAction $runBaseline,
         private readonly TrainingBaseline $trainingBaseline,
         private readonly VdotEstimator $vdotEstimator,
@@ -385,12 +388,8 @@ class BriefingMascotVoiceNarrator
                 'session_type' => $decoded['session_type'],
             ]);
 
-            return app(RuleBasedNarrationFiller::class)->fillFor(new Analysis([
-                'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-                'subject_id' => $user->id,
-                'analysis_type' => AnalysisType::BriefingMascotVoice,
-                'discriminator' => $asOf->toDateString(),
-            ]));
+            return $this->ruleBasedNarrationFiller->postRunBriefing($user, $asOf)
+                ?? self::clampedVoice(ReadinessCeiling::Rest);
         }
         if ($sessionType === null || $sessionType->rank() > $ceiling->rank()) {
             Log::warning('narrator.briefing.ceiling_violation', [

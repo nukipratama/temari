@@ -377,6 +377,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         credit_note: null,
         ran_pace_sec_per_km: null,
         actual_km: null,
+        credited_km: null,
         activities: [],
         ...overrides,
     };

@@ -16,6 +16,7 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\WeekPlanBuilder;
@@ -57,7 +58,9 @@ final class PlanContextTool extends UserTool
             .'pace as target_pace_formatted (mm:ss/km, the only form to quote) with target_pace_sec '
             .'(raw seconds, for judging size, never for quoting). For days that have already been '
             .'graded it also returns how the athlete did: status (done/partial/missed/overreached/'
-            .'planned), completed_km when a detailed run is logged, distance_score for the '
+            .'planned), completed_km for the day total, credited_km for the distance used by '
+            .'distance_score (the longest run on tempo/interval days, the day total otherwise), '
+            .'and distance_score for the '
             .'distance-only percentage, and compliance_score after the intent adjustment, '
             .'intent (hit/missed/too_hard/unknown) when the day was judged, and ran_anyway true '
             .'when they ran a day they had excused themselves from. skipped true means they excused '
@@ -84,7 +87,7 @@ final class PlanContextTool extends UserTool
             return ['days' => []];
         }
 
-        $completedKmByDate = $this->completedKmByDate();
+        $runDistancesByDate = $this->runDistancesByDate();
 
         $baselineData = $this->baseline->forUser($this->user, $this->asOf);
         $longRunBaselineKm = $baselineData['long_run_km'];
@@ -94,7 +97,7 @@ final class PlanContextTool extends UserTool
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($this->user, $this->asOf)) ?? [];
 
         return [
-            'days' => $sessions->map(function (PlannedSession $session) use ($completedKmByDate, $paces, $longRunBaselineKm, $longRunCapKm, $longRunProgressionCapKm, $selfScaled): array {
+            'days' => $sessions->map(function (PlannedSession $session) use ($runDistancesByDate, $paces, $longRunBaselineKm, $longRunCapKm, $longRunProgressionCapKm, $selfScaled): array {
                 $effective = EffectiveSession::of(
                     $session,
                     PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm, $selfScaled, $longRunProgressionCapKm),
@@ -105,6 +108,8 @@ final class PlanContextTool extends UserTool
                 if ($effective->isPaceEased()) {
                     $targetPaceSec = $effective->easedPaceSecPerKm;
                 }
+
+                $runDistances = $runDistancesByDate[$session->date->toDateString()] ?? null;
 
                 return [
                     'date' => $session->date->toDateString(),
@@ -124,7 +129,8 @@ final class PlanContextTool extends UserTool
                     ]]),
                     'skipped' => $session->skipped,
                     'status' => $session->status->value,
-                    'completed_km' => $completedKmByDate[$session->date->toDateString()] ?? null,
+                    'completed_km' => $runDistances === null ? null : round($runDistances['sum'], 1),
+                    'credited_km' => $runDistances === null ? null : round(SessionMatcher::creditedKm($session->session_type, $runDistances), 1),
                     'distance_score' => $session->distance_score,
                     'compliance_score' => $session->compliance_score,
                     'ran_anyway' => $session->ran_anyway,
@@ -134,8 +140,8 @@ final class PlanContextTool extends UserTool
         ];
     }
 
-    /** @return array<string, float> */
-    private function completedKmByDate(): array
+    /** @return array<string, array{sum: float, longest: float}> */
+    private function runDistancesByDate(): array
     {
         $details = Activity::analyzedJoinConstraint(
             ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
@@ -146,7 +152,7 @@ final class PlanContextTool extends UserTool
             ->whereBetween('activity_details.start_date_local', [$this->asOf->copy()->startOfDay(), $this->through->copy()->endOfDay()])
             ->get(['activity_details.start_date_local', 'activity_details.distance']);
 
-        $completed = [];
+        $metersByDate = [];
         foreach ($details as $detail) {
             $startDateLocal = $detail->getAttribute('start_date_local');
             if ($startDateLocal === null) {
@@ -154,10 +160,16 @@ final class PlanContextTool extends UserTool
             }
             $date = Carbon::parse((string) $startDateLocal)->toDateString();
 
-            $completed[$date] = round(($completed[$date] ?? 0.0) + DistanceFormatter::km((float) $detail->distance), 1);
+            $metersByDate[$date] = [
+                'sum' => ($metersByDate[$date]['sum'] ?? 0.0) + (float) $detail->distance,
+                'longest' => max($metersByDate[$date]['longest'] ?? 0.0, (float) $detail->distance),
+            ];
         }
 
-        return $completed;
+        return array_map(static fn (array $distances): array => [
+            'sum' => DistanceFormatter::km($distances['sum']),
+            'longest' => DistanceFormatter::km($distances['longest']),
+        ], $metersByDate);
     }
 
     /**

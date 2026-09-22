@@ -76,18 +76,14 @@ function complianceLabel(day: PlanDay): string {
     if (
         day.compliance_score != null &&
         day.compliance_score > 100 &&
-        day.actual_km != null &&
+        day.credited_km != null &&
         day.prescribed_km != null
     ) {
-        const creditedKm = (day.prescribed_km * day.compliance_score) / 100;
-        const totalIsCredited =
-            Math.abs(day.actual_km - creditedKm) <=
-            0.05 + day.prescribed_km * 0.005;
-        if (!totalIsCredited) {
-            return `${day.actual_km.toFixed(1)} km logged · ${day.compliance_score}% credited distance`;
+        if (day.actual_km !== null && day.actual_km !== day.credited_km) {
+            return `${day.actual_km.toFixed(1)} km logged · ${day.credited_km.toFixed(1)} of ${day.prescribed_km.toFixed(1)} km counted · ${day.compliance_score}% distance`;
         }
 
-        return `${day.actual_km.toFixed(1)} of ${day.prescribed_km.toFixed(1)} km · ${day.compliance_score}% distance`;
+        return `${day.credited_km.toFixed(1)} of ${day.prescribed_km.toFixed(1)} km · ${day.compliance_score}% distance`;
     }
 
     return `${day.compliance_score}%`;

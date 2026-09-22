@@ -42,6 +42,7 @@ use App\Services\AI\Anchor\RunAnchorResolver;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
+use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SustainedAheadOfRacePace;
@@ -1459,6 +1460,7 @@ function bootMascotNarratorWithCaller(StructuredChatCaller $caller): BriefingMas
         app(TrainingLoad::class),
         app(VerdictNarrator::class),
         $caller,
+        app(RuleBasedNarrationFiller::class),
         app(ResolveRunBaselineAction::class),
         app(TrainingBaseline::class),
         app(VdotEstimator::class),
@@ -1519,6 +1521,37 @@ it('BriefingMascotVoiceNarrator switches to the post-run contract after detailed
         && str_contains((string) $params['input'][0]['content'], 'post-run block')
         && str_contains((string) $params['input'][0]['content'], 'Do not offer another run today')
         && str_contains((string) $params['input'][1]['content'], '"ran_today":true'));
+});
+
+it('BriefingMascotVoiceNarrator uses rule-based recovery if the model recommends another run', function (): void {
+    $user = User::factory()->create();
+    foreach ([5_000, 5_000] as $distance) {
+        $activity = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => Carbon::today(),
+            'distance' => $distance,
+        ]);
+    }
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => 'tempo',
+        'status' => 'partial',
+        'prescribed_km' => 8.0,
+        'compliance_score' => 63,
+        'distance_score' => 63,
+        'intent_verdict' => 'hit',
+    ]);
+    $narrator = bootMascotNarrator(json_encode([
+        'mascot_voice' => 'go run again.',
+        'session_type' => 'easy_only',
+    ], JSON_THROW_ON_ERROR));
+
+    $copy = $narrator->generate($user, Carbon::today());
+
+    expect($copy)
+        ->toContain('10.0 km logged, 5.0 km credited against 8.0 km planned')
+        ->toContain('recovery')
+        ->not->toContain('go run again');
 });
 
 /**

@@ -7,6 +7,7 @@ use App\Enums\Badge;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\Rarity;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -125,18 +126,21 @@ it('varies the ecosystem briefing voices by seed deterministically', function ()
 
 it('uses a post-run briefing when a detailed run lands against a credited plan row', function (): void {
     $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::today(),
-        'distance' => 10_000,
-    ]);
+    foreach ([5_000, 5_000] as $distance) {
+        $activity = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => Carbon::today(),
+            'distance' => $distance,
+        ]);
+    }
     PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
-        'status' => 'overreached',
-        'prescribed_km' => 6.2,
-        'compliance_score' => 161,
-        'distance_score' => 161,
-        'intent_verdict' => 'too_hard',
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Partial,
+        'prescribed_km' => 8.0,
+        'compliance_score' => 63,
+        'distance_score' => 63,
+        'intent_verdict' => IntentVerdict::Hit,
     ]);
 
     $copy = app(RuleBasedNarrationFiller::class)->fillFor(
@@ -144,9 +148,9 @@ it('uses a post-run briefing when a detailed run lands against a credited plan r
     );
 
     expect($copy)
-        ->toContain('10.0 km done against 6.2 km planned')
-        ->toContain('distance overreached')
-        ->toContain('intent too hard')
+        ->toContain('10.0 km logged, 5.0 km credited against 8.0 km planned')
+        ->toContain('distance partial')
+        ->toContain('intent hit')
         ->toContain('recovery')
         ->not->toContain('Easy tempo');
 });
