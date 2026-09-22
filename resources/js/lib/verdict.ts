@@ -13,6 +13,7 @@ import { formatMonthDayId, formatPace, parseNaiveLocalDate } from '@/lib/pace';
  */
 const PACE_SIGNAL_SEC = 5;
 const HR_SIGNAL_BPM = 3;
+const GENERIC_COMPARISON = 'your comparable earlier runs';
 
 export type EvidenceMetric = 'pace' | 'hr';
 
@@ -132,22 +133,22 @@ type MatchedSince =
 
 /** Names the shared month only when every displayed match belongs to it. */
 function matchedSince(trend: PastYouTrend): MatchedSince {
-    const dates = trend.comparisons.map((comparison) =>
+    const parsedDates = trend.comparisons.map((comparison) =>
         parseNaiveLocalDate(comparison.past.date),
     );
-    const first = dates[0];
+    const dates = parsedDates.filter((date): date is Date => date !== null);
 
-    if (
-        first === undefined ||
-        first === null ||
-        dates.some((date) => date === null)
-    ) {
+    if (dates.length === 0 || dates.length !== parsedDates.length) {
+        return null;
+    }
+
+    const [first] = dates;
+    if (first === undefined) {
         return null;
     }
 
     const sameMonth = dates.every(
         (date) =>
-            date !== null &&
             date.getFullYear() === first.getFullYear() &&
             date.getMonth() === first.getMonth(),
     );
@@ -164,14 +165,19 @@ function matchedSince(trend: PastYouTrend): MatchedSince {
     };
 }
 
-function improvingHeadline(since: MatchedSince): string {
+function headlineByMatchContext(
+    since: MatchedSince,
+    month: (value: string) => string,
+    generic: string,
+    fallback: string,
+): string {
     if (since?.kind === 'month') {
-        return `you're faster than you were in ${since.value}.`;
+        return month(since.value);
     }
     if (since?.kind === 'generic') {
-        return "you're faster than your comparable runs from a few weeks back.";
+        return generic;
     }
-    return "you're faster than you were.";
+    return fallback;
 }
 
 export function verdictHeadline(trend: PastYouTrend): string {
@@ -186,22 +192,29 @@ export function verdictHeadline(trend: PastYouTrend): string {
     if (trend.verdict === 'improving') {
         return verdictMetric(trend) === 'hr'
             ? 'same pace, less work to hold it.'
-            : improvingHeadline(since);
+            : headlineByMatchContext(
+                  since,
+                  (month) => `you're faster than you were in ${month}.`,
+                  `you're faster than ${GENERIC_COMPARISON}.`,
+                  "you're faster than you were.",
+              );
     }
 
     if (trend.verdict === 'slipped') {
-        return since?.kind === 'month'
-            ? `you've slipped since ${since.value}.`
-            : since?.kind === 'generic'
-              ? "you've slipped against your comparable runs from a few weeks back."
-              : "you've slipped since then.";
+        return headlineByMatchContext(
+            since,
+            (month) => `you've slipped since ${month}.`,
+            `you've slipped against ${GENERIC_COMPARISON}.`,
+            "you've slipped since then.",
+        );
     }
 
-    return since?.kind === 'month'
-        ? `you're holding where you were in ${since.value}.`
-        : since?.kind === 'generic'
-          ? "you're holding steady against your comparable runs from a few weeks back."
-          : "you're holding where you were.";
+    return headlineByMatchContext(
+        since,
+        (month) => `you're holding where you were in ${month}.`,
+        `you're holding steady against ${GENERIC_COMPARISON}.`,
+        "you're holding where you were.",
+    );
 }
 
 export function verdictSupport(trend: PastYouTrend): string {

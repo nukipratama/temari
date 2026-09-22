@@ -201,9 +201,7 @@ describe('verdictHeadline', () => {
                     ],
                 }),
             ),
-        ).toBe(
-            "you're faster than your comparable runs from a few weeks back.",
-        );
+        ).toBe("you're faster than your comparable earlier runs.");
     });
 
     it('uses the generic frame for a slipped result across the year boundary', () => {
@@ -218,9 +216,7 @@ describe('verdictHeadline', () => {
                     ],
                 }),
             ),
-        ).toBe(
-            "you've slipped against your comparable runs from a few weeks back.",
-        );
+        ).toBe("you've slipped against your comparable earlier runs.");
     });
 
     it('uses the generic frame for a steady result across multiple months', () => {
@@ -235,9 +231,33 @@ describe('verdictHeadline', () => {
                     ],
                 }),
             ),
-        ).toBe(
-            "you're holding steady against your comparable runs from a few weeks back.",
-        );
+        ).toBe("you're holding steady against your comparable earlier runs.");
+    });
+
+    it('does not name a month shared by matches from different years', () => {
+        expect(
+            verdictHeadline(
+                trend({
+                    comparisons: [
+                        comparison({ pastDate: '2025-06-10' }),
+                        comparison({ activityId: 3, pastDate: '2026-06-10' }),
+                    ],
+                }),
+            ),
+        ).toBe("you're faster than your comparable earlier runs.");
+    });
+
+    it('drops the month when one matched date is unreadable', () => {
+        expect(
+            verdictHeadline(
+                trend({
+                    comparisons: [
+                        comparison({ pastDate: 'not-a-date' }),
+                        comparison({ activityId: 3 }),
+                    ],
+                }),
+            ),
+        ).toBe("you're faster than you were.");
     });
 
     it('credits the heart rate when pace held but effort dropped', () => {
