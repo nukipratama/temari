@@ -123,6 +123,33 @@ it('varies the ecosystem briefing voices by seed deterministically', function ()
         ->and($voiceA)->not->toBe($voiceB);
 });
 
+it('uses a post-run briefing when a detailed run lands against a credited plan row', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today(),
+        'distance' => 10_000,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'status' => 'overreached',
+        'prescribed_km' => 6.2,
+        'compliance_score' => 161,
+        'intent_verdict' => 'too_hard',
+    ]);
+
+    $copy = app(RuleBasedNarrationFiller::class)->fillFor(
+        fillerRow(AnalysisType::BriefingMascotVoice, $user->id, Carbon::today()->toDateString()),
+    );
+
+    expect($copy)
+        ->toContain('10.0 km done against 6.2 km planned')
+        ->toContain('distance overreached')
+        ->toContain('intent too hard')
+        ->toContain('recovery')
+        ->not->toContain('Easy tempo');
+});
+
 it("states each month's distance, run count, longest run, and volume band", function (): void {
     $user = User::factory()->create();
     monthlyRunForFiller($user, '2026-04-04 06:00:00', 5000.0);

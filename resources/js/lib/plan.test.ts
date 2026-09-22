@@ -71,13 +71,13 @@ describe('computeAdherence', () => {
         ).toBe(70);
     });
 
-    it('caps at 100 so one big overreach cannot read as a 140% season', () => {
+    it('caps each day before averaging so an overreach cannot paper over a miss', () => {
         expect(
             computeAdherence([
-                { compliance_score: 100 },
-                { compliance_score: 220 },
+                { compliance_score: 161 },
+                { compliance_score: 0 },
             ]),
-        ).toBe(100);
+        ).toBe(50);
     });
 
     it('rounds to a whole percentage', () => {

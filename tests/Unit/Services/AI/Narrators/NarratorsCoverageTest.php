@@ -37,6 +37,7 @@ use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PlanDayVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
+use App\Services\AI\Narrators\RunQuestionNarrator;
 use App\Services\AI\Anchor\RunAnchorResolver;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
@@ -465,6 +466,17 @@ it('RunInsightNarrator prompt carries the quality-session framing so it stops as
 
     expect($prompt)->toContain('session_intent')
         ->and($prompt)->toContain('QUALITY SESSIONS');
+});
+
+it('RunQuestionNarrator treats athlete-supplied conditions as context, not excuses', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(RunQuestionNarrator::class));
+
+    expect($prompt)
+        ->toContain('ATHLETE-SUPPLIED CONTEXT')
+        ->toContain('Ga tidur malam')
+        ->toContain('not a night run')
+        ->toContain('never question it')
+        ->toContain('a diagnosis');
 });
 
 // Without this carve-out an interval session reads as sloppy pacing: the pace
@@ -1437,11 +1449,16 @@ it('ProfileVoiceNarrator leaves training paces null when the user has no VDOT-el
 
 function bootMascotNarrator(string $content): BriefingMascotVoiceNarrator
 {
+    return bootMascotNarratorWithCaller(fakeCaller($content));
+}
+
+function bootMascotNarratorWithCaller(StructuredChatCaller $caller): BriefingMascotVoiceNarrator
+{
     return new BriefingMascotVoiceNarrator(
         app(Vibe::class),
         app(TrainingLoad::class),
         app(VerdictNarrator::class),
-        fakeCaller($content),
+        $caller,
         app(ResolveRunBaselineAction::class),
         app(TrainingBaseline::class),
         app(VdotEstimator::class),
@@ -1475,6 +1492,33 @@ it('BriefingMascotVoiceNarrator keeps a citation the plan actually backs', funct
 
     expect($narrator->generate($user, Carbon::today()))
         ->toBe('so I am keeping this to [an easy run](session:today) today.');
+});
+
+it('BriefingMascotVoiceNarrator switches to the post-run contract after detailed ingest', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today(),
+        'distance' => 10_000,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'status' => 'overreached',
+        'prescribed_km' => 6.2,
+        'compliance_score' => 161,
+        'intent_verdict' => 'too_hard',
+    ]);
+    [$caller, $client] = capturingCaller(json_encode([
+        'mascot_voice' => '10.0 km done against 6.2 km planned.',
+        'session_type' => 'rest',
+    ], JSON_THROW_ON_ERROR));
+
+    bootMascotNarratorWithCaller($caller)->generate($user, Carbon::today());
+
+    $client->assertSent(Responses::class, fn (string $method, array $params): bool => $method === 'create'
+        && str_contains((string) $params['input'][0]['content'], 'post-run block')
+        && str_contains((string) $params['input'][0]['content'], 'Do not offer another run today')
+        && str_contains((string) $params['input'][1]['content'], '"ran_today":true'));
 });
 
 /**

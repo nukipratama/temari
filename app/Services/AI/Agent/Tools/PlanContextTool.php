@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Agent\Tools;
 
+use App\Enums\IngestState;
 use App\Enums\SessionType;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
@@ -53,8 +57,11 @@ final class PlanContextTool extends UserTool
             .'pace as target_pace_formatted (mm:ss/km, the only form to quote) with target_pace_sec '
             .'(raw seconds, for judging size, never for quoting). For days that have already been '
             .'graded it also returns how the athlete did: status (done/partial/missed/overreached/'
-            .'planned), a compliance score out of 100, and ran_anyway true when they ran a day they '
-            .'had excused themselves from. skipped true means they excused the day. eased_from means '
+            .'planned), completed_km when a detailed run is logged, distance_score for the '
+            .'distance-only percentage, and compliance_score after the intent adjustment, '
+            .'intent (hit/missed/too_hard/unknown) when the day was judged, and ran_anyway true '
+            .'when they ran a day they had excused themselves from. skipped true means they excused '
+            .'the day. eased_from means '
             .'readiness eased the day: session_type, distance_km and the pace are the eased session '
             .'they are actually doing, and eased_from names the session it replaced (with its distance '
             .'only when that moved), which is context, never the day itself. pace_eased_from means '
@@ -77,6 +84,8 @@ final class PlanContextTool extends UserTool
             return ['days' => []];
         }
 
+        $completedKmByDate = $this->completedKmByDate();
+
         $baselineData = $this->baseline->forUser($this->user, $this->asOf);
         $longRunBaselineKm = $baselineData['long_run_km'];
         $longRunCapKm = $baselineData['long_run_cap_km'];
@@ -85,7 +94,7 @@ final class PlanContextTool extends UserTool
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($this->user, $this->asOf)) ?? [];
 
         return [
-            'days' => $sessions->map(function (PlannedSession $session) use ($paces, $longRunBaselineKm, $longRunCapKm, $longRunProgressionCapKm, $selfScaled): array {
+            'days' => $sessions->map(function (PlannedSession $session) use ($completedKmByDate, $paces, $longRunBaselineKm, $longRunCapKm, $longRunProgressionCapKm, $selfScaled): array {
                 $effective = EffectiveSession::of(
                     $session,
                     PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm, $selfScaled, $longRunProgressionCapKm),
@@ -115,11 +124,40 @@ final class PlanContextTool extends UserTool
                     ]]),
                     'skipped' => $session->skipped,
                     'status' => $session->status->value,
+                    'completed_km' => $completedKmByDate[$session->date->toDateString()] ?? null,
+                    'distance_score' => $session->distance_score,
                     'compliance_score' => $session->compliance_score,
                     'ran_anyway' => $session->ran_anyway,
+                    'intent' => $session->intent_verdict?->value,
                 ];
             })->all(),
         ];
+    }
+
+    /** @return array<string, float> */
+    private function completedKmByDate(): array
+    {
+        $details = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
+            ->where('activities.user_id', $this->user->id)
+            ->where('activities.ingest_state', IngestState::Detailed->value)
+            ->whereNotNull('activity_details.start_date_local')
+            ->whereBetween('activity_details.start_date_local', [$this->asOf->copy()->startOfDay(), $this->through->copy()->endOfDay()])
+            ->get(['activity_details.start_date_local', 'activity_details.distance']);
+
+        $completed = [];
+        foreach ($details as $detail) {
+            $startDateLocal = $detail->getAttribute('start_date_local');
+            if ($startDateLocal === null) {
+                continue;
+            }
+            $date = Carbon::parse((string) $startDateLocal)->toDateString();
+
+            $completed[$date] = round(($completed[$date] ?? 0.0) + DistanceFormatter::km((float) $detail->distance), 1);
+        }
+
+        return $completed;
     }
 
     /**

@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
+use App\Models\Activity;
+use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RecentRunsTool;
@@ -276,6 +279,50 @@ class BriefingMascotVoiceNarrator
           signal for today's plan, never as something you retell.
         PROMPT;
 
+    private const string POST_RUN_SYSTEM_PROMPT = <<<'PROMPT'
+        Task: write ONE post-run block for today. A detailed run has already
+        landed today. Output TWO fields: mascot_voice, and session_type. Use
+        "I" as the subject.
+
+        This is an acknowledgement and recovery read, not a second workout
+        recommendation. The run is done. Do not offer another run today.
+
+        DATA: call get_week_state and get_planned_sessions. The plan read
+        carries today's planned distance, completed_km from detailed ingest,
+        status, distance_score, compliance_score, and the persisted intent
+        verdict when one exists. Use distance_score for the distance verdict:
+        status may be overreached because the intent was too hard even when
+        distance was met exactly. Never make up a number or an intent verdict.
+        If there is no plan row, acknowledge the completed distance without
+        inventing a planned target.
+
+        REQUIRED STRUCTURE (3 parts separated by `\n\n`):
+        LINE 1, TITLE: acknowledge what was planned and what was done. Include
+          whether the distance and intent met the plan when those fields exist.
+          Examples: "10.0 km done against 6.2 km planned, intent too hard." /
+          "6.2 km done as planned, intent hit." / "10.0 km logged, no plan for
+          today." End with a period.
+        PARAGRAPH 2, YOUR VOICE: 2-3 sentences on what the measured result
+          means, then recovery or rest-of-day guidance within the
+          readiness_ceiling. Keep measured facts separate from any cause the
+          data does not prove.
+        PARAGRAPH 3, WHAT TO WATCH: 1-2 sentences for recovery, hydration,
+          food, mobility, or a clear red flag. This is still your voice, not a
+          disclaimer.
+
+        Max 150 words total. Keep every suggestion about recovery and the rest
+        of today. Never write "if you do run today", "for your next session",
+        or any other same-day running option. Do not prescribe a run, distance,
+        pace, or intensity after the run has landed.
+
+        The `session_type` output field MUST be `rest`. The run already happened,
+        so this field describes what remains of today, not the session that was
+        completed.
+
+        A finished day does not need a motivational ending. State what happened,
+        set the recovery ceiling, and stop.
+        PROMPT;
+
     public function __construct(
         private readonly Vibe $vibe,
         private readonly TrainingLoad $trainingLoad,
@@ -298,15 +345,28 @@ class BriefingMascotVoiceNarrator
             ->first();
     }
 
+    private function hasDetailedRunToday(User $user, Carbon $asOf): bool
+    {
+        return Activity::query()
+            ->where('user_id', $user->id)
+            ->detailed()
+            ->whereHas('detail', fn ($query) => $query->whereDate('start_date_local', $asOf->toDateString()))
+            ->exists();
+    }
+
     public function generate(User $user, ?Carbon $asOf = null): string
     {
         $asOf ??= Carbon::today();
         $context = $this->context($user, $asOf);
         $ceiling = ReadinessCeiling::from((string) $context['readiness_ceiling']);
+        $postRun = $context['ran_today'] === true && $this->hasDetailedRunToday($user, $asOf);
+        $systemPrompt = $postRun
+            ? self::POST_RUN_SYSTEM_PROMPT
+            : self::SYSTEM_PROMPT;
 
         $decoded = $this->caller->call(
             kind: 'briefing_mascot_voice',
-            systemPrompt: self::SYSTEM_PROMPT."\n\n".NarratorContinuity::RULE,
+            systemPrompt: $systemPrompt."\n\n".NarratorContinuity::RULE,
             context: $context,
             schemaName: 'TemariMascotVoice',
             requiredKeys: ['mascot_voice', 'session_type'],
@@ -319,6 +379,19 @@ class BriefingMascotVoiceNarrator
         );
 
         $sessionType = ReadinessCeiling::tryFrom((string) $decoded['session_type']);
+        if ($postRun && $sessionType !== ReadinessCeiling::Rest) {
+            Log::warning('narrator.briefing.post_run_session_violation', [
+                'user_id' => $user->id,
+                'session_type' => $decoded['session_type'],
+            ]);
+
+            return app(RuleBasedNarrationFiller::class)->fillFor(new Analysis([
+                'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+                'subject_id' => $user->id,
+                'analysis_type' => AnalysisType::BriefingMascotVoice,
+                'discriminator' => $asOf->toDateString(),
+            ]));
+        }
         if ($sessionType === null || $sessionType->rank() > $ceiling->rank()) {
             Log::warning('narrator.briefing.ceiling_violation', [
                 'user_id' => $user->id,
@@ -356,6 +429,7 @@ class BriefingMascotVoiceNarrator
             'name' => $user->firstName(),
             'vibe' => $this->vibe->current($user, $asOf),
             'date' => $asOf->toDateString(),
+            'ran_today' => $briefing->ranToday,
             'readiness_ceiling' => $briefing->readinessCeiling,
             'build_nudge' => $briefing->buildNudge,
             ...($briefing->historyLoading ? ['history_loading' => true] : []),

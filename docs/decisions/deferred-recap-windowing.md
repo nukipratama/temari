@@ -58,7 +58,7 @@ code_refs:
 > pre-connect branches still route straight to `AnalysisService::requestRuleBased()` without
 > consulting [RecapHydrationReadiness](app/Services/AI/RecapHydrationReadiness.php), and that stays
 > correct. Unlike the weekly closer,
-> [RuleBasedNarrationFiller::monthlyRecap()](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php#L562)
+> [RuleBasedNarrationFiller::monthlyRecap()](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php#L629)
 > reads no month-specific data at all: there is no `MonthlySnapshot` model, and the method is a
 > deterministic pick over a static seven-line pool keyed only by
 > `subject_id + crc32($discriminator)` — no distance, run count, `form_status`, or CTL/ATL value

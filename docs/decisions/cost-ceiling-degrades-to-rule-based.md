@@ -56,7 +56,7 @@ Until this decision the ceiling **paused**: `autoDispatchEnabled()` went false a
 - first-come-first-served means early users get everything and late users get nothing;
 - waiting buys nothing — the budget resets on a clock, not on a fix.
 
-Meanwhile the filler that already exists for the demo seed, [RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php), is an **exhaustive `match` over every `AnalysisType`** ([`fillFor()`](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php#L39)) and is data-driven where the subject's real numbers are available, so there is no coverage gap and no "generic template" tell.
+Meanwhile the filler that already exists for the demo seed, [RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php), is an **exhaustive `match` over every `AnalysisType`** ([`fillFor()`](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php#L56)) and is data-driven where the subject's real numbers are available, so there is no coverage gap and no "generic template" tell.
 
 ## Decision
 

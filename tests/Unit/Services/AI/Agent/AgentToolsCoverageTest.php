@@ -1077,6 +1077,27 @@ it('reads what the plan prescribed across the span it is bound to', function ():
         ->and(array_column($reading['days'], 'date'))->toBe(['2026-09-07', '2026-09-08']);
 });
 
+it('carries a detailed run and persisted intent beside the plan row', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $today,
+        'distance' => 10_000,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'status' => PlannedSessionStatus::Overreached,
+        'prescribed_km' => 6.2,
+        'intent_verdict' => IntentVerdict::TooHard,
+    ]);
+
+    $reading = planContextTool($user, $today, $today)->handle([])['days'][0];
+
+    expect($reading['completed_km'])->toBe(10.0)
+        ->and($reading['intent'])->toBe('too_hard');
+});
+
 /** The span is the binding, so a day outside it is another block's business. */
 it('leaves out a day outside the span', function (): void {
     $user = User::factory()->create();

@@ -210,6 +210,22 @@ describe('WeekDayRow', () => {
         expect(screen.getByText('partial · 60%')).toBeInTheDocument();
     });
 
+    it('labels an overrun as distance completion without hiding the verdict', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                status: 'overreached',
+                compliance_score: 161,
+                prescribed_km: 6.2,
+                actual_km: 10,
+            }),
+        });
+
+        expect(
+            screen.getByText('overreached · 10.0 of 6.2 km · 161% distance'),
+        ).toBeInTheDocument();
+    });
+
     it('says what a verdict means, distance and intent together', () => {
         renderRow({
             day: day({
