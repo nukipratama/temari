@@ -13,6 +13,7 @@ import { formatMonthDayId, formatPace, parseNaiveLocalDate } from '@/lib/pace';
  */
 const PACE_SIGNAL_SEC = 5;
 const HR_SIGNAL_BPM = 3;
+const GENERIC_COMPARISON = 'your comparable earlier runs';
 
 export type EvidenceMetric = 'pace' | 'hr';
 
@@ -127,26 +128,59 @@ export function verdictMetric(trend: PastYouTrend): EvidenceMetric {
     );
 }
 
-/** The month of the oldest run the window was matched against. */
-function matchedSinceMonth(trend: PastYouTrend): string | null {
-    const dates = trend.comparisons
-        .map((comparison) => comparison.past.date)
-        .filter((date) => date !== '');
-    if (dates.length === 0) {
+type MatchedSince =
+    { kind: 'month'; value: string } | { kind: 'generic' } | null;
+
+/** Names the shared month only when every displayed match belongs to it. */
+function matchedSince(trend: PastYouTrend): MatchedSince {
+    const parsedDates = trend.comparisons.map((comparison) =>
+        parseNaiveLocalDate(comparison.past.date),
+    );
+    const dates = parsedDates.filter((date): date is Date => date !== null);
+
+    if (dates.length === 0 || dates.length !== parsedDates.length) {
         return null;
     }
-    const oldest = parseNaiveLocalDate(dates.reduce((a, b) => (a < b ? a : b)));
-    return oldest === null
-        ? null
-        : oldest.toLocaleDateString('en-US', { month: 'long' }).toLowerCase();
+
+    const first = dates[0]!;
+
+    const sameMonth = dates.every(
+        (date) =>
+            date.getFullYear() === first.getFullYear() &&
+            date.getMonth() === first.getMonth(),
+    );
+
+    if (!sameMonth) {
+        return { kind: 'generic' };
+    }
+
+    return {
+        kind: 'month',
+        value: first
+            .toLocaleDateString('en-US', { month: 'long' })
+            .toLowerCase(),
+    };
 }
 
-function sinceSuffix(since: string | null): string {
-    return since === null ? '' : ` in ${since}`;
+function headlineByMatchContext(
+    since: MatchedSince,
+    frames: {
+        month: (value: string) => string;
+        generic: string;
+        fallback: string;
+    },
+): string {
+    if (since?.kind === 'month') {
+        return frames.month(since.value);
+    }
+    if (since?.kind === 'generic') {
+        return frames.generic;
+    }
+    return frames.fallback;
 }
 
 export function verdictHeadline(trend: PastYouTrend): string {
-    const since = matchedSinceMonth(trend);
+    const since = matchedSince(trend);
 
     if (trend.verdict === 'not_enough_history') {
         return trend.comparison_count === 0
@@ -157,14 +191,26 @@ export function verdictHeadline(trend: PastYouTrend): string {
     if (trend.verdict === 'improving') {
         return verdictMetric(trend) === 'hr'
             ? 'same pace, less work to hold it.'
-            : `you're faster than you were${sinceSuffix(since)}.`;
+            : headlineByMatchContext(since, {
+                  month: (month) => `you're faster than you were in ${month}.`,
+                  generic: `you're faster than ${GENERIC_COMPARISON}.`,
+                  fallback: "you're faster than you were.",
+              });
     }
 
     if (trend.verdict === 'slipped') {
-        return `you've slipped since ${since ?? 'then'}.`;
+        return headlineByMatchContext(since, {
+            month: (month) => `you've slipped since ${month}.`,
+            generic: `you've slipped against ${GENERIC_COMPARISON}.`,
+            fallback: "you've slipped since then.",
+        });
     }
 
-    return `you're holding where you were${sinceSuffix(since)}.`;
+    return headlineByMatchContext(since, {
+        month: (month) => `you're holding where you were in ${month}.`,
+        generic: `you're holding steady against ${GENERIC_COMPARISON}.`,
+        fallback: "you're holding where you were.",
+    });
 }
 
 export function verdictSupport(trend: PastYouTrend): string {
