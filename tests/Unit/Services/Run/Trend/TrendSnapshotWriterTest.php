@@ -21,7 +21,11 @@ afterEach(fn () => Carbon::setTestNow());
 
 it('writes a row with vdot and pace-variability computed from real data', function (): void {
     $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200.0]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1200.0,
+        'set_at' => Carbon::today(),
+    ]);
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::today(),
