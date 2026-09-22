@@ -127,26 +127,55 @@ export function verdictMetric(trend: PastYouTrend): EvidenceMetric {
     );
 }
 
-/** The month of the oldest run the window was matched against. */
-function matchedSinceMonth(trend: PastYouTrend): string | null {
-    const dates = trend.comparisons
-        .map((comparison) => comparison.past.date)
-        .filter((date) => date !== '');
-    if (dates.length === 0) {
+type MatchedSince =
+    { kind: 'month'; value: string } | { kind: 'generic' } | null;
+
+/** Names the shared month only when every displayed match belongs to it. */
+function matchedSince(trend: PastYouTrend): MatchedSince {
+    const dates = trend.comparisons.map((comparison) =>
+        parseNaiveLocalDate(comparison.past.date),
+    );
+    const first = dates[0];
+
+    if (
+        first === undefined ||
+        first === null ||
+        dates.some((date) => date === null)
+    ) {
         return null;
     }
-    const oldest = parseNaiveLocalDate(dates.reduce((a, b) => (a < b ? a : b)));
-    return oldest === null
-        ? null
-        : oldest.toLocaleDateString('en-US', { month: 'long' }).toLowerCase();
+
+    const sameMonth = dates.every(
+        (date) =>
+            date !== null &&
+            date.getFullYear() === first.getFullYear() &&
+            date.getMonth() === first.getMonth(),
+    );
+
+    if (!sameMonth) {
+        return { kind: 'generic' };
+    }
+
+    return {
+        kind: 'month',
+        value: first
+            .toLocaleDateString('en-US', { month: 'long' })
+            .toLowerCase(),
+    };
 }
 
-function sinceSuffix(since: string | null): string {
-    return since === null ? '' : ` in ${since}`;
+function improvingHeadline(since: MatchedSince): string {
+    if (since?.kind === 'month') {
+        return `you're faster than you were in ${since.value}.`;
+    }
+    if (since?.kind === 'generic') {
+        return "you're faster than your comparable runs from a few weeks back.";
+    }
+    return "you're faster than you were.";
 }
 
 export function verdictHeadline(trend: PastYouTrend): string {
-    const since = matchedSinceMonth(trend);
+    const since = matchedSince(trend);
 
     if (trend.verdict === 'not_enough_history') {
         return trend.comparison_count === 0
@@ -157,14 +186,22 @@ export function verdictHeadline(trend: PastYouTrend): string {
     if (trend.verdict === 'improving') {
         return verdictMetric(trend) === 'hr'
             ? 'same pace, less work to hold it.'
-            : `you're faster than you were${sinceSuffix(since)}.`;
+            : improvingHeadline(since);
     }
 
     if (trend.verdict === 'slipped') {
-        return `you've slipped since ${since ?? 'then'}.`;
+        return since?.kind === 'month'
+            ? `you've slipped since ${since.value}.`
+            : since?.kind === 'generic'
+              ? "you've slipped against your comparable runs from a few weeks back."
+              : "you've slipped since then.";
     }
 
-    return `you're holding where you were${sinceSuffix(since)}.`;
+    return since?.kind === 'month'
+        ? `you're holding where you were in ${since.value}.`
+        : since?.kind === 'generic'
+          ? "you're holding steady against your comparable runs from a few weeks back."
+          : "you're holding where you were.";
 }
 
 export function verdictSupport(trend: PastYouTrend): string {

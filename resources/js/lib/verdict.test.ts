@@ -39,6 +39,7 @@ function comparison({
     activityId = 2,
     currentHr = 152,
     pastHr = 158,
+    pastDate = '2026-03-14',
 }: Partial<{
     direction: TrendDirection;
     paceDelta: number;
@@ -46,6 +47,7 @@ function comparison({
     activityId: number;
     currentHr: number | null;
     pastHr: number | null;
+    pastDate: string;
 }> = {}): PastYouComparison {
     return {
         direction,
@@ -54,7 +56,7 @@ function comparison({
         pace_delta_sec: paceDelta,
         hr_delta_bpm: hrDelta,
         current: run(activityId, '2026-06-12', 420, currentHr),
-        past: run(activityId + 100, '2026-03-14', 420 + paceDelta, pastHr),
+        past: run(activityId + 100, pastDate, 420 + paceDelta, pastHr),
     };
 }
 
@@ -186,6 +188,55 @@ describe('verdictHeadline', () => {
     it('names the month the improvement is measured from', () => {
         expect(verdictHeadline(trend())).toBe(
             "you're faster than you were in march.",
+        );
+    });
+
+    it('uses a generic frame when matched runs span multiple months', () => {
+        expect(
+            verdictHeadline(
+                trend({
+                    comparisons: [
+                        comparison(),
+                        comparison({ activityId: 3, pastDate: '2026-07-14' }),
+                    ],
+                }),
+            ),
+        ).toBe(
+            "you're faster than your comparable runs from a few weeks back.",
+        );
+    });
+
+    it('uses the generic frame for a slipped result across the year boundary', () => {
+        expect(
+            verdictHeadline(
+                trend({
+                    verdict: 'slipped',
+                    mean_pace_delta_sec: -9,
+                    comparisons: [
+                        comparison({ pastDate: '2025-12-31' }),
+                        comparison({ activityId: 3, pastDate: '2026-01-02' }),
+                    ],
+                }),
+            ),
+        ).toBe(
+            "you've slipped against your comparable runs from a few weeks back.",
+        );
+    });
+
+    it('uses the generic frame for a steady result across multiple months', () => {
+        expect(
+            verdictHeadline(
+                trend({
+                    verdict: 'plateaued',
+                    mean_pace_delta_sec: 0.4,
+                    comparisons: [
+                        comparison(),
+                        comparison({ activityId: 3, pastDate: '2026-07-14' }),
+                    ],
+                }),
+            ),
+        ).toBe(
+            "you're holding steady against your comparable runs from a few weeks back.",
         );
     });
 
