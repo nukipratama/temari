@@ -112,7 +112,11 @@ final class MaterialFingerprint
      *
      * @param  array<string, mixed>  $totals  {@see \App\Services\AI\Agent\Tools\TrendRangeTool::handle()}'s return value.
      */
-    public static function forTrendRead(array $totals): string
+    /**
+     * @param  array<string, mixed>  $totals
+     * @param  array<string, mixed>  $adherence
+     */
+    public static function forTrendRead(array $totals, array $adherence = []): string
     {
         return self::digest([
             'current' => self::roundedPeriod($totals['current']),
@@ -123,7 +127,26 @@ final class MaterialFingerprint
             'vdot_end' => self::bucket($totals['vdot_end']),
             'avg_monotony' => self::bucket($totals['avg_monotony']),
             'avg_strain' => self::bucket($totals['avg_strain']),
+            'adherence' => self::roundedAdherence($adherence),
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $adherence
+     * @return array<string, mixed>
+     */
+    private static function roundedAdherence(array $adherence): array
+    {
+        return [
+            'prescribed' => $adherence['prescribed'] ?? null,
+            'done' => $adherence['done'] ?? null,
+            'partial' => $adherence['partial'] ?? null,
+            'missed' => $adherence['missed'] ?? null,
+            'overreached' => $adherence['overreached'] ?? null,
+            'excused' => $adherence['excused'] ?? null,
+            'ran_anyway' => $adherence['ran_anyway'] ?? null,
+            'mean_compliance' => self::bucket($adherence['mean_compliance'] ?? null),
+        ];
     }
 
     /**

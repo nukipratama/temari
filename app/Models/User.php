@@ -28,6 +28,8 @@ use Override;
  * @property Carbon|null $backfilled_at
  * @property Carbon|null $plan_recalibration_started_at
  * @property Carbon|null $plan_recalibration_completed_at
+ * @property Carbon|null $trend_snapshots_pending_from
+ * @property Carbon|null $trend_snapshots_rebuilding_from
  * @property Carbon|null $last_seen_at
  */
 // `is_admin` is deliberately NOT fillable: it is a privilege flag granted only
@@ -70,6 +72,8 @@ class User extends Authenticatable
             'backfilled_at' => 'datetime',
             'plan_recalibration_started_at' => 'datetime',
             'plan_recalibration_completed_at' => 'datetime',
+            'trend_snapshots_pending_from' => 'date:Y-m-d',
+            'trend_snapshots_rebuilding_from' => 'date:Y-m-d',
             'last_seen_at' => 'datetime',
         ];
     }

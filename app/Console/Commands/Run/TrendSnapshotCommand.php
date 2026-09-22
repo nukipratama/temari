@@ -10,26 +10,29 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('trend:snapshot-daily')]
-#[Description("Write today's VDOT/pace-consistency snapshot row for every user")]
+#[Signature('trend:snapshot-daily {--days=7 : Number of closed days to reconcile}')]
+#[Description('Reconcile closed VDOT/pace-consistency snapshot rows for every user')]
 class TrendSnapshotCommand extends Command
 {
     public function handle(TrendSnapshotWriter $writer): int
     {
-        // Every user, not just users active in the last N days like
-        // DailyBriefingCommand — a rest week must still grow a snapshot row,
-        // or the "not enough history yet" empty state never resolves for a
-        // user who happens to be resting. Includes the demo user: this is
-        // free local computation (VdotEstimator + StreamSummary), not an
-        // LLM/Strava call, so there's no cost to exclude it from — see
-        // DemoBillingExclusionTest.
+        $days = (int) $this->option('days');
+        if ($days < 1) {
+            $this->error('--days must be at least 1.');
+
+            return self::FAILURE;
+        }
+
+        $today = now()->startOfDay();
+        $from = $today->copy()->subDays($days);
+        $through = $today->copy()->subDay();
         $users = User::query()->get();
 
         foreach ($users as $user) {
-            $writer->writeToday($user);
+            $writer->writeRange($user, $from, $through);
         }
 
-        $this->info("Wrote today's trend snapshot for {$users->count()} users.");
+        $this->info("Reconciled {$days} closed trend snapshot days for {$users->count()} users.");
 
         return self::SUCCESS;
     }

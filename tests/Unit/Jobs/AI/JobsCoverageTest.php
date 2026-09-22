@@ -20,11 +20,10 @@ use App\Models\RunCard;
 use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\MaterialFingerprint;
+use App\Services\AI\TrendReadFingerprint;
 use App\Services\AI\Narrators\ProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
@@ -33,7 +32,6 @@ use App\Services\AI\Narrators\PlanDayVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
-use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -179,9 +177,7 @@ it('AnalyzeTrendReadJob stamps the range\'s current fingerprint once done', func
     $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '7d');
     new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class));
 
-    $totals = new TrendRangeTool($user, '7d', app(TrainingLoad::class))->handle([]);
-
-    expect($row->fresh()->content_fingerprint)->toBe(MaterialFingerprint::forTrendRead($totals));
+    expect($row->fresh()->content_fingerprint)->toBe(app(TrendReadFingerprint::class)->forUser($user, '7d'));
 });
 
 it('AnalyzeTrendReadJob marks the row Failed and rethrows when the user is missing', function (): void {

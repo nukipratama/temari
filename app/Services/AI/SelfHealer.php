@@ -73,7 +73,8 @@ class SelfHealer
             + $this->resumePerActivity()
             + $this->resumeCardFlavor()
             + $this->resumeSingleRowType(AnalysisType::BriefingMascotVoice)
-            + $this->resumeSingleRowType(AnalysisType::ProfileVoice);
+            + $this->resumeSingleRowType(AnalysisType::ProfileVoice)
+            + $this->resumeSingleRowType(AnalysisType::TrendRead);
     }
 
     /**
@@ -311,7 +312,7 @@ class SelfHealer
 
     /**
      * Single-row-per-user narration types with no chain/group of their own:
-     * BriefingMascotVoice and ProfileVoice. Each is dispatched only at its
+     * BriefingMascotVoice, ProfileVoice and TrendRead. Each is dispatched only at its
      * own kickoff (daily briefing / weekly profile) with no other scheduled
      * recovery, so a capped-Pending or transiently-Failed row would sit stuck
      * without this sweep. subject_id is the user id directly for both types, so

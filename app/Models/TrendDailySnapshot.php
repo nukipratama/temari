@@ -13,9 +13,8 @@ use Illuminate\Support\Carbon;
 use Override;
 
 /**
- * One row per user per day, written once by {@see \App\Services\Run\Trend\TrendSnapshotWriter}
- * and never updated afterwards — the history is grow-forward only, with no
- * retroactive backfill. A day with no row simply has no history yet.
+ * One row per user per day, recomputed by {@see \App\Services\Run\Trend\TrendSnapshotWriter}
+ * whenever analyzed activity or closed-day reconciliation changes its evidence.
  *
  * @property int $id
  * @property int $user_id

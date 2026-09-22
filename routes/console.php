@@ -116,8 +116,12 @@ $alertOnFailure(Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45')->wi
 // scheduled trend-read calls.
 $alertOnFailure(Schedule::command('ai:trend-read 7d')->dailyAt('06:00')->withoutOverlapping(20)->onOneServer(), 'ai:trend-read 7d');
 
+// Reconcile the seven closed days, never the open current day. Activity ingest
+// repairs the affected date immediately; this is the rest-day and missed-event backstop.
+$alertOnFailure(Schedule::command('trend:snapshot-daily')->dailyAt('03:45')->withoutOverlapping(55)->onOneServer(), 'trend:snapshot-daily');
+
 // Hourly self-heal sweep: re-kicks the earliest stalled AI block per user
-// (weekly + monthly + per-activity chains, plus card/PR narration) — for
+// (weekly + monthly + per-activity chains, plus card/PR/briefing/profile/trend narration) — for
 // cost-ceiling pauses (release at the midnight dailyCost() reset) and transient
 // failures. Idempotent (invalidate=false): a no-op on blocks already advancing,
 // never re-bills; Failed blocks are bounded by MAX_SELF_HEAL_ATTEMPTS then
@@ -193,13 +197,6 @@ Schedule::command('weather:correct-forecast')->dailyAt('03:15')->withoutOverlapp
 // Rows older than the forecast window route to the archive endpoint automatically,
 // so a daily sweep is enough. Free HTTP, no LLM.
 Schedule::command('weather:backfill')->dailyAt('03:30')->withoutOverlapping(55)->onOneServer();
-
-// 03:45 daily: grow-forward VDOT/pace-consistency history, one row per user
-// per day. Every user, not just recently-active ones — a rest week still
-// needs a row, or Trends' "not enough history yet" state never resolves for
-// someone who's resting. No backfill on purpose; a day with no row has no
-// history, it isn't retroactively derived from old runs.
-Schedule::command('trend:snapshot-daily')->dailyAt('03:45')->withoutOverlapping(55)->onOneServer();
 
 // Saturday 18:00: nudge a user whose weekly streak is live but has no run yet
 // this week, while there's still time to save it before Sunday's week-close

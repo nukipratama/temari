@@ -8,8 +8,10 @@ use App\Actions\Feedback\ResolveFlaggedSubjectsAction;
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Events\ActivityIngested;
+use App\Events\TrendSnapshotsSettled;
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Listeners\DispatchPostRunAnalysis;
+use App\Listeners\RefreshTrendReadOnSnapshotsSettled;
 use App\Listeners\RecordScheduledTaskRun;
 use App\Listeners\VerifyDependencies;
 use App\Models\User;
@@ -122,6 +124,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Post-ingest AI analysis fan-out runs in its own queued job.
         Event::listen(ActivityIngested::class, DispatchPostRunAnalysis::class);
+        Event::listen(TrendSnapshotsSettled::class, RefreshTrendReadOnSnapshotsSettled::class);
 
         // Scheduler heartbeat: record every command's last run for the Pulse card.
         Event::listen(ScheduledTaskFinished::class, [RecordScheduledTaskRun::class, 'finished']);

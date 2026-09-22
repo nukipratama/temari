@@ -13,53 +13,113 @@ use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Support\Carbon;
 
 /**
- * Writes today's row into {@see TrendDailySnapshot}, once. Grow-forward only —
- * `firstOrCreate` is the load-bearing choice: re-running this for a day that
- * already has a row is a no-op, never an overwrite. There is deliberately no
- * backfill/rebuild path, unlike {@see \App\Services\Run\Metrics\WeeklyAggregator}'s
- * upsert-and-rebuild-forward behaviour — a day with no row simply has no
- * history yet.
+ * Recomputes daily VDOT and pace-variability snapshots for a user.
  */
 class TrendSnapshotWriter
 {
+    public const int UPSERT_BATCH_SIZE = 100;
+
     public function __construct(private readonly VdotEstimator $vdotEstimator)
     {
     }
 
     public function writeToday(User $user, ?Carbon $today = null): void
     {
-        $today ??= Carbon::today();
+        $this->writeDate($user, $today ?? Carbon::today());
+    }
 
-        TrendDailySnapshot::query()->firstOrCreate(
-            ['user_id' => $user->id, 'snapshot_date' => $today->toDateString()],
-            [
-                'vdot' => $this->vdotEstimator->estimate($user, $today)['vdot'] ?? null,
-                'pace_variability_sec' => $this->averagePaceVariabilitySec($user, $today),
-            ],
-        );
+    public function writeDate(User $user, Carbon $date): void
+    {
+        $this->writeRange($user, $date, $date);
+    }
+
+    public function writeRange(User $user, Carbon $from, Carbon $through): int
+    {
+        $from = $from->copy()->startOfDay();
+        $through = $through->copy()->startOfDay();
+
+        if ($from->gt($through)) {
+            return 0;
+        }
+
+        $paceVariability = $this->paceVariabilityByDate($user, $from, $through);
+        $rows = [];
+        $written = 0;
+        $timestamp = now();
+
+        for ($date = $from->copy(); $date->lte($through); $date->addDay()) {
+            $estimate = $this->vdotEstimator->estimate($user, $date);
+            $dateString = $date->toDateString();
+
+            $rows[] = [
+                'user_id' => $user->id,
+                'snapshot_date' => $dateString,
+                'vdot' => $estimate['vdot'] ?? null,
+                'pace_variability_sec' => $paceVariability[$dateString] ?? null,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ];
+
+            if (count($rows) === self::UPSERT_BATCH_SIZE) {
+                $written += $this->upsert($rows);
+                $rows = [];
+            }
+        }
+
+        return $written + $this->upsert($rows);
     }
 
     /**
-     * Mean pace-variability across the user's runs that day, or null on a rest
-     * day / when no run that day carried a usable stream. Null, never zero —
-     * same "unscorable, not zero" convention
-     * {@see \App\Services\Run\Metrics\TrainingLoad::loadDailyHistory()} already
-     * uses for TRIMP.
+     * @return array<string, float>
      */
-    private function averagePaceVariabilitySec(User $user, Carbon $today): ?float
+    private function paceVariabilityByDate(User $user, Carbon $from, Carbon $through): array
     {
-        $values = Activity::analyzedJoinConstraint(
+        $values = [];
+
+        $details = Activity::analyzedJoinConstraint(
             ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
         )
             ->where('activities.user_id', $user->id)
             ->whereNotNull('activity_details.start_date_local')
-            ->where('activity_details.start_date_local', '>=', $today->copy()->startOfDay())
-            ->where('activity_details.start_date_local', '<=', $today->copy()->endOfDay())
-            ->get(['activity_details.stream_summary'])
-            ->pluck('stream_summary')
-            ->map(static fn (?array $summary): ?float => StreamSummary::fromArray($summary)->paceVariabilitySec())
-            ->filter(static fn (?float $value): bool => $value !== null);
+            ->where('activity_details.start_date_local', '>=', $from)
+            ->where('activity_details.start_date_local', '<=', $through->copy()->endOfDay())
+            ->get(['activity_details.start_date_local', 'activity_details.stream_summary']);
 
-        return $values->isEmpty() ? null : round((float) $values->avg(), 1);
+        foreach ($details as $detail) {
+            $value = StreamSummary::fromArray($detail->stream_summary)->paceVariabilitySec();
+            if ($value === null) {
+                continue;
+            }
+
+            $date = $detail->start_date_local?->toDateString();
+            if ($date === null) {
+                continue;
+            }
+
+            $values[$date][] = $value;
+        }
+
+        return array_map(
+            static fn (array $day): float => round((float) (array_sum($day) / count($day)), 1),
+            $values,
+        );
+    }
+
+    /**
+     * @param  list<array{user_id: int, snapshot_date: string, vdot: float|null, pace_variability_sec: float|null, created_at: Carbon, updated_at: Carbon}>  $rows
+     */
+    private function upsert(array $rows): int
+    {
+        if ($rows === []) {
+            return 0;
+        }
+
+        TrendDailySnapshot::query()->upsert(
+            $rows,
+            ['user_id', 'snapshot_date'],
+            ['vdot', 'pace_variability_sec', 'updated_at'],
+        );
+
+        return count($rows);
     }
 }

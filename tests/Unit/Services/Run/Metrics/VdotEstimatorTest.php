@@ -164,6 +164,17 @@ it('measures the window from the given date, so replaying an old week does not j
         ->and($this->estimator->estimate($user, Carbon::today()->subMonths(13))['stale'])->toBeFalse();
 });
 
+it('does not use a PR set after the requested as-of date', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1_200.0,
+        'set_at' => Carbon::today()->addDay(),
+    ]);
+
+    expect($this->estimator->estimate($user, Carbon::today()))->toBeNull();
+});
+
 it('anchors quality work on recent short evidence, so intervals are not prescribed slower than a training 5km', function (): void {
     $user = User::factory()->create();
     // The shape found on prod: a hard half four months back and a much fresher

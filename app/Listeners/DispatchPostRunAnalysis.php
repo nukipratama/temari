@@ -22,6 +22,7 @@ use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Trend\TrendSnapshotRepairDispatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Carbon;
 use App\Services\AI\AnalysisOrigin;
@@ -42,6 +43,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly RestClampRecorder $restClampRecorder,
         private readonly PlanNarrationRequester $planNarration,
         private readonly ComplianceScorer $complianceScorer,
+        private readonly TrendSnapshotRepairDispatch $trendSnapshots,
     ) {
     }
 
@@ -108,6 +110,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
             return;
         }
         $snapshot = $this->weeklyAggregator->rebuildForwardFrom($user, $detail->start_date_local);
+        $this->trendSnapshots->forActivity($activity);
 
         // After the rebuild, not before: a run today moves the readiness
         // ceiling, and BriefingContext falls back to the WeeklySnapshot this
