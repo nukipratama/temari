@@ -33,3 +33,19 @@ it('debounces by user and requests only an active athlete trend read', function 
 
     expect($listener->debounceId(new TrendSnapshotsSettled($user->id)))->toBe((string) $user->id);
 });
+
+it('does not read while a newer snapshot repair is still pending', function (): void {
+    $user = User::factory()->seenToday()->create([
+        'trend_snapshots_pending_from' => now()->subDay(),
+    ]);
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldReceive('request')->never();
+    $listener = new RefreshTrendReadOnSnapshotsSettled(
+        $service,
+        new RecentlyActiveUsers(),
+        app(HistoryNarrationGate::class),
+        app(TrendReadFingerprint::class),
+    );
+
+    $listener->handle(new TrendSnapshotsSettled($user->id));
+});

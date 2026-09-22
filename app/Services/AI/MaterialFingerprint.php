@@ -104,15 +104,11 @@ final class MaterialFingerprint
 
     /**
      * The material a Trends range's read speaks to: {@see \App\Services\AI\Agent\Tools\TrendRangeTool}'s
-     * own output for the range, rounded to the granularity the narration
-     * actually reads at rather than the tool's raw precision — km to 1
-     * decimal, run counts as whole numbers, load/fitness/form (TRIMP, CTL,
-     * VDOT, monotony, strain) to whole numbers. A scheduled re-read only
-     * spends its cadence when one of those figures has actually moved.
+     * own output for the range plus plan-adherence counts, rounded to the
+     * granularity the narration actually reads at rather than the tools' raw
+     * precision. A scheduled re-read only spends its cadence when one of those
+     * figures has actually moved.
      *
-     * @param  array<string, mixed>  $totals  {@see \App\Services\AI\Agent\Tools\TrendRangeTool::handle()}'s return value.
-     */
-    /**
      * @param  array<string, mixed>  $totals
      * @param  array<string, mixed>  $adherence
      */

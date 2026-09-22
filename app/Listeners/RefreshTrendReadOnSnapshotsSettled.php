@@ -37,7 +37,13 @@ final readonly class RefreshTrendReadOnSnapshotsSettled implements ShouldQueue
         app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
 
         $user = User::query()->notDemo()->find($event->userId);
-        if ($user === null || ! $this->activeUsers->includes($user) || $this->history->awaitsFullHydration($user->id)) {
+        if (
+            $user === null
+            || ! $this->activeUsers->includes($user)
+            || $this->history->awaitsFullHydration($user->id)
+            || $user->trend_snapshots_pending_from !== null
+            || $user->trend_snapshots_rebuilding_from !== null
+        ) {
             return;
         }
 
