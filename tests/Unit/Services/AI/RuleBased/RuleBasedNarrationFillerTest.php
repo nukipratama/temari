@@ -135,6 +135,7 @@ it('uses a post-run briefing when a detailed run lands against a credited plan r
         'status' => 'overreached',
         'prescribed_km' => 6.2,
         'compliance_score' => 161,
+        'distance_score' => 161,
         'intent_verdict' => 'too_hard',
     ]);
 
