@@ -23,6 +23,8 @@ it('dispatches one recalibration for a real user and excludes demo users', funct
         RecalibrateTrainingHistoryJob::class,
         fn (RecalibrateTrainingHistoryJob $job): bool => $job->userId === $user->id,
     );
+    expect($user->fresh()->plan_recalibration_started_at)->not->toBeNull()
+        ->and($user->fresh()->plan_recalibration_completed_at)->toBeNull();
 });
 
 it('can suppress recursive dispatch while recalibration updates zone-derived data', function (): void {

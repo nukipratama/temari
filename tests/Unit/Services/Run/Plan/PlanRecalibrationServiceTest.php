@@ -7,6 +7,7 @@ use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
+use App\Models\RunnerProfile;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Plan\PlanRecalibrationService;
@@ -49,6 +50,22 @@ it('recomputes stored streams, rebuilds the plan, and marks old plan narration s
         ->and($user->fresh()->plan_recalibration_completed_at)->not->toBeNull();
 
     Queue::assertNothingPushed();
+});
+
+it('does not auto-reconcile max HR while rebuilding under the current profile', function (): void {
+    Http::preventStrayRequests();
+    $user = User::factory()->create();
+    $profile = RunnerProfile::factory()->for($user)->create(['max_hr' => 180]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->subWeek(),
+        'max_heartrate' => 195,
+    ]);
+    ActivityStream::factory()->for($activity)->create();
+
+    app(PlanRecalibrationService::class)->recalibrate($user);
+
+    expect($profile->fresh()->max_hr)->toBe(180);
 });
 
 it('rolls back every write in dry-run mode', function (): void {

@@ -79,6 +79,12 @@ export interface ActiveRace {
     name: string | null;
 }
 
+export interface PlanRecalibrationState {
+    pending: boolean;
+    started_at: string | null;
+    completed_at: string | null;
+}
+
 export interface SharedProps {
     auth: { user: AuthUser | null };
     flash: {
@@ -92,11 +98,7 @@ export interface SharedProps {
     /** ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null. */
     hrZonesChangedAt?: string | null;
     /** A zone-triggered plan rebuild keeps the previous coherent plan visible until this settles. */
-    planRecalibration?: {
-        pending: boolean;
-        started_at: string | null;
-        completed_at: string | null;
-    };
+    planRecalibration?: PlanRecalibrationState;
     /** Whether the auth user has a live (non-revoked) Telegram connection. */
     telegramConnected?: boolean;
     /** Whether the auth user has at least one browser push subscription. */

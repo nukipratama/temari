@@ -13,9 +13,19 @@ final class PlanRecalibrationDispatch
 
     public static function forUserId(int $userId): void
     {
-        if (self::$suppressed || ! User::query()->notDemo()->whereKey($userId)->exists()) {
+        if (self::$suppressed) {
             return;
         }
+
+        $user = User::query()->notDemo()->find($userId);
+        if ($user === null) {
+            return;
+        }
+
+        $user->forceFill([
+            'plan_recalibration_started_at' => now(),
+            'plan_recalibration_completed_at' => null,
+        ])->saveQuietly();
 
         RecalibrateTrainingHistoryJob::dispatch($userId)->afterCommit();
     }

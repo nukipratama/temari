@@ -34,11 +34,13 @@ it('uses whole interval repetitions and the phase target', function (): void {
 it('uses the slower supported marathon pace and a credible ultra goal pace', function (): void {
     $marathon = $this->resolver->resolve(SessionType::Long, PlanPhase::Peak, 42_195, 12_000, PRESCRIPTION_PACES);
     $slowerMarathon = $this->resolver->resolve(SessionType::Long, PlanPhase::Peak, 42_195, 15_000, PRESCRIPTION_PACES);
+    $marathonWithoutVdot = $this->resolver->resolve(SessionType::Long, PlanPhase::Peak, 42_195, 12_000, null);
     $ultra = $this->resolver->resolve(SessionType::Long, PlanPhase::Build, 50_000, 21_000, PRESCRIPTION_PACES);
 
     expect($marathon->paceSecPerKm)->toBe(300)
         ->and($marathon->hardMinutes)->toBe(15)
         ->and($slowerMarathon->paceSecPerKm)->toBe(355)
+        ->and($marathonWithoutVdot->paceSecPerKm)->toBeNull()
         ->and($ultra->hardMinutes)->toBe(0)
         ->and($ultra->isEasy())->toBeTrue()
         ->and($ultra->raceContext['kind'])->toBe('ultra');

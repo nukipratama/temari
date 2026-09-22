@@ -99,22 +99,17 @@ final class IntensityPrescriptionResolver
             && $distanceM > 42_195.0
             && $paces !== null
             && $context['goal_pace_sec_per_km'] >= $paces['easy'];
+        if ($ultraGoalIsEasy && in_array($type, [SessionType::Tempo, SessionType::Long], true)) {
+            return [0, PaceBand::Easy, $context];
+        }
 
         if ($type === SessionType::Long) {
-            if ($ultraGoalIsEasy) {
-                return [0, PaceBand::Easy, $context];
-            }
-
             return [$raceSpecific ? (self::RACE_LONG_TARGETS[$phase->value] ?? 0) : 0, $raceSpecific ? PaceBand::Marathon : null, $context];
         }
         if ($type === SessionType::Interval) {
             return [self::INTERVAL_TARGETS[$phase->value] ?? 0, PaceBand::Interval, null];
         }
         if ($raceSpecific && isset(self::RACE_TEMPO_TARGETS[$phase->value])) {
-            if ($ultraGoalIsEasy) {
-                return [0, PaceBand::Easy, $context];
-            }
-
             return [self::RACE_TEMPO_TARGETS[$phase->value], PaceBand::Marathon, $context];
         }
 
@@ -146,8 +141,12 @@ final class IntensityPrescriptionResolver
      */
     private function pace(PaceBand $band, ?array $context, ?array $paces): ?int
     {
+        if ($paces === null) {
+            return null;
+        }
+
         if ($band !== PaceBand::Marathon || $context === null) {
-            return $paces[$band->value] ?? null;
+            return $paces[$band->value];
         }
 
         $goalPace = (int) $context['goal_pace_sec_per_km'];
@@ -156,9 +155,7 @@ final class IntensityPrescriptionResolver
             return $goalPace;
         }
 
-        return $paces === null
-            ? $goalPace
-            : max($goalPace, $paces['marathon']);
+        return max($goalPace, $paces['marathon']);
     }
 
     /**
@@ -168,14 +165,37 @@ final class IntensityPrescriptionResolver
      */
     public static function familyKey(SessionType $type, ?float $distanceM, ?int $goalTimeSec): string
     {
-        if ($type === SessionType::Tempo && $distanceM !== null && $distanceM >= WeekPlanBuilder::MARATHON_DISTANCE_THRESHOLD_M && $goalTimeSec !== null && $goalTimeSec > 0) {
-            return 'race_tempo';
-        }
-
-        if ($type === SessionType::Long && $distanceM !== null && $distanceM >= WeekPlanBuilder::MARATHON_DISTANCE_THRESHOLD_M && $goalTimeSec !== null && $goalTimeSec > 0) {
-            return 'race_long';
+        $raceSpecific = $distanceM !== null
+            && $distanceM >= WeekPlanBuilder::MARATHON_DISTANCE_THRESHOLD_M
+            && $goalTimeSec !== null
+            && $goalTimeSec > 0;
+        if ($raceSpecific) {
+            return match ($type) {
+                SessionType::Tempo => 'race_tempo',
+                SessionType::Long => 'race_long',
+                default => $type->value,
+            };
         }
 
         return $type->value;
+    }
+
+    /**
+     * Resolve a historical row's comparable family from the race context that
+     * was persisted with that row, rather than from today's active race.
+     *
+     * @param  array<string, int|float|string>|null  $raceContext
+     */
+    public static function familyKeyForContext(SessionType $type, ?array $raceContext): string
+    {
+        if ($raceContext === null) {
+            return $type->value;
+        }
+
+        return match ($type) {
+            SessionType::Tempo => 'race_tempo',
+            SessionType::Long => 'race_long',
+            default => $type->value,
+        };
     }
 }

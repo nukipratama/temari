@@ -417,13 +417,15 @@ class ActivityPipeline
     /**
      * @param  array<string, mixed>|null  $streams
      */
-    private function computeAndStoreSummary(Activity $activity, ActivityDetail $detail, ?array $streams): void
+    private function computeAndStoreSummary(Activity $activity, ActivityDetail $detail, ?array $streams, bool $reconcileMaxHeartRate = true): void
     {
         if ($streams === null) {
             return;
         }
 
-        $this->reconcileMaxHeartRate($activity);
+        if ($reconcileMaxHeartRate) {
+            $this->reconcileMaxHeartRate($activity);
+        }
 
         // Not $detail->activity: during ingest the row is still a stub, and
         // AnalyzedScope would resolve that belongsTo to null.
@@ -461,7 +463,7 @@ class ActivityPipeline
      * is O(weeks-forward) per activity, so a whole-history loop must switch it
      * off and roll the snapshots once at the end instead.
      */
-    public function recomputeSummary(Activity $activity, bool $rebuildAggregates = true): void
+    public function recomputeSummary(Activity $activity, bool $rebuildAggregates = true, bool $reconcileMaxHeartRate = true): void
     {
         $detail = $activity->detail;
         $stream = $activity->stream;
@@ -469,7 +471,7 @@ class ActivityPipeline
             return;
         }
 
-        $this->computeAndStoreSummary($activity, $detail, $stream->data);
+        $this->computeAndStoreSummary($activity, $detail, $stream->data, $reconcileMaxHeartRate);
 
         if ($rebuildAggregates && $detail->start_date_local !== null) {
             $this->weeklyAggregator->rebuildForwardFrom($activity->user, $detail->start_date_local);

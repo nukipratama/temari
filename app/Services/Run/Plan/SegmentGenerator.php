@@ -404,22 +404,7 @@ final class SegmentGenerator
         $spentMinutes = 0.0;
         $hardKm = self::kmForPrescription($prescription);
         $usedKm = ($warmup->km ?? INF) + $hardKm + ($blocks - 1) * ($recovery->km ?? INF);
-        if ($paces === null) {
-            $segments = [$warmup];
-            for ($i = 0; $i < $blocks; $i++) {
-                $minutes = $i === $blocks - 1 ? $prescription->hardMinutes - $spentMinutes : $baseMinutes;
-                $segments[] = self::prescribedBlock(SegmentKey::Main, $minutes, $prescription);
-                $spentMinutes += $minutes;
-                if ($i < $blocks - 1) {
-                    $segments[] = $recovery;
-                }
-            }
-
-            $segments[] = self::unmeasuredEasy();
-
-            return $segments;
-        }
-        if (! is_finite($usedKm) || $usedKm > $km) {
+        if ($paces !== null && (! is_finite($usedKm) || $usedKm > $km)) {
             return self::easyBlock($km, $paces);
         }
 
@@ -433,7 +418,9 @@ final class SegmentGenerator
             }
         }
 
-        return self::withEasyRemainder($segments, $km, $paces);
+        return $paces === null
+            ? [...$segments, self::unmeasuredEasy()]
+            : self::withEasyRemainder($segments, $km, $paces);
     }
 
     /** @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
@@ -447,19 +434,7 @@ final class SegmentGenerator
         $recovery = self::bookend(SegmentKey::Recovery, $recoveryMinutes, $paces);
         $hardKm = self::kmForPrescription($prescription);
         $usedKm = ($warmup->km ?? INF) + $hardKm + ($reps - 1) * ($recovery->km ?? INF);
-        if ($paces === null) {
-            $segments = [$warmup];
-            for ($i = 0; $i < $reps; $i++) {
-                $segments[] = self::prescribedBlock(SegmentKey::Interval, $repMinutes, $prescription);
-                if ($i < $reps - 1) {
-                    $segments[] = $recovery;
-                }
-            }
-            $segments[] = self::unmeasuredEasy();
-
-            return $segments;
-        }
-        if (! is_finite($usedKm) || $usedKm > $km) {
+        if ($paces !== null && (! is_finite($usedKm) || $usedKm > $km)) {
             return self::easyBlock($km, $paces);
         }
 
@@ -471,7 +446,9 @@ final class SegmentGenerator
             }
         }
 
-        return self::withEasyRemainder($segments, $km, $paces);
+        return $paces === null
+            ? [...$segments, self::unmeasuredEasy()]
+            : self::withEasyRemainder($segments, $km, $paces);
     }
 
     /** @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
@@ -504,7 +481,7 @@ final class SegmentGenerator
         $pace = $prescription->paceBand;
         $secPerKm = $prescription->paceSecPerKm;
         if ($pace === null) {
-            throw new LogicException('A hard prescription requires a pace.');
+            throw new LogicException('A hard prescription requires a pace band.');
         }
 
         return new SessionSegment(

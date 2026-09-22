@@ -94,7 +94,7 @@ final readonly class PlanRecalibrationService
                 continue;
             }
 
-            $this->activityPipeline->recomputeSummary($activity, rebuildAggregates: false);
+            $this->activityPipeline->recomputeSummary($activity, rebuildAggregates: false, reconcileMaxHeartRate: false);
             $recomputed++;
         }
 

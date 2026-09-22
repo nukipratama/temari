@@ -137,17 +137,11 @@ final readonly class PlanInputsGatherer
             ->whereNotNull('prescribed_hard_minutes')
             ->where('prescribed_hard_minutes', '>', 0)
             ->latest('date')
-            ->get(['session_type', 'intent_verdict', 'prescribed_hard_minutes']);
+            ->get(['session_type', 'intent_verdict', 'prescribed_hard_minutes', 'prescription_race_context']);
 
         $recent = [];
-        $race = ($this->activeRace)($user->id);
-        $family = static fn (SessionType $type): string => IntensityPrescriptionResolver::familyKey(
-            $type,
-            $race === null ? null : (float) $race->distance_m,
-            $race?->goal_time_sec,
-        );
         foreach ($rows as $row) {
-            $key = $family($row->session_type);
+            $key = IntensityPrescriptionResolver::familyKeyForContext($row->session_type, $row->prescription_race_context);
             if (! isset($recent[$key]) && $row->intent_verdict !== null && $row->prescribed_hard_minutes !== null) {
                 $recent[$key] = ['verdict' => $row->intent_verdict, 'hard_minutes' => $row->prescribed_hard_minutes];
             }

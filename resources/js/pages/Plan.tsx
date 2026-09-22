@@ -8,6 +8,7 @@ import type {
     PlanWeek,
     SeasonSummaryWeek,
 } from '@/lib/plan';
+import type { PlanRecalibrationState } from '@/types/inertia';
 
 import SeasonHeaderCard from '@/components/plan/SeasonHeaderCard';
 import SeasonTimeline from '@/components/plan/SeasonTimeline';
@@ -58,11 +59,7 @@ interface PlanProps {
     planNarration?: PlanNarration;
     /** Seconds left before Regenerate may run again, or null when it's free to click. */
     regenerateCooldownSeconds?: number | null;
-    planRecalibration?: {
-        pending: boolean;
-        started_at: string | null;
-        completed_at: string | null;
-    };
+    planRecalibration?: PlanRecalibrationState;
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
