@@ -123,7 +123,7 @@ final readonly class RuleBasedNarrationFiller
     /** @var non-empty-list<string> */
     private const array POST_RUN_BRIEFINGS = [
         "{distance_line}{verdict_line}.\n\nthat's the session accounted for, so the rest of today is recovery. drink, eat something decent, and keep the legs out of another session.\n\nif they still feel loaded, make mobility gentle and call it there.",
-        "{distance_line}{verdict_line}.\n\nno second effort today. let the work settle, get some food and water in, and leave the scoreboard alone for a bit.\n\nheavy legs or an odd HR response later means the quiet option wins.",
+        "{distance_line}{verdict_line}.\n\nno second effort today. recovery is the move; let the work settle, get some food and water in, and leave the scoreboard alone for a bit.\n\nheavy legs or an odd HR response later means the quiet option wins.",
         "{distance_line}{verdict_line}.\n\ntoday's work is done. recovery is the useful move now: fluids, food, and nothing heroic added to the log.\n\nif the body stays louder than the numbers suggest, keep the rest of the day easy.",
     ];
 
