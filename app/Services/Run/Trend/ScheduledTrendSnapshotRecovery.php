@@ -30,8 +30,7 @@ final readonly class ScheduledTrendSnapshotRecovery
             $cursor = $locked->trend_snapshots_scheduled_through;
 
             if ($cursor === null) {
-                $anchor = $this->anchorFor($locked);
-                $cursor = $anchor->subDay();
+                $cursor = $this->anchorFor($locked)->subDay();
             }
 
             if ($cursor->gte($latest)) {

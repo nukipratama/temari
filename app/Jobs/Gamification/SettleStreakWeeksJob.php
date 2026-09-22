@@ -44,11 +44,12 @@ final class SettleStreakWeeksJob implements ShouldBeUniqueUntilProcessing, Shoul
 
     public function handle(StreakSettlementService $settlement): void
     {
-        if (User::query()->whereKey($this->userId)->doesntExist()) {
+        $user = User::query()->find($this->userId);
+        if ($user === null) {
             return;
         }
 
-        if (! $settlement->settle(User::query()->findOrFail($this->userId))) {
+        if (! $settlement->settle($user)) {
             self::dispatch($this->userId);
 
             return;

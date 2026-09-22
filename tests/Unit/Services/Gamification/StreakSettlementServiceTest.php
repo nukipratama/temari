@@ -28,7 +28,6 @@ function snapshotWeeks(User $user, Carbon $latest, int $count, int $runs = 2): v
 
 it('rebuilds token outcomes chronologically and records a forgiven no-run week', function (): void {
     $user = User::factory()->create();
-    $latest = Carbon::parse('2026-05-31');
     snapshotWeeks($user, Carbon::parse('2026-05-24'), 4);
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-31', 'runs' => 0]);
 
