@@ -24,6 +24,24 @@ beforeEach(function (): void {
 });
 afterEach(fn () => Carbon::setTestNow());
 
+it('caps each scored day before averaging season adherence', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create([
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2026-08-16',
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-10',
+        'compliance_score' => 161,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-11',
+        'compliance_score' => 0,
+    ]);
+
+    expect($this->builder->adherencePct($user, $season))->toBe(50);
+});
+
 it('covers every week from season start to season end for a self-scaled season', function (): void {
     $user = User::factory()->create();
     $season = Season::factory()->for($user)->create([

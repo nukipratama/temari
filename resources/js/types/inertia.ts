@@ -474,6 +474,8 @@ export interface WeekPlanDay {
     ran_pace_sec_per_km: number | null;
     /** Total km actually run that day — null when nothing was logged. */
     actual_km: number | null;
+    /** Distance used by the plan's distance score: longest run for Tempo/Interval, total otherwise. */
+    credited_km: number | null;
     /** Every run logged that day, oldest first — a day can hold more than one,
      *  and each gets its own line rather than being folded into a single
      *  summary whose distance and duration came from different runs. */

@@ -202,9 +202,9 @@ export const STATUS_BAR_FILL: Record<string, string> = {
 
 /**
  * A run of days as one adherence figure: the mean of whatever compliance
- * scores exist, capped at 100 so a single big overreach can't read as a
- * season "at 140%". Days with no score (rest days, anything still upcoming)
- * are not counted rather than scored as zero.
+ * scores exist, capping each day at 100 before averaging so a single big
+ * overreach can't paper over a missed day. Days with no score (rest days,
+ * anything still upcoming) are not counted rather than scored as zero.
  */
 export function computeAdherence(
     days: ReadonlyArray<{ compliance_score: number | null }>,
@@ -213,8 +213,11 @@ export function computeAdherence(
     if (scored.length === 0) {
         return null;
     }
-    const total = scored.reduce((sum, d) => sum + (d.compliance_score ?? 0), 0);
-    return Math.round(Math.min(100, total / scored.length));
+    const total = scored.reduce(
+        (sum, d) => sum + Math.min(100, d.compliance_score ?? 0),
+        0,
+    );
+    return Math.round(total / scored.length);
 }
 
 /** "jun 12–18" for a week start, collapsing the month when both ends share it. */

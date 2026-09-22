@@ -60,6 +60,20 @@ it('answers the question and marks it done', function (): void {
         ->and($row->answer)->toBe('your heart rate climbed 6 bpm while the pace held.');
 });
 
+it('passes athlete-supplied context to the narrator unchanged', function (): void {
+    $question = 'Ga tidur malam';
+    $row = questionRow(['question' => ['question' => $question]]);
+    $narrator = Mockery::mock(RunQuestionNarrator::class);
+    $narrator->shouldReceive('generate')
+        ->once()
+        ->withArgs(fn (mixed $activity, mixed $detail, string $received): bool => $received === $question)
+        ->andReturn('read from the supplied context');
+
+    new AnswerRunQuestionJob($row->id)->handle(app(AnalysisService::class), $narrator);
+
+    expect($row->refresh()->answer)->toBe('read from the supplied context');
+});
+
 it('runs on the ai queue', function (): void {
     expect(new AnswerRunQuestionJob(1)->queue)->toBe('ai');
 });

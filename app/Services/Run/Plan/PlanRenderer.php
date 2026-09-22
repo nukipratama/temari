@@ -329,6 +329,15 @@ final class PlanRenderer
             );
         }
 
+        $longestRunKm = null;
+        foreach ($activity['runs'] ?? [] as $run) {
+            $longestRunKm = $longestRunKm === null ? $run['km'] : max($longestRunKm, $run['km']);
+        }
+        $creditedKm = $activity === null || $longestRunKm === null ? null : round(SessionMatcher::creditedKm($s->session_type, [
+            'sum' => $activity['km'],
+            'longest' => $longestRunKm,
+        ]), 1);
+
         return [
             'id' => $s->id,
             'date' => $s->date->toDateString(),
@@ -359,6 +368,7 @@ final class PlanRenderer
                 ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [])
                 : null,
             'actual_km' => $activity['km'] ?? null,
+            'credited_km' => $creditedKm,
             'activities' => array_map(
                 static fn (array $run): array => ['id' => $run['id'], 'km' => $run['km'], 'seconds' => $run['seconds']],
                 $activity['runs'] ?? [],

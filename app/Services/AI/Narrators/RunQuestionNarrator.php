@@ -75,6 +75,16 @@ class RunQuestionNarrator
         prescribing: quoting the target pace it set is fine, inventing one is
         not. An empty list means no plan covered that day.
 
+        ATHLETE-SUPPLIED CONTEXT: statements the athlete gives about sleep,
+        illness, stress, schedule, or another condition are context they
+        supplied, not excuses for you to judge. Accept the stated condition,
+        never question it, call it an excuse, invent a measurement, or make a
+        diagnosis. Keep measured facts from the run separate from an
+        unproven cause. For example, "Ga tidur malam" and "Ini lari dengan
+        kondisi ga tidur malam" mean insufficient or no overnight sleep, not a
+        night run. "I didn't sleep last night" and "I ran on no sleep" mean the
+        same thing. The answer may stay in English.
+
         NEVER: prescribe a session, a distance or a pace of your own. Never
         diagnose an injury. Never end on a motivational line.
         PROMPT;

@@ -214,6 +214,7 @@ final readonly class SessionMatcher
             ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.elapsed_time', 'activity_details.moving_time']);
 
         $byDate = [];
+        $metersByDate = [];
         foreach ($rows as $row) {
             $date = $row->start_date_local?->toDateString();
             if ($date === null) {
@@ -221,13 +222,17 @@ final readonly class SessionMatcher
             }
 
             $km = DistanceFormatter::km((float) $row->distance);
-            $byDate[$date]['km'] = round(($byDate[$date]['km'] ?? 0.0) + $km, 1);
+            $metersByDate[$date] = ($metersByDate[$date] ?? 0.0) + (float) $row->distance;
             $byDate[$date]['runs'][] = [
                 'id' => (int) $row->activity_id,
                 'km' => $km,
                 'seconds' => $row->elapsed_time,
                 'moving_time' => $row->moving_time,
             ];
+        }
+
+        foreach ($byDate as $date => $day) {
+            $byDate[$date]['km'] = DistanceFormatter::km($metersByDate[$date]);
         }
 
         return $byDate;
@@ -246,7 +251,7 @@ final readonly class SessionMatcher
      *
      * @param  array{sum: float, longest: float}  $day
      */
-    private static function creditedKm(?SessionType $type, array $day): float
+    public static function creditedKm(?SessionType $type, array $day): float
     {
         return self::creditsBestRunOnly($type) ? $day['longest'] : $day['sum'];
     }

@@ -55,6 +55,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         credit_note: null,
         ran_pace_sec_per_km: null,
         actual_km: null,
+        credited_km: null,
         activities: [],
         flagged: false,
         ...overrides,
@@ -208,6 +209,42 @@ describe('WeekDayRow', () => {
         });
 
         expect(screen.getByText('partial · 60%')).toBeInTheDocument();
+    });
+
+    it('labels an overrun as distance completion without hiding the verdict', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                status: 'overreached',
+                compliance_score: 161,
+                prescribed_km: 6.2,
+                actual_km: 10,
+                credited_km: 10,
+            }),
+        });
+
+        expect(
+            screen.getByText('overreached · 10.0 of 6.2 km · 161% distance'),
+        ).toBeInTheDocument();
+    });
+
+    it('labels the credited run distance separately from the day total', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                status: 'overreached',
+                compliance_score: 113,
+                prescribed_km: 8,
+                actual_km: 10,
+                credited_km: 9,
+            }),
+        });
+
+        expect(
+            screen.getByText(
+                'overreached · 10.0 km logged · 9.0 of 8.0 km counted · 113% distance',
+            ),
+        ).toBeInTheDocument();
     });
 
     it('says what a verdict means, distance and intent together', () => {

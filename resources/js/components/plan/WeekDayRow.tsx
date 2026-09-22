@@ -72,6 +72,23 @@ function runSummary(run: PlanDay['activities'][number]): string {
     return [`${run.km} km`, time].filter((part) => part !== null).join(' · ');
 }
 
+function complianceLabel(day: PlanDay): string {
+    if (
+        day.compliance_score != null &&
+        day.compliance_score > 100 &&
+        day.credited_km != null &&
+        day.prescribed_km != null
+    ) {
+        if (day.actual_km !== null && day.actual_km !== day.credited_km) {
+            return `${day.actual_km.toFixed(1)} km logged · ${day.credited_km.toFixed(1)} of ${day.prescribed_km.toFixed(1)} km counted · ${day.compliance_score}% distance`;
+        }
+
+        return `${day.credited_km.toFixed(1)} of ${day.prescribed_km.toFixed(1)} km · ${day.compliance_score}% distance`;
+    }
+
+    return `${day.compliance_score}%`;
+}
+
 /**
  * The readiness step-down, rendered beneath the day's own prescription rather
  * than replacing it. The plan still asks for what it asked for; this is the
@@ -267,7 +284,7 @@ export default function WeekDayRow({
                 >
                     {STATUS_LABEL[status]}
                     {day.compliance_score != null &&
-                        ` · ${day.compliance_score}%`}
+                        ` · ${complianceLabel(day)}`}
                 </span>
             )}
         </span>

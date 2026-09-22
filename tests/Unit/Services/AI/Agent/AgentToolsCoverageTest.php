@@ -1077,6 +1077,54 @@ it('reads what the plan prescribed across the span it is bound to', function ():
         ->and(array_column($reading['days'], 'date'))->toBe(['2026-09-07', '2026-09-08']);
 });
 
+it('carries a detailed run and persisted intent beside the plan row', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $today,
+        'distance' => 10_000,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'status' => PlannedSessionStatus::Overreached,
+        'prescribed_km' => 6.2,
+        'intent_verdict' => IntentVerdict::TooHard,
+    ]);
+
+    $reading = planContextTool($user, $today, $today)->handle([])['days'][0];
+
+    expect($reading['completed_km'])->toBe(10.0)
+        ->and($reading['intent'])->toBe('too_hard');
+});
+
+it('keeps total distance separate from the distance credited on a multi-run tempo day', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Partial,
+        'prescribed_km' => 8.0,
+        'distance_score' => 63,
+        'compliance_score' => 63,
+    ]);
+
+    foreach ([5_000, 5_000] as $distance) {
+        $activity = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => $today,
+            'distance' => $distance,
+        ]);
+    }
+
+    $reading = planContextTool($user, $today, $today)->handle([])['days'][0];
+
+    expect($reading['completed_km'])->toBe(10.0)
+        ->and($reading['credited_km'])->toBe(5.0)
+        ->and($reading['distance_score'])->toBe($session->distance_score);
+});
+
 /** The span is the binding, so a day outside it is another block's business. */
 it('leaves out a day outside the span', function (): void {
     $user = User::factory()->create();

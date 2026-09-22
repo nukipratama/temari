@@ -904,8 +904,10 @@ it("dayPayload computes a Tempo day's ran pace from its best single run only", f
 
     $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done, $activity);
 
-    // 5,400s over the 18km best run — the second, faster 5km run never enters a tempo's one-effort grade.
-    expect($payload['ran_pace_sec_per_km'])->toBe(300);
+    // The second, faster 5km run never enters a tempo's one-effort grade.
+    expect($payload['ran_pace_sec_per_km'])->toBe(300)
+        ->and($payload['actual_km'])->toBe(23.0)
+        ->and($payload['credited_km'])->toBe(18.0);
 });
 
 /**

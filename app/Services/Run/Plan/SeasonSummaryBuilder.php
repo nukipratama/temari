@@ -50,13 +50,14 @@ final readonly class SeasonSummaryBuilder
      */
     public function adherencePct(User $user, Season $season): ?int
     {
-        $average = PlannedSession::query()
+        $scores = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$season->starts_at->toDateString(), $season->ends_at->toDateString()])
             ->whereNotNull('compliance_score')
-            ->avg('compliance_score');
+            ->pluck('compliance_score')
+            ->map(fn (int $score): int => min(100, $score));
 
-        return $average === null ? null : (int) round(min(100.0, (float) $average));
+        return $scores->isEmpty() ? null : (int) round((float) $scores->avg());
     }
 
     /**
