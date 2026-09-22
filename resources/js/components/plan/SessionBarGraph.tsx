@@ -8,6 +8,7 @@ const SEGMENT_LABEL: Record<PlanSessionSegment['key'], string> = {
     main: 'main set',
     interval: 'interval',
     recovery: 'recovery',
+    easy: 'easy running',
 };
 
 /** Bar height by zone — the ramp is the point, so it is not linear in zone number. */
@@ -91,6 +92,7 @@ export default function SessionBarGraph({
     const warmup = segments.find((s) => s.key === 'warmup');
     const work = repeats[0];
     const recovery = segments.find((s) => s.key === 'recovery');
+    const easy = segments.filter((s) => s.key === 'easy');
 
     return (
         <div className="mt-2.5">
@@ -125,6 +127,15 @@ export default function SessionBarGraph({
                             figure={`${figureText(work)} hard / ${recovery?.minutes ?? 0} min easy`}
                             sub={paceSub(work)}
                         />
+                        {easy.map((segment) => (
+                            <LegendItem
+                                key={`${segment.key}-${segment.zone}-${segment.minutes ?? 'unmeasured'}-${segment.km ?? 'open'}`}
+                                label={SEGMENT_LABEL.easy}
+                                zone={segment.zone}
+                                figure={figureText(segment)}
+                                sub={paceSub(segment)}
+                            />
+                        ))}
                     </>
                 ) : (
                     Array.from({ length: segments.length }, (_, index) => (

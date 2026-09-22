@@ -402,7 +402,8 @@ it('lets the race projection move prescribed quality work in both directions', f
     // #933: being ahead of the goal time no longer touches the quality block
     // at all -- it stays exactly what the phase baseline already prescribes.
     // Only falling behind still moves it, and only upward.
-    expect($behindGoal)->toBeGreaterThan($steady)
+    expect($steady)->toBe(2)
+        ->and($behindGoal)->toBeLessThanOrEqual(2)
         ->and($aheadOfGoal)->toBe($steady);
 });
 

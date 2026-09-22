@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\FeedbackSubject;
+use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Models\Feedback;
 use App\Models\PlanAdaptation;
@@ -61,6 +63,7 @@ final readonly class Periodizer
         private PhaseSchedule $phaseSchedule,
         private WeekPlanBuilder $weekPlanBuilder,
         private PlanInputsGatherer $gatherer,
+        private IntensityPrescriptionResolver $prescriptionResolver,
     ) {
     }
 
@@ -74,7 +77,7 @@ final readonly class Periodizer
      * Y-m-d. Reads nothing and writes nothing — everything it needs is in
      * {@see PlanInputs}.
      *
-     * @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float}>
+     * @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
     public function rowsFor(PlanInputs $inputs): array
     {
@@ -104,6 +107,7 @@ final readonly class Periodizer
                 $inputs->raceDate,
                 $week['zone'],
             );
+            $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs);
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier']];
             }
@@ -161,6 +165,11 @@ final readonly class Periodizer
                         // Stamped on the row so race day still knows its own
                         // distance once the goal behind it has been retired.
                         'race_distance_m' => $row['session_type'] === SessionType::Race ? (int) $inputs->raceDistanceM : null,
+                        'prescribed_hard_minutes' => $row['prescribed_hard_minutes'],
+                        'prescribed_pace_band' => $row['prescribed_pace_band'],
+                        'prescribed_pace_sec_per_km' => $row['prescribed_pace_sec_per_km'],
+                        'prescription_reason' => $row['prescription_reason'],
+                        'prescription_race_context' => $row['prescription_race_context'],
                         'pinned' => false,
                         'status' => PlannedSessionStatus::Planned,
                         'clamped_km' => $carriedClamp?->clamped_km,
@@ -185,11 +194,128 @@ final readonly class Periodizer
     }
 
     /**
+     * @param array<string, array{phase: PlanPhase, session_type: SessionType, ...}> $rows
+     * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null, ...}>
+     */
+    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs): array
+    {
+        $firstEasy = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Easy);
+        $kmByDate = [];
+        foreach ($rows as $date => $row) {
+            $kmByDate[$date] = SegmentGenerator::coreKmFor(
+                $row['session_type'],
+                $date === $firstEasy,
+                $inputs->longRunBaselineKm,
+                $multiplier,
+                $inputs->longRunCapKm,
+                $inputs->raceDistanceM,
+                $inputs->longRunProgressionCapKm,
+            );
+        }
+
+        $prescriptions = [];
+        foreach ($rows as $date => $row) {
+            $family = IntensityPrescriptionResolver::familyKey(
+                $row['session_type'],
+                $inputs->raceDistanceM,
+                $inputs->raceGoalTimeSec,
+            );
+            $recent = $inputs->recentPrescriptions[$family] ?? null;
+            $prescriptions[$date] = $this->prescriptionResolver->resolve(
+                $row['session_type'],
+                $row['phase'],
+                $inputs->raceDistanceM,
+                $inputs->raceGoalTimeSec,
+                $inputs->paces,
+                $recent['verdict'] ?? null,
+                $recent['hard_minutes'] ?? null,
+            );
+        }
+
+        // Without VDOT there is no trustworthy time denominator. Keep the
+        // phase/day caps, but do not invent a weekly percentage ceiling.
+        $hardCeiling = $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs);
+        while ($hardCeiling !== null && array_sum(array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions)) > $hardCeiling) {
+            $hardMinutes = array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions);
+            $largestHardMinutes = $hardMinutes === [] ? 0 : max($hardMinutes);
+            $date = array_find_key($prescriptions, static fn (IntensityPrescription $candidate): bool => $candidate->hardMinutes === $largestHardMinutes);
+            if ($date === null) {
+                break;
+            }
+            $row = $rows[$date];
+            $current = $prescriptions[$date];
+            $over = array_sum(array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions)) - $hardCeiling;
+            $family = IntensityPrescriptionResolver::familyKey(
+                $row['session_type'],
+                $inputs->raceDistanceM,
+                $inputs->raceGoalTimeSec,
+            );
+            $recent = $inputs->recentPrescriptions[$family] ?? null;
+            $prescriptions[$date] = $this->prescriptionResolver->resolve(
+                $row['session_type'],
+                $row['phase'],
+                $inputs->raceDistanceM,
+                $inputs->raceGoalTimeSec,
+                $inputs->paces,
+                $recent['verdict'] ?? null,
+                $recent['hard_minutes'] ?? null,
+                max(0, $current->hardMinutes - $over),
+            );
+            if ($prescriptions[$date]->hardMinutes === $current->hardMinutes) {
+                break;
+            }
+
+            $hardCeiling = $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs);
+        }
+
+        foreach ($rows as $date => &$row) {
+            $prescription = $prescriptions[$date];
+            if (! $prescription->isEasy()) {
+                $segments = SegmentGenerator::forPrescription($row['session_type'], $row['phase'], $kmByDate[$date], $inputs->paces, $prescription);
+                $hasHard = array_any($segments, static fn (SessionSegment $segment): bool => in_array($segment->key, [SegmentKey::Main, SegmentKey::Interval], true) && $segment->paceLabel !== PaceBand::Easy);
+                if (! $hasHard) {
+                    $prescription = new IntensityPrescription(0, null, null, 'easy because the outing cannot safely fit the minimum quality structure', $prescription->raceContext);
+                }
+            }
+            $row = [...$row, ...$prescription->toArray()];
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /** @param array<string, array{session_type: SessionType, phase: PlanPhase, ...}> $rows
+     *  @param array<string, float> $kmByDate
+     *  @param array<string, IntensityPrescription> $prescriptions
+     */
+    private function hardCeiling(array $rows, array $kmByDate, array $prescriptions, PlanInputs $inputs): ?int
+    {
+        if ($inputs->paces === null) {
+            return null;
+        }
+
+        $totalMinutes = 0.0;
+        foreach ($rows as $date => $row) {
+            $segments = $row['session_type']->isQuality()
+                ? SegmentGenerator::forPrescription($row['session_type'], $row['phase'], $kmByDate[$date], $inputs->paces, $prescriptions[$date])
+                : SegmentGenerator::forCoreKm($row['session_type'], $row['phase'], $inputs->raceDistanceM, $kmByDate[$date], $inputs->paces, $inputs->raceGoalTimeSec);
+
+            foreach ($segments as $segment) {
+                if ($segment->minutes !== null) {
+                    $totalMinutes += $segment->minutes;
+                }
+            }
+        }
+
+        return (int) floor($totalMinutes * 0.3);
+    }
+
+    /**
      * The volume floor this week gives way to, recorded so the Plan tab can
      * say so: only when the adapter's deload actually turned the week down,
      * which a Taper week never is.
      *
-     * @param  array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float}>  $rows
+     * @param  array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, ...}>  $rows
      */
     private static function overriddenFloorKm(PlanInputs $inputs, array $rows): ?float
     {

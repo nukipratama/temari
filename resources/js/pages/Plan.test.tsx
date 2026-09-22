@@ -44,6 +44,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         compliance_score: null,
         ran_anyway: false,
         prescribed_km: null,
+        prescription_reason: null,
         clamp: null,
         eased_from: null,
         pace_eased_from: null,
@@ -153,6 +154,24 @@ describe('Plan', () => {
         expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
             0,
         );
+    });
+
+    it('quietly keeps the current plan visible while zone recalibration is pending', () => {
+        renderPlan({
+            planRecalibration: {
+                pending: true,
+                started_at: '2026-06-17T08:00:00+07:00',
+                completed_at: null,
+            },
+        });
+
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'rechecking your plan',
+        );
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'the current plan stays in place',
+        );
+        expect(screen.getByText('tempo')).toBeInTheDocument();
     });
 
     it('names the race it is built around once one is set', () => {

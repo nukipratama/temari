@@ -6,10 +6,14 @@ namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
+use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Metrics\RiegelProjector;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
@@ -29,6 +33,8 @@ final readonly class PlanInputsGatherer
         private RiegelProjector $riegelProjector,
         private ResolveActiveRaceAction $activeRace,
         private ResolveTrainingPreferenceAction $trainingPreference,
+        private VdotEstimator $vdotEstimator,
+        private TrainingPaceCalculator $paceCalculator,
     ) {
     }
 
@@ -48,6 +54,9 @@ final readonly class PlanInputsGatherer
         $preference = ($this->trainingPreference)($user->id);
         ['pinned' => $pinnedDates, 'settled' => $settledDates] = $this->pinnedAndSettledDatesIn($user, $today, $horizonEnd);
 
+        $baseline = $this->baseline->forUser($user, $today);
+        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
+
         return new PlanInputs(
             userId: $user->id,
             today: $today,
@@ -56,7 +65,7 @@ final readonly class PlanInputsGatherer
             seasonOpensWithRecovery: $season->opens_with_recovery,
             raceDate: $race?->race_date,
             raceDistanceM: $race === null ? null : (float) $race->distance_m,
-            sessionsPerWeek: $this->baseline->forUser($user, $today)['sessions_per_week'],
+            sessionsPerWeek: $baseline['sessions_per_week'],
             runDays: $preference?->run_days,
             longRunDay: $preference?->long_run_day,
             adaptation: $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race),
@@ -75,6 +84,12 @@ final readonly class PlanInputsGatherer
                 : $this->riegelProjector->project($user, (float) $race->distance_m)['predicted_sec'] ?? null,
             volumeFloorKm: $season->volume_floor_km,
             increasesHeld: $season->increases_held,
+            raceGoalTimeSec: $race?->goal_time_sec,
+            paces: $paces,
+            longRunBaselineKm: $baseline['long_run_km'],
+            longRunCapKm: $baseline['long_run_cap_km'],
+            longRunProgressionCapKm: $baseline['long_run_progression_cap_km'],
+            recentPrescriptions: $this->recentPrescriptions($user, $today),
         );
     }
 
@@ -109,5 +124,29 @@ final readonly class PlanInputsGatherer
         }
 
         return ['pinned' => $pinned, 'settled' => $settled];
+    }
+
+    /** @return array<string, array{verdict: IntentVerdict, hard_minutes: int}> */
+    private function recentPrescriptions(User $user, Carbon $today): array
+    {
+        $rows = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$today->copy()->subDays(42)->toDateString(), $today->copy()->subDay()->toDateString()])
+            ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval, SessionType::Long])
+            ->whereNotNull('intent_verdict')
+            ->whereNotNull('prescribed_hard_minutes')
+            ->where('prescribed_hard_minutes', '>', 0)
+            ->latest('date')
+            ->get(['session_type', 'intent_verdict', 'prescribed_hard_minutes', 'prescription_race_context']);
+
+        $recent = [];
+        foreach ($rows as $row) {
+            $key = IntensityPrescriptionResolver::familyKeyForContext($row->session_type, $row->prescription_race_context);
+            if (! isset($recent[$key]) && $row->intent_verdict !== null && $row->prescribed_hard_minutes !== null) {
+                $recent[$key] = ['verdict' => $row->intent_verdict, 'hard_minutes' => $row->prescribed_hard_minutes];
+            }
+        }
+
+        return $recent;
     }
 }

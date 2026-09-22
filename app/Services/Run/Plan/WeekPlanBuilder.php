@@ -65,7 +65,7 @@ final class WeekPlanBuilder
     public const float MARATHON_DISTANCE_THRESHOLD_M = 30_000.0;
 
     /** Ceiling on quality sessions per week once race-pace feedback asks for more. */
-    private const int MAX_QUALITY_SLOTS = 3;
+    private const int MAX_QUALITY_SLOTS = 2;
 
     /** A week with fewer sessions than this carries one quality day on the phase baseline, not two. */
     private const int MIN_SESSIONS_FOR_EXTRA_QUALITY = 5;
@@ -402,7 +402,7 @@ final class WeekPlanBuilder
         // session, not the threshold/interval mix below. Still a Tempo slot
         // — {@see SegmentGenerator} is what recognises the marathon-pace
         // case (phase + race distance) and swaps its main-set pace.
-        if (in_array($phase, [PlanPhase::Peak, PlanPhase::Taper], true) && $isMarathonDistance) {
+        if (in_array($phase, [PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper], true) && $isMarathonDistance) {
             return [['session_type' => SessionType::Tempo]];
         }
 

@@ -33,6 +33,7 @@ it('shares every documented key on every response', function (): void {
         'demoLoginEnabled',
         'webPushPublicKey',
         'cartoApiKey',
+        'planRecalibration',
         'activeRace',
         'stravaSync',
         'stravaPaused',
@@ -50,6 +51,7 @@ it('keeps every derived prop a closure so a partial reload can skip it', functio
     $props = sharedPropsFor(User::factory()->create());
 
     foreach ([
+        'planRecalibration',
         'stravaSync',
         'activeRace', 'hrZonesChangedAt', 'telegramConnected', 'webPushSubscribed', 'unreadNotifications',
         'stravaZoneScopeMissing', 'aiPaused', 'aiCatchingUp', 'stravaPaused',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Strava;
 
 use App\Models\User;
+use App\Services\Run\Plan\PlanRecalibrationDispatch;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\ZoneFetcher;
@@ -77,6 +78,7 @@ class SyncZonesCommand extends Command
                 'strava_zones_synced_at' => Carbon::now(),
             ],
         );
+        PlanRecalibrationDispatch::forUserId($user->id);
 
         $this->line("user {$user->id}: zones synced from Strava");
     }

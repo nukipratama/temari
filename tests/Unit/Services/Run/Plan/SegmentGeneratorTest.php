@@ -7,12 +7,48 @@ use App\Enums\PlanPhase;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\IntensityPrescription;
 
 const PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
 
 // No race, a race below the marathon-pace threshold, and one at or above it —
 // the three inputs `WeekPlanBuilder::isMarathonDistance()` distinguishes.
 const RACE_DISTANCES = ['no race' => null, '10K' => 10_000.0, 'marathon' => 42_195.0];
+
+it('keeps a bounded hard dose and turns the rest of the outing into explicit Easy distance', function (): void {
+    $prescription = new IntensityPrescription(20, PaceBand::Threshold, 270, 'conservative start');
+    $segments = SegmentGenerator::forPrescription(SessionType::Tempo, PlanPhase::Build, 10.4, PACES, $prescription);
+
+    $hardMinutes = array_sum(array_map(
+        fn ($segment): float => $segment->key === SegmentKey::Main ? (float) $segment->minutes : 0.0,
+        $segments,
+    ));
+
+    expect($hardMinutes)->toBe(20.0)
+        ->and(array_column(array_map(fn ($segment): array => $segment->toArray(), $segments), 'key'))->toContain('easy')
+        ->and(SegmentGenerator::segmentSumKm($segments))->toBe(10.4);
+});
+
+it('builds race-specific Long work as Easy opening, bounded work, and Easy finish', function (): void {
+    $prescription = new IntensityPrescription(40, PaceBand::Marathon, 300, 'race-specific peak');
+    $segments = SegmentGenerator::forPrescription(SessionType::Long, PlanPhase::Peak, 24.0, PACES, $prescription);
+
+    expect(array_map(fn ($segment): SegmentKey => $segment->key, $segments))->toBe([
+        SegmentKey::Easy,
+        SegmentKey::Main,
+        SegmentKey::Easy,
+    ])->and($segments[1]->minutes)->toBe(40.0)
+        ->and(SegmentGenerator::segmentSumKm($segments))->toBe(24.0);
+});
+
+it('keeps the hard-day shape when VDOT is unavailable without inventing pace or distance', function (): void {
+    $prescription = new IntensityPrescription(20, PaceBand::Threshold, null, 'phase cap without VDOT');
+    $segments = SegmentGenerator::forPrescription(SessionType::Tempo, PlanPhase::Build, 10.0, null, $prescription);
+
+    expect(array_map(fn ($segment): SegmentKey => $segment->key, $segments))->toContain(SegmentKey::Main, SegmentKey::Easy)
+        ->and($segments[1]->minutes)->toBe(10.0)
+        ->and($segments[1]->paceSecPerKm)->toBeNull();
+});
 
 it('returns no segments for a rest day', function (): void {
     expect(SegmentGenerator::generate(SessionType::Rest, PlanPhase::Base, null, false, 16.0, 1.0, INF, PACES))->toBe([]);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\Strava;
 
 use App\Models\User;
+use App\Services\Run\Plan\PlanRecalibrationDispatch;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
@@ -123,5 +124,6 @@ class SyncZonesJob implements ShouldQueue
                 'strava_zones_synced_at' => Carbon::now(),
             ],
         );
+        PlanRecalibrationDispatch::forUserId($user->id);
     }
 }

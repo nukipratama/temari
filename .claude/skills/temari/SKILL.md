@@ -24,6 +24,15 @@ log.
 The repository is public, so issue and PR text never carries athlete ids, emails, hostnames or
 per-athlete costs — describe them instead of pasting them.
 
+### PR handoff standard
+
+Treat every PR as a reviewer handoff. Its body should connect the user-visible outcome to the
+settled issue decision, identify affected files and data/queue/external-service effects, list exact
+verification commands and outcomes (including anything unavailable), give a reproducible reviewer
+path, and state rollout, privacy, failure/rollback, and follow-up notes. Keep `Closes #<n>` in the
+body, exclude secrets and identifying athlete data, and refresh the description when later pushes
+change the scope or verification.
+
 ## Codebase map
 
 Backend logic is split by domain under `app/Services/`:

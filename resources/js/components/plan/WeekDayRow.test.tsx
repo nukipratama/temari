@@ -48,6 +48,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         compliance_score: null,
         ran_anyway: false,
         prescribed_km: null,
+        prescription_reason: null,
         clamp: null,
         eased_from: null,
         pace_eased_from: null,
@@ -236,6 +237,23 @@ describe('WeekDayRow', () => {
         expect(screen.queryByText('Done')).not.toBeInTheDocument();
     });
 
+    it('explains the deterministic coaching reason for the selected dose', () => {
+        renderRow({
+            day: day({
+                prescription_reason:
+                    '25 hard minutes, held from your latest comparable session.',
+            }),
+        });
+        expand();
+
+        expect(screen.getByText('why this dose')).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                '25 hard minutes, held from your latest comparable session.',
+            ),
+        ).toBeInTheDocument();
+    });
+
     /**
      * #939: the day's take is labelled "Temari's read", not "Temari's take" —
      * the backend only ever hands this row a `narration` payload once the
@@ -290,7 +308,12 @@ describe('WeekDayRow', () => {
     });
 
     it('renders a plain rest day flat, with no chevron or focusable trigger', () => {
-        renderRow({ day: WEEK[1] });
+        renderRow({
+            day: day({
+                ...WEEK[1],
+                prescription_reason: 'easy volume',
+            }),
+        });
 
         expect(
             screen.queryByRole('button', { name: /rest/i }),

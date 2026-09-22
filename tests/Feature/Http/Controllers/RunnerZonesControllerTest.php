@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
 use App\Models\User;
@@ -85,7 +86,7 @@ it('rejects an invalid submission and persists nothing', function (): void {
     expect(RunnerProfile::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
-it('does not dispatch any recompute job on update (forward-only design)', function (): void {
+it('queues one whole-history recalibration after a zone update', function (): void {
     Queue::fake();
 
     $user = User::factory()->create();
@@ -94,7 +95,10 @@ it('does not dispatch any recompute job on update (forward-only design)', functi
         ->patch('/settings/zones', validZonesPayload())
         ->assertRedirect();
 
-    Queue::assertNothingPushed();
+    Queue::assertPushed(
+        RecalibrateTrainingHistoryJob::class,
+        fn (RecalibrateTrainingHistoryJob $job): bool => $job->userId === $user->id,
+    );
 });
 
 it('resets to default by deleting the runner profile', function (): void {

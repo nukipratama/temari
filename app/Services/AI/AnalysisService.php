@@ -282,6 +282,7 @@ class AnalysisService
             // caller declares one; an LLM serve always clears it.
             'rule_based_reason' => $servedBy === ServedBy::RuleBased ? $ruleBasedReason : null,
             'generated_at' => $generatedAt ?? Carbon::now(),
+            'stale_at' => null,
             // Only per-run activity groups pass a fingerprint; other types
             // write the existing value back untouched.
             'content_fingerprint' => $fingerprint ?? $row->content_fingerprint,

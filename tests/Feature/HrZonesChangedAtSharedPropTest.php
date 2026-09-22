@@ -43,3 +43,16 @@ it('shares the ISO timestamp of the last heart-rate-zone change', function (): v
         ->assertInertia(fn (Assert $page) => $page
             ->where('hrZonesChangedAt', $changedAt->toIso8601String()));
 });
+
+it('shares durable plan recalibration progress', function (): void {
+    $started = Carbon::parse('2026-09-22 04:00:00');
+    $user = User::factory()->create();
+    $user->forceFill(['plan_recalibration_started_at' => $started])->saveQuietly();
+
+    $this->actingAs($user)->get('/profile')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('planRecalibration.pending', true)
+            ->where('planRecalibration.started_at', $started->toIso8601String())
+            ->where('planRecalibration.completed_at', null));
+});

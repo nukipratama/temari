@@ -79,6 +79,12 @@ export interface ActiveRace {
     name: string | null;
 }
 
+export interface PlanRecalibrationState {
+    pending: boolean;
+    started_at: string | null;
+    completed_at: string | null;
+}
+
 export interface SharedProps {
     auth: { user: AuthUser | null };
     flash: {
@@ -91,6 +97,8 @@ export interface SharedProps {
     activeRace?: ActiveRace | null;
     /** ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null. */
     hrZonesChangedAt?: string | null;
+    /** A zone-triggered plan rebuild keeps the previous coherent plan visible until this settles. */
+    planRecalibration?: PlanRecalibrationState;
     /** Whether the auth user has a live (non-revoked) Telegram connection. */
     telegramConnected?: boolean;
     /** Whether the auth user has at least one browser push subscription. */
@@ -125,6 +133,9 @@ export interface AnalysisPayload {
     discriminator: string | null;
     attempts?: number;
     generated_at?: string | null;
+    /** The read still renders, but describes plan facts superseded at this timestamp. */
+    stale_at?: string | null;
+    is_stale?: boolean;
     retry_after_seconds?: number | null;
     /** This athlete has already flagged this narration as wrong. */
     flagged?: boolean;
@@ -362,7 +373,7 @@ export interface PastYouTrend {
  *  `minutes`/`pace_sec_per_km` are null exactly when the athlete has no VDOT
  *  estimate yet; the segment's shape (key, pace target) still renders. */
 export interface PlanSessionSegment {
-    key: 'warmup' | 'main' | 'interval' | 'recovery';
+    key: 'warmup' | 'main' | 'interval' | 'recovery' | 'easy';
     minutes: number | null;
     /** The segment's own distance. A day's warmup and main set are rounded so
      *  they sum to `WeekPlanDay['distance_km']` exactly; interval reps carry
@@ -439,6 +450,8 @@ export interface WeekPlanDay {
      *  until then — `distance_km` above is recomputed against current fitness
      *  and drifts away from it as the athlete's baseline moves. */
     prescribed_km: number | null;
+    /** Deterministic explanation of why this hard-work dose was selected. */
+    prescription_reason: string | null;
     /** Today's readiness step-down when one shows but was never recorded, a
      *  modification *beside* the day's own prescription. Null on every other
      *  day, on a day whose ease was recorded (see `eased_from`), and once today

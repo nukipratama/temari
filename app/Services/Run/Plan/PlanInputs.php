@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\AdaptationReason;
+use App\Enums\IntentVerdict;
 use Illuminate\Support\Carbon;
 
 /**
@@ -22,6 +23,8 @@ final readonly class PlanInputs
      * @param  array<string, true>  $settledDates  Y-m-d already carrying a verdict
      * @param  float|null  $volumeFloorKm  the race season's weekly volume floor, which an adapter deload is allowed to break
      * @param  bool  $increasesHeld  the race block holds flat at its floor until the load guard's recent runs are scored
+     * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
+     * @param array<string, array{verdict: IntentVerdict, hard_minutes: int}> $recentPrescriptions
      */
     public function __construct(
         public int $userId,
@@ -40,6 +43,12 @@ final readonly class PlanInputs
         public ?float $projectedRaceSeconds,
         public ?float $volumeFloorKm = null,
         public bool $increasesHeld = false,
+        public ?int $raceGoalTimeSec = null,
+        public ?array $paces = null,
+        public float $longRunBaselineKm = 0.0,
+        public float $longRunCapKm = INF,
+        public float $longRunProgressionCapKm = INF,
+        public array $recentPrescriptions = [],
     ) {
     }
 

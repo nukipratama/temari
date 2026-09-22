@@ -370,6 +370,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         compliance_score: null,
         ran_anyway: false,
         prescribed_km: null,
+        prescription_reason: null,
         clamp: null,
         eased_from: null,
         pace_eased_from: null,
@@ -499,6 +500,33 @@ describe('paceLabel', () => {
                 }),
             ),
         ).toBe('4:00/km');
+    });
+
+    it('keeps reading the hard set when easy running follows it', () => {
+        expect(
+            paceLabel(
+                planDay({
+                    segments: [
+                        {
+                            key: 'main',
+                            minutes: 25,
+                            zone: 'Z4',
+                            pace_label: 'threshold',
+                            km: 5,
+                            pace_sec_per_km: 300,
+                        },
+                        {
+                            key: 'easy',
+                            minutes: 20,
+                            zone: 'Z2',
+                            pace_label: 'easy',
+                            km: 3,
+                            pace_sec_per_km: 400,
+                        },
+                    ],
+                }),
+            ),
+        ).toBe('5:00/km');
     });
 
     it('has no pace to read on a rest day', () => {

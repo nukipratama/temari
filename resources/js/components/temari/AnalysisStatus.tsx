@@ -51,6 +51,15 @@ function StaleZonesBadge() {
     );
 }
 
+function StalePlanBadge() {
+    return (
+        <span className="inline-flex items-center self-start gap-1 rounded-full bg-horizon/15 px-2 py-0.5 text-xs text-horizon-ink">
+            <Icon icon={Clock} aria-hidden />
+            <span>based on an earlier plan</span>
+        </span>
+    );
+}
+
 interface Props {
     analysis: AnalysisPayload;
     inertiaReloadProps?: string[];
@@ -190,7 +199,11 @@ export default function AnalysisStatus({
                         ? renderContent(content)
                         : renderBold(content)}
                 </div>
-                {staleZones && <StaleZonesBadge />}
+                {analysis.is_stale === true ? (
+                    <StalePlanBadge />
+                ) : (
+                    staleZones && <StaleZonesBadge />
+                )}
                 {(generatedAt !== null || analysis.id !== null) && (
                     <div
                         className={cn(

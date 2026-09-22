@@ -82,6 +82,26 @@ describe('SessionBarGraph', () => {
         expect(screen.queryByText('Recovery')).not.toBeInTheDocument();
     });
 
+    it('keeps the explicit easy remainder visible beside collapsed repetitions', () => {
+        render(
+            <SessionBarGraph
+                segments={[
+                    ...INTERVAL_SESSION,
+                    segment({
+                        key: 'easy',
+                        minutes: 12,
+                        km: 2,
+                        zone: 'Z2',
+                    }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText('3× interval')).toBeInTheDocument();
+        expect(screen.getByText('easy running')).toBeInTheDocument();
+        expect(screen.getByText('2 km · 12 min')).toBeInTheDocument();
+    });
+
     it('still draws one bar per rep even when the legend collapses them', () => {
         const { container } = render(
             <SessionBarGraph segments={INTERVAL_SESSION} />,

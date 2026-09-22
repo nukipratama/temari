@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\ExperienceLevel;
+use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -107,4 +108,27 @@ it('states what the adapter decided about the week being planned', function (): 
     $inputs = $this->gatherer->forUser(gathererAthlete(), Carbon::today());
 
     expect($inputs->adaptation)->toHaveKeys(['reason', 'deload', 'quality_delta', 'adherence_pct']);
+});
+
+it('uses each historical row race context when finding comparable hard work', function (): void {
+    $user = gathererAthlete();
+    RaceGoal::factory()->for($user)->create([
+        'race_date' => '2026-10-31',
+        'distance_m' => 42_195,
+        'goal_time_sec' => 14_400,
+    ]);
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->subDay(),
+        'session_type' => 'tempo',
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => IntentVerdict::Hit,
+        'prescribed_hard_minutes' => 20,
+        'prescription_race_context' => null,
+    ]);
+
+    $inputs = $this->gatherer->forUser($user, Carbon::today());
+
+    expect($inputs->recentPrescriptions)->toHaveKey('tempo')
+        ->and($inputs->recentPrescriptions)->not->toHaveKey('race_tempo');
 });

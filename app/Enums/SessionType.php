@@ -22,4 +22,12 @@ enum SessionType: string
     case Interval = 'interval';
     case Rest = 'rest';
     case Race = 'race';
+
+    public function isQuality(): bool
+    {
+        return match ($this) {
+            self::Long, self::Tempo, self::Interval => true,
+            default => false,
+        };
+    }
 }

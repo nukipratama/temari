@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use LogicException;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SegmentKey;
@@ -81,6 +82,21 @@ final class SegmentGenerator
         'peak' => [4.0, 2.0],
         'taper' => [2.0, 3.0],
     ];
+
+    public static function workUnitMinutes(SessionType $sessionType, PlanPhase $phase, int $workBasisMinutes): int
+    {
+        if ($sessionType === SessionType::Long) {
+            return max(1, $workBasisMinutes);
+        }
+
+        if ($sessionType === SessionType::Interval) {
+            return (int) (self::INTERVAL_REP_TABLE[$phase->value][0] ?? 3.0);
+        }
+
+        [$blocks] = self::TEMPO_BLOCK_TABLE[$phase->value] ?? self::TEMPO_BLOCK_TABLE['build'];
+
+        return max(1, (int) ceil($workBasisMinutes / $blocks));
+    }
 
     /**
      * The WHOLE distance this session asks for, warmup included, before any
@@ -233,6 +249,33 @@ final class SegmentGenerator
     }
 
     /**
+     * Builds the exact persisted coaching decision inside an already-sized
+     * whole outing. Excess distance remains explicitly Easy instead of
+     * silently becoming more work at intensity.
+     *
+     * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
+     * @return list<SessionSegment>
+     */
+    public static function forPrescription(
+        SessionType $sessionType,
+        PlanPhase $phase,
+        float $coreKm,
+        ?array $paces,
+        IntensityPrescription $prescription,
+    ): array {
+        if ($prescription->isEasy() || ! $sessionType->isQuality()) {
+            return self::easyBlock($coreKm, $paces);
+        }
+
+        return match ($sessionType) {
+            SessionType::Tempo => self::prescribedTempoSegments($phase, $coreKm, $paces, $prescription),
+            SessionType::Interval => self::prescribedIntervalSegments($phase, $coreKm, $paces, $prescription),
+            SessionType::Long => self::prescribedLongSegments($coreKm, $paces, $prescription),
+            default => self::easyBlock($coreKm, $paces),
+        };
+    }
+
+    /**
      * The race, as one block at the pace the athlete is racing it at, and
      * nothing else. No warmup is carved out and no cooldown prescribed: a
      * race-day routine belongs to the athlete, the same reasoning that keeps
@@ -363,6 +406,137 @@ final class SegmentGenerator
         }
 
         return $segments;
+    }
+
+    /** @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
+     *  @return list<SessionSegment>
+     */
+    private static function prescribedTempoSegments(PlanPhase $phase, float $km, ?array $paces, IntensityPrescription $prescription): array
+    {
+        [$blocks, $recoveryMinutes] = self::TEMPO_BLOCK_TABLE[$phase->value] ?? self::TEMPO_BLOCK_TABLE['build'];
+        $warmup = self::bookend(SegmentKey::Warmup, self::WARMUP_MINUTES['tempo'], $paces);
+        $recovery = self::bookend(SegmentKey::Recovery, $recoveryMinutes, $paces);
+        $baseMinutes = round($prescription->hardMinutes / $blocks, 1);
+        $spentMinutes = 0.0;
+        $hardKm = self::kmForPrescription($prescription);
+        $usedKm = ($warmup->km ?? INF) + $hardKm + ($blocks - 1) * ($recovery->km ?? INF);
+        if ($paces !== null && (! is_finite($usedKm) || $usedKm > $km)) {
+            return self::easyBlock($km, $paces);
+        }
+
+        $segments = [$warmup];
+        for ($i = 0; $i < $blocks; $i++) {
+            $minutes = $i === $blocks - 1 ? $prescription->hardMinutes - $spentMinutes : $baseMinutes;
+            $segments[] = self::prescribedBlock(SegmentKey::Main, $minutes, $prescription);
+            $spentMinutes += $minutes;
+            if ($i < $blocks - 1) {
+                $segments[] = $recovery;
+            }
+        }
+
+        return $paces === null
+            ? [...$segments, self::unmeasuredEasy()]
+            : self::withEasyRemainder($segments, $km, $paces);
+    }
+
+    /** @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
+     *  @return list<SessionSegment>
+     */
+    private static function prescribedIntervalSegments(PlanPhase $phase, float $km, ?array $paces, IntensityPrescription $prescription): array
+    {
+        [$repMinutes, $recoveryMinutes] = self::INTERVAL_REP_TABLE[$phase->value] ?? self::INTERVAL_REP_TABLE['build'];
+        $reps = max(1, (int) floor($prescription->hardMinutes / $repMinutes));
+        $warmup = self::bookend(SegmentKey::Warmup, self::WARMUP_MINUTES['interval'], $paces);
+        $recovery = self::bookend(SegmentKey::Recovery, $recoveryMinutes, $paces);
+        $hardKm = self::kmForPrescription($prescription);
+        $usedKm = ($warmup->km ?? INF) + $hardKm + ($reps - 1) * ($recovery->km ?? INF);
+        if ($paces !== null && (! is_finite($usedKm) || $usedKm > $km)) {
+            return self::easyBlock($km, $paces);
+        }
+
+        $segments = [$warmup];
+        for ($i = 0; $i < $reps; $i++) {
+            $segments[] = self::prescribedBlock(SegmentKey::Interval, $repMinutes, $prescription);
+            if ($i < $reps - 1) {
+                $segments[] = $recovery;
+            }
+        }
+
+        return $paces === null
+            ? [...$segments, self::unmeasuredEasy()]
+            : self::withEasyRemainder($segments, $km, $paces);
+    }
+
+    /** @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
+     *  @return list<SessionSegment>
+     */
+    private static function prescribedLongSegments(float $km, ?array $paces, IntensityPrescription $prescription): array
+    {
+        $hardKm = self::kmForPrescription($prescription);
+        $finishKm = self::kmFor(10.0, PaceBand::Easy, $paces) ?? INF;
+        if ($paces === null) {
+            return [
+                self::unmeasuredEasy(),
+                self::prescribedBlock(SegmentKey::Main, $prescription->hardMinutes, $prescription),
+                self::unmeasuredEasy(),
+            ];
+        }
+        if (! is_finite($finishKm) || $hardKm + $finishKm >= $km) {
+            return self::easyBlock($km, $paces);
+        }
+
+        return [
+            self::block(SegmentKey::Easy, round($km - $hardKm - $finishKm, 1), PaceBand::Easy, $paces),
+            self::prescribedBlock(SegmentKey::Main, $prescription->hardMinutes, $prescription),
+            self::block(SegmentKey::Easy, round($km - round($km - $hardKm - $finishKm, 1) - round($hardKm, 1), 1), PaceBand::Easy, $paces),
+        ];
+    }
+
+    private static function prescribedBlock(SegmentKey $key, float $minutes, IntensityPrescription $prescription): SessionSegment
+    {
+        $pace = $prescription->paceBand;
+        $secPerKm = $prescription->paceSecPerKm;
+        if ($pace === null) {
+            throw new LogicException('A hard prescription requires a pace band.');
+        }
+
+        return new SessionSegment(
+            $key,
+            round($minutes, 1),
+            self::zoneFor($pace),
+            $pace,
+            $secPerKm,
+            $secPerKm === null ? null : round($minutes * 60 / $secPerKm, 1),
+        );
+    }
+
+    private static function kmForPrescription(IntensityPrescription $prescription): float
+    {
+        return $prescription->paceSecPerKm === null ? INF : $prescription->hardMinutes * 60 / $prescription->paceSecPerKm;
+    }
+
+    /** @param list<SessionSegment> $segments
+     *  @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
+     *  @return list<SessionSegment>
+     */
+    private static function withEasyRemainder(array $segments, float $totalKm, ?array $paces): array
+    {
+        $spent = self::segmentSumKm($segments);
+        if ($spent === null || $spent > $totalKm) {
+            return [...$segments, self::unmeasuredEasy()];
+        }
+
+        $remainder = round($totalKm - $spent, 1);
+        if ($remainder > 0.0) {
+            $segments[] = self::block(SegmentKey::Easy, $remainder, PaceBand::Easy, $paces);
+        }
+
+        return $segments;
+    }
+
+    private static function unmeasuredEasy(): SessionSegment
+    {
+        return new SessionSegment(SegmentKey::Easy, null, self::zoneFor(PaceBand::Easy), PaceBand::Easy, null, null);
     }
 
     /**
