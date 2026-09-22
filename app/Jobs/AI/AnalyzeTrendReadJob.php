@@ -6,10 +6,8 @@ namespace App\Jobs\AI;
 
 use App\Models\AI\Analysis;
 use App\Models\User;
-use App\Services\AI\Agent\Tools\TrendRangeTool;
-use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\Narrators\TrendReadNarrator;
-use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\AI\TrendReadFingerprint;
 
 /**
  * Row job for one range of "Temari's read" on the Trends tab. Not chained —
@@ -27,7 +25,7 @@ class AnalyzeTrendReadJob extends AnalyzeRowJob
 
     /**
      * Stamped so a scheduled re-read can tell whether the range's own numbers
-     * moved since this generation — see {@see MaterialFingerprint::forTrendRead()}.
+     * moved since this generation — see {@see TrendReadFingerprint::forUser()}.
      */
     protected function fingerprintFor(Analysis $row): ?string
     {
@@ -36,9 +34,6 @@ class AnalyzeTrendReadJob extends AnalyzeRowJob
             return null;
         }
 
-        $range = (string) $row->discriminator;
-        $totals = new TrendRangeTool($user, $range, app(TrainingLoad::class))->handle([]);
-
-        return MaterialFingerprint::forTrendRead($totals);
+        return app(TrendReadFingerprint::class)->forUser($user, (string) $row->discriminator);
     }
 }

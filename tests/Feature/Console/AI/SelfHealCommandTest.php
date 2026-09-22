@@ -5,9 +5,11 @@ declare(strict_types=1);
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\NarrationOrigin;
 use App\Services\AI\SelfHealer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -51,4 +53,6 @@ it('delegates the sweep to SelfHealer and prints the resumed count', function ()
     $this->artisan('ai:self-heal')
         ->expectsOutputToContain('Resumed 4 blocks.')
         ->assertSuccessful();
+
+    expect(app(NarrationOrigin::class)->current())->toBe(AnalysisOrigin::Recovery);
 });

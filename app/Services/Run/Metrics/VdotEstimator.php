@@ -79,18 +79,21 @@ class VdotEstimator
         $now = $asOf ?? Carbon::now();
         $cutoff = $now->copy()->subMonths(self::RECENT_MONTHS);
         $qualityCutoff = $now->copy()->subMonths(self::QUALITY_MONTHS);
+        $asOfPrs = $prs->filter(
+            static fn (PersonalRecord $pr): bool => $pr->set_at->lessThanOrEqualTo($now->copy()->endOfDay()),
+        );
 
-        $result = $this->lowestVdot($prs->filter(
+        $result = $this->lowestVdot($asOfPrs->filter(
             static fn (PersonalRecord $pr): bool => $pr->set_at->greaterThanOrEqualTo($cutoff),
         ));
         $stale = $result === null;
-        $result ??= $this->lowestVdot($prs);
+        $result ??= $this->lowestVdot($asOfPrs);
 
         if ($result === null) {
             return null;
         }
 
-        $qualitySlice = $prs->filter(
+        $qualitySlice = $asOfPrs->filter(
             static fn (PersonalRecord $pr): bool => $pr->set_at->greaterThanOrEqualTo($qualityCutoff)
                 && ($pr->category->distanceMeters() ?? INF) <= self::QUALITY_MAX_METERS,
         );

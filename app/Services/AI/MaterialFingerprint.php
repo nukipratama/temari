@@ -104,15 +104,15 @@ final class MaterialFingerprint
 
     /**
      * The material a Trends range's read speaks to: {@see \App\Services\AI\Agent\Tools\TrendRangeTool}'s
-     * own output for the range, rounded to the granularity the narration
-     * actually reads at rather than the tool's raw precision — km to 1
-     * decimal, run counts as whole numbers, load/fitness/form (TRIMP, CTL,
-     * VDOT, monotony, strain) to whole numbers. A scheduled re-read only
-     * spends its cadence when one of those figures has actually moved.
+     * own output for the range plus plan-adherence counts, rounded to the
+     * granularity the narration actually reads at rather than the tools' raw
+     * precision. A scheduled re-read only spends its cadence when one of those
+     * figures has actually moved.
      *
-     * @param  array<string, mixed>  $totals  {@see \App\Services\AI\Agent\Tools\TrendRangeTool::handle()}'s return value.
+     * @param  array<string, mixed>  $totals
+     * @param  array<string, mixed>  $adherence
      */
-    public static function forTrendRead(array $totals): string
+    public static function forTrendRead(array $totals, array $adherence = []): string
     {
         return self::digest([
             'current' => self::roundedPeriod($totals['current']),
@@ -123,7 +123,26 @@ final class MaterialFingerprint
             'vdot_end' => self::bucket($totals['vdot_end']),
             'avg_monotony' => self::bucket($totals['avg_monotony']),
             'avg_strain' => self::bucket($totals['avg_strain']),
+            'adherence' => self::roundedAdherence($adherence),
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $adherence
+     * @return array<string, mixed>
+     */
+    private static function roundedAdherence(array $adherence): array
+    {
+        return [
+            'prescribed' => $adherence['prescribed'] ?? null,
+            'done' => $adherence['done'] ?? null,
+            'partial' => $adherence['partial'] ?? null,
+            'missed' => $adherence['missed'] ?? null,
+            'overreached' => $adherence['overreached'] ?? null,
+            'excused' => $adherence['excused'] ?? null,
+            'ran_anyway' => $adherence['ran_anyway'] ?? null,
+            'mean_compliance' => self::bucket($adherence['mean_compliance'] ?? null),
+        ];
     }
 
     /**

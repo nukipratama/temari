@@ -9,6 +9,7 @@ use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
+use App\Jobs\Run\RebuildTrendSnapshotsJob;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\PlannedSession;
 use App\Enums\PlannedSessionStatus;
@@ -24,13 +25,13 @@ use App\Services\AI\ServedBy;
 use App\Actions\AI\StaggerBackfillAction;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\NarrationEligibility;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Trend\TrendSnapshotRepairDispatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -614,7 +615,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         app(RestClampRecorder::class),
         app(PlanNarrationRequester::class),
         app(ComplianceScorer::class),
-        app(HistoryNarrationGate::class),
+        app(TrendSnapshotRepairDispatch::class),
     );
 
     $listener->handle(new ActivityIngested($activity->id));
@@ -806,7 +807,9 @@ it('defers every LLM call for a run synced while the athlete is away from the ap
 
     fire($activity);
 
-    Bus::assertNothingDispatched();
+    Bus::assertDispatched(RebuildTrendSnapshotsJob::class);
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+    Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
     Notification::assertNothingSent();
 
     $groupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->get();

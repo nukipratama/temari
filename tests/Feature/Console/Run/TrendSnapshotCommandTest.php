@@ -16,13 +16,16 @@ it('writes a snapshot row for every real user', function (): void {
 
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::yesterday()]);
 
     $this->artisan('trend:snapshot-daily')
-        ->expectsOutputToContain("Wrote today's trend snapshot for 1 users.")
+        ->expectsOutputToContain('Reconciled 7 closed trend snapshot days for 1 users.')
         ->assertSuccessful();
 
-    expect(TrendDailySnapshot::query()->where('user_id', $user->id)->exists())->toBeTrue();
+    expect(TrendDailySnapshot::query()
+        ->where('user_id', $user->id)
+        ->whereDate('snapshot_date', Carbon::yesterday())
+        ->exists())->toBeTrue();
 
     Carbon::setTestNow();
 });
@@ -34,7 +37,10 @@ it('writes a row even for a user with no run today, so a rest week still grows h
 
     $this->artisan('trend:snapshot-daily')->assertSuccessful();
 
-    $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
+    $snap = TrendDailySnapshot::query()
+        ->where('user_id', $user->id)
+        ->whereDate('snapshot_date', Carbon::yesterday())
+        ->sole();
     expect($snap->vdot)->toBeNull()
         ->and($snap->pace_variability_sec)->toBeNull();
 
@@ -47,10 +53,13 @@ it('writes a snapshot row for the demo user too, since this is free local comput
     $demo = User::factory()->demo()->create();
 
     $this->artisan('trend:snapshot-daily')
-        ->expectsOutputToContain("Wrote today's trend snapshot for 1 users.")
+        ->expectsOutputToContain('Reconciled 7 closed trend snapshot days for 1 users.')
         ->assertSuccessful();
 
-    expect(TrendDailySnapshot::query()->where('user_id', $demo->id)->exists())->toBeTrue();
+    expect(TrendDailySnapshot::query()
+        ->where('user_id', $demo->id)
+        ->whereDate('snapshot_date', Carbon::yesterday())
+        ->exists())->toBeTrue();
 
     Carbon::setTestNow();
 });
@@ -63,7 +72,7 @@ it('is idempotent when run twice the same day', function (): void {
     $this->artisan('trend:snapshot-daily')->assertSuccessful();
     $this->artisan('trend:snapshot-daily')->assertSuccessful();
 
-    expect(TrendDailySnapshot::query()->where('user_id', $user->id)->count())->toBe(1);
+    expect(TrendDailySnapshot::query()->where('user_id', $user->id)->count())->toBe(7);
 
     Carbon::setTestNow();
 });

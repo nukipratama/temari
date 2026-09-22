@@ -113,6 +113,7 @@ it('includes training_paces derived from VDOT when the user has a qualifying PR'
     PersonalRecord::factory()->for($user)->create([
         'category' => '5km',
         'value_sec' => 1200.0,
+        'set_at' => Carbon::today(),
     ]);
 
     $this->actingAs($user)
@@ -126,6 +127,7 @@ it('carries this week\'s training days beside the paces, so the ladder can say w
     PersonalRecord::factory()->for($user)->create([
         'category' => '5km',
         'value_sec' => 1200.0,
+        'set_at' => Carbon::today(),
     ]);
     $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
     PlannedSession::factory()->for($user)->create([
@@ -158,6 +160,7 @@ it('flags this week\'s training day that is today', function (): void {
     PersonalRecord::factory()->for($user)->create([
         'category' => '5km',
         'value_sec' => 1200.0,
+        'set_at' => Carbon::today(),
     ]);
     $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
     foreach ([0, 2, 4] as $offset) {

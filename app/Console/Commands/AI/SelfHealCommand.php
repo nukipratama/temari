@@ -14,7 +14,7 @@ use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 
 #[Signature('ai:self-heal')]
-#[Description('Hourly safety net: re-kick the earliest stalled AI block per user (chains + card/PR/briefing/profile narration), under a retry budget')]
+#[Description('Hourly safety net: re-kick the earliest stalled AI block per user (chains + card/PR/briefing/profile/trend narration), under a retry budget')]
 class SelfHealCommand extends Command
 {
     public function handle(AnalysisService $service, MaintainerAlerter $alerter, SelfHealer $healer): int

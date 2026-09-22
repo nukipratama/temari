@@ -21,7 +21,11 @@ afterEach(fn () => Carbon::setTestNow());
 
 it('writes a row with vdot and pace-variability computed from real data', function (): void {
     $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200.0]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1200.0,
+        'set_at' => Carbon::today(),
+    ]);
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::today(),
@@ -81,7 +85,7 @@ it('averages pace-variability across multiple runs the same day', function (): v
     expect($snap->pace_variability_sec)->toEqualWithDelta(6.0, 0.01);
 });
 
-it('running the writer twice for the same day does not overwrite the existing row', function (): void {
+it('running the writer twice for the same day recomputes the existing row', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -92,9 +96,7 @@ it('running the writer twice for the same day does not overwrite the existing ro
     $this->writer->writeToday($user);
     $firstRowId = TrendDailySnapshot::query()->where('user_id', $user->id)->sole()->id;
 
-    // A second run of the day (e.g. a retried cron dispatch) must not touch
-    // the already-written row — this is the regression test for the
-    // grow-forward guarantee (firstOrCreate, never updateOrCreate).
+    // A second run of the day must include both runs in the daily aggregate.
     $secondActivity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($secondActivity)->create([
         'start_date_local' => Carbon::today()->setTime(18, 0),
@@ -104,7 +106,7 @@ it('running the writer twice for the same day does not overwrite the existing ro
 
     $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
     expect($snap->id)->toBe($firstRowId)
-        ->and($snap->pace_variability_sec)->toEqualWithDelta(5.0, 0.01);
+        ->and($snap->pace_variability_sec)->toEqualWithDelta(52.0, 0.01);
     expect(TrendDailySnapshot::query()->where('user_id', $user->id)->count())->toBe(1);
 });
 

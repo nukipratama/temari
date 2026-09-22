@@ -44,6 +44,6 @@ The demo button hides and `/auth/demo` is refused. A new athlete finishing the S
 
 ## What pausing costs
 
-Scheduled tasks don't catch up once maintenance lifts. A window across a task's slot skips that run: `trend:snapshot-daily` leaves a day with no row, and `streak:settle` skips settling a week that closes during the window. Running them during maintenance would be worse, since activities still sitting in the paused queue would count as missing runs.
+Scheduled tasks don't catch up once maintenance lifts. A window across a task's slot can skip a run: `trend:snapshot-daily` repairs its trailing seven closed dates on the next successful tick, while `streak:settle` still skips settling a week that closes during the window. Running them during maintenance would be worse, since activities still sitting in the paused queue would count as missing runs.
 
 The deploy reads the flag before changing anything. With no pending migration it never touches maintenance. With a pending app or analytics migration it enables maintenance before either migrator runs, rolls and checks the release, starts scheduler and Pulse, then lifts only the flag it enabled itself. Owner-enabled maintenance is never lifted. A failure anywhere on the migration path keeps maintenance active because that path deliberately refuses automatic image rollback after schema work may have started.

@@ -41,9 +41,10 @@ directly rather than going through `AnalysisStatus`'s own non-done branches, whi
 nothing for a plain Pending row.
 
 [TrendReadNarrator](app/Services/AI/Narrators/TrendReadNarrator.php) only ever reads the trailing 7
-days now; its prompt no longer branches on range. Scheduled by [`ai:trend-read 7d`](routes/console.php)
-daily at 06:00 and by [KickoffRecapsJob](app/Jobs/AI/KickoffRecapsJob.php) on first connect. See
-[[llm-triggers]] for the fingerprint-gated re-bill rule.
+days now; its prompt no longer branches on range. A settled post-ingest snapshot repair requests
+the read after a per-athlete quiet window, while [`ai:trend-read 7d`](routes/console.php) at 06:00
+remains the fingerprint-gated fallback. First connect still uses
+[KickoffRecapsJob](app/Jobs/AI/KickoffRecapsJob.php). See [[llm-triggers]] for the re-bill rule.
 
 ## vs last week
 

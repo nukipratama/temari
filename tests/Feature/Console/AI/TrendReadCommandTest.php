@@ -8,22 +8,19 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\StravaConnection;
 use App\Models\User;
-use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\MaterialFingerprint;
-use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\AI\TrendReadFingerprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
-/** @return array<string, mixed> */
-function currentTrendTotals(User $user, string $range): array
+function currentTrendFingerprint(User $user, string $range): string
 {
-    return new TrendRangeTool($user, $range, new TrainingLoad())->handle([]);
+    return app(TrendReadFingerprint::class)->forUser($user, $range);
 }
 
 it('dispatches the 7d range for every active user', function (): void {
@@ -181,7 +178,7 @@ it('does not re-dispatch a done read whose stamped fingerprint still matches the
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::TrendRead,
         'discriminator' => '7d',
-        'content_fingerprint' => MaterialFingerprint::forTrendRead(currentTrendTotals($user, '7d')),
+        'content_fingerprint' => currentTrendFingerprint($user, '7d'),
     ]);
 
     $this->artisan('ai:trend-read', ['range' => '7d'])->assertSuccessful();
@@ -205,7 +202,7 @@ it('re-dispatches a done read once when its range material has changed', functio
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::TrendRead,
         'discriminator' => '7d',
-        'content_fingerprint' => MaterialFingerprint::forTrendRead(currentTrendTotals($user, '7d')),
+        'content_fingerprint' => currentTrendFingerprint($user, '7d'),
     ]);
 
     $activity = Activity::factory()->for($user)->create();
