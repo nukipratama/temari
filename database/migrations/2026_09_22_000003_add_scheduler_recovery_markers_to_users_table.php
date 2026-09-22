@@ -11,14 +11,15 @@ return new class () extends Migration {
     {
         Schema::table('users', function (Blueprint $table): void {
             $table->date('streak_settled_through')->nullable()->after('trend_snapshots_rebuilding_from');
-            $table->date('trend_snapshots_scheduled_through')->nullable()->after('streak_settled_through');
+            $table->unsignedSmallInteger('streak_settlement_streak')->nullable()->after('streak_settled_through');
+            $table->date('trend_snapshots_scheduled_through')->nullable()->after('streak_settlement_streak');
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table): void {
-            $table->dropColumn(['streak_settled_through', 'trend_snapshots_scheduled_through']);
+            $table->dropColumn(['streak_settled_through', 'streak_settlement_streak', 'trend_snapshots_scheduled_through']);
         });
     }
 };

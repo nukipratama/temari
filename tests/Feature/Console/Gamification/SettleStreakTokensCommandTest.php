@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\Gamification\SettleStreakWeeksJob;
 use App\Models\StreakRestToken;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -10,6 +11,7 @@ use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
@@ -54,6 +56,22 @@ it('leaves a user with no snapshots alone', function (): void {
     $this->artisan('streak:settle')->assertSuccessful();
 
     expect(StreakRestToken::query()->where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('queues real athletes but excludes the demo history', function (): void {
+    Bus::fake();
+    $real = User::factory()->create();
+    settleWeeks($real, 2);
+    $secondReal = User::factory()->create();
+    settleWeeks($secondReal, 2);
+    $demo = User::factory()->demo()->create();
+    settleWeeks($demo, 2);
+
+    $this->artisan('streak:settle')->assertSuccessful();
+
+    Bus::assertDispatchedTimes(SettleStreakWeeksJob::class, 2);
+    Bus::assertDispatched(SettleStreakWeeksJob::class, fn (SettleStreakWeeksJob $job): bool => $job->userId === $real->id);
+    Bus::assertDispatched(SettleStreakWeeksJob::class, fn (SettleStreakWeeksJob $job): bool => $job->userId === $secondReal->id);
 });
 
 it('is scheduled ahead of the weekly recap, which reads the streak it settles', function (): void {

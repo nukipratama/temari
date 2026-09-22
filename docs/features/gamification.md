@@ -18,7 +18,7 @@ code_refs:
   - resources/js/components/trends/panels/FitnessPanel.tsx
   - app/Models/RunCard.php
   - app/Models/StreakRestToken.php
-  - app/Actions/Gamification/SettleStreakRestTokensAction.php
+  - app/Services/Gamification/StreakSettlementService.php
   - app/Console/Commands/Gamification/SettleStreakTokensCommand.php
   - app/Models/PersonalRecord.php
 ---
@@ -93,7 +93,7 @@ Goal targets are generated scaled to the season's own length ([SeasonService](..
 
 The weekly streak (`WeeklySnapshot::consecutiveWeekStreak()`) hard-resets to 0 as soon as one full week closes with no run. A **rest token** forgives exactly one such week, so a week lost to illness or a taper does not cost the streak.
 
-- **Accrual** — one token every 4th streak week, matching the periodizer's own 3-build-1-deload cycle (`PhaseSchedule`), so a token lands as a deload week comes due. At most `SettleStreakRestTokensAction::MAX_HELD` are held at once, which is what stops a long streak banking enough weeks to make itself meaningless.
+- **Accrual** — one token every 4th streak week, matching the periodizer's own 3-build-1-deload cycle (`PhaseSchedule`), so a token lands as a deload week comes due. At most `StreakSettlementService::MAX_HELD` are held at once, which is what stops a long streak banking enough weeks to make itself meaningless.
 - **Spending is automatic**, at week close, and only when forgiving the week would actually bridge to a week the user ran — a token is never burned by a user with no streak to save. There is no surface on which a user could play one, and a token you have to remember would fail the runner it exists to protect.
 - **A forgiven week bridges the streak without counting toward it.** The user did not run, so the number does not grow.
 - Nothing is revoked when a streak breaks; the counter resets and the collection is untouched.

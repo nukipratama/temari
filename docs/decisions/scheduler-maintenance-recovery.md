@@ -29,4 +29,6 @@ This note supersedes only the “nothing else” side-effect sentence in [[kicko
 
 ## Failure and rollout
 
-The next normal Monday starts null-cursor streak rebuilds automatically. Each cursor update and token replacement is transactional per athlete. A failed job leaves the athlete behind and keeps the global recap gate closed. Trend and streak continuation jobs are idempotent and retryable; recovery performs no Strava or LLM call.
+The migration is additive and leaves the new cursors null. On the first deploy, run `./vendor/bin/sail artisan streak:settle` once after the migration while queue workers are healthy; this starts the bounded historical chunks before the next Monday window instead of concentrating the first catch-up burst at 00:00. The command is idempotent, and the next normal Monday remains a safe fallback if the operator run is skipped.
+
+Each cursor update and token replacement is transactional per athlete. A failed job leaves the athlete behind and keeps the global recap gate closed. Trend and streak continuation jobs are idempotent and retryable; recovery performs no Strava or LLM call.

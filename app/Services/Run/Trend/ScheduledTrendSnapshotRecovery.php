@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Trend;
 
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\TrendDailySnapshot;
 use App\Models\User;
@@ -56,7 +57,10 @@ final readonly class ScheduledTrendSnapshotRecovery
     {
         $dates = [
             TrendDailySnapshot::query()->where('user_id', $user->id)->min('snapshot_date'),
-            ActivityDetail::query()->forUser($user->id)->min('start_date_local'),
+            Activity::analyzedJoinConstraint(
+                ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+                    ->where('activities.user_id', $user->id),
+            )->min('activity_details.start_date_local'),
             $user->created_at?->toDateString(),
         ];
 

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Run;
 
-use App\Models\User;
 use App\Jobs\Run\ReconcileScheduledTrendSnapshotsJob;
+use App\Models\User;
 use App\Services\Run\Trend\TrendSnapshotWriter;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -17,14 +17,13 @@ class TrendSnapshotCommand extends Command
 {
     public function handle(TrendSnapshotWriter $writer): int
     {
-        $users = User::query()->get();
-
         if ($this->option('days') === null) {
-            foreach ($users as $user) {
-                ReconcileScheduledTrendSnapshotsJob::dispatch($user->id)->afterCommit();
+            $userIds = User::query()->pluck('id');
+            foreach ($userIds as $userId) {
+                ReconcileScheduledTrendSnapshotsJob::dispatch((int) $userId)->afterCommit();
             }
 
-            $this->info("Queued durable trend snapshot recovery for {$users->count()} users.");
+            $this->info("Queued durable trend snapshot recovery for {$userIds->count()} users.");
 
             return self::SUCCESS;
         }
@@ -39,6 +38,7 @@ class TrendSnapshotCommand extends Command
         $today = now()->startOfDay();
         $from = $today->copy()->subDays($days);
         $through = $today->copy()->subDay();
+        $users = User::query()->get();
 
         foreach ($users as $user) {
             $writer->writeRange($user, $from, $through);

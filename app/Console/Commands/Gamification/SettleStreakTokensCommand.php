@@ -18,7 +18,7 @@ class SettleStreakTokensCommand extends Command
 {
     public function handle(): int
     {
-        $users = User::query()
+        $users = User::query()->notDemo()
             ->whereIn('id', WeeklySnapshot::query()->select('user_id')->distinct())
             ->pluck('id');
 

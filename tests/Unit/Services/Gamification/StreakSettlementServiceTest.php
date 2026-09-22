@@ -36,11 +36,31 @@ it('rebuilds token outcomes chronologically and records a forgiven no-run week',
 
     $token = StreakRestToken::query()->where('user_id', $user->id)->sole();
     expect($token->spent_for_week_ending?->toDateString())->toBe('2026-05-31')
-        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31');
+        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31')
+        ->and($user->fresh()->streak_settlement_streak)->toBe(4);
+});
+
+it('processes an initial rebuild in bounded batches without replaying prior weeks', function (): void {
+    $user = User::factory()->create();
+    snapshotWeeks($user, Carbon::parse('2026-05-31'), 60);
+
+    $service = app(StreakSettlementService::class);
+    expect($service->settle($user))->toBeFalse()
+        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-04-05')
+        ->and($user->fresh()->streak_settlement_streak)->toBe(52)
+        ->and(StreakRestToken::query()->where('user_id', $user->id)->count())->toBe(2);
+
+    expect($service->settle($user))->toBeTrue()
+        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31')
+        ->and($user->fresh()->streak_settlement_streak)->toBe(60)
+        ->and(StreakRestToken::query()->where('user_id', $user->id)->count())->toBe(2);
 });
 
 it('continues a cursor in bounded weekly batches', function (): void {
-    $user = User::factory()->create(['streak_settled_through' => '2025-04-27']);
+    $user = User::factory()->create([
+        'streak_settled_through' => '2025-04-27',
+        'streak_settlement_streak' => 0,
+    ]);
     $latest = Carbon::parse('2026-05-31');
     snapshotWeeks($user, $latest, 58);
 
@@ -49,7 +69,8 @@ it('continues a cursor in bounded weekly batches', function (): void {
         ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-04-26');
 
     expect($service->settle($user))->toBeTrue()
-        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31');
+        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31')
+        ->and($user->fresh()->streak_settlement_streak)->toBe(57);
 });
 
 it('refuses to truncate history beyond the safety bound', function (): void {
@@ -63,10 +84,20 @@ it('refuses to truncate history beyond the safety bound', function (): void {
 
 it('queues a continuation and does not mark the chain until the user catches up', function (): void {
     Bus::fake();
-    $user = User::factory()->create(['streak_settled_through' => '2025-04-27']);
+    $user = User::factory()->create([
+        'streak_settled_through' => '2025-04-27',
+        'streak_settlement_streak' => 0,
+    ]);
     snapshotWeeks($user, Carbon::parse('2026-05-31'), 58);
 
     new SettleStreakWeeksJob($user->id)->handle(app(StreakSettlementService::class));
 
     Bus::assertDispatched(SettleStreakWeeksJob::class, fn (SettleStreakWeeksJob $job): bool => $job->userId === $user->id);
+});
+
+it('ignores demo history when deciding whether recaps may proceed', function (): void {
+    $demo = User::factory()->demo()->create();
+    snapshotWeeks($demo, Carbon::parse('2026-05-31'), 2);
+
+    expect(app(StreakSettlementService::class)->allUsersSettled())->toBeTrue();
 });

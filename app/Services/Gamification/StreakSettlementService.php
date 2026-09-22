@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
-use Illuminate\Database\Eloquent\Collection;
-use App\Actions\Gamification\SettleStreakRestTokensAction;
 use App\Models\StreakRestToken;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use LogicException;
@@ -18,6 +17,10 @@ final class StreakSettlementService
     public const int MAX_HISTORY_WEEKS = 1040;
 
     public const int BATCH_WEEKS = 52;
+
+    public const int ACCRUAL_EVERY_WEEKS = 4;
+
+    public const int MAX_HELD = 2;
 
     public function settle(User $user): bool
     {
@@ -38,43 +41,52 @@ final class StreakSettlementService
 
             if ($earliest === null) {
                 StreakRestToken::query()->where('user_id', $locked->id)->delete();
-                $locked->forceFill(['streak_settled_through' => $latest])->saveQuietly();
+                $locked->forceFill([
+                    'streak_settled_through' => $latest,
+                    'streak_settlement_streak' => 0,
+                ])->saveQuietly();
 
                 return true;
             }
 
             $first = Carbon::parse($earliest)->startOfDay();
-            $cursor = $locked->streak_settled_through;
-            $target = $latest;
-            if ($cursor !== null) {
-                $candidate = $cursor->copy()->addWeeks(self::BATCH_WEEKS);
-                if ($candidate->lt($target)) {
-                    $target = $candidate;
-                }
-            }
-            $weeks = $first->diffInWeeks($target) + 1;
+            $this->assertHistoryWithinBound($locked->id, $first, $latest);
 
-            if ($weeks > self::MAX_HISTORY_WEEKS) {
-                throw new LogicException("Streak history for user {$locked->id} exceeds the ".self::MAX_HISTORY_WEEKS.'-week safety bound.');
+            $cursor = $locked->streak_settled_through;
+            if ($cursor === null) {
+                StreakRestToken::query()->where('user_id', $locked->id)->delete();
+                $start = $first;
+                $streak = 0;
+            } else {
+                $start = $cursor->copy()->addWeek();
+                if ($start->lt($first)) {
+                    $start = $first;
+                }
+                $streak = (int) ($locked->streak_settlement_streak ?? 0);
+            }
+
+            if ($start->gt($latest)) {
+                $locked->forceFill(['streak_settled_through' => $latest])->saveQuietly();
+
+                return true;
+            }
+
+            $target = $start->copy()->addWeeks(self::BATCH_WEEKS - 1);
+            if ($target->gt($latest)) {
+                $target = $latest;
             }
 
             $snapshots = WeeklySnapshot::query()
                 ->where('user_id', $locked->id)
-                ->where('week_ending', '<=', $target->toDateString())
+                ->whereBetween('week_ending', [$start->toDateString(), $target->toDateString()])
                 ->get(['week_ending', 'runs'])
                 ->keyBy(fn (WeeklySnapshot $snapshot): string => $snapshot->week_ending->toDateString());
-            $outcomes = $this->outcomes($first, $target, $snapshots);
 
-            StreakRestToken::query()->where('user_id', $locked->id)->delete();
-            foreach ($outcomes as $outcome) {
-                StreakRestToken::query()->create([
-                    'user_id' => $locked->id,
-                    'earned_for_week_ending' => $outcome['earned'],
-                    'spent_for_week_ending' => $outcome['spent'],
-                ]);
-            }
-
-            $locked->forceFill(['streak_settled_through' => $target])->saveQuietly();
+            $streak = $this->settleRange($locked, $start, $target, $streak, $snapshots);
+            $locked->forceFill([
+                'streak_settled_through' => $target,
+                'streak_settlement_streak' => $streak,
+            ])->saveQuietly();
 
             return $target->gte($latest);
         });
@@ -85,6 +97,7 @@ final class StreakSettlementService
         $latest = self::latestClosedWeekEnding();
 
         return ! User::query()
+            ->notDemo()
             ->whereHas('weeklySnapshots')
             ->where(function ($query) use ($latest): void {
                 $query->whereNull('streak_settled_through')
@@ -98,40 +111,52 @@ final class StreakSettlementService
         return Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay()->subWeek();
     }
 
+    private function assertHistoryWithinBound(int $userId, Carbon $first, Carbon $latest): void
+    {
+        if ($first->lte($latest) && $first->diffInWeeks($latest) + 1 > self::MAX_HISTORY_WEEKS) {
+            throw new LogicException("Streak history for user {$userId} exceeds the ".self::MAX_HISTORY_WEEKS.'-week safety bound.');
+        }
+    }
+
     /**
      * @param Collection<string, WeeklySnapshot> $snapshots
-     * @return list<array{earned: string, spent: string|null}>
      */
-    private function outcomes(Carbon $first, Carbon $target, Collection $snapshots): array
+    private function settleRange(User $user, Carbon $start, Carbon $target, int $streak, Collection $snapshots): int
     {
-        $streak = 0;
-        /** @var list<array{earned: string, spent: string|null}> $tokens */
-        $tokens = [];
-
-        for ($week = $first->copy(); $week->lte($target); $week->addWeek()) {
+        for ($week = $start->copy(); $week->lte($target); $week->addWeek()) {
             $date = $week->toDateString();
             $snapshot = $snapshots->get($date);
-            $ran = $snapshot !== null && (int) $snapshot->runs > 0;
 
-            if ($ran) {
+            if ($snapshot !== null && (int) $snapshot->runs > 0) {
                 $streak++;
-                if ($streak % SettleStreakRestTokensAction::ACCRUAL_EVERY_WEEKS === 0
-                    && count(array_filter($tokens, fn (array $token): bool => $token['spent'] === null)) < SettleStreakRestTokensAction::MAX_HELD) {
-                    $tokens[] = ['earned' => $date, 'spent' => null];
+                if ($streak % self::ACCRUAL_EVERY_WEEKS === 0
+                    && StreakRestToken::unspentCountForUser($user->id) < self::MAX_HELD) {
+                    StreakRestToken::query()->create([
+                        'user_id' => $user->id,
+                        'earned_for_week_ending' => $date,
+                        'spent_for_week_ending' => null,
+                    ]);
                 }
 
                 continue;
             }
 
-            $tokenIndex = array_find_key($tokens, fn (array $token): bool => $token['spent'] === null);
-            if ($streak > 0 && $tokenIndex !== null) {
-                $tokens[$tokenIndex]['spent'] = $date;
-                continue;
+            if ($streak > 0) {
+                $token = StreakRestToken::query()
+                    ->where('user_id', $user->id)
+                    ->whereNull('spent_for_week_ending')
+                    ->orderBy('id')
+                    ->first();
+
+                if ($token !== null) {
+                    $token->update(['spent_for_week_ending' => $date]);
+                    continue;
+                }
             }
 
             $streak = 0;
         }
 
-        return $tokens;
+        return $streak;
     }
 }
