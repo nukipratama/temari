@@ -32,6 +32,7 @@ use Override;
  * @property Carbon|null $trend_snapshots_rebuilding_from
  * @property Carbon|null $streak_settled_through
  * @property int|null $streak_settlement_streak
+ * @property Carbon|null $streak_settlement_dirty_from
  * @property Carbon|null $trend_snapshots_scheduled_through
  * @property Carbon|null $last_seen_at
  */
@@ -79,6 +80,7 @@ class User extends Authenticatable
             'trend_snapshots_rebuilding_from' => 'date:Y-m-d',
             'streak_settled_through' => 'date:Y-m-d',
             'streak_settlement_streak' => 'integer',
+            'streak_settlement_dirty_from' => 'date:Y-m-d',
             'trend_snapshots_scheduled_through' => 'date:Y-m-d',
             'last_seen_at' => 'datetime',
         ];

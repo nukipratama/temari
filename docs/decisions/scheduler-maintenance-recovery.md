@@ -20,7 +20,7 @@ Maintenance mode pauses every scheduled command except the liveness heartbeat. M
 
 ## Decision
 
-- `streak:settle` stores `users.streak_settled_through`. A null cursor causes a chronological rebuild of available weekly history, replacing derived rest-token outcomes atomically per athlete. Later recovery is bounded and self-dispatches until the cursor reaches the latest closed week. Weekly recap creation and filling remain gated while any athlete is behind.
+- `streak:settle` stores `users.streak_settled_through` plus a dirty-from marker lowered by later weekly-snapshot writes. A null cursor or actionable dirty marker causes a chronological rebuild of available weekly history, replacing derived rest-token outcomes atomically for that rebuild; later recovery is bounded and self-dispatches until the cursor reaches the latest closed week. Weekly recap creation and filling remain gated while any athlete is behind.
 - `trend:snapshot-daily` stores `users.trend_snapshots_scheduled_through`. The default command queues closed-date recovery in 365-day chunks through yesterday; an explicit `--days=N` remains a cursor-neutral focused repair. Scheduled recovery does not emit an ingest-origin trend event; the normal 06:00 fingerprint sweep decides whether narration changes.
 - `ai:catch-up` keeps kickoff creation and filling separate, but also runs the deterministic current-day readiness-clamp recorder and stages its clamp voice under dispatch suppression. It never reconstructs past-day guidance.
 - Missed reminders, races, morning pushes, and digests are not replayed after their useful window.

@@ -63,6 +63,7 @@ it('continues a cursor in bounded weekly batches', function (): void {
     ]);
     $latest = Carbon::parse('2026-05-31');
     snapshotWeeks($user, $latest, 58);
+    $user->forceFill(['streak_settlement_dirty_from' => null])->saveQuietly();
 
     $service = app(StreakSettlementService::class);
     expect($service->settle($user))->toBeFalse()
@@ -71,6 +72,53 @@ it('continues a cursor in bounded weekly batches', function (): void {
     expect($service->settle($user))->toBeTrue()
         ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31')
         ->and($user->fresh()->streak_settlement_streak)->toBe(57);
+});
+
+it('rebuilds when a backdated weekly snapshot lowers the dirty cursor', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    snapshotWeeks($user, Carbon::parse('2026-05-31'), 4);
+
+    $service = app(StreakSettlementService::class);
+    expect($service->settle($user))->toBeTrue();
+
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-03',
+        'runs' => 1,
+    ]);
+
+    expect($user->fresh()->streak_settlement_dirty_from?->toDateString())->toBe('2026-05-03')
+        ->and($service->allUsersSettled())->toBeFalse();
+
+    expect($service->settle($user))->toBeTrue()
+        ->and($user->fresh()->streak_settlement_dirty_from)->toBeNull()
+        ->and(StreakRestToken::query()->where('user_id', $user->id)->count())->toBe(1)
+        ->and(StreakRestToken::query()->where('user_id', $user->id)->sole()->earned_for_week_ending->toDateString())
+        ->toBe('2026-05-24');
+});
+
+it('rebuilds when an already-settled weekly snapshot changes', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    snapshotWeeks($user, Carbon::parse('2026-05-31'), 5);
+
+    $service = app(StreakSettlementService::class);
+    expect($service->settle($user))->toBeTrue();
+
+    $snapshot = WeeklySnapshot::query()
+        ->where('user_id', $user->id)
+        ->where('week_ending', '2026-05-31')
+        ->firstOrFail();
+    $snapshot->runs = 0;
+    $snapshot->save();
+
+    expect($user->fresh()->streak_settlement_dirty_from?->toDateString())->toBe('2026-05-31');
+
+    expect($service->settle($user))->toBeTrue()
+        ->and($user->fresh()->streak_settlement_dirty_from)->toBeNull()
+        ->and(StreakRestToken::query()->where('user_id', $user->id)->count())->toBe(1)
+        ->and(StreakRestToken::query()->where('user_id', $user->id)->sole()->spent_for_week_ending?->toDateString())
+        ->toBe('2026-05-31');
 });
 
 it('refuses to truncate history beyond the safety bound', function (): void {

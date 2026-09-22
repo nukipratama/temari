@@ -22,6 +22,24 @@ final class StreakSettlementService
 
     public const int MAX_HELD = 2;
 
+    public function markDirty(int $userId, Carbon $from): void
+    {
+        $from = $from->copy()->startOfDay();
+        DB::transaction(function () use ($userId, $from): void {
+            $user = User::query()->notDemo()->lockForUpdate()->find($userId);
+            if ($user === null) {
+                return;
+            }
+
+            $dirtyFrom = $user->streak_settlement_dirty_from;
+            if ($dirtyFrom !== null && $dirtyFrom->lte($from)) {
+                return;
+            }
+
+            $user->forceFill(['streak_settlement_dirty_from' => $from])->saveQuietly();
+        });
+    }
+
     public function settle(User $user): bool
     {
         return DB::transaction(function () use ($user): bool {
@@ -31,7 +49,11 @@ final class StreakSettlementService
             }
 
             $latest = self::latestClosedWeekEnding();
-            if ($locked->streak_settled_through !== null && $locked->streak_settled_through->gte($latest)) {
+            $dirtyFrom = $locked->streak_settlement_dirty_from;
+            $dirty = $dirtyFrom !== null && $dirtyFrom->lte($latest);
+            if ($locked->streak_settled_through !== null
+                && $locked->streak_settled_through->gte($latest)
+                && ! $dirty) {
                 return true;
             }
 
@@ -44,6 +66,7 @@ final class StreakSettlementService
                 $locked->forceFill([
                     'streak_settled_through' => $latest,
                     'streak_settlement_streak' => 0,
+                    'streak_settlement_dirty_from' => null,
                 ])->saveQuietly();
 
                 return true;
@@ -53,7 +76,8 @@ final class StreakSettlementService
             $this->assertHistoryWithinBound($locked->id, $first, $latest);
 
             $cursor = $locked->streak_settled_through;
-            if ($cursor === null) {
+            $rebuild = $cursor === null || $dirty;
+            if ($rebuild) {
                 StreakRestToken::query()->where('user_id', $locked->id)->delete();
                 $start = $first;
                 $streak = 0;
@@ -66,7 +90,10 @@ final class StreakSettlementService
             }
 
             if ($start->gt($latest)) {
-                $locked->forceFill(['streak_settled_through' => $latest])->saveQuietly();
+                $locked->forceFill([
+                    'streak_settled_through' => $latest,
+                    'streak_settlement_dirty_from' => $dirty ? null : $locked->streak_settlement_dirty_from,
+                ])->saveQuietly();
 
                 return true;
             }
@@ -86,6 +113,7 @@ final class StreakSettlementService
             $locked->forceFill([
                 'streak_settled_through' => $target,
                 'streak_settlement_streak' => $streak,
+                'streak_settlement_dirty_from' => $rebuild ? null : $locked->streak_settlement_dirty_from,
             ])->saveQuietly();
 
             return $target->gte($latest);
@@ -101,7 +129,10 @@ final class StreakSettlementService
             ->whereHas('weeklySnapshots')
             ->where(function ($query) use ($latest): void {
                 $query->whereNull('streak_settled_through')
-                    ->orWhere('streak_settled_through', '<', $latest->toDateString());
+                    ->orWhere('streak_settled_through', '<', $latest->toDateString())
+                    ->orWhere(fn ($dirty) => $dirty
+                        ->whereNotNull('streak_settlement_dirty_from')
+                        ->where('streak_settlement_dirty_from', '<=', $latest->toDateString()));
             })
             ->exists();
     }
