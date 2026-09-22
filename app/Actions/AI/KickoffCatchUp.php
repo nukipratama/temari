@@ -47,6 +47,8 @@ class KickoffCatchUp
                 $created += (int) $this->service->requestProfileVoice($user, $isoWeek)->wasRecentlyCreated;
             }
 
+            // The scheduler-chain flag is date-scoped; keep the durable query
+            // so a deferred recap can resume after Monday.
             if ($this->streakSettlement->allUsersSettled()) {
                 $recapsBefore = $this->recapRowCount();
                 ($this->weeklyRecaps)();
