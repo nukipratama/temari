@@ -27,7 +27,9 @@ final class StreakSettlementService
         $from = $from->copy()->startOfDay();
         DB::transaction(function () use ($userId, $from): void {
             $user = User::query()->notDemo()->lockForUpdate()->find($userId);
-            if ($user === null) {
+            if ($user === null
+                || $user->streak_settled_through === null
+                || $from->gt($user->streak_settled_through)) {
                 return;
             }
 

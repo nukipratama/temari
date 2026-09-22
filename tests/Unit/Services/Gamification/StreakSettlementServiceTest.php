@@ -58,20 +58,33 @@ it('processes an initial rebuild in bounded batches without replaying prior week
 
 it('continues a cursor in bounded weekly batches', function (): void {
     $user = User::factory()->create([
-        'streak_settled_through' => '2025-04-27',
+        'streak_settled_through' => '2025-04-20',
         'streak_settlement_streak' => 0,
     ]);
     $latest = Carbon::parse('2026-05-31');
     snapshotWeeks($user, $latest, 58);
-    $user->forceFill(['streak_settlement_dirty_from' => null])->saveQuietly();
 
     $service = app(StreakSettlementService::class);
     expect($service->settle($user))->toBeFalse()
-        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-04-26');
+        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-04-19');
 
     expect($service->settle($user))->toBeTrue()
         ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31')
-        ->and($user->fresh()->streak_settlement_streak)->toBe(57);
+        ->and($user->fresh()->streak_settlement_streak)->toBe(58);
+});
+
+it('does not dirty settlement for a week after the cursor', function (): void {
+    $user = User::factory()->create([
+        'streak_settled_through' => '2026-05-31',
+        'streak_settlement_streak' => 4,
+    ]);
+
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-06-07',
+        'runs' => 1,
+    ]);
+
+    expect($user->fresh()->streak_settlement_dirty_from)->toBeNull();
 });
 
 it('rebuilds when a backdated weekly snapshot lowers the dirty cursor', function (): void {
