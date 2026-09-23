@@ -23,7 +23,7 @@ class RaceGoalFactory extends Factory
             'race_date' => now()->addWeeks(12)->toDateString(),
             'distance_m' => 10_000,
             'goal_time_sec' => 3_000,
-            'name' => $this->faker->city().' 10K',
+            'name' => fake()->city().' 10K',
             'completed_at' => null,
         ];
     }
