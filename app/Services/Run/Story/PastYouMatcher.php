@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Enums\ComparisonMetric;
 use App\Services\Run\Metrics\DistanceFormatter;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\Activity;
@@ -47,14 +48,9 @@ class PastYouMatcher
     /** A hilly run and a flat one at the same pace are not the same performance. */
     private const float ELEVATION_TOLERANCE_M_PER_KM = 15.0;
 
-    /** Heart-rate gap at which two runs stop reading as the same kind of session. */
-    private const float HR_SATURATION_BPM = 25.0;
-
     public const float MIN_QUALITY_SCORE = 0.6;
 
     private const float WEIGHT_DISTANCE = 0.30;
-
-    private const float WEIGHT_HEARTRATE = 0.25;
 
     private const float WEIGHT_ELEVATION = 0.20;
 
@@ -73,6 +69,7 @@ class PastYouMatcher
      *   pace_diff_sec: float,
      *   time_diff_sec: float,
      *   hr_diff_bpm: float|null,
+     *   pace_change_pct: float,
      *   direction: string,
      *   days_ago: int,
      * }|null
@@ -144,13 +141,27 @@ class PastYouMatcher
             $paceDiffSec = $pastPace - $currentPaceSec;
             $roundedPaceDiffSec = round($paceDiffSec, 1);
             $hrDiffBpm = $this->hrDiffBpm($detail, $past);
+            $metric = PastYouComparison::metricFor(
+                (int) $detail->elapsed_time,
+                (int) $past->elapsed_time,
+                $detail->average_heartrate,
+                $past->average_heartrate,
+            );
+            $changePct = PastYouComparison::changePctFor(
+                $metric,
+                $currentPaceSec,
+                $pastPace,
+                $detail->average_heartrate,
+                $past->average_heartrate,
+            );
 
             return [
                 'past' => $past,
                 'pace_diff_sec' => $roundedPaceDiffSec,
                 'time_diff_sec' => round($paceDiffSec * $currentKm, 1),
                 'hr_diff_bpm' => $hrDiffBpm,
-                'direction' => PastYouComparison::directionFor($roundedPaceDiffSec, $hrDiffBpm)->value,
+                'pace_change_pct' => PastYouComparison::paceChangePctFor($currentPaceSec, $pastPace),
+                'direction' => PastYouComparison::directionFor($metric, $changePct)->value,
                 'days_ago' => (int) $past->start_date_local->copy()->startOfDay()
                     ->diffInDays($startDate->copy()->startOfDay()),
             ];
@@ -176,10 +187,10 @@ class PastYouMatcher
      * signed number reaches a caller here: `pace`/`time` carry an unsigned
      * magnitude plus their own `relation` (faster/slower/same, `time` always
      * agreeing with `pace` in sign since it is the same delta scaled by
-     * distance), banded by {@see PastYouComparison::PACE_SIGNAL_SEC}; `hr`
-     * carries bpm plus higher/lower/same, banded by
-     * {@see PastYouComparison::HR_SIGNAL_BPM}. `direction` still travels
-     * alongside as the composite call.
+     * distance), banded by the pace signal of {@see ComparisonMetric::Pace};
+     * `hr` carries bpm plus higher/lower/same, where `same` means the gap rounds
+     * to the 0 bpm the card would show. `direction` still travels alongside as
+     * the composite call, decided on efficiency when heart rate allows.
      *
      * @return array{days_ago: int, pace: array{seconds_per_km: float, relation: string}, time: array{seconds: float, relation: string}, hr: array{bpm: float, relation: string}|null, direction: string, past_km: float, past_activity_id: int, past_name: string|null}|null
      */
@@ -193,7 +204,7 @@ class PastYouMatcher
         $past = $match['past'];
         $paceDiffSec = $match['pace_diff_sec'];
         $hrDiffBpm = $match['hr_diff_bpm'];
-        $paceRelation = self::paceRelation($paceDiffSec);
+        $paceRelation = PastYouComparison::paceRelation($match['pace_change_pct']);
 
         return [
             'days_ago' => $match['days_ago'],
@@ -207,21 +218,11 @@ class PastYouMatcher
         ];
     }
 
-    /** `time_diff_sec` is `pace_diff_sec` scaled by a positive distance, so it always shares this sign. */
-    private static function paceRelation(float $paceDiffSec): string
-    {
-        return match (true) {
-            $paceDiffSec >= PastYouComparison::PACE_SIGNAL_SEC => 'faster',
-            $paceDiffSec <= -PastYouComparison::PACE_SIGNAL_SEC => 'slower',
-            default => 'same',
-        };
-    }
-
     private static function hrRelation(float $hrDiffBpm): string
     {
         return match (true) {
-            $hrDiffBpm >= PastYouComparison::HR_SIGNAL_BPM => 'higher',
-            $hrDiffBpm <= -PastYouComparison::HR_SIGNAL_BPM => 'lower',
+            round($hrDiffBpm) >= 1.0 => 'higher',
+            round($hrDiffBpm) <= -1.0 => 'lower',
             default => 'same',
         };
     }
@@ -247,13 +248,8 @@ class PastYouMatcher
         $bestScore = 0.0;
 
         foreach ($candidates as $candidate) {
-            $quality = $this->quality($current, $candidate);
-            if ($quality === null || $quality < self::MIN_QUALITY_SCORE) {
-                continue;
-            }
-
             $score = $this->similarity($current, $candidate);
-            if ($score === null) {
+            if ($score === null || $score < self::MIN_QUALITY_SCORE) {
                 continue;
             }
 
@@ -269,27 +265,15 @@ class PastYouMatcher
     }
 
     /**
-     * Full similarity score used to rank qualifying candidates. Null when a
-     * hard rule rejects the pairing.
+     * Similarity score used to rank qualifying candidates, on a 0..1 scale.
+     * Null when a hard rule rejects the pairing.
      *
-     * Pace itself is not scored: the pace band already establishes that the two
-     * are the same kind of session, and the pace gap *within* the band is the
-     * signal the verdict is measuring, so rewarding similarity there would bury
-     * the very change this is asked to detect. Heart rate is scored softly for
-     * the same reason.
+     * Neither pace nor heart rate is scored: the pace band already establishes
+     * that the two are the same kind of session, and both readings are what
+     * the verdict measures, so rewarding similarity there would bury the very
+     * change this is asked to detect.
      */
     public function similarity(ComparableRun $current, ComparableRun $past): ?float
-    {
-        return $this->score($current, $past, includeHeartRate: true);
-    }
-
-    /** Non-outcome match quality, excluding heart rate, on a 0..1 scale. */
-    public function quality(ComparableRun $current, ComparableRun $past): ?float
-    {
-        return $this->score($current, $past, includeHeartRate: false);
-    }
-
-    private function score(ComparableRun $current, ComparableRun $past, bool $includeHeartRate): ?float
     {
         $daysApart = $past->daysBefore($current);
         if ($daysApart < self::MIN_GAP_DAYS || $daysApart > self::MAX_GAP_DAYS) {
@@ -316,11 +300,6 @@ class PastYouMatcher
         }
 
         $axes = [[self::WEIGHT_DISTANCE, 1.0 - $distanceGap / self::DISTANCE_TOLERANCE_M]];
-
-        if ($includeHeartRate && $current->averageHeartrate !== null && $past->averageHeartrate !== null) {
-            $hrGap = abs($current->averageHeartrate - $past->averageHeartrate);
-            $axes[] = [self::WEIGHT_HEARTRATE, max(0.0, 1.0 - $hrGap / self::HR_SATURATION_BPM)];
-        }
 
         $currentElevation = $current->elevationPerKm();
         $pastElevation = $past->elevationPerKm();

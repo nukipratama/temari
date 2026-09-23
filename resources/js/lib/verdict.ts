@@ -1,4 +1,5 @@
 import type {
+    ComparisonMetric,
     PastYouComparison,
     PastYouTrend,
     TrendDirection,
@@ -6,59 +7,23 @@ import type {
 
 import { formatMonthDayId, formatPace, parseNaiveLocalDate } from '@/lib/pace';
 
-/**
- * Mirrors `PastYouComparison::PACE_SIGNAL_SEC` / `::HR_SIGNAL_BPM`, so a row
- * can show the reading that actually decided its direction rather than always
- * showing pace and leaving a heart-rate-driven call looking unexplained.
- */
-const PACE_SIGNAL_SEC = 5;
-const HR_SIGNAL_BPM = 3;
 const GENERIC_COMPARISON = 'your comparable earlier runs';
 
-export type EvidenceMetric = 'pace' | 'hr';
+export interface EvidenceReading {
+    then: string;
+    now: string;
+}
 
 export interface EvidenceRow {
     activityId: number;
     /** What made the pair comparable: distance, and the run it was matched against. */
     label: string;
-    metric: EvidenceMetric;
-    then: string;
-    now: string;
+    metric: ComparisonMetric;
+    pace: EvidenceReading;
+    /** Null when either run has no average heart rate. */
+    hr: EvidenceReading | null;
     delta: string;
     direction: TrendDirection;
-}
-
-function hasBothHeartRates(comparison: PastYouComparison): boolean {
-    return (
-        comparison.current.average_heartrate !== null &&
-        comparison.past.average_heartrate !== null
-    );
-}
-
-function chooseMetric(
-    paceDeltaSec: number | null,
-    hrDeltaBpm: number | null,
-    hrEligible: boolean,
-): EvidenceMetric {
-    if (paceDeltaSec !== null && Math.abs(paceDeltaSec) >= PACE_SIGNAL_SEC) {
-        return 'pace';
-    }
-    if (
-        hrDeltaBpm !== null &&
-        Math.abs(hrDeltaBpm) >= HR_SIGNAL_BPM &&
-        hrEligible
-    ) {
-        return 'hr';
-    }
-    return 'pace';
-}
-
-export function decidingMetric(comparison: PastYouComparison): EvidenceMetric {
-    return chooseMetric(
-        comparison.pace_delta_sec,
-        comparison.hr_delta_bpm,
-        hasBothHeartRates(comparison),
-    );
 }
 
 /** Positive `pace_delta_sec` means the recent run was faster, so the clock went down. */
@@ -67,65 +32,69 @@ function paceDeltaLabel(seconds: number): string {
     return `${seconds > 0 ? '-' : '+'}${rounded} s/km`;
 }
 
-function heartRateDeltaLabel(bpm: number): string {
-    const rounded = Math.round(Math.abs(bpm));
-    return `${bpm < 0 ? '-' : '+'}${rounded} bpm`;
+/**
+ * An efficiency call is stated in words, never as a number: the row already
+ * shows the pace and heart rate it came from.
+ */
+function deltaLabel(comparison: PastYouComparison): string {
+    if (comparison.direction === 'flat') {
+        return 'holding';
+    }
+    if (comparison.metric === 'ef') {
+        return comparison.direction === 'better' ? 'less work' : 'more work';
+    }
+    return paceDeltaLabel(comparison.pace_delta_sec);
 }
 
-/**
- * Names the metric as well as the pair, because a pace row and a heart-rate row
- * are both "N → N" and are otherwise indistinguishable: `148 → 159` reads as a
- * broken pace until the row says it is heart rate.
- */
-function pairLabel(
-    comparison: PastYouComparison,
-    metric: EvidenceMetric,
-): string {
+function heartRates(comparison: PastYouComparison): EvidenceReading | null {
+    const then = comparison.past.average_heartrate;
+    const now = comparison.current.average_heartrate;
+    if (then === null || now === null) {
+        return null;
+    }
+    return { then: `${Math.round(then)}`, now: `${Math.round(now)}` };
+}
+
+function pairLabel(comparison: PastYouComparison): string {
     const matchedOn = parseNaiveLocalDate(comparison.past.date);
     const when =
         matchedOn === null ? comparison.past.date : formatMonthDayId(matchedOn);
-    const reading = metric === 'hr' ? 'avg HR' : 'pace';
-    return `${comparison.past.km.toFixed(1)} km · ${reading} vs ${when}`;
+    return `${comparison.past.km.toFixed(1)} km vs ${when}`;
 }
 
 export function evidenceRows(trend: PastYouTrend): EvidenceRow[] {
-    return trend.comparisons.map((comparison) => {
-        const metric = decidingMetric(comparison);
-        const flat = comparison.direction === 'flat';
-
-        if (metric === 'hr' && comparison.hr_delta_bpm !== null) {
-            return {
-                activityId: comparison.current.activity_id,
-                label: pairLabel(comparison, metric),
-                metric,
-                then: `${Math.round(comparison.past.average_heartrate ?? 0)}`,
-                now: `${Math.round(comparison.current.average_heartrate ?? 0)}`,
-                delta: flat
-                    ? 'holding'
-                    : heartRateDeltaLabel(comparison.hr_delta_bpm),
-                direction: comparison.direction,
-            };
-        }
-
-        return {
-            activityId: comparison.current.activity_id,
-            label: pairLabel(comparison, 'pace'),
-            metric: 'pace',
+    return trend.comparisons.map((comparison) => ({
+        activityId: comparison.current.activity_id,
+        label: pairLabel(comparison),
+        metric: comparison.metric,
+        pace: {
             then: formatPace(comparison.past.pace_sec_per_km),
             now: formatPace(comparison.current.pace_sec_per_km),
-            delta: flat ? 'holding' : paceDeltaLabel(comparison.pace_delta_sec),
-            direction: comparison.direction,
-        };
-    });
+        },
+        hr: heartRates(comparison),
+        delta: deltaLabel(comparison),
+        direction: comparison.direction,
+    }));
 }
 
-/** Mirrors `PastYouTrendBuilder::aggregateDirection` — pace leads, heart rate decides a flat window. */
-export function verdictMetric(trend: PastYouTrend): EvidenceMetric {
-    return chooseMetric(
-        trend.mean_pace_delta_sec,
-        trend.mean_hr_delta_bpm,
-        true,
+function fasterAtHigherHeartRate(comparison: PastYouComparison): boolean {
+    const then = comparison.past.average_heartrate;
+    const now = comparison.current.average_heartrate;
+    return (
+        comparison.pace_relation === 'faster' &&
+        then !== null &&
+        now !== null &&
+        now > then
     );
+}
+
+/** Most of the flat pairs got quicker but paid for it in heart rate. */
+function flatPairsCostHeartRate(trend: PastYouTrend): boolean {
+    const flat = trend.comparisons.filter(
+        (comparison) => comparison.direction === 'flat',
+    );
+    const costly = flat.filter(fasterAtHigherHeartRate).length;
+    return flat.length > 0 && costly * 2 > flat.length;
 }
 
 type MatchedSince =
@@ -193,13 +162,7 @@ export function verdictHeadline(trend: PastYouTrend): string {
     }
 
     if (trend.verdict === 'improving') {
-        return verdictMetric(trend) === 'hr'
-            ? 'same pace, less work to hold it.'
-            : headlineByMatchContext(since, {
-                  month: (month) => `you're faster than you were in ${month}.`,
-                  generic: `you're faster than ${GENERIC_COMPARISON}.`,
-                  fallback: "you're faster than you were.",
-              });
+        return improvingHeadline(trend, since);
     }
 
     if (trend.verdict === 'slipped') {
@@ -214,10 +177,43 @@ export function verdictHeadline(trend: PastYouTrend): string {
         return 'mixed against comparable past runs.';
     }
 
+    if (flatPairsCostHeartRate(trend)) {
+        return 'faster, but it cost more heart rate.';
+    }
+
     return headlineByMatchContext(since, {
         month: (month) => `you're holding where you were in ${month}.`,
         generic: `you're holding steady against ${GENERIC_COMPARISON}.`,
         fallback: "you're holding where you were.",
+    });
+}
+
+function improvingHeadline(trend: PastYouTrend, since: MatchedSince): string {
+    if (trend.verdict_metric === 'pace') {
+        return headlineByMatchContext(since, {
+            month: (month) => `you're faster than you were in ${month}.`,
+            generic: `you're faster than ${GENERIC_COMPARISON}.`,
+            fallback: "you're faster than you were.",
+        });
+    }
+
+    if (trend.verdict_metric === 'ef' && trend.pace_relation === 'faster') {
+        return headlineByMatchContext(since, {
+            month: (month) =>
+                `you're faster at the same heart rate than in ${month}.`,
+            generic: `you're faster at the same heart rate than ${GENERIC_COMPARISON}.`,
+            fallback: "you're faster at the same heart rate.",
+        });
+    }
+
+    if (trend.verdict_metric === 'ef' && trend.pace_relation === 'same') {
+        return 'same pace, lower heart rate.';
+    }
+
+    return headlineByMatchContext(since, {
+        month: (month) => `you're running better than you were in ${month}.`,
+        generic: `you're running better than ${GENERIC_COMPARISON}.`,
+        fallback: "you're running better than you were.",
     });
 }
 
@@ -242,17 +238,21 @@ export function verdictSupport(trend: PastYouTrend): string {
         return `${split}; no clear shift across the window.`;
     }
 
-    const hr = trend.mean_hr_delta_bpm;
-    if (verdictMetric(trend) === 'hr' && hr !== null) {
-        return `${split}; average HR was ${Math.abs(hr).toFixed(1)} bpm ${hr < 0 ? 'lower' : 'higher'}.`;
-    }
-
+    const facts: string[] = [];
     const pace = trend.mean_pace_delta_sec;
-    if (pace === null) {
-        return `${split}.`;
+    if (pace !== null) {
+        facts.push(
+            `average pace was ${Math.abs(pace).toFixed(1)} s/km ${pace > 0 ? 'faster' : 'slower'}`,
+        );
+    }
+    const hr = trend.mean_hr_delta_bpm;
+    if (hr !== null) {
+        facts.push(
+            `average HR was ${Math.abs(hr).toFixed(1)} bpm ${hr < 0 ? 'lower' : 'higher'}`,
+        );
     }
 
-    return `${split}; average pace was ${Math.abs(pace).toFixed(1)} s/km ${pace > 0 ? 'faster' : 'slower'}.`;
+    return facts.length === 0 ? `${split}.` : `${split}; ${facts.join(', ')}.`;
 }
 
 function comparisonSplit(trend: PastYouTrend): string {

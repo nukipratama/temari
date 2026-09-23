@@ -3,7 +3,7 @@ title: Past You engine
 description: How "you vs your own comparable history" is matched, scored and turned into a trend verdict
 tags: [architecture, run]
 status: living
-reviewed: 2026-08-13
+reviewed: 2026-09-23
 code_refs:
   - app/Services/Run/Story/PastYouMatcher.php
   - app/Services/Run/Story/PastYouTrendBuilder.php
@@ -12,6 +12,7 @@ code_refs:
   - app/Services/Run/Story/PastYouTrend.php
   - app/Enums/TrendVerdict.php
   - app/Enums/TrendDirection.php
+  - app/Enums/ComparisonMetric.php
 ---
 
 # Past You engine
@@ -44,18 +45,17 @@ within 3°C when both runs have it, and matching planned session types when both
 runs map to one). A run maps to its date's non-rest planned session only when it
 is the only run that date. Missing intent falls back to the pace-band rule.
 
-Before ranking, a pair must score at least 0.6 on the non-outcome axes: distance,
-elevation, time of day and season. Heart rate is excluded from this floor because
-it is part of the verdict. The full similarity score still ranks candidates that
-pass. An axis neither run can answer is dropped and the remaining weights
-renormalise, so a summary-state pairing is not penalised for missing optional
-data.
+A pair must score at least 0.6 on the similarity axes: distance, elevation, time
+of day and season. The same score ranks the candidates that pass, so selection
+stays blind to the outcome. An axis neither run can answer is dropped and the
+remaining weights renormalise, so a summary-state pairing is not penalised for
+missing optional data.
 
-**Pace is deliberately not a similarity axis.** The pace band already establishes
-that two runs are the same kind of session; the pace gap *within* the band is the
-signal the verdict measures. Scoring similarity on it would bury the change the
-engine exists to find. Average HR is scored, but softly and without a rejection
-threshold, for the same reason.
+**Neither pace nor heart rate is a similarity axis**
+([similarity()](app/Services/Run/Story/PastYouMatcher.php#L276)). The pace band
+already establishes that two runs are the same kind of session, and both readings
+are what the verdict measures. Scoring similarity on them would bury the change
+the engine exists to find, so two candidates that differ only in HR rank equally.
 
 ## Two selections on one rule set
 
@@ -67,17 +67,24 @@ threshold, for the same reason.
 
 Both paths hand a caller the same [TrendDirection](app/Enums/TrendDirection.php)
 call rather than a signed number alone:
-[PastYouComparison::directionFor()](app/Services/Run/Story/PastYouComparison.php)
+[PastYouComparison::directionFor()](app/Services/Run/Story/PastYouComparison.php#L116)
 is the rule shared by `bestMatch()`'s `PastYouComparison::direction()` and by
-`findMatch()`.
+`findMatch()`. There is one direction rule, efficiency-led, described under
+[The verdict](#the-verdict).
 
 [findMatchContext()](app/Services/Run/Story/PastYouMatcher.php) is the
 unsigned shape built on top of `findMatch()`: every delta travels as its own
 magnitude plus its own `relation` word — `pace`/`time`:
 `{seconds_per_km|seconds, relation: faster/slower/same}`; `hr`: `{bpm,
-relation: higher/lower/same}` — banded by the same
-`PACE_SIGNAL_SEC`/`HR_SIGNAL_BPM` constants `directionFor()` already used.
-`direction` travels alongside as the overall call. It was originally the
+relation: higher/lower/same}`. Pace is banded at the same 2% pace signal the
+direction rule uses
+([paceRelation()](app/Services/Run/Story/PastYouComparison.php#L126)). Heart
+rate has no signal band of its own any more, so its relation names the gap as
+the card shows it: `same` only when it rounds to 0 bpm
+([hrRelation()](app/Services/Run/Story/PastYouMatcher.php#L221)). A run can
+therefore read "faster" and "higher" with a `flat` direction, which is exactly
+the faster-at-a-proportionally-higher-HR case. `direction` travels alongside as
+the overall call. It was originally the
 `get_past_you` / `get_latest_past_you` tool payload, added by #1016 (a signed
 `pace_diff_sec`/`time_diff_sec`/`hr_diff_bpm` plus a `direction` composite)
 and reshaped by #1033 (the unsigned-plus-relation shape above) to stop a
@@ -106,10 +113,24 @@ that window, and keeps up to `MAX_COMPARISONS` qualifying pairs as evidence. A
 past run is used at most once, so the pairs are independent.
 
 Each pair gets a [TrendDirection](app/Enums/TrendDirection.php) from
-[PastYouComparison::direction()](app/Services/Run/Story/PastYouComparison.php):
-pace decides once the gap clears the noise band, and heart rate decides when pace
-came back flat, so holding pace at a higher HR reads as a loss rather than as "no
-change".
+[PastYouComparison::direction()](app/Services/Run/Story/PastYouComparison.php),
+decided on one metric per pair
+([metricFor()](app/Services/Run/Story/PastYouComparison.php#L84)):
+
+- **Efficiency** when both runs carry an average heart rate and both are at least
+  20 minutes of `elapsed_time` (`EF_MIN_ELAPSED_SEC`). Efficiency is whole-run
+  average speed divided by average HR, from summary fields only. The pair counts
+  as changed at a 3% efficiency difference.
+- **Pace** otherwise, since a warm-up dominates a short run's average HR. The
+  pair counts as changed at a 2% pace difference, relative to the past run's
+  pace.
+
+The thresholds live on
+[ComparisonMetric::signalPct()](app/Enums/ComparisonMetric.php#L17). Pace alone
+is weather-confounded and a few bpm sits inside wrist-sensor noise, which is why
+neither absolute threshold survives. A pair that is faster at a proportionally
+higher HR is `flat`, not better. There is no device gate: device bias is left to
+the agreement rule below.
 
 At least three qualifying pairs are needed for a verdict. Exactly two are shown
 as an early read with no verdict; zero or one keep the existing empty state.
@@ -117,7 +138,11 @@ Up to four qualifying pairs are shown.
 
 A [TrendVerdict](app/Enums/TrendVerdict.php) is only called when at least two
 thirds of the pairs point the same way, no pair points the opposite way, and the
-aggregate agrees. Flat pairs are allowed. If any pair points the other way, the
+aggregate agrees. The aggregate reads each pair's change in multiples of its own
+metric's threshold (efficiency change ÷ 3%, pace change ÷ 2%) and needs a window
+mean of at least ±1 in the verdict's direction
+([aggregateDirection()](app/Services/Run/Story/PastYouTrendBuilder.php#L173)), so
+windows mixing efficiency and pace pairs average on one scale. Flat pairs are allowed. If any pair points the other way, the
 verdict is `mixed`, a distinct state that keeps every row visible and states the
 split. If the evidence is not mixed but does not meet the vote or aggregate
 threshold, it is `plateaued`.
@@ -127,6 +152,13 @@ fabricated verdict: fewer than three qualifying pairs in the window. Two pairs
 are rendered there with early-read copy, and
 [PastYouTrend](app/Services/Run/Story/PastYouTrend.php) carries the pairs it did
 find so the empty state can say how close the runner is.
+
+Each pair ships its deciding `metric` and a `pace_relation`, and the trend ships
+`verdict_metric` (`ef`, `pace`, or `mixed` when pairs used both) and the mean
+`pace_relation`
+([verdictMetric()](app/Services/Run/Story/PastYouTrendBuilder.php#L188)). The
+home copy reads those words rather than re-deriving thresholds; see
+[[dashboard]].
 
 ## Built once per runner per day
 

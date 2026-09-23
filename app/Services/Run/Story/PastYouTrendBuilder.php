@@ -117,7 +117,7 @@ class PastYouTrendBuilder
         [$consistencyNow, $consistencyThen] = $this->consistencyShift($comparisons[0]);
 
         return new PastYouTrend(
-            verdict: $this->verdict($comparisons, $meanPaceDelta, $meanHrDelta),
+            verdict: $this->verdict($comparisons),
             comparisons: $comparisons,
             windowDays: self::WINDOW_DAYS,
             meanPaceDeltaSec: $meanPaceDelta,
@@ -125,6 +125,11 @@ class PastYouTrendBuilder
             fitnessDeltaCtl: $this->fitnessDelta($user, $anchor),
             paceConsistencyNow: $consistencyNow,
             paceConsistencyThen: $consistencyThen,
+            verdictMetric: $this->verdictMetric($comparisons),
+            paceRelation: PastYouComparison::paceRelation($this->meanOf(array_map(
+                static fn (PastYouComparison $c): float => $c->paceChangePct(),
+                $comparisons,
+            ))),
         );
     }
 
@@ -135,7 +140,7 @@ class PastYouTrendBuilder
      *
      * @param  list<PastYouComparison>  $comparisons
      */
-    private function verdict(array $comparisons, ?float $meanPaceDelta, ?float $meanHrDelta): TrendVerdict
+    private function verdict(array $comparisons): TrendVerdict
     {
         $betterVotes = 0;
         $worseVotes = 0;
@@ -149,7 +154,7 @@ class PastYouTrendBuilder
             return TrendVerdict::Mixed;
         }
 
-        $aggregate = $this->aggregateDirection($meanPaceDelta, $meanHrDelta);
+        $aggregate = $this->aggregateDirection($comparisons);
         $minimumVotes = (int) ceil(count($comparisons) * 2 / 3);
 
         return match (true) {
@@ -160,21 +165,34 @@ class PastYouTrendBuilder
     }
 
     /**
-     * Pace decides unless the mean came back inside the noise band, in which
-     * case heart rate does: holding pace at a lower heart rate is a gain, and
-     * holding it at a higher one is a loss.
+     * Each pair's change is read in multiples of its own metric's threshold, so
+     * a window mixing efficiency pairs and pace-only pairs averages on one scale.
+     *
+     * @param  list<PastYouComparison>  $comparisons
      */
-    private function aggregateDirection(?float $meanPaceDelta, ?float $meanHrDelta): TrendDirection
+    private function aggregateDirection(array $comparisons): TrendDirection
     {
-        if ($meanPaceDelta !== null && abs($meanPaceDelta) >= PastYouComparison::PACE_SIGNAL_SEC) {
-            return $meanPaceDelta > 0 ? TrendDirection::Better : TrendDirection::Worse;
-        }
+        $meanUnits = $this->meanOf(array_map(
+            static fn (PastYouComparison $c): float => $c->signalUnits(),
+            $comparisons,
+        ));
 
-        if ($meanHrDelta !== null && abs($meanHrDelta) >= PastYouComparison::HR_SIGNAL_BPM) {
-            return $meanHrDelta < 0 ? TrendDirection::Better : TrendDirection::Worse;
-        }
+        return match (true) {
+            $meanUnits >= 1.0 => TrendDirection::Better,
+            $meanUnits <= -1.0 => TrendDirection::Worse,
+            default => TrendDirection::Flat,
+        };
+    }
 
-        return TrendDirection::Flat;
+    /** @param  list<PastYouComparison>  $comparisons */
+    private function verdictMetric(array $comparisons): string
+    {
+        $metrics = array_values(array_unique(array_map(
+            static fn (PastYouComparison $c): string => $c->metric()->value,
+            $comparisons,
+        )));
+
+        return count($metrics) === 1 ? $metrics[0] : 'mixed';
     }
 
     /**
@@ -342,6 +360,12 @@ class PastYouTrendBuilder
         }
 
         return PaceConsistency::label(StreamSummary::fromArray($detail->stream_summary)->paceVariabilitySec());
+    }
+
+    /** @param  list<float>  $values */
+    private function meanOf(array $values): float
+    {
+        return round(array_sum($values) / max(1, count($values)), 2);
     }
 
     /**

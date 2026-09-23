@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Enums\ComparisonMetric;
 use App\Enums\TrendDirection;
 
 /**
@@ -13,16 +14,8 @@ use App\Enums\TrendDirection;
  */
 final readonly class PastYouComparison
 {
-    /**
-     * How much faster or slower a matched pair has to be before the difference
-     * counts as anything. Two runs of the same distance in the same pace band
-     * routinely land a few seconds apart on nothing but wind and traffic
-     * lights, so a smaller gap than this reads as noise, in either direction.
-     */
-    public const float PACE_SIGNAL_SEC = 5.0;
-
-    /** Same idea for average heart rate: day-to-day drift below this is not a reading. */
-    public const float HR_SIGNAL_BPM = 3.0;
+    /** A warm-up dominates a shorter run's average heart rate, so efficiency is not read below this. */
+    public const int EF_MIN_ELAPSED_SEC = 1_200;
 
     public function __construct(
         public ComparableRun $current,
@@ -50,50 +43,104 @@ final readonly class PastYouComparison
         );
     }
 
-    /**
-     * Pace leads, because it is the reading the runner recognises. Heart rate
-     * only decides the call when pace came back inside the noise band: same
-     * pace at a lower heart rate is a real gain, and same pace at a higher one
-     * is a real loss.
-     */
+    public function metric(): ComparisonMetric
+    {
+        return self::metricFor(
+            $this->current->elapsedTimeSec,
+            $this->past->elapsedTimeSec,
+            $this->current->averageHeartrate,
+            $this->past->averageHeartrate,
+        );
+    }
+
+    /** Positive when the recent run is better on the metric that decided the pair. */
+    public function changePct(): float
+    {
+        return self::changePctFor(
+            $this->metric(),
+            $this->current->paceSecPerKm,
+            $this->past->paceSecPerKm,
+            $this->current->averageHeartrate,
+            $this->past->averageHeartrate,
+        );
+    }
+
+    public function paceChangePct(): float
+    {
+        return self::paceChangePctFor($this->current->paceSecPerKm, $this->past->paceSecPerKm);
+    }
+
+    /** The change expressed in multiples of its own metric's signal threshold. */
+    public function signalUnits(): float
+    {
+        return $this->changePct() / $this->metric()->signalPct();
+    }
+
     public function direction(): TrendDirection
     {
-        return self::directionFor($this->paceDeltaSec, $this->hrDeltaBpm);
+        return self::directionFor($this->metric(), $this->changePct());
     }
 
-    /**
-     * Shared with {@see \App\Services\Run\Story\PastYouMatcher::findMatch()},
-     * which computes the same two deltas outside a {@see PastYouComparison}
-     * instance and needs the identical call.
-     */
-    public static function directionFor(float $paceDeltaSec, ?float $hrDeltaBpm): TrendDirection
+    public static function metricFor(int $currentElapsedSec, int $pastElapsedSec, ?float $currentHr, ?float $pastHr): ComparisonMetric
     {
-        if ($paceDeltaSec >= self::PACE_SIGNAL_SEC) {
-            return TrendDirection::Better;
+        $efReadable = $currentHr !== null && $currentHr > 0.0
+            && $pastHr !== null && $pastHr > 0.0
+            && $currentElapsedSec >= self::EF_MIN_ELAPSED_SEC
+            && $pastElapsedSec >= self::EF_MIN_ELAPSED_SEC;
+
+        return $efReadable ? ComparisonMetric::Ef : ComparisonMetric::Pace;
+    }
+
+    public static function changePctFor(
+        ComparisonMetric $metric,
+        float $currentPaceSecPerKm,
+        float $pastPaceSecPerKm,
+        ?float $currentHr,
+        ?float $pastHr,
+    ): float {
+        if ($metric === ComparisonMetric::Pace || $currentHr === null || $pastHr === null) {
+            return self::paceChangePctFor($currentPaceSecPerKm, $pastPaceSecPerKm);
         }
 
-        if ($paceDeltaSec <= -self::PACE_SIGNAL_SEC) {
-            return TrendDirection::Worse;
-        }
+        $efRatio = ($pastPaceSecPerKm / $currentPaceSecPerKm) * ($pastHr / $currentHr);
 
-        if ($hrDeltaBpm !== null && $hrDeltaBpm <= -self::HR_SIGNAL_BPM) {
-            return TrendDirection::Better;
-        }
+        return round(($efRatio - 1.0) * 100, 2);
+    }
 
-        if ($hrDeltaBpm !== null && $hrDeltaBpm >= self::HR_SIGNAL_BPM) {
-            return TrendDirection::Worse;
-        }
+    /** Positive when the recent run is faster, relative to the past run's pace. */
+    public static function paceChangePctFor(float $currentPaceSecPerKm, float $pastPaceSecPerKm): float
+    {
+        return round(($pastPaceSecPerKm - $currentPaceSecPerKm) / $pastPaceSecPerKm * 100, 2);
+    }
 
-        return TrendDirection::Flat;
+    public static function directionFor(ComparisonMetric $metric, float $changePct): TrendDirection
+    {
+        return match (true) {
+            $changePct >= $metric->signalPct() => TrendDirection::Better,
+            $changePct <= -$metric->signalPct() => TrendDirection::Worse,
+            default => TrendDirection::Flat,
+        };
+    }
+
+    /** @return 'faster'|'slower'|'same' */
+    public static function paceRelation(float $paceChangePct): string
+    {
+        return match (self::directionFor(ComparisonMetric::Pace, $paceChangePct)) {
+            TrendDirection::Better => 'faster',
+            TrendDirection::Worse => 'slower',
+            TrendDirection::Flat => 'same',
+        };
     }
 
     /**
-     * @return array{direction: string, days_apart: int, similarity: float, pace_delta_sec: float, hr_delta_bpm: float|null, current: array<string, mixed>, past: array<string, mixed>}
+     * @return array{direction: string, metric: string, pace_relation: string, days_apart: int, similarity: float, pace_delta_sec: float, hr_delta_bpm: float|null, current: array<string, mixed>, past: array<string, mixed>}
      */
     public function toArray(): array
     {
         return [
             'direction' => $this->direction()->value,
+            'metric' => $this->metric()->value,
+            'pace_relation' => self::paceRelation($this->paceChangePct()),
             'days_apart' => $this->daysApart,
             'similarity' => $this->similarity,
             'pace_delta_sec' => $this->paceDeltaSec,

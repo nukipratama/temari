@@ -52,6 +52,8 @@ const snapshot: WeeklySnapshot = {
 
 const pair: PastYouComparison = {
     direction: 'better',
+    metric: 'pace',
+    pace_relation: 'faster',
     days_apart: 90,
     similarity: 0.9,
     pace_delta_sec: 12,
@@ -90,6 +92,8 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
         fitness_delta_ctl: 2.4,
         pace_consistency_now: null,
         pace_consistency_then: null,
+        verdict_metric: 'pace',
+        pace_relation: 'faster',
         ...overrides,
     };
 }
@@ -192,7 +196,7 @@ describe('Home', () => {
     it('shows the evidence the verdict was computed from', () => {
         renderHome();
 
-        expect(screen.getAllByText('8.2 km · pace vs mar 14')).toHaveLength(2);
+        expect(screen.getAllByText('8.2 km vs mar 14')).toHaveLength(2);
         expect(screen.getAllByText('-12 s/km')).toHaveLength(2);
     });
 

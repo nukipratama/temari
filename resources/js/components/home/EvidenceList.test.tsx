@@ -10,9 +10,12 @@ function pair(
     paceDelta: number,
     hrDelta: number | null,
     direction: PastYouComparison['direction'],
+    metric: PastYouComparison['metric'] = 'pace',
 ): PastYouComparison {
     return {
         direction,
+        metric,
+        pace_relation: paceDelta > 0 ? 'faster' : 'same',
         days_apart: 90,
         similarity: 0.9,
         pace_delta_sec: paceDelta,
@@ -49,22 +52,26 @@ function trend(comparisons: PastYouComparison[]): PastYouTrend {
         fitness_delta_ctl: null,
         pace_consistency_now: null,
         pace_consistency_then: null,
+        verdict_metric: 'pace',
+        pace_relation: 'faster',
     };
 }
 
 describe('EvidenceList', () => {
-    it('shows each pair as a before, after and delta', () => {
+    it('shows pace and heart rate before and after, plus the delta', () => {
         render(<EvidenceList trend={trend([pair(2, 12, -6, 'better')])} />);
 
         expect(screen.getByText('7:12')).toBeInTheDocument();
         expect(screen.getByText('7:00')).toBeInTheDocument();
+        expect(screen.getByText('158')).toBeInTheDocument();
+        expect(screen.getByText('152')).toBeInTheDocument();
         expect(screen.getByText('-12 s/km')).toBeInTheDocument();
     });
 
     it('names what made the pair comparable', () => {
         render(<EvidenceList trend={trend([pair(2, 12, -6, 'better')])} />);
 
-        expect(screen.getByText('8.2 km · pace vs mar 14')).toBeInTheDocument();
+        expect(screen.getByText('8.2 km vs mar 14')).toBeInTheDocument();
     });
 
     it('links each row to the run it was measured on', () => {
@@ -83,12 +90,13 @@ describe('EvidenceList', () => {
         expect(links[1]).toHaveAttribute('href', '/activities/3');
     });
 
-    it('shows heart rate on a row whose pace came back flat', () => {
-        render(<EvidenceList trend={trend([pair(2, 1, -7, 'better')])} />);
+    it('states an efficiency row in words with no number or percentage in its delta', () => {
+        render(
+            <EvidenceList trend={trend([pair(2, 1, -7, 'better', 'ef')])} />,
+        );
 
-        expect(screen.getByText('158')).toBeInTheDocument();
-        expect(screen.getByText('152')).toBeInTheDocument();
-        expect(screen.getByText('-7 bpm')).toBeInTheDocument();
+        expect(screen.getByText('less work')).toBeInTheDocument();
+        expect(screen.queryByText(/%/)).not.toBeInTheDocument();
     });
 
     it('reads a genuinely flat pair as holding', () => {
@@ -108,7 +116,7 @@ describe('EvidenceList', () => {
 
         expect(
             screen.getByRole('link', {
-                name: '8.2 km · pace vs mar 14, 7:12 to 7:00, -12 s/km',
+                name: '8.2 km vs mar 14, pace 7:12 to 7:00, HR 158 to 152 bpm, -12 s/km',
             }),
         ).toBeInTheDocument();
     });

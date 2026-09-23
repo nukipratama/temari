@@ -115,21 +115,21 @@ it('calls it improving when the recent runs are faster than their matches', func
         trendRun($user, $daysAgo, 4_400);
     }
     foreach ([3, 10, 17, 24] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
 
     $trend = buildTrend($user);
 
     expect($trend->verdict)->toBe(TrendVerdict::Improving)
         ->and($trend->comparisons)->toHaveCount(4)
-        ->and($trend->meanPaceDeltaSec)->toBe(10.0)
+        ->and($trend->meanPaceDeltaSec)->toBe(15.0)
         ->and($trend->windowDays)->toBe(PastYouTrendBuilder::WINDOW_DAYS);
 });
 
 it('calls it slipped when the recent runs are slower than their matches', function (): void {
     $user = User::factory()->create();
     foreach ([200, 215, 230, 245] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
     foreach ([3, 10, 17, 24] as $daysAgo) {
         trendRun($user, $daysAgo, 4_400);
@@ -138,7 +138,7 @@ it('calls it slipped when the recent runs are slower than their matches', functi
     $trend = buildTrend($user);
 
     expect($trend->verdict)->toBe(TrendVerdict::Slipped)
-        ->and($trend->meanPaceDeltaSec)->toBe(-10.0)
+        ->and($trend->meanPaceDeltaSec)->toBe(-15.0)
         ->and(array_map(
             fn ($comparison): string => $comparison->direction()->value,
             $trend->comparisons,
@@ -165,10 +165,10 @@ it('calls it plateaued when the pairs disagree with each other', function (): vo
     foreach ([200, 215, 230, 245] as $daysAgo) {
         trendRun($user, $daysAgo, 4_400);
     }
-    trendRun($user, 3, 4_300);
-    trendRun($user, 10, 4_300);
-    trendRun($user, 17, 4_480);
-    trendRun($user, 24, 4_480);
+    trendRun($user, 3, 4_250);
+    trendRun($user, 10, 4_250);
+    trendRun($user, 17, 4_480, ['average_heartrate' => 158.0]);
+    trendRun($user, 24, 4_480, ['average_heartrate' => 158.0]);
 
     expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Mixed);
 });
@@ -178,8 +178,8 @@ it('will not call it improving when one bad pair outweighs a majority of small g
     foreach ([200, 215, 230] as $daysAgo) {
         trendRun($user, $daysAgo, 4_100);
     }
-    trendRun($user, 3, 4_040);
-    trendRun($user, 10, 4_040);
+    trendRun($user, 3, 3_980);
+    trendRun($user, 10, 3_980);
     trendRun($user, 17, 4_400);
 
     $trend = buildTrend($user);
@@ -194,7 +194,7 @@ it('does not claim a direction with only two qualifying pairs', function (): voi
         trendRun($user, $daysAgo, 4_400);
     }
     foreach ([3, 10] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
 
     $trend = buildTrend($user);
@@ -208,11 +208,27 @@ it('allows two faster pairs and one flat pair to claim improvement', function ()
     foreach ([200, 215, 230] as $daysAgo) {
         trendRun($user, $daysAgo, 4_400);
     }
-    trendRun($user, 3, 4_300);
-    trendRun($user, 10, 4_300);
+    trendRun($user, 3, 4_200);
+    trendRun($user, 10, 4_200);
     trendRun($user, 17, 4_400);
 
     expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Improving);
+});
+
+it('holds two barely-better pairs and one flat pair at plateaued, since the window mean stays under one threshold', function (): void {
+    $user = User::factory()->create();
+    foreach ([200, 215, 230] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_400);
+    }
+    trendRun($user, 3, 4_250);
+    trendRun($user, 10, 4_250);
+    trendRun($user, 17, 4_400);
+
+    $trend = buildTrend($user);
+
+    expect(array_map(fn ($c): string => $c->direction()->value, $trend->comparisons))
+        ->toBe(['better', 'better', 'flat'])
+        ->and($trend->verdict)->toBe(TrendVerdict::Plateaued);
 });
 
 it('allows three faster pairs and one flat pair to claim improvement', function (): void {
@@ -221,7 +237,7 @@ it('allows three faster pairs and one flat pair to claim improvement', function 
         trendRun($user, $daysAgo, 4_400);
     }
     foreach ([3, 10, 17] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_200);
     }
     trendRun($user, 24, 4_400);
 
@@ -233,8 +249,8 @@ it('keeps two faster pairs and two flat pairs at plateaued', function (): void {
     foreach ([200, 215, 230, 245] as $daysAgo) {
         trendRun($user, $daysAgo, 4_400);
     }
-    trendRun($user, 3, 4_300);
-    trendRun($user, 10, 4_300);
+    trendRun($user, 3, 4_250);
+    trendRun($user, 10, 4_250);
     trendRun($user, 17, 4_400);
     trendRun($user, 24, 4_400);
 
@@ -246,9 +262,9 @@ it('keeps two faster pairs and one slower pair at mixed', function (): void {
     foreach ([200, 215, 230] as $daysAgo) {
         trendRun($user, $daysAgo, 4_400);
     }
-    trendRun($user, 3, 4_300);
-    trendRun($user, 10, 4_300);
-    trendRun($user, 17, 4_480);
+    trendRun($user, 3, 4_250);
+    trendRun($user, 10, 4_250);
+    trendRun($user, 17, 4_480, ['average_heartrate' => 158.0]);
 
     expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Mixed);
 });
@@ -259,9 +275,9 @@ it('calls mixed when three pairs are faster and one is slower', function (): voi
         trendRun($user, $daysAgo, 4_400);
     }
     foreach ([3, 10, 17] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
-    trendRun($user, 24, 4_480);
+    trendRun($user, 24, 4_480, ['average_heartrate' => 158.0]);
 
     expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Mixed);
 });
@@ -276,7 +292,7 @@ it('never pairs a single-run planned tempo date with a single-run easy date', fu
         ]);
     }
     foreach ([3, 10, 17] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
         PlannedSession::factory()->for($user)->create([
             'date' => Carbon::today()->subDays($daysAgo)->toDateString(),
             'session_type' => SessionType::Tempo,
@@ -293,7 +309,7 @@ it('ignores and invalidates cache for excused planned session types', function (
     ] as $excusal) {
         $user = User::factory()->create();
         $past = trendRun($user, 100, 4_400);
-        $current = trendRun($user, 3, 4_300);
+        $current = trendRun($user, 3, 4_250);
         PlannedSession::factory()->for($user)->create([
             'date' => $past->start_date_local->toDateString(),
             'session_type' => SessionType::Easy,
@@ -314,8 +330,8 @@ it('ignores and invalidates cache for excused planned session types', function (
 
 it('leaves intent unknown when there is more than one run on the planned date', function (): void {
     $user = User::factory()->create();
-    trendRun($user, 3, 4_300);
-    trendRun($user, 3, 4_300, [
+    trendRun($user, 3, 4_250);
+    trendRun($user, 3, 4_250, [
         'start_date_local' => Carbon::today()->subDays(3)->setTime(7, 0),
     ]);
     $past = trendRun($user, 100, 4_400);
@@ -336,12 +352,12 @@ it('leaves intent unknown when there is more than one run on the planned date', 
 
 it('counts only analyzed runs when qualifying planned-session intent', function (): void {
     $user = User::factory()->create();
-    trendRun($user, 3, 4_300);
+    trendRun($user, 3, 4_250);
     $stub = Activity::factory()->for($user)->stub()->create();
     ActivityDetail::factory()->for($stub)->create([
         'distance' => 10_000.0,
-        'moving_time' => 4_300,
-        'elapsed_time' => 4_300,
+        'moving_time' => 4_250,
+        'elapsed_time' => 4_250,
         'start_date_local' => Carbon::today()->subDays(3)->setTime(7, 0),
     ]);
     $past = trendRun($user, 100, 4_400);
@@ -363,7 +379,7 @@ it('excludes a pair when both known temperatures are more than three degrees apa
         trendRun($user, $daysAgo, 4_400, ['weather_temp_c' => 24]);
     }
     foreach ([3, 10, 17] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300, ['weather_temp_c' => 28]);
+        trendRun($user, $daysAgo, 4_250, ['weather_temp_c' => 28]);
     }
 
     expect(buildTrend($user)->comparisons)->toBe([]);
@@ -397,13 +413,79 @@ it('calls it slipped on heart rate alone when pace held', function (): void {
     expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Slipped);
 });
 
+it('calls a window faster at a proportionally higher heart rate plateaued', function (): void {
+    $user = User::factory()->create();
+    foreach ([200, 215, 230, 245] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_400, ['average_heartrate' => 150.0]);
+    }
+    foreach ([3, 10, 17, 24] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_200, ['average_heartrate' => 157.1]);
+    }
+
+    $trend = buildTrend($user);
+
+    expect($trend->verdict)->toBe(TrendVerdict::Plateaued)
+        ->and($trend->toArray())->toMatchArray(['verdict_metric' => 'ef', 'pace_relation' => 'faster'])
+        ->and(array_map(fn ($c): string => $c->direction()->value, $trend->comparisons))
+        ->toBe(['flat', 'flat', 'flat', 'flat']);
+});
+
+it('decides a window without heart rate on pace from a 2% gain', function (?float $heartRate, TrendVerdict $expected, string $metric): void {
+    $user = User::factory()->create();
+    foreach ([200, 215, 230, 245] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_400, ['average_heartrate' => $heartRate]);
+    }
+    foreach ([3, 10, 17, 24] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_310, ['average_heartrate' => $heartRate]);
+    }
+
+    $trend = buildTrend($user);
+
+    expect($trend->verdict)->toBe($expected)
+        ->and($trend->verdictMetric)->toBe($metric);
+})->with([
+    'no heart rate, pace decides' => [null, TrendVerdict::Improving, 'pace'],
+    'heart rate on both sides, efficiency decides' => [155.0, TrendVerdict::Plateaued, 'ef'],
+]);
+
+it('averages efficiency pairs and pace-only pairs on one threshold scale', function (): void {
+    $user = User::factory()->create();
+    foreach ([200, 215, 230] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_400);
+    }
+    trendRun($user, 3, 4_200);
+    trendRun($user, 10, 4_200);
+    trendRun($user, 17, 4_200, ['average_heartrate' => null]);
+
+    $trend = buildTrend($user);
+
+    expect(array_map(fn ($c): string => $c->metric()->value, $trend->comparisons))->toBe(['ef', 'ef', 'pace'])
+        ->and($trend->verdictMetric)->toBe('mixed')
+        ->and($trend->verdict)->toBe(TrendVerdict::Improving);
+});
+
+it('still withholds a verdict from two strong efficiency pairs', function (): void {
+    $user = User::factory()->create();
+    foreach ([200, 215] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_350, ['average_heartrate' => 165.0]);
+    }
+    foreach ([3, 10] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_350, ['average_heartrate' => 150.0]);
+    }
+
+    $trend = buildTrend($user);
+
+    expect($trend->verdict)->toBe(TrendVerdict::NotEnoughHistory)
+        ->and($trend->toArray())->toMatchArray(['verdict_metric' => null, 'pace_relation' => null]);
+});
+
 it('matches runs that are still summary-only, with no streams to read', function (): void {
     $user = User::factory()->create();
     foreach ([200, 215, 230, 245] as $daysAgo) {
         summaryOnlyRun($user, $daysAgo, 4_400);
     }
     foreach ([3, 10, 17, 24] as $daysAgo) {
-        summaryOnlyRun($user, $daysAgo, 4_300);
+        summaryOnlyRun($user, $daysAgo, 4_250);
     }
 
     $trend = buildTrend($user);
@@ -420,7 +502,7 @@ it('matches runs that are still summary-only, with no streams to read', function
 it('reports the empty state when nothing in history is comparable', function (): void {
     $user = User::factory()->create();
     foreach ([3, 10, 17] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
 
     $trend = buildTrend($user);
@@ -434,7 +516,7 @@ it('reports the empty state when nothing in history is comparable', function ():
 it('reports the empty state when only one pair matched', function (): void {
     $user = User::factory()->create();
     trendRun($user, 200, 4_400);
-    trendRun($user, 3, 4_300);
+    trendRun($user, 3, 4_250);
 
     $trend = buildTrend($user);
 
@@ -448,7 +530,7 @@ it('caps the evidence it collects', function (): void {
         trendRun($user, $daysAgo, 4_400);
     }
     foreach ([2, 8, 14, 20, 26, 32] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
 
     expect(buildTrend($user)->comparisons)->toHaveCount(PastYouTrendBuilder::MAX_COMPARISONS);
@@ -459,7 +541,7 @@ it('never uses the same past run as evidence twice', function (): void {
     trendRun($user, 200, 4_400);
     trendRun($user, 215, 4_400);
     foreach ([3, 10, 17, 24] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
 
     $trend = buildTrend($user);
@@ -476,7 +558,7 @@ it('never reaches into another runner\'s history', function (): void {
         trendRun($other, $daysAgo, 4_400);
     }
     foreach ([3, 10, 17, 24] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
 
     expect(buildTrend($user)->verdict)->toBe(TrendVerdict::NotEnoughHistory);
@@ -485,7 +567,7 @@ it('never reaches into another runner\'s history', function (): void {
 it('never matches a not-yet-analyzed activity as a candidate', function (): void {
     $user = User::factory()->create();
     foreach ([3, 10, 17, 24] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
     // Would-be candidates for the recent runs above, but stuck as un-ingested
     // stubs — none of them may be picked as a match.
@@ -493,8 +575,8 @@ it('never matches a not-yet-analyzed activity as a candidate', function (): void
         $stub = Activity::factory()->for($user)->stub()->create();
         ActivityDetail::factory()->for($stub)->create([
             'distance' => 10_000.0,
-            'moving_time' => 4_300,
-            'elapsed_time' => 4_300,
+            'moving_time' => 4_250,
+            'elapsed_time' => 4_250,
             'start_date_local' => Carbon::today()->subDays($daysAgo)->setTime(6, 0),
         ]);
     }
@@ -509,7 +591,7 @@ it('still finds the oldest comparable runs when the window holds hundreds of oth
     }
     crowdHistory($user, 400, fromDaysAgo: 340, toDaysAgo: 45);
     foreach ([3, 10, 17, 24] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
 
     $trend = buildTrend($user);
@@ -528,7 +610,7 @@ it('ignores history older than the matcher\'s ceiling', function (): void {
         trendRun($user, $daysAgo, 4_400);
     }
     foreach ([3, 10] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
 
     expect(buildTrend($user)->verdict)->toBe(TrendVerdict::NotEnoughHistory);
@@ -540,7 +622,7 @@ it('reports the fitness trend beside the verdict when the detail pipeline has ca
         trendRun($user, $daysAgo, 4_400, ['trimp_edwards' => 60.0]);
     }
     foreach ([3, 10, 17, 24] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300, ['trimp_edwards' => 120.0]);
+        trendRun($user, $daysAgo, 4_250, ['trimp_edwards' => 120.0]);
     }
 
     expect(buildTrend($user)->fitnessDeltaCtl)->toBeFloat()->toBeGreaterThan(0.0);
@@ -552,7 +634,7 @@ it('serves the payload from cache for the rest of the athlete\'s day', function 
         trendRun($user, $daysAgo, 4_400);
     }
     foreach ([3, 10, 17, 24] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_300);
+        trendRun($user, $daysAgo, 4_250);
     }
     $builder = app(PastYouTrendBuilder::class);
 
@@ -570,7 +652,7 @@ it('rebuilds the cached trend when weather arrives after ingest', function (): v
     }
     $recent = [];
     foreach ([3, 10, 17, 24] as $daysAgo) {
-        $recent[] = trendRun($user, $daysAgo, 4_300, ['weather_temp_c' => 20]);
+        $recent[] = trendRun($user, $daysAgo, 4_250, ['weather_temp_c' => 20]);
     }
     $builder = app(PastYouTrendBuilder::class);
 
@@ -584,7 +666,7 @@ it('rebuilds the cached trend when weather arrives after ingest', function (): v
 it('rebuilds the cached trend when planned sessions are added or changed', function (): void {
     $user = User::factory()->create();
     $past = trendRun($user, 100, 4_400);
-    $current = trendRun($user, 3, 4_300);
+    $current = trendRun($user, 3, 4_250);
     $builder = app(PastYouTrendBuilder::class);
 
     expect($builder->payload($user)['comparison_count'])->toBe(1);
@@ -608,7 +690,7 @@ it('rebuilds the cached trend when planned sessions are added or changed', funct
 it('keys the cache by runner and by day', function (): void {
     $user = User::factory()->create();
     trendRun($user, 200, 4_400);
-    trendRun($user, 3, 4_300);
+    trendRun($user, 3, 4_250);
 
     app(PastYouTrendBuilder::class)->payload($user);
 

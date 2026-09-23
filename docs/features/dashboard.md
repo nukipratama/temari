@@ -52,13 +52,13 @@ When `weekPlan` is null the slot draws [NoPlanCard](resources/js/components/home
 
 All four outcomes render here (`improving` / `plateaued` / `slipped` / `mixed`), each with its own tone: `improving` on the prototype's `icon-accent`, the others on tones that do not read as a celebration. `plateaued`, `slipped` and `mixed` are stated plainly, once, with the evidence split: a page that only looks good when the news is good would not be keeping score. See [[voice-and-tone]] and [temari-keeps-score-persona](docs/decisions/temari-keeps-score-persona.md).
 
-Which reading drives the headline mirrors the server's own precedence in `PastYouTrendBuilder::aggregateDirection` — pace leads, heart rate decides a window whose pace came back flat, so "same pace, less work to hold it" is an improvement rather than a plateau.
+The headline says which reading carried the call, from the payload's `verdict_metric` and `pace_relation` ([improvingHeadline](resources/js/lib/verdict.ts#L191)). An `improving` window whose every pair was decided on efficiency reads "faster at the same heart rate" when the mean pace gain clears 2%, or "same pace, lower heart rate" inside that band. A pace-decided window says "faster". A window that mixed efficiency and pace pairs gets neutral wording, so no line claims heart rate for a pair decided on pace. A `plateaued` window where most flat pairs got faster at a higher HR reads "faster, but it cost more heart rate." ([flatPairsCostHeartRate](resources/js/lib/verdict.ts#L92)). No efficiency number or percentage is rendered anywhere; the supporting line states the mean pace and HR deltas as raw facts.
 
 ## The evidence
 
-[EvidenceList](resources/js/components/home/EvidenceList.tsx) renders the 2 to 4 matched pairs the verdict was computed from, one row each: what made the pair comparable (distance, and the run it was matched against), the reading before and after, and the delta, toned by the pair's `direction`. Each row links to the run it was measured on.
+[EvidenceList](resources/js/components/home/EvidenceList.tsx) renders the 2 to 4 matched pairs the verdict was computed from, one row each: what made the pair comparable (distance, and the run it was matched against), the readings before and after, and the delta, toned by the pair's `direction`. Each row links to the run it was measured on.
 
-A row shows **the metric that actually decided it**, not always pace: `decidingMetric` in [verdict.ts](resources/js/lib/verdict.ts) mirrors `PastYouComparison::direction`, so a pair whose pace landed inside the noise band shows its heart rate instead. Without that, a row marked as a gain could show a delta of `+2 s/km` and look broken.
+Every row shows **average pace and average HR for both runs** (HR is left off when either run has none), because an efficiency call is made from both. The delta pill follows the pair's own `metric` from the server ([deltaLabel](resources/js/lib/verdict.ts#L39)): a pace-decided row shows a signed `s/km`, an efficiency-decided row says "less work" or "more work" in words, and a flat row says "holding".
 
 ## No verdict yet
 

@@ -37,9 +37,9 @@ function relationTone(relation: Relation, betterWhen: Relation): string {
  * not an empty state.
  *
  * The wording is built entirely from the `relation` words
- * {@see PastYouMatcher::findMatchContext} already computes (banded against
- * noise, per #1009) — this component never re-derives a direction from a raw
- * sign.
+ * {@see PastYouMatcher::findMatchContext} already computes (pace banded against
+ * noise, heart rate named as the rounded bpm shows it) — this component never
+ * re-derives a direction from a raw sign.
  */
 export default function PastYouCard({
     match,

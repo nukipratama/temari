@@ -9,6 +9,8 @@ import VerdictHero from './VerdictHero';
 
 const pair: PastYouComparison = {
     direction: 'better',
+    metric: 'pace',
+    pace_relation: 'faster',
     days_apart: 90,
     similarity: 0.9,
     pace_delta_sec: 12,
@@ -55,6 +57,8 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
         fitness_delta_ctl: 2.4,
         pace_consistency_now: null,
         pace_consistency_then: null,
+        verdict_metric: 'pace',
+        pace_relation: 'faster',
         ...overrides,
     };
 }
@@ -76,7 +80,7 @@ describe('VerdictHero', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                '3 of 4 matched runs better, 1 flat; average pace was 10.0 s/km faster.',
+                '3 of 4 matched runs better, 1 flat; average pace was 10.0 s/km faster, average HR was 5.0 bpm lower.',
             ),
         ).toBeInTheDocument();
     });
