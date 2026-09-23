@@ -614,3 +614,46 @@ it('drops the readiness climb while a floorless block\'s increases are held', fu
     // 20 x 0.35 = 7.0 km, with neither the 12 km readiness target nor the 10 km race distance lifting it.
     expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(7.0);
 });
+
+function trainingBaselineMemo(TrainingBaseline $baseline, string $property): array
+{
+    return new ReflectionProperty(TrainingBaseline::class, $property)->getValue($baseline);
+}
+
+function volumeFloorKmFor(TrainingBaseline $baseline, RaceGoal $race, array $block, Season $season, int $sessionsPerWeek): float
+{
+    $method = new ReflectionMethod(TrainingBaseline::class, 'volumeFloorKm');
+
+    return $method->invoke($baseline, $race, $block, $season, $sessionsPerWeek);
+}
+
+it('does not rebuild the race block on a second forUser() call in the same scope', function (): void {
+    $user = User::factory()->create();
+    flooredRaceSeason($user, 20.0, 27.0);
+
+    $this->baseline->forUser($user, Carbon::today());
+    $this->baseline->forUser($user, Carbon::today());
+
+    expect(trainingBaselineMemo($this->baseline, 'blockMemo'))->toHaveCount(1)
+        ->and(trainingBaselineMemo($this->baseline, 'volumeFloorMemo'))->toHaveCount(1);
+});
+
+it('recomputes the block and floor when a key input changes', function (): void {
+    $user = User::factory()->create();
+    $season = flooredRaceSeason($user, 20.0, 27.0);
+    $race = RaceGoal::query()->where('user_id', $user->id)->firstOrFail();
+
+    $blockMethod = new ReflectionMethod(TrainingBaseline::class, 'block');
+    $block = $blockMethod->invoke($this->baseline, $race, $season);
+
+    $first = volumeFloorKmFor($this->baseline, $race, $block, $season, 4);
+    $repeat = volumeFloorKmFor($this->baseline, $race, $block, $season, 4);
+
+    expect($repeat)->toBe($first)
+        ->and(trainingBaselineMemo($this->baseline, 'blockMemo'))->toHaveCount(1)
+        ->and(trainingBaselineMemo($this->baseline, 'volumeFloorMemo'))->toHaveCount(1);
+
+    volumeFloorKmFor($this->baseline, $race, $block, $season, 5);
+
+    expect(trainingBaselineMemo($this->baseline, 'volumeFloorMemo'))->toHaveCount(2);
+});
