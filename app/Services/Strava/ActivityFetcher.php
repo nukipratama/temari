@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Strava;
 
+use App\Enums\StravaReadSource;
 use App\Models\Activity;
 use App\Models\StravaConnection;
-use App\Enums\StravaReadSource;
 use Carbon\CarbonImmutable;
 
 class ActivityFetcher

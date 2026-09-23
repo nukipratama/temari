@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Strava;
 
+use App\Actions\Strava\ProbeStravaWebhookAction;
 use App\Enums\StravaReadPriority;
 use App\Enums\StravaReadSource;
-use App\Actions\Strava\ProbeStravaWebhookAction;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\User;

@@ -6,9 +6,9 @@ namespace App\Services\Run\Ingest;
 
 use Throwable;
 use App\Enums\IngestState;
-use App\Enums\StravaSyncSource;
-use App\Enums\StravaReadSource;
 use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
+use App\Enums\StravaSyncSource;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\Analytics\StravaSyncLog;

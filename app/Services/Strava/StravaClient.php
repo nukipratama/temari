@@ -129,7 +129,7 @@ class StravaClient
 
         try {
             StravaRead::query()->create([
-                'read_at' => now('UTC'),
+                'read_at' => now(),
                 'source' => $source,
                 'priority' => $priority,
                 'endpoint' => $this->endpointCategory($path),

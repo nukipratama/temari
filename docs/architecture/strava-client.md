@@ -73,16 +73,26 @@ A refused background read is **deferred, not dropped** — [IngestActivityJob](a
 
 ### Measuring actual reads
 
-Every HTTP response from Strava is recorded in the analytics `strava_reads` table with its UTC response time, source, priority, safe endpoint category, status, and the `X-ReadRateLimit-Usage` 15-minute and daily counters when present. Rows contain no athlete or user ID. Locally refused requests and transport failures have no response and are not recorded. The model prunes rows older than 90 days.
+Every HTTP response from Strava is recorded in the analytics `strava_reads` table with its app-timezone response time, source, priority, safe endpoint category, status, and the `X-ReadRateLimit-Usage` 15-minute and daily counters when present. Rows contain no athlete or user ID. Locally refused requests and transport failures have no response and are not recorded. `analytics:prune` removes rows older than 90 days, using the same app-timezone cutoff as the other analytics tables.
 
-This MySQL 8 query reports the app's peak clock-aligned UTC 15-minute windows over the last 30 days, broken down by source and priority, alongside Strava's usage counters observed in those windows. Change `INTERVAL 30 DAY` to the period you want to inspect.
+The analytics `DATETIME` values use the app timezone (Asia/Jakarta). This MySQL 8 query shifts them to UTC before filtering and bucketing, then reports the app's peak clock-aligned UTC 15-minute windows over the last 30 days by source and priority, alongside Strava's usage counters observed in those windows. Change `INTERVAL 30 DAY` to the period you want to inspect.
 
 ```sql
-WITH reads_by_source AS (
+WITH reads_in_utc AS (
+    SELECT
+        TIMESTAMPADD(HOUR, -7, read_at) AS read_at_utc,
+        source,
+        priority,
+        usage_15m,
+        usage_daily
+    FROM strava_reads
+    WHERE read_at >= TIMESTAMPADD(HOUR, 7, UTC_TIMESTAMP() - INTERVAL 30 DAY)
+),
+reads_by_source AS (
     SELECT
         CONCAT(
-            DATE_FORMAT(read_at, '%Y-%m-%d %H:'),
-            LPAD(FLOOR(MINUTE(read_at) / 15) * 15, 2, '0'),
+            DATE_FORMAT(read_at_utc, '%Y-%m-%d %H:'),
+            LPAD(FLOOR(MINUTE(read_at_utc) / 15) * 15, 2, '0'),
             ':00'
         ) AS window_start_utc,
         source,
@@ -90,8 +100,7 @@ WITH reads_by_source AS (
         COUNT(*) AS source_reads,
         MAX(usage_15m) AS observed_15min_usage,
         MAX(usage_daily) AS observed_daily_usage
-    FROM strava_reads
-    WHERE read_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY
+    FROM reads_in_utc
     GROUP BY window_start_utc, source, priority
 )
 SELECT

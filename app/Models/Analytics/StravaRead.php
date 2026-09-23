@@ -7,15 +7,13 @@ namespace App\Models\Analytics;
 use App\Enums\StravaReadPriority;
 use App\Enums\StravaReadSource;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Override;
 
 /**
  * @property int $id
- * @property Carbon $read_at UTC time the Strava response was received
+ * @property Carbon $read_at App-timezone time the Strava response was received
  * @property StravaReadSource $source
  * @property StravaReadPriority $priority
  * @property string $endpoint Safe endpoint category, never a raw path or activity ID
@@ -26,8 +24,6 @@ use Override;
 #[Fillable(['read_at', 'source', 'priority', 'endpoint', 'http_status', 'usage_15m', 'usage_daily'])]
 class StravaRead extends Model
 {
-    use MassPrunable;
-
     #[Override]
     public $timestamps = false;
 
@@ -36,12 +32,6 @@ class StravaRead extends Model
 
     #[Override]
     protected $table = 'strava_reads';
-
-    /** @return Builder<static> */
-    public function prunable(): Builder
-    {
-        return static::query()->where('read_at', '<', now('UTC')->subDays(90));
-    }
 
     /** @return array<string, string> */
     #[Override]

@@ -181,7 +181,10 @@ it('makes authenticated GET requests to the Strava API', function (): void {
         && $request->hasHeader('Authorization', 'Bearer live-access'));
 });
 
-it('records each Strava response with its source, priority, endpoint category, and usage counters', function (): void {
+it('records each Strava response with its source, priority, endpoint category, time, and usage counters', function (): void {
+    $readAt = Carbon::parse('2026-09-23 19:15:00', 'Asia/Jakarta');
+    $this->travelTo($readAt);
+
     Http::fake([
         'www.strava.com/api/v3/activities/987654321' => Http::response(
             ['id' => 987654321],
@@ -194,7 +197,9 @@ it('records each Strava response with its source, priority, endpoint category, a
     new StravaClient()->get($connection, '/activities/987654321', StravaReadSource::Hydration, StravaReadPriority::Background);
 
     $read = StravaRead::query()->sole();
-    expect($read->source)->toBe(StravaReadSource::Hydration)
+    expect($read->read_at->toIso8601String())->toBe('2026-09-23T19:15:00+07:00')
+        ->and($read->read_at->equalTo($readAt))->toBeTrue()
+        ->and($read->source)->toBe(StravaReadSource::Hydration)
         ->and($read->priority)->toBe(StravaReadPriority::Background)
         ->and($read->endpoint)->toBe('activity_detail')
         ->and($read->http_status)->toBe(200)
