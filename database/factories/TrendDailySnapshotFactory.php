@@ -21,6 +21,11 @@ class TrendDailySnapshotFactory extends Factory
      */
     private static int $daySequence = 0;
 
+    public static function resetSequence(): void
+    {
+        self::$daySequence = 0;
+    }
+
     /**
      * @return array<string, mixed>
      */

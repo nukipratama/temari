@@ -20,6 +20,11 @@ class WeeklySnapshotFactory extends Factory
      */
     private static int $weekSequence = 0;
 
+    public static function resetSequence(): void
+    {
+        self::$weekSequence = 0;
+    }
+
     /**
      * @return array<string, mixed>
      */
