@@ -215,6 +215,19 @@ it('allows two faster pairs and one flat pair to claim improvement', function ()
     expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Improving);
 });
 
+it('allows three faster pairs and one flat pair to claim improvement', function (): void {
+    $user = User::factory()->create();
+    foreach ([200, 215, 230, 245] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_400);
+    }
+    foreach ([3, 10, 17] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_300);
+    }
+    trendRun($user, 24, 4_400);
+
+    expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Improving);
+});
+
 it('keeps two faster pairs and two flat pairs at plateaued', function (): void {
     $user = User::factory()->create();
     foreach ([200, 215, 230, 245] as $daysAgo) {
@@ -273,6 +286,32 @@ it('never pairs a single-run planned tempo date with a single-run easy date', fu
     expect(buildTrend($user)->comparisons)->toBe([]);
 });
 
+it('ignores and invalidates cache for excused planned session types', function (): void {
+    foreach ([
+        ['skipped' => true],
+        ['rest_clamped_at' => Carbon::today()->subDays(3)->setTime(6, 0)],
+    ] as $excusal) {
+        $user = User::factory()->create();
+        $past = trendRun($user, 100, 4_400);
+        $current = trendRun($user, 3, 4_300);
+        PlannedSession::factory()->for($user)->create([
+            'date' => $past->start_date_local->toDateString(),
+            'session_type' => SessionType::Easy,
+        ]);
+        $currentSession = PlannedSession::factory()->for($user)->create([
+            'date' => $current->start_date_local->toDateString(),
+            'session_type' => SessionType::Tempo,
+        ]);
+        $builder = app(PastYouTrendBuilder::class);
+
+        expect($builder->payload($user)['comparison_count'])->toBe(0);
+
+        $currentSession->update($excusal);
+
+        expect($builder->payload($user)['comparison_count'])->toBe(1);
+    }
+});
+
 it('leaves intent unknown when there is more than one run on the planned date', function (): void {
     $user = User::factory()->create();
     trendRun($user, 3, 4_300);
@@ -293,6 +332,29 @@ it('leaves intent unknown when there is more than one run on the planned date', 
 
     expect($trend->comparisons)->toHaveCount(1)
         ->and($trend->comparisons[0]->past->activityId)->toBe($past->activity_id);
+});
+
+it('counts only analyzed runs when qualifying planned-session intent', function (): void {
+    $user = User::factory()->create();
+    trendRun($user, 3, 4_300);
+    $stub = Activity::factory()->for($user)->stub()->create();
+    ActivityDetail::factory()->for($stub)->create([
+        'distance' => 10_000.0,
+        'moving_time' => 4_300,
+        'elapsed_time' => 4_300,
+        'start_date_local' => Carbon::today()->subDays(3)->setTime(7, 0),
+    ]);
+    $past = trendRun($user, 100, 4_400);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->subDays(3)->toDateString(),
+        'session_type' => SessionType::Tempo,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->subDays(100)->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+
+    expect(buildTrend($user)->comparisons)->toBe([]);
 });
 
 it('excludes a pair when both known temperatures are more than three degrees apart', function (): void {

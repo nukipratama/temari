@@ -122,7 +122,7 @@ describe('VerdictHero', () => {
 
         expect(
             screen.getByText('mixed against comparable past runs.'),
-        ).toHaveClass('text-ember-ink');
+        ).toHaveClass('text-foreground');
     });
 
     // The prototype's "you vs past you" block carries no mascot and no byline;

@@ -17,7 +17,6 @@ use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Builds the home screen's Past You verdict: the runner's recent runs matched
@@ -277,13 +276,13 @@ class PastYouTrendBuilder
     private function plannedSessionTypesByDate(int $userId, Carbon $from, Carbon $to): array
     {
         $runCounts = [];
-        foreach (DB::table('activity_details')
+        $runCountsQuery = ActivityDetail::query()
             ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
             ->where('activities.user_id', $userId)
             ->whereBetween('activity_details.start_date_local', [$from, $to])
             ->selectRaw('DATE(activity_details.start_date_local) AS run_date, COUNT(*) AS run_count')
-            ->groupBy('run_date')
-            ->get() as $row) {
+            ->groupBy('run_date');
+        foreach (Activity::analyzedJoinConstraint($runCountsQuery)->toBase()->get() as $row) {
             $runCounts[(string) $row->run_date] = (int) $row->run_count;
         }
 
@@ -292,7 +291,11 @@ class PastYouTrendBuilder
             ->where('user_id', $userId)
             ->where('session_type', '!=', SessionType::Rest->value)
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
-            ->get(['date', 'session_type']) as $session) {
+            ->get(['date', 'session_type', 'skipped', 'rest_clamped_at']) as $session) {
+            if ($session->isExcused()) {
+                continue;
+            }
+
             $date = $session->date->toDateString();
             $type = $session->session_type;
             if (($runCounts[$date] ?? 0) === 1) {

@@ -232,7 +232,7 @@ export function verdictSupport(trend: PastYouTrend): string {
         return "one more comparable run and I'll call the trend.";
     }
 
-    const split = comparisonSplit(trend).replace(/\.$/, '');
+    const split = comparisonSplit(trend);
 
     if (trend.verdict === 'mixed') {
         return `${split}.`;
@@ -266,14 +266,14 @@ function comparisonSplit(trend: PastYouTrend): string {
     const count = trend.comparisons.length;
 
     if (better > 0 && worse > 0) {
-        return `${better} better, ${worse} worse${flat > 0 ? `, ${flat} flat` : ''} across ${count} matched runs.`;
+        return `${better} better, ${worse} worse${flat > 0 ? `, ${flat} flat` : ''} across ${count} matched runs`;
     }
     if (better > 0) {
-        return `${better} of ${count} matched runs better${flat > 0 ? `, ${flat} flat` : ''}.`;
+        return `${better} of ${count} matched runs better${flat > 0 ? `, ${flat} flat` : ''}`;
     }
     if (worse > 0) {
-        return `${worse} of ${count} matched runs worse${flat > 0 ? `, ${flat} flat` : ''}.`;
+        return `${worse} of ${count} matched runs worse${flat > 0 ? `, ${flat} flat` : ''}`;
     }
 
-    return `${count} matched runs held flat.`;
+    return `${count} matched runs held flat`;
 }

@@ -14,7 +14,7 @@ const TONE: Record<JudgedVerdict, string> = {
     improving: 'text-icon-accent',
     plateaued: 'text-foreground',
     slipped: 'text-ember-ink',
-    mixed: 'text-ember-ink',
+    mixed: 'text-foreground',
 };
 
 /**

@@ -108,7 +108,7 @@ class PlannedSession extends Model
 
         static::saved(static function (PlannedSession $row) use ($bust): void {
             $bust($row);
-            if ($row->wasRecentlyCreated || $row->wasChanged(['date', 'session_type'])) {
+            if ($row->wasRecentlyCreated || $row->wasChanged(['date', 'session_type', 'skipped', 'rest_clamped_at'])) {
                 PastYouTrendBuilder::clearCacheForUserId($row->user_id);
             }
         });
