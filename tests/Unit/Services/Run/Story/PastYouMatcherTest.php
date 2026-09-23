@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\IngestState;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
@@ -429,6 +430,8 @@ function matcherRun(
     ?float $hr = 155.0,
     ?float $elevationM = 50.0,
     int $activityId = 1,
+    ?SessionType $plannedSessionType = null,
+    ?int $weatherTempC = null,
 ): ComparableRun {
     return new ComparableRun(
         activityId: $activityId,
@@ -439,6 +442,8 @@ function matcherRun(
         averageHeartrate: $hr,
         elevationGainM: $elevationM,
         ingestState: IngestState::Summary,
+        plannedSessionType: $plannedSessionType,
+        weatherTempC: $weatherTempC,
     );
 }
 
@@ -448,6 +453,52 @@ it('scores a perfectly comparable pair at the top of the scale', function (): vo
     $past = matcherRun('2025-06-15 06:00:00', 430.0);
 
     expect($matcher->similarity($current, $past))->toEqualWithDelta(1.0, 0.0001);
+});
+
+it('scores evidence quality without using heart rate', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0, hr: 155.0);
+    $sameHr = matcherRun('2025-06-15 06:00:00', 430.0, hr: 155.0);
+    $differentHr = matcherRun('2025-06-15 06:00:00', 430.0, hr: 180.0);
+
+    expect($matcher->quality($current, $sameHr))
+        ->toEqualWithDelta($matcher->quality($current, $differentHr), 0.0001)
+        ->and($matcher->similarity($current, $sameHr))
+        ->toBeGreaterThan($matcher->similarity($current, $differentHr));
+});
+
+it('keeps candidates at the quality floor and excludes lower-quality candidates', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0);
+    $atFloor = matcherRun('2025-06-15 06:00:00', 430.0, 10_500.0, 155.0, 52.5, 10);
+    $belowFloor = matcherRun('2025-06-15 18:00:00', 430.0, 10_500.0, 155.0, 52.5, 11);
+
+    expect($matcher->quality($current, $atFloor))->toEqualWithDelta(0.6, 0.0001)
+        ->and($matcher->quality($current, $belowFloor))->toBeLessThan(0.6)
+        ->and($matcher->bestMatch($current, [$belowFloor, $atFloor])?->past->activityId)->toBe(10)
+        ->and($matcher->bestMatch($current, [$belowFloor]))->toBeNull();
+});
+
+it('rejects pairs with different known planned session types but allows unknown intent', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0, plannedSessionType: SessionType::Tempo);
+    $easy = matcherRun('2026-01-15 06:00:00', 430.0, plannedSessionType: SessionType::Easy);
+    $unknown = matcherRun('2026-01-15 06:00:00', 430.0);
+
+    expect($matcher->similarity($current, $easy))->toBeNull()
+        ->and($matcher->similarity($current, $unknown))->not->toBeNull();
+});
+
+it('gates on temperature only when both readings are available', function (): void {
+    $matcher = new PastYouMatcher();
+    $current = matcherRun('2026-06-15 06:00:00', 420.0, weatherTempC: 28);
+    $sameConditions = matcherRun('2026-01-15 06:00:00', 430.0, weatherTempC: 25);
+    $hotter = matcherRun('2026-01-15 06:00:00', 430.0, weatherTempC: 24);
+    $unknown = matcherRun('2026-01-15 06:00:00', 430.0);
+
+    expect($matcher->similarity($current, $sameConditions))->not->toBeNull()
+        ->and($matcher->similarity($current, $hotter))->toBeNull()
+        ->and($matcher->similarity($current, $unknown))->not->toBeNull();
 });
 
 it('rejects a pairing that breaks a hard rule, reading only summary fields', function (ComparableRun $past): void {

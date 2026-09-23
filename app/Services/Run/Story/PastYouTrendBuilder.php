@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Enums\SessionType;
 use App\Enums\TrendDirection;
 use App\Enums\TrendVerdict;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\StreamSummary;
@@ -15,6 +17,7 @@ use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Builds the home screen's Past You verdict: the runner's recent runs matched
@@ -35,8 +38,8 @@ class PastYouTrendBuilder
      */
     public const int WINDOW_DAYS = 42;
 
-    /** Below this the window has evidence but not a trend. */
-    public const int MIN_COMPARISONS = 2;
+    /** Fewer pairs can be shown as an early read, but cannot support a trend. */
+    public const int MIN_VERDICT_COMPARISONS = 3;
 
     public const int MAX_COMPARISONS = 4;
 
@@ -83,7 +86,12 @@ class PastYouTrendBuilder
     /** Called wherever an activity enters or leaves a user's history. */
     public static function clearCache(User $user): void
     {
-        Cache::forget(self::cacheKey($user->id, Carbon::today()->toDateString()));
+        self::clearCacheForUserId($user->id);
+    }
+
+    public static function clearCacheForUserId(int $userId): void
+    {
+        Cache::forget(self::cacheKey($userId, Carbon::today()->toDateString()));
     }
 
     public function build(User $user, ?Carbon $asOf = null): PastYouTrend
@@ -94,7 +102,7 @@ class PastYouTrendBuilder
         $runs = $this->loadHistory($user->id, $anchor);
         $comparisons = $this->collectComparisons($runs, $windowStart);
 
-        if (count($comparisons) < self::MIN_COMPARISONS) {
+        if (count($comparisons) < self::MIN_VERDICT_COMPARISONS) {
             return PastYouTrend::notEnoughHistory(self::WINDOW_DAYS, $comparisons);
         }
 
@@ -130,17 +138,24 @@ class PastYouTrendBuilder
      */
     private function verdict(array $comparisons, ?float $meanPaceDelta, ?float $meanHrDelta): TrendVerdict
     {
-        $netVotes = 0;
+        $betterVotes = 0;
+        $worseVotes = 0;
         foreach ($comparisons as $comparison) {
             $direction = $comparison->direction();
-            $netVotes += $direction->isBetter() ? 1 : ($direction->isWorse() ? -1 : 0);
+            $betterVotes += $direction->isBetter() ? 1 : 0;
+            $worseVotes += $direction->isWorse() ? 1 : 0;
+        }
+
+        if ($betterVotes > 0 && $worseVotes > 0) {
+            return TrendVerdict::Mixed;
         }
 
         $aggregate = $this->aggregateDirection($meanPaceDelta, $meanHrDelta);
+        $minimumVotes = (int) ceil(count($comparisons) * 2 / 3);
 
         return match (true) {
-            $netVotes > 0 && $aggregate->isBetter() => TrendVerdict::Improving,
-            $netVotes < 0 && $aggregate->isWorse() => TrendVerdict::Slipped,
+            $betterVotes >= $minimumVotes && $aggregate->isBetter() => TrendVerdict::Improving,
+            $worseVotes >= $minimumVotes && $aggregate->isWorse() => TrendVerdict::Slipped,
             default => TrendVerdict::Plateaued,
         };
     }
@@ -216,6 +231,9 @@ class PastYouTrendBuilder
      */
     private function loadHistory(int $userId, Carbon $anchor): array
     {
+        $historyStart = $anchor->copy()->subDays(self::WINDOW_DAYS + PastYouMatcher::MAX_GAP_DAYS)->startOfDay();
+        $plannedTypes = $this->plannedSessionTypesByDate($userId, $historyStart, $anchor);
+
         $rows = Activity::analyzedJoinConstraint(
             ActivityDetail::query()
                 ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
@@ -226,14 +244,14 @@ class PastYouTrendBuilder
                     'activity_details.elapsed_time',
                     'activity_details.average_heartrate',
                     'activity_details.total_elevation_gain',
+                    'activity_details.weather_temp_c',
                     'activities.ingest_state',
                 ]),
         )
             ->where('activities.user_id', $userId)
             ->whereNotNull('activity_details.start_date_local')
             ->where('activity_details.start_date_local', '<=', $anchor)
-            ->where('activity_details.start_date_local', '>=', $anchor->copy()
-                ->subDays(self::WINDOW_DAYS + PastYouMatcher::MAX_GAP_DAYS)->startOfDay())
+            ->where('activity_details.start_date_local', '>=', $historyStart)
             ->where('activity_details.distance', '>', 0)
             ->where('activity_details.elapsed_time', '>', 0)
             ->orderByDesc('activity_details.start_date_local')
@@ -243,13 +261,46 @@ class PastYouTrendBuilder
 
         $runs = [];
         foreach ($rows as $row) {
-            $run = ComparableRun::fromRow((array) $row);
+            $values = (array) $row;
+            $runDate = Carbon::parse((string) $values['start_date_local'])->toDateString();
+            $values['planned_session_type'] = ($plannedTypes[$runDate] ?? null)?->value;
+            $run = ComparableRun::fromRow($values);
             if ($run !== null) {
                 $runs[] = $run;
             }
         }
 
         return $runs;
+    }
+
+    /** @return array<string, SessionType> keyed by local run date */
+    private function plannedSessionTypesByDate(int $userId, Carbon $from, Carbon $to): array
+    {
+        $runCounts = [];
+        foreach (DB::table('activity_details')
+            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
+            ->where('activities.user_id', $userId)
+            ->whereBetween('activity_details.start_date_local', [$from, $to])
+            ->selectRaw('DATE(activity_details.start_date_local) AS run_date, COUNT(*) AS run_count')
+            ->groupBy('run_date')
+            ->get() as $row) {
+            $runCounts[(string) $row->run_date] = (int) $row->run_count;
+        }
+
+        $types = [];
+        foreach (PlannedSession::query()
+            ->where('user_id', $userId)
+            ->where('session_type', '!=', SessionType::Rest->value)
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->get(['date', 'session_type']) as $session) {
+            $date = $session->date->toDateString();
+            $type = $session->session_type;
+            if (($runCounts[$date] ?? 0) === 1) {
+                $types[$date] = $type;
+            }
+        }
+
+        return $types;
     }
 
     private function fitnessDelta(User $user, Carbon $anchor): ?float

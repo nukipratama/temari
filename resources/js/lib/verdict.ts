@@ -183,9 +183,13 @@ export function verdictHeadline(trend: PastYouTrend): string {
     const since = matchedSince(trend);
 
     if (trend.verdict === 'not_enough_history') {
-        return trend.comparison_count === 0
-            ? 'nothing to measure this against yet.'
-            : 'one match so far. not a trend yet.';
+        if (trend.comparison_count === 0) {
+            return 'nothing to measure this against yet.';
+        }
+        if (trend.comparison_count === 1) {
+            return 'one match so far. not a trend yet.';
+        }
+        return 'two comparable runs so far. not a trend yet.';
     }
 
     if (trend.verdict === 'improving') {
@@ -206,6 +210,10 @@ export function verdictHeadline(trend: PastYouTrend): string {
         });
     }
 
+    if (trend.verdict === 'mixed') {
+        return 'mixed against comparable past runs.';
+    }
+
     return headlineByMatchContext(since, {
         month: (month) => `you're holding where you were in ${month}.`,
         generic: `you're holding steady against ${GENERIC_COMPARISON}.`,
@@ -215,26 +223,57 @@ export function verdictHeadline(trend: PastYouTrend): string {
 
 export function verdictSupport(trend: PastYouTrend): string {
     if (trend.verdict === 'not_enough_history') {
-        return trend.comparison_count === 0
-            ? "run something twice and I'll tell you exactly what changed."
-            : "one more comparable run and I'll call it.";
+        if (trend.comparison_count === 0) {
+            return "run something twice and I'll tell you exactly what changed.";
+        }
+        if (trend.comparison_count === 1) {
+            return "one more comparable run and I'll call it.";
+        }
+        return "one more comparable run and I'll call the trend.";
     }
 
-    const runs = `${trend.comparison_count} matched runs`;
+    const split = comparisonSplit(trend).replace(/\.$/, '');
+
+    if (trend.verdict === 'mixed') {
+        return `${split}.`;
+    }
 
     if (trend.verdict === 'plateaued') {
-        return `inside a few seconds either way, across ${runs}.`;
+        return `${split}; no clear shift across the window.`;
     }
 
     const hr = trend.mean_hr_delta_bpm;
     if (verdictMetric(trend) === 'hr' && hr !== null) {
-        return `${Math.abs(hr).toFixed(1)} bpm ${hr < 0 ? 'lower' : 'higher'} on average, across ${runs}.`;
+        return `${split}; average HR was ${Math.abs(hr).toFixed(1)} bpm ${hr < 0 ? 'lower' : 'higher'}.`;
     }
 
     const pace = trend.mean_pace_delta_sec;
     if (pace === null) {
-        return `across ${runs}.`;
+        return `${split}.`;
     }
 
-    return `${Math.abs(pace).toFixed(1)} s/km ${pace > 0 ? 'faster' : 'slower'} on average, across ${runs}.`;
+    return `${split}; average pace was ${Math.abs(pace).toFixed(1)} s/km ${pace > 0 ? 'faster' : 'slower'}.`;
+}
+
+function comparisonSplit(trend: PastYouTrend): string {
+    const faster = trend.comparisons.filter(
+        (comparison) => comparison.direction === 'better',
+    ).length;
+    const slower = trend.comparisons.filter(
+        (comparison) => comparison.direction === 'worse',
+    ).length;
+    const flat = trend.comparisons.length - faster - slower;
+    const count = trend.comparisons.length;
+
+    if (faster > 0 && slower > 0) {
+        return `${faster} faster, ${slower} slower${flat > 0 ? `, ${flat} flat` : ''} across ${count} matched runs.`;
+    }
+    if (faster > 0) {
+        return `${faster} of ${count} matched runs faster${flat > 0 ? `, ${flat} flat` : ''}.`;
+    }
+    if (slower > 0) {
+        return `${slower} of ${count} matched runs slower${flat > 0 ? `, ${flat} flat` : ''}.`;
+    }
+
+    return `${count} matched runs held flat.`;
 }

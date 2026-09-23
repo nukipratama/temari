@@ -80,6 +80,29 @@ describe('NoVerdictPanel', () => {
         ).toBeInTheDocument();
     });
 
+    it('shows two pairs as an early read without drawing a verdict', () => {
+        render(
+            <NoVerdictPanel
+                trend={trend([
+                    nearMiss,
+                    {
+                        ...nearMiss,
+                        current: { ...nearMiss.current, activity_id: 3 },
+                    },
+                ])}
+            />,
+        );
+
+        expect(
+            screen.getByText('two comparable runs so far. not a trend yet.'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "one more comparable run and I'll call the trend.",
+            ),
+        ).toBeInTheDocument();
+    });
+
     it('shows the single pair it did find, so the near miss is visible', () => {
         render(<NoVerdictPanel trend={trend([nearMiss])} />);
 

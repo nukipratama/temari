@@ -4,7 +4,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import { verdictHeadline, verdictSupport } from '@/lib/verdict';
 
-/** The three outcomes the window can actually call. `not_enough_history` renders as an empty state instead. */
+/** The four outcomes the window can actually call. `not_enough_history` renders as an empty state instead. */
 export type JudgedVerdict = Exclude<TrendVerdict, 'not_enough_history'>;
 
 /** The prototype draws only the improving case, on `icon-accent`. The other
@@ -14,6 +14,7 @@ const TONE: Record<JudgedVerdict, string> = {
     improving: 'text-icon-accent',
     plateaued: 'text-foreground',
     slipped: 'text-ember-ink',
+    mixed: 'text-ember-ink',
 };
 
 /**

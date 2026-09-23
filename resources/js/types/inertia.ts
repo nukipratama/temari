@@ -327,7 +327,7 @@ export interface WeekComparison {
 }
 
 export type TrendVerdict =
-    'improving' | 'plateaued' | 'slipped' | 'not_enough_history';
+    'improving' | 'plateaued' | 'slipped' | 'mixed' | 'not_enough_history';
 
 export type TrendDirection = 'better' | 'flat' | 'worse';
 
@@ -355,8 +355,8 @@ export interface PastYouComparison {
     past: ComparableRun;
 }
 
-/** `PastYouTrend::toArray()`. Every supporting reading stays null until the
- *  detail pipeline has hydrated the runs the verdict was built from. */
+/** `PastYouTrend::toArray()`. Supporting detail readings stay null until
+ *  hydration reaches the runs used for the verdict. */
 export interface PastYouTrend {
     verdict: TrendVerdict;
     window_days: number;

@@ -6,9 +6,8 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { verdictHeadline, verdictSupport } from '@/lib/verdict';
 
 /**
- * `not_enough_history`, the Past You empty state. Not an error and not a
- * failure to load: the window held fewer than two comparable pairs, so there
- * is nothing to call either way.
+ * `not_enough_history`, the Past You early-read state. Not an error or a
+ * failure to load: fewer than three comparable pairs cannot support a trend.
  *
  * One comparable pair reads differently from none. A single pair is shown as
  * evidence anyway, because "one match, not a trend yet" is a more useful thing

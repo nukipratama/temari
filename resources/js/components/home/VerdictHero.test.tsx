@@ -37,10 +37,18 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
     return {
         verdict: 'improving',
         window_days: 42,
-        comparison_count: 2,
+        comparison_count: 4,
         comparisons: [
             pair,
             { ...pair, current: { ...pair.current, activity_id: 3 } },
+            { ...pair, current: { ...pair.current, activity_id: 4 } },
+            {
+                ...pair,
+                direction: 'flat',
+                pace_delta_sec: 1,
+                hr_delta_bpm: -1,
+                current: { ...pair.current, activity_id: 5 },
+            },
         ],
         mean_pace_delta_sec: 10,
         mean_hr_delta_bpm: -5,
@@ -68,7 +76,7 @@ describe('VerdictHero', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                '10.0 s/km faster on average, across 2 matched runs.',
+                '3 of 4 matched runs faster, 1 flat; average pace was 10.0 s/km faster.',
             ),
         ).toBeInTheDocument();
     });
@@ -105,6 +113,16 @@ describe('VerdictHero', () => {
         expect(
             screen.getByText("you're holding where you were in march."),
         ).toBeInTheDocument();
+    });
+
+    it('renders the mixed state as its own outcome', () => {
+        render(
+            <VerdictHero trend={trend({ verdict: 'mixed' })} verdict="mixed" />,
+        );
+
+        expect(
+            screen.getByText('mixed against comparable past runs.'),
+        ).toHaveClass('text-ember-ink');
     });
 
     // The prototype's "you vs past you" block carries no mascot and no byline;

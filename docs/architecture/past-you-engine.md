@@ -24,22 +24,32 @@ path: it is the product premise and a Strava platform requirement at once.
 
 [ComparableRun](app/Services/Run/Story/ComparableRun.php) projects an
 `ActivityDetail` onto the fields `/athlete/activities` already returns: distance,
-elapsed time, pace, average HR, elevation gain, plus the clock time and month
-derived from `start_date_local`. Nothing in the matching path touches streams,
-splits, `stream_summary`, TRIMP or weather, so a run still queued for lazy
-hydration is a valid candidate on **both** sides of a comparison. See
+elapsed time, pace, average HR and elevation gain. It also carries optional
+weather temperature; the builder adds planned-session context from the run's
+date. The matching path never touches streams, splits, `stream_summary` or
+TRIMP, so a run still queued for lazy hydration is a valid candidate on **both**
+sides of a comparison. See
 [[run-ingest-pipeline]] for what `summary` vs `detailed` state carries.
 
-That is why season stands in for temperature. The old temperature gate reads
-`weather_temp_c`, which the detail pipeline fills; keeping it on the trend path
-would have silently disqualified every un-hydrated run.
+Season remains a soft ranking axis. The trend path also uses `weather_temp_c`
+as a hard gate when both runs have it; either missing value leaves the pair
+eligible. Temperature may arrive after initial ingest, so a weather update
+clears the daily trend cache and a pair may appear or disappear once that data
+lands.
 
 [PastYouMatcher::similarity()](app/Services/Run/Story/PastYouMatcher.php) applies
 the hard rules first (same pace band, distance within 500 m, 21 to 365 days
-apart, elevation density within 15 m/km when both sides know it) and then scores
-the survivors on distance, average HR, elevation density, time of day and season.
-An axis neither run can answer is dropped and the remaining weights renormalise,
-so a summary-only pairing is not penalised for being summary-only.
+apart, elevation density within 15 m/km when both sides know it, temperature
+within 3°C when both runs have it, and matching planned session types when both
+runs map to one). A run maps to its date's non-rest planned session only when it
+is the only run that date. Missing intent falls back to the pace-band rule.
+
+Before ranking, a pair must score at least 0.6 on the non-outcome axes: distance,
+elevation, time of day and season. Heart rate is excluded from this floor because
+it is part of the verdict. The full similarity score still ranks candidates that
+pass. An axis neither run can answer is dropped and the remaining weights
+renormalise, so a summary-state pairing is not penalised for missing optional
+data.
 
 **Pace is deliberately not a similarity axis.** The pace band already establishes
 that two runs are the same kind of session; the pace gap *within* the band is the
@@ -92,8 +102,8 @@ words alike.
 
 [PastYouTrendBuilder](app/Services/Run/Story/PastYouTrendBuilder.php) takes the
 runner's last `WINDOW_DAYS` of runs, matches each against history from *before*
-that window, and keeps between `MIN_COMPARISONS` and `MAX_COMPARISONS` pairs as
-the evidence. A past run is used at most once, so the pairs are independent.
+that window, and keeps up to `MAX_COMPARISONS` qualifying pairs as evidence. A
+past run is used at most once, so the pairs are independent.
 
 Each pair gets a [TrendDirection](app/Enums/TrendDirection.php) from
 [PastYouComparison::direction()](app/Services/Run/Story/PastYouComparison.php):
@@ -101,16 +111,22 @@ pace decides once the gap clears the noise band, and heart rate decides when pac
 came back flat, so holding pace at a higher HR reads as a loss rather than as "no
 change".
 
-A [TrendVerdict](app/Enums/TrendVerdict.php) is only called when the pairs agree
-on a direction **and** the aggregate points the same way. One lopsided pair
-therefore cannot be outvoted by a majority of tiny gains, and a majority of tiny
-gains cannot be sold as improvement. Everything else is `plateaued`.
+At least three qualifying pairs are needed for a verdict. Exactly two are shown
+as an early read with no verdict; zero or one keep the existing empty state.
+Up to four qualifying pairs are shown.
 
-`not_enough_history` is a fourth, first-class outcome, not an error and not a
-fabricated verdict: fewer than two comparable pairs in the window. It is what the
-brand set's `no-past-match` empty state renders, and
-[PastYouTrend](app/Services/Run/Story/PastYouTrend.php) still carries the single
-pair it did find so the empty state can say how close the runner is.
+A [TrendVerdict](app/Enums/TrendVerdict.php) is only called when at least two
+thirds of the pairs point the same way, no pair points the opposite way, and the
+aggregate agrees. Flat pairs are allowed. If any pair points the other way, the
+verdict is `mixed`, a distinct state that keeps every row visible and states the
+split. If the evidence is not mixed but does not meet the vote or aggregate
+threshold, it is `plateaued`.
+
+`not_enough_history` is a first-class early-read outcome, not an error or a
+fabricated verdict: fewer than three qualifying pairs in the window. Two pairs
+are rendered there with early-read copy, and
+[PastYouTrend](app/Services/Run/Story/PastYouTrend.php) carries the pairs it did
+find so the empty state can say how close the runner is.
 
 ## Built once per runner per day
 
@@ -121,10 +137,11 @@ until a run lands, so
 memoizes the rendered array under `past-you-trend:{user}:{date}` and the home
 controller reads that, never `build()` directly. The date in the key rolls the
 entry over at midnight; a run landing earlier drops it through
-[WeeklyAggregator](app/Services/Run/Metrics/WeeklyAggregator.php), which already
-clears the training-load summary for the same reason and now clears both
-together. Ingest, backfill and the deleted-activity cleanup all reach it through
-that one aggregator call.
+[WeeklyAggregator](app/Services/Run/Metrics/WeeklyAggregator.php), which also
+clears the training-load summary. A temperature change on an activity detail or
+a planned session date or type change drops the cache too, since either can
+change which pairs qualify. Ingest, backfill and the deleted-activity cleanup
+still reach it through the aggregator call.
 
 History is read as plain query records rather than `ActivityDetail` models —
 nothing past [ComparableRun](app/Services/Run/Story/ComparableRun.php) touches
