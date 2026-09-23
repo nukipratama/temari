@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Console\Commands\ScheduleHeartbeatCommand;
+use App\Models\Analytics\StravaRead;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 
@@ -61,6 +62,16 @@ it('schedules the analytics-connection retention prune', function (): void {
     $event = scheduledEvent('analytics:prune');
 
     expect($event)->not->toBeNull('analytics:prune is not scheduled');
+});
+
+it('schedules the Strava read retention prune', function (): void {
+    $event = scheduledEvent('model:prune');
+
+    expect($event)->not->toBeNull('model:prune for Strava reads is not scheduled')
+        ->and($event->command)->toContain(StravaRead::class)
+        ->and($event->expression)->toBe('25 2 * * *')
+        ->and($event->withoutOverlapping)->toBeTrue()
+        ->and($event->expiresAt)->toBe(15);
 });
 
 /**

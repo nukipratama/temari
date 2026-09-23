@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Enums\StravaReadSource;
 use App\Services\Strava\ActivityFetcher;
 use App\Services\Strava\StravaClient;
 use Carbon\CarbonImmutable;
@@ -52,7 +53,7 @@ function makeUnpersistedConnection(): StravaConnection
  */
 function fetchIds(StravaConnection $connection, ?CarbonImmutable $since = null): array
 {
-    $summaries = new ActivityFetcher(new StravaClient())->fetchNewSummaries($connection, $since)['summaries'];
+    $summaries = new ActivityFetcher(new StravaClient())->fetchNewSummaries($connection, StravaReadSource::Manual, $since)['summaries'];
 
     return array_map(fn (array $summary): int => (int) $summary['id'], $summaries);
 }
@@ -264,7 +265,7 @@ it('returns the whole summary payload, not just the id', function (): void {
             ->push([]),
     ]);
 
-    $summaries = new ActivityFetcher(new StravaClient())->fetchNewSummaries($connection)['summaries'];
+    $summaries = new ActivityFetcher(new StravaClient())->fetchNewSummaries($connection, StravaReadSource::Manual)['summaries'];
 
     expect($summaries)->toHaveCount(1)
         ->and($summaries[0]['name'])->toBe('Morning')
@@ -284,7 +285,7 @@ it('reports how many Strava reads the walk spent', function (): void {
             ->push([['id' => 500, 'sport_type' => 'Run']]),
     ]);
 
-    $result = new ActivityFetcher(new StravaClient())->fetchNewSummaries($connection);
+    $result = new ActivityFetcher(new StravaClient())->fetchNewSummaries($connection, StravaReadSource::Manual);
 
     // 201 runs of history for two reads — the whole point of paging summaries.
     expect($result['api_calls'])->toBe(2)

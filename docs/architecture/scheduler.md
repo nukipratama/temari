@@ -67,6 +67,7 @@ despite that.
 | `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.5s — created 0 missing kickoff rows |
 | `queue:prune-failed` | daily 02:20 | 15 | yes | one `DELETE` on `failed_jobs` | ~1.6s — 0 entries deleted |
 | `analytics:prune` | daily 02:25 | 15 | yes | four `DELETE`s — three on the `analytics` connection, one on `analysis_versions` | ~1.7s — 0 rows pruned |
+| `model:prune --model=StravaRead` | daily 02:25 | 15 | yes | one `DELETE` on the `analytics` connection | prunes Strava read telemetry older than 90 days |
 | `strava:sync` / `strava:ingest` / `strava:hydrate-backlog` | see `routes/console.php` | 55/10/14 (unchanged) | yes | already guarded pre-DF-1 | ~1.3-1.4s each — no real Strava connection to poll/drain against locally (needs live Strava credentials); cannot be meaningfully measured in this worktree |
 | `geo:backfill-locations` / `weather:correct-forecast` / `weather:backfill` | see `routes/console.php` | 55/55/55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s each — 0 rows to backfill; `weather:*` additionally need a live Open-Meteo call to exercise the fetch path |
 | `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | queues durable closed-date recovery in 365-day chunks; `--days=N` remains the focused mode | scheduled recovery advances each user's cursor through yesterday; ingest repairs backdated ranges |

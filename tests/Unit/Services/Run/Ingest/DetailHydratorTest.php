@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\StravaConnection;
@@ -30,7 +31,8 @@ it('queues a detail fetch for a summary-only run', function (): void {
 
     expect(app(DetailHydrator::class)->hydrate($activity->id))->toBeTrue();
 
-    Queue::assertPushed(IngestActivityJob::class, fn (IngestActivityJob $job): bool => $job->activityId === $activity->id);
+    Queue::assertPushed(IngestActivityJob::class, fn (IngestActivityJob $job): bool => $job->activityId === $activity->id
+        && $job->source === StravaReadSource::Hydration);
 });
 
 it('queues browsing-driven hydration at background priority', function (): void {
@@ -40,7 +42,8 @@ it('queues browsing-driven hydration at background priority', function (): void 
 
     Queue::assertPushed(
         IngestActivityJob::class,
-        fn (IngestActivityJob $job): bool => $job->priority === StravaReadPriority::Background,
+        fn (IngestActivityJob $job): bool => $job->priority === StravaReadPriority::Background
+            && $job->source === StravaReadSource::Hydration,
     );
 });
 

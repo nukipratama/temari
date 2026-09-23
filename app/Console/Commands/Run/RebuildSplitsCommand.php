@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Run;
 
+use App\Enums\StravaReadSource;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StravaConnection;
@@ -115,7 +116,7 @@ class RebuildSplitsCommand extends Command
         StravaConnection $connection,
     ): void {
         $response = $client
-            ->get($connection, "/activities/{$activity->strava_external_id}")
+            ->get($connection, "/activities/{$activity->strava_external_id}", StravaReadSource::Manual)
             ->json();
 
         $laps = is_array($response) ? $response['laps'] ?? null : null;

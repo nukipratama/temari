@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Strava;
 
+use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
 use App\Actions\Strava\ProbeStravaWebhookAction;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
@@ -148,7 +150,7 @@ class DoctorCommand extends Command
 
             $stranded = $this->strandedQuery($user->id)->orderBy('id')->pluck('id');
             foreach ($stranded as $activityId) {
-                IngestActivityJob::dispatch((int) $activityId);
+                IngestActivityJob::dispatch((int) $activityId, StravaReadPriority::Live, StravaReadSource::Doctor);
                 $requeued++;
             }
 

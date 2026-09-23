@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\IngestState;
 use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Models\Analytics\StravaRead;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Run\Ingest\DetailHydrator;
 use App\Services\Run\Ingest\SyncOrchestrator;
@@ -117,6 +119,9 @@ it('lets a freshly-finished run ingest while a browsing fetch queues, with the p
     expect($live['ran'])->toBeTrue()
         ->and($freshRun->refresh()->ingest_state)->toBe(IngestState::Detailed);
 
+    expect(StravaRead::query()->count())->toBe(2)
+        ->and(StravaRead::query()->pluck('source')->unique()->all())->toBe([StravaReadSource::IngestSweep]);
+
     Http::assertNotSent(fn ($request): bool => str_contains(
         (string) $request->url(),
         "/activities/{$archiveRun->strava_external_id}",
@@ -139,11 +144,47 @@ it('routes opening an old run to the background tier and a webhook push to the l
     Queue::assertPushed(
         IngestActivityJob::class,
         fn (IngestActivityJob $job): bool => $job->activityId === $archiveRun->id
-            && $job->priority === StravaReadPriority::Background,
+            && $job->priority === StravaReadPriority::Background
+            && $job->source === StravaReadSource::Hydration,
     );
     Queue::assertPushed(
         IngestActivityJob::class,
         fn (IngestActivityJob $job): bool => $job->activityId === $freshStub->id
-            && $job->priority === StravaReadPriority::Live,
+            && $job->priority === StravaReadPriority::Live
+            && $job->source === StravaReadSource::Webhook,
     );
+});
+
+it('records the webhook source for both reads dispatched by the queued ingest', function (): void {
+    Queue::fake();
+    fakeStravaDetailEndpoints();
+
+    $user = runnerWithConnection();
+    expect(app(SyncOrchestrator::class)->syncSingleActivity($user, 987_654_321))->toBeTrue();
+
+    $activity = Activity::query()->withStubs()->where('strava_external_id', 987_654_321)->sole();
+    new IngestActivityJob($activity->id, StravaReadPriority::Live, StravaReadSource::Webhook)
+        ->handle(app(ActivityPipeline::class));
+
+    $reads = StravaRead::query()->orderBy('endpoint')->get();
+    expect($reads)->toHaveCount(2)
+        ->and($reads->pluck('source')->unique()->all())->toBe([StravaReadSource::Webhook])
+        ->and($reads->pluck('priority')->unique()->all())->toBe([StravaReadPriority::Live])
+        ->and($reads->pluck('endpoint')->all())->toBe(['activity_detail', 'activity_streams']);
+});
+
+it('records hydrated detail and stream reads as background hydration', function (): void {
+    Queue::fake();
+    fakeStravaDetailEndpoints();
+
+    $activity = Activity::factory()->for(runnerWithConnection())->summaryOnly()->create();
+    expect(app(DetailHydrator::class)->hydrate($activity->id))->toBeTrue();
+
+    new IngestActivityJob($activity->id, StravaReadPriority::Background, StravaReadSource::Hydration)
+        ->handle(app(ActivityPipeline::class));
+
+    $reads = StravaRead::query()->orderBy('endpoint')->get();
+    expect($reads)->toHaveCount(2)
+        ->and($reads->pluck('source')->unique()->all())->toBe([StravaReadSource::Hydration])
+        ->and($reads->pluck('priority')->unique()->all())->toBe([StravaReadPriority::Background]);
 });

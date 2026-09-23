@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
+use App\Models\Analytics\StravaRead;
 use App\Models\StravaConnection;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
@@ -171,12 +173,51 @@ it('makes authenticated GET requests to the Strava API', function (): void {
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    $response = new StravaClient()->get($connection, 'athlete');
+    $response = new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
 
     expect($response->json('id'))->toBe(12345);
 
     Http::assertSent(fn ($request) => $request->url() === 'https://www.strava.com/api/v3/athlete'
         && $request->hasHeader('Authorization', 'Bearer live-access'));
+});
+
+it('records each Strava response with its source, priority, endpoint category, and usage counters', function (): void {
+    Http::fake([
+        'www.strava.com/api/v3/activities/987654321' => Http::response(
+            ['id' => 987654321],
+            200,
+            ['X-ReadRateLimit-Usage' => '18, 420'],
+        ),
+    ]);
+    $connection = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
+
+    new StravaClient()->get($connection, '/activities/987654321', StravaReadSource::Hydration, StravaReadPriority::Background);
+
+    $read = StravaRead::query()->sole();
+    expect($read->source)->toBe(StravaReadSource::Hydration)
+        ->and($read->priority)->toBe(StravaReadPriority::Background)
+        ->and($read->endpoint)->toBe('activity_detail')
+        ->and($read->http_status)->toBe(200)
+        ->and($read->usage_15m)->toBe(18)
+        ->and($read->usage_daily)->toBe(420)
+        ->and($read->getAttributes())->not->toHaveKey('user_id');
+});
+
+it('stores null usage counters when the Strava usage header is missing or malformed', function (): void {
+    Http::fake([
+        'www.strava.com/api/v3/athlete' => Http::sequence()
+            ->push(['id' => 1], 200, ['X-ReadRateLimit-Usage' => '1,2,3'])
+            ->push(['id' => 1], 200),
+    ]);
+    $connection = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
+    $client = new StravaClient();
+
+    $client->get($connection, '/athlete', StravaReadSource::Manual);
+    $client->get($connection, '/athlete', StravaReadSource::Manual);
+
+    expect(StravaRead::query()->count())->toBe(2)
+        ->and(StravaRead::query()->whereNotNull('usage_15m')->count())->toBe(0)
+        ->and(StravaRead::query()->whereNotNull('usage_daily')->count())->toBe(0);
 });
 
 it('refreshes the token before making a GET when it is expired', function (): void {
@@ -194,7 +235,7 @@ it('refreshes the token before making a GET when it is expired', function (): vo
         'token_expires_at' => Carbon::now()->subMinute(),
     ]);
 
-    new StravaClient()->get($connection, 'athlete');
+    new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
 
     Http::assertSent(fn ($request) => $request->url() === 'https://www.strava.com/api/v3/athlete'
         && $request->hasHeader('Authorization', 'Bearer fresh-access'));
@@ -213,8 +254,9 @@ it('throws StravaConnectionRevokedException when the API rejects the token with 
         'token_expires_at' => Carbon::now()->addHours(5), // clock-fresh, so no refresh
     ]);
 
-    expect(fn () => new StravaClient()->get($connection, 'athlete'))
+    expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual))
         ->toThrow(StravaConnectionRevokedException::class);
+    expect(StravaRead::query()->sole()->http_status)->toBe(401);
 });
 
 it('throws StravaRateLimitedException carrying the Retry-After delay on a real 429', function (): void {
@@ -227,11 +269,13 @@ it('throws StravaRateLimitedException carrying the Retry-After delay on a real 4
     ]);
 
     try {
-        new StravaClient()->get($connection, 'athlete');
+        new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
         $this->fail('Expected StravaRateLimitedException to be thrown.');
     } catch (StravaRateLimitedException $e) {
         expect($e->availableIn)->toBe(42);
     }
+
+    expect(StravaRead::query()->sole()->http_status)->toBe(429);
 });
 
 it('falls back to a null retry delay when a 429 omits Retry-After', function (): void {
@@ -244,7 +288,7 @@ it('falls back to a null retry delay when a 429 omits Retry-After', function ():
     ]);
 
     try {
-        new StravaClient()->get($connection, 'athlete');
+        new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
         $this->fail('Expected StravaRateLimitedException to be thrown.');
     } catch (StravaRateLimitedException $e) {
         expect($e->availableIn)->toBeNull();
@@ -260,7 +304,7 @@ it('does NOT move the breaker on a 429 (Strava is up, just busy)', function (): 
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    expect(fn () => new StravaClient()->get($connection, 'athlete'))
+    expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual))
         ->toThrow(StravaRateLimitedException::class);
     expect(new AppConfig()->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
 });
@@ -277,7 +321,7 @@ it('throws StravaRateLimitedException naming the exhausted bucket and retry-afte
     }
 
     try {
-        new StravaClient()->get($connection, 'athlete');
+        new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
         $this->fail('Expected StravaRateLimitedException to be thrown.');
     } catch (StravaRateLimitedException $e) {
         expect($e->getMessage())
@@ -303,7 +347,7 @@ it('allows the last request under this app\'s read allocation', function (): voi
         RateLimiter::hit('strava-api:daily', 24 * 60 * 60);
     }
 
-    new StravaClient()->get($connection, 'athlete');
+    new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
 
     expect(RateLimiter::attempts('strava-api:15min'))->toBe(200)
         ->and(RateLimiter::attempts('strava-api:daily'))->toBe(2000);
@@ -321,7 +365,7 @@ it('sends API reads to the configured base URL', function (): void {
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    new StravaClient()->get($connection, '/athlete');
+    new StravaClient()->get($connection, '/athlete', StravaReadSource::Manual);
 
     Http::assertSent(fn ($request) => $request->url() === 'https://api-v3.strava.com/athlete');
 });
@@ -335,7 +379,7 @@ it('records hits against both rate limit buckets per request', function (): void
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    new StravaClient()->get($connection, 'athlete');
+    new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
 
     expect(RateLimiter::attempts('strava-api:15min'))->toBe(1)
         ->and(RateLimiter::attempts('strava-api:daily'))->toBe(1);
@@ -349,8 +393,8 @@ it('shares one rate-limit budget across all athletes (per client, not per athlet
     $athleteA = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
     $athleteB = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
 
-    new StravaClient()->get($athleteA, 'athlete');
-    new StravaClient()->get($athleteB, 'athlete');
+    new StravaClient()->get($athleteA, 'athlete', StravaReadSource::Manual);
+    new StravaClient()->get($athleteB, 'athlete', StravaReadSource::Manual);
 
     // Both athletes' calls land in the same shared bucket: Strava's limit is
     // per client, so two athletes consume two of the app's 200/15min, not one each.
@@ -366,8 +410,8 @@ it('keys both buckets globally, with nothing user-scoped, at either priority', f
     $athleteA = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
     $athleteB = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
 
-    new StravaClient()->get($athleteA, 'athlete', priority: StravaReadPriority::Live);
-    new StravaClient()->get($athleteB, 'athlete', priority: StravaReadPriority::Background);
+    new StravaClient()->get($athleteA, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Live);
+    new StravaClient()->get($athleteB, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background);
 
     // Fails the moment anyone reintroduces a user id into rateLimitKey(): the
     // shared keys would stop accumulating and per-user keys would appear.
@@ -394,10 +438,22 @@ it('refuses a background read once the buckets reach the live-ingest reserve flo
         RateLimiter::hit('strava-api:15min', 15 * 60);
     }
 
-    expect(fn () => new StravaClient()->get($connection, 'athlete', priority: StravaReadPriority::Background))
+    expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background))
         ->toThrow(StravaRateLimitedException::class, 'is down to its live-ingest reserve');
 
+    expect(StravaRead::query()->count())->toBe(0);
     Http::assertNothingSent();
+});
+
+it('does not record a read when the transport fails before a response', function (): void {
+    Http::fake(function (): void {
+        throw new ConnectionException('connection timed out');
+    });
+    $connection = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
+
+    expect(fn () => new StravaClient()->get($connection, '/athlete', StravaReadSource::Manual))
+        ->toThrow(ConnectionException::class);
+    expect(StravaRead::query()->count())->toBe(0);
 });
 
 it('lets a live read spend the reserve a background read was just refused', function (): void {
@@ -413,10 +469,10 @@ it('lets a live read spend the reserve a background read was just refused', func
         RateLimiter::hit('strava-api:15min', 15 * 60);
     }
 
-    expect(fn () => new StravaClient()->get($connection, 'athlete', priority: StravaReadPriority::Background))
+    expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background))
         ->toThrow(StravaRateLimitedException::class);
 
-    new StravaClient()->get($connection, 'athlete', priority: StravaReadPriority::Live);
+    new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Live);
 
     Http::assertSentCount(1);
     expect(RateLimiter::attempts('strava-api:15min'))->toBe(151);
@@ -433,7 +489,7 @@ it('holds only the live floor back from the daily bucket, not a quarter of it', 
         RateLimiter::hit('strava-api:daily', 24 * 60 * 60);
     }
 
-    expect(fn () => new StravaClient()->get($connection, 'athlete', priority: StravaReadPriority::Background))
+    expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background))
         ->toThrow(StravaRateLimitedException::class, 'strava-api:daily');
 
     Http::assertNothingSent();
@@ -455,7 +511,7 @@ it('lets a background read spend right up to the reserve floor', function (): vo
         RateLimiter::hit('strava-api:daily', 24 * 60 * 60);
     }
 
-    new StravaClient()->get($connection, 'athlete', priority: StravaReadPriority::Background);
+    new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background);
 
     expect(RateLimiter::attempts('strava-api:15min'))->toBe(150)
         ->and(RateLimiter::attempts('strava-api:daily'))->toBe(1600);
@@ -483,13 +539,13 @@ it('caps background at what live traffic leaves, and live keeps the floor', func
     expect($client->backgroundHeadroom()['daily'])->toBe(50);
 
     for ($i = 0; $i < 50; $i++) {
-        $client->get($connection, 'athlete', priority: StravaReadPriority::Background);
+        $client->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background);
     }
 
-    expect(fn () => $client->get($connection, 'athlete', priority: StravaReadPriority::Background))
+    expect(fn () => $client->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background))
         ->toThrow(StravaRateLimitedException::class, 'strava-api:daily');
 
-    $client->get($connection, 'athlete', priority: StravaReadPriority::Live);
+    $client->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Live);
 
     expect(RateLimiter::attempts('strava-api:daily'))->toBe(1601);
 });
@@ -506,7 +562,7 @@ it('still refuses a background burst at the unchanged 15-minute ceiling', functi
         RateLimiter::hit('strava-api:daily', 24 * 60 * 60);
     }
 
-    expect(fn () => new StravaClient()->get($connection, 'athlete', priority: StravaReadPriority::Background))
+    expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background))
         ->toThrow(StravaRateLimitedException::class, 'strava-api:15min');
 
     Http::assertNothingSent();
@@ -532,7 +588,7 @@ it('defaults an unqualified read to live so no caller silently loses the reserve
         RateLimiter::hit('strava-api:15min', 15 * 60);
     }
 
-    new StravaClient()->get($connection, 'athlete');
+    new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
 
     expect(RateLimiter::attempts('strava-api:15min'))->toBe(200);
 });
@@ -546,9 +602,10 @@ it('counts a 5xx toward the circuit breaker, then surfaces the request exception
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    expect(fn () => new StravaClient()->get($connection, 'athlete'))
+    expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual))
         ->toThrow(RequestException::class);
     expect(new AppConfig()->integer(AppConfigKey::StravaBreakerFailures))->toBe(1);
+    expect(StravaRead::query()->sole()->http_status)->toBe(503);
 });
 
 it('short-circuits with StravaCircuitOpenException and makes no HTTP call when the breaker is open', function (): void {
@@ -561,7 +618,7 @@ it('short-circuits with StravaCircuitOpenException and makes no HTTP call when t
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    expect(fn () => new StravaClient()->get($connection, 'athlete'))
+    expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual))
         ->toThrow(StravaCircuitOpenException::class);
     Http::assertNothingSent();
 });
@@ -575,7 +632,7 @@ it('does NOT move the breaker on a 401 (auth, not an outage)', function (): void
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    expect(fn () => new StravaClient()->get($connection, 'athlete'))
+    expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual))
         ->toThrow(StravaConnectionRevokedException::class);
     expect(new AppConfig()->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
 });
@@ -591,7 +648,7 @@ it('resets the breaker failure streak on a successful 2xx', function (): void {
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    new StravaClient()->get($connection, 'athlete');
+    new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
 
     expect(new AppConfig()->integer(AppConfigKey::StravaBreakerFailures))->toBe(0);
 });

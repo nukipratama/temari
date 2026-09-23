@@ -6,6 +6,7 @@ namespace App\Jobs\Strava;
 
 use Throwable;
 use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
 use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
@@ -62,6 +63,7 @@ class IngestActivityJob implements ShouldBeUnique, ShouldQueue
     public function __construct(
         public readonly int $activityId,
         public readonly StravaReadPriority $priority = StravaReadPriority::Live,
+        public readonly StravaReadSource $source = StravaReadSource::IngestSweep,
     ) {
     }
 
@@ -105,7 +107,7 @@ class IngestActivityJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $pipeline->ingest($activity, $this->priority);
+        $pipeline->ingest($activity, $this->source, $this->priority);
     }
 
     /**
