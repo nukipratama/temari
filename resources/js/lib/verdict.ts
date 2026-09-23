@@ -197,7 +197,11 @@ function improvingHeadline(trend: PastYouTrend, since: MatchedSince): string {
         });
     }
 
-    if (trend.verdict_metric === 'ef' && trend.pace_relation === 'faster') {
+    if (
+        trend.verdict_metric === 'ef' &&
+        trend.pace_relation === 'faster' &&
+        trend.hr_relation === 'same'
+    ) {
         return headlineByMatchContext(since, {
             month: (month) =>
                 `you're faster at the same heart rate than in ${month}.`,

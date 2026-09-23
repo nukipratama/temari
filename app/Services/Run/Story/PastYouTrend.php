@@ -28,6 +28,7 @@ final readonly class PastYouTrend
         public ?string $paceConsistencyThen = null,
         public ?string $verdictMetric = null,
         public ?string $paceRelation = null,
+        public ?string $hrRelation = null,
     ) {
     }
 
@@ -59,6 +60,7 @@ final readonly class PastYouTrend
             'pace_consistency_then' => $this->paceConsistencyThen,
             'verdict_metric' => $this->verdictMetric,
             'pace_relation' => $this->paceRelation,
+            'hr_relation' => $this->hrRelation,
         ];
     }
 }

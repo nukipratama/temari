@@ -154,8 +154,9 @@ are rendered there with early-read copy, and
 find so the empty state can say how close the runner is.
 
 Each pair ships its deciding `metric` and a `pace_relation`, and the trend ships
-`verdict_metric` (`ef`, `pace`, or `mixed` when pairs used both) and the mean
-`pace_relation`
+`verdict_metric` (`ef`, `pace`, or `mixed` when pairs used both), the mean
+`pace_relation`, and an `hr_relation` that bands the mean HR shift at
+`SAME_HR_BPM` (2 bpm, inclusive)
 ([verdictMetric()](app/Services/Run/Story/PastYouTrendBuilder.php#L188)). The
 home copy reads those words rather than re-deriving thresholds; see
 [[dashboard]].

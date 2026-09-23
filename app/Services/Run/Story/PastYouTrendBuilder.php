@@ -42,6 +42,9 @@ class PastYouTrendBuilder
 
     public const int MAX_COMPARISONS = 4;
 
+    /** Widest mean heart-rate shift the headline may still call "the same heart rate". */
+    public const float SAME_HR_BPM = 2.0;
+
     /**
      * The date range is the real bound: {@see self::WINDOW_DAYS} back for the
      * recent side plus {@see PastYouMatcher::MAX_GAP_DAYS} for the candidates
@@ -130,7 +133,19 @@ class PastYouTrendBuilder
                 static fn (PastYouComparison $c): float => $c->paceChangePct(),
                 $comparisons,
             ))),
+            hrRelation: self::hrRelation($meanHrDelta),
         );
+    }
+
+    /** @return 'higher'|'lower'|'same'|null */
+    private static function hrRelation(?float $meanHrDelta): ?string
+    {
+        return match (true) {
+            $meanHrDelta === null => null,
+            $meanHrDelta > self::SAME_HR_BPM => 'higher',
+            $meanHrDelta < -self::SAME_HR_BPM => 'lower',
+            default => 'same',
+        };
     }
 
     /**

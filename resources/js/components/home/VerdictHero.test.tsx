@@ -59,6 +59,7 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
         pace_consistency_then: null,
         verdict_metric: 'pace',
         pace_relation: 'faster',
+        hr_relation: 'lower',
         ...overrides,
     };
 }

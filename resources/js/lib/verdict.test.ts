@@ -85,6 +85,7 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
         pace_consistency_then: null,
         verdict_metric: 'pace',
         pace_relation: 'faster',
+        hr_relation: 'lower',
         ...overrides,
     };
 }
@@ -254,9 +255,27 @@ describe('verdictHeadline', () => {
     it('credits a faster pace at the same heart rate when every pair was decided on efficiency', () => {
         expect(
             verdictHeadline(
-                trend({ verdict_metric: 'ef', pace_relation: 'faster' }),
+                trend({
+                    verdict_metric: 'ef',
+                    pace_relation: 'faster',
+                    hr_relation: 'same',
+                }),
             ),
         ).toBe("you're faster at the same heart rate than in march.");
+    });
+
+    it('drops the same-heart-rate claim when the window heart rate moved beyond its band', () => {
+        for (const hrRelation of ['higher', 'lower', null] as const) {
+            expect(
+                verdictHeadline(
+                    trend({
+                        verdict_metric: 'ef',
+                        pace_relation: 'faster',
+                        hr_relation: hrRelation,
+                    }),
+                ),
+            ).toBe("you're running better than you were in march.");
+        }
     });
 
     it('credits a lower heart rate when efficiency improved and pace held', () => {

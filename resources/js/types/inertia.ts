@@ -377,6 +377,8 @@ export interface PastYouTrend {
     /** Null until there is a verdict; `mixed` when the pairs were decided on different metrics. */
     verdict_metric: ComparisonMetric | 'mixed' | null;
     pace_relation: PaceRelation | null;
+    /** Mean heart-rate shift across the window, banded for the headline; null without HR. */
+    hr_relation: 'higher' | 'lower' | 'same' | null;
 }
 
 /** One ordered slice of a planned session — see `App\Services\Run\Plan\SessionSegment`.

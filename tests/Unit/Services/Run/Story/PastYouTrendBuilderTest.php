@@ -430,6 +430,42 @@ it('calls a window faster at a proportionally higher heart rate plateaued', func
         ->toBe(['flat', 'flat', 'flat', 'flat']);
 });
 
+it('bands the window heart-rate shift at 2 bpm for the headline', function (float $recentHr, string $relation): void {
+    $user = User::factory()->create();
+    foreach ([200, 215, 230, 245] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_400, ['average_heartrate' => 150.0]);
+    }
+    foreach ([3, 10, 17, 24] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_150, ['average_heartrate' => $recentHr]);
+    }
+
+    $trend = buildTrend($user);
+
+    expect($trend->verdict)->toBe(TrendVerdict::Improving)
+        ->and($trend->toArray())->toMatchArray([
+            'verdict_metric' => 'ef',
+            'pace_relation' => 'faster',
+            'hr_relation' => $relation,
+        ]);
+})->with([
+    '2 bpm higher' => [152.0, 'same'],
+    '3 bpm higher' => [153.0, 'higher'],
+    '2 bpm lower' => [148.0, 'same'],
+    '3 bpm lower' => [147.0, 'lower'],
+]);
+
+it('sends no heart-rate relation for a window without heart rate', function (): void {
+    $user = User::factory()->create();
+    foreach ([200, 215, 230, 245] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_400, ['average_heartrate' => null]);
+    }
+    foreach ([3, 10, 17, 24] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_150, ['average_heartrate' => null]);
+    }
+
+    expect(buildTrend($user)->hrRelation)->toBeNull();
+});
+
 it('decides a window without heart rate on pace from a 2% gain', function (?float $heartRate, TrendVerdict $expected, string $metric): void {
     $user = User::factory()->create();
     foreach ([200, 215, 230, 245] as $daysAgo) {
