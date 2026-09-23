@@ -66,7 +66,7 @@ final readonly class SeasonGamificationContext
         $restHonored = 0;
 
         foreach ($sessions as $session) {
-            $hasActivity = array_key_exists((string) $session->date->toDateString(), $kmByDay);
+            $hasActivity = array_key_exists($session->date->toDateString(), $kmByDay);
 
             if ($session->session_type === SessionType::Rest) {
                 if (! $hasActivity) {
