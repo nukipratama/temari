@@ -5,9 +5,14 @@ use App\Enums\Rarity;
 use App\Services\Run\Story\Card\CardFacts;
 use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Responses\Meta\MetaInformation;
+use App\Enums\SessionType;
 use App\Models\AI\Analysis;
+use App\Models\PlannedSession;
+use App\Models\RaceGoal;
+use App\Models\Season;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
+use Illuminate\Support\Carbon;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentLoop;
 use App\Services\AI\Agent\AgentTool;
@@ -437,6 +442,37 @@ function inertiaPartialHeaders(object $actingAs, string $url, string $component,
         'X-Inertia-Partial-Component' => $component,
         'X-Inertia-Partial-Data' => $props,
     ];
+}
+
+/**
+ * Backdates a race season roughly 9 weeks and fills its past days with a
+ * rest/easy/tempo/long rotation, so a Plan/Profile query-budget fixture
+ * exercises SeasonGamificationContext over a real stretch of past days
+ * instead of the day-old season a plain factory create gives.
+ */
+function seedPastSeasonWeeks(User $user, RaceGoal $race): void
+{
+    Season::factory()->for($user)->create([
+        'race_goal_id' => $race->id,
+        'anchor_weekly_volume_km' => 30.0,
+        'volume_floor_km' => 20.0,
+        'block_goals_appended_at' => Carbon::today(),
+        'starts_at' => Carbon::today()->subWeeks(9)->toDateString(),
+        'ends_at' => $race->race_date->toDateString(),
+    ]);
+
+    foreach (range(1, 62) as $daysAgo) {
+        $sessionType = match (true) {
+            $daysAgo % 7 === 0 => SessionType::Rest,
+            $daysAgo % 7 === 3 => SessionType::Long,
+            $daysAgo % 7 === 5 => SessionType::Tempo,
+            default => SessionType::Easy,
+        };
+        PlannedSession::factory()->for($user)->create([
+            'date' => Carbon::today()->subDays($daysAgo)->toDateString(),
+            'session_type' => $sessionType,
+        ]);
+    }
 }
 
 function mockStravaDriver(callable $configure): MockInterface

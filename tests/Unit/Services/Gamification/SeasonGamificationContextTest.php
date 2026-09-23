@@ -222,6 +222,49 @@ it('does not count a not-yet-analyzed activity toward the longest long-band run'
     expect(ctxFor($user, $season)->longestLongRunKm)->toBe(0.0);
 });
 
+it('scores a season mixing honored/broken rest, quality, long and missed days the same as the per-day reads did', function (): void {
+    $user = User::factory()->create();
+    $season = seasonFor($user, daysAgoStart: 9);
+
+    $restHonoredDate = Carbon::today()->subDays(9);
+    $restBrokenDate = Carbon::today()->subDays(8);
+    $tempoDate = Carbon::today()->subDays(7);
+    $longDate = Carbon::today()->subDays(6);
+    $missedEasyDate = Carbon::today()->subDays(5);
+    $easyDate = Carbon::today()->subDays(4);
+    $intervalDate = Carbon::today()->subDays(3);
+    $unanalyzedLongDate = Carbon::today()->subDays(1);
+
+    PlannedSession::factory()->for($user)->rest()->create(['date' => $restHonoredDate->toDateString()]);
+    PlannedSession::factory()->for($user)->rest()->create(['date' => $restBrokenDate->toDateString()]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => $restBrokenDate]);
+
+    PlannedSession::factory()->for($user)->create(['date' => $tempoDate->toDateString(), 'session_type' => SessionType::Tempo]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => $tempoDate]);
+
+    PlannedSession::factory()->for($user)->create(['date' => $longDate->toDateString(), 'session_type' => SessionType::Long]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => $longDate->copy()->setTime(6, 0), 'distance' => 12_000]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => $longDate->copy()->setTime(18, 0), 'distance' => 20_000]);
+
+    PlannedSession::factory()->for($user)->create(['date' => $missedEasyDate->toDateString(), 'session_type' => SessionType::Easy]);
+
+    PlannedSession::factory()->for($user)->create(['date' => $easyDate->toDateString(), 'session_type' => SessionType::Easy]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => $easyDate]);
+
+    PlannedSession::factory()->for($user)->create(['date' => $intervalDate->toDateString(), 'session_type' => SessionType::Interval]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => $intervalDate]);
+
+    PlannedSession::factory()->for($user)->create(['date' => $unanalyzedLongDate->toDateString(), 'session_type' => SessionType::Long]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->stub()->create())->create(['start_date_local' => $unanalyzedLongDate, 'distance' => 30_000]);
+
+    $ctx = ctxFor($user, $season);
+
+    expect($ctx->sessionsCompleted)->toBe(4)
+        ->and($ctx->qualityCompleted)->toBe(2)
+        ->and($ctx->longestLongRunKm)->toBe(20.0)
+        ->and($ctx->restHonored)->toBe(1);
+});
+
 it('does not flag the race goal met from a not-yet-analyzed activity', function (): void {
     $user = User::factory()->create();
     $race = RaceGoal::factory()->for($user)->create([
