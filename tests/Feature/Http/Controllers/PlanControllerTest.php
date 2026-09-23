@@ -418,16 +418,22 @@ it('resolves the deferred Plan props inside their query budget', function (): vo
 
     $this->actingAs($user)->get('/plan', $headers)->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(15);
+    // 16: was 15 against a fixture with no past season days, so
+    // SeasonGamificationContext's grouped read over the season range never
+    // ran. The fixture now carries 9 weeks of them (see planBudgetFixture),
+    // adding that one query.
+    expect($queries)->toBeLessThanOrEqual(16);
 });
 
 function planBudgetFixture(): User
 {
     $user = User::factory()->create();
-    RaceGoal::factory()->for($user)->create([
+    $race = RaceGoal::factory()->for($user)->create([
         'race_date' => Carbon::today()->addWeeks(10),
         'completed_at' => null,
     ]);
+
+    seedPastSeasonWeeks($user, $race);
 
     foreach (range(1, 6) as $daysAgo) {
         $activity = Activity::factory()->for($user)->analyzed()->create();

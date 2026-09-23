@@ -384,7 +384,7 @@ it('does not recompute the lifetime totals on the request that only fetches the 
 // resolve there, and they reach the athlete's active race independently.
 it('resolves the deferred Profile props inside their query budget', function (): void {
     $user = User::factory()->create();
-    RaceGoal::factory()->for($user)->create([
+    $race = RaceGoal::factory()->for($user)->create([
         'distance_m' => 10_000,
         'completed_at' => null,
     ]);
@@ -400,6 +400,8 @@ it('resolves the deferred Profile props inside their query budget', function ():
             'elapsed_time' => 2_900,
         ]);
     }
+
+    seedPastSeasonWeeks($user, $race);
 
     app(SeasonService::class)->ensureCurrent($user, Carbon::today());
 
@@ -417,7 +419,12 @@ it('resolves the deferred Profile props inside their query budget', function ():
 
     $this->actingAs($user)->get('/profile', $headers)->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(10);
+    // 18: was 10 against a fixture whose season started the same day as the
+    // request, so SeasonGamificationContext's own early exit (no past days
+    // yet) skipped its race-goal, peak-week and grouped activity reads
+    // entirely. The fixture now carries 9 real past weeks (see
+    // seedPastSeasonWeeks), so that work actually runs — once, not per day.
+    expect($queries)->toBeLessThanOrEqual(18);
 });
 
 // The threshold estimator reads stream_summary and nothing else. A bare get()

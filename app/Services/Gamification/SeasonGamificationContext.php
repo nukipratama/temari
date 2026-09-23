@@ -58,13 +58,15 @@ final readonly class SeasonGamificationContext
             ->whereBetween('date', [$season->starts_at->toDateString(), $rangeEnd->toDateString()])
             ->get();
 
+        $kmByDay = self::actualKmByDay($user->id, $season->starts_at, $rangeEnd);
+
         $sessionsCompleted = 0;
         $qualityCompleted = 0;
         $longestLongRunKm = 0.0;
         $restHonored = 0;
 
         foreach ($sessions as $session) {
-            $hasActivity = self::hasActivityOn($user->id, $session->date);
+            $hasActivity = array_key_exists((string) $session->date->toDateString(), $kmByDay);
 
             if ($session->session_type === SessionType::Rest) {
                 if (! $hasActivity) {
@@ -83,7 +85,7 @@ final readonly class SeasonGamificationContext
                 $qualityCompleted++;
             }
             if ($session->session_type === SessionType::Long) {
-                $longestLongRunKm = max($longestLongRunKm, self::actualKmOn($user->id, $session->date));
+                $longestLongRunKm = max($longestLongRunKm, $kmByDay[$session->date->toDateString()]);
             }
         }
 
@@ -106,28 +108,27 @@ final readonly class SeasonGamificationContext
             ->max('distance_km');
     }
 
-    private static function hasActivityOn(int $userId, Carbon $date): bool
+    /** @return array<string, float> local date (Y-m-d) => longest logged distance that day, in km */
+    private static function actualKmByDay(int $userId, Carbon $rangeStart, Carbon $rangeEnd): array
     {
-        return Activity::analyzedJoinConstraint(
+        $rows = Activity::analyzedJoinConstraint(
             ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
         )
             ->where('activities.user_id', $userId)
             ->whereNotNull('activity_details.start_date_local')
-            ->whereBetween('activity_details.start_date_local', [$date->copy()->startOfDay(), $date->copy()->endOfDay()])
-            ->exists();
-    }
+            ->whereBetween('activity_details.start_date_local', [$rangeStart->copy()->startOfDay(), $rangeEnd->copy()->endOfDay()])
+            ->selectRaw('DATE(activity_details.start_date_local) as day, MAX(activity_details.distance) as max_distance')
+            ->groupBy('day')
+            ->toBase()
+            ->get();
 
-    private static function actualKmOn(int $userId, Carbon $date): float
-    {
-        $meters = Activity::analyzedJoinConstraint(
-            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
-        )
-            ->where('activities.user_id', $userId)
-            ->whereNotNull('activity_details.start_date_local')
-            ->whereBetween('activity_details.start_date_local', [$date->copy()->startOfDay(), $date->copy()->endOfDay()])
-            ->max('activity_details.distance');
+        $kmByDay = [];
+        foreach ($rows as $row) {
+            /** @var object{day: string, max_distance: float|string|null} $row */
+            $kmByDay[$row->day] = $row->max_distance === null ? 0.0 : round(((float) $row->max_distance) / 1000, 1);
+        }
 
-        return $meters === null ? 0.0 : round(((float) $meters) / 1000, 1);
+        return $kmByDay;
     }
 
     private static function raceGoalMet(int $userId, Season $season): bool
