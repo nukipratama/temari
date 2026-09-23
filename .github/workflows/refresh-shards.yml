@@ -76,7 +76,7 @@ jobs:
           DB_PASSWORD: password
           CACHE_STORE: array
           SESSION_DRIVER: array
-        run: ./vendor/bin/pest --no-tia --update-shards --exclude-group=structure
+        run: ./vendor/bin/pest --no-tia --compact --update-shards --exclude-group=structure
 
       - name: Compare shard balance
         id: compare
