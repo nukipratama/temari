@@ -447,6 +447,7 @@ function planBudgetFixture(): User
     foreach (range(1, 6) as $weeksAgo) {
         WeeklySnapshot::factory()->for($user)->create([
             'week_ending' => Carbon::today()->subWeeks($weeksAgo)->toDateString(),
+            'distance_km' => 30.0,
         ]);
     }
 

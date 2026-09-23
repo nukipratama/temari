@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -450,4 +451,68 @@ it('strainMonotonyTrend tells an unscored week apart from a rested one, same as 
     expect($trend[0]['weekly_trimp'])->toBeNull()
         ->and($trend[0]['monotony'])->toBeNull()
         ->and($trend[0]['strain'])->toBeNull();
+});
+
+it('memoizes a null summary within the same instance instead of rescanning', function (): void {
+    $user = User::factory()->create();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    expect($this->load->summary($user))->toBeNull()
+        ->and($this->load->summary($user))->toBeNull()
+        ->and($this->load->summary($user))->toBeNull();
+
+    expect($queries)->toBe(1);
+});
+
+it('memoizes a real summary within the same instance instead of rescanning', function (): void {
+    $user = User::factory()->create();
+    seedTrimpDay($user, 80.0, 0);
+
+    $first = $this->load->summary($user);
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $second = $this->load->summary($user);
+
+    expect($queries)->toBe(0)
+        ->and($second)->toBe($first);
+});
+
+it('clearSummaryCache forces the next summary() to recompute within the same scope', function (): void {
+    $user = User::factory()->create();
+
+    $this->instance(TrainingLoad::class, $this->load);
+    expect($this->load->summary($user))->toBeNull();
+
+    seedTrimpDay($user, 80.0, 0);
+    TrainingLoad::clearSummaryCache($user);
+
+    expect($this->load->summary($user))->not->toBeNull();
+});
+
+it('keeps distinct memo entries per user, date and window so they do not collide', function (): void {
+    $userA = User::factory()->create();
+    $userB = User::factory()->create();
+    seedTrimpDay($userA, 100.0, 0);
+    seedTrimpDay($userA, 100.0, 20);
+    seedTrimpDay($userB, 40.0, 0);
+
+    $asOfA = Carbon::today();
+    $asOfB = Carbon::today()->subDay();
+
+    $summaryA = $this->load->summary($userA, $asOfA, windowDays: 7);
+    $summaryB = $this->load->summary($userB, $asOfA, windowDays: 7);
+    $summaryADifferentDate = $this->load->summary($userA, $asOfB, windowDays: 7);
+    $summaryADifferentWindow = $this->load->summary($userA, $asOfA, windowDays: 30);
+
+    expect($summaryA)->not->toBe($summaryB)
+        ->and($summaryA)->not->toBe($summaryADifferentDate)
+        ->and($summaryA['weekly_trimp'])->not->toBe($summaryADifferentWindow['weekly_trimp']);
 });
