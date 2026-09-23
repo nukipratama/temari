@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\Run\ReconcilePlanJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
@@ -660,6 +661,8 @@ it('re-narrates today plan day blurb once the run credits the day', function ():
         ->where('discriminator', Carbon::today()->toDateString())
         ->exists())->toBeFalse();
 
+    // A late upload can leave an older pending marker ahead of today's run.
+    $activity->user->forceFill(['plan_reconciliation_pending_from' => Carbon::yesterday()])->saveQuietly();
     app(PlanReconciliationService::class)->drain($activity->user_id);
 
     expect(Analysis::query()
@@ -668,6 +671,27 @@ it('re-narrates today plan day blurb once the run credits the day', function ():
         ->where('analysis_type', AnalysisType::PlanDayVoice)
         ->where('discriminator', Carbon::today()->toDateString())
         ->exists())->toBeTrue();
+});
+
+it('fills a demo today plan day blurb rule-based after the run credits the day', function (): void {
+    $demo = User::factory()->demo()->create();
+    $activity = analyzedActivity(Carbon::today()->setTime(6, 30)->toDateTimeString(), $demo->id);
+    PlannedSession::factory()->for($demo)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+
+    fire($activity);
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $demo->id)
+        ->where('analysis_type', AnalysisType::PlanDayVoice)
+        ->where('discriminator', Carbon::today()->toDateString())
+        ->firstOrFail()
+        ->status)->toBe(AnalysisStatus::Done);
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 });
 
 /**

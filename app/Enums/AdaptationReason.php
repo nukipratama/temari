@@ -52,9 +52,9 @@ enum AdaptationReason: string
             self::HighStrain => 'last week\'s strain ran well past what your fitness supports. this week backs off to deload volume.',
             self::MissedWeek => "you finished {$adherencePct}% of last week's sessions. this week comes back smaller, not doubled.",
             self::MissedStimulus => sprintf(
-                "last week's volume was %d%%; latest settled key-work adherence was %d%%. %s",
-                $adherencePct,
-                $stimulusAdherencePct ?? 0,
+                "you ran %s of last week's distance, but %s of the latest settled key work landed. %s",
+                self::percentageLabel($adherencePct),
+                self::percentageLabel($stimulusAdherencePct ?? 0, qualify: true),
                 $qualityDelta < 0
                     ? 'the key work was not absorbed, so this week carries one less quality session.'
                     : 'this week does not add another quality session until it does.',
@@ -63,5 +63,17 @@ enum AdaptationReason: string
             self::BehindRacePace => 'your projected finish is behind your goal time. one extra quality session a week from here.',
             self::AheadOfRacePace => 'your projected finish is already inside your goal time. fitness ahead of schedule is not a reason to back off, so the week stands as written.',
         };
+    }
+
+    private static function percentageLabel(int $percentage, bool $qualify = false): string
+    {
+        $label = match ($percentage) {
+            0 => 'none',
+            50 => 'half',
+            100 => 'all',
+            default => "{$percentage}%",
+        };
+
+        return $qualify && ! in_array($percentage, [0, 100], true) ? "only {$label}" : $label;
     }
 }

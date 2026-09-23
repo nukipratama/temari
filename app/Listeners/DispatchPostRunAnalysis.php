@@ -128,6 +128,16 @@ class DispatchPostRunAnalysis implements ShouldQueue
             // The run that just landed is what moved the ceiling, so the event
             // that invalidates the clamp's explanation regenerates it.
             $this->planNarration->requestClampVoice($user, Carbon::today());
+
+            if ($user->is_demo) {
+                $this->analysisService->requestRuleBased(
+                    AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+                    $user->id,
+                    AnalysisType::PlanDayVoice,
+                    Carbon::today()->toDateString(),
+                    refillDone: false,
+                );
+            }
         }
         if ($snapshot !== null) {
             // Weekly cadence: regenerating the recap of a still-unfinished week
