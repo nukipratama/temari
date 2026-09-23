@@ -69,57 +69,55 @@ it('matches the oldest qualifying easy run within ±20% distance', function (): 
         ->and($match['pace_diff_sec'])->toBeFloat()->toBeGreaterThan(0);
 });
 
-// Regression for #1009: findMatch()'s payload carried an exact but unlabelled
-// pace_diff_sec sign, which the LLM narrator misread as "slower" on faster
-// runs two times out of three. direction() already resolves it unambiguously.
-it('reports direction=better when the current run is faster, matching the sign of pace_diff_sec', function (): void {
+/**
+ * @return array<string, mixed>|null
+ */
+function heroContext(int $pastMovingSec, ?float $pastHr, int $currentMovingSec, ?float $currentHr, float $distanceM = 10_000.0, array $pastExtra = []): ?array
+{
     $user = User::factory()->create();
-    $temp = ['weather_temp_c' => 27];
-    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $temp); // 420 s/km
+    $shared = ['weather_temp_c' => 27];
+    seedRun($user, Carbon::today()->subDays(60), $distanceM, $pastMovingSec, array_merge($shared, ['average_heartrate' => $pastHr], $pastExtra));
+    $current = seedRun($user, Carbon::today(), $distanceM, $currentMovingSec, array_merge($shared, ['average_heartrate' => $currentHr]));
 
-    $current = seedRun($user, Carbon::today(), 10_000, 4_140, $temp); // 414 s/km, 6 s/km faster
+    return app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+}
+
+it('reports direction=better when the current run is faster at the same heart rate', function (): void {
+    $user = User::factory()->create();
+    $shared = ['weather_temp_c' => 27, 'average_heartrate' => 150.0];
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $shared);
+
+    $current = seedRun($user, Carbon::today(), 10_000, 4_050, $shared);
     $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
 
     expect($match['pace_diff_sec'])->toBeGreaterThan(0.0)
         ->and($match['direction'])->toBe('better');
 });
 
-it('reports direction=worse when the current run is slower, matching the sign of pace_diff_sec', function (): void {
+it('reports direction=worse when the current run is slower at the same heart rate', function (): void {
     $user = User::factory()->create();
-    $temp = ['weather_temp_c' => 27];
-    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $temp); // 420 s/km
+    $shared = ['weather_temp_c' => 27, 'average_heartrate' => 150.0];
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $shared);
 
-    $current = seedRun($user, Carbon::today(), 10_000, 4_260, $temp); // 426 s/km, 6 s/km slower
+    $current = seedRun($user, Carbon::today(), 10_000, 4_350, $shared);
     $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
 
     expect($match['pace_diff_sec'])->toBeLessThan(0.0)
         ->and($match['direction'])->toBe('worse');
 });
 
-// Regression for #1009 (reopened): findMatchContext() -- the LLM-facing shape
-// -- used to carry the same bare signed pace_diff_sec/hr_diff_bpm as
-// findMatch() plus a `direction` composite, and a model reading a
-// mixed-signal pair inverted a field to fit whichever number it picked as
-// the headline. No field here has a sign left to invert.
 it('exposes findMatchContext with relation=faster and no signed field on a faster run', function (): void {
-    $user = User::factory()->create();
-    $temp = ['weather_temp_c' => 27];
-    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $temp); // 420 s/km
-
-    $current = seedRun($user, Carbon::today(), 10_000, 4_140, $temp); // 414 s/km, 6 s/km faster
-    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+    $context = heroContext(4_200, 150.0, 4_050, 150.0);
 
     expect($context)->not->toBeNull()
-        ->and($context)->not->toHaveKeys(['pace_diff_sec', 'time_diff_sec', 'hr_diff_bpm'])
-        ->and($context['pace']['seconds_per_km'])->toBe(6.0)
+        ->and($context)->not->toHaveKeys(['pace_diff_sec', 'time_diff_sec', 'hr_diff_bpm', 'pace_change_pct'])
+        ->and($context['pace']['seconds_per_km'])->toBe(15.0)
         ->and($context['pace']['relation'])->toBe('faster')
         ->and($context['time']['relation'])->toBe('faster')
+        ->and($context['hr']['relation'])->toBe('same')
         ->and($context['direction'])->toBe('better');
 });
 
-// #1009 (decision): findMatchContext() is no longer only an LLM tool payload
-// -- RunController reads it directly to render the run-detail fact line, so
-// it needs to link back to the matched run, not just describe the delta.
 it('exposes past_activity_id and past_name so a caller can link to the matched run', function (): void {
     $user = User::factory()->create();
     $temp = ['weather_temp_c' => 27];
@@ -134,63 +132,62 @@ it('exposes past_activity_id and past_name so a caller can link to the matched r
 });
 
 it('exposes findMatchContext with relation=slower on a slower run', function (): void {
-    $user = User::factory()->create();
-    $temp = ['weather_temp_c' => 27];
-    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $temp); // 420 s/km
+    $context = heroContext(4_200, 150.0, 4_350, 150.0);
 
-    $current = seedRun($user, Carbon::today(), 10_000, 4_260, $temp); // 426 s/km, 6 s/km slower
-    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
-
-    expect($context['pace']['seconds_per_km'])->toBe(6.0)
+    expect($context['pace']['seconds_per_km'])->toBe(15.0)
         ->and($context['pace']['relation'])->toBe('slower')
         ->and($context['time']['relation'])->toBe('slower')
         ->and($context['direction'])->toBe('worse');
 });
 
-it('exposes findMatchContext with relation=same when the gap sits inside the noise band', function (): void {
-    $user = User::factory()->create();
-    $temp = ['weather_temp_c' => 27, 'average_heartrate' => 151];
-    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_220, $temp); // 422 s/km, HR 151
-
-    // 420 s/km (2 s/km faster, under the 5s signal) and HR 150 (1 bpm lower, under the 3bpm signal).
-    $current = seedRun($user, Carbon::today(), 10_000, 4_200, array_merge($temp, ['average_heartrate' => 150]));
-    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+it('calls a pace gap inside 2% the same pace and a heart-rate gap under half a beat the same heart rate', function (): void {
+    $context = heroContext(4_220, 150.3, 4_200, 150.0);
 
     expect($context['pace']['relation'])->toBe('same')
         ->and($context['hr']['relation'])->toBe('same')
         ->and($context['direction'])->toBe('flat');
 });
 
-// The exact mixed-signal shape from the live check that reopened #1009: pace
-// -13 (slower) paired with HR -16 (lower). The model previously read the
-// lower HR as the headline, decided the run was "better", then stated the
-// pace backwards to fit that story -- overriding the `direction` composite it
-// was handed. pace.relation is resolved from pace alone, hr.relation from HR
-// alone, so neither can be talked out of what it says by the other.
-it('reports pace.relation=slower and hr.relation=lower independently on a mixed-signal match', function (): void {
-    $user = User::factory()->create();
-    $temp = ['weather_temp_c' => 27, 'average_heartrate' => 166];
-    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_070, $temp); // 407 s/km, HR 166
+it('names a one-beat heart-rate gap as the card shows it rather than hiding it inside a band', function (): void {
+    $context = heroContext(4_200, 151.0, 4_200, 150.0);
 
-    // 420 s/km (13 s/km slower) and HR 150 (16 bpm lower than the past run).
-    $current = seedRun($user, Carbon::today(), 10_000, 4_200, array_merge($temp, ['average_heartrate' => 150]));
-    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
-
-    expect($context)->not->toBeNull()
-        ->and($context['pace']['relation'])->toBe('slower')
-        ->and($context['hr']['relation'])->toBe('lower')
-        ->and($context['direction'])->toBe('worse');
+    expect($context['hr'])->toBe(['bpm' => 1.0, 'relation' => 'lower'])
+        ->and($context['direction'])->toBe('flat');
 });
 
-it('exposes a null hr in findMatchContext when one side is missing average_heartrate', function (): void {
-    $user = User::factory()->create();
-    $temp = ['weather_temp_c' => 27, 'average_heartrate' => null];
-    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $temp);
+it('calls a run faster at a proportionally higher heart rate flat, while still naming both facts', function (): void {
+    $context = heroContext(4_200, 150.0, 4_000, 157.5);
 
-    $current = seedRun($user, Carbon::today(), 10_000, 4_140, array_merge($temp, ['average_heartrate' => 150]));
-    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+    expect($context['pace']['relation'])->toBe('faster')
+        ->and($context['hr']['relation'])->toBe('higher')
+        ->and($context['direction'])->toBe('flat');
+});
 
-    expect($context['hr'])->toBeNull();
+it('calls a slower run at a much lower heart rate better on efficiency, with pace and heart rate each told straight', function (): void {
+    $context = heroContext(4_070, 166.0, 4_200, 150.0);
+
+    expect($context['pace']['relation'])->toBe('slower')
+        ->and($context['hr']['relation'])->toBe('lower')
+        ->and($context['direction'])->toBe('better');
+});
+
+it('decides a pair on pace at the 2% line when one side has no heart rate', function (int $currentMovingSec, string $direction, string $relation): void {
+    $context = heroContext(4_200, null, $currentMovingSec, 150.0);
+
+    expect($context['hr'])->toBeNull()
+        ->and($context['direction'])->toBe($direction)
+        ->and($context['pace']['relation'])->toBe($relation);
+})->with([
+    '1.9% faster' => [4_120, 'flat', 'same'],
+    '2.0% faster' => [4_116, 'better', 'faster'],
+    '2.0% slower' => [4_284, 'worse', 'slower'],
+]);
+
+it('decides a pair under 20 minutes on pace even when both sides have heart rate', function (): void {
+    $context = heroContext(1_050, 160.0, 1_050, 150.0, 2_500.0);
+
+    expect($context['hr']['relation'])->toBe('lower')
+        ->and($context['direction'])->toBe('flat');
 });
 
 it('rejects matches less than 21 days apart', function (): void {
@@ -455,16 +452,16 @@ it('scores a perfectly comparable pair at the top of the scale', function (): vo
     expect($matcher->similarity($current, $past))->toEqualWithDelta(1.0, 0.0001);
 });
 
-it('scores evidence quality without using heart rate', function (): void {
+it('ranks two candidates that differ only in heart rate equally', function (): void {
     $matcher = new PastYouMatcher();
     $current = matcherRun('2026-06-15 06:00:00', 420.0, hr: 155.0);
-    $sameHr = matcherRun('2025-06-15 06:00:00', 430.0, hr: 155.0);
-    $differentHr = matcherRun('2025-06-15 06:00:00', 430.0, hr: 180.0);
+    $sameHr = matcherRun('2025-06-15 06:00:00', 430.0, hr: 155.0, activityId: 10);
+    $differentHr = matcherRun('2025-06-15 06:00:00', 430.0, hr: 180.0, activityId: 11);
 
-    expect($matcher->quality($current, $sameHr))
-        ->toEqualWithDelta($matcher->quality($current, $differentHr), 0.0001)
-        ->and($matcher->similarity($current, $sameHr))
-        ->toBeGreaterThan($matcher->similarity($current, $differentHr));
+    expect($matcher->similarity($current, $sameHr))
+        ->toEqualWithDelta($matcher->similarity($current, $differentHr), 0.0001)
+        ->and($matcher->bestMatch($current, [$sameHr, $differentHr])?->past->activityId)->toBe(10)
+        ->and($matcher->bestMatch($current, [$differentHr, $sameHr])?->past->activityId)->toBe(11);
 });
 
 it('keeps candidates at the quality floor and excludes lower-quality candidates', function (): void {
@@ -473,8 +470,8 @@ it('keeps candidates at the quality floor and excludes lower-quality candidates'
     $atFloor = matcherRun('2025-06-15 06:00:00', 430.0, 10_500.0, 155.0, 52.5, 10);
     $belowFloor = matcherRun('2025-06-15 18:00:00', 430.0, 10_500.0, 155.0, 52.5, 11);
 
-    expect($matcher->quality($current, $atFloor))->toEqualWithDelta(0.6, 0.0001)
-        ->and($matcher->quality($current, $belowFloor))->toBeLessThan(0.6)
+    expect($matcher->similarity($current, $atFloor))->toEqualWithDelta(0.6, 0.0001)
+        ->and($matcher->similarity($current, $belowFloor))->toBeLessThan(0.6)
         ->and($matcher->bestMatch($current, [$belowFloor, $atFloor])?->past->activityId)->toBe(10)
         ->and($matcher->bestMatch($current, [$belowFloor]))->toBeNull();
 });

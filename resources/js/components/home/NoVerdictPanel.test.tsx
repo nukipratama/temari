@@ -9,6 +9,8 @@ import NoVerdictPanel from './NoVerdictPanel';
 
 const nearMiss: PastYouComparison = {
     direction: 'better',
+    metric: 'pace',
+    pace_relation: 'faster',
     days_apart: 90,
     similarity: 0.9,
     pace_delta_sec: 12,
@@ -44,6 +46,9 @@ function trend(comparisons: PastYouComparison[]): PastYouTrend {
         fitness_delta_ctl: null,
         pace_consistency_now: null,
         pace_consistency_then: null,
+        verdict_metric: 'pace',
+        pace_relation: 'faster',
+        hr_relation: null,
     };
 }
 
@@ -106,7 +111,7 @@ describe('NoVerdictPanel', () => {
     it('shows the single pair it did find, so the near miss is visible', () => {
         render(<NoVerdictPanel trend={trend([nearMiss])} />);
 
-        expect(screen.getByText('8.2 km · pace vs mar 14')).toBeInTheDocument();
+        expect(screen.getByText('8.2 km vs mar 14')).toBeInTheDocument();
         expect(screen.getByRole('link')).toHaveAttribute(
             'href',
             '/activities/2',

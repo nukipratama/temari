@@ -343,8 +343,15 @@ export interface ComparableRun {
 }
 
 /** One matched pair, as `PastYouComparison::toArray()` ships it. */
+export type ComparisonMetric = 'ef' | 'pace';
+
+export type PaceRelation = 'faster' | 'slower' | 'same';
+
 export interface PastYouComparison {
     direction: TrendDirection;
+    /** The reading that decided `direction`: efficiency when both runs carry heart rate, else pace. */
+    metric: ComparisonMetric;
+    pace_relation: PaceRelation;
     days_apart: number;
     similarity: number;
     /** Positive when the recent run is faster. */
@@ -367,6 +374,11 @@ export interface PastYouTrend {
     fitness_delta_ctl: number | null;
     pace_consistency_now: string | null;
     pace_consistency_then: string | null;
+    /** Null until there is a verdict; `mixed` when the pairs were decided on different metrics. */
+    verdict_metric: ComparisonMetric | 'mixed' | null;
+    pace_relation: PaceRelation | null;
+    /** Mean heart-rate shift across the window, banded for the headline; null without HR. */
+    hr_relation: 'higher' | 'lower' | 'same' | null;
 }
 
 /** One ordered slice of a planned session — see `App\Services\Run\Plan\SessionSegment`.

@@ -4,7 +4,11 @@ import type { PastYouTrend, TrendDirection } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
 import { activityUrl } from '@/lib/routes';
-import { evidenceRows } from '@/lib/verdict';
+import {
+    type EvidenceReading,
+    type EvidenceRow,
+    evidenceRows,
+} from '@/lib/verdict';
 
 const DELTA_TONE: Record<TrendDirection, string> = {
     better: 'bg-horizon/[0.18] text-icon-accent',
@@ -14,9 +18,8 @@ const DELTA_TONE: Record<TrendDirection, string> = {
 
 /**
  * The matched pairs behind the verdict, one row each: what made them
- * comparable, then the reading that decided the row's direction, before and
- * after. Rows whose pace came back inside the noise band show heart rate
- * instead, because that is the number that actually made the call.
+ * comparable, then average pace and average heart rate before and after, so a
+ * row decided on efficiency shows both readings it came from.
  */
 export default function EvidenceList({
     trend,
@@ -33,25 +36,17 @@ export default function EvidenceList({
                 <li key={row.activityId}>
                     <Link
                         href={activityUrl({ activity_id: row.activityId })}
-                        aria-label={`${row.label}, ${row.then} to ${row.now}, ${row.delta}`}
+                        aria-label={ariaLabel(row)}
                         className="focus-ring block bg-card px-3.5 py-2.5 transition-colors hover:bg-accent"
                     >
                         <span className="font-sans text-[0.65625rem] text-foreground">
                             {row.label}
                         </span>
-                        <div className="mt-1 flex items-baseline gap-2 font-mono tabular-nums">
-                            <span className="text-[0.78125rem] text-foreground">
-                                {row.then}
-                            </span>
-                            <span
-                                aria-hidden
-                                className="text-xs text-foreground"
-                            >
-                                →
-                            </span>
-                            <span className="text-[0.90625rem] font-extrabold text-foreground">
-                                {row.now}
-                            </span>
+                        <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono tabular-nums">
+                            <Reading reading={row.pace} unit="/km" />
+                            {row.hr !== null && (
+                                <Reading reading={row.hr} unit="bpm" />
+                            )}
                             <span
                                 className={cn(
                                     'ml-auto rounded-full px-2 py-0.5 font-mono text-[0.625rem] font-extrabold',
@@ -65,5 +60,31 @@ export default function EvidenceList({
                 </li>
             ))}
         </ul>
+    );
+}
+
+function ariaLabel(row: EvidenceRow): string {
+    const hr =
+        row.hr === null ? '' : `, HR ${row.hr.then} to ${row.hr.now} bpm`;
+    return `${row.label}, pace ${row.pace.then} to ${row.pace.now}${hr}, ${row.delta}`;
+}
+
+function Reading({
+    reading,
+    unit,
+}: Readonly<{ reading: EvidenceReading; unit: string }>) {
+    return (
+        <span className="flex items-baseline gap-1.5">
+            <span className="text-[0.78125rem] text-foreground">
+                {reading.then}
+            </span>
+            <span aria-hidden className="text-xs text-foreground">
+                →
+            </span>
+            <span className="text-[0.90625rem] font-extrabold text-foreground">
+                {reading.now}
+            </span>
+            <span className="text-[0.625rem] text-text-3">{unit}</span>
+        </span>
     );
 }

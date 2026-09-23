@@ -42,6 +42,9 @@ class PastYouTrendBuilder
 
     public const int MAX_COMPARISONS = 4;
 
+    /** Widest mean heart-rate shift the headline may still call "the same heart rate". */
+    public const float SAME_HR_BPM = 2.0;
+
     /**
      * The date range is the real bound: {@see self::WINDOW_DAYS} back for the
      * recent side plus {@see PastYouMatcher::MAX_GAP_DAYS} for the candidates
@@ -117,7 +120,7 @@ class PastYouTrendBuilder
         [$consistencyNow, $consistencyThen] = $this->consistencyShift($comparisons[0]);
 
         return new PastYouTrend(
-            verdict: $this->verdict($comparisons, $meanPaceDelta, $meanHrDelta),
+            verdict: $this->verdict($comparisons),
             comparisons: $comparisons,
             windowDays: self::WINDOW_DAYS,
             meanPaceDeltaSec: $meanPaceDelta,
@@ -125,7 +128,24 @@ class PastYouTrendBuilder
             fitnessDeltaCtl: $this->fitnessDelta($user, $anchor),
             paceConsistencyNow: $consistencyNow,
             paceConsistencyThen: $consistencyThen,
+            verdictMetric: $this->verdictMetric($comparisons),
+            paceRelation: PastYouComparison::paceRelation($this->meanOf(array_map(
+                static fn (PastYouComparison $c): float => $c->paceChangePct(),
+                $comparisons,
+            ))),
+            hrRelation: self::hrRelation($meanHrDelta),
         );
+    }
+
+    /** @return 'higher'|'lower'|'same'|null */
+    private static function hrRelation(?float $meanHrDelta): ?string
+    {
+        return match (true) {
+            $meanHrDelta === null => null,
+            $meanHrDelta > self::SAME_HR_BPM => 'higher',
+            $meanHrDelta < -self::SAME_HR_BPM => 'lower',
+            default => 'same',
+        };
     }
 
     /**
@@ -135,7 +155,7 @@ class PastYouTrendBuilder
      *
      * @param  list<PastYouComparison>  $comparisons
      */
-    private function verdict(array $comparisons, ?float $meanPaceDelta, ?float $meanHrDelta): TrendVerdict
+    private function verdict(array $comparisons): TrendVerdict
     {
         $betterVotes = 0;
         $worseVotes = 0;
@@ -149,7 +169,7 @@ class PastYouTrendBuilder
             return TrendVerdict::Mixed;
         }
 
-        $aggregate = $this->aggregateDirection($meanPaceDelta, $meanHrDelta);
+        $aggregate = $this->aggregateDirection($comparisons);
         $minimumVotes = (int) ceil(count($comparisons) * 2 / 3);
 
         return match (true) {
@@ -160,21 +180,34 @@ class PastYouTrendBuilder
     }
 
     /**
-     * Pace decides unless the mean came back inside the noise band, in which
-     * case heart rate does: holding pace at a lower heart rate is a gain, and
-     * holding it at a higher one is a loss.
+     * Each pair's change is read in multiples of its own metric's threshold, so
+     * a window mixing efficiency pairs and pace-only pairs averages on one scale.
+     *
+     * @param  list<PastYouComparison>  $comparisons
      */
-    private function aggregateDirection(?float $meanPaceDelta, ?float $meanHrDelta): TrendDirection
+    private function aggregateDirection(array $comparisons): TrendDirection
     {
-        if ($meanPaceDelta !== null && abs($meanPaceDelta) >= PastYouComparison::PACE_SIGNAL_SEC) {
-            return $meanPaceDelta > 0 ? TrendDirection::Better : TrendDirection::Worse;
-        }
+        $meanUnits = $this->meanOf(array_map(
+            static fn (PastYouComparison $c): float => $c->signalUnits(),
+            $comparisons,
+        ));
 
-        if ($meanHrDelta !== null && abs($meanHrDelta) >= PastYouComparison::HR_SIGNAL_BPM) {
-            return $meanHrDelta < 0 ? TrendDirection::Better : TrendDirection::Worse;
-        }
+        return match (true) {
+            $meanUnits >= 1.0 => TrendDirection::Better,
+            $meanUnits <= -1.0 => TrendDirection::Worse,
+            default => TrendDirection::Flat,
+        };
+    }
 
-        return TrendDirection::Flat;
+    /** @param  list<PastYouComparison>  $comparisons */
+    private function verdictMetric(array $comparisons): string
+    {
+        $metrics = array_values(array_unique(array_map(
+            static fn (PastYouComparison $c): string => $c->metric()->value,
+            $comparisons,
+        )));
+
+        return count($metrics) === 1 ? $metrics[0] : 'mixed';
     }
 
     /**
@@ -345,14 +378,27 @@ class PastYouTrendBuilder
     }
 
     /**
+     * Kept at 2 decimal places: this feeds threshold comparisons (±1.0 signal
+     * units, the 2%/3% pace and efficiency bands), and {@see self::mean()}'s
+     * 1-decimal rounding is coarse enough to round a sub-threshold value like
+     * 0.97 up to the 1.0 line.
+     *
+     * @param  list<float>  $values  never empty at either call site
+     */
+    private function meanOf(array $values): float
+    {
+        return $this->mean($values, 2) ?? 0.0;
+    }
+
+    /**
      * @param  list<float>  $values
      */
-    private function mean(array $values): ?float
+    private function mean(array $values, int $precision = 1): ?float
     {
         if ($values === []) {
             return null;
         }
 
-        return round(array_sum($values) / count($values), 1);
+        return round(array_sum($values) / count($values), $precision);
     }
 }

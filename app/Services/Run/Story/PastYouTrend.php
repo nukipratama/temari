@@ -26,6 +26,9 @@ final readonly class PastYouTrend
         public ?float $fitnessDeltaCtl = null,
         public ?string $paceConsistencyNow = null,
         public ?string $paceConsistencyThen = null,
+        public ?string $verdictMetric = null,
+        public ?string $paceRelation = null,
+        public ?string $hrRelation = null,
     ) {
     }
 
@@ -55,6 +58,9 @@ final readonly class PastYouTrend
             'fitness_delta_ctl' => $this->fitnessDeltaCtl,
             'pace_consistency_now' => $this->paceConsistencyNow,
             'pace_consistency_then' => $this->paceConsistencyThen,
+            'verdict_metric' => $this->verdictMetric,
+            'pace_relation' => $this->paceRelation,
+            'hr_relation' => $this->hrRelation,
         ];
     }
 }

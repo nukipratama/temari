@@ -2,18 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import type {
     ComparableRun,
+    ComparisonMetric,
+    PaceRelation,
     PastYouComparison,
     PastYouTrend,
     TrendDirection,
 } from '@/types/inertia';
 
-import {
-    decidingMetric,
-    evidenceRows,
-    verdictHeadline,
-    verdictMetric,
-    verdictSupport,
-} from './verdict';
+import { evidenceRows, verdictHeadline, verdictSupport } from './verdict';
 
 function run(
     activityId: number,
@@ -40,8 +36,12 @@ function comparison({
     currentHr = 152,
     pastHr = 158,
     pastDate = '2026-03-14',
+    metric = 'pace',
+    paceRelation = 'faster',
 }: Partial<{
     direction: TrendDirection;
+    metric: ComparisonMetric;
+    paceRelation: PaceRelation;
     paceDelta: number;
     hrDelta: number | null;
     activityId: number;
@@ -51,6 +51,8 @@ function comparison({
 }> = {}): PastYouComparison {
     return {
         direction,
+        metric,
+        pace_relation: paceRelation,
         days_apart: 120,
         similarity: 0.9,
         pace_delta_sec: paceDelta,
@@ -81,51 +83,27 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
         fitness_delta_ctl: 2.4,
         pace_consistency_now: null,
         pace_consistency_then: null,
+        verdict_metric: 'pace',
+        pace_relation: 'faster',
+        hr_relation: 'lower',
         ...overrides,
     };
 }
 
-describe('decidingMetric', () => {
-    it('lets pace decide once the gap clears the noise band', () => {
-        expect(decidingMetric(comparison({ paceDelta: 12 }))).toBe('pace');
-        expect(decidingMetric(comparison({ paceDelta: -9 }))).toBe('pace');
-    });
-
-    it('falls to heart rate only when pace came back flat', () => {
-        expect(decidingMetric(comparison({ paceDelta: 1, hrDelta: -7 }))).toBe(
-            'hr',
-        );
-    });
-
-    it('stays on pace when the flat pair has no heart rate on both sides', () => {
-        expect(
-            decidingMetric(
-                comparison({ paceDelta: 1, hrDelta: null, pastHr: null }),
-            ),
-        ).toBe('pace');
-    });
-
-    it('stays on pace when both readings sit inside the noise band', () => {
-        expect(decidingMetric(comparison({ paceDelta: 2, hrDelta: -1 }))).toBe(
-            'pace',
-        );
-    });
-});
-
 describe('evidenceRows', () => {
-    it('shows the pace pair before and after, with the delta signed by direction', () => {
+    it('shows pace and heart rate for both runs, with a pace row signed by direction', () => {
         const [row] = evidenceRows(
             trend({ comparisons: [comparison({ paceDelta: 12 })] }),
         );
 
         expect(row.metric).toBe('pace');
-        expect(row.then).toBe('7:12');
-        expect(row.now).toBe('7:00');
+        expect(row.pace).toEqual({ then: '7:12', now: '7:00' });
+        expect(row.hr).toEqual({ then: '158', now: '152' });
         expect(row.delta).toBe('-12 s/km');
-        expect(row.label).toBe('8.2 km · pace vs mar 14');
+        expect(row.label).toBe('8.2 km vs mar 14');
     });
 
-    it('marks a slower pair with a positive delta', () => {
+    it('marks a slower pace pair with a positive delta', () => {
         const [row] = evidenceRows(
             trend({
                 comparisons: [
@@ -138,18 +116,47 @@ describe('evidenceRows', () => {
         expect(row.direction).toBe('worse');
     });
 
-    it('shows heart rate instead when that is what decided the row', () => {
-        const [row] = evidenceRows(
+    it('states an efficiency call in words, never as a number or a percentage', () => {
+        const [better, worse] = evidenceRows(
             trend({
-                comparisons: [comparison({ paceDelta: 1, hrDelta: -7 })],
+                comparisons: [
+                    comparison({ metric: 'ef', paceDelta: 1, hrDelta: -7 }),
+                    comparison({
+                        metric: 'ef',
+                        direction: 'worse',
+                        activityId: 3,
+                        paceDelta: -1,
+                        hrDelta: 7,
+                    }),
+                ],
             }),
         );
 
-        expect(row.metric).toBe('hr');
-        expect(row.then).toBe('158');
-        expect(row.now).toBe('152');
-        expect(row.delta).toBe('-7 bpm');
-        expect(row.label).toBe('8.2 km · avg HR vs mar 14');
+        expect(better.metric).toBe('ef');
+        expect(better.delta).toBe('less work');
+        expect(worse.delta).toBe('more work');
+        expect(`${better.delta}${worse.delta}`).not.toMatch(/\d|%/);
+    });
+
+    it('never says less work on a pair decided on pace', () => {
+        const [row] = evidenceRows(
+            trend({
+                comparisons: [comparison({ metric: 'pace', paceDelta: 12 })],
+            }),
+        );
+
+        expect(row.delta).not.toBe('less work');
+    });
+
+    it('leaves heart rate off a row where either run has none', () => {
+        const [row] = evidenceRows(
+            trend({
+                comparisons: [comparison({ hrDelta: null, pastHr: null })],
+            }),
+        );
+
+        expect(row.hr).toBeNull();
+        expect(row.pace).toEqual({ then: '7:12', now: '7:00' });
     });
 
     it('reads a flat pair as holding rather than a noisy number', () => {
@@ -166,28 +173,6 @@ describe('evidenceRows', () => {
 
     it('renders one row per matched pair', () => {
         expect(evidenceRows(trend())).toHaveLength(4);
-    });
-});
-
-describe('verdictMetric', () => {
-    it('reads pace when the mean cleared the noise band', () => {
-        expect(verdictMetric(trend({ mean_pace_delta_sec: 10 }))).toBe('pace');
-    });
-
-    it('reads heart rate when the mean pace came back flat', () => {
-        expect(
-            verdictMetric(
-                trend({ mean_pace_delta_sec: 1, mean_hr_delta_bpm: -6 }),
-            ),
-        ).toBe('hr');
-    });
-
-    it('reads pace when neither mean is a signal', () => {
-        expect(
-            verdictMetric(
-                trend({ mean_pace_delta_sec: 1, mean_hr_delta_bpm: -1 }),
-            ),
-        ).toBe('pace');
     });
 });
 
@@ -267,15 +252,111 @@ describe('verdictHeadline', () => {
         ).toBe("you're faster than you were.");
     });
 
-    it('credits the heart rate when pace held but effort dropped', () => {
+    it('credits a faster pace at the same heart rate when every pair was decided on efficiency', () => {
         expect(
             verdictHeadline(
                 trend({
+                    verdict_metric: 'ef',
+                    pace_relation: 'faster',
+                    hr_relation: 'same',
+                }),
+            ),
+        ).toBe("you're faster at the same heart rate than in march.");
+    });
+
+    it('drops the same-heart-rate claim when the window heart rate moved beyond its band', () => {
+        for (const hrRelation of ['higher', 'lower', null] as const) {
+            expect(
+                verdictHeadline(
+                    trend({
+                        verdict_metric: 'ef',
+                        pace_relation: 'faster',
+                        hr_relation: hrRelation,
+                    }),
+                ),
+            ).toBe("you're running better than you were in march.");
+        }
+    });
+
+    it('credits a lower heart rate when efficiency improved and pace held', () => {
+        expect(
+            verdictHeadline(
+                trend({
+                    verdict_metric: 'ef',
+                    pace_relation: 'same',
                     mean_pace_delta_sec: 1,
                     mean_hr_delta_bpm: -6,
                 }),
             ),
-        ).toBe('same pace, less work to hold it.');
+        ).toBe('same pace, lower heart rate.');
+    });
+
+    it('keeps efficiency wording off a window that mixed efficiency and pace pairs', () => {
+        expect(
+            verdictHeadline(
+                trend({ verdict_metric: 'mixed', pace_relation: 'same' }),
+            ),
+        ).toBe("you're running better than you were in march.");
+    });
+
+    it('falls back to neutral wording when efficiency improved on a slower pace', () => {
+        expect(
+            verdictHeadline(
+                trend({ verdict_metric: 'ef', pace_relation: 'slower' }),
+            ),
+        ).toBe("you're running better than you were in march.");
+    });
+
+    it('names a plateau where most flat pairs got faster at a higher heart rate', () => {
+        const costly = (activityId: number) =>
+            comparison({
+                direction: 'flat',
+                metric: 'ef',
+                activityId,
+                currentHr: 162,
+                pastHr: 152,
+            });
+
+        expect(
+            verdictHeadline(
+                trend({
+                    verdict: 'plateaued',
+                    verdict_metric: 'ef',
+                    comparisons: [
+                        costly(2),
+                        costly(3),
+                        comparison({
+                            direction: 'flat',
+                            metric: 'ef',
+                            activityId: 4,
+                            paceRelation: 'same',
+                        }),
+                    ],
+                }),
+            ),
+        ).toBe('faster, but it cost more heart rate.');
+    });
+
+    it('keeps the holding headline when only half the flat pairs paid in heart rate', () => {
+        expect(
+            verdictHeadline(
+                trend({
+                    verdict: 'plateaued',
+                    comparisons: [
+                        comparison({
+                            direction: 'flat',
+                            currentHr: 162,
+                            pastHr: 152,
+                        }),
+                        comparison({
+                            direction: 'flat',
+                            activityId: 3,
+                            paceRelation: 'same',
+                        }),
+                    ],
+                }),
+            ),
+        ).toBe("you're holding where you were in march.");
     });
 
     it('says a losing result plainly', () => {
@@ -351,7 +432,7 @@ describe('verdictHeadline', () => {
 describe('verdictSupport', () => {
     it('backs the call with the aggregate and how many pairs it came from', () => {
         expect(verdictSupport(trend())).toBe(
-            '3 of 4 matched runs better, 1 flat; average pace was 10.0 s/km faster.',
+            '3 of 4 matched runs better, 1 flat; average pace was 10.0 s/km faster, average HR was 5.0 bpm lower.',
         );
     });
 
@@ -383,11 +464,11 @@ describe('verdictSupport', () => {
                 }),
             ),
         ).toBe(
-            '3 of 4 matched runs worse, 1 flat; average pace was 9.2 s/km slower.',
+            '3 of 4 matched runs worse, 1 flat; average pace was 9.2 s/km slower, average HR was 5.0 bpm lower.',
         );
     });
 
-    it('reports the heart-rate aggregate when that carried the verdict', () => {
+    it('reports both averages whichever metric carried the verdict', () => {
         expect(
             verdictSupport(
                 trend({
@@ -415,7 +496,7 @@ describe('verdictSupport', () => {
                 }),
             ),
         ).toBe(
-            '3 of 4 matched runs better, 1 flat; average HR was 5.4 bpm lower.',
+            '3 of 4 matched runs better, 1 flat; average pace was 1.0 s/km faster, average HR was 5.4 bpm lower.',
         );
     });
 
