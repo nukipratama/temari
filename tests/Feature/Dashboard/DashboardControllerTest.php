@@ -338,6 +338,7 @@ function briefingOnlyHeaders(object $actingAs): array
 // The week is pinned, so the readiness clamp stays out of it; the clamped day
 // is budgeted by the test below.
 it('paints Home inside its query budget', function (): void {
+    Carbon::setTestNow('2026-09-09 09:00:00');
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['completed_at' => null]);
     foreach (range(1, 6) as $daysAgo) {
@@ -349,7 +350,7 @@ it('paints Home inside its query budget', function (): void {
         ]);
     }
     WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->subWeek()->toDateString(),
+        'week_ending' => Carbon::today()->startOfWeek(Carbon::MONDAY)->subDay()->toDateString(),
     ]);
     foreach (range(0, 6) as $offset) {
         PlannedSession::factory()->for($user)->create([
@@ -368,7 +369,12 @@ it('paints Home inside its query budget', function (): void {
 
     $this->actingAs($user)->get('/')->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(16);
+    // 17: was 16 against a fixture whose week_ending was never a real Sunday, so
+    // BriefingContext::lastWeekToDate() always took its early-exit branch. The
+    // fixture now carries the real previous Sunday, so that branch's read runs.
+    expect($queries)->toBeLessThanOrEqual(17);
+
+    Carbon::setTestNow();
 });
 
 // clampVoiceFor used to be an argument inside the per-day `->map()`, so a day

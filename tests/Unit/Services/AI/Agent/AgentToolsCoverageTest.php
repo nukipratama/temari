@@ -1300,8 +1300,12 @@ it('prefers the scored distance once the scorer has written one', function (): v
  */
 it('targets each day at the pace its session type calls for', function (): void {
     $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
     $monday = Carbon::parse('2026-09-07');
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1200,
+        'set_at' => $monday->copy()->subYear(),
+    ]);
     foreach ([SessionType::Easy, SessionType::Tempo, SessionType::Rest] as $offset => $type) {
         PlannedSession::factory()->for($user)->create([
             'date' => $monday->copy()->addDays($offset)->toDateString(),
