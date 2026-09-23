@@ -133,6 +133,49 @@ it('reads the weekly snapshots once and shows this week\'s', function (): void {
     expect($snapshotReads)->toHaveCount(1);
 });
 
+// Vibe, the briefing and the readiness clamp each ask TrainingLoad::summary()
+// for the same user/date/window; the scoped memo (AppServiceProvider) must
+// collapse the 365-day daily scan to one read, for a no-run athlete's null
+// summary too.
+it('reads the training-load daily scan once per request for a no-run athlete', function (): void {
+    $user = User::factory()->create();
+
+    $scans = 0;
+    DB::listen(function (QueryExecuted $query) use (&$scans): void {
+        if (str_contains($query->sql, 'trimp_sum')) {
+            $scans++;
+        }
+    });
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->component('Home'));
+
+    expect($scans)->toBe(1);
+});
+
+it('reads the training-load daily scan once per request for an athlete with history', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'trimp_edwards' => 80.0,
+        'start_date_local' => Carbon::now(),
+    ]);
+
+    $scans = 0;
+    DB::listen(function (QueryExecuted $query) use (&$scans): void {
+        if (str_contains($query->sql, 'trimp_sum')) {
+            $scans++;
+        }
+    });
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->component('Home'));
+
+    expect($scans)->toBe(1);
+});
+
 it('does not ship the unused trendAnalysis or weeklyRecap props', function (): void {
     $user = User::factory()->create();
 

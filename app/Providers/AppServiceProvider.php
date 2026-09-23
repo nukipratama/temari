@@ -47,6 +47,7 @@ use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Actions\Run\Story\ResolveLastRunStartAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
+use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
@@ -105,6 +106,10 @@ class AppServiceProvider extends ServiceProvider
         // window the week builder loads is re-queried by SessionMatcher.
         $this->app->scoped(ResolveLastRunStartAction::class);
         $this->app->scoped(ResolvePlannedSessionsAction::class);
+
+        // Scoped so Vibe, the readiness clamp and the briefing share one
+        // `TrainingLoad::summary` memo instead of re-scanning per collaborator.
+        $this->app->scoped(TrainingLoad::class);
     }
 
     public function boot(): void

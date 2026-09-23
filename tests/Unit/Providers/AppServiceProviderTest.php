@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
+use App\Services\Run\Metrics\TrainingLoad;
 use App\Support\Config\AppConfig;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -130,4 +131,13 @@ it('binds AppConfig as scoped, not a cross-request singleton', function (): void
 
     expect(app(AppConfig::class))->not->toBe($first)
         ->and(app(AppConfig::class))->toBe(app(AppConfig::class));
+});
+
+it('binds TrainingLoad as scoped, not a cross-request singleton', function (): void {
+    $first = app(TrainingLoad::class);
+
+    app()->forgetScopedInstances();
+
+    expect(app(TrainingLoad::class))->not->toBe($first)
+        ->and(app(TrainingLoad::class))->toBe(app(TrainingLoad::class));
 });

@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\DB;
 
 class TrainingLoad
 {
+    /** @var array<string, array<string, mixed>|null> */
+    private array $summaryMemo = [];
+
     /** Time constants (days) for the EWMA decay. */
     private const int ATL_TAU = 7;
 
@@ -59,7 +62,11 @@ class TrainingLoad
         $today = ($asOf ?? Carbon::today())->copy()->startOfDay();
         $cacheKey = "training-load:{$user->id}:{$today->toDateString()}:{$windowDays}";
 
-        return Cache::remember($cacheKey, self::SUMMARY_CACHE_SECONDS, function () use ($user, $today, $windowDays): ?array {
+        if (array_key_exists($cacheKey, $this->summaryMemo)) {
+            return $this->summaryMemo[$cacheKey];
+        }
+
+        return $this->summaryMemo[$cacheKey] = Cache::remember($cacheKey, self::SUMMARY_CACHE_SECONDS, function () use ($user, $today, $windowDays): ?array {
             ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->loadDailyHistory($user, $today);
             if ($dailyTrimp === []) {
                 return null;
@@ -148,7 +155,11 @@ class TrainingLoad
     public static function clearSummaryCache(User $user, int $windowDays = 7): void
     {
         $today = Carbon::today()->toDateString();
-        Cache::forget("training-load:{$user->id}:{$today}:{$windowDays}");
+        $cacheKey = "training-load:{$user->id}:{$today}:{$windowDays}";
+        Cache::forget($cacheKey);
+
+        $instance = app(self::class);
+        unset($instance->summaryMemo[$cacheKey]);
     }
 
     /**
