@@ -127,11 +127,12 @@ final class WeekPlanBuilder
         $qualityPool = self::awayFromLongRun($nonLongOffsets, $longOffset);
         $qualityPool = array_values(array_filter(
             $qualityPool,
-            static function (int $offset) use ($weekStart, $pinnedDates, $notBefore): bool {
+            static function (int $offset) use ($weekStart, $pinnedDates, $notBefore, $raceDate): bool {
                 $day = $weekStart->copy()->addDays($offset);
 
                 return ! isset($pinnedDates[$day->toDateString()])
-                    && ($notBefore === null || ! $day->lt($notBefore));
+                    && ($notBefore === null || ! $day->lt($notBefore))
+                    && self::raceWeekType($day, $raceDate) === null;
             },
         ));
 
@@ -311,9 +312,7 @@ final class WeekPlanBuilder
 
     public static function longRunRecoveryDays(int $sessionOffset, int $longOffset): int
     {
-        return $sessionOffset < $longOffset
-            ? min($sessionOffset - $longOffset + 7, $longOffset - $sessionOffset)
-            : min($sessionOffset - $longOffset, $longOffset + 7 - $sessionOffset);
+        return self::circularDayDistance($sessionOffset, $longOffset);
     }
 
     /**

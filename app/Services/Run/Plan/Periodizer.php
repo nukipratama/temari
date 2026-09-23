@@ -333,7 +333,9 @@ final readonly class Periodizer
     private static function capQualityAroundRacePaceLong(array $rows): array
     {
         $longDate = array_find_key($rows, static fn (array $row): bool =>
-            $row['session_type'] === SessionType::Long && $row['prescribed_hard_minutes'] > 0);
+            $row['session_type'] === SessionType::Long
+            && $row['prescribed_pace_band'] === PaceBand::Marathon
+            && $row['prescribed_hard_minutes'] > 0);
         if ($longDate === null) {
             return $rows;
         }

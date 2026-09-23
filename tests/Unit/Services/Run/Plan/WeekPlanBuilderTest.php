@@ -412,6 +412,16 @@ it('makes race day the race, and rests the day before it', function (): void {
         ->and($rows[$raceDate->copy()->subDay()->toDateString()]['session_type'])->toBe(SessionType::Rest);
 });
 
+it('keeps an eligible quality day when race day would rank later', function (): void {
+    $raceDate = $this->monday->copy()->addDays(3);
+    $tuesday = $this->monday->copy()->addDay()->toDateString();
+
+    $rows = $this->builder->build($this->monday, PlanPhase::Taper, 4, [], 21_097.0, false, raceDate: $raceDate);
+
+    expect($rows[$tuesday]['session_type'])->toBe(SessionType::Tempo)
+        ->and($rows[$raceDate->toDateString()]['session_type'])->toBe(SessionType::Race);
+});
+
 it('trains nothing after race day, so a Sunday marathon gets no long run the day before it', function (): void {
     $raceDate = $this->monday->copy()->addDays(6);
 
