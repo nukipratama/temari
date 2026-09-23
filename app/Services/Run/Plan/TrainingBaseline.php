@@ -54,7 +54,7 @@ use App\Actions\Run\Plan\ResolveSeasonAction;
  * numbers regardless of what they claim; real behavior still wins the
  * moment any exists.
  */
-final readonly class TrainingBaseline
+final class TrainingBaseline
 {
     private const int TRAILING_WEEKS = 6;
 
@@ -174,17 +174,37 @@ final readonly class TrainingBaseline
     private const int VOLUME_FLOOR_WEEKS = 12;
 
     public function __construct(
-        private VdotEstimator $vdotEstimator,
-        private TrainingPaceCalculator $paceCalculator,
-        private PhaseSchedule $phaseSchedule,
-        private ResolveActiveRaceAction $activeRace,
-        private ResolveTrainingPreferenceAction $trainingPreference,
-        private ResolveTrailingWeeksAction $weeklySnapshots,
-        private ResolveRecentLongestRunAction $recentLongestRun,
-        private ResolveSeasonAction $season,
-        private WeekPlanBuilder $weekPlanBuilder,
+        private readonly VdotEstimator $vdotEstimator,
+        private readonly TrainingPaceCalculator $paceCalculator,
+        private readonly PhaseSchedule $phaseSchedule,
+        private readonly ResolveActiveRaceAction $activeRace,
+        private readonly ResolveTrainingPreferenceAction $trainingPreference,
+        private readonly ResolveTrailingWeeksAction $weeklySnapshots,
+        private readonly ResolveRecentLongestRunAction $recentLongestRun,
+        private readonly ResolveSeasonAction $season,
+        private readonly WeekPlanBuilder $weekPlanBuilder,
     ) {
     }
+
+    /**
+     * The race block's weeks, keyed on every input {@see self::buildBlock()}
+     * reads. Bound `scoped()` in AppServiceProvider so the memo survives
+     * across the season summary, compliance scoring and plan render entry
+     * points within one request.
+     *
+     * @var array<string, list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>>
+     */
+    private array $blockMemo = [];
+
+    /**
+     * The block's volume floor, keyed on the block key plus the season's
+     * `volume_floor_km` and `sessionsPerWeek` — the only other inputs
+     * {@see self::computeVolumeFloorKm()} reads, since that alone decides how
+     * {@see WeekPlanBuilder} lays each week out.
+     *
+     * @var array<string, float>
+     */
+    private array $volumeFloorMemo = [];
 
     /**
      * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}
@@ -365,6 +385,26 @@ final readonly class TrainingBaseline
      */
     private function block(RaceGoal $race, Season $season): array
     {
+        $key = self::blockKey($race, $season);
+
+        return $this->blockMemo[$key] ??= $this->buildBlock($race, $season);
+    }
+
+    private static function blockKey(RaceGoal $race, Season $season): string
+    {
+        return implode('|', [
+            $race->id,
+            $race->race_date->toDateString(),
+            $race->distance_m,
+            $season->id,
+            $season->starts_at->toDateString(),
+            $season->increases_held ? '1' : '0',
+        ]);
+    }
+
+    /** @return list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}> */
+    private function buildBlock(RaceGoal $race, Season $season): array
+    {
         $weeks = $this->phaseSchedule->forRace($season->starts_at, $race->race_date, (float) $race->distance_m);
         $zones = array_column($weeks, 'zone');
         $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), $season->increases_held, $zones);
@@ -428,6 +468,14 @@ final readonly class TrainingBaseline
      * @param  list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>  $block
      */
     private function volumeFloorKm(RaceGoal $race, array $block, Season $season, int $sessionsPerWeek): float
+    {
+        $key = self::blockKey($race, $season).'|'.($season->volume_floor_km ?? 'null').'|'.$sessionsPerWeek;
+
+        return $this->volumeFloorMemo[$key] ??= $this->computeVolumeFloorKm($race, $block, $season, $sessionsPerWeek);
+    }
+
+    /** @param  list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>  $block */
+    private function computeVolumeFloorKm(RaceGoal $race, array $block, Season $season, int $sessionsPerWeek): float
     {
         $floorKm = $season->volume_floor_km;
         if ($season->increases_held) {
