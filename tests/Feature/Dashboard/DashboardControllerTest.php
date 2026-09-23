@@ -8,6 +8,7 @@ use App\Models\RaceGoal;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\Season;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisStatus;
@@ -425,3 +426,53 @@ it('ships the current week snapshot once the open week has one', function (): vo
             ->where('snapshot.week_ending', '2026-05-17')
             ->where('snapshot.distance_km', 12));
 });
+
+// The budget above is one shallow athlete. This holds the count flat as the
+// history behind the athlete grows, so a per-day or per-week read cannot hide
+// under it until a long season makes it expensive.
+it('keeps Home\'s query count flat as training history deepens', function (): void {
+    expect(steadyHomeQueries($this, homeHistoryFixture(12)))
+        ->toBeLessThanOrEqual(steadyHomeQueries($this, homeHistoryFixture(1)));
+});
+
+function homeHistoryFixture(int $weeks): User
+{
+    $user = User::factory()->create();
+    $thisWeek = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    RaceGoal::factory()->for($user)->create(['race_date' => $thisWeek->copy()->addWeeks(8), 'completed_at' => null]);
+    Season::factory()->for($user)->create(['starts_at' => $thisWeek->copy()->subWeeks($weeks), 'ends_at' => $thisWeek->copy()->addWeeks(8)]);
+
+    foreach (range(1, $weeks) as $weeksAgo) {
+        $weekStart = $thisWeek->copy()->subWeeks($weeksAgo);
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->toDateString()]);
+        foreach (range(0, 6) as $offset) {
+            $date = $weekStart->copy()->addDays($offset);
+            PlannedSession::factory()->for($user)->scored()->create([
+                'date' => $date->toDateString(),
+                'session_type' => $offset === 5 ? SessionType::Long : SessionType::Easy,
+            ]);
+            $activity = Activity::factory()->for($user)->analyzed()->create();
+            ActivityDetail::factory()->for($activity)->create(['start_date_local' => $date->copy()->setHour(6), 'distance' => 8000.0]);
+        }
+    }
+
+    foreach (range(0, 6) as $offset) {
+        PlannedSession::factory()->for($user)->pinned()->create(['date' => $thisWeek->copy()->addDays($offset)->toDateString()]);
+    }
+
+    return $user;
+}
+
+function steadyHomeQueries(object $test, User $user): int
+{
+    $test->actingAs($user)->get('/')->assertSuccessful();
+    app()->forgetScopedInstances();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+    $test->actingAs($user)->get('/')->assertSuccessful();
+
+    return $queries;
+}
