@@ -80,13 +80,13 @@ it('queues a Strava webhook event during maintenance and processes it only once 
     expect(DB::table('jobs')->count())->toBe(1);
 
     // A real worker: while maintenance is on it pauses instead of popping.
-    $this->artisan('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--memory' => 2048])->assertSuccessful();
+    $this->artisan('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--memory' => 2048, '--sleep' => 0.01])->assertSuccessful();
 
     expect(DB::table('jobs')->count())->toBe(1)
         ->and(Activity::query()->withStubs()->where('strava_external_id', 9001)->exists())->toBeTrue();
 
     $this->artisan('up')->assertSuccessful();
-    $this->artisan('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--memory' => 2048])->assertSuccessful();
+    $this->artisan('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--memory' => 2048, '--sleep' => 0.01])->assertSuccessful();
 
     expect(DB::table('jobs')->count())->toBe(0)
         ->and(Activity::query()->withStubs()->where('strava_external_id', 9001)->exists())->toBeFalse();
