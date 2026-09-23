@@ -1175,6 +1175,42 @@ it('MonthTotalsTool leaves fitness null when the month has no snapshots', functi
     expect($context['fitness'])->toBeNull();
 });
 
+it('MonthTotalsTool resolves a shorter month correctly when the clock sits on the 31st', function (): void {
+    Carbon::setTestNow('2026-10-31');
+    $user = User::factory()->create();
+
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5000.0,
+        'start_date_local' => Carbon::parse('2026-09-01T07:00'),
+    ]);
+
+    $context = new MonthTotalsTool($user, '2026-09')->handle([]);
+
+    expect($context['total_runs'])->toBe(1);
+    expect($context['total_distance_km'])->toBe(5.0);
+
+    Carbon::setTestNow();
+});
+
+it('MonthTotalsTool resolves February correctly when the clock sits on January 31st', function (): void {
+    Carbon::setTestNow('2026-01-31');
+    $user = User::factory()->create();
+
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5000.0,
+        'start_date_local' => Carbon::parse('2026-02-01T07:00'),
+    ]);
+
+    $context = new MonthTotalsTool($user, '2026-02')->handle([]);
+
+    expect($context['total_runs'])->toBe(1);
+    expect($context['total_distance_km'])->toBe(5.0);
+
+    Carbon::setTestNow();
+});
+
 it('MonthlyRecapNarrator feeds prev_narrative when the prior month recap is Done', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done('You were consistent last month.')->create([
@@ -1210,6 +1246,44 @@ it('MonthlyRecapNarrator leaves prev_narrative null on the first month', functio
     $context = monthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
 
     expect($context['prev_narrative'])->toBeNull();
+});
+
+it('MonthlyRecapNarrator finds the correct prior month when the clock sits on the 31st', function (): void {
+    Carbon::setTestNow('2026-01-31');
+    $user = User::factory()->create();
+    Analysis::factory()->done('January was the base build.')->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-01',
+    ]);
+
+    $context = monthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-02');
+
+    expect($context['prev_narrative'])->toBe('January was the base build.');
+
+    Carbon::setTestNow();
+});
+
+it('MonthlyRecapNarrator reads the plan window for a shorter month when the clock sits on the 31st', function (): void {
+    Carbon::setTestNow('2026-10-31');
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-09-01']);
+
+    $client = new ClientFake([
+        fakeAzureToolCallResponse([['name' => 'get_planned_sessions']]),
+        fakeAzureResponse('{"narrative":"x"}'),
+    ]);
+
+    monthlyRecapNarrator(fakeStructuredCaller($client))->generate($user, '2026-09');
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $toolOutputs = array_filter($params['input'], fn (array $item): bool => ($item['type'] ?? null) === 'function_call_output');
+
+        return $toolOutputs !== [] && str_contains((string) reset($toolOutputs)['output'], '2026-09-01');
+    });
+
+    Carbon::setTestNow();
 });
 
 // ── ProfileVoiceNarrator ───────────────────────────────────────────

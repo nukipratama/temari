@@ -664,7 +664,7 @@ final readonly class RuleBasedNarrationFiller
             return "no dated runs found for this month. there's nothing honest to recap yet.";
         }
 
-        $start = Carbon::createFromFormat('Y-m', $month)?->startOfMonth();
+        $start = Carbon::createFromFormat('!Y-m', $month)?->startOfMonth();
         if ($start === null) {
             return "no dated runs found for this month. there's nothing honest to recap yet.";
         }
