@@ -19,10 +19,8 @@ use App\Models\ActivityDetail;
  * poorly comparable pairing.
  *
  * Hard rules: same pace band, distance ±500m absolute, 21 to 365 days apart,
- * and (for {@see bestMatch}) elevation within 15 m/km when both sides know it.
- * Temperature ±3°C additionally gates {@see findMatch}; the trend path uses
- * season instead, because `weather_temp_c` needs the detail pipeline and a
- * summary-state run has to stay a valid candidate.
+ * elevation within 15 m/km when both sides know it, matching planned session
+ * types when both are known, and temperature within 3°C when both are known.
  */
 class PastYouMatcher
 {
@@ -51,6 +49,8 @@ class PastYouMatcher
 
     /** Heart-rate gap at which two runs stop reading as the same kind of session. */
     private const float HR_SATURATION_BPM = 25.0;
+
+    public const float MIN_QUALITY_SCORE = 0.6;
 
     private const float WEIGHT_DISTANCE = 0.30;
 
@@ -247,6 +247,11 @@ class PastYouMatcher
         $bestScore = 0.0;
 
         foreach ($candidates as $candidate) {
+            $quality = $this->quality($current, $candidate);
+            if ($quality === null || $quality < self::MIN_QUALITY_SCORE) {
+                continue;
+            }
+
             $score = $this->similarity($current, $candidate);
             if ($score === null) {
                 continue;
@@ -264,8 +269,8 @@ class PastYouMatcher
     }
 
     /**
-     * How comparable two runs are on 0..1, reading only fields the Strava
-     * summary payload carries. Null when a hard rule rejects the pairing.
+     * Full similarity score used to rank qualifying candidates. Null when a
+     * hard rule rejects the pairing.
      *
      * Pace itself is not scored: the pace band already establishes that the two
      * are the same kind of session, and the pace gap *within* the band is the
@@ -274,6 +279,17 @@ class PastYouMatcher
      * the same reason.
      */
     public function similarity(ComparableRun $current, ComparableRun $past): ?float
+    {
+        return $this->score($current, $past, includeHeartRate: true);
+    }
+
+    /** Non-outcome match quality, excluding heart rate, on a 0..1 scale. */
+    public function quality(ComparableRun $current, ComparableRun $past): ?float
+    {
+        return $this->score($current, $past, includeHeartRate: false);
+    }
+
+    private function score(ComparableRun $current, ComparableRun $past, bool $includeHeartRate): ?float
     {
         $daysApart = $past->daysBefore($current);
         if ($daysApart < self::MIN_GAP_DAYS || $daysApart > self::MAX_GAP_DAYS) {
@@ -289,9 +305,19 @@ class PastYouMatcher
             return null;
         }
 
+        if ($current->plannedSessionType !== null
+            && $past->plannedSessionType !== null
+            && $current->plannedSessionType !== $past->plannedSessionType) {
+            return null;
+        }
+
+        if (! $this->temperaturesMatch($current->weatherTempC, $past->weatherTempC)) {
+            return null;
+        }
+
         $axes = [[self::WEIGHT_DISTANCE, 1.0 - $distanceGap / self::DISTANCE_TOLERANCE_M]];
 
-        if ($current->averageHeartrate !== null && $past->averageHeartrate !== null) {
+        if ($includeHeartRate && $current->averageHeartrate !== null && $past->averageHeartrate !== null) {
             $hrGap = abs($current->averageHeartrate - $past->averageHeartrate);
             $axes[] = [self::WEIGHT_HEARTRATE, max(0.0, 1.0 - $hrGap / self::HR_SATURATION_BPM)];
         }
@@ -337,13 +363,12 @@ class PastYouMatcher
 
     private function isWithinTempTolerance(ActivityDetail $current, ActivityDetail $past): bool
     {
-        // When either side has no weather, skip the temp filter — we'd
-        // rather match without it than throw away a useful comparison.
-        if ($current->weather_temp_c === null || $past->weather_temp_c === null) {
-            return true;
-        }
+        return $this->temperaturesMatch($current->weather_temp_c, $past->weather_temp_c);
+    }
 
-        return abs($current->weather_temp_c - $past->weather_temp_c) <= self::TEMP_TOLERANCE_C;
+    private function temperaturesMatch(?int $current, ?int $past): bool
+    {
+        return $current === null || $past === null || abs($current - $past) <= self::TEMP_TOLERANCE_C;
     }
 
     private function hrDiffBpm(ActivityDetail $current, ActivityDetail $past): ?float

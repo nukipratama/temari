@@ -10,6 +10,7 @@ use App\Enums\PlanPhase;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Services\Run\Story\PastYouTrendBuilder;
 use Database\Factories\PlannedSessionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -105,8 +106,16 @@ class PlannedSession extends Model
             app(ResolvePlannedSessionsAction::class)->forget($row->user_id);
         };
 
-        static::saved($bust);
-        static::deleted($bust);
+        static::saved(static function (PlannedSession $row) use ($bust): void {
+            $bust($row);
+            if ($row->wasRecentlyCreated || $row->wasChanged(['date', 'session_type', 'skipped', 'rest_clamped_at'])) {
+                PastYouTrendBuilder::clearCacheForUserId($row->user_id);
+            }
+        });
+        static::deleted(static function (PlannedSession $row) use ($bust): void {
+            $bust($row);
+            PastYouTrendBuilder::clearCacheForUserId($row->user_id);
+        });
     }
 
     /**

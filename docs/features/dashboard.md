@@ -50,7 +50,7 @@ When `weekPlan` is null the slot draws [NoPlanCard](resources/js/components/home
 
 [VerdictHero](resources/js/components/home/VerdictHero.tsx) sits below the week plan card: a mono eyebrow naming the window, the call itself in Temari's narrated register (lowercase-leaning) as an upright sans accent headline, and the aggregate that backs it. It carries **no mascot and no byline** — the prototype's "you vs past you" block draws neither, and `PS3` removed the ones the shipped page had. Its copy is rule-based, not a narrated block — [verdict.ts](resources/js/lib/verdict.ts) turns the `pastYouTrend` payload into a headline and a supporting line, so the claim costs no tokens and can never contradict the numbers beside it.
 
-Three of the four outcomes render here (`improving` / `plateaued` / `slipped`), each with its own tone: `improving` on the prototype's `icon-accent`, the other two on tones that do not read as a celebration. `plateaued` and `slipped` are stated plainly, once, with the number: a page that only looks good when the news is good would not be keeping score. See [[voice-and-tone]] and [temari-keeps-score-persona](docs/decisions/temari-keeps-score-persona.md).
+All four outcomes render here (`improving` / `plateaued` / `slipped` / `mixed`), each with its own tone: `improving` on the prototype's `icon-accent`, the others on tones that do not read as a celebration. `plateaued`, `slipped` and `mixed` are stated plainly, once, with the evidence split: a page that only looks good when the news is good would not be keeping score. See [[voice-and-tone]] and [temari-keeps-score-persona](docs/decisions/temari-keeps-score-persona.md).
 
 Which reading drives the headline mirrors the server's own precedence in `PastYouTrendBuilder::aggregateDirection` — pace leads, heart rate decides a window whose pace came back flat, so "same pace, less work to hold it" is an improvement rather than a plateau.
 
@@ -62,12 +62,13 @@ A row shows **the metric that actually decided it**, not always pace: `decidingM
 
 ## No verdict yet
 
-The fourth outcome, `not_enough_history`, renders [NoVerdictPanel](resources/js/components/home/NoVerdictPanel.tsx) instead of a headline, so the USP never claims a reading it does not have. It is the `no-past-match` empty state from the brand set, not an error.
+`not_enough_history` renders [NoVerdictPanel](resources/js/components/home/NoVerdictPanel.tsx) instead of a headline, so the USP never claims a reading it does not have. It is the `no-past-match` empty state from the brand set, not an error.
 
-`comparison_count` splits it in two, because one comparable pair is a materially different situation from none:
+`comparison_count` distinguishes no history, a single near miss, and an early read with two pairs:
 
 - **0 pairs** — nothing comparable in the window at all.
 - **1 pair** — a near miss. The single pair is still rendered as evidence, so the runner can see they are one comparable run away from a verdict rather than being told a flat "nothing yet".
+- **2 pairs** — both rows render as an early read, with no verdict: one more comparable run is needed before the card calls a trend.
 
 ## Today's session
 

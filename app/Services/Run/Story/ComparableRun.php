@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace App\Services\Run\Story;
 
 use App\Enums\IngestState;
+use App\Enums\SessionType;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
 use Illuminate\Support\Carbon;
 
 /**
- * A run reduced to the fields `/athlete/activities` already returns, so a run
- * still waiting on lazy detail hydration is a first-class comparison candidate.
- * Nothing here reads streams, splits, TRIMP or weather.
+ * A run reduced to its summary fields plus optional temperature and planned
+ * intent, so a run waiting on lazy hydration remains a comparison candidate.
+ * Nothing here reads streams, splits or TRIMP.
  */
 final readonly class ComparableRun
 {
@@ -25,14 +26,14 @@ final readonly class ComparableRun
         public ?float $averageHeartrate,
         public ?float $elevationGainM,
         public IngestState $ingestState,
+        public ?SessionType $plannedSessionType = null,
+        public ?int $weatherTempC = null,
     ) {
     }
 
     /**
-     * Built from a plain query record — `activity_id`, `start_date_local`,
-     * `distance`, `elapsed_time`, `average_heartrate`, `total_elevation_gain`
-     * and the owning activity's `ingest_state` — so a year of history can be
-     * read without hydrating a model per run.
+     * Built from a plain query record so a year of history can be read without
+     * hydrating a model per run.
      *
      * @param  array<string, mixed>  $row
      */
@@ -56,6 +57,10 @@ final readonly class ComparableRun
             averageHeartrate: isset($row['average_heartrate']) ? (float) $row['average_heartrate'] : null,
             elevationGainM: isset($row['total_elevation_gain']) ? (float) $row['total_elevation_gain'] : null,
             ingestState: IngestState::from((string) $row['ingest_state']),
+            plannedSessionType: is_string($row['planned_session_type'] ?? null)
+                ? SessionType::tryFrom($row['planned_session_type'])
+                : null,
+            weatherTempC: isset($row['weather_temp_c']) ? (int) $row['weather_temp_c'] : null,
         );
     }
 

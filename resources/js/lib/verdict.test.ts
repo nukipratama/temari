@@ -64,10 +64,17 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
     return {
         verdict: 'improving',
         window_days: 42,
-        comparison_count: 2,
+        comparison_count: 4,
         comparisons: [
             comparison({ activityId: 2 }),
             comparison({ activityId: 3, paceDelta: 8, hrDelta: -4 }),
+            comparison({ activityId: 4, paceDelta: 9, hrDelta: -4 }),
+            comparison({
+                direction: 'flat',
+                activityId: 5,
+                paceDelta: 1,
+                hrDelta: -1,
+            }),
         ],
         mean_pace_delta_sec: 10,
         mean_hr_delta_bpm: -5,
@@ -158,7 +165,7 @@ describe('evidenceRows', () => {
     });
 
     it('renders one row per matched pair', () => {
-        expect(evidenceRows(trend())).toHaveLength(2);
+        expect(evidenceRows(trend())).toHaveLength(4);
     });
 });
 
@@ -307,6 +314,22 @@ describe('verdictHeadline', () => {
                 }),
             ),
         ).toBe('one match so far. not a trend yet.');
+
+        expect(
+            verdictHeadline(
+                trend({
+                    verdict: 'not_enough_history',
+                    comparison_count: 2,
+                    comparisons: [comparison(), comparison({ activityId: 3 })],
+                }),
+            ),
+        ).toBe('two comparable runs so far. not a trend yet.');
+    });
+
+    it('names a mixed result without reducing it to a plateau', () => {
+        expect(verdictHeadline(trend({ verdict: 'mixed' }))).toBe(
+            'mixed against comparable past runs.',
+        );
     });
 
     it('drops the month when no pair carries a readable date', () => {
@@ -328,30 +351,116 @@ describe('verdictHeadline', () => {
 describe('verdictSupport', () => {
     it('backs the call with the aggregate and how many pairs it came from', () => {
         expect(verdictSupport(trend())).toBe(
-            '10.0 s/km faster on average, across 2 matched runs.',
+            '3 of 4 matched runs better, 1 flat; average pace was 10.0 s/km faster.',
         );
     });
 
     it('reports a slower mean as slower', () => {
         expect(
             verdictSupport(
-                trend({ verdict: 'slipped', mean_pace_delta_sec: -9.2 }),
+                trend({
+                    verdict: 'slipped',
+                    mean_pace_delta_sec: -9.2,
+                    comparisons: [
+                        comparison({ direction: 'worse', paceDelta: -12 }),
+                        comparison({
+                            direction: 'worse',
+                            activityId: 3,
+                            paceDelta: -12,
+                        }),
+                        comparison({
+                            direction: 'worse',
+                            activityId: 4,
+                            paceDelta: -12,
+                        }),
+                        comparison({
+                            direction: 'flat',
+                            activityId: 5,
+                            paceDelta: -1,
+                            hrDelta: 0,
+                        }),
+                    ],
+                }),
             ),
-        ).toBe('9.2 s/km slower on average, across 2 matched runs.');
+        ).toBe(
+            '3 of 4 matched runs worse, 1 flat; average pace was 9.2 s/km slower.',
+        );
     });
 
     it('reports the heart-rate aggregate when that carried the verdict', () => {
         expect(
             verdictSupport(
-                trend({ mean_pace_delta_sec: 1, mean_hr_delta_bpm: -5.4 }),
+                trend({
+                    comparisons: [
+                        comparison({ paceDelta: 1, hrDelta: -6 }),
+                        comparison({
+                            activityId: 3,
+                            paceDelta: 1,
+                            hrDelta: -6,
+                        }),
+                        comparison({
+                            activityId: 4,
+                            paceDelta: 1,
+                            hrDelta: -6,
+                        }),
+                        comparison({
+                            direction: 'flat',
+                            activityId: 5,
+                            paceDelta: 1,
+                            hrDelta: -1,
+                        }),
+                    ],
+                    mean_pace_delta_sec: 1,
+                    mean_hr_delta_bpm: -5.4,
+                }),
             ),
-        ).toBe('5.4 bpm lower on average, across 2 matched runs.');
+        ).toBe(
+            '3 of 4 matched runs better, 1 flat; average HR was 5.4 bpm lower.',
+        );
     });
 
     it('describes a plateau as a band, not a number', () => {
-        expect(verdictSupport(trend({ verdict: 'plateaued' }))).toBe(
-            'inside a few seconds either way, across 2 matched runs.',
+        expect(
+            verdictSupport(
+                trend({
+                    verdict: 'plateaued',
+                    comparisons: [
+                        comparison(),
+                        comparison({ activityId: 3 }),
+                        comparison({
+                            direction: 'flat',
+                            activityId: 4,
+                            paceDelta: 1,
+                            hrDelta: 0,
+                        }),
+                        comparison({
+                            direction: 'flat',
+                            activityId: 5,
+                            paceDelta: 1,
+                            hrDelta: 0,
+                        }),
+                    ],
+                }),
+            ),
+        ).toBe(
+            '2 of 4 matched runs better, 2 flat; no clear shift across the window.',
         );
+    });
+
+    it('states the better and worse split when evidence is mixed', () => {
+        expect(
+            verdictSupport(
+                trend({
+                    verdict: 'mixed',
+                    comparison_count: 3,
+                    comparisons: [
+                        comparison(),
+                        comparison({ activityId: 3 }),
+                        comparison({ direction: 'worse', activityId: 4 }),
+                    ],
+                }),
+            ),
+        ).toBe('2 better, 1 worse across 3 matched runs.');
     });
 
     it('tells the runner what would earn a verdict', () => {
@@ -366,6 +475,16 @@ describe('verdictSupport', () => {
                 trend({ verdict: 'not_enough_history', comparison_count: 1 }),
             ),
         ).toBe("one more comparable run and I'll call it.");
+
+        expect(
+            verdictSupport(
+                trend({
+                    verdict: 'not_enough_history',
+                    comparison_count: 2,
+                    comparisons: [comparison(), comparison({ activityId: 3 })],
+                }),
+            ),
+        ).toBe("one more comparable run and I'll call the trend.");
     });
 
     it('omits the aggregate when the window shipped no mean', () => {
@@ -376,6 +495,6 @@ describe('verdictSupport', () => {
                     mean_hr_delta_bpm: null,
                 }),
             ),
-        ).toBe('across 2 matched runs.');
+        ).toBe('3 of 4 matched runs better, 1 flat.');
     });
 });

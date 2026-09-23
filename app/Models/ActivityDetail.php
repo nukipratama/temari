@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Actions\Run\Story\ResolveLastRunStartAction;
+use App\Services\Run\Story\PastYouTrendBuilder;
 use App\Services\Run\Metrics\PaceCalculator;
 use Database\Factories\ActivityDetailFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -112,6 +113,17 @@ class ActivityDetail extends Model
 
         static::saved($bust);
         static::deleted($bust);
+
+        static::updated(static function (ActivityDetail $detail): void {
+            if (! $detail->wasChanged('weather_temp_c')) {
+                return;
+            }
+
+            $userId = Activity::withStubs()->whereKey($detail->activity_id)->value('user_id');
+            if ($userId !== null) {
+                PastYouTrendBuilder::clearCacheForUserId((int) $userId);
+            }
+        });
     }
 
     /**
