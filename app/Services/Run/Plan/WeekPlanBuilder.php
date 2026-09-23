@@ -10,8 +10,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * Turns one week's phase + session count into a concrete row per calendar
- * day (Monday-Sunday), skipping any date the caller reports as pinned so the
- * periodizer never overwrites a user-fixed day (see {@see Periodizer}).
+ * day (Monday-Sunday), skipping fixed dates so the periodizer never overwrites
+ * a user-fixed or settled day (see {@see Periodizer}).
  *
  * Only ever decides `session_type` here — no km, pace or segment structure
  * enters generation at all. {@see SegmentGenerator} derives the full
@@ -80,7 +80,7 @@ final class WeekPlanBuilder
     private const int MIN_SESSIONS_FOR_ADDED_QUALITY = 4;
 
     /**
-     * @param  array<string, true>  $pinnedDates  Y-m-d dates already fixed by the user; never assigned a row here
+     * @param  array<string, true>  $fixedDates  Y-m-d dates already fixed or settled; never assigned a row here
      * @param  Carbon  $notBefore  dates earlier than this (a past day within the current week) are skipped too —
      *                             regeneration only ever writes today-forward, so past days stay untouched
      * @param  int  $qualityDelta  the adapter's verdict on this week's quality block: +1 adds a session, -1 drops one
@@ -98,7 +98,7 @@ final class WeekPlanBuilder
         Carbon $weekStart,
         PlanPhase $phase,
         int $sessionsPerWeek,
-        array $pinnedDates,
+        array $fixedDates,
         ?float $raceDistanceM,
         bool $selfScaled,
         ?Carbon $notBefore = null,
@@ -127,13 +127,7 @@ final class WeekPlanBuilder
         $qualityPool = self::awayFromLongRun($nonLongOffsets, $longOffset);
         $qualityPool = array_values(array_filter(
             $qualityPool,
-            static function (int $offset) use ($weekStart, $pinnedDates, $notBefore, $raceDate): bool {
-                $day = $weekStart->copy()->addDays($offset);
-
-                return ! isset($pinnedDates[$day->toDateString()])
-                    && ($notBefore === null || ! $day->lt($notBefore))
-                    && self::raceWeekType($day, $raceDate) === null;
-            },
+            static fn (int $offset): bool => self::raceWeekType($weekStart->copy()->addDays($offset), $raceDate) === null,
         ));
 
         $qualitySlots = self::withQualityDelta(
@@ -148,15 +142,17 @@ final class WeekPlanBuilder
         );
         $selectedQualityOffsets = self::spreadOffsets($qualityPool, count($qualitySlots), $longOffset);
         $qualitySlots = array_slice($qualitySlots, 0, count($selectedQualityOffsets));
-        $qualityOffsets = array_flip($selectedQualityOffsets);
+        $qualityByOffset = [];
+        foreach ($selectedQualityOffsets as $index => $offset) {
+            $qualityByOffset[$offset] = $qualitySlots[$index];
+        }
 
         $rows = [];
-        $qualityIndex = 0;
 
         foreach (range(0, 6) as $offset) {
             $dayDate = $weekStart->copy()->addDays($offset);
             $date = $dayDate->toDateString();
-            if (isset($pinnedDates[$date]) || ($notBefore !== null && $dayDate->lt($notBefore))) {
+            if (isset($fixedDates[$date]) || ($notBefore !== null && $dayDate->lt($notBefore))) {
                 continue;
             }
 
@@ -179,9 +175,8 @@ final class WeekPlanBuilder
                 continue;
             }
 
-            if (isset($qualityOffsets[$offset])) {
-                $rows[$date] = $qualitySlots[$qualityIndex];
-                $qualityIndex++;
+            if (isset($qualityByOffset[$offset])) {
+                $rows[$date] = $qualityByOffset[$offset];
 
                 continue;
             }
@@ -238,8 +233,9 @@ final class WeekPlanBuilder
         return array_values(array_diff($nonLongOffsets, $flanks));
     }
 
-    /** @param list<int> $offsets
-     *  @return list<int>
+    /**
+     * @param list<int> $offsets
+     * @return list<int>
      */
     private static function spreadOffsets(array $offsets, int $count, int $longOffset): array
     {
@@ -310,6 +306,7 @@ final class WeekPlanBuilder
         return min($distance, 7 - $distance);
     }
 
+    /** Circular calendar-day distance between a training day and a Long day. */
     public static function longRunRecoveryDays(int $sessionOffset, int $longOffset): int
     {
         return self::circularDayDistance($sessionOffset, $longOffset);

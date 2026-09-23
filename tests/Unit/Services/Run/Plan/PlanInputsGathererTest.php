@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Enums\ExperienceLevel;
 use App\Enums\IntentVerdict;
+use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
@@ -88,20 +90,55 @@ it('carries the weekdays the athlete chose to run on', function (): void {
         ->and($inputs->sessionsPerWeek)->toBe(4);
 });
 
-it('collects the days the athlete fixed and the days already scored, and nothing behind today', function (): void {
+it('collects fixed current-week prescriptions without making past dates writable', function (): void {
+    Carbon::setTestNow('2026-09-09 08:00:00');
     $user = gathererAthlete();
     $yesterday = Carbon::today()->subDay()->toDateString();
     $tomorrow = Carbon::today()->addDay()->toDateString();
     $inTwoDays = Carbon::today()->addDays(2)->toDateString();
+    $monday = Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString();
 
+    PlannedSession::factory()->for($user)->create([
+        'date' => $monday,
+        'session_type' => SessionType::Tempo,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+    ]);
+    PlannedSession::factory()->for($user)->pinned()->create([
+        'date' => $yesterday,
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 18,
+        'prescribed_pace_band' => PaceBand::Interval,
+    ]);
     PlannedSession::factory()->for($user)->create(['date' => $tomorrow, 'pinned' => true]);
     PlannedSession::factory()->for($user)->create(['date' => $inTwoDays, 'status' => PlannedSessionStatus::Done]);
-    PlannedSession::factory()->for($user)->create(['date' => $yesterday, 'pinned' => true]);
 
     $inputs = $this->gatherer->forUser($user, Carbon::today());
 
     expect(array_keys($inputs->pinnedDates))->toBe([$tomorrow])
-        ->and(array_keys($inputs->settledDates))->toBe([$inTwoDays]);
+        ->and(array_keys($inputs->settledDates))->toBe([$inTwoDays])
+        ->and($inputs->fixedSessions)->toBe([
+            $monday => [
+                'session_type' => SessionType::Tempo,
+                'prescribed_hard_minutes' => 20,
+                'prescribed_pace_band' => PaceBand::Threshold,
+            ],
+            $yesterday => [
+                'session_type' => SessionType::Interval,
+                'prescribed_hard_minutes' => 18,
+                'prescribed_pace_band' => PaceBand::Interval,
+            ],
+            $tomorrow => [
+                'session_type' => SessionType::Easy,
+                'prescribed_hard_minutes' => 0,
+                'prescribed_pace_band' => null,
+            ],
+            $inTwoDays => [
+                'session_type' => SessionType::Easy,
+                'prescribed_hard_minutes' => 0,
+                'prescribed_pace_band' => null,
+            ],
+        ]);
 });
 
 it('states what the adapter decided about the week being planned', function (): void {
