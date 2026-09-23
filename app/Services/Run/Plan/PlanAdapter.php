@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\AdaptationReason;
+use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\ActivityDetail;
@@ -77,13 +78,14 @@ final readonly class PlanAdapter
      * Gathers this athlete's live signals and runs them through
      * {@see self::decide()}.
      *
-     * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int}
+     * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int, stimulus_adherence_pct: int}
      */
     public function forWeek(User $user, Carbon $weekStart, Carbon $today, ?RaceGoal $race): array
     {
         $load = $this->trainingLoad->summary($user, $today);
         $ceiling = ReadinessCeiling::from(BriefingContext::forUser($user, $today, $load)->readinessCeiling);
         $execution = $this->previousWeekExecution($user, $weekStart);
+        $stimulus = $this->previousWeekStimulus($user, $weekStart);
 
         return self::decide(
             $ceiling,
@@ -91,6 +93,8 @@ final readonly class PlanAdapter
             self::floatOrNull($load['strain'] ?? null),
             self::floatOrNull($load['ctl_42d'] ?? null),
             $this->previousWeekAdherencePct($user, $weekStart),
+            $stimulus['adherence_pct'],
+            $stimulus['misses'],
             $execution['ragged'],
             $execution['egregious_easy'],
             $execution['egregious_decoupling'],
@@ -99,12 +103,14 @@ final readonly class PlanAdapter
     }
 
     /**
-     * @param  int  $adherencePct  average of last week's persisted per-day compliance_score (Rest/Planned/Skip days excluded, each day capped at 100 before averaging — an overreached day can't paper over a missed one)
+     * @param  int  $adherencePct  average of last week's persisted per-day distance_score (Rest/Planned/Skip days excluded, each day capped at 100 before averaging — an overreached day can't paper over a missed one)
+     * @param  int  $stimulusAdherencePct  percentage of judgeable key sessions whose stimulus landed
+     * @param  int  $stimulusMisses  judgeable key sessions whose stimulus was missed
      * @param  int  $raggedDays  days last week whose runs came in harder than the day was written for
      * @param  int  $egregiousEasyDays  of those, easy days so far above Z2 that one is the whole verdict
      * @param  int  $egregiousDecouplingDays  of those, quality days so far past the decoupling line that {@see self::EGREGIOUS_DECOUPLING_DAYS_MIN} of them are the verdict
      * @param  float|null  $raceGapRatio  projected finish / goal time; above 1.0 the athlete is behind their goal
-     * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int}
+     * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int, stimulus_adherence_pct: int}
      */
     public static function decide(
         ReadinessCeiling $ceiling,
@@ -112,12 +118,14 @@ final readonly class PlanAdapter
         ?float $strain,
         ?float $ctl,
         int $adherencePct,
+        int $stimulusAdherencePct,
+        int $stimulusMisses,
         int $raggedDays,
         int $egregiousEasyDays,
         int $egregiousDecouplingDays,
         ?float $raceGapRatio,
     ): array {
-        $reason = self::reasonFor($ceiling, $monotony, $strain, $ctl, $adherencePct, $raggedDays, $egregiousEasyDays, $egregiousDecouplingDays, $raceGapRatio);
+        $reason = self::reasonFor($ceiling, $monotony, $strain, $ctl, $adherencePct, $stimulusMisses, $raggedDays, $egregiousEasyDays, $egregiousDecouplingDays, $raceGapRatio);
 
         return [
             'reason' => $reason,
@@ -125,9 +133,11 @@ final readonly class PlanAdapter
             'quality_delta' => match ($reason) {
                 AdaptationReason::BehindRacePace => 1,
                 AdaptationReason::RanTooHard => -1,
+                AdaptationReason::MissedStimulus => self::stimulusNeedsReduction($stimulusMisses) ? -1 : 0,
                 default => 0,
             },
             'adherence_pct' => min(100, max(0, $adherencePct)),
+            'stimulus_adherence_pct' => min(100, max(0, $stimulusAdherencePct)),
         ];
     }
 
@@ -137,6 +147,7 @@ final readonly class PlanAdapter
         ?float $strain,
         ?float $ctl,
         int $adherencePct,
+        int $stimulusMisses,
         int $raggedDays,
         int $egregiousEasyDays,
         int $egregiousDecouplingDays,
@@ -159,6 +170,9 @@ final readonly class PlanAdapter
             || $raggedDays >= self::RAGGED_DAYS_MIN) {
             return AdaptationReason::RanTooHard;
         }
+        if ($stimulusMisses > 0) {
+            return AdaptationReason::MissedStimulus;
+        }
         if ($raceGapRatio === null) {
             return AdaptationReason::Steady;
         }
@@ -168,6 +182,11 @@ final readonly class PlanAdapter
             $raceGapRatio < 1.0 - self::RACE_GAP_MARGIN => AdaptationReason::AheadOfRacePace,
             default => AdaptationReason::Steady,
         };
+    }
+
+    private static function stimulusNeedsReduction(int $misses): bool
+    {
+        return $misses >= 2;
     }
 
     private static function strainIsExcessive(?float $strain, ?float $ctl): bool
@@ -206,6 +225,36 @@ final readonly class PlanAdapter
         }
 
         return (int) round($scores->map(static fn (int $score): int => min(100, $score))->avg() ?? 100.0);
+    }
+
+    /**
+     * Key sessions are the sessions whose intent verdict says whether the
+     * prescribed work landed. Unknown and unscored rows are missing evidence,
+     * not missed work; TooHard still means the stimulus happened and remains
+     * visible to the existing ran-too-hard arm.
+     *
+     * @return array{adherence_pct: int, misses: int, sessions: int}
+     */
+    private function previousWeekStimulus(User $user, Carbon $weekStart): array
+    {
+        [$previousStart, $previousEnd] = self::previousWeekBounds($weekStart);
+        $rows = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$previousStart->toDateString(), $previousEnd->toDateString()])
+            ->whereIn('session_type', [SessionType::Long, SessionType::Tempo, SessionType::Interval])
+            ->whereIn('status', [PlannedSessionStatus::Done, PlannedSessionStatus::Partial, PlannedSessionStatus::Overreached])
+            ->whereIn('intent_verdict', [IntentVerdict::Hit->value, IntentVerdict::Missed->value, IntentVerdict::TooHard->value])
+            ->get(['intent_verdict']);
+
+        $sessions = $rows->count();
+        $misses = $rows->where('intent_verdict', IntentVerdict::Missed->value)->count();
+        $successful = $sessions - $misses;
+
+        return [
+            'adherence_pct' => $sessions === 0 ? 100 : (int) round($successful / $sessions * 100),
+            'misses' => $misses,
+            'sessions' => $sessions,
+        ];
     }
 
     /**

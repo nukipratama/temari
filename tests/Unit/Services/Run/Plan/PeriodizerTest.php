@@ -237,6 +237,40 @@ it('re-records the current week\'s decision on a second regeneration rather than
     expect(PlanAdaptation::query()->where('user_id', $user->id)->count())->toBe(1);
 });
 
+it('skips reconciliation when the current adaptation fingerprint is unchanged', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+    $before = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
+    Carbon::setTestNow('2026-08-10 08:05:00');
+
+    expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
+        ->and($before->fresh()->updated_at->equalTo($before->updated_at))->toBeTrue();
+});
+
+it('reconciles when a settled key-session verdict changes the adaptation fingerprint', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->subWeek()->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Partial,
+        'distance_score' => 100,
+        'compliance_score' => 84,
+        'intent_verdict' => 'missed',
+    ]);
+
+    $changed = $this->periodizer->regenerateIfChanged($user, Carbon::today());
+    $adaptation = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
+
+    expect($changed)->toBeTrue()
+        ->and($adaptation->reason)->toBe(AdaptationReason::MissedStimulus)
+        ->and($adaptation->stimulus_adherence_pct)->toBe(0);
+});
+
 function bindMonotonyDeloadSignals(): void
 {
     $trainingLoad = Mockery::mock(TrainingLoad::class);

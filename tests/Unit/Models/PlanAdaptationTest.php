@@ -27,6 +27,7 @@ it('casts the week, the reason enum, the flag and both integers', function (): v
         'deload' => 1,
         'quality_delta' => '-1',
         'adherence_pct' => '40',
+        'stimulus_adherence_pct' => '25',
     ]);
 
     expect($adaptation->week_start)->toBeInstanceOf(Carbon::class)
@@ -34,7 +35,8 @@ it('casts the week, the reason enum, the flag and both integers', function (): v
         ->and($adaptation->reason)->toBe(AdaptationReason::HighMonotony)
         ->and($adaptation->deload)->toBeTrue()
         ->and($adaptation->quality_delta)->toBe(-1)
-        ->and($adaptation->adherence_pct)->toBe(40);
+        ->and($adaptation->adherence_pct)->toBe(40)
+        ->and($adaptation->stimulus_adherence_pct)->toBe(25);
 });
 
 it('serializes week_start as the naive date, not a UTC-shifted instant', function (): void {

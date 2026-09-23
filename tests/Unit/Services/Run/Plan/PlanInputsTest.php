@@ -40,7 +40,7 @@ function arcInputs(
         sessionsPerWeek: 4,
         runDays: [1, 3, 5, 6],
         longRunDay: 6,
-        adaptation: ['reason' => $reason, 'deload' => $deload, 'quality_delta' => 0, 'adherence_pct' => 100],
+        adaptation: ['reason' => $reason, 'deload' => $deload, 'quality_delta' => 0, 'adherence_pct' => 100, 'stimulus_adherence_pct' => 100],
         pinnedDates: [],
         settledDates: [],
         projectedRaceSeconds: 3_540.0,

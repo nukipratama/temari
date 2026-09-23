@@ -11,6 +11,7 @@ use App\Events\ActivityIngested;
 use App\Events\TrendSnapshotsSettled;
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Listeners\DispatchPostRunAnalysis;
+use App\Listeners\ReconcilePlanAfterActivityIngested;
 use App\Listeners\RefreshTrendReadOnSnapshotsSettled;
 use App\Listeners\RecordScheduledTaskRun;
 use App\Listeners\VerifyDependencies;
@@ -124,6 +125,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Post-ingest AI analysis fan-out runs in its own queued job.
         Event::listen(ActivityIngested::class, DispatchPostRunAnalysis::class);
+        Event::listen(ActivityIngested::class, ReconcilePlanAfterActivityIngested::class);
         Event::listen(TrendSnapshotsSettled::class, RefreshTrendReadOnSnapshotsSettled::class);
 
         // Scheduler heartbeat: record every command's last run for the Pulse card.

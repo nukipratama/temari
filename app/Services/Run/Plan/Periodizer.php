@@ -72,6 +72,29 @@ final readonly class Periodizer
         $this->persist($this->gatherer->forUser($user, $today ?? Carbon::today()));
     }
 
+    public function regenerateIfChanged(User $user, ?Carbon $today = null): bool
+    {
+        $inputs = $this->gatherer->forUser($user, $today ?? Carbon::today());
+        $adaptation = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->where('week_start', $inputs->currentWeekStart()->toDateString())
+            ->first();
+
+        if ($adaptation !== null
+            && $adaptation->reason === $inputs->adaptation['reason']
+            && $adaptation->deload === $inputs->adaptation['deload']
+            && $adaptation->quality_delta === $inputs->adaptation['quality_delta']
+            && $adaptation->adherence_pct === $inputs->adaptation['adherence_pct']
+            && $adaptation->stimulus_adherence_pct === $inputs->adaptation['stimulus_adherence_pct']
+            && $adaptation->increases_held === $inputs->increasesHeld) {
+            return false;
+        }
+
+        $this->persist($inputs);
+
+        return true;
+    }
+
     /**
      * The plan itself: one row per calendar day across the horizon, keyed by
      * Y-m-d. Reads nothing and writes nothing — everything it needs is in
@@ -186,6 +209,7 @@ final readonly class Periodizer
                     'deload' => $inputs->adaptation['deload'],
                     'quality_delta' => $inputs->adaptation['quality_delta'],
                     'adherence_pct' => $inputs->adaptation['adherence_pct'],
+                    'stimulus_adherence_pct' => $inputs->adaptation['stimulus_adherence_pct'],
                     'volume_floor_km' => self::overriddenFloorKm($inputs, $rows),
                     'increases_held' => $inputs->increasesHeld,
                 ],

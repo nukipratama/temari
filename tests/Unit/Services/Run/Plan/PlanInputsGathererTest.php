@@ -107,7 +107,7 @@ it('collects the days the athlete fixed and the days already scored, and nothing
 it('states what the adapter decided about the week being planned', function (): void {
     $inputs = $this->gatherer->forUser(gathererAthlete(), Carbon::today());
 
-    expect($inputs->adaptation)->toHaveKeys(['reason', 'deload', 'quality_delta', 'adherence_pct']);
+    expect($inputs->adaptation)->toHaveKeys(['reason', 'deload', 'quality_delta', 'adherence_pct', 'stimulus_adherence_pct']);
 });
 
 it('uses each historical row race context when finding comparable hard work', function (): void {
