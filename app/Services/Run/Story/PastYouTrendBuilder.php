@@ -362,21 +362,28 @@ class PastYouTrendBuilder
         return PaceConsistency::label(StreamSummary::fromArray($detail->stream_summary)->paceVariabilitySec());
     }
 
-    /** @param  list<float>  $values  never empty at either call site */
+    /**
+     * Kept at 2 decimal places: this feeds threshold comparisons (±1.0 signal
+     * units, the 2%/3% pace and efficiency bands), and {@see self::mean()}'s
+     * 1-decimal rounding is coarse enough to round a sub-threshold value like
+     * 0.97 up to the 1.0 line.
+     *
+     * @param  list<float>  $values  never empty at either call site
+     */
     private function meanOf(array $values): float
     {
-        return $this->mean($values) ?? 0.0;
+        return $this->mean($values, 2) ?? 0.0;
     }
 
     /**
      * @param  list<float>  $values
      */
-    private function mean(array $values): ?float
+    private function mean(array $values, int $precision = 1): ?float
     {
         if ($values === []) {
             return null;
         }
 
-        return round(array_sum($values) / count($values), 1);
+        return round(array_sum($values) / count($values), $precision);
     }
 }

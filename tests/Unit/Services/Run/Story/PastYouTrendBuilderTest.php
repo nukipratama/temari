@@ -448,6 +448,22 @@ it('decides a window without heart rate on pace from a 2% gain', function (?floa
     'heart rate on both sides, efficiency decides' => [155.0, TrendVerdict::Plateaued, 'ef'],
 ]);
 
+it('keeps a window mean just under one threshold at plateaued rather than rounding it up', function (): void {
+    $user = User::factory()->create();
+    foreach ([200, 215, 230] as $daysAgo) {
+        trendRun($user, $daysAgo, 4_400, ['average_heartrate' => null]);
+    }
+    trendRun($user, 3, 4_268, ['average_heartrate' => null]);
+    trendRun($user, 10, 4_268, ['average_heartrate' => null]);
+    trendRun($user, 17, 4_409, ['average_heartrate' => null]);
+
+    $trend = buildTrend($user);
+
+    expect(array_map(fn ($c): string => $c->direction()->value, $trend->comparisons))
+        ->toBe(['better', 'better', 'flat'])
+        ->and($trend->verdict)->toBe(TrendVerdict::Plateaued);
+});
+
 it('averages efficiency pairs and pace-only pairs on one threshold scale', function (): void {
     $user = User::factory()->create();
     foreach ([200, 215, 230] as $daysAgo) {
