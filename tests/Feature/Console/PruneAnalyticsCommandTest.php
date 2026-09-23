@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
 use App\Models\AI\Analysis;
 use App\Models\AI\AnalysisVersion;
 use App\Models\AI\TokenUsage;
 use App\Models\Analytics\DevtoolsAction;
+use App\Models\Analytics\StravaRead;
 use App\Models\Analytics\StravaSyncLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -27,6 +30,15 @@ it('deletes metering, audit and narration-version rows older than 90 days', func
     $recentLog = StravaSyncLog::log(userId: 1, status: 'success');
     $recentLog->update(['synced_at' => Carbon::now()->subDays(89)]);
 
+    $oldRead = StravaRead::query()->create([
+        'read_at' => Carbon::now()->subDays(91), 'source' => StravaReadSource::Webhook,
+        'priority' => StravaReadPriority::Live, 'endpoint' => 'activity_detail', 'http_status' => 200,
+    ]);
+    $recentRead = StravaRead::query()->create([
+        'read_at' => Carbon::now()->subDays(89), 'source' => StravaReadSource::Webhook,
+        'priority' => StravaReadPriority::Live, 'endpoint' => 'activity_detail', 'http_status' => 200,
+    ]);
+
     $analysis = Analysis::factory()->done()->create();
     $oldVersion = AnalysisVersion::factory()->for($analysis)->create(['created_at' => Carbon::now()->subDays(91)]);
     $recentVersion = AnalysisVersion::factory()->for($analysis)->create(['created_at' => Carbon::now()->subDays(89)]);
@@ -44,6 +56,8 @@ it('deletes metering, audit and narration-version rows older than 90 days', func
         ->and(TokenUsage::query()->find($recent->id))->not->toBeNull()
         ->and(StravaSyncLog::query()->find($oldLog->id))->toBeNull()
         ->and(StravaSyncLog::query()->find($recentLog->id))->not->toBeNull()
+        ->and(StravaRead::query()->find($oldRead->id))->toBeNull()
+        ->and(StravaRead::query()->find($recentRead->id))->not->toBeNull()
         ->and(AnalysisVersion::query()->find($oldVersion->id))->toBeNull()
         ->and(AnalysisVersion::query()->find($recentVersion->id))->not->toBeNull()
         ->and(DevtoolsAction::query()->find($oldAction->id))->toBeNull()

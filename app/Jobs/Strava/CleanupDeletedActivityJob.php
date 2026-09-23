@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Strava;
 
+use App\Enums\StravaReadSource;
 use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
@@ -151,7 +152,7 @@ class CleanupDeletedActivityJob implements ShouldQueue
         }
 
         try {
-            $client->get($connection, "/activities/{$this->stravaActivityId}");
+            $client->get($connection, "/activities/{$this->stravaActivityId}", StravaReadSource::Cleanup);
         } catch (RequestException $e) {
             return $e->response->status() === 404;
         } catch (Throwable) {

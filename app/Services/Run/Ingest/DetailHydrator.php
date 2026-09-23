@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Ingest;
 
 use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 
@@ -46,7 +47,7 @@ class DetailHydrator
             return false;
         }
 
-        IngestActivityJob::dispatch($activityId, StravaReadPriority::Background);
+        IngestActivityJob::dispatch($activityId, StravaReadPriority::Background, StravaReadSource::Hydration);
 
         return true;
     }

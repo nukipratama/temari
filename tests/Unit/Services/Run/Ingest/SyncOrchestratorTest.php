@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Mockery\MockInterface;
 use App\Enums\StravaSyncSource;
+use App\Enums\StravaReadSource;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -249,7 +250,9 @@ it('passes the --since lower bound through to the fetcher', function (): void {
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')
         ->once()
-        ->withArgs(fn ($connection, $arg): bool => $arg instanceof CarbonImmutable && $arg->equalTo($since))
+        ->withArgs(fn ($connection, $source, $arg): bool => $source === StravaReadSource::Poll
+            && $arg instanceof CarbonImmutable
+            && $arg->equalTo($since))
         ->andReturn(summaryResult([]));
 
     orchestrator($fetcher)->syncUser($user, $since);

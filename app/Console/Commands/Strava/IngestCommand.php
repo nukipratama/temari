@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Strava;
 
+use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Support\Config\AppConfig;
@@ -41,7 +43,7 @@ class IngestCommand extends Command
         }
 
         foreach ($activities as $activity) {
-            IngestActivityJob::dispatch($activity->id);
+            IngestActivityJob::dispatch($activity->id, StravaReadPriority::Live, StravaReadSource::IngestSweep);
         }
 
         $this->line("Dispatched {$activities->count()} activity ingest job(s).");

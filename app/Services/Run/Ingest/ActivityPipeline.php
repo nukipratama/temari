@@ -8,6 +8,7 @@ use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Actions\Gamification\DetectActivityMilestonesAction;
 use App\Enums\IngestState;
 use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
 use App\Events\ActivityIngested;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
@@ -63,7 +64,7 @@ class ActivityPipeline
     ) {
     }
 
-    public function ingest(Activity $activity, StravaReadPriority $priority = StravaReadPriority::Live): void
+    public function ingest(Activity $activity, StravaReadSource $source = StravaReadSource::IngestSweep, StravaReadPriority $priority = StravaReadPriority::Live): void
     {
         if ($this->stravaIngestDisabled()) {
             return;
@@ -80,7 +81,7 @@ class ActivityPipeline
 
         try {
             $detail = $this->client
-                ->get($connection, "/activities/{$activity->strava_external_id}", priority: $priority)
+                ->get($connection, "/activities/{$activity->strava_external_id}", $source, $priority)
                 ->json();
         } catch (StravaRateLimitedException|StravaCircuitOpenException $e) {
             // Rethrow rather than retry here: IngestActivityJob re-queues with its
@@ -115,7 +116,7 @@ class ActivityPipeline
 
         $detailModel = $this->storeDetail($activity, $detail);
 
-        $streams = $this->fetchStreams($activity, $connection, $priority);
+        $streams = $this->fetchStreams($activity, $connection, $source, $priority);
         if ($streams !== null) {
             $this->storeStreams($activity, $streams);
         }
@@ -265,14 +266,14 @@ class ActivityPipeline
     /**
      * @return array<string, mixed>|null
      */
-    private function fetchStreams(Activity $activity, StravaConnection $connection, StravaReadPriority $priority): ?array
+    private function fetchStreams(Activity $activity, StravaConnection $connection, StravaReadSource $source, StravaReadPriority $priority): ?array
     {
         try {
             $streams = $this->client
-                ->get($connection, "/activities/{$activity->strava_external_id}/streams", [
+                ->get($connection, "/activities/{$activity->strava_external_id}/streams", $source, $priority, [
                     'keys' => 'time,distance,heartrate,cadence,velocity_smooth,altitude,latlng,grade_smooth',
                     'key_by_type' => 'true',
-                ], $priority)
+                ])
                 ->json();
 
             return is_array($streams) ? $streams : null;

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
@@ -20,7 +21,9 @@ it('forwards to the ActivityPipeline for the resolved activity', function (): vo
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldReceive('ingest')
         ->once()
-        ->withArgs(fn (Activity $arg): bool => $arg->is($activity));
+        ->withArgs(fn (Activity $arg, StravaReadSource $source, StravaReadPriority $priority): bool => $arg->is($activity)
+            && $source === StravaReadSource::IngestSweep
+            && $priority === StravaReadPriority::Live);
 
     new IngestActivityJob($activity->id)->handle($pipeline);
 });
@@ -31,7 +34,8 @@ it('hands the pipeline the priority it was dispatched with', function (): void {
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldReceive('ingest')
         ->once()
-        ->withArgs(fn (Activity $arg, StravaReadPriority $priority): bool => $arg->is($activity)
+        ->withArgs(fn (Activity $arg, StravaReadSource $source, StravaReadPriority $priority): bool => $arg->is($activity)
+            && $source === StravaReadSource::IngestSweep
             && $priority === StravaReadPriority::Background);
 
     new IngestActivityJob($activity->id, StravaReadPriority::Background)->handle($pipeline);
@@ -39,6 +43,10 @@ it('hands the pipeline the priority it was dispatched with', function (): void {
 
 it('defaults to live priority so an unqualified dispatch keeps the full budget', function (): void {
     expect(new IngestActivityJob(1)->priority)->toBe(StravaReadPriority::Live);
+});
+
+it('defaults the source for older serialized jobs', function (): void {
+    expect(new IngestActivityJob(1)->source)->toBe(StravaReadSource::IngestSweep);
 });
 
 it('quietly no-ops if the activity has been deleted before the job runs', function (): void {

@@ -54,7 +54,7 @@ it('schedules the failed_jobs retention prune', function (): void {
 });
 
 /**
- * ai_token_usages and strava_sync_logs had no retention at all before this.
+ * analytics metering tables have 90-day retention.
  * Guards that the sweep stays scheduled.
  */
 it('schedules the analytics-connection retention prune', function (): void {

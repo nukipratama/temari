@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Strava;
 
+use App\Enums\StravaReadSource;
 use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
 use Illuminate\Console\Attributes\Description;
@@ -24,7 +25,7 @@ class ResyncActivityCommand extends Command
             return self::FAILURE;
         }
 
-        $pipeline->ingest($activity);
+        $pipeline->ingest($activity, StravaReadSource::Manual);
         $this->info("Activity {$activity->id} re-ingested.");
 
         return self::SUCCESS;

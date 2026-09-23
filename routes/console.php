@@ -146,9 +146,8 @@ $alertOnFailure(Schedule::command('ai:spend-digest')->dailyAt('21:00')->withoutO
 // 7-day derivation vs. MAX_SELF_HEAL_ATTEMPTS: docs/architecture/scheduler.md.
 Schedule::command('queue:prune-failed --hours=168')->dailyAt('02:20')->withoutOverlapping(15)->onOneServer();
 
-// 02:25 daily: prune the analytics-connection metering tables (ai_token_usages,
-// strava_sync_logs), which had no retention at all before this. 90 days keeps
-// enough history for cost/rate-limit triage without unbounded growth.
+// 02:25 daily: prune analytics-connection metering and audit tables. 90 days
+// keeps enough history for cost/rate-limit triage without unbounded growth.
 Schedule::command('analytics:prune')->dailyAt('02:25')->withoutOverlapping(15)->onOneServer();
 
 // Fallback poll behind the Strava webhook. Hourly around the clock rather than

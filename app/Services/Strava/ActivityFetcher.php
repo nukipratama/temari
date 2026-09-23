@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Strava;
 
+use App\Enums\StravaReadSource;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use Carbon\CarbonImmutable;
@@ -44,7 +45,7 @@ class ActivityFetcher
      *
      * @return array{summaries: list<array<string, mixed>>, api_calls: int}
      */
-    public function fetchNewSummaries(StravaConnection $connection, ?CarbonImmutable $since = null): array
+    public function fetchNewSummaries(StravaConnection $connection, StravaReadSource $source, ?CarbonImmutable $since = null): array
     {
         $existing = Activity::query()
             ->withStubs()
@@ -60,7 +61,7 @@ class ActivityFetcher
         $apiCalls = 0;
 
         while (true) {
-            $response = $this->client->get($connection, '/athlete/activities', [
+            $response = $this->client->get($connection, '/athlete/activities', $source, query: [
                 'per_page' => self::PER_PAGE,
                 'page' => $page,
             ]);

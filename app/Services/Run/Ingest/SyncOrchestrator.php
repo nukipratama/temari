@@ -6,6 +6,8 @@ namespace App\Services\Run\Ingest;
 
 use Throwable;
 use App\Enums\IngestState;
+use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
 use App\Enums\StravaSyncSource;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
@@ -57,7 +59,7 @@ class SyncOrchestrator
         }
 
         try {
-            ['summaries' => $summaries, 'api_calls' => $apiCalls] = $this->fetcher->fetchNewSummaries($connection, $since);
+            ['summaries' => $summaries, 'api_calls' => $apiCalls] = $this->fetcher->fetchNewSummaries($connection, StravaReadSource::fromSyncSource($source), $since);
             if ($summaries === []) {
                 $this->logSync($user->id, 'success', 0, $apiCalls, source: $source);
 
@@ -150,7 +152,7 @@ class SyncOrchestrator
                 return false;
             }
 
-            IngestActivityJob::dispatch($activity->id);
+            IngestActivityJob::dispatch($activity->id, StravaReadPriority::Live, StravaReadSource::fromSyncSource($source));
 
             Log::info('strava-sync queued single activity from webhook', [
                 'user_id' => $user->id,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Strava;
 
+use App\Enums\StravaReadSource;
 use App\Enums\StravaSyncSource;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\StravaConnection;
@@ -50,7 +51,7 @@ class VerifyStravaRevocationJob implements ShouldQueue
         }
 
         try {
-            $client->get($connection, '/athlete');
+            $client->get($connection, '/athlete', StravaReadSource::RevocationCheck);
         } catch (StravaConnectionRevokedException|StravaTokenRefreshFailedException) {
             // The stored credentials are genuinely rejected: the athlete really
             // did deauthorize us. Safe to revoke now.

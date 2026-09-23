@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Strava;
 
+use App\Enums\StravaReadSource;
 use App\Models\StravaConnection;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -41,7 +42,7 @@ class ZoneFetcher
         }
 
         try {
-            $response = $this->client->get($connection, '/athlete/zones');
+            $response = $this->client->get($connection, '/athlete/zones', StravaReadSource::Zones);
         } catch (RequestException $e) {
             if ($e->response->status() === 403) {
                 return null;

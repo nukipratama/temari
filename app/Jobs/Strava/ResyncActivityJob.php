@@ -6,6 +6,7 @@ namespace App\Jobs\Strava;
 
 use Throwable;
 use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
 use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
@@ -77,7 +78,7 @@ class ResyncActivityJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $pipeline->ingest($activity);
+        $pipeline->ingest($activity, StravaReadSource::WebhookUpdate);
     }
 
     public function failed(Throwable $exception): void

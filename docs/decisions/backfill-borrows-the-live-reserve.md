@@ -29,7 +29,7 @@ The cost of that idleness lands on exactly the people who can least afford it. A
 
 ## Decision
 
-**The daily bucket reserves a flat floor, not a percentage.** A `Background` read is refused once the daily bucket reaches `2,000 - strava.live_read_floor` = **1,600** attempts ([backgroundCeilings()](app/Services/Strava/StravaClient.php#L345)), where the floor is [config/strava.php](config/strava.php)'s `live_read_floor`, default 400, overridable with `STRAVA_LIVE_READ_FLOOR`.
+**The daily bucket reserves a flat floor, not a percentage.** A `Background` read is refused once the daily bucket reaches `2,000 - strava.live_read_floor` = **1,600** attempts ([backgroundCeilings()](app/Services/Strava/StravaClient.php#L406)), where the floor is [config/strava.php](config/strava.php)'s `live_read_floor`, default 400, overridable with `STRAVA_LIVE_READ_FLOOR`.
 
 Because the ceiling sits on a **shared counter**, this is already the dynamic behaviour: background reads available today = `1,600 - live reads already spent today`. Live traffic near zero and background gets the whole 1,600; a busy live day shrinks background to the leftover, read for read, with no second counter and no per-user key. `Live` still spends the whole 2,000, so background yields first when the pool runs low, exactly as before.
 

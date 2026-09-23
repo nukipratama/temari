@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Strava;
 
 use App\Enums\StravaReadPriority;
+use App\Enums\StravaReadSource;
+use App\Models\Analytics\StravaRead;
 use App\Models\StravaConnection;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
@@ -61,8 +63,9 @@ class StravaClient
     public function get(
         StravaConnection $connection,
         string $path,
-        array $query = [],
+        StravaReadSource $source,
         StravaReadPriority $priority = StravaReadPriority::Live,
+        array $query = [],
     ): Response {
         $breaker = $this->breaker();
         if (! $breaker->allowsRequest()) {
@@ -85,6 +88,8 @@ class StravaClient
 
             throw $e;
         }
+
+        $this->recordRead($response, $source, $priority, $path);
 
         if ($response->status() === 401) {
             // 401 is a per-connection auth problem, not a Strava outage: leave the
@@ -116,6 +121,58 @@ class StravaClient
         $breaker->recordSuccess();
 
         return $response->throw();
+    }
+
+    private function recordRead(Response $response, StravaReadSource $source, StravaReadPriority $priority, string $path): void
+    {
+        [$usage15m, $usageDaily] = $this->readRateLimitUsage($response);
+
+        try {
+            StravaRead::query()->create([
+                'read_at' => now(),
+                'source' => $source,
+                'priority' => $priority,
+                'endpoint' => $this->endpointCategory($path),
+                'http_status' => $response->status(),
+                'usage_15m' => $usage15m,
+                'usage_daily' => $usageDaily,
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('strava read telemetry could not be stored', [
+                'source' => $source->value,
+                'priority' => $priority->value,
+                'endpoint' => $this->endpointCategory($path),
+                'status' => $response->status(),
+                'reason' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * @return array{?int, ?int}
+     */
+    private function readRateLimitUsage(Response $response): array
+    {
+        $header = $response->header('X-ReadRateLimit-Usage');
+        if (preg_match('/^\s*(\d+)\s*,\s*(\d+)\s*$/D', $header, $matches) !== 1) {
+            return [null, null];
+        }
+
+        return [(int) $matches[1], (int) $matches[2]];
+    }
+
+    private function endpointCategory(string $path): string
+    {
+        $path = '/'.ltrim($path, '/');
+
+        return match (true) {
+            $path === '/athlete/activities' => 'activity_list',
+            $path === '/athlete/zones' => 'zones',
+            $path === '/athlete' => 'athlete',
+            preg_match('~^/activities/\d+/streams$~', $path) === 1 => 'activity_streams',
+            preg_match('~^/activities/\d+$~', $path) === 1 => 'activity_detail',
+            default => 'other',
+        };
     }
 
     /**
