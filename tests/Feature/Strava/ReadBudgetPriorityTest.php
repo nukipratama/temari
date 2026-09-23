@@ -14,6 +14,8 @@ use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Run\Ingest\DetailHydrator;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
@@ -97,6 +99,8 @@ function fakeStravaDetailEndpoints(): void
 }
 
 it('lets a freshly-finished run ingest while a browsing fetch queues, with the pool at the reserve floor', function (): void {
+    Carbon::setTestNow('2026-09-08 09:00:00');
+    Bus::fake();
     fakeStravaDetailEndpoints();
 
     // 150 of the 200/15min read pool spent: the reserved quarter is all that's left.
@@ -126,6 +130,8 @@ it('lets a freshly-finished run ingest while a browsing fetch queues, with the p
         (string) $request->url(),
         "/activities/{$archiveRun->strava_external_id}",
     ));
+
+    Carbon::setTestNow();
 });
 
 it('routes opening an old run to the background tier and a webhook push to the live one', function (): void {
