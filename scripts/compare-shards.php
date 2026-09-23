@@ -11,10 +11,10 @@ declare(strict_types=1);
  * (vendor/pestphp/pest/src/Plugins/Shard.php::partitionByTime) so the
  * simulated splits here match what --shard actually does.
  *
- * Decides yes when a class was added or removed, or when the new timings'
- * own 3-shard split still has its slowest shard more than 10% over the mean
- * while sticking with the old split (re-measured on the new timings) would
- * be worse.
+ * Decides yes when a class was added or removed, or when sticking with the
+ * old split (re-measured on the new timings) has its slowest shard more than
+ * 10% over the mean and a fresh 3-shard split of the new timings would
+ * actually improve on that.
  *
  * Usage: php scripts/compare-shards.php --old=<path> --new=<path> [--body-out=<path>]
  * Prints GITHUB_OUTPUT-format lines to stdout: decision, added, removed,
@@ -223,20 +223,24 @@ $newBins = partitionByTime($newClasses, $newTimings, SHARD_TOTAL);
 $newTotals = binTotals($newBins, $newTimings);
 $newExcess = excessPct($newTotals);
 
-// The old map's own split, re-measured against the new timings, restricted
-// to classes that still exist — a class the old map never saw was never
-// assigned by it, so it cannot count toward "the old split".
+// The old map's own split, re-measured against the new timings — what CI
+// actually runs while shards.json stays stale. Removed classes drop out;
+// added classes are appended round-robin, mirroring how Pest's own --shard
+// handling treats classes missing from the timings map.
 $oldBins = partitionByTime($oldClasses, $oldTimings, SHARD_TOTAL);
 $oldBinsSurviving = array_map(
     fn (array $bin): array => array_values(array_intersect($bin, $newClasses)),
     $oldBins,
 );
+foreach ($added as $i => $class) {
+    $oldBinsSurviving[$i % SHARD_TOTAL][] = $class;
+}
 $oldAppliedTotals = binTotals($oldBinsSurviving, $newTimings);
 $oldAppliedExcess = excessPct($oldAppliedTotals);
 
 $classesChanged = $added !== [] || $removed !== [];
-$balanceWorsened = $newExcess > THRESHOLD_PCT && $oldAppliedExcess > $newExcess;
-$decision = $classesChanged || $balanceWorsened;
+$driftImproved = $oldAppliedExcess > THRESHOLD_PCT && $newExcess < $oldAppliedExcess;
+$decision = $classesChanged || $driftImproved;
 
 $summary = $decision
     ? sprintf(

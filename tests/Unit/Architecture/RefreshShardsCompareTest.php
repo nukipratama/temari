@@ -9,8 +9,8 @@ use Symfony\Component\Yaml\Yaml;
  * Exercises scripts/compare-shards.php, the decision guard behind
  * .github/workflows/refresh-shards.yml (docs/decisions/sharded-pr-coverage.md).
  * A class add/remove always decides yes; otherwise it decides yes only when the
- * new timings' own simulated 3-shard split is both over the 10% threshold and
- * better than sticking with the old split.
+ * old split, re-measured on the new timings, is both over the 10% threshold
+ * and worse than a fresh split of the new timings.
  */
 function shardsFixture(array $timings): string
 {
@@ -90,19 +90,40 @@ it('decides yes when a class was removed', function (): void {
         ->and($out['body'])->toContain('Tests\\G');
 });
 
-it('decides no when timings drift but stay within the 10% threshold', function (): void {
-    $out = compareShards(BALANCED_BASE, [...BALANCED_BASE, 'Tests\\A' => 11.0]);
+// The old map's own split ends up as Tests\A+D, Tests\B+E, Tests\C+F once
+// timings tie-break in insertion order (see partitionByTime).
+it('decides yes when a fresh split would rebalance shards the stale one has drifted out of', function (): void {
+    $out = compareShards(BALANCED_BASE, [
+        'Tests\\A' => 11.2, 'Tests\\B' => 10.0, 'Tests\\C' => 8.8,
+        'Tests\\D' => 11.2, 'Tests\\E' => 10.0, 'Tests\\F' => 8.8,
+    ]);
 
-    expect($out['decision'])->toBe('no')
-        ->and((float) $out['new_excess_pct'])->toBeLessThan(10.0);
+    // Under the pre-fix rule this looked at new_excess_pct (0.0, not > 10) and
+    // decided no, even though the stale split is 12% over mean right now.
+    expect($out['decision'])->toBe('yes')
+        ->and((float) $out['old_applied_excess_pct'])->toBe(12.0)
+        ->and((float) $out['new_excess_pct'])->toBe(0.0);
 });
 
-it('decides yes when timings drift enough to unbalance the split past the old one', function (): void {
-    $out = compareShards(BALANCED_BASE, [...BALANCED_BASE, 'Tests\\A' => 100.0]);
+it('decides no when the stale split drifts but stays within the 10% threshold', function (): void {
+    $out = compareShards(BALANCED_BASE, [
+        'Tests\\A' => 10.8, 'Tests\\B' => 10.0, 'Tests\\C' => 9.2,
+        'Tests\\D' => 10.8, 'Tests\\E' => 10.0, 'Tests\\F' => 9.2,
+    ]);
 
-    expect($out['decision'])->toBe('yes')
-        ->and((float) $out['new_excess_pct'])->toBeGreaterThan(10.0)
-        ->and((float) $out['old_applied_excess_pct'])->toBeGreaterThan((float) $out['new_excess_pct']);
+    expect($out['decision'])->toBe('no')
+        ->and((float) $out['old_applied_excess_pct'])->toBe(8.0);
+});
+
+it('decides no when a fresh split would not do any better than the stale one', function (): void {
+    $out = compareShards(
+        ['Tests\\A' => 100.0, 'Tests\\B' => 47.0, 'Tests\\C' => 47.0, 'Tests\\D' => 47.0, 'Tests\\E' => 47.0],
+        ['Tests\\A' => 112.0, 'Tests\\B' => 47.0, 'Tests\\C' => 47.0, 'Tests\\D' => 47.0, 'Tests\\E' => 47.0],
+    );
+
+    expect($out['decision'])->toBe('no')
+        ->and((float) $out['old_applied_excess_pct'])->toBe(12.0)
+        ->and((float) $out['new_excess_pct'])->toBe(12.0);
 });
 
 it('runs the refresh workflow on ubuntu-latest, serially, off the existing nightly crons', function (): void {

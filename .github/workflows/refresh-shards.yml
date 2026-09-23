@@ -110,8 +110,10 @@ jobs:
           git fetch origin chore/refresh-shards || true
           git push --force-with-lease origin chore/refresh-shards
 
-          if gh pr view chore/refresh-shards --json state --jq .state >/dev/null 2>&1; then
-            gh pr edit chore/refresh-shards --body-file /tmp/pr-body.md
+          open_pr=$(gh pr list --head chore/refresh-shards --state open --json number --jq '.[0].number // empty')
+
+          if [ -n "$open_pr" ]; then
+            gh pr edit "$open_pr" --body-file /tmp/pr-body.md
           else
             gh pr create --base main --head chore/refresh-shards \
               --title 'ci(shards): refresh shard timings' \
