@@ -17,6 +17,7 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\PlanAdapter;
+use App\Services\Run\Plan\WeekPlanBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -173,6 +174,28 @@ it('adds a quality session when the projection is behind the goal time', functio
     expect($decision['reason'])->toBe(AdaptationReason::BehindRacePace)
         ->and($decision['quality_delta'])->toBe(1)
         ->and($decision['deload'])->toBeFalse();
+});
+
+it('keeps a six-run week spaced when the projection is behind the goal time', function (): void {
+    $decision = decide(raceGapRatio: 1.08);
+    $rows = new WeekPlanBuilder()->build(
+        Carbon::parse('2026-08-10'),
+        PlanPhase::Build,
+        6,
+        [],
+        10_000.0,
+        false,
+        qualityDelta: $decision['quality_delta'],
+        projectedRaceSeconds: 35 * 60.0,
+    );
+    $qualityWeekdays = array_map(
+        static fn (string $date): int => Carbon::parse($date)->dayOfWeekIso,
+        array_keys(array_filter($rows, static fn (array $row): bool => in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true))),
+    );
+
+    expect($decision['reason'])->toBe(AdaptationReason::BehindRacePace)
+        ->and($decision['quality_delta'])->toBe(1)
+        ->and($qualityWeekdays)->toBe([2, 4]);
 });
 
 it('lets a settled current-week hit release a previous-week quality hold before race feedback', function (): void {

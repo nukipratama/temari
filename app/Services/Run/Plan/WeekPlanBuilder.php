@@ -10,8 +10,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * Turns one week's phase + session count into a concrete row per calendar
- * day (Monday-Sunday), skipping any date the caller reports as pinned so the
- * periodizer never overwrites a user-fixed day (see {@see Periodizer}).
+ * day (Monday-Sunday), skipping fixed dates so the periodizer never overwrites
+ * a user-fixed or settled day (see {@see Periodizer}).
  *
  * Only ever decides `session_type` here — no km, pace or segment structure
  * enters generation at all. {@see SegmentGenerator} derives the full
@@ -80,7 +80,7 @@ final class WeekPlanBuilder
     private const int MIN_SESSIONS_FOR_ADDED_QUALITY = 4;
 
     /**
-     * @param  array<string, true>  $pinnedDates  Y-m-d dates already fixed by the user; never assigned a row here
+     * @param  array<string, true>  $fixedDates  Y-m-d dates already fixed or settled; never assigned a row here
      * @param  Carbon  $notBefore  dates earlier than this (a past day within the current week) are skipped too —
      *                             regeneration only ever writes today-forward, so past days stay untouched
      * @param  int  $qualityDelta  the adapter's verdict on this week's quality block: +1 adds a session, -1 drops one
@@ -98,7 +98,7 @@ final class WeekPlanBuilder
         Carbon $weekStart,
         PlanPhase $phase,
         int $sessionsPerWeek,
-        array $pinnedDates,
+        array $fixedDates,
         ?float $raceDistanceM,
         bool $selfScaled,
         ?Carbon $notBefore = null,
@@ -125,6 +125,10 @@ final class WeekPlanBuilder
         // keeps two hard sessions from landing on consecutive training days.
         $nonLongOffsets = array_values(array_diff($trainingOffsets, [$longOffset]));
         $qualityPool = self::awayFromLongRun($nonLongOffsets, $longOffset);
+        $qualityPool = array_values(array_filter(
+            $qualityPool,
+            static fn (int $offset): bool => self::raceWeekType($weekStart->copy()->addDays($offset), $raceDate) === null,
+        ));
 
         $qualitySlots = self::withQualityDelta(
             $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds, $zone),
@@ -136,15 +140,19 @@ final class WeekPlanBuilder
             $projectedRaceSeconds,
             $zone,
         );
-        $qualityOffsets = array_flip(self::spreadOffsets($qualityPool, count($qualitySlots)));
+        $selectedQualityOffsets = self::spreadOffsets($qualityPool, count($qualitySlots), $longOffset);
+        $qualitySlots = array_slice($qualitySlots, 0, count($selectedQualityOffsets));
+        $qualityByOffset = [];
+        foreach ($selectedQualityOffsets as $index => $offset) {
+            $qualityByOffset[$offset] = $qualitySlots[$index];
+        }
 
         $rows = [];
-        $qualityIndex = 0;
 
         foreach (range(0, 6) as $offset) {
             $dayDate = $weekStart->copy()->addDays($offset);
             $date = $dayDate->toDateString();
-            if (isset($pinnedDates[$date]) || ($notBefore !== null && $dayDate->lt($notBefore))) {
+            if (isset($fixedDates[$date]) || ($notBefore !== null && $dayDate->lt($notBefore))) {
                 continue;
             }
 
@@ -167,9 +175,8 @@ final class WeekPlanBuilder
                 continue;
             }
 
-            if (isset($qualityOffsets[$offset])) {
-                $rows[$date] = $qualitySlots[$qualityIndex];
-                $qualityIndex++;
+            if (isset($qualityByOffset[$offset])) {
+                $rows[$date] = $qualityByOffset[$offset];
 
                 continue;
             }
@@ -212,15 +219,9 @@ final class WeekPlanBuilder
     }
 
     /**
-     * Drops the days either side of the long run from the quality pool. The
-     * long run is a hard day too, but {@see self::spreadOffsets()} only knows
-     * about the gap BETWEEN quality days, so it pushed them to the ends of the
-     * week — landing one the day before the long run and the other the day
-     * after the previous week's, at five and six sessions. Adjacency wraps the
-     * week, since Sunday's long run and next Monday are consecutive days.
-     *
-     * Falls back to the full pool when trimming would leave too few days: a
-     * dense week that cannot avoid the flanks still needs its quality somewhere.
+     * Removes the days next to the long run from the quality pool, even when
+     * that leaves no room for quality.
+     * Adjacency wraps the week, since Sunday's long run and next Monday are consecutive days.
      *
      * @param  list<int>  $nonLongOffsets
      * @return list<int>
@@ -228,43 +229,87 @@ final class WeekPlanBuilder
     private static function awayFromLongRun(array $nonLongOffsets, int $longOffset): array
     {
         $flanks = [($longOffset + 6) % 7, ($longOffset + 1) % 7];
-        $kept = array_values(array_diff($nonLongOffsets, $flanks));
 
-        return $kept === [] ? $nonLongOffsets : $kept;
+        return array_values(array_diff($nonLongOffsets, $flanks));
     }
 
     /**
-     * Picks $count offsets out of $offsets, spread as evenly as possible, so
-     * hard/quality sessions never land on two adjacent training days. Standard
-     * periodization practice is at least one easy/recovery day between quality
-     * sessions; the fixed day-of-week templates otherwise place quality work on
-     * the first N training days, which can be back-to-back (e.g. Mon+Tue on the
-     * 6-session template).
-     *
-     * @param  list<int>  $offsets
+     * @param list<int> $offsets
      * @return list<int>
      */
-    private static function spreadOffsets(array $offsets, int $count): array
+    private static function spreadOffsets(array $offsets, int $count, int $longOffset): array
     {
-        $available = count($offsets);
-        if ($count <= 0 || $available === 0) {
+        if ($count <= 0 || $offsets === []) {
             return [];
         }
-        if ($count >= $available) {
-            return $offsets;
-        }
+
         if ($count === 1) {
-            // A single quality day has no adjacency risk (nothing else hard to
-            // clash with) — keep it on the first non-long training day, as before.
-            return [$offsets[0]];
+            return [self::bestSpacedOffset($offsets, $longOffset)];
         }
 
-        $picked = [];
-        for ($i = 0; $i < $count; $i++) {
-            $picked[] = $offsets[(int) round($i * ($available - 1) / ($count - 1))];
+        $bestPair = [];
+        $bestScore = -1;
+        for ($i = 0; $i < count($offsets); $i++) {
+            for ($j = $i + 1; $j < count($offsets); $j++) {
+                $left = $offsets[$i];
+                $right = $offsets[$j];
+                $qualityGap = self::circularDayDistance($left, $right);
+                if ($qualityGap < 2) {
+                    continue;
+                }
+
+                $score = min(
+                    $qualityGap,
+                    self::longRunRecoveryDays($left, $longOffset),
+                    self::longRunRecoveryDays($right, $longOffset),
+                );
+                $pair = $left < $right ? [$left, $right] : [$right, $left];
+
+                if ($score > $bestScore || ($score === $bestScore && self::prefersLaterPair($pair, $bestPair))) {
+                    $bestPair = $pair;
+                    $bestScore = $score;
+                }
+            }
         }
 
-        return array_values(array_unique($picked));
+        return $bestPair !== [] ? $bestPair : [self::bestSpacedOffset($offsets, $longOffset)];
+    }
+
+    /** @param list<int> $offsets */
+    private static function bestSpacedOffset(array $offsets, int $longOffset): int
+    {
+        usort($offsets, static fn (int $left, int $right): int =>
+            self::longRunRecoveryDays($right, $longOffset) <=> self::longRunRecoveryDays($left, $longOffset)
+            ?: $right <=> $left);
+
+        return $offsets[0];
+    }
+
+    /**
+     * @param array{int, int} $candidate
+     * @param array{}|array{int, int} $current
+     */
+    private static function prefersLaterPair(array $candidate, array $current): bool
+    {
+        if ($current === []) {
+            return true;
+        }
+
+        return $candidate[1] > $current[1]
+            || ($candidate[1] === $current[1] && $candidate[0] > $current[0]);
+    }
+
+    private static function circularDayDistance(int $left, int $right): int
+    {
+        $distance = abs($left - $right);
+
+        return min($distance, 7 - $distance);
+    }
+
+    /** Circular calendar-day distance between a training day and a Long day. */
+    public static function longRunRecoveryDays(int $sessionOffset, int $longOffset): int
+    {
+        return self::circularDayDistance($sessionOffset, $longOffset);
     }
 
     /**

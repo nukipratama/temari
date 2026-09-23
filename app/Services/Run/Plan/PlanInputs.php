@@ -6,6 +6,8 @@ namespace App\Services\Run\Plan;
 
 use App\Enums\AdaptationReason;
 use App\Enums\IntentVerdict;
+use App\Enums\PaceBand;
+use App\Enums\SessionType;
 use Illuminate\Support\Carbon;
 
 /**
@@ -25,6 +27,7 @@ final readonly class PlanInputs
      * @param  bool  $increasesHeld  the race block holds flat at its floor until the load guard's recent runs are scored
      * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      * @param array<string, array{verdict: IntentVerdict, hard_minutes: int}> $recentPrescriptions
+     * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null}> $fixedSessions
      */
     public function __construct(
         public int $userId,
@@ -49,6 +52,7 @@ final readonly class PlanInputs
         public float $longRunCapKm = INF,
         public float $longRunProgressionCapKm = INF,
         public array $recentPrescriptions = [],
+        public array $fixedSessions = [],
     ) {
     }
 

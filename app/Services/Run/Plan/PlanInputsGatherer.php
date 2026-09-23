@@ -7,6 +7,7 @@ namespace App\Services\Run\Plan;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Enums\IntentVerdict;
+use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
@@ -52,7 +53,7 @@ final readonly class PlanInputsGatherer
 
         $race = ($this->activeRace)($user->id);
         $preference = ($this->trainingPreference)($user->id);
-        ['pinned' => $pinnedDates, 'settled' => $settledDates] = $this->pinnedAndSettledDatesIn($user, $today, $horizonEnd);
+        ['pinned' => $pinnedDates, 'settled' => $settledDates, 'fixed' => $fixedSessions] = $this->fixedPlanDaysIn($user, $currentWeekStart, $today, $horizonEnd);
 
         $baseline = $this->baseline->forUser($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
@@ -90,40 +91,55 @@ final readonly class PlanInputsGatherer
             longRunCapKm: $baseline['long_run_cap_km'],
             longRunProgressionCapKm: $baseline['long_run_progression_cap_km'],
             recentPrescriptions: $this->recentPrescriptions($user, $today),
+            fixedSessions: $fixedSessions,
         );
     }
 
     /**
-     * Pinned and settled are separate reads on the same window filtered by
-     * different columns, but every row either query would return also
-     * satisfies `pinned OR status != Planned` — so one query fetching both
-     * columns, partitioned client-side, returns the identical two sets.
+     * @return array{
+     *     pinned: array<string, true>,
+     *     settled: array<string, true>,
+     *     fixed: array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null}>
+     * }
      *
-     * @return array{pinned: array<string, true>, settled: array<string, true>}
+     * Fixed rows share one query across the plan horizon; past rows can only
+     * fall in the current week because the query starts at that week's Monday.
      */
-    private function pinnedAndSettledDatesIn(User $user, Carbon $from, Carbon $to): array
+    private function fixedPlanDaysIn(User $user, Carbon $weekStart, Carbon $today, Carbon $to): array
     {
         $rows = PlannedSession::query()
             ->where('user_id', $user->id)
-            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->whereBetween('date', [$weekStart->toDateString(), $to->toDateString()])
             ->where(fn (Builder $query): Builder => $query
                 ->where('pinned', true)
-                ->orWhere('status', '!=', PlannedSessionStatus::Planned))
-            ->get(['date', 'pinned', 'status']);
+                ->orWhere('status', '!=', PlannedSessionStatus::Planned)
+                ->orWhere('date', '<', $today->toDateString()))
+            ->orderBy('date')
+            ->get(['date', 'pinned', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band']);
 
         $pinned = [];
         $settled = [];
+        $fixed = [];
         foreach ($rows as $row) {
             $date = $row->date->toDateString();
-            if ($row->pinned) {
-                $pinned[$date] = true;
+            if ($row->date->lt($today) || $row->pinned || $row->status !== PlannedSessionStatus::Planned) {
+                $fixed[$date] = [
+                    'session_type' => $row->session_type,
+                    'prescribed_hard_minutes' => $row->prescribed_hard_minutes ?? 0,
+                    'prescribed_pace_band' => $row->prescribed_pace_band,
+                ];
             }
-            if ($row->status !== PlannedSessionStatus::Planned) {
-                $settled[$date] = true;
+            if (! $row->date->lt($today)) {
+                if ($row->pinned) {
+                    $pinned[$date] = true;
+                }
+                if ($row->status !== PlannedSessionStatus::Planned) {
+                    $settled[$date] = true;
+                }
             }
         }
 
-        return ['pinned' => $pinned, 'settled' => $settled];
+        return ['pinned' => $pinned, 'settled' => $settled, 'fixed' => $fixed];
     }
 
     /** @return array<string, array{verdict: IntentVerdict, hard_minutes: int}> */

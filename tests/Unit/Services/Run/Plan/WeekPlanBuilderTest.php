@@ -202,6 +202,116 @@ it('adds the promised quality session to a four-session week, either side of the
         ->and($quality)->toBe([2, 4]);
 });
 
+it('chooses Thursday over Tuesday for circular recovery from the Sunday long run', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Base, 4, [], null, false);
+    $tuesday = $this->monday->copy()->addDay()->toDateString();
+    $thursday = $this->monday->copy()->addDays(3)->toDateString();
+
+    expect($rows[$tuesday]['session_type'])->toBe(SessionType::Easy)
+        ->and($rows[$thursday]['session_type'])->toBe(SessionType::Tempo);
+});
+
+it('chooses Thursday when Wednesday and Thursday are equally spaced from the Sunday long run', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Base, 4, [], null, false, preferredOffsets: [2, 3, 5, 6], preferredLongOffset: 6);
+
+    expect($rows[$this->monday->copy()->addDays(2)->toDateString()]['session_type'])->toBe(SessionType::Easy)
+        ->and($rows[$this->monday->copy()->addDays(3)->toDateString()]['session_type'])->toBe(SessionType::Tempo);
+});
+
+it('uses Tuesday and Thursday for a six-session build week behind its race goal', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, qualityDelta: 1, projectedRaceSeconds: 35 * 60.0);
+    $typesByWeekday = collect($rows)->mapWithKeys(fn (array $row, string $date): array => [
+        Carbon::parse($date)->dayOfWeekIso => $row['session_type'],
+    ]);
+
+    expect($typesByWeekday[2])->toBe(SessionType::Tempo)
+        ->and($typesByWeekday[3])->toBe(SessionType::Easy)
+        ->and($typesByWeekday[4])->toBe(SessionType::Interval)
+        ->and(qualityCount($rows))->toBe(2);
+});
+
+it('keeps the selected weekday stable when Thursday is pinned in a custom run week', function (): void {
+    $thursday = $this->monday->copy()->addDays(3)->toDateString();
+    $wednesday = $this->monday->copy()->addDays(2)->toDateString();
+    $sunday = $this->monday->copy()->addDays(6)->toDateString();
+
+    $rows = $this->builder->build($this->monday, PlanPhase::Base, 4, [$thursday => true], null, false, preferredOffsets: [2, 3, 5, 6], preferredLongOffset: 6);
+
+    expect($rows)->not->toHaveKey($thursday)
+        ->and($rows[$wednesday]['session_type'])->toBe(SessionType::Easy)
+        ->and($rows[$sunday]['session_type'])->toBe(SessionType::Long);
+});
+
+it('keeps the same selected slots when replanning from Thursday', function (): void {
+    $arguments = [
+        'weekStart' => $this->monday,
+        'phase' => PlanPhase::Build,
+        'sessionsPerWeek' => 6,
+        'fixedDates' => [],
+        'raceDistanceM' => 10_000.0,
+        'selfScaled' => false,
+        'preferredOffsets' => [0, 1, 2, 3, 4, 6],
+        'preferredLongOffset' => 6,
+        'projectedRaceSeconds' => 35 * 60.0,
+    ];
+    $fullWeek = $this->builder->build(...$arguments);
+    $thursdayOn = $this->builder->build(...[...$arguments, 'notBefore' => $this->monday->copy()->addDays(3)]);
+
+    expect($fullWeek[$this->monday->copy()->addDays(2)->toDateString()]['session_type'])->toBe(SessionType::Tempo)
+        ->and($fullWeek[$this->monday->copy()->addDays(4)->toDateString()]['session_type'])->toBe(SessionType::Interval)
+        ->and($thursdayOn[$this->monday->copy()->addDays(3)->toDateString()]['session_type'])->toBe(SessionType::Easy)
+        ->and($thursdayOn[$this->monday->copy()->addDays(4)->toDateString()]['session_type'])->toBe(SessionType::Interval)
+        ->and($thursdayOn[$this->monday->copy()->addDays(6)->toDateString()]['session_type'])->toBe(SessionType::Long);
+});
+
+it('keeps quality within the hard-day budget for run counts two through six', function (): void {
+    foreach (range(2, 6) as $sessionsPerWeek) {
+        $rows = $this->builder->build(
+            $this->monday,
+            PlanPhase::Build,
+            $sessionsPerWeek,
+            [],
+            10_000.0,
+            false,
+            qualityDelta: 1,
+            projectedRaceSeconds: 35 * 60.0,
+        );
+        $longDate = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Long);
+        $qualityOffsets = array_map(
+            static fn (string $date): int => Carbon::parse($date)->dayOfWeekIso - 1,
+            array_keys(array_filter($rows, static fn (array $row): bool => in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true))),
+        );
+
+        expect(count($qualityOffsets))->toBeLessThanOrEqual(2);
+        if ($longDate !== null) {
+            $longOffset = Carbon::parse($longDate)->dayOfWeekIso - 1;
+            foreach ($qualityOffsets as $offset) {
+                expect(WeekPlanBuilder::longRunRecoveryDays($offset, $longOffset))->toBeGreaterThanOrEqual(2);
+            }
+        }
+        for ($index = 1; $index < count($qualityOffsets); $index++) {
+            expect(WeekPlanBuilder::longRunRecoveryDays($qualityOffsets[$index - 1], $qualityOffsets[$index]))->toBeGreaterThanOrEqual(2);
+        }
+    }
+});
+
+it('caps quality when two requested sessions can only land on adjacent run days', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true, qualityDelta: 1, preferredOffsets: [1, 2, 3, 4], preferredLongOffset: 4);
+
+    expect(qualityCount($rows))->toBe(1)
+        ->and($rows[$this->monday->copy()->addDay()->toDateString()]['session_type'])->toBe(SessionType::Tempo)
+        ->and($rows[$this->monday->copy()->addDays(2)->toDateString()]['session_type'])->toBe(SessionType::Easy);
+});
+
+it('keeps the long-run flanks clear when no other quality day is available', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 3, [], null, true, preferredOffsets: [0, 5, 6], preferredLongOffset: 6);
+
+    expect(qualityCount($rows))->toBe(0)
+        ->and($rows[$this->monday->toDateString()]['session_type'])->toBe(SessionType::Easy)
+        ->and($rows[$this->monday->copy()->addDays(5)->toDateString()]['session_type'])->toBe(SessionType::Easy)
+        ->and($rows[$this->monday->copy()->addDays(6)->toDateString()]['session_type'])->toBe(SessionType::Long);
+});
+
 it('drops the quality session a four-session week already carries when feedback asks for less', function (): void {
     $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true, null, -1);
 
@@ -360,6 +470,16 @@ it('makes race day the race, and rests the day before it', function (): void {
 
     expect($rows[$raceDate->toDateString()]['session_type'])->toBe(SessionType::Race)
         ->and($rows[$raceDate->copy()->subDay()->toDateString()]['session_type'])->toBe(SessionType::Rest);
+});
+
+it('keeps an eligible quality day when race day would rank later', function (): void {
+    $raceDate = $this->monday->copy()->addDays(3);
+    $tuesday = $this->monday->copy()->addDay()->toDateString();
+
+    $rows = $this->builder->build($this->monday, PlanPhase::Taper, 4, [], 21_097.0, false, raceDate: $raceDate);
+
+    expect($rows[$tuesday]['session_type'])->toBe(SessionType::Tempo)
+        ->and($rows[$raceDate->toDateString()]['session_type'])->toBe(SessionType::Race);
 });
 
 it('trains nothing after race day, so a Sunday marathon gets no long run the day before it', function (): void {

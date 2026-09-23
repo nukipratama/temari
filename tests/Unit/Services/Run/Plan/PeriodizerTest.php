@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
+use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Feedback;
+use App\Models\PersonalRecord;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -478,6 +480,126 @@ it('an explicit run_days/long_run_day preference places sessions on the chosen w
     expect($monday->session_type)->not->toBe(SessionType::Rest)
         ->and($friday->session_type)->toBe(SessionType::Long)
         ->and($tuesday->session_type)->toBe(SessionType::Rest);
+});
+
+it('counts a race-pace Long against the weekly hard-day limit', function (): void {
+    $user = User::factory()->create();
+    foreach (range(0, 3) as $i) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::today()->subWeeks($i)->toDateString(),
+            'runs' => 6,
+            'distance_km' => 60.0,
+        ]);
+    }
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 6]);
+    RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addWeeks(8)->toDateString(),
+        'distance_m' => 42_195,
+        'goal_time_sec' => 10_800,
+    ]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    $buildDate = PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->where('phase', PlanPhase::Build->value)
+        ->orderBy('date')
+        ->value('date');
+    expect($buildDate)->not->toBeNull();
+
+    $weekStart = Carbon::parse($buildDate)->startOfWeek(Carbon::MONDAY);
+    $week = PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->whereBetween('date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
+        ->get();
+    $long = $week->firstWhere('session_type', SessionType::Long);
+    $quality = $week->filter(fn (PlannedSession $session): bool => in_array($session->session_type, [SessionType::Tempo, SessionType::Interval], true));
+    $hardDays = $week->filter(fn (PlannedSession $session): bool => $session->prescribed_hard_minutes > 0);
+
+    expect($long)->not->toBeNull();
+    expect($long->prescribed_pace_band)->toBe(PaceBand::Marathon);
+    expect($quality)->toHaveCount(1);
+    expect($quality->first()->prescribed_hard_minutes)->toBeGreaterThan(0);
+    expect($hardDays)->toHaveCount(2);
+});
+
+it('caps future quality around a settled tempo and a race-pace Long in the current week', function (): void {
+    Carbon::setTestNow('2026-09-03 08:00:00');
+    $user = User::factory()->create();
+    foreach (range(0, 3) as $i) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::today()->subWeeks($i)->toDateString(),
+            'runs' => 6,
+            'distance_km' => 60.0,
+        ]);
+    }
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 6]);
+    RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addDays(25)->toDateString(),
+        'distance_m' => 42_195,
+        'goal_time_sec' => 10_800,
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '10km',
+        'value_sec' => 2_700,
+        'set_at' => Carbon::today(),
+    ]);
+    $tuesday = Carbon::today()->startOfWeek(Carbon::MONDAY)->addDay();
+    $settledTempo = PlannedSession::factory()->for($user)->create([
+        'date' => $tuesday->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Done,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+    ]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    $thursday = PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->copy()->addDays(3)->toDateString())->firstOrFail();
+    $sunday = PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->copy()->addDays(6)->toDateString())->firstOrFail();
+
+    expect(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->quality_delta)->toBe(1)
+        ->and($settledTempo->fresh()->session_type)->toBe(SessionType::Tempo)
+        ->and($thursday->session_type)->toBe(SessionType::Easy)
+        ->and($thursday->prescribed_hard_minutes)->toBe(0)
+        ->and($sunday->session_type)->toBe(SessionType::Long)
+        ->and($sunday->prescribed_pace_band)->toBe(PaceBand::Marathon)
+        ->and($sunday->prescribed_hard_minutes)->toBeGreaterThan(0);
+});
+
+it('counts a pinned quality type in a later week without stored hard minutes', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    foreach (range(0, 3) as $i) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::today()->subWeeks($i)->toDateString(),
+            'runs' => 6,
+            'distance_km' => 60.0,
+        ]);
+    }
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 6]);
+    RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addWeeks(8)->toDateString(),
+        'distance_m' => 42_195,
+        'goal_time_sec' => 10_800,
+    ]);
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY)->addWeek();
+    $tuesday = $weekStart->copy()->addDay();
+    $pinned = PlannedSession::factory()->for($user)->pinned()->create([
+        'date' => $tuesday->toDateString(),
+        'session_type' => SessionType::Interval,
+    ]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    $thursday = PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->copy()->addDays(3)->toDateString())->firstOrFail();
+    $sunday = PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->copy()->addDays(6)->toDateString())->firstOrFail();
+
+    expect($pinned->fresh()->session_type)->toBe(SessionType::Interval)
+        ->and($thursday->session_type)->toBe(SessionType::Easy)
+        ->and($sunday->prescribed_pace_band)->toBe(PaceBand::Marathon)
+        ->and($sunday->prescribed_hard_minutes)->toBeGreaterThan(0);
 });
 
 it('lets the race projection move prescribed quality work in both directions', function (): void {

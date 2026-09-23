@@ -132,12 +132,13 @@ final readonly class Periodizer
         $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $inputs->currentWeekStart(), $inputs->adaptation['deload'], $inputs->isSelfScaled() || $inputs->increasesHeld);
 
         $rows = [];
+        $fixedDates = $inputs->pinnedDates + $inputs->settledDates;
         foreach ($weeks as $week) {
             $weekRows = $this->weekPlanBuilder->build(
                 $week['week_start'],
                 $week['phase'],
                 $inputs->sessionsPerWeek,
-                $inputs->pinnedDates,
+                $fixedDates,
                 $inputs->raceDistanceM,
                 $inputs->isSelfScaled(),
                 $inputs->today,
@@ -148,7 +149,7 @@ final readonly class Periodizer
                 $inputs->raceDate,
                 $week['zone'],
             );
-            $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs);
+            $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start']);
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier']];
             }
@@ -239,7 +240,7 @@ final readonly class Periodizer
      * @param array<string, array{phase: PlanPhase, session_type: SessionType, ...}> $rows
      * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
-    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs): array
+    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart): array
     {
         $firstEasy = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Easy);
         $kmByDate = [];
@@ -323,7 +324,121 @@ final readonly class Periodizer
         }
         unset($row);
 
+        return self::capQualityAroundWeeklyHardDays($rows, $inputs->fixedSessions, $weekStart);
+    }
+
+    /**
+     * @param array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null, ...}> $rows
+     * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null}> $fixedSessions
+     * @param Carbon $weekStart
+     * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null, ...}>
+     */
+    private static function capQualityAroundWeeklyHardDays(array $rows, array $fixedSessions, Carbon $weekStart): array
+    {
+        $weekStartDate = $weekStart->toDateString();
+        $weekEndDate = $weekStart->copy()->addDays(6)->toDateString();
+        $fixedSessions = array_filter(
+            $fixedSessions,
+            static fn (string $date): bool => $date >= $weekStartDate && $date <= $weekEndDate,
+            ARRAY_FILTER_USE_KEY,
+        );
+        $fixedHardOffsets = [];
+        $longOffsets = [];
+        foreach ($fixedSessions as $date => $session) {
+            $offset = Carbon::parse($date)->dayOfWeekIso - 1;
+            if (self::isHardDay($session)) {
+                $fixedHardOffsets[] = $offset;
+            }
+            if ($session['session_type'] === SessionType::Long) {
+                $longOffsets[] = $offset;
+            }
+        }
+
+        foreach ($rows as $date => $row) {
+            if ($row['session_type'] === SessionType::Long) {
+                $longOffsets[] = Carbon::parse($date)->dayOfWeekIso - 1;
+            }
+        }
+
+        $generatedHardLongDates = array_keys(array_filter($rows, static fn (array $row): bool =>
+            $row['session_type'] === SessionType::Long
+            && $row['prescribed_pace_band'] === PaceBand::Marathon
+            && $row['prescribed_hard_minutes'] > 0));
+        if (count($fixedHardOffsets) >= 2) {
+            foreach ($generatedHardLongDates as $date) {
+                $rows[$date] = [
+                    ...$rows[$date],
+                    'prescribed_hard_minutes' => 0,
+                    'prescribed_pace_band' => null,
+                    'prescribed_pace_sec_per_km' => null,
+                    'prescription_reason' => 'easy because the weekly hard-day budget is already full',
+                    'prescription_race_context' => null,
+                ];
+            }
+            $generatedHardLongDates = [];
+        }
+
+        $qualityDates = array_keys(array_filter($rows, static fn (array $row): bool =>
+            in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)));
+        if ($qualityDates === []) {
+            return $rows;
+        }
+
+        $protectedOffsets = array_values(array_unique([...$fixedHardOffsets, ...$longOffsets]));
+        $recoveryByDate = [];
+        foreach ($qualityDates as $date) {
+            $offset = Carbon::parse($date)->dayOfWeekIso - 1;
+            $recoveryByDate[$date] = $protectedOffsets === []
+                ? PHP_INT_MAX
+                : min(array_map(static fn (int $protected): int => WeekPlanBuilder::longRunRecoveryDays($offset, $protected), $protectedOffsets));
+        }
+        usort($qualityDates, static fn (string $left, string $right): int =>
+            ($recoveryByDate[$right] <=> $recoveryByDate[$left]) ?: strcmp($right, $left));
+
+        $qualityLimit = max(0, 2 - count($fixedHardOffsets) - count($generatedHardLongDates));
+        $keptHardOffsets = [];
+        $keptQualityCount = 0;
+        foreach ($qualityDates as $date) {
+            $offset = Carbon::parse($date)->dayOfWeekIso - 1;
+            $tooCloseToHardDay = array_any(
+                [...$protectedOffsets, ...$keptHardOffsets],
+                static fn (int $hardOffset): bool => WeekPlanBuilder::longRunRecoveryDays($offset, $hardOffset) < 2,
+            );
+            if ($keptQualityCount < $qualityLimit && ! $tooCloseToHardDay) {
+                $keptQualityCount++;
+                $keptHardOffsets[] = $offset;
+
+                continue;
+            }
+
+            $rows[$date] = [
+                ...$rows[$date],
+                'session_type' => SessionType::Easy,
+                'prescribed_hard_minutes' => 0,
+                'prescribed_pace_band' => null,
+                'prescribed_pace_sec_per_km' => null,
+                'prescription_reason' => $tooCloseToHardDay
+                    ? 'easy to preserve recovery between hard days'
+                    : 'easy because the weekly hard-day budget is already full',
+                'prescription_race_context' => null,
+            ];
+        }
+
         return $rows;
+    }
+
+    /**
+     * Tempo and Interval sessions spend one hard day each; only a race-pace
+     * Long with prescribed hard minutes spends one too.
+     *
+     * @param array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null} $row
+     */
+    private static function isHardDay(array $row): bool
+    {
+        return in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)
+            || ($row['session_type'] === SessionType::Long
+                && $row['prescribed_pace_band'] === PaceBand::Marathon
+                && $row['prescribed_hard_minutes'] > 0);
     }
 
     /** @param array<string, array{session_type: SessionType, phase: PlanPhase, ...}> $rows
