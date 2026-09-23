@@ -112,7 +112,11 @@ final class PlanPageAssembler
             return null;
         }
 
-        $detail = $adaptation->reason->detail($adaptation->adherence_pct);
+        $detail = $adaptation->reason->detail(
+            $adaptation->adherence_pct,
+            $adaptation->stimulus_adherence_pct,
+            $adaptation->quality_delta,
+        );
         if ($adaptation->volume_floor_km !== null) {
             $detail .= ' that puts it under your usual '.number_format($adaptation->volume_floor_km, 1).' km a week, on purpose.';
         }

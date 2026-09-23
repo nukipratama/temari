@@ -8,6 +8,7 @@ use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Plan\ComplianceScorer;
+use App\Services\Run\Plan\PlanReconciliationService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -31,7 +32,7 @@ use Illuminate\Support\Carbon;
 #[Description("Score every user's past-due Planned sessions and persist the verdict")]
 class ScoreComplianceCommand extends Command
 {
-    public function handle(ComplianceScorer $scorer): int
+    public function handle(ComplianceScorer $scorer, PlanReconciliationService $reconciliation): int
     {
         $today = Carbon::today();
         $userOption = $this->option('user');
@@ -52,7 +53,7 @@ class ScoreComplianceCommand extends Command
             if (! $user instanceof User) {
                 continue;
             }
-            $scored += $this->scoreUser($scorer, $user, $today);
+            $scored += $this->scoreUser($scorer, $reconciliation, $user, $today);
         }
 
         $this->info(sprintf('Scored %d planned session(s) across %d user(s).', $scored, $userIds->count()));
@@ -60,7 +61,7 @@ class ScoreComplianceCommand extends Command
         return self::SUCCESS;
     }
 
-    private function scoreUser(ComplianceScorer $scorer, User $user, Carbon $today): int
+    private function scoreUser(ComplianceScorer $scorer, PlanReconciliationService $reconciliation, User $user, Carbon $today): int
     {
         $staleRows = PlannedSession::query()
             ->where('user_id', $user->id)
@@ -74,14 +75,22 @@ class ScoreComplianceCommand extends Command
 
         $verdicts = $scorer->verdictsFor($user, $staleRows, $today);
 
+        $scored = 0;
+        $latestScoredDate = null;
         foreach ($staleRows as $row) {
             $verdict = $verdicts[$row->date->toDateString()] ?? null;
             if ($verdict === null) {
                 continue;
             }
             ComplianceScorer::applyVerdict($row, $verdict);
+            $scored++;
+            $latestScoredDate = $row->date;
         }
 
-        return $staleRows->count();
+        if ($scored > 0 && $latestScoredDate !== null) {
+            $reconciliation->markDirty($user->id, $latestScoredDate);
+        }
+
+        return $scored;
     }
 }

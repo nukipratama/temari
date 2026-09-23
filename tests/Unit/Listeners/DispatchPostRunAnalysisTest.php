@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\Run\ReconcilePlanJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
@@ -28,6 +30,8 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\NarrationEligibility;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
+use App\Services\Run\Plan\PlanReconciliationDispatch;
+use App\Services\Run\Plan\PlanReconciliationService;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -85,6 +89,16 @@ it('requests card flavor for the run card the ingest minted', function (): void 
     expect(Analysis::query()
         ->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)
         ->exists())->toBeTrue();
+});
+
+it('writes the reconciliation marker in the post-ingest listener', function (): void {
+    $activity = analyzedActivity();
+
+    fire($activity);
+
+    expect($activity->user->fresh()->plan_reconciliation_pending_from->toDateString())
+        ->toBe('2026-05-10');
+    Bus::assertDispatched(ReconcilePlanJob::class);
 });
 
 it('re-narrates card flavor on a re-ingest (invalidate:true) without minting a second row', function (): void {
@@ -615,6 +629,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         app(RestClampRecorder::class),
         app(PlanNarrationRequester::class),
         app(ComplianceScorer::class),
+        app(PlanReconciliationDispatch::class),
         app(TrendSnapshotRepairDispatch::class),
     );
 
@@ -644,7 +659,93 @@ it('re-narrates today plan day blurb once the run credits the day', function ():
         ->where('subject_id', $activity->user_id)
         ->where('analysis_type', AnalysisType::PlanDayVoice)
         ->where('discriminator', Carbon::today()->toDateString())
+        ->exists())->toBeFalse();
+
+    // A late upload can leave an older pending marker ahead of today's run.
+    $activity->user->forceFill(['plan_reconciliation_pending_from' => Carbon::yesterday()])->saveQuietly();
+    app(PlanReconciliationService::class)->drain($activity->user_id);
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $activity->user_id)
+        ->where('analysis_type', AnalysisType::PlanDayVoice)
+        ->where('discriminator', Carbon::today()->toDateString())
         ->exists())->toBeTrue();
+});
+
+it('fills a demo today plan day blurb rule-based after the run credits the day', function (): void {
+    $demo = User::factory()->demo()->create();
+    $activity = analyzedActivity(Carbon::today()->setTime(6, 30)->toDateTimeString(), $demo->id);
+    PlannedSession::factory()->for($demo)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+
+    fire($activity);
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $demo->id)
+        ->where('analysis_type', AnalysisType::PlanDayVoice)
+        ->where('discriminator', Carbon::today()->toDateString())
+        ->firstOrFail()
+        ->status)->toBe(AnalysisStatus::Done);
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+});
+
+it('does not fill a demo today plan day blurb before the run credits the day', function (): void {
+    $demo = User::factory()->demo()->create();
+    $activity = Activity::factory()->create([
+        'user_id' => $demo->id,
+        'analyzed_at' => Carbon::now(),
+    ]);
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->setTime(6, 30),
+        'distance' => 50.0,
+        'moving_time' => 20,
+        'elapsed_time' => 20,
+    ]);
+    PlannedSession::factory()->for($demo)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+
+    fire($activity);
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $demo->id)
+        ->where('analysis_type', AnalysisType::PlanDayVoice)
+        ->where('discriminator', Carbon::today()->toDateString())
+        ->exists())->toBeFalse();
+});
+
+it('refreshes a demo today plan day blurb when the credited day changes', function (): void {
+    $demo = User::factory()->demo()->create();
+    $activity = analyzedActivity(Carbon::today()->setTime(6, 30)->toDateTimeString(), $demo->id);
+    $session = PlannedSession::factory()->for($demo)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+
+    fire($activity);
+
+    $row = Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $demo->id)
+        ->where('analysis_type', AnalysisType::PlanDayVoice)
+        ->where('discriminator', Carbon::today()->toDateString())
+        ->firstOrFail();
+    $initialFingerprint = $row->content_fingerprint;
+
+    $session->forceFill(['skipped' => true])->saveQuietly();
+    fire($activity);
+
+    expect($initialFingerprint)->not->toBeNull()
+        ->and($row->fresh()->content_fingerprint)->not->toBe($initialFingerprint);
 });
 
 /**

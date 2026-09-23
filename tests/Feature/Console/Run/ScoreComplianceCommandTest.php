@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Jobs\Run\ReconcilePlanJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
@@ -13,6 +14,7 @@ use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
@@ -66,6 +68,34 @@ it('scores a past week, crediting the day that met its target and marking the re
         ->and($rows[0]->compliance_score)->not->toBeNull()
         ->and($rows[1]->status->value)->toBe('missed')
         ->and($rows[1]->compliance_score)->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('schedules plan reconciliation after settling past sessions', function (): void {
+    Bus::fake();
+    Carbon::setTestNow('2026-08-12');
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->subDays(2)]);
+
+    $this->artisan('plan:score-compliance')->assertSuccessful();
+
+    Bus::assertDispatched(ReconcilePlanJob::class, fn (ReconcilePlanJob $job): bool => $job->userId === $user->id);
+
+    Carbon::setTestNow();
+});
+
+it('uses the latest scored date when a backlog spans irrelevant and relevant weeks', function (): void {
+    Bus::fake();
+    Carbon::setTestNow('2026-08-12');
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-07-20']);
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::yesterday()]);
+
+    $this->artisan('plan:score-compliance')->assertSuccessful();
+
+    expect($user->fresh()->plan_reconciliation_pending_from->toDateString())
+        ->toBe(Carbon::yesterday()->toDateString());
 
     Carbon::setTestNow();
 });

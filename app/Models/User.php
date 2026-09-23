@@ -28,6 +28,8 @@ use Override;
  * @property Carbon|null $backfilled_at
  * @property Carbon|null $plan_recalibration_started_at
  * @property Carbon|null $plan_recalibration_completed_at
+ * @property Carbon|null $plan_reconciliation_pending_from
+ * @property Carbon|null $plan_reconciliation_rebuilding_from
  * @property Carbon|null $trend_snapshots_pending_from
  * @property Carbon|null $trend_snapshots_rebuilding_from
  * @property Carbon|null $streak_settled_through
@@ -76,6 +78,8 @@ class User extends Authenticatable
             'backfilled_at' => 'datetime',
             'plan_recalibration_started_at' => 'datetime',
             'plan_recalibration_completed_at' => 'datetime',
+            'plan_reconciliation_pending_from' => 'date:Y-m-d',
+            'plan_reconciliation_rebuilding_from' => 'date:Y-m-d',
             'trend_snapshots_pending_from' => 'date:Y-m-d',
             'trend_snapshots_rebuilding_from' => 'date:Y-m-d',
             'streak_settled_through' => 'date:Y-m-d',

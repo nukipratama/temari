@@ -9,7 +9,7 @@ namespace App\Enums;
  * would have produced ({@see \App\Services\Run\Plan\PlanAdapter}). Exactly
  * one reason wins per week, in the priority order the adapter evaluates
  * them: safety signals first, adherence next, then how last week was actually
- * run, race-pace feedback last.
+ * run, missed stimulus, and race-pace feedback last.
  */
 enum AdaptationReason: string
 {
@@ -18,6 +18,7 @@ enum AdaptationReason: string
     case HighMonotony = 'high_monotony';
     case HighStrain = 'high_strain';
     case MissedWeek = 'missed_week';
+    case MissedStimulus = 'missed_stimulus';
     case RanTooHard = 'ran_too_hard';
     case BehindRacePace = 'behind_race_pace';
     case AheadOfRacePace = 'ahead_of_race_pace';
@@ -26,7 +27,7 @@ enum AdaptationReason: string
     {
         return match ($this) {
             self::LowReadiness, self::HighMonotony, self::HighStrain, self::MissedWeek => true,
-            self::Steady, self::RanTooHard, self::BehindRacePace, self::AheadOfRacePace => false,
+            self::Steady, self::MissedStimulus, self::RanTooHard, self::BehindRacePace, self::AheadOfRacePace => false,
         };
     }
 
@@ -35,13 +36,14 @@ enum AdaptationReason: string
         return match ($this) {
             self::Steady => 'on plan',
             self::LowReadiness, self::HighMonotony, self::HighStrain, self::MissedWeek => 'deload week',
+            self::MissedStimulus => 'quality holds',
             self::BehindRacePace => 'one more quality session',
             self::RanTooHard => 'one less quality session',
             self::AheadOfRacePace => 'ahead of pace',
         };
     }
 
-    public function detail(int $adherencePct): string
+    public function detail(int $adherencePct, ?int $stimulusAdherencePct = null, int $qualityDelta = 0): string
     {
         return match ($this) {
             self::Steady => "you finished {$adherencePct}% of last week's sessions. nothing to change, the plan stands.",
@@ -49,9 +51,29 @@ enum AdaptationReason: string
             self::HighMonotony => 'every day last week carried the same load. that uniformity is the injury-risk pattern, so this week is a deload.',
             self::HighStrain => 'last week\'s strain ran well past what your fitness supports. this week backs off to deload volume.',
             self::MissedWeek => "you finished {$adherencePct}% of last week's sessions. this week comes back smaller, not doubled.",
+            self::MissedStimulus => sprintf(
+                "you ran %s of last week's distance, but %s of the latest settled key work landed. %s",
+                self::percentageLabel($adherencePct),
+                self::percentageLabel($stimulusAdherencePct ?? 0, qualify: true),
+                $qualityDelta < 0
+                    ? 'the key work was not absorbed, so this week carries one less quality session.'
+                    : 'this week does not add another quality session until it does.',
+            ),
             self::RanTooHard => 'you ran last week harder than it was written, so this week carries one less quality session. the easy days need somewhere to be easy.',
             self::BehindRacePace => 'your projected finish is behind your goal time. one extra quality session a week from here.',
             self::AheadOfRacePace => 'your projected finish is already inside your goal time. fitness ahead of schedule is not a reason to back off, so the week stands as written.',
         };
+    }
+
+    private static function percentageLabel(int $percentage, bool $qualify = false): string
+    {
+        $label = match ($percentage) {
+            0 => 'none',
+            50 => 'half',
+            100 => 'all',
+            default => "{$percentage}%",
+        };
+
+        return $qualify && ! in_array($percentage, [0, 100], true) ? "only {$label}" : $label;
     }
 }

@@ -45,7 +45,7 @@ it('generates a self-scaled build/deload cycle when the user has no active race'
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    app(Periodizer::class)->regenerate($user, Carbon::today());
 
     $phases = PlannedSession::query()->where('user_id', $user->id)->pluck('phase')->map(fn ($p) => $p->value)->unique()->sort()->values()->all();
     expect($phases)->toBe(['build', 'deload']);
@@ -235,6 +235,119 @@ it('re-records the current week\'s decision on a second regeneration rather than
     $this->periodizer->regenerate($user, Carbon::today());
 
     expect(PlanAdaptation::query()->where('user_id', $user->id)->count())->toBe(1);
+});
+
+it('skips reconciliation when the current adaptation fingerprint is unchanged', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+    $before = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
+    Carbon::setTestNow('2026-08-10 08:05:00');
+
+    expect(app(Periodizer::class)->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
+        ->and($before->fresh()->updated_at->equalTo($before->updated_at))->toBeTrue();
+});
+
+it('reconciles when a settled key-session verdict changes the adaptation fingerprint', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->subWeek()->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Partial,
+        'distance_score' => 100,
+        'compliance_score' => 84,
+        'intent_verdict' => 'missed',
+    ]);
+
+    $changed = $this->periodizer->regenerateIfChanged($user, Carbon::today());
+    $adaptation = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
+
+    expect($changed)->toBeTrue()
+        ->and($adaptation->reason)->toBe(AdaptationReason::MissedStimulus)
+        ->and($adaptation->stimulus_adherence_pct)->toBe(0);
+});
+
+it('does not remove a deload when a mid-week reading later looks healthy', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    bindMonotonyDeloadSignals();
+    app()->forgetInstance(Periodizer::class);
+    $periodizer = app(Periodizer::class);
+    $periodizer->regenerate($user, Carbon::today());
+
+    $healthyLoad = Mockery::mock(TrainingLoad::class);
+    $healthyLoad->shouldReceive('summary')->andReturn([
+        'weekly_trimp' => 250.0, 'atl_7d' => 35.0, 'ctl_42d' => 40.0,
+        'form' => 5.0, 'form_status' => 'optimal', 'monotony' => 1.1, 'strain' => 300.0,
+    ]);
+    app()->instance(TrainingLoad::class, $healthyLoad);
+    app()->forgetInstance(PlanAdapter::class);
+
+    app()->forgetInstance(Periodizer::class);
+    expect(app(Periodizer::class)->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
+        ->and(currentWeekPhases($user))->toBe([PlanPhase::Deload])
+        ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->reason)
+        ->toBe(AdaptationReason::HighMonotony);
+});
+
+it('does not restore a quality slot removed by an earlier repeated miss', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+
+    foreach (['2026-07-27', '2026-08-03'] as $date) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $date,
+            'session_type' => SessionType::Tempo,
+            'status' => PlannedSessionStatus::Partial,
+            'distance_score' => 100,
+            'compliance_score' => 60,
+            'intent_verdict' => 'missed',
+        ]);
+    }
+
+    $this->periodizer->regenerate($user, Carbon::today());
+    PlannedSession::query()->where('user_id', $user->id)->whereIn('date', ['2026-07-27', '2026-08-03'])->update(['intent_verdict' => 'hit']);
+
+    expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
+        ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->quality_delta)
+        ->toBe(-1);
+});
+
+it('reconciles a settled key-session verdict from the current week', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->where('date', '2026-08-11')
+        ->update([
+            'session_type' => SessionType::Tempo,
+            'status' => PlannedSessionStatus::Partial,
+            'distance_score' => 100,
+            'compliance_score' => 60,
+            'intent_verdict' => 'missed',
+        ]);
+
+    if (! PlannedSession::query()->where('user_id', $user->id)->where('date', '2026-08-11')->exists()) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => '2026-08-11',
+            'session_type' => SessionType::Tempo,
+            'status' => PlannedSessionStatus::Partial,
+            'distance_score' => 100,
+            'compliance_score' => 60,
+            'intent_verdict' => 'missed',
+        ]);
+    }
+
+    expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeTrue()
+        ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->reason)
+        ->toBe(AdaptationReason::MissedStimulus);
 });
 
 function bindMonotonyDeloadSignals(): void

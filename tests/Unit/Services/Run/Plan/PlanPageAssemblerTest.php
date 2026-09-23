@@ -117,6 +117,23 @@ it('says so when the deload takes the week under the season\'s volume floor', fu
         ->toBe(AdaptationReason::LowReadiness->detail(100).' that puts it under your usual 25.9 km a week, on purpose.');
 });
 
+it('explains volume and stimulus adherence separately when key work misses', function (): void {
+    $user = assemblerAthlete();
+    PlanAdaptation::query()->create([
+        'user_id' => $user->id,
+        'week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(),
+        'reason' => AdaptationReason::MissedStimulus,
+        'deload' => false,
+        'quality_delta' => 0,
+        'adherence_pct' => 100,
+        'stimulus_adherence_pct' => 50,
+    ]);
+
+    expect($this->assembler->adaptation($user, Carbon::today())['detail'])
+        ->toContain("you ran all of last week's distance, but only half of the latest settled key work landed")
+        ->toContain('does not add another quality session');
+});
+
 it('says the build is waiting when the block holds its increases for unscored load', function (): void {
     $user = assemblerAthlete();
     PlanAdaptation::query()->create([

@@ -30,6 +30,7 @@ use Override;
  * @property bool $deload
  * @property int $quality_delta
  * @property int $adherence_pct
+ * @property int $stimulus_adherence_pct
  * @property float|null $volume_floor_km
  * @property bool $increases_held
  * @property-read User $user
@@ -41,6 +42,7 @@ use Override;
     'deload',
     'quality_delta',
     'adherence_pct',
+    'stimulus_adherence_pct',
     'volume_floor_km',
     'increases_held',
 ])]
@@ -87,6 +89,7 @@ class PlanAdaptation extends Model
             'deload' => 'boolean',
             'quality_delta' => 'integer',
             'adherence_pct' => 'integer',
+            'stimulus_adherence_pct' => 'integer',
             'volume_floor_km' => 'float',
             'increases_held' => 'boolean',
         ];

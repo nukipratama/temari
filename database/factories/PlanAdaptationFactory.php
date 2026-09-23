@@ -27,6 +27,7 @@ class PlanAdaptationFactory extends Factory
             'deload' => false,
             'quality_delta' => 0,
             'adherence_pct' => 100,
+            'stimulus_adherence_pct' => 100,
         ];
     }
 }

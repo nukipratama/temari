@@ -73,7 +73,9 @@ _Plan_
 - [[a-race-block-never-prescribes-below-habit]] — a race block averages at least the athlete's twelve-week actual mean, keeps its last recovery week off the last Build week, holds the long run through Peak, takes its long-run goal from the plan, records the floor a load deload sets aside, and holds increases above habit until recent load is scored *(amends [[the-plan-follows-the-coaching]], [[the-block-opens-on-a-computed-date]] and [[plan-volume-anchors-on-weekly-mean]])*
 - [[a-credited-day-shows-its-result]] — quality days credit their best single run, long days sum but need one run at 70% to read done, and a credited day ships no step-down *(supersedes the credited-day half of [[readiness-clamp-is-advisory]])*
 - [[the-eased-session-leads]] — a recorded ease is the day's session on every surface, graded, summed into the week total and narrated through the clamp line until credit, with the original as context *(its today-before-credit half amended by [[todays-ease-stays-a-stepdown]])*
-- [[a-day-is-graded-on-distance-and-intent]] — a deterministic intent verdict moves a credited day between done, partial and overreached, while the weekly adaptation keeps reading distance alone
+- [[a-day-is-graded-on-distance-and-intent]] — a deterministic intent verdict moves a credited day between done, partial and overreached
+- [[a-day-is-graded-on-distance-and-intent]]'s weekly-adaptation half is superseded by [[plan-adaptation-responds-to-stimulus]]; the day-level verdict remains unchanged
+- [[plan-adaptation-responds-to-stimulus]] — weekly adaptation separates volume adherence from key-session stimulus and reconciles material verdict changes after ingest
 - [[todays-ease-stays-a-stepdown]] — today's recorded ease, before credit, renders exactly like an unrecorded one on both Home and Plan, and a blind-clamp guard holds the clamp (render and recorder) while recent load is still unscored
 
 _Data_

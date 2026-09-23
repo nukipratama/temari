@@ -18,6 +18,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\NarrationEligibility;
 use App\Services\AI\NarrationVerdict;
 use App\Services\Run\Plan\ComplianceScorer;
+use App\Services\Run\Plan\PlanReconciliationDispatch;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\PlanNarrationRequester;
@@ -43,6 +44,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly RestClampRecorder $restClampRecorder,
         private readonly PlanNarrationRequester $planNarration,
         private readonly ComplianceScorer $complianceScorer,
+        private readonly PlanReconciliationDispatch $planReconciliation,
         private readonly TrendSnapshotRepairDispatch $trendSnapshots,
     ) {
     }
@@ -85,6 +87,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         if ($detail->start_date_local !== null) {
             $this->complianceScorer->creditIfEarned($user, $detail->start_date_local, Carbon::today());
+            $this->planReconciliation->forActivity($activity);
         }
 
         $this->requestCardFlavor($activity, $ruleBased, $stageOnly, $delaySec);
@@ -125,14 +128,10 @@ class DispatchPostRunAnalysis implements ShouldQueue
             // The run that just landed is what moved the ceiling, so the event
             // that invalidates the clamp's explanation regenerates it.
             $this->planNarration->requestClampVoice($user, Carbon::today());
-            // creditIfEarned() above may have just flipped the day to credited,
-            // which turns its blurb from "tempo day, about 5.9 km" into a read
-            // of what was actually run. The fingerprint decides: an already-
-            // credited day whose status did not move asks for nothing, so a
-            // second run today does not re-bill. Today only, like the clamp
-            // voice above — re-narrating a backfilled day would rewrite history
-            // at LLM prices.
-            $this->planNarration->requestDayVoiceIfChanged($user, Carbon::today());
+
+            if ($user->is_demo) {
+                $this->planNarration->requestDayVoiceIfChanged($user, Carbon::today());
+            }
         }
         if ($snapshot !== null) {
             // Weekly cadence: regenerating the recap of a still-unfinished week

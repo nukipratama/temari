@@ -980,7 +980,8 @@ it('PlanSeasonTool reports self-scaled seasons with no race attached', function 
     expect($context['is_race_oriented'])->toBeFalse()
         ->and($context['race_name'])->toBeNull()
         ->and($context['goals'])->toBeArray()
-        ->and($context['sustained_ahead_of_race_pace'])->toBeFalse();
+        ->and($context['sustained_ahead_of_race_pace'])->toBeFalse()
+        ->and($context['current_week_adaptation'])->toBeNull();
 });
 
 it('PlanSeasonTool reports the sustained-ahead signal only once two consecutive weeks earn it', function (): void {
@@ -992,13 +993,17 @@ it('PlanSeasonTool reports the sustained-ahead signal only once two consecutive 
         'week_start' => $weekStart->toDateString(),
         'reason' => AdaptationReason::AheadOfRacePace,
     ]);
-    expect(new PlanSeasonTool($season, app(SustainedAheadOfRacePace::class))->handle([])['sustained_ahead_of_race_pace'])->toBeFalse();
+    $context = new PlanSeasonTool($season, app(SustainedAheadOfRacePace::class))->handle([]);
+    expect($context['sustained_ahead_of_race_pace'])->toBeFalse()
+        ->and($context['current_week_adaptation']['reason'])->toBe(AdaptationReason::AheadOfRacePace->value);
 
     PlanAdaptation::factory()->for($user)->create([
         'week_start' => $weekStart->copy()->subWeek()->toDateString(),
         'reason' => AdaptationReason::AheadOfRacePace,
     ]);
-    expect(new PlanSeasonTool($season, app(SustainedAheadOfRacePace::class))->handle([])['sustained_ahead_of_race_pace'])->toBeTrue();
+    $context = new PlanSeasonTool($season, app(SustainedAheadOfRacePace::class))->handle([]);
+    expect($context['sustained_ahead_of_race_pace'])->toBeTrue()
+        ->and($context['current_week_adaptation'])->not->toHaveKey('quality_delta');
 });
 
 it('WeeklyRecapNarrator sends only the continuity line and reads the week', function (): void {
