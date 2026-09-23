@@ -71,7 +71,7 @@ final class MonthTotalsTool extends NoArgumentTool
     /** @return array{0: Carbon, 1: Carbon} */
     private static function bounds(string $month): array
     {
-        $start = Carbon::createFromFormat('Y-m', $month)?->startOfMonth() ?? Carbon::now()->startOfMonth();
+        $start = Carbon::createFromFormat('!Y-m', $month)?->startOfMonth() ?? Carbon::now()->startOfMonth();
 
         return [$start, $start->copy()->endOfMonth()];
     }

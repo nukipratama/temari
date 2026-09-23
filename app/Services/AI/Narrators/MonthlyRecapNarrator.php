@@ -103,7 +103,7 @@ class MonthlyRecapNarrator
     public function generate(User $user, string $month): string
     {
         $context = $this->context($user, $month);
-        $monthStart = Carbon::createFromFormat('Y-m', $month)?->startOfMonth() ?? Carbon::now()->startOfMonth();
+        $monthStart = Carbon::createFromFormat('!Y-m', $month)?->startOfMonth() ?? Carbon::now()->startOfMonth();
 
         $decoded = $this->caller->call(
             kind: 'monthly_recap',
@@ -155,7 +155,7 @@ class MonthlyRecapNarrator
      */
     public function prevNarrative(User $user, string $month): ?string
     {
-        $previousMonth = Carbon::createFromFormat('Y-m', $month)
+        $previousMonth = Carbon::createFromFormat('!Y-m', $month)
             ?->subMonthNoOverflow()
             ->format('Y-m');
 

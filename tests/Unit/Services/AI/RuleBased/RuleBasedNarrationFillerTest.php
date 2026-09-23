@@ -190,6 +190,34 @@ it('is deterministic for the same subject and discriminator', function (): void 
     expect($first)->toBe($second);
 });
 
+it('resolves a shorter month correctly when the clock sits on the 31st', function (): void {
+    Carbon::setTestNow('2026-10-31');
+    $user = User::factory()->create();
+    monthlyRunForFiller($user, '2026-09-01 06:00:00', 5000.0);
+    $filler = app(RuleBasedNarrationFiller::class);
+
+    $recap = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, $user->id, '2026-09'));
+
+    expect($recap)->toContain('5.0 km')
+        ->and($recap)->toMatch('/\b1 (run|session)\b/');
+
+    Carbon::setTestNow();
+});
+
+it('resolves February correctly when the clock sits on January 31st', function (): void {
+    Carbon::setTestNow('2026-01-31');
+    $user = User::factory()->create();
+    monthlyRunForFiller($user, '2026-02-01 06:00:00', 5000.0);
+    $filler = app(RuleBasedNarrationFiller::class);
+
+    $recap = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, $user->id, '2026-02'));
+
+    expect($recap)->toContain('5.0 km')
+        ->and($recap)->toMatch('/\b1 (run|session)\b/');
+
+    Carbon::setTestNow();
+});
+
 it('does not praise a month well below the athlete usual volume', function (): void {
     $user = User::factory()->create();
     monthlyRunForFiller($user, '2026-02-08 06:00:00', 30_000.0);
