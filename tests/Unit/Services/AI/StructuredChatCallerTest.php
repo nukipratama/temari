@@ -6,7 +6,7 @@ use App\Support\Config\AppConfig;
 use OpenAI\Resources\Responses;
 use OpenAI\Responses\Responses\CreateResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\QueryException;
 use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
@@ -337,12 +337,10 @@ it('records null deployment when the resolved deployment is empty', function ():
 it('RecordTokenUsageAction logs a warning when the DB insert throws', function (): void {
     Log::spy();
 
-    Schema::drop('ai_token_usages');
-
     $usage = new AgentBudget(8, 30_000);
     $usage->recordStep(10, 5, 15);
 
-    app(RecordTokenUsageAction::class)('briefing', $usage, 'gpt-test');
+    app(RecordTokenUsageAction::class)('briefing', $usage, str_repeat('m', 129));
 
     Log::shouldHaveReceived('warning')
         ->once()
@@ -352,19 +350,19 @@ it('RecordTokenUsageAction logs a warning when the DB insert throws', function (
 it('RecordTokenUsageAction alerts the maintainer once when the DB insert throws, without propagating', function (): void {
     Log::spy();
 
-    Schema::drop('ai_token_usages');
+    $oversizedModel = str_repeat('m', 129);
 
     $alerter = Mockery::mock(MaintainerAlerter::class);
     app()->instance(MaintainerAlerter::class, $alerter);
 
     $alerter->shouldReceive('meteringFailed')
         ->once()
-        ->with(Mockery::type('string'), 42, 'briefing', 'gpt-test');
+        ->with(QueryException::class, 42, 'briefing', $oversizedModel);
 
     $usage = new AgentBudget(8, 30_000);
     $usage->recordStep(10, 5, 15);
 
-    expect(fn () => app(RecordTokenUsageAction::class)('briefing', $usage, 'gpt-test', userId: 42))
+    expect(fn () => app(RecordTokenUsageAction::class)('briefing', $usage, $oversizedModel, userId: 42))
         ->not->toThrow(Throwable::class);
 
     Log::shouldHaveReceived('warning')->once()->with('token_usage.record_failed', Mockery::any());
