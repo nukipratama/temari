@@ -9,7 +9,6 @@ code_refs:
   - app/Services/Run/Plan/Periodizer.php
   - app/Services/Run/Plan/PlanReconciliationService.php
   - app/Services/Run/Plan/PlanReconciliationDispatch.php
-  - app/Listeners/ReconcilePlanAfterActivityIngested.php
   - app/Jobs/Run/ReconcilePlanJob.php
   - app/Listeners/DispatchPostRunAnalysis.php
   - app/Console/Commands/Run/ScoreComplianceCommand.php
@@ -38,14 +37,20 @@ The adapter records two separate signals for the prior week:
   skipped and non-key rows are not evidence either way.
 
 A single missed key stimulus returns `MissedStimulus`, holds quality, and never adds
-catch-up work. Repeated misses, or every one of at least two judgeable key sessions
-missing, removes one quality slot. Safety and mostly-missed-week deloads still have
-priority. The effective session produced by a readiness clamp is what the existing
-intent judge evaluates, and an explicit skip remains excused rather than a stimulus
-miss.
+catch-up work. Two misses in the settled three-week window remove one quality slot;
+the current week uses only closed days, so today's open day cannot become a miss.
+Safety and mostly-missed-week deloads still have priority. The effective session
+produced by a readiness clamp is what the existing intent judge evaluates, and an
+explicit skip is excused rather than evidence of either a hit or a miss.
 
-Reconciliation is event-driven but deterministic. An analyzed activity and the
-daily close pass mark the user's earliest affected date in durable pending markers.
+An ingest reconciliation may deload or reduce quality, but never reverses either
+decision later in the same open week. A changed deterministic plan forces the season
+narration to refresh with the recorded current-week adjustment in its tool context.
+
+Reconciliation is event-driven but deterministic. The existing post-ingest listener
+and the daily close pass mark the user's earliest affected date in durable pending
+markers before queue coalescing. Dates older than the previous week are ignored
+because they cannot change the current plan.
 A unique, per-user job drains that marker under a per-user overlap lock and calls
 `Periodizer::regenerateIfChanged()`. The periodizer compares the adaptation
 fingerprint before persisting, so late evidence can update the plan without plan

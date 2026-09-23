@@ -159,7 +159,7 @@ class ActivityPipeline
      */
     private function dispatchIngestedEvent(Activity $activity): void
     {
-        ActivityIngested::dispatch($activity->id, $activity->user_id);
+        ActivityIngested::dispatch($activity->id);
     }
 
     /**

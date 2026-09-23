@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use Illuminate\Database\Eloquent\Collection;
 use App\Enums\AdaptationReason;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
@@ -54,6 +55,9 @@ final readonly class PlanAdapter
     /** Twice the easy-day line: a day this far past it speaks for the week on its own. */
     public const float EGREGIOUS_EASY_DAY_HARD_SHARE = 0.40;
 
+    /** Number of settled weeks that can contribute to a repeated-stimulus reduction. */
+    public const int STIMULUS_HISTORY_WEEKS = 3;
+
     /**
      * Egregiously decoupled days before the week counts as run too hard.
      *
@@ -85,7 +89,10 @@ final readonly class PlanAdapter
         $load = $this->trainingLoad->summary($user, $today);
         $ceiling = ReadinessCeiling::from(BriefingContext::forUser($user, $today, $load)->readinessCeiling);
         $execution = $this->previousWeekExecution($user, $weekStart);
-        $stimulus = $this->previousWeekStimulus($user, $weekStart);
+        $currentStimulus = $this->currentWeekStimulus($user, $weekStart, $today);
+        $stimulus = $currentStimulus['sessions'] > 0
+            ? $currentStimulus
+            : $this->previousWeekStimulus($user, $weekStart);
 
         return self::decide(
             $ceiling,
@@ -95,6 +102,7 @@ final readonly class PlanAdapter
             $this->previousWeekAdherencePct($user, $weekStart),
             $stimulus['adherence_pct'],
             $stimulus['misses'],
+            $stimulus['reduction_misses'],
             $execution['ragged'],
             $execution['egregious_easy'],
             $execution['egregious_decoupling'],
@@ -106,6 +114,7 @@ final readonly class PlanAdapter
      * @param  int  $adherencePct  average of last week's persisted per-day distance_score (Rest/Planned/Skip days excluded, each day capped at 100 before averaging — an overreached day can't paper over a missed one)
      * @param  int  $stimulusAdherencePct  percentage of judgeable key sessions whose stimulus landed
      * @param  int  $stimulusMisses  judgeable key sessions whose stimulus was missed
+     * @param  int  $stimulusMissesInWindow  missed key sessions across the settled three-week window
      * @param  int  $raggedDays  days last week whose runs came in harder than the day was written for
      * @param  int  $egregiousEasyDays  of those, easy days so far above Z2 that one is the whole verdict
      * @param  int  $egregiousDecouplingDays  of those, quality days so far past the decoupling line that {@see self::EGREGIOUS_DECOUPLING_DAYS_MIN} of them are the verdict
@@ -120,6 +129,7 @@ final readonly class PlanAdapter
         int $adherencePct,
         int $stimulusAdherencePct,
         int $stimulusMisses,
+        int $stimulusMissesInWindow,
         int $raggedDays,
         int $egregiousEasyDays,
         int $egregiousDecouplingDays,
@@ -133,7 +143,7 @@ final readonly class PlanAdapter
             'quality_delta' => match ($reason) {
                 AdaptationReason::BehindRacePace => 1,
                 AdaptationReason::RanTooHard => -1,
-                AdaptationReason::MissedStimulus => self::stimulusNeedsReduction($stimulusMisses) ? -1 : 0,
+                AdaptationReason::MissedStimulus => self::stimulusNeedsReduction($stimulusMissesInWindow) ? -1 : 0,
                 default => 0,
             },
             'adherence_pct' => min(100, max(0, $adherencePct)),
@@ -233,18 +243,17 @@ final readonly class PlanAdapter
      * not missed work; TooHard still means the stimulus happened and remains
      * visible to the existing ran-too-hard arm.
      *
-     * @return array{adherence_pct: int, misses: int, sessions: int}
+     * @return array{adherence_pct: int, misses: int, sessions: int, reduction_misses: int}
      */
     private function previousWeekStimulus(User $user, Carbon $weekStart): array
     {
         [$previousStart, $previousEnd] = self::previousWeekBounds($weekStart);
-        $rows = PlannedSession::query()
-            ->where('user_id', $user->id)
-            ->whereBetween('date', [$previousStart->toDateString(), $previousEnd->toDateString()])
-            ->whereIn('session_type', [SessionType::Long, SessionType::Tempo, SessionType::Interval])
-            ->whereIn('status', [PlannedSessionStatus::Done, PlannedSessionStatus::Partial, PlannedSessionStatus::Overreached])
-            ->whereIn('intent_verdict', [IntentVerdict::Hit->value, IntentVerdict::Missed->value, IntentVerdict::TooHard->value])
-            ->get(['intent_verdict']);
+        $rows = $this->settledStimulusRows($user, $previousStart, $previousEnd);
+        $windowRows = $this->settledStimulusRows(
+            $user,
+            $previousStart->copy()->subWeeks(self::STIMULUS_HISTORY_WEEKS - 1),
+            $previousEnd,
+        );
 
         $sessions = $rows->count();
         $misses = $rows->where('intent_verdict', IntentVerdict::Missed->value)->count();
@@ -254,7 +263,56 @@ final readonly class PlanAdapter
             'adherence_pct' => $sessions === 0 ? 100 : (int) round($successful / $sessions * 100),
             'misses' => $misses,
             'sessions' => $sessions,
+            'reduction_misses' => $windowRows->where('intent_verdict', IntentVerdict::Missed->value)->count(),
         ];
+    }
+
+    /**
+     * Settled key sessions from the current week, excluding today because the
+     * day is still open and a miss cannot be decided until it closes.
+     *
+     * @return array{adherence_pct: int, misses: int, sessions: int, reduction_misses: int}
+     */
+    private function currentWeekStimulus(User $user, Carbon $weekStart, Carbon $today): array
+    {
+        $end = $today->copy()->subDay();
+        $weekEnd = $weekStart->copy()->addDays(6);
+        if ($end->gt($weekEnd)) {
+            $end = $weekEnd;
+        }
+        if ($end->lt($weekStart)) {
+            return ['adherence_pct' => 100, 'misses' => 0, 'sessions' => 0, 'reduction_misses' => 0];
+        }
+
+        $rows = $this->settledStimulusRows($user, $weekStart, $end);
+        $windowRows = $this->settledStimulusRows(
+            $user,
+            $weekStart->copy()->subWeeks(self::STIMULUS_HISTORY_WEEKS - 1),
+            $end,
+        );
+        $sessions = $rows->count();
+        $misses = $rows->where('intent_verdict', IntentVerdict::Missed->value)->count();
+
+        return [
+            'adherence_pct' => $sessions === 0 ? 100 : (int) round(($sessions - $misses) / $sessions * 100),
+            'misses' => $misses,
+            'sessions' => $sessions,
+            'reduction_misses' => $windowRows->where('intent_verdict', IntentVerdict::Missed->value)->count(),
+        ];
+    }
+
+    /**
+     * @return Collection<int, PlannedSession>
+     */
+    private function settledStimulusRows(User $user, Carbon $from, Carbon $to): Collection
+    {
+        return PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->whereIn('session_type', [SessionType::Long, SessionType::Tempo, SessionType::Interval])
+            ->whereIn('status', [PlannedSessionStatus::Done, PlannedSessionStatus::Partial, PlannedSessionStatus::Overreached])
+            ->whereIn('intent_verdict', [IntentVerdict::Hit->value, IntentVerdict::Missed->value, IntentVerdict::TooHard->value])
+            ->get(['intent_verdict']);
     }
 
     /**

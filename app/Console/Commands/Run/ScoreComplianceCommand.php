@@ -75,16 +75,22 @@ class ScoreComplianceCommand extends Command
 
         $verdicts = $scorer->verdictsFor($user, $staleRows, $today);
 
+        $scored = 0;
+        $firstScoredDate = null;
         foreach ($staleRows as $row) {
             $verdict = $verdicts[$row->date->toDateString()] ?? null;
             if ($verdict === null) {
                 continue;
             }
             ComplianceScorer::applyVerdict($row, $verdict);
+            $scored++;
+            $firstScoredDate ??= $row->date;
         }
 
-        $reconciliation->markDirty($user->id, $staleRows->first()->date);
+        if ($scored > 0 && $firstScoredDate !== null) {
+            $reconciliation->markDirty($user->id, $firstScoredDate);
+        }
 
-        return $staleRows->count();
+        return $scored;
     }
 }

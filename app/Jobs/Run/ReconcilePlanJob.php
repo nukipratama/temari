@@ -15,7 +15,9 @@ final class ReconcilePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQue
 {
     use Queueable;
 
-    public int $tries = 3;
+    public int $tries = 10;
+
+    public int $maxExceptions = 3;
 
     /** @var array<int, int> */
     public array $backoff = [30, 120];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\Run\ReconcilePlanJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
@@ -28,6 +29,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\NarrationEligibility;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
+use App\Services\Run\Plan\PlanReconciliationDispatch;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -85,6 +87,16 @@ it('requests card flavor for the run card the ingest minted', function (): void 
     expect(Analysis::query()
         ->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)
         ->exists())->toBeTrue();
+});
+
+it('writes the reconciliation marker in the post-ingest listener', function (): void {
+    $activity = analyzedActivity();
+
+    fire($activity);
+
+    expect($activity->user->fresh()->plan_reconciliation_pending_from->toDateString())
+        ->toBe('2026-05-10');
+    Bus::assertDispatched(ReconcilePlanJob::class);
 });
 
 it('re-narrates card flavor on a re-ingest (invalidate:true) without minting a second row', function (): void {
@@ -615,6 +627,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         app(RestClampRecorder::class),
         app(PlanNarrationRequester::class),
         app(ComplianceScorer::class),
+        app(PlanReconciliationDispatch::class),
         app(TrendSnapshotRepairDispatch::class),
     );
 

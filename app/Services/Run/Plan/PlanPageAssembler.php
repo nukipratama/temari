@@ -103,7 +103,7 @@ final class PlanPageAssembler
      * so, with the floor it set aside, and a block holding its increases for
      * unscored load says that too.
      *
-     * @return array{reason: string, headline: string, detail: string, deload: bool, adherence_pct: int, stimulus_adherence_pct: int}|null
+     * @return array{reason: string, headline: string, detail: string, deload: bool}|null
      */
     public function adaptation(User $user, Carbon $today): ?array
     {
@@ -129,8 +129,6 @@ final class PlanPageAssembler
             'headline' => $adaptation->reason->headline(),
             'detail' => $detail,
             'deload' => $adaptation->deload,
-            'adherence_pct' => $adaptation->adherence_pct,
-            'stimulus_adherence_pct' => $adaptation->stimulus_adherence_pct,
         ];
     }
 

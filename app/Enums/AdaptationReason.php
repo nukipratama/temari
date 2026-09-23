@@ -52,7 +52,7 @@ enum AdaptationReason: string
             self::HighStrain => 'last week\'s strain ran well past what your fitness supports. this week backs off to deload volume.',
             self::MissedWeek => "you finished {$adherencePct}% of last week's sessions. this week comes back smaller, not doubled.",
             self::MissedStimulus => sprintf(
-                "you finished %d%% of last week's distance, but only %d%% of its key work landed. %s",
+                'you finished %d%% of the settled distance, but only %d%% of its key work landed. %s',
                 $adherencePct,
                 $stimulusAdherencePct ?? 0,
                 $qualityDelta < 0

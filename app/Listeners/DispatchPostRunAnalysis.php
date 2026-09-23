@@ -18,6 +18,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\NarrationEligibility;
 use App\Services\AI\NarrationVerdict;
 use App\Services\Run\Plan\ComplianceScorer;
+use App\Services\Run\Plan\PlanReconciliationDispatch;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\PlanNarrationRequester;
@@ -43,6 +44,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly RestClampRecorder $restClampRecorder,
         private readonly PlanNarrationRequester $planNarration,
         private readonly ComplianceScorer $complianceScorer,
+        private readonly PlanReconciliationDispatch $planReconciliation,
         private readonly TrendSnapshotRepairDispatch $trendSnapshots,
     ) {
     }
@@ -85,6 +87,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         if ($detail->start_date_local !== null) {
             $this->complianceScorer->creditIfEarned($user, $detail->start_date_local, Carbon::today());
+            $this->planReconciliation->forActivity($activity);
         }
 
         $this->requestCardFlavor($activity, $ruleBased, $stageOnly, $delaySec);

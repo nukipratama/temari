@@ -30,12 +30,13 @@ function decide(
     int $adherencePct = 100,
     int $stimulusAdherencePct = 100,
     int $stimulusMisses = 0,
+    int $stimulusMissesInWindow = 0,
     int $raggedDays = 0,
     int $egregiousEasyDays = 0,
     int $egregiousDecouplingDays = 0,
     ?float $raceGapRatio = null,
 ): array {
-    return PlanAdapter::decide($ceiling, $monotony, $strain, $ctl, $adherencePct, $stimulusAdherencePct, $stimulusMisses, $raggedDays, $egregiousEasyDays, $egregiousDecouplingDays, $raceGapRatio);
+    return PlanAdapter::decide($ceiling, $monotony, $strain, $ctl, $adherencePct, $stimulusAdherencePct, $stimulusMisses, $stimulusMissesInWindow ?: $stimulusMisses, $raggedDays, $egregiousEasyDays, $egregiousDecouplingDays, $raceGapRatio);
 }
 
 it('leaves a healthy, fully adhered week alone', function (): void {
@@ -97,6 +98,13 @@ it('drops one quality slot when repeated key stimuli are missed', function (): v
     expect($decision['reason'])->toBe(AdaptationReason::MissedStimulus)
         ->and($decision['quality_delta'])->toBe(-1)
         ->and($decision['deload'])->toBeFalse();
+});
+
+it('drops quality when misses repeat across the settled three-week window', function (): void {
+    $decision = decide(stimulusAdherencePct: 50, stimulusMisses: 1, stimulusMissesInWindow: 2);
+
+    expect($decision['reason'])->toBe(AdaptationReason::MissedStimulus)
+        ->and($decision['quality_delta'])->toBe(-1);
 });
 
 it('drops one quality slot when the week has key work but none of it landed', function (): void {
@@ -292,6 +300,55 @@ it('carries a full-distance key-session intent miss separately from volume adher
         ->and($decision['stimulus_adherence_pct'])->toBe(0)
         ->and($decision['reason'])->toBe(AdaptationReason::MissedStimulus)
         ->and($decision['quality_delta'])->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('uses a settled current-week miss without judging today before the day closes', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-10',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Partial,
+        'distance_score' => 100,
+        'intent_verdict' => 'missed',
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Partial,
+        'distance_score' => 100,
+        'intent_verdict' => 'missed',
+    ]);
+
+    $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::today(), null);
+
+    expect($decision['stimulus_adherence_pct'])->toBe(0)
+        ->and($decision['reason'])->toBe(AdaptationReason::MissedStimulus);
+
+    Carbon::setTestNow();
+});
+
+it('does not treat an explicit key-session skip as a missed stimulus', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-03',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Skip,
+        'skipped' => true,
+    ]);
+
+    $decision = planAdapterFor()->forWeek($user, Carbon::today(), Carbon::today(), null);
+
+    expect($decision['stimulus_adherence_pct'])->toBe(100)
+        ->and($decision['reason'])->toBe(AdaptationReason::Steady);
 
     Carbon::setTestNow();
 });

@@ -203,6 +203,16 @@ final readonly class PlanNarrationRequester
     }
 
     /**
+     * Re-requests the season read after deterministic reconciliation changes
+     * the current week's recorded plan, so its tool context cannot lag behind
+     * the rows the athlete is looking at.
+     */
+    public function requestForCurrentWeekAfterPlanChange(User $user, Carbon $today): void
+    {
+        $this->requestWeek($user, $today, force: true);
+    }
+
+    /**
      * The brand-new account's one narration of its first week — the season
      * only, for the same reason {@see self::requestForCurrentWeek()} no
      * longer touches any day: a first week has no run in it yet.
@@ -220,7 +230,7 @@ final readonly class PlanNarrationRequester
      * as changed, so every existing season re-narrates once rather than
      * silently carrying a blurb that never had a chance to mention it.
      */
-    private function requestWeek(User $user, Carbon $today): void
+    private function requestWeek(User $user, Carbon $today, bool $force = false): void
     {
         $season = $this->currentSeason($user);
         if ($season === null) {
@@ -238,7 +248,7 @@ final readonly class PlanNarrationRequester
             Season::class,
             $season->id,
             AnalysisType::PlanSeasonVoice,
-            invalidate: $stamped !== $expected,
+            invalidate: $force || $stamped !== $expected,
         );
     }
 

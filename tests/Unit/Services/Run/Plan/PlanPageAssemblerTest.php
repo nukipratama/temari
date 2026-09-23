@@ -98,8 +98,6 @@ it('explains the current week in the adapter\'s own words', function (): void {
         'headline' => AdaptationReason::MissedWeek->headline(),
         'detail' => AdaptationReason::MissedWeek->detail(0),
         'deload' => true,
-        'adherence_pct' => 0,
-        'stimulus_adherence_pct' => 100,
     ]);
 });
 
@@ -132,7 +130,7 @@ it('explains volume and stimulus adherence separately when key work misses', fun
     ]);
 
     expect($this->assembler->adaptation($user, Carbon::today())['detail'])
-        ->toContain("you finished 100% of last week's distance, but only 0% of its key work landed")
+        ->toContain('you finished 100% of the settled distance, but only 0% of its key work landed')
         ->toContain('does not add another quality session');
 });
 

@@ -12,14 +12,13 @@ use Illuminate\Foundation\Events\Dispatchable;
  * not the model, so a queued listener re-resolves fresh state
  * rather than working off a serialized snapshot. The post-run AI analysis
  * fan-out lives in {@see \App\Listeners\DispatchPostRunAnalysis}, keeping the
- * ingest pipeline ignorant of which analyses run. The optional user id lets
- * per-user queued listeners debounce without reloading the activity first.
+ * ingest pipeline ignorant of which analyses run.
  */
 class ActivityIngested
 {
     use Dispatchable;
 
-    public function __construct(public int $activityId, public ?int $userId = null)
+    public function __construct(public int $activityId)
     {
     }
 }

@@ -74,25 +74,43 @@ final readonly class Periodizer
 
     public function regenerateIfChanged(User $user, ?Carbon $today = null): bool
     {
-        $inputs = $this->gatherer->forUser($user, $today ?? Carbon::today());
+        $today ??= Carbon::today();
+        $inputs = $this->gatherer->forUser($user, $today);
         $adaptation = PlanAdaptation::query()
             ->where('user_id', $user->id)
             ->where('week_start', $inputs->currentWeekStart()->toDateString())
             ->first();
 
-        if ($adaptation !== null
-            && $adaptation->reason === $inputs->adaptation['reason']
-            && $adaptation->deload === $inputs->adaptation['deload']
-            && $adaptation->quality_delta === $inputs->adaptation['quality_delta']
-            && $adaptation->adherence_pct === $inputs->adaptation['adherence_pct']
-            && $adaptation->stimulus_adherence_pct === $inputs->adaptation['stimulus_adherence_pct']
-            && $adaptation->increases_held === $inputs->increasesHeld) {
+        if ($adaptation !== null && self::adaptationMatches($adaptation, $inputs)) {
+            return false;
+        }
+
+        // Ingest reconciliation can only move safety in one direction inside
+        // an open week. A newly healthy reading must not erase a deload or
+        // restore quality that an earlier settled verdict removed.
+        if ($adaptation !== null && self::wouldRelaxSafety($adaptation, $inputs)) {
             return false;
         }
 
         $this->persist($inputs);
 
         return true;
+    }
+
+    private static function adaptationMatches(PlanAdaptation $adaptation, PlanInputs $inputs): bool
+    {
+        return $adaptation->reason === $inputs->adaptation['reason']
+            && $adaptation->deload === $inputs->adaptation['deload']
+            && $adaptation->quality_delta === $inputs->adaptation['quality_delta']
+            && $adaptation->adherence_pct === $inputs->adaptation['adherence_pct']
+            && $adaptation->stimulus_adherence_pct === $inputs->adaptation['stimulus_adherence_pct']
+            && $adaptation->increases_held === $inputs->increasesHeld;
+    }
+
+    private static function wouldRelaxSafety(PlanAdaptation $adaptation, PlanInputs $inputs): bool
+    {
+        return ($adaptation->deload && ! $inputs->adaptation['deload'])
+            || ($adaptation->quality_delta < 0 && $inputs->adaptation['quality_delta'] >= 0);
     }
 
     /**

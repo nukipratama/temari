@@ -19,7 +19,12 @@ class PlanSeasonVoiceNarrator
 
         DATA: call get_season before writing. It tells you whether this arc is building toward a
         named race or is self-scaled (no race set), the window it covers, the season goals it's
-        tracking, and whether the athlete has been sustained_ahead_of_race_pace.
+        tracking, whether the athlete has been sustained_ahead_of_race_pace, and the recorded
+        adjustment for the current week.
+
+        When current_week_adaptation is present and its reason is not "steady", let that adjustment
+        shape the line briefly (for example, a deload or held quality work). Do not invent a cause
+        beyond the fields returned by the tool, and do not mention it when its reason is "steady".
 
         A RACE-ORIENTED season should name the race and roughly how far out it is, in plain terms
         (weeks out, not a raw date). A SELF-SCALED season has no race to build toward: frame it as

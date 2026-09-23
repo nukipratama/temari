@@ -52,3 +52,21 @@ it('does not schedule reconciliation for the demo account', function (): void {
     expect($user->fresh()->plan_reconciliation_pending_from)->toBeNull();
     Bus::assertNotDispatched(ReconcilePlanJob::class);
 });
+
+it('ignores evidence older than the previous week because it cannot change the current plan', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+
+    app(PlanReconciliationService::class)->markDirty($user->id, Carbon::parse('2026-08-01'));
+
+    expect($user->fresh()->plan_reconciliation_pending_from)->toBeNull();
+    Bus::assertNotDispatched(ReconcilePlanJob::class);
+});
+
+it('uses the date cursor to classify only the current and previous week as relevant', function (): void {
+    $today = Carbon::parse('2026-08-17');
+
+    expect(PlanReconciliationService::dateCanAffectPlan(Carbon::parse('2026-08-10'), $today))->toBeTrue()
+        ->and(PlanReconciliationService::dateCanAffectPlan(Carbon::parse('2026-08-09'), $today))->toBeFalse()
+        ->and(PlanReconciliationService::dateCanAffectPlan(Carbon::parse('2026-08-18'), $today))->toBeFalse();
+});

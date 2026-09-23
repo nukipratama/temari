@@ -74,6 +74,7 @@ _Plan_
 - [[a-credited-day-shows-its-result]] — quality days credit their best single run, long days sum but need one run at 70% to read done, and a credited day ships no step-down *(supersedes the credited-day half of [[readiness-clamp-is-advisory]])*
 - [[the-eased-session-leads]] — a recorded ease is the day's session on every surface, graded, summed into the week total and narrated through the clamp line until credit, with the original as context *(its today-before-credit half amended by [[todays-ease-stays-a-stepdown]])*
 - [[a-day-is-graded-on-distance-and-intent]] — a deterministic intent verdict moves a credited day between done, partial and overreached
+- [[a-day-is-graded-on-distance-and-intent]]'s weekly-adaptation half is superseded by [[plan-adaptation-responds-to-stimulus]]; the day-level verdict remains unchanged
 - [[plan-adaptation-responds-to-stimulus]] — weekly adaptation separates volume adherence from key-session stimulus and reconciles material verdict changes after ingest
 - [[todays-ease-stays-a-stepdown]] — today's recorded ease, before credit, renders exactly like an unrecorded one on both Home and Plan, and a blind-clamp guard holds the clamp (render and recorder) while recent load is still unscored
 

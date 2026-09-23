@@ -12,6 +12,8 @@ it('is unique per user and does not overlap its own reconciliation', function ()
     expect($job)
         ->toBeInstanceOf(ShouldBeUniqueUntilProcessing::class)
         ->and($job->uniqueId())->toBe('42')
+        ->and($job->tries)->toBe(10)
+        ->and($job->maxExceptions)->toBe(3)
         ->and($job->middleware())->toHaveCount(1)
         ->and($job->middleware()[0])->toBeInstanceOf(WithoutOverlapping::class);
 });

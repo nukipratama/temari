@@ -43,8 +43,6 @@ interface PlanAdaptation {
     headline: string;
     detail: string;
     deload: boolean;
-    adherence_pct: number;
-    stimulus_adherence_pct: number;
 }
 
 interface PlanProps {
