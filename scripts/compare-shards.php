@@ -187,12 +187,6 @@ function buildPrBody(array $added, array $removed, array $newTotals, array $oldA
         $oldAppliedExcess,
     );
 
-    $lines[] = '';
-    $lines[] = '## Before merging';
-    $lines[] = 'This PR was opened with the default `GITHUB_TOKEN`, so its own CI did not start '.
-        "automatically — GitHub's recursion guard blocks workflows from triggering on a ".
-        '`GITHUB_TOKEN` push. Re-run CI manually from the Checks tab, or push an empty commit, before merging.';
-
     return implode("\n", $lines)."\n";
 }
 
