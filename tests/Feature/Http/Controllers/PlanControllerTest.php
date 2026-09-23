@@ -444,9 +444,15 @@ function planBudgetFixture(): User
         ]);
     }
 
+    // distance_km pinned to the season's own anchor_weekly_volume_km (see
+    // seedPastSeasonWeeks): SeasonService::reanchorIfCollapsed() compares the
+    // trailing mean of these against that anchor, and an unpinned random draw
+    // occasionally fell far enough below it to trigger a reanchor write,
+    // busting ResolveSeasonAction's memo and adding a query (flaky at 17).
     foreach (range(1, 6) as $weeksAgo) {
         WeeklySnapshot::factory()->for($user)->create([
             'week_ending' => Carbon::today()->subWeeks($weeksAgo)->toDateString(),
+            'distance_km' => 30.0,
         ]);
     }
 
