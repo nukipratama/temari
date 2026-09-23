@@ -92,6 +92,10 @@ it('backs off under the floor when the athlete is overreaching, and says so on t
         'week_ending' => '2026-09-27',
         'form_status' => 'overreaching',
         'monotony' => 1.0,
+        'distance_km' => 30.0,
+        'weekly_trimp' => 300.0,
+        'atl_7d' => 50.0,
+        'ctl_42d' => 40.0,
     ]);
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
@@ -108,7 +112,15 @@ it('backs off under the floor when the athlete is overreaching, and says so on t
 
 it('returns to the floor the week after the guard lets go', function (): void {
     $user = flooredAthlete();
-    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-09-27', 'form_status' => 'overreaching', 'monotony' => 1.0]);
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-09-27',
+        'form_status' => 'overreaching',
+        'monotony' => 1.0,
+        'distance_km' => 30.0,
+        'weekly_trimp' => 300.0,
+        'atl_7d' => 50.0,
+        'ctl_42d' => 40.0,
+    ]);
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
     Carbon::setTestNow('2026-09-28 08:00:00');

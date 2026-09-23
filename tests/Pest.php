@@ -23,6 +23,8 @@ use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\StructuredChatCaller;
 use App\Actions\AI\RecordTokenUsageAction;
+use Database\Factories\TrendDailySnapshotFactory;
+use Database\Factories\WeeklySnapshotFactory;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -123,6 +125,12 @@ if (gitCanReadRepository(dirname(__DIR__))) {
 }
 
 pest()->beforeEach(function (): void {
+    fake()->seed(crc32(static::class.$this->name()));
+    WeeklySnapshotFactory::resetSequence();
+    TrendDailySnapshotFactory::resetSequence();
+    $this->app->bind(AzureCallThrottle::class, fn (): AzureCallThrottle => new AzureCallThrottle(function (int $seconds): void {
+    }));
+
     Http::preventStrayRequests();
     // The local Azure call throttle shares one rate-limit bucket across every
     // call; clear it so one test's calls never count against the next.
