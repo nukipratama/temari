@@ -138,6 +138,7 @@ it('runs the refresh workflow on ubuntu-latest, serially, off the existing night
     expect($regenerate['run'])
         ->toContain('--update-shards')
         ->toContain('--exclude-group=structure')
+        ->toContain('--compact')
         ->not->toContain('--parallel');
 
     $cron = (string) $workflow['on']['schedule'][0]['cron'];
