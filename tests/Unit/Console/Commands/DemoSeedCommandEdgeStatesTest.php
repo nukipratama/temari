@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Models\AI\Analysis;
+use App\Models\User;
 use App\Services\AI\AnalysisStatus;
+use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Carbon;
@@ -66,17 +68,15 @@ function commitEdgeStatesFixture(): void
 }
 
 /**
- * Seeds the bare demo dataset this file needs underneath --with-edge-states,
- * exactly once per test process. Duplicated from DemoSeedCommandTest.php's
- * ensureBareDemoSeeded() rather than shared, so this file's own edge-state
- * fixture never depends on load order relative to that file — each of the
- * two files' processes now pays its own bare-seed cost.
+ * Seeds the bare demo dataset this file needs underneath --with-edge-states.
+ * Duplicated from DemoSeedCommandTest.php's ensureBareDemoSeeded() rather
+ * than shared, so this file's own edge-state fixture never depends on load
+ * order relative to that file — each of the two files' processes pays its
+ * own bare-seed cost, and a test whose data was wiped since re-seeds.
  */
 function ensureBareDemoSeededForEdgeStates(): void
 {
-    static $done = false;
-
-    if ($done) {
+    if (User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->exists()) {
         return;
     }
 
@@ -89,20 +89,17 @@ function ensureBareDemoSeededForEdgeStates(): void
     expect(channelsUsedByEdgeStates($notifications))->toBe([]);
 
     commitEdgeStatesFixture();
-
-    $done = true;
 }
 
 /**
- * Layers --with-edge-states on top of this file's own bare fixture, exactly
- * once per test process, for the same reason and by the same mechanism as
- * ensureBareDemoSeededForEdgeStates().
+ * Layers --with-edge-states on top of this file's own bare fixture. Checks
+ * the edge-state rows themselves rather than a process-static flag, so a
+ * schema wiped by releaseEdgeStatesFixture() before this runs gets both
+ * layers reapplied instead of being trusted as already seeded.
  */
 function ensureEdgeStatesSeeded(): void
 {
-    static $done = false;
-
-    if ($done) {
+    if (Analysis::query()->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Processing, AnalysisStatus::Failed])->exists()) {
         return;
     }
 
@@ -112,8 +109,6 @@ function ensureEdgeStatesSeeded(): void
     expect($exitCode)->toBe(0);
 
     commitEdgeStatesFixture();
-
-    $done = true;
 }
 
 /**

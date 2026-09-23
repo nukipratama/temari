@@ -8,12 +8,24 @@ code_refs:
   - .github/workflows/ci.yml
   - .github/workflows/backend-ci.yml
   - .github/workflows/frontend-ci.yml
+  - .github/workflows/refresh-shards.yml
   - tests/.pest/shards.json
 ---
 
 # Backend and frontend tests are sharded on PRs and main pushes
 
 **Status:** Accepted (decided 2026-09-18)
+
+> **Fact update, 2026-09-24.** `tests/.pest/shards.json` is no longer hand-regenerated. A nightly
+> [refresh-shards.yml](../../.github/workflows/refresh-shards.yml) reruns `--update-shards
+> --exclude-group=structure`, then `scripts/compare-shards.php` decides whether the drift is worth
+> a PR (a class added or removed, or the old map's split re-measured on the new timings sitting
+> more than 10% over the mean while a fresh split would actually do better). It opens or updates
+> one `chore/refresh-shards` PR with the default `GITHUB_TOKEN`, so its own CI does not start
+> automatically — re-run CI by hand,
+> or push an empty commit, before merging. The decision and the regeneration command below stand
+> unchanged; only "regenerate it when the suite's shape changes enough" is now automatic rather
+> than manual.
 
 Coverage roughly doubled backend tests on every pull request (186–340s vs ~145s on a push),
 making them the PR's critical path by two to three minutes. Frontend tests were also near the

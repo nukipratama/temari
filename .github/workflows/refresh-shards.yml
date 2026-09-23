@@ -1,0 +1,121 @@
+name: Refresh shards
+
+# Pest balances the 3-way backend shard using the per-class timings committed
+# in tests/.pest/shards.json (docs/decisions/sharded-pr-coverage.md). Nobody
+# regenerates it on a schedule, so it drifts as classes are added, removed, or
+# get slower/faster. This runs the regeneration nightly and opens or updates
+# one PR, but only when scripts/compare-shards.php decides the drift matters
+# enough to be worth a review.
+#
+# Runs on ubuntu-latest, never the homelab runner, for the same reason as
+# tia-baseline.yml — this box is shared with prod. The suite runs serially,
+# without --parallel, so the recorded timings stay per-class.
+#
+# The PR is opened with the default GITHUB_TOKEN, so its own CI does not
+# start automatically — GitHub's recursion guard blocks a GITHUB_TOKEN push
+# from triggering workflows. The PR body says so; the owner re-runs CI by
+# hand, or pushes an empty commit, before merging.
+
+on:
+  schedule:
+    # 02:05 WIB, off the hour and clear of the nightly audit at 03:17 and the
+    # TIA baseline at 04:23.
+    - cron: '5 19 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: refresh-shards
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: '8.5'
+
+jobs:
+  refresh-shards:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: temari_testing
+          MYSQL_USER: sail
+          MYSQL_PASSWORD: password
+        ports: ['0:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -ppassword"
+          --health-interval=5s --health-timeout=2s --health-retries=10
+          --tmpfs /var/lib/mysql:rw
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-php
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: 'none'
+          classmap-authoritative: 'true'
+
+      - name: Stub .env for file-scanning tests
+        run: cp .env.example .env
+
+      - name: Snapshot the current shard map
+        run: cp tests/.pest/shards.json /tmp/shards-old.json
+
+      - name: Regenerate shards.json
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+          DB_DATABASE: temari_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+        run: ./vendor/bin/pest --no-tia --update-shards --exclude-group=structure
+
+      - name: Compare shard balance
+        id: compare
+        run: |
+          php scripts/compare-shards.php \
+            --old=/tmp/shards-old.json \
+            --new=tests/.pest/shards.json \
+            --body-out=/tmp/pr-body.md >> "$GITHUB_OUTPUT"
+
+      - name: Step summary
+        run: echo "${{ steps.compare.outputs.summary }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update the refresh PR
+        if: steps.compare.outputs.decision == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- tests/.pest/shards.json; then
+            echo "shards.json unchanged on disk, nothing to push."
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout -B chore/refresh-shards
+          git add tests/.pest/shards.json
+          git commit -m 'ci(shards): refresh timings'
+
+          git fetch origin chore/refresh-shards || true
+          git push --force-with-lease origin chore/refresh-shards
+
+          open_pr=$(gh pr list --head chore/refresh-shards --state open --json number --jq '.[0].number // empty')
+
+          if [ -n "$open_pr" ]; then
+            gh pr edit "$open_pr" --body-file /tmp/pr-body.md
+          else
+            gh pr create --base main --head chore/refresh-shards \
+              --title 'ci(shards): refresh shard timings' \
+              --body-file /tmp/pr-body.md
+          fi
