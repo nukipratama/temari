@@ -155,3 +155,10 @@ it('never enables auto-merge on the refresh PR', function (): void {
         ->not->toContain('enable-auto-merge')
         ->toContain('GITHUB_TOKEN');
 });
+
+it('commits the refreshed map without the local developer git hooks', function (): void {
+    $workflow = file_get_contents(base_path('.github/workflows/refresh-shards.yml'));
+
+    expect($workflow)->toContain('git -c core.hooksPath=/dev/null commit')
+        ->not->toMatch('/^\s*git commit /m');
+});
