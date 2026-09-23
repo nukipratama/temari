@@ -90,13 +90,14 @@ it('carries the weekdays the athlete chose to run on', function (): void {
         ->and($inputs->sessionsPerWeek)->toBe(4);
 });
 
-it('collects fixed current-week prescriptions without making past dates writable', function (): void {
+it('collects fixed session prescriptions across the horizon without making past dates writable', function (): void {
     Carbon::setTestNow('2026-09-09 08:00:00');
     $user = gathererAthlete();
     $yesterday = Carbon::today()->subDay()->toDateString();
     $tomorrow = Carbon::today()->addDay()->toDateString();
     $inTwoDays = Carbon::today()->addDays(2)->toDateString();
     $monday = Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString();
+    $nextWeek = Carbon::today()->startOfWeek(Carbon::MONDAY)->addWeek()->addDay()->toDateString();
 
     PlannedSession::factory()->for($user)->create([
         'date' => $monday,
@@ -112,10 +113,16 @@ it('collects fixed current-week prescriptions without making past dates writable
     ]);
     PlannedSession::factory()->for($user)->create(['date' => $tomorrow, 'pinned' => true]);
     PlannedSession::factory()->for($user)->create(['date' => $inTwoDays, 'status' => PlannedSessionStatus::Done]);
+    PlannedSession::factory()->for($user)->pinned()->create([
+        'date' => $nextWeek,
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 18,
+        'prescribed_pace_band' => PaceBand::Interval,
+    ]);
 
     $inputs = $this->gatherer->forUser($user, Carbon::today());
 
-    expect(array_keys($inputs->pinnedDates))->toBe([$tomorrow])
+    expect(array_keys($inputs->pinnedDates))->toBe([$tomorrow, $nextWeek])
         ->and(array_keys($inputs->settledDates))->toBe([$inTwoDays])
         ->and($inputs->fixedSessions)->toBe([
             $monday => [
@@ -137,6 +144,11 @@ it('collects fixed current-week prescriptions without making past dates writable
                 'session_type' => SessionType::Easy,
                 'prescribed_hard_minutes' => 0,
                 'prescribed_pace_band' => null,
+            ],
+            $nextWeek => [
+                'session_type' => SessionType::Interval,
+                'prescribed_hard_minutes' => 18,
+                'prescribed_pace_band' => PaceBand::Interval,
             ],
         ]);
 });

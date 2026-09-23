@@ -102,8 +102,8 @@ final readonly class PlanInputsGatherer
      *     fixed: array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null}>
      * }
      *
-     * Pinned, settled, and past rows share one query because each is immutable
-     * to the current regeneration.
+     * Fixed rows share one query across the plan horizon; past rows can only
+     * fall in the current week because the query starts at that week's Monday.
      */
     private function fixedPlanDaysIn(User $user, Carbon $weekStart, Carbon $today, Carbon $to): array
     {
@@ -120,17 +120,14 @@ final readonly class PlanInputsGatherer
         $pinned = [];
         $settled = [];
         $fixed = [];
-        $weekEnd = $weekStart->copy()->addDays(6);
         foreach ($rows as $row) {
             $date = $row->date->toDateString();
             if ($row->date->lt($today) || $row->pinned || $row->status !== PlannedSessionStatus::Planned) {
-                if (! $row->date->lt($weekStart) && ! $row->date->gt($weekEnd)) {
-                    $fixed[$date] = [
-                        'session_type' => $row->session_type,
-                        'prescribed_hard_minutes' => $row->prescribed_hard_minutes ?? 0,
-                        'prescribed_pace_band' => $row->prescribed_pace_band,
-                    ];
-                }
+                $fixed[$date] = [
+                    'session_type' => $row->session_type,
+                    'prescribed_hard_minutes' => $row->prescribed_hard_minutes ?? 0,
+                    'prescribed_pace_band' => $row->prescribed_pace_band,
+                ];
             }
             if (! $row->date->lt($today)) {
                 if ($row->pinned) {

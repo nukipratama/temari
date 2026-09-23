@@ -568,8 +568,8 @@ it('caps future quality around a settled tempo and a race-pace Long in the curre
         ->and($sunday->prescribed_hard_minutes)->toBeGreaterThan(0);
 });
 
-it('counts a pinned quality type against the current-week budget even without stored hard minutes', function (): void {
-    Carbon::setTestNow('2026-08-31 08:00:00');
+it('counts a pinned quality type in a later week without stored hard minutes', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
     foreach (range(0, 3) as $i) {
         WeeklySnapshot::factory()->for($user)->create([
@@ -580,11 +580,12 @@ it('counts a pinned quality type against the current-week budget even without st
     }
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 6]);
     RaceGoal::factory()->for($user)->create([
-        'race_date' => Carbon::today()->addWeeks(4)->toDateString(),
+        'race_date' => Carbon::today()->addWeeks(8)->toDateString(),
         'distance_m' => 42_195,
         'goal_time_sec' => 10_800,
     ]);
-    $tuesday = Carbon::today()->addDay();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY)->addWeek();
+    $tuesday = $weekStart->copy()->addDay();
     $pinned = PlannedSession::factory()->for($user)->pinned()->create([
         'date' => $tuesday->toDateString(),
         'session_type' => SessionType::Interval,
@@ -592,7 +593,6 @@ it('counts a pinned quality type against the current-week budget even without st
 
     $this->periodizer->regenerate($user, Carbon::today());
 
-    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
     $thursday = PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->copy()->addDays(3)->toDateString())->firstOrFail();
     $sunday = PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->copy()->addDays(6)->toDateString())->firstOrFail();
 
