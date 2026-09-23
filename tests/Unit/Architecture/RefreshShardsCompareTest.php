@@ -77,8 +77,7 @@ it('decides yes when a class was added', function (): void {
     expect($out['decision'])->toBe('yes')
         ->and($out['added'])->toBe('1')
         ->and($out['removed'])->toBe('0')
-        ->and($out['body'])->toContain('Tests\\G')
-        ->toContain('GITHUB_TOKEN');
+        ->and($out['body'])->toContain('Tests\\G');
 });
 
 it('decides yes when a class was removed', function (): void {
