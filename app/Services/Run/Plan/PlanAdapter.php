@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-use Illuminate\Database\Eloquent\Collection;
 use App\Enums\AdaptationReason;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
@@ -19,6 +18,7 @@ use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingContext;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 /**

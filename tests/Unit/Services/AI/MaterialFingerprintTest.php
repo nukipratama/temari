@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\AdaptationReason;
 use App\Enums\IntentVerdict;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
@@ -356,4 +357,13 @@ it('is stable while the sustained-ahead signal has not flipped', function (): vo
 
 it('changes the moment the sustained-ahead signal flips', function (): void {
     expect(MaterialFingerprint::forSeason(false))->not->toBe(MaterialFingerprint::forSeason(true));
+});
+
+it('changes when the current week adaptation reason or deload changes', function (): void {
+    $steady = MaterialFingerprint::forSeason(false, AdaptationReason::Steady, false);
+
+    expect(MaterialFingerprint::forSeason(false, AdaptationReason::MissedStimulus, false))
+        ->not->toBe($steady)
+        ->and(MaterialFingerprint::forSeason(false, AdaptationReason::Steady, true))
+        ->not->toBe($steady);
 });

@@ -175,6 +175,18 @@ it('adds a quality session when the projection is behind the goal time', functio
         ->and($decision['deload'])->toBeFalse();
 });
 
+it('lets a settled current-week hit release a previous-week quality hold before race feedback', function (): void {
+    $decision = decide(
+        stimulusAdherencePct: 100,
+        stimulusMisses: 0,
+        stimulusMissesInWindow: 0,
+        raceGapRatio: 1.08,
+    );
+
+    expect($decision['reason'])->toBe(AdaptationReason::BehindRacePace)
+        ->and($decision['quality_delta'])->toBe(1);
+});
+
 it('keeps the quality count when the projection is already inside the goal time', function (): void {
     $decision = decide(raceGapRatio: 0.9);
 

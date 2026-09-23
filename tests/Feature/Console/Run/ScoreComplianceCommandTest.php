@@ -85,6 +85,21 @@ it('schedules plan reconciliation after settling past sessions', function (): vo
     Carbon::setTestNow();
 });
 
+it('uses the latest scored date when a backlog spans irrelevant and relevant weeks', function (): void {
+    Bus::fake();
+    Carbon::setTestNow('2026-08-12');
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-07-20']);
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::yesterday()]);
+
+    $this->artisan('plan:score-compliance')->assertSuccessful();
+
+    expect($user->fresh()->plan_reconciliation_pending_from->toDateString())
+        ->toBe(Carbon::yesterday()->toDateString());
+
+    Carbon::setTestNow();
+});
+
 it('limits to a single user via --user', function (): void {
     Carbon::setTestNow('2026-08-12');
     $a = User::factory()->create();

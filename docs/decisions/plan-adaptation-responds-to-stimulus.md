@@ -42,14 +42,21 @@ the current week uses only closed days, so today's open day cannot become a miss
 Safety and mostly-missed-week deloads still have priority. The effective session
 produced by a readiness clamp is what the existing intent judge evaluates, and an
 explicit skip is excused rather than evidence of either a hit or a miss.
+On Monday, the latest settled key-work evidence is last week's; once an open week
+has a closed key session, that current-week evidence replaces the prior week for
+the stimulus signal while volume adherence remains last week's.
 
 An ingest reconciliation may deload or reduce quality, but never reverses either
-decision later in the same open week. A changed deterministic plan forces the season
-narration to refresh with the recorded current-week adjustment in its tool context.
+decision later in the same open week. A changed deterministic plan refreshes the
+season narration for recently active athletes with the recorded current-week
+adjustment in its tool context. If a prior-week miss held quality, a settled
+key-session hit in the open week can release that hold before the next Monday;
+the open-week evidence is the current decision until a newer settled key session
+replaces it.
 
 Reconciliation is event-driven but deterministic. The existing post-ingest listener
-and the daily close pass mark the user's earliest affected date in durable pending
-markers before queue coalescing. Dates older than the previous week are ignored
+and the daily close pass mark an affected date in durable pending markers before
+queue coalescing. Dates older than the previous week are ignored
 because they cannot change the current plan.
 A unique, per-user job drains that marker under a per-user overlap lock and calls
 `Periodizer::regenerateIfChanged()`. The periodizer compares the adaptation

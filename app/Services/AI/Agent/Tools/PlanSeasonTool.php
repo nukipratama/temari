@@ -71,7 +71,6 @@ final class PlanSeasonTool extends NoArgumentTool
         return $adaptation === null ? null : [
             'reason' => $adaptation->reason->value,
             'deload' => $adaptation->deload,
-            'quality_delta' => $adaptation->quality_delta,
             'adherence_pct' => $adaptation->adherence_pct,
             'stimulus_adherence_pct' => $adaptation->stimulus_adherence_pct,
             'increases_held' => $adaptation->increases_held,

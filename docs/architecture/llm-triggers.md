@@ -113,10 +113,12 @@ See [[deferred-recap-windowing]] and [[history-narrates-on-demand]].
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 and it still runs for every athlete. The narration half then calls
 [`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L198) for each
-recently-active athlete, touching one row: `PlanSeasonVoice`. Ahead-of-time day narration was cut
-in #939 — a day's own read is requested separately, once it actually has a run, by
-[`requestDayVoiceIfChanged()`](../../app/Services/AI/PlanNarrationRequester.php#L83), called from
-the ingest listener right after the day is credited.
+recently-active athlete, touching one row: `PlanSeasonVoice`. Its fingerprint includes the
+sustained-ahead signal and the current week's adaptation reason/deload, so a Monday plan change
+re-reads the season only when that material changes. Ahead-of-time day narration was cut in #939 —
+a day's own read is requested separately, once it actually has a run, by
+[`requestDayVoiceIfChanged()`](../../app/Services/AI/PlanNarrationRequester.php#L83), called after
+the post-ingest plan reconciliation settles the day.
 
 **A brand-new account also gets today's briefing on the day it signs up.** `BriefingMascotVoice`
 is keyed by the day, and the only thing that used to stage it was the 00:01 kickoff, so an account
@@ -182,13 +184,14 @@ fingerprint gate takes over from there.
 from the season, by
 [`requestDayVoiceIfChanged()`](../../app/Services/AI/PlanNarrationRequester.php#L83) right after
 [`ComplianceScorer::creditIfEarned()`](../../app/Services/Run/Plan/ComplianceScorer.php#L199)
-credits the day, and only when the day is actually credited — a day still ahead asks for nothing.
+credits the day and the post-ingest plan reconciliation settles, and only when the day is actually
+credited — a day still ahead asks for nothing.
 Each row carries a [`MaterialFingerprint`](../../app/Services/AI/MaterialFingerprint.php#L26) of
 what it describes, stamped by the job through
 [`AnalyzeRowJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeRowJob.php#L112), and an unchanged
 fingerprint means the row is left alone — so a second run the same day that does not move the
-verdict re-bills nothing. `PlanSeasonVoice` needs no fingerprint; it relies on `AnalysisService`'s
-own idempotency.
+verdict re-bills nothing. `PlanSeasonVoice` carries a material fingerprint for the time-varying
+season signals above; unchanged season material relies on `AnalysisService`'s own idempotency.
 
 A row with **no** stored fingerprint counts as changed — the inverse of the per-run rule in
 `DispatchPostRunAnalysis`, and deliberately so. Only the rule-based paths leave the column null (a
@@ -480,7 +483,7 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | `monthly_recap` | earns it | Same shape, same tightening. |
 | `profile_voice` | earns it | Once a week, four reads, genuinely synthetic. |
 | `trend_read` | earns it | 1 tool and a 4-step budget, one call per active athlete per day since `30d`/`90d`/`12mo` retired (#967). |
-| `plan_day_voice` | earns it | Budget aligned to 4. Since #939 it is no longer scheduled at all — one call per run day, requested right after `ComplianceScorer::creditIfEarned()` scores it, phrasing #946's intent verdict rather than announcing the session ahead of time. |
+| `plan_day_voice` | earns it | Budget aligned to 4. Since #939 it is no longer scheduled at all — one call per run day, requested after post-ingest plan reconciliation settles the credited day, phrasing #946's intent verdict rather than announcing the session ahead of time. |
 | `plan_season_voice` | earns it | Budget aligned to 4 and idempotent, so it neither re-bills nor over-runs. |
 | run Q&A | earns it | A free-form question about one run is exactly what rules cannot answer. |
 | `TemariPersona` | earns it | ~4,000 tokens on every turn, but it *is* the product, and the per-kind prompt cache already serves roughly half of it at a tenth of the rate. The largest available lever, and the last one to reach for. |

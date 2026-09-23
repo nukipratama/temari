@@ -1001,7 +1001,9 @@ it('PlanSeasonTool reports the sustained-ahead signal only once two consecutive 
         'week_start' => $weekStart->copy()->subWeek()->toDateString(),
         'reason' => AdaptationReason::AheadOfRacePace,
     ]);
-    expect(new PlanSeasonTool($season, app(SustainedAheadOfRacePace::class))->handle([])['sustained_ahead_of_race_pace'])->toBeTrue();
+    $context = new PlanSeasonTool($season, app(SustainedAheadOfRacePace::class))->handle([]);
+    expect($context['sustained_ahead_of_race_pace'])->toBeTrue()
+        ->and($context['current_week_adaptation'])->not->toHaveKey('quality_delta');
 });
 
 it('WeeklyRecapNarrator sends only the continuity line and reads the week', function (): void {

@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 use App\Jobs\Run\ReconcilePlanJob;
+use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
+use App\Models\AI\Analysis;
 use App\Models\PlanAdaptation;
+use App\Models\Season;
 use App\Models\User;
 use App\Services\Run\Plan\PlanReconciliationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,6 +44,23 @@ it('reconciles once and clears its rebuilding marker after the plan settles', fu
     expect($user->fresh()->plan_reconciliation_pending_from)->toBeNull()
         ->and($user->fresh()->plan_reconciliation_rebuilding_from)->toBeNull()
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->exists())->toBeTrue();
+});
+
+it('requests changed season narration only for recently active athletes', function (): void {
+    Bus::fake();
+    $active = User::factory()->create();
+    $inactive = User::factory()->create(['last_seen_at' => Carbon::today()->subDays(8)]);
+    Season::factory()->for($active)->create();
+    Season::factory()->for($inactive)->create();
+    $active->forceFill(['plan_reconciliation_pending_from' => Carbon::yesterday()])->saveQuietly();
+    $inactive->forceFill(['plan_reconciliation_pending_from' => Carbon::yesterday()])->saveQuietly();
+
+    $service = app(PlanReconciliationService::class);
+    $service->drain($active->id);
+    $service->drain($inactive->id);
+
+    Bus::assertDispatchedTimes(AnalyzePlanSeasonVoiceJob::class, 1);
+    Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class, fn (AnalyzePlanSeasonVoiceJob $job): bool => Analysis::query()->find($job->analysisId)?->subject_id === Season::query()->where('user_id', $active->id)->value('id'));
 });
 
 it('does not schedule reconciliation for the demo account', function (): void {

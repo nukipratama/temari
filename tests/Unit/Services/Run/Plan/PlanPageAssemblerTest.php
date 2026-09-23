@@ -130,7 +130,7 @@ it('explains volume and stimulus adherence separately when key work misses', fun
     ]);
 
     expect($this->assembler->adaptation($user, Carbon::today())['detail'])
-        ->toContain('you finished 100% of the settled distance, but only 0% of its key work landed')
+        ->toContain("last week's volume was 100%; latest settled key-work adherence was 0%")
         ->toContain('does not add another quality session');
 });
 

@@ -30,6 +30,7 @@ use App\Services\AI\NarrationEligibility;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\PlanReconciliationDispatch;
+use App\Services\Run\Plan\PlanReconciliationService;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -651,6 +652,15 @@ it('re-narrates today plan day blurb once the run credits the day', function ():
     ]);
 
     fire($activity);
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $activity->user_id)
+        ->where('analysis_type', AnalysisType::PlanDayVoice)
+        ->where('discriminator', Carbon::today()->toDateString())
+        ->exists())->toBeFalse();
+
+    app(PlanReconciliationService::class)->drain($activity->user_id);
 
     expect(Analysis::query()
         ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)

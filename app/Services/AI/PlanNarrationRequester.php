@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Models\AI\Analysis;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
@@ -190,7 +191,7 @@ final readonly class PlanNarrationRequester
     /**
      * Requests narration for the current season. Ahead-of-time day narration
      * was cut (#939): a day's read is requested only once it has a run, from
-     * {@see self::requestDayVoiceIfChanged()} right after it is credited, so
+     * {@see self::requestDayVoiceIfChanged()} after reconciliation settles it, so
      * the Monday sweep and the manual regenerate button no longer touch
      * `plan_day_voice` at all.
      *
@@ -200,16 +201,6 @@ final readonly class PlanNarrationRequester
     public function requestForCurrentWeek(User $user, Carbon $today): void
     {
         $this->requestWeek($user, $today);
-    }
-
-    /**
-     * Re-requests the season read after deterministic reconciliation changes
-     * the current week's recorded plan, so its tool context cannot lag behind
-     * the rows the athlete is looking at.
-     */
-    public function requestForCurrentWeekAfterPlanChange(User $user, Carbon $today): void
-    {
-        $this->requestWeek($user, $today, force: true);
     }
 
     /**
@@ -223,22 +214,27 @@ final readonly class PlanNarrationRequester
     }
 
     /**
-     * Requests the season row, invalidating only when
-     * {@see SustainedAheadOfRacePace} has flipped since the row's last
-     * fingerprint — everything else about a season's material is fixed at
-     * creation. A never-fingerprinted Done row (predating this signal) counts
-     * as changed, so every existing season re-narrates once rather than
-     * silently carrying a blurb that never had a chance to mention it.
+     * Requests the season row, invalidating when either the sustained-ahead
+     * signal or the current week's recorded adaptation has changed since the
+     * row's last fingerprint. A never-fingerprinted Done row counts as changed,
+     * so it gets one chance to pick up the current tool context.
      */
-    private function requestWeek(User $user, Carbon $today, bool $force = false): void
+    private function requestWeek(User $user, Carbon $today): void
     {
         $season = $this->currentSeason($user);
         if ($season === null) {
             return;
         }
 
+        $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $adaptation = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->where('week_start', $weekStart->toDateString())
+            ->first();
         $expected = MaterialFingerprint::forSeason(
-            $this->sustainedAheadOfRacePace->forUser($user->id, $today->copy()->startOfWeek(Carbon::MONDAY)),
+            $this->sustainedAheadOfRacePace->forUser($user->id, $weekStart),
+            $adaptation?->reason,
+            $adaptation === null ? false : $adaptation->deload,
         );
         $stamped = Analysis::query()
             ->forSubject(Season::class, $season->id, AnalysisType::PlanSeasonVoice)
@@ -248,7 +244,7 @@ final readonly class PlanNarrationRequester
             Season::class,
             $season->id,
             AnalysisType::PlanSeasonVoice,
-            invalidate: $force || $stamped !== $expected,
+            invalidate: $stamped !== $expected,
         );
     }
 

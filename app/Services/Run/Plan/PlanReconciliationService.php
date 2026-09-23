@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Actions\AI\RecentlyActiveUsers;
 use App\Jobs\Run\ReconcilePlanJob;
 use App\Models\User;
 use App\Services\AI\PlanNarrationRequester;
@@ -15,6 +16,7 @@ final readonly class PlanReconciliationService
     public function __construct(
         private Periodizer $periodizer,
         private PlanNarrationRequester $planNarration,
+        private RecentlyActiveUsers $activeUsers,
     ) {
     }
 
@@ -83,8 +85,11 @@ final readonly class PlanReconciliationService
         $today = Carbon::today();
         if (self::dateCanAffectPlan($from, $today)) {
             $changed = $this->periodizer->regenerateIfChanged($user, $today);
-            if ($changed) {
-                $this->planNarration->requestForCurrentWeekAfterPlanChange($user, $today);
+            if ($changed && $this->activeUsers->includes($user)) {
+                $this->planNarration->requestForCurrentWeek($user, $today);
+            }
+            if ($from->isSameDay($today) && $this->activeUsers->includes($user)) {
+                $this->planNarration->requestDayVoiceIfChanged($user, $today);
             }
         }
 

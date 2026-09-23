@@ -6,6 +6,7 @@ namespace App\Jobs\AI;
 
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
+use App\Models\PlanAdaptation;
 use App\Models\Season;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
@@ -25,9 +26,9 @@ class AnalyzePlanSeasonVoiceJob extends AnalyzeRowJob
     }
 
     /**
-     * Stamped so a later regeneration re-narrates exactly once when
-     * {@see SustainedAheadOfRacePace} flips — everything else about a season's
-     * material is fixed at creation, see {@see MaterialFingerprint::forSeason()}.
+     * Stamped so a later regeneration re-narrates exactly once when the
+     * sustained-ahead signal or current-week adaptation changes; everything
+     * else about a season's material is fixed at creation.
      */
     protected function fingerprintFor(Analysis $row): ?string
     {
@@ -36,8 +37,16 @@ class AnalyzePlanSeasonVoiceJob extends AnalyzeRowJob
             return null;
         }
 
+        $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+        $adaptation = PlanAdaptation::query()
+            ->where('user_id', $season->user_id)
+            ->where('week_start', $weekStart->toDateString())
+            ->first();
+
         return MaterialFingerprint::forSeason(
-            app(SustainedAheadOfRacePace::class)->forUser($season->user_id, Carbon::today()->startOfWeek(Carbon::MONDAY)),
+            app(SustainedAheadOfRacePace::class)->forUser($season->user_id, $weekStart),
+            $adaptation?->reason,
+            $adaptation === null ? false : $adaptation->deload,
         );
     }
 }

@@ -76,7 +76,7 @@ class ScoreComplianceCommand extends Command
         $verdicts = $scorer->verdictsFor($user, $staleRows, $today);
 
         $scored = 0;
-        $firstScoredDate = null;
+        $latestScoredDate = null;
         foreach ($staleRows as $row) {
             $verdict = $verdicts[$row->date->toDateString()] ?? null;
             if ($verdict === null) {
@@ -84,11 +84,11 @@ class ScoreComplianceCommand extends Command
             }
             ComplianceScorer::applyVerdict($row, $verdict);
             $scored++;
-            $firstScoredDate ??= $row->date;
+            $latestScoredDate = $row->date;
         }
 
-        if ($scored > 0 && $firstScoredDate !== null) {
-            $reconciliation->markDirty($user->id, $firstScoredDate);
+        if ($scored > 0 && $latestScoredDate !== null) {
+            $reconciliation->markDirty($user->id, $latestScoredDate);
         }
 
         return $scored;

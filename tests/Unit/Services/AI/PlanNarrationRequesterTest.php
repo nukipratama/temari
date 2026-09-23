@@ -159,7 +159,7 @@ it('invalidates the season row exactly once when the sustained-ahead signal flip
         'subject_id' => $season->id,
         'analysis_type' => AnalysisType::PlanSeasonVoice,
         'discriminator' => null,
-        'content_fingerprint' => MaterialFingerprint::forSeason(false),
+        'content_fingerprint' => MaterialFingerprint::forSeason(false, AdaptationReason::AheadOfRacePace, false),
     ]);
 
     // Not sustained yet: one ahead week, no flip.
@@ -175,6 +175,35 @@ it('invalidates the season row exactly once when the sustained-ahead signal flip
         'week_start' => $weekStart->copy()->subWeek()->toDateString(),
         'reason' => AdaptationReason::AheadOfRacePace,
     ]);
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+    Bus::assertDispatchedTimes(AnalyzePlanSeasonVoiceJob::class, 1);
+});
+
+it('invalidates the season row when the current week adaptation changes', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => $weekStart->toDateString(),
+        'reason' => AdaptationReason::Steady,
+        'deload' => false,
+    ]);
+    Analysis::factory()->done('steady arc')->create([
+        'subject_type' => Season::class,
+        'subject_id' => $season->id,
+        'analysis_type' => AnalysisType::PlanSeasonVoice,
+        'discriminator' => null,
+        'content_fingerprint' => MaterialFingerprint::forSeason(false, AdaptationReason::Steady, false),
+    ]);
+
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
+
+    PlanAdaptation::query()
+        ->where('user_id', $user->id)
+        ->where('week_start', $weekStart->toDateString())
+        ->update(['reason' => AdaptationReason::MissedStimulus->value]);
+
     $this->requester->requestForCurrentWeek($user, Carbon::today());
     Bus::assertDispatchedTimes(AnalyzePlanSeasonVoiceJob::class, 1);
 });
