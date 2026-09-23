@@ -130,13 +130,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
             $this->planNarration->requestClampVoice($user, Carbon::today());
 
             if ($user->is_demo) {
-                $this->analysisService->requestRuleBased(
-                    AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
-                    $user->id,
-                    AnalysisType::PlanDayVoice,
-                    Carbon::today()->toDateString(),
-                    refillDone: false,
-                );
+                $this->planNarration->requestDayVoiceIfChanged($user, Carbon::today());
             }
         }
         if ($snapshot !== null) {

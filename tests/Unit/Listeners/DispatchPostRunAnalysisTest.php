@@ -694,6 +694,60 @@ it('fills a demo today plan day blurb rule-based after the run credits the day',
     Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 });
 
+it('does not fill a demo today plan day blurb before the run credits the day', function (): void {
+    $demo = User::factory()->demo()->create();
+    $activity = Activity::factory()->create([
+        'user_id' => $demo->id,
+        'analyzed_at' => Carbon::now(),
+    ]);
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->setTime(6, 30),
+        'distance' => 50.0,
+        'moving_time' => 20,
+        'elapsed_time' => 20,
+    ]);
+    PlannedSession::factory()->for($demo)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+
+    fire($activity);
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $demo->id)
+        ->where('analysis_type', AnalysisType::PlanDayVoice)
+        ->where('discriminator', Carbon::today()->toDateString())
+        ->exists())->toBeFalse();
+});
+
+it('refreshes a demo today plan day blurb when the credited day changes', function (): void {
+    $demo = User::factory()->demo()->create();
+    $activity = analyzedActivity(Carbon::today()->setTime(6, 30)->toDateTimeString(), $demo->id);
+    $session = PlannedSession::factory()->for($demo)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Planned,
+    ]);
+
+    fire($activity);
+
+    $row = Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $demo->id)
+        ->where('analysis_type', AnalysisType::PlanDayVoice)
+        ->where('discriminator', Carbon::today()->toDateString())
+        ->firstOrFail();
+    $initialFingerprint = $row->content_fingerprint;
+
+    $session->forceFill(['skipped' => true])->saveQuietly();
+    fire($activity);
+
+    expect($initialFingerprint)->not->toBeNull()
+        ->and($row->fresh()->content_fingerprint)->not->toBe($initialFingerprint);
+});
+
 /**
  * #939: a day not yet run has no read, and nothing requests one for it — a
  * short run that lands but doesn't earn the day's credit asks for nothing.

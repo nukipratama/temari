@@ -97,13 +97,23 @@ final readonly class PlanNarrationRequester
             return false;
         }
 
-        $this->analysisService->request(
-            AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
-            $user->id,
-            AnalysisType::PlanDayVoice,
-            $key,
-            invalidate: true,
-        );
+        if ($this->analysisService->shouldServeRuleBased($user)) {
+            $row = $this->analysisService->requestRuleBased(
+                AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+                $user->id,
+                AnalysisType::PlanDayVoice,
+                $key,
+            );
+            $row->forceFill(['content_fingerprint' => $expected])->saveQuietly();
+        } else {
+            $this->analysisService->request(
+                AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+                $user->id,
+                AnalysisType::PlanDayVoice,
+                $key,
+                invalidate: true,
+            );
+        }
 
         return true;
     }
