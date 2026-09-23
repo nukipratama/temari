@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
+use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -478,6 +479,47 @@ it('an explicit run_days/long_run_day preference places sessions on the chosen w
     expect($monday->session_type)->not->toBe(SessionType::Rest)
         ->and($friday->session_type)->toBe(SessionType::Long)
         ->and($tuesday->session_type)->toBe(SessionType::Rest);
+});
+
+it('counts a race-pace Long against the weekly hard-day limit', function (): void {
+    $user = User::factory()->create();
+    foreach (range(0, 3) as $i) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::today()->subWeeks($i)->toDateString(),
+            'runs' => 6,
+            'distance_km' => 60.0,
+        ]);
+    }
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 6]);
+    RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addWeeks(8)->toDateString(),
+        'distance_m' => 42_195,
+        'goal_time_sec' => 10_800,
+    ]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    $buildDate = PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->where('phase', PlanPhase::Build->value)
+        ->orderBy('date')
+        ->value('date');
+    expect($buildDate)->not->toBeNull();
+
+    $weekStart = Carbon::parse($buildDate)->startOfWeek(Carbon::MONDAY);
+    $week = PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->whereBetween('date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
+        ->get();
+    $long = $week->firstWhere('session_type', SessionType::Long);
+    $quality = $week->filter(fn (PlannedSession $session): bool => in_array($session->session_type, [SessionType::Tempo, SessionType::Interval], true));
+    $hardDays = $week->filter(fn (PlannedSession $session): bool => $session->prescribed_hard_minutes > 0);
+
+    expect($long)->not->toBeNull();
+    expect($long->prescribed_pace_band)->toBe(PaceBand::Marathon);
+    expect($quality)->toHaveCount(1);
+    expect($quality->first()->prescribed_hard_minutes)->toBeGreaterThan(0);
+    expect($hardDays)->toHaveCount(2);
 });
 
 it('lets the race projection move prescribed quality work in both directions', function (): void {

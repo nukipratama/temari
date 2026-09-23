@@ -323,6 +323,51 @@ final readonly class Periodizer
         }
         unset($row);
 
+        return self::capQualityAroundRacePaceLong($rows);
+    }
+
+    /**
+     * @param array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null, ...}> $rows
+     * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null, ...}>
+     */
+    private static function capQualityAroundRacePaceLong(array $rows): array
+    {
+        $longDate = array_find_key($rows, static fn (array $row): bool =>
+            $row['session_type'] === SessionType::Long && $row['prescribed_hard_minutes'] > 0);
+        if ($longDate === null) {
+            return $rows;
+        }
+
+        $qualityDates = array_keys(array_filter($rows, static fn (array $row): bool =>
+            in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)));
+        if (count($qualityDates) <= 1) {
+            return $rows;
+        }
+
+        $longOffset = Carbon::parse($longDate)->dayOfWeekIso - 1;
+        usort($qualityDates, static function (string $left, string $right) use ($rows, $longOffset): int {
+            $leftIsHard = $rows[$left]['prescribed_hard_minutes'] > 0;
+            $rightIsHard = $rows[$right]['prescribed_hard_minutes'] > 0;
+            $leftOffset = Carbon::parse($left)->dayOfWeekIso - 1;
+            $rightOffset = Carbon::parse($right)->dayOfWeekIso - 1;
+
+            return ($rightIsHard <=> $leftIsHard)
+                ?: (WeekPlanBuilder::longRunRecoveryDays($rightOffset, $longOffset) <=> WeekPlanBuilder::longRunRecoveryDays($leftOffset, $longOffset))
+                ?: strcmp($right, $left);
+        });
+
+        foreach (array_slice($qualityDates, 1) as $date) {
+            $rows[$date] = [
+                ...$rows[$date],
+                'session_type' => SessionType::Easy,
+                'prescribed_hard_minutes' => 0,
+                'prescribed_pace_band' => null,
+                'prescribed_pace_sec_per_km' => null,
+                'prescription_reason' => 'easy because a race-pace Long uses the weekly hard-day budget',
+                'prescription_race_context' => null,
+            ];
+        }
+
         return $rows;
     }
 
