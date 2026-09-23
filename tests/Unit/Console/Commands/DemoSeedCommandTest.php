@@ -83,18 +83,17 @@ function commitSharedDemoFixture(): void
 }
 
 /**
- * Seeds the bare demo dataset exactly once per test process: a real `demo:seed`
- * run, committed for good outside any per-test transaction. Every test that
- * needs the bare dataset calls this first — only the one that actually runs
- * it (normally the first test below, in file order) pays the cost; the rest
- * see already-committed rows. releaseSharedDemoFixture(), called by the last
+ * Seeds the bare demo dataset: a real `demo:seed` run, committed for good
+ * outside any per-test transaction. Every test that needs the bare dataset
+ * calls this first; whichever one finds the demo user missing pays the cost
+ * (normally the first test below, in file order, but also any test that runs
+ * after releaseSharedDemoFixture() wiped the schema), the rest see
+ * already-committed rows. releaseSharedDemoFixture(), called by the last
  * test in this file, hands the schema back clean.
  */
 function ensureBareDemoSeeded(): void
 {
-    static $done = false;
-
-    if ($done) {
+    if (User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->exists()) {
         return;
     }
 
@@ -112,8 +111,6 @@ function ensureBareDemoSeeded(): void
     expect(channelsUsedBy($notifications))->toBe([]);
 
     commitSharedDemoFixture();
-
-    $done = true;
 }
 
 /**
