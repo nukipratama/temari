@@ -256,23 +256,23 @@ export function verdictSupport(trend: PastYouTrend): string {
 }
 
 function comparisonSplit(trend: PastYouTrend): string {
-    const faster = trend.comparisons.filter(
+    const better = trend.comparisons.filter(
         (comparison) => comparison.direction === 'better',
     ).length;
-    const slower = trend.comparisons.filter(
+    const worse = trend.comparisons.filter(
         (comparison) => comparison.direction === 'worse',
     ).length;
-    const flat = trend.comparisons.length - faster - slower;
+    const flat = trend.comparisons.length - better - worse;
     const count = trend.comparisons.length;
 
-    if (faster > 0 && slower > 0) {
-        return `${faster} faster, ${slower} slower${flat > 0 ? `, ${flat} flat` : ''} across ${count} matched runs.`;
+    if (better > 0 && worse > 0) {
+        return `${better} better, ${worse} worse${flat > 0 ? `, ${flat} flat` : ''} across ${count} matched runs.`;
     }
-    if (faster > 0) {
-        return `${faster} of ${count} matched runs faster${flat > 0 ? `, ${flat} flat` : ''}.`;
+    if (better > 0) {
+        return `${better} of ${count} matched runs better${flat > 0 ? `, ${flat} flat` : ''}.`;
     }
-    if (slower > 0) {
-        return `${slower} of ${count} matched runs slower${flat > 0 ? `, ${flat} flat` : ''}.`;
+    if (worse > 0) {
+        return `${worse} of ${count} matched runs worse${flat > 0 ? `, ${flat} flat` : ''}.`;
     }
 
     return `${count} matched runs held flat.`;

@@ -76,7 +76,7 @@ describe('VerdictHero', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                '3 of 4 matched runs faster, 1 flat; average pace was 10.0 s/km faster.',
+                '3 of 4 matched runs better, 1 flat; average pace was 10.0 s/km faster.',
             ),
         ).toBeInTheDocument();
     });
