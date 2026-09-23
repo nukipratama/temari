@@ -362,10 +362,10 @@ class PastYouTrendBuilder
         return PaceConsistency::label(StreamSummary::fromArray($detail->stream_summary)->paceVariabilitySec());
     }
 
-    /** @param  list<float>  $values */
+    /** @param  list<float>  $values  never empty at either call site */
     private function meanOf(array $values): float
     {
-        return round(array_sum($values) / max(1, count($values)), 2);
+        return $this->mean($values) ?? 0.0;
     }
 
     /**
