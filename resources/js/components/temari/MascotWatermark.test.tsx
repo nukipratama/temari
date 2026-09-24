@@ -15,6 +15,7 @@ describe('MascotWatermark', () => {
         expect(classes).toContain('absolute');
         expect(classes).toContain('-z-10');
         expect(classes).toContain('opacity-16');
+        expect(classes).toContain('size-50');
         expect(classes).toContain('-bottom-15');
     });
 });
