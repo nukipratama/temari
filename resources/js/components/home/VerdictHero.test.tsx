@@ -137,7 +137,7 @@ describe('VerdictHero', () => {
             <VerdictHero trend={trend()} verdict="improving" />,
         );
 
-        expect(container.querySelector('[data-face-icon]')).toBeNull();
+        expect(container.querySelector('svg[data-mascot]')).toBeNull();
         expect(screen.queryByText('temari')).not.toBeInTheDocument();
     });
 

@@ -3,7 +3,7 @@ title: Decisions — Map of Content
 description: The architecture decision timeline (ADRs)
 tags: [decision, moc]
 status: living
-reviewed: 2026-09-22
+reviewed: 2026-09-24
 ---
 
 # Decisions (ADRs)
@@ -27,7 +27,7 @@ ADRs grouped by the problem they solve, for easier navigation than a flat timeli
 | **Operability** | [[pause-reason-derives-from-the-dispatch-gate]] (the monitor derives from the gate it reports on); [[narration-analytics-are-joinable]] (per-block cost, tool trace and producer become queryable) |
 | **Notifications** | [[inbox-is-an-always-on-channel]] (the inbox as an unmuteable third channel); [[demo-notifications-are-inbox-only]] (demo routed to the record, never to an interruption); [[the-briefing-arrives-when-you-run]] (the morning push lands at the athlete's own median start time, and generates nothing); [[the-briefing-also-goes-to-telegram]] (the briefing routes to every outbound channel, and the app-icon badge counts inbox rows) |
 | **Ops / deploy** | [[fixed-session-cookie]] (stable cookie name); [[defer-config-cache]] (config cache timing); [[telegram-account-linking]] (signed deep-link token) |
-| **Design / branding** | [[dark-is-the-default-ground]] (two grounds on a data-theme attribute) *(default-ground half superseded)*; [[system-is-the-default-ground]] (an unconfigured visitor gets the device's ground); [[ink-grounds-derived-not-listed]] (contrast grounds derived from the render, failing closed); [[tokens-flip-colour-dark-variant-flips-the-rest]] (a colour that flips is a token, everything else may be `dark:`); [[temari-keeps-score-persona]] (voice: friend → training partner who keeps score); [[thread-ball-character-rebrand]] (bunny/Daybreak → thread-ball/Threadwork) *(persona half superseded)* |
+| **Design / branding** | [[dark-is-the-default-ground]] (two grounds on a data-theme attribute) *(default-ground half superseded)*; [[system-is-the-default-ground]] (an unconfigured visitor gets the device's ground); [[ink-grounds-derived-not-listed]] (contrast grounds derived from the render, failing closed); [[tokens-flip-colour-dark-variant-flips-the-rest]] (a colour that flips is a token, everything else may be `dark:`); [[temari-keeps-score-persona]] (voice: friend → training partner who keeps score); [[thread-ball-character-rebrand]] (bunny/Daybreak → thread-ball/Threadwork) *(persona half superseded)*; [[mascot-is-the-living-brand-mark]] (the logo's arcs, posed per mood, are the character) |
 
 ## Timeline
 
@@ -108,6 +108,7 @@ _Notifications_
 _Design_
 - [[thread-ball-character-rebrand]] — full character replacement (bunny → thread-ball) and palette rename (Daybreak → Threadwork), tying the visual identity to the training arc *(its persona stance superseded by [[temari-keeps-score-persona]]; the visual decisions still stand)*
 - [[temari-keeps-score-persona]] — the voice shifts from a soft warm friend to a training partner who holds up the runner's own numbers and names a coast
+- [[mascot-is-the-living-brand-mark]] — Temari is the logo's two arcs posed per mood; one mascot per card, a corner peek at most once per page, and the logo never reacts
 - [[dark-is-the-default-ground]] — two authored grounds switched by `data-theme` on `<html>`, dark by default, with a ground-reactive semantic layer over a fixed named palette *(its default-ground half superseded by [[system-is-the-default-ground]]; the architecture still stands)*
 - [[system-is-the-default-ground]] — with no explicit Settings choice the ground follows `prefers-color-scheme`, and a missing key resolves the same way a stored `system` does
 - [[ink-grounds-derived-not-listed]] — the `-ink` tier is derived and audited against grounds read from the stylesheet and the components, and an unclassified background fails the build

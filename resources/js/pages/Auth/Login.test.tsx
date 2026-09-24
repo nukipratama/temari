@@ -114,7 +114,7 @@ describe('Login', () => {
 
     it("draws no face in the hero panel — the prototype's login has none", () => {
         const { container } = render(<Login authStravaUrl="/x" />);
-        expect(container.querySelector('[data-face-icon]')).toBeNull();
+        expect(container.querySelector('svg[data-mascot]')).toBeNull();
     });
 
     it('clicking the demo button invokes the submit handler', async () => {

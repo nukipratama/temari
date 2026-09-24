@@ -2,7 +2,6 @@ import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { renderNarration } from '@/components/temari/Citation';
-import FaceIcon, { DARK_FACE } from '@/components/temari/FaceIcon';
 import TemariMascot, {
     type MascotPose,
     POSES,
@@ -25,9 +24,6 @@ import { cardVariants } from '@/lib/variants';
 
 const CARD_TONES = ['card', 'onSky', 'empty'] as const;
 const CARD_PADDINGS = ['panel', 'card', 'hero'] as const;
-
-/** Every size the app draws Temari's face at, smallest first. */
-const FACE_SIZES = [26, 34, 36, 40, 42, 48, 56, 64, 72] as const;
 
 const MASCOT_POSES = Object.keys(POSES) as MascotPose[];
 const MASCOT_SIZES = [22, 28, 48, 72, 96] as const;
@@ -633,38 +629,6 @@ export default function Design() {
                                 ))}
                             </tbody>
                         </table>
-                    </Section>
-
-                    <Section
-                        title="Temari's face"
-                        note="One drawn mark at every size the app uses it, from the Card tile's 26px corner to Onboarding's 72px hero. Ring, disc and features are three separate colours so a surface can tint the ring to a mood without touching the face."
-                    >
-                        <div className="flex flex-wrap items-end gap-2.5">
-                            {FACE_SIZES.map((size) => (
-                                <Specimen key={size} label={`${size}px`}>
-                                    <FaceIcon size={size} />
-                                </Specimen>
-                            ))}
-                        </div>
-                    </Section>
-
-                    <Section
-                        title="Temari's face on sky"
-                        note="The inverted read: a dark disc with cream features, drawn on the recap cards and on the sky-gradient hero panels. The ring carries the surface's mood where it has one."
-                    >
-                        <div className="flex flex-wrap items-end gap-2.5 rounded-md bg-sky pad-card">
-                            {(
-                                ['leaf', 'mood-easy', 'mood-wobbly'] as const
-                            ).map((ring) => (
-                                <Specimen key={ring} label={ring} onSky>
-                                    <FaceIcon
-                                        size={48}
-                                        ring={`var(--color-${ring})`}
-                                        {...DARK_FACE}
-                                    />
-                                </Specimen>
-                            ))}
-                        </div>
                     </Section>
 
                     <MascotGallery />

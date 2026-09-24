@@ -3,7 +3,7 @@ title: Profile
 description: The runner's identity page — Temari's profile voice, lifetime stats, PR progression charts, Strava status
 tags: [feature, profile]
 status: living
-reviewed: 2026-09-01
+reviewed: 2026-09-24
 code_refs:
   - resources/js/pages/Profile.tsx
   - app/Http/Controllers/ProfileController.php
@@ -14,7 +14,7 @@ code_refs:
   - resources/js/components/profile/PaceTargetsCard.tsx
   - resources/js/components/profile/ProgressionCard.tsx
   - resources/js/components/profile/JourneyChart.tsx
-  - resources/js/components/temari/FaceIcon.tsx
+  - resources/js/components/temari/MascotPeek.tsx
   - resources/js/components/UserAvatarLink.tsx
   - app/Services/Run/Metrics/TimeInZoneSummary.php
   - app/Services/Run/Metrics/VdotEstimator.php
@@ -39,7 +39,7 @@ The Profile page (`/profile`) is the runner's about-me: who they are, how Temari
 
 ## Identity + What Temari says about you
 
-A "Profile" eyebrow sits over a "{firstName}, / *your story.*" headline with the athlete's avatar circle beside it. Below, [ProfileHero](resources/js/components/profile/ProfileHero.tsx) pairs a 64px leaf-ringed [FaceIcon](resources/js/components/temari/FaceIcon.tsx) with **"★ What Temari says about you"** — the AI profile voice (`profileVoice`), rendered through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) in the `.narration` prose register. An "Est. {date}" line carries the first-run date at every width; a "With Temari since" block is revealed to its right only above 900px (the prototype's one visibility-toggled element). Strava status (`identity.strava_connected`) shows as a "Reconnect" action when revoked.
+A "Profile" eyebrow sits over a "{firstName}, / *your story.*" headline with the athlete's avatar circle beside it. Below, [ProfileHero](resources/js/components/profile/ProfileHero.tsx) has Temari peeking from its corner ([MascotPeek](resources/js/components/temari/MascotPeek.tsx)), posed to the daily vibe through the `mood` prop, beside **"★ What Temari says about you"** — the AI profile voice (`profileVoice`), rendered through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx) in the `.narration` prose register. An "Est. {date}" line carries the first-run date at every width; a "With Temari since" block is revealed to its right only above 900px (the prototype's one visibility-toggled element). Strava status (`identity.strava_connected`) shows as a "Reconnect" action when revoked.
 
 The panel is **card-toned with a horizon halo**, not a sky-gradient panel — `PS10` matched the prototype's own `bg-card` hero, as `PS8` did on activity detail.
 

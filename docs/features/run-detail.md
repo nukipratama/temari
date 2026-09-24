@@ -3,7 +3,7 @@ title: Run detail (single activity)
 description: One run, fully unpacked — a headline hero, a "Past You" match, the story + adaptive claims voice card, the Q&A panel, and the breakdown (vitals, splits, laps)
 tags: [feature, runs]
 status: living
-reviewed: 2026-09-01
+reviewed: 2026-09-24
 code_refs:
   - resources/js/pages/Runs/Show.tsx
   - app/Http/Controllers/RunController.php
@@ -65,7 +65,7 @@ would be a column of empty panels rather than a thin page.
 [RunHero](../../resources/js/components/run/RunHero.tsx) is a card-toned panel,
 not a fixed-dark sky panel: the prototype draws this screen's hero on the
 card surface, so it reacts to the ground like every other panel on the page.
-It opens with `FaceIcon`, the as-recorded date and time, the run name in serif
+It opens with Temari peeking from the panel's corner, posed to the run's mood, then the as-recorded date and time, the run name in serif
 italic (a headline, so it keeps Fraunces) and the mood pill under it.
 
 The stat block is a **hierarchy, not a grid of six equals**. Distance is the one
@@ -109,7 +109,7 @@ not an empty state.
 ## What Temari says — story + adaptive claims
 
 The heart of the page is [RunLenses](../../resources/js/components/run/RunLenses.tsx):
-a `FaceIcon` heading over **one** narration card, whose two halves are separated
+a heading tagged with a 28px Temari (posed to the run's mood, thinking while either lens is written) over **one** narration card, whose two halves are separated
 by a hairline rather than split into two panels. It is fed two `Analysis`
 payloads the controller resolves from `RunController::RUN_INSIGHT_TYPES`:
 
