@@ -33,8 +33,9 @@ ground and sky.
 
 [TemariMascot.tsx](../../resources/js/components/temari/TemariMascot.tsx) holds a `POSES` table:
 per pose, the outer and inner arc spans, an optional tilt, the inner colour, and the face (eyes,
-brows, mouth). The poses are the six run moods plus `neutral`, `sleepy` (dotted outer arc) and
-`thinking` (short counter-rotating arcs).
+brows, mouth). The poses are the six run moods plus `neutral`, `concerned` (worried brows, flat
+mouth, for a destructive confirmation), `sleepy` (dotted outer arc) and `thinking` (short
+counter-rotating arcs).
 
 | prop | what it does |
 |---|---|
@@ -55,11 +56,11 @@ A page carries **at most one corner peek**; every other placement uses a lighter
 | Corner peek | [MascotPeek](../../resources/js/components/temari/MascotPeek.tsx), cropped by the card's top-left corner. `MascotPeekClearance` floats a spacer so copy wraps round it | RunHero, ProfileHero (`panel`, 112px); TodaySession, the Feed's newest recap, the Calendar's monthly recap (`card`, 96px) |
 | Gutter tag | 28px beside the voice line | RunLenses header, later recaps, NoPlanCard, Race projection |
 | Sleepy inline | the `sleepy` pose beside the copy | EmptyPanel, EmptyRunsState (`thinking` while a sync runs) |
-| Hero + draw-in | 72px, traced in once | Onboarding's connected step, TemariNudgeModal |
+| Hero + draw-in | 72px, traced in once | Onboarding's connected step, TemariNudgeModal (its `pose` prop: `neutral` for the notification and demo nudges, `concerned` for Settings' delete-account confirmation) |
 | Face only | the face as the centre of a ring | Onboarding's required-pace ring |
 | Thinking mark | 24px `thinking` beside AnalysisStatus's skeleton, opt-in via `thinkingMark` | Plan's TemariTake, the calendar's weekly recap |
 
-It is **absent from Login, Trends and Settings**, which must not gain one.
+It is **absent from the Login, Trends and Settings pages**, which must not gain one. The one exception is a modal opened *from* Settings (the delete-account confirmation), which has always drawn Temari.
 
 ## TemariMark
 

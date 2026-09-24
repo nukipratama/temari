@@ -140,6 +140,7 @@ describe('Devtools/Design', () => {
         );
         for (const pose of [
             'neutral',
+            'concerned',
             'blazing',
             'easy',
             'chill',

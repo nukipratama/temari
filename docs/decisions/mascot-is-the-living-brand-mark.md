@@ -13,6 +13,11 @@ code_refs:
 
 # The mascot is the living brand mark
 
+> **Fact update, 2026-09-24.** A `concerned` pose (worried brows, flat mouth) joined the set for
+> Settings' delete-account confirmation, through `TemariNudgeModal`'s new `pose` prop. That modal
+> is why "Settings carries no mascot" below means the page itself; the confirmation it opens has
+> always drawn one. The decision below is unchanged.
+
 ## Context
 
 After `PP2` the character was one flat `FaceIcon`: a ring, a face disc and a fixed smile, drawn on about ten surfaces at 18–72px. It smiled the same way after a PR and after a gassed run, since a mood could only tint its ring, and only RecapCard did even that. It read as a generic emoji next to the Pewter, Fraunces and mono-telemetry UI, and it shared nothing with the brand mark, two nested open arcs. Taking a column on every card also made it read as wallpaper rather than a presence. The redesign was grilled on #1128 and shipped as the #1128–#1127 stack.

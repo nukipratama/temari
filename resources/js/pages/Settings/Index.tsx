@@ -255,6 +255,7 @@ function AccountActions() {
             <TemariNudgeModal
                 open={confirmOpen}
                 onClose={() => setConfirmOpen(false)}
+                pose="concerned"
                 title="sure you want to delete your account?"
                 body={
                     <>
