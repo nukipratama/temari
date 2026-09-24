@@ -338,7 +338,7 @@ describe('Activities/Feed', () => {
             />,
         );
 
-        const clearances = screen.getAllByTestId('recap-peek-clearance');
+        const clearances = screen.getAllByTestId('mascot-peek-clearance');
 
         expect(clearances).toHaveLength(1);
         expect(clearances[0].parentElement).toHaveTextContent(

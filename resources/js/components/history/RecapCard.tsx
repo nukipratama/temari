@@ -4,7 +4,9 @@ import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import SendNotificationButton from '@/components/SendNotificationButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import MascotPeek from '@/components/temari/MascotPeek';
+import MascotPeek, {
+    MascotPeekClearance,
+} from '@/components/temari/MascotPeek';
 import TemariMascot from '@/components/temari/TemariMascot';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { cn } from '@/lib/cn';
@@ -77,13 +79,7 @@ export default function RecapCard({
                 <TemariMascot pose={pose} size={28} />
             )}
             <div className="min-w-0 flex-1">
-                {peek && (
-                    <span
-                        aria-hidden
-                        data-testid="recap-peek-clearance"
-                        className="float-left mr-2 h-14 w-13"
-                    />
-                )}
+                {peek && <MascotPeekClearance />}
                 {(chips || (notification && analysis.status === 'done')) && (
                     <div
                         data-testid="recap-secondary"

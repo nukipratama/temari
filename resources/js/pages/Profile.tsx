@@ -6,7 +6,7 @@ import type { ProgressionSeries } from '@/components/profile/ProgressionCard';
 import type { ProfileSeason } from '@/components/profile/SeasonCard';
 import type { TimeInZone } from '@/components/profile/TimeInZoneBar';
 import type { SeasonSummaryWeek } from '@/lib/plan';
-import type { AnalysisPayload, SharedProps } from '@/types/inertia';
+import type { AnalysisPayload, Mood, SharedProps } from '@/types/inertia';
 
 import PaceTargetsCard, {
     type TrainingPaces,
@@ -55,6 +55,7 @@ interface ProfileProps {
     identity: IdentityPayload;
     stats: StatsPayload;
     profileVoice?: AnalysisPayload;
+    mood: Mood;
     progressionByCategory?: Record<string, ProgressionSeries> | null;
     fitness?: FitnessPayload | null;
     timeInZone?: TimeInZone | null;
@@ -66,6 +67,7 @@ export default function Profile({
     identity,
     stats,
     profileVoice,
+    mood,
     progressionByCategory,
     fitness,
     timeInZone,
@@ -134,6 +136,7 @@ export default function Profile({
 
                 <div>
                     <ProfileHero
+                        mood={mood}
                         firstRunAt={identity.first_run_at}
                         memberSince={identity.member_since}
                         voice={profileVoice}

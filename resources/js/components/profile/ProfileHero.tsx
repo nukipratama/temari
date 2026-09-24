@@ -1,15 +1,18 @@
 import type { ReactNode } from 'react';
 
 import type { TimeInZone } from '@/components/profile/TimeInZoneBar';
-import type { AnalysisPayload } from '@/types/inertia';
+import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import TimeInZoneBar from '@/components/profile/TimeInZoneBar';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import FaceIcon from '@/components/temari/FaceIcon';
+import MascotPeek, {
+    PANEL_PEEK_CLEARANCE,
+} from '@/components/temari/MascotPeek';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import Skeleton from '@/components/ui/Skeleton';
 import { SCROLL_FADE_MASK, useScrollFade } from '@/hooks/useScrollFade';
+import { cn } from '@/lib/cn';
 import { formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 
@@ -20,12 +23,14 @@ export interface HeroStat {
 }
 
 /**
- * "What Temari says about you": the mascot, her read on the athlete, where
- * their training time went, and the lifetime numbers behind it. A card-toned
+ * "What Temari says about you": Temari posed to today's vibe, her read on
+ * the athlete, where their training time went, and the lifetime numbers
+ * behind it. A card-toned
  * panel with a horizon halo, as the prototype draws it — not one of the app's
  * sky-gradient heroes.
  */
 export default function ProfileHero({
+    mood,
     firstRunAt,
     memberSince,
     voice,
@@ -33,6 +38,7 @@ export default function ProfileHero({
     stats,
     action,
 }: Readonly<{
+    mood: Mood;
     firstRunAt: string | null;
     memberSince: string | null;
     voice?: AnalysisPayload;
@@ -53,15 +59,14 @@ export default function ProfileHero({
                 }}
             />
 
-            <header className="relative flex items-center gap-3.5">
-                <div
-                    className="flex-none"
-                    style={{
-                        filter: 'drop-shadow(0 0 10px color-mix(in oklab, var(--color-horizon) 45%, transparent))',
-                    }}
-                >
-                    <FaceIcon size={64} ring="var(--color-leaf)" />
-                </div>
+            <MascotPeek pose={mood} fit="panel" />
+
+            <header
+                className={cn(
+                    'relative flex min-h-15 items-center gap-3.5',
+                    PANEL_PEEK_CLEARANCE,
+                )}
+            >
                 <div className="min-w-0">
                     <Eyebrow token="micro" tone="horizon-ink">
                         ★ What temari says about you

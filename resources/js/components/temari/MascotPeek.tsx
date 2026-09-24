@@ -11,6 +11,20 @@ const PEEK = {
 /** How far a peeking panel's header must clear the mascot. */
 export const PANEL_PEEK_CLEARANCE = 'pl-15';
 
+/**
+ * A float that reserves a `card` peek's corner, so the copy beside it wraps
+ * around the mascot instead of giving up a whole column.
+ */
+export function MascotPeekClearance() {
+    return (
+        <span
+            aria-hidden
+            data-testid="mascot-peek-clearance"
+            className="float-left mr-2 h-14 w-13"
+        />
+    );
+}
+
 interface MascotPeekProps {
     pose: MascotPose;
     /** `panel` for the rounded-panel heroes, `card` for compact cards. */

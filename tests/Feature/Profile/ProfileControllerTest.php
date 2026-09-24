@@ -17,6 +17,8 @@ use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Plan\SeasonService;
+use App\Services\Run\Story\Temari;
+use App\Services\Run\Story\Vibe;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -90,6 +92,27 @@ it('never ensures or mutates a season of its own', function (): void {
     Carbon::setTestNow();
 });
 
+it('poses the hero to the daily vibe, collapsed onto a run mood', function (): void {
+    $user = User::factory()->create();
+    $this->mock(Vibe::class)->shouldReceive('current')->andReturn(Vibe::PUMPED);
+
+    $this->actingAs($user)->get('/profile')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Profile')
+            ->where('mood', Temari::MOOD_NYALA));
+});
+
+it('rests the hero on the chill pose for an athlete with no runs', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/profile')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Profile')
+            ->where('mood', Temari::MOOD_ADEM));
+});
+
 it('paints identity, stats and the voice while the heavy blocks stay deferred', function (): void {
     $user = User::factory()->create();
 
@@ -100,6 +123,7 @@ it('paints identity, stats and the voice while the heavy blocks stay deferred', 
             ->has('identity')
             ->has('stats')
             ->has('profileVoice')
+            ->has('mood')
             ->missing('fitness')
             ->missing('timeInZone')
             ->missing('season')
