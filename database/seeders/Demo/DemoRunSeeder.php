@@ -111,9 +111,13 @@ class DemoRunSeeder
     }
 
     /**
-     * Idempotent: every row is keyed on a deterministic identity (blueprint seed,
-     * activity_id, ISO week, …) via updateOrCreate, so re-running converges to the
-     * same dataset instead of duplicating or hitting the unique constraint.
+     * Idempotent: most rows key on a deterministic identity (blueprint seed,
+     * activity_id, ISO week, …) via updateOrCreate. The scripted+filler
+     * timeline does not — every blueprint is anchored to Carbon::today(), so
+     * its identity shifts whenever "today" does — so resetGeneratedData()
+     * clears the previous run first and this rebuilds it from scratch every
+     * time, converging to the same dataset regardless of which calendar day
+     * the seed runs on.
      *
      * @param  Closure(string): void|null  $log  optional reporter (command::info etc.)
      */
@@ -125,6 +129,7 @@ class DemoRunSeeder
 
         $this->analysisService->withoutDispatching(function () use ($log, &$count): void {
             $user = $this->ensureDemoUser($log);
+            $this->resetGeneratedData($user, $log);
 
             $blueprints = $this->library->all();
             usort($blueprints, fn (RunBlueprint $a, RunBlueprint $b): int => $a->startsAt <=> $b->startsAt);
@@ -785,6 +790,43 @@ class DemoRunSeeder
         $log("Demo user ready: {$user->email} (id={$user->id})");
 
         return $user;
+    }
+
+    /**
+     * Clears the demo user's previously seeded runs and their derived rows
+     * before rebuilding the timeline, so a re-seed on a different calendar
+     * day replaces the dataset instead of stacking a second copy onto it
+     * (RunBlueprint::seed() hashes the blueprint's Carbon::today()-anchored
+     * start date, so that identity — and updateOrCreate's match on it —
+     * moves every time "today" does, and re-running always leaves the prior
+     * run's rows behind otherwise). Scoped to this user's own rows only.
+     *
+     * Deleting Activity cascades to ActivityDetail, ActivityStream, RunCard,
+     * the post_run StoryLine and RunQuestion rows via their own FKs.
+     * PersonalRecord.activity_id is nullOnDelete rather than cascaded, but
+     * detectAndStore() re-keys on (user_id, category) as the same blueprints
+     * reseed, so those rows heal in place without needing to be cleared here.
+     * Analysis is polymorphic and carries no FK, so its Activity/RunCard/
+     * WeeklySnapshot-scoped rows are deleted explicitly by the ids about to
+     * be replaced.
+     */
+    private function resetGeneratedData(User $user, Closure $log): void
+    {
+        $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
+        $cardIds = RunCard::query()->whereIn('activity_id', $activityIds)->pluck('id');
+        $weeklyIds = WeeklySnapshot::query()->where('user_id', $user->id)->pluck('id');
+
+        Analysis::query()
+            ->where(fn ($q) => $q->where('subject_type', Activity::class)->whereIn('subject_id', $activityIds))
+            ->orWhere(fn ($q) => $q->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
+            ->orWhere(fn ($q) => $q->where('subject_type', WeeklySnapshot::class)->whereIn('subject_id', $weeklyIds))
+            ->delete();
+
+        Activity::query()->where('user_id', $user->id)->delete();
+        WeeklySnapshot::query()->where('user_id', $user->id)->delete();
+        PlannedSession::query()->where('user_id', $user->id)->delete();
+
+        $log('Cleared previously seeded runs and their derived rows.');
     }
 
     private function seedOne(User $user, RunBlueprint $blueprint): void
