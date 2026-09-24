@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
     ambitiousGoalWarning,
     earliestRaceDate,
+    goalGap,
+    goalGapPose,
     goalTimeError,
     impossiblePaceWarning,
     MAX_GOAL_TIME_SEC,
     MIN_GOAL_TIME_SEC,
+    ON_GOAL_TOLERANCE_SEC,
 } from './raceGoal';
 
 describe('earliestRaceDate', () => {
@@ -97,4 +100,58 @@ describe('ambitiousGoalWarning', () => {
     it('stays quiet when the form distance no longer matches the projection', () => {
         expect(ambitiousGoalWarning(21.1, 2_600, projection)).toBeNull();
     });
+});
+
+describe('goalGap', () => {
+    it('names a slower projection as the time behind', () => {
+        expect(goalGap(3_000, 3_509)).toEqual({
+            verdict: 'behind',
+            label: '8:29 behind',
+        });
+    });
+
+    it('names a faster projection as the time ahead', () => {
+        expect(goalGap(3_000, 2_870)).toEqual({
+            verdict: 'ahead',
+            label: '2:10 ahead',
+        });
+    });
+
+    it('calls it on goal within the tolerance either way', () => {
+        expect(goalGap(3_000, 3_000 + ON_GOAL_TOLERANCE_SEC).label).toBe(
+            'on goal',
+        );
+        expect(goalGap(3_000, 3_000 - ON_GOAL_TOLERANCE_SEC).verdict).toBe(
+            'on',
+        );
+        expect(goalGap(3_000, 3_000 + ON_GOAL_TOLERANCE_SEC + 1).label).toBe(
+            '0:06 behind',
+        );
+    });
+
+    it('rounds a fractional projection before measuring the gap', () => {
+        expect(goalGap(3_000, 3_105.6).label).toBe('1:46 behind');
+    });
+
+    it('carries hours on a gap past the hour', () => {
+        expect(goalGap(10_000, 13_723).label).toBe('1:02:03 behind');
+    });
+});
+
+describe('goalGapPose', () => {
+    it.each([
+        [9_000, 'blazing'],
+        [10_000, 'blazing'],
+        [10_100, 'blazing'],
+        [10_101, 'easy'],
+        [10_300, 'easy'],
+        [10_301, 'wobbly'],
+        [10_800, 'wobbly'],
+        [10_801, 'gassed'],
+    ] as const)(
+        'poses a %i projection against a 10000 goal as %s',
+        (predicted, pose) => {
+            expect(goalGapPose(10_000, predicted)).toBe(pose);
+        },
+    );
 });

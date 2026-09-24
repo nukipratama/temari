@@ -1,15 +1,12 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { ArrowRight } from 'lucide-react';
 
-import PlanRaceTabs from '@/components/race/PlanRaceTabs';
-import ProjectionBlock, {
-    type RaceProjection,
-} from '@/components/race/ProjectionBlock';
-import RaceCard from '@/components/race/RaceCard';
+import RaceDuel, { type RaceProjection } from '@/components/race/RaceDuel';
 import RaceGoalForm from '@/components/race/RaceGoalForm';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
-import PageHero from '@/components/ui/PageHero';
 import { appLayout } from '@/layouts/appLayout';
 
 interface RacePayload {
@@ -31,10 +28,8 @@ interface RaceProps {
 }
 
 /**
- * Race, on the frozen prototype's `RaceGoalScreen`: three blocks (P26) — the
- * race card, the projection gauge and the goal form — behind the schedule /
- * race-goal tabs. The CTL/ATL fitness chart the shipped page used to draw is
- * cut; that chart exists once, on Trends.
+ * Race leads with the goal against the projection: one duel card under a
+ * compact header, then the goal form. The CTL/ATL fitness chart lives on Trends.
  */
 export default function Race({ race, projection }: Readonly<RaceProps>) {
     return (
@@ -44,41 +39,26 @@ export default function Race({ race, projection }: Readonly<RaceProps>) {
                 <Eyebrow token="hero" tone="ink-2">
                     Race
                 </Eyebrow>
-                <PageHero size="quote-lg" italic className="mt-2">
-                    {race ? (
-                        <>
-                            your race,
-                            <br />
-                            <em className="italic text-icon-accent">
-                                on the calendar.
-                            </em>
-                        </>
-                    ) : (
-                        <>
-                            give the plan
-                            <br />
-                            <em className="italic text-icon-accent">
-                                something to aim at.
-                            </em>
-                        </>
-                    )}
-                </PageHero>
-                <p className="mt-2 text-xs leading-relaxed text-text-2">
-                    Set a race and Temari projects a realistic finish time from
-                    your own PRs, then tracks your fitness trend against it.
-                </p>
-
-                <PlanRaceTabs active="race" className="mt-4" />
+                <div className="mt-2 flex items-center justify-between gap-3">
+                    <h1 className="font-serif text-quote-lg text-foreground italic">
+                        your <em className="text-horizon-ink">race.</em>
+                    </h1>
+                    <Link
+                        href="/plan"
+                        className="focus-ring inline-flex flex-none items-center gap-0.5 text-xs font-semibold text-horizon-ink"
+                    >
+                        plan
+                        <Icon
+                            icon={ArrowRight}
+                            className="size-3"
+                            aria-hidden
+                        />
+                    </Link>
+                </div>
 
                 {race ? (
                     <div className="mt-4 flex flex-col gap-3">
-                        <RaceCard
-                            name={race.name}
-                            raceDate={race.race_date}
-                            distanceM={race.distance_m}
-                            goalTimeSec={race.goal_time_sec}
-                        />
-                        <ProjectionBlock projection={projection} />
+                        <RaceDuel race={race} projection={projection} />
                         <button
                             type="button"
                             onClick={() => router.delete('/race')}

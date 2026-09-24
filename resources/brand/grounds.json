@@ -243,6 +243,9 @@
                 ],
                 "resources/js/components/trends/WeekComparison.tsx": [
                     "paper"
+                ],
+                "resources/js/components/race/RaceDuel.tsx": [
+                    "paper"
                 ]
             },
             "text": [
@@ -381,6 +384,9 @@
         "leaf/0.15": {
             "over": {
                 "resources/js/lib/tones.ts": [
+                    "paper"
+                ],
+                "resources/js/components/race/RaceDuel.tsx": [
                     "paper"
                 ]
             },
