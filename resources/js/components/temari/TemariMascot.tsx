@@ -1,4 +1,4 @@
-import type { Mood } from '@/types/inertia';
+import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
 
@@ -100,6 +100,21 @@ export const POSES: Readonly<Record<MascotPose, PoseSpec>> = {
         mouth: 'none',
     },
 };
+
+const WRITING: ReadonlySet<AnalysisPayload['status']> = new Set([
+    'queued',
+    'processing',
+]);
+
+/** The thinking pose while any of a surface's narrated blocks is being written. */
+export function writingPose(
+    pose: MascotPose,
+    ...blocks: ReadonlyArray<Pick<AnalysisPayload, 'status'> | undefined>
+): MascotPose {
+    return blocks.some((block) => block && WRITING.has(block.status))
+        ? 'thinking'
+        : pose;
+}
 
 function point(angle: number, r: number): string {
     const rad = (angle * Math.PI) / 180;

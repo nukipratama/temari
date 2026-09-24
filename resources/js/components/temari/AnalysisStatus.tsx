@@ -4,6 +4,7 @@ import { useId, type ReactNode } from 'react';
 
 import type { AnalysisPayload, SharedProps } from '@/types/inertia';
 
+import TemariMascot from '@/components/temari/TemariMascot';
 import { Icon } from '@/components/ui/Icon';
 import {
     RATE_LIMITED_ERROR,
@@ -94,6 +95,8 @@ interface Props {
      * block that referenced its old narrative. Ignored unless `chained`.
      */
     isChainHead?: boolean;
+    /** Show Temari thinking beside the skeleton, for a block no mascot sits near. */
+    thinkingMark?: boolean;
 }
 
 const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
@@ -158,6 +161,7 @@ export default function AnalysisStatus({
     onSky = false,
     chained = false,
     isChainHead = false,
+    thinkingMark = false,
 }: Readonly<Props>) {
     const {
         status,
@@ -298,14 +302,19 @@ export default function AnalysisStatus({
                 aria-live="polite"
             >
                 <span className="sr-only">temari&apos;s thinking it over…</span>
-                <div className="flex flex-col gap-1.5">
-                    {SKELETON_WIDTHS.map((width) => (
-                        <div
-                            key={width}
-                            className={`h-[1.625em] rounded ${width} ${skeletonBg}`}
-                            aria-hidden
-                        />
-                    ))}
+                <div className="flex items-start gap-2.5">
+                    {thinkingMark && (
+                        <TemariMascot pose="thinking" size={24} onSky={onSky} />
+                    )}
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                        {SKELETON_WIDTHS.map((width) => (
+                            <div
+                                key={width}
+                                className={`h-[1.625em] rounded ${width} ${skeletonBg}`}
+                                aria-hidden
+                            />
+                        ))}
+                    </div>
                 </div>
                 {attempts > 1 && (
                     <span

@@ -11,7 +11,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { AnalysisPayload, Mood, SharedProps } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import TemariMascot from '@/components/temari/TemariMascot';
+import TemariMascot, { writingPose } from '@/components/temari/TemariMascot';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
@@ -214,7 +214,10 @@ export default function RunLenses({
     return (
         <section className={className}>
             <header className="mb-3 flex items-center gap-3">
-                <TemariMascot pose={mood} size={28} />
+                <TemariMascot
+                    pose={writingPose(mood, story, insight)}
+                    size={28}
+                />
                 <div className="min-w-0 flex-1">
                     <h2 className="font-serif text-quote-md italic text-foreground">
                         What Temari says

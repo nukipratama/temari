@@ -53,6 +53,21 @@ describe('RecapCard', () => {
         expect(screen.getByTestId('mascot-peek-clearance')).toBeInTheDocument();
     });
 
+    it('thinks while its recap is being written', () => {
+        const { container } = render(
+            <RecapCard
+                mood="easy"
+                analysis={analysis({ status: 'processing', content: null })}
+            />,
+        );
+
+        expect(
+            container
+                .querySelector('svg[data-mascot]')
+                ?.getAttribute('data-mascot'),
+        ).toBe('thinking');
+    });
+
     it('falls back to the neutral pose when the period has no mood', () => {
         const { container } = render(
             <RecapCard mood={null} analysis={analysis()} />,

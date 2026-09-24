@@ -1,7 +1,12 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import TemariMascot, { type MascotPose, POSES, arcPath } from './TemariMascot';
+import TemariMascot, {
+    type MascotPose,
+    POSES,
+    arcPath,
+    writingPose,
+} from './TemariMascot';
 
 function svgOf(container: HTMLElement): SVGSVGElement {
     const svg = container.querySelector('svg');
@@ -160,6 +165,25 @@ describe('TemariMascot', () => {
         expect(
             tiny.querySelector('[data-face]')?.getAttribute('data-face'),
         ).toBe('eyes');
+    });
+});
+
+describe('writingPose', () => {
+    it('thinks while any block is queued or processing', () => {
+        expect(writingPose('easy', { status: 'queued' })).toBe('thinking');
+        expect(
+            writingPose('easy', { status: 'done' }, { status: 'processing' }),
+        ).toBe('thinking');
+    });
+
+    it('keeps the pose once every block has settled, or when there is none', () => {
+        expect(
+            writingPose('gassed', { status: 'done' }, { status: 'failed' }),
+        ).toBe('gassed');
+        expect(writingPose('chill', { status: 'pending' }, undefined)).toBe(
+            'chill',
+        );
+        expect(writingPose('blazing')).toBe('blazing');
     });
 });
 

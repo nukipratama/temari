@@ -8,6 +8,7 @@ import { renderNarration } from '@/components/temari/Citation';
 import MascotPeek, {
     MascotPeekClearance,
 } from '@/components/temari/MascotPeek';
+import { writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
@@ -223,7 +224,7 @@ export default function TodaySession({
             as="section"
             className="relative overflow-hidden border-today-accent"
         >
-            <MascotPeek pose={briefing.mood} />
+            <MascotPeek pose={writingPose(briefing.mood, voice)} />
             <div className="flow-root">
                 <MascotPeekClearance />
                 <div className="min-w-0">

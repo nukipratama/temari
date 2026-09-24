@@ -89,6 +89,27 @@ describe('ProfileHero', () => {
         expect(container.querySelector('.skeleton')).not.toBeNull();
     });
 
+    it('thinks in the corner while the voice is being written', () => {
+        const { container } = renderHero({
+            mood: 'easy',
+            voice: {
+                id: 3,
+                status: 'queued',
+                content: null,
+                type: 'profile_voice',
+                subject_type: 'profile_voice_user',
+                subject_id: 1,
+                discriminator: '2026-W24',
+            },
+        });
+
+        expect(
+            container
+                .querySelector('svg[data-mascot]')
+                ?.getAttribute('data-mascot'),
+        ).toBe('thinking');
+    });
+
     it('renders the narration quote when a done analysis is passed', () => {
         renderHero({
             voice: {

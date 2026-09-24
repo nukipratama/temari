@@ -68,6 +68,32 @@ describe('AnalysisStatus', () => {
         expect(screen.getByTestId('custom').textContent).toBe('[raw]');
     });
 
+    it('shows Temari thinking beside the skeleton only when the caller asks', () => {
+        const { container, rerender } = render(
+            <AnalysisStatus analysis={payload({ status: 'queued' })} />,
+        );
+        expect(container.querySelector('svg[data-mascot]')).toBeNull();
+
+        rerender(
+            <AnalysisStatus
+                analysis={payload({ status: 'queued' })}
+                thinkingMark
+            />,
+        );
+        expect(container.querySelector('svg[data-mascot]')).toHaveAttribute(
+            'data-mascot',
+            'thinking',
+        );
+
+        rerender(
+            <AnalysisStatus
+                analysis={payload({ status: 'done' })}
+                thinkingMark
+            />,
+        );
+        expect(container.querySelector('svg[data-mascot]')).toBeNull();
+    });
+
     it('renders a skeleton placeholder when queued', () => {
         const { container } = render(
             <AnalysisStatus analysis={payload({ status: 'queued' })} />,

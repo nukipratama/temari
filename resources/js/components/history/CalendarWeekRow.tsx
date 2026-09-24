@@ -55,6 +55,7 @@ export default function CalendarWeekRow({
                 >
                     <AnalysisStatus
                         analysis={snapshot.recap_analysis}
+                        thinkingMark
                         inertiaReloadProps={['weeklySnapshots']}
                         awaitingSchedule={snapshot.is_current_week}
                         chained
