@@ -96,10 +96,7 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
     }
     const shape = judged === null ? sessionShape(day.segments) : null;
     const purpose = judged === null ? sessionPurpose(day) : null;
-    const doseWhy =
-        judged === null && !day.eased_from
-            ? prescriptionWhy(day.prescription_reason)
-            : null;
+    const doseWhy = judged === null ? prescriptionWhy(day) : null;
 
     return (
         <div

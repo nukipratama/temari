@@ -196,9 +196,7 @@ export default function WeekDayRow({
     const purpose = ['long', 'tempo', 'interval'].includes(day.session_type)
         ? sessionPurpose(day)
         : null;
-    const doseWhy = day.eased_from
-        ? null
-        : prescriptionWhy(day.prescription_reason);
+    const doseWhy = prescriptionWhy(day);
     const showsPoint = purpose !== null || doseWhy !== null;
 
     // A rest day with nothing logged, no note, no clamp and no read has

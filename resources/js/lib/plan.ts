@@ -336,9 +336,13 @@ export function volumeAdjustedFrom(day: PlanDay): number | null {
         : null;
 }
 
+export function sessionHasWork(day: PlanDay): boolean {
+    return day.segments.some((s) => s.zone > 'Z2');
+}
+
 /** What a session is for and how it should feel, in one line. */
 export function sessionPurpose(day: PlanDay): string | null {
-    const hasWork = day.segments.some((s) => s.zone > 'Z2');
+    const hasWork = sessionHasWork(day);
     switch (day.session_type) {
         case 'long':
             return hasWork
@@ -429,7 +433,7 @@ export function sessionShape(segments: PlanSessionSegment[]): string | null {
     return parts.join(' → ');
 }
 
-const PRESCRIPTION_WHY: Record<string, string> = {
+const DOSE_WHY: Record<string, string> = {
     'conservative start with sparse comparable evidence':
         'starting modest. not enough sessions like this yet to size it up.',
     'progressed after the latest comparable session was hit':
@@ -440,17 +444,30 @@ const PRESCRIPTION_WHY: Record<string, string> = {
         'same dose as last time. nail it before it grows.',
     'bounded by this week’s easy-time reserve':
         'capped so the week keeps enough easy running around it.',
+};
+
+const KEPT_EASY_WHY: Record<string, string> = {
     'easy because the week has no safe room for meaningful quality':
         'kept easy. the week has no safe room for real quality.',
     'easy because the weekly hard-day budget is already full':
         'kept easy. the week already has its hard days.',
     'easy to preserve recovery between hard days':
         'kept easy. too close to another hard day.',
+    'easy because the outing cannot safely fit the minimum quality structure':
+        "kept easy. the day's too short to fit a proper quality set.",
 };
 
-/** The engine's reason for today's dose, only when it actually shaped the day. */
-export function prescriptionWhy(reason: string | null): string | null {
-    return reason === null ? null : (PRESCRIPTION_WHY[reason] ?? null);
+/** The engine's reason for today's dose, only when the day's segments still bear it out. */
+export function prescriptionWhy(day: PlanDay): string | null {
+    if (day.prescription_reason === null || day.eased_from) {
+        return null;
+    }
+
+    return (
+        (sessionHasWork(day) ? DOSE_WHY : KEPT_EASY_WHY)[
+            day.prescription_reason
+        ] ?? null
+    );
 }
 
 /** The core segment's own pace, in seconds/km — the number every pace figure

@@ -689,9 +689,56 @@ describe('sessionPurpose', () => {
 });
 
 describe('prescriptionWhy', () => {
+    const easyBlock = [
+        {
+            key: 'main' as const,
+            minutes: 40,
+            zone: 'Z2',
+            pace_label: 'easy' as const,
+            km: 6,
+            pace_sec_per_km: 400,
+        },
+    ];
+
     it('hides engine placeholders and unknown strings', () => {
-        expect(prescriptionWhy('easy volume')).toBeNull();
-        expect(prescriptionWhy('resolved coaching prescription')).toBeNull();
-        expect(prescriptionWhy(null)).toBeNull();
+        expect(
+            prescriptionWhy(planDay({ prescription_reason: 'easy volume' })),
+        ).toBeNull();
+        expect(
+            prescriptionWhy(
+                planDay({
+                    prescription_reason: 'resolved coaching prescription',
+                }),
+            ),
+        ).toBeNull();
+        expect(
+            prescriptionWhy(planDay({ prescription_reason: null })),
+        ).toBeNull();
+    });
+
+    it('drops a dose reason once the day fell back to an easy block', () => {
+        expect(
+            prescriptionWhy(
+                planDay({
+                    session_type: 'tempo',
+                    segments: easyBlock,
+                    prescription_reason:
+                        'progressed after the latest comparable session was hit',
+                }),
+            ),
+        ).toBeNull();
+    });
+
+    it('keeps the kept-easy reason on the easy day it explains', () => {
+        expect(
+            prescriptionWhy(
+                planDay({
+                    session_type: 'easy',
+                    segments: easyBlock,
+                    prescription_reason:
+                        'easy to preserve recovery between hard days',
+                }),
+            ),
+        ).toBe('kept easy. too close to another hard day.');
     });
 });

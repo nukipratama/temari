@@ -334,6 +334,16 @@ describe('WeekDayRow', () => {
         renderRow({
             day: day({
                 session_type: 'easy',
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 40,
+                        zone: 'Z2',
+                        pace_label: 'easy',
+                        km: 6,
+                        pace_sec_per_km: 400,
+                    },
+                ],
                 prescription_reason:
                     'easy to preserve recovery between hard days',
             }),
