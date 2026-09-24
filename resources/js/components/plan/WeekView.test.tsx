@@ -70,7 +70,7 @@ const WEEK: PlanDay[] = [
         compliance_score: 100,
         actual_km: 6,
         prescribed_km: 6,
-        activities: [{ id: 91, km: 6, seconds: 2160 }],
+        activities: [{ id: 91, km: 6, seconds: 2160, started_at: '06:00' }],
     }),
     day({
         id: 2,

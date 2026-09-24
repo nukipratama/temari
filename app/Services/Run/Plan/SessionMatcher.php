@@ -196,7 +196,7 @@ final readonly class SessionMatcher
      * total distance with one run's duration, which read as a single
      * impossible run.
      *
-     * @return array<string, array{km: float, runs: list<array{id: int, km: float, seconds: int|null, moving_time: int|null}>}>
+     * @return array<string, array{km: float, runs: list<array{id: int, km: float, seconds: int|null, moving_time: int|null, started_at: string}>}>
      */
     public function activityByDate(User $user, Carbon $from, Carbon $to): array
     {
@@ -228,6 +228,7 @@ final readonly class SessionMatcher
                 'km' => $km,
                 'seconds' => $row->elapsed_time,
                 'moving_time' => $row->moving_time,
+                'started_at' => $row->start_date_local->format('H:i'),
             ];
         }
 
@@ -294,7 +295,7 @@ final readonly class SessionMatcher
      * runs logged, or where the credited runs carry no moving time to divide
      * by.
      *
-     * @param  list<array{id: int, km: float, seconds: int|null, moving_time: int|null}>  $runs
+     * @param  list<array{id: int, km: float, seconds: int|null, moving_time: int|null, started_at: string}>  $runs
      */
     public static function ranPaceSecPerKmFromRuns(?SessionType $type, array $runs): ?int
     {

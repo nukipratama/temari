@@ -380,7 +380,9 @@ describe('DayHeadline and DayDetail', () => {
                 status: 'done',
                 ran_anyway: true,
                 actual_km: 5,
-                activities: [{ id: 7, km: 5, seconds: 1800 }],
+                activities: [
+                    { id: 7, km: 5, seconds: 1800, started_at: '06:00' },
+                ],
             }),
         });
 
@@ -448,13 +450,17 @@ describe('DayHeadline and DayDetail', () => {
                 date: '2026-06-15',
                 status: 'done',
                 actual_km: 8.1,
-                activities: [{ id: 42, km: 8.1, seconds: 2720 }],
+                activities: [
+                    { id: 42, km: 8.1, seconds: 2720, started_at: '06:00' },
+                ],
             }),
         });
 
         const link = screen.getByRole('link', { name: /view activity/i });
         expect(link).toHaveAttribute('href', '/activities/42');
-        expect(link).toHaveAccessibleName('view activity · 8.1 km · 45:20');
+        expect(link).toHaveAccessibleName(
+            'view activity · 06:00 · 8.1 km · 45:20',
+        );
     });
 
     /**
@@ -469,8 +475,8 @@ describe('DayHeadline and DayDetail', () => {
                 status: 'done',
                 actual_km: 12,
                 activities: [
-                    { id: 11, km: 5, seconds: 1380 },
-                    { id: 12, km: 7, seconds: 3300 },
+                    { id: 11, km: 5, seconds: 1380, started_at: '06:00' },
+                    { id: 12, km: 7, seconds: 3300, started_at: '06:00' },
                 ],
             }),
         });
@@ -478,36 +484,34 @@ describe('DayHeadline and DayDetail', () => {
         const links = screen.getAllByRole('link', { name: /view activity/i });
         expect(links).toHaveLength(2);
         expect(links[0]).toHaveAttribute('href', '/activities/11');
-        expect(links[0]).toHaveAccessibleName('view activity · 5 km · 23:00');
+        expect(links[0]).toHaveAccessibleName(
+            'view activity · 06:00 · 5 km · 23:00',
+        );
         expect(links[1]).toHaveAttribute('href', '/activities/12');
-        expect(links[1]).toHaveAccessibleName('view activity · 7 km · 55:00');
+        expect(links[1]).toHaveAccessibleName(
+            'view activity · 06:00 · 7 km · 55:00',
+        );
         // The summed distance must never appear beside one run's duration.
         expect(screen.queryByText(/12 km · 55:00/)).not.toBeInTheDocument();
     });
 
-    it('lists the first two runs and folds the rest behind a "more" button', () => {
+    it('lists every run, each led by its start time', () => {
         renderRow({
             day: day({
                 date: '2026-06-15',
-                actual_km: 20,
+                actual_km: 15,
                 activities: [
-                    { id: 21, km: 5, seconds: 1500 },
-                    { id: 22, km: 5, seconds: 1500 },
-                    { id: 23, km: 5, seconds: 1500 },
-                    { id: 24, km: 5, seconds: 1500 },
+                    { id: 21, km: 5, seconds: 1500, started_at: '05:40' },
+                    { id: 22, km: 5, seconds: 1500, started_at: '12:10' },
+                    { id: 23, km: 5, seconds: 1500, started_at: '18:30' },
                 ],
             }),
         });
 
-        expect(
-            screen.getAllByRole('link', { name: /view activity/i }),
-        ).toHaveLength(2);
-
-        fireEvent.click(screen.getByRole('button', { name: '+ 2 more' }));
-
-        expect(
-            screen.getAllByRole('link', { name: /view activity/i }),
-        ).toHaveLength(4);
+        const links = screen.getAllByRole('link', { name: /view activity/i });
+        expect(links).toHaveLength(3);
+        expect(links[0]).toHaveTextContent(/^05:40/);
+        expect(links[2]).toHaveTextContent(/^18:30/);
     });
 
     it('shows no activity link on a day with nothing logged', () => {
@@ -530,8 +534,8 @@ describe('DayHeadline and DayDetail', () => {
                 prescribed_km: null,
                 actual_km: 12,
                 activities: [
-                    { id: 11, km: 5, seconds: 1380 },
-                    { id: 12, km: 7, seconds: 3300 },
+                    { id: 11, km: 5, seconds: 1380, started_at: '06:00' },
+                    { id: 12, km: 7, seconds: 3300, started_at: '06:00' },
                 ],
             }),
         });
@@ -552,7 +556,9 @@ describe('DayHeadline and DayDetail', () => {
                 ran_anyway: true,
                 prescribed_km: null,
                 actual_km: 5,
-                activities: [{ id: 7, km: 5, seconds: 1800 }],
+                activities: [
+                    { id: 7, km: 5, seconds: 1800, started_at: '06:00' },
+                ],
             }),
         });
 

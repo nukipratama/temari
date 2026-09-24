@@ -64,26 +64,23 @@ function runSummary(run: PlanDay['activities'][number]): string {
     return [`${run.km} km`, time].filter((part) => part !== null).join(' · ');
 }
 
-const RUNS_SHOWN = 2;
-
 function RunList({ runs }: Readonly<{ runs: PlanDay['activities'] }>) {
-    const [expanded, setExpanded] = useState(false);
-    const shown = expanded ? runs : runs.slice(0, RUNS_SHOWN);
-    const hidden = runs.length - shown.length;
-
     return (
         <div className="mt-3">
             <p className="text-label-micro text-text-2">
                 {runs.length === 1 ? 'Run' : 'Runs'}
             </p>
             <ul className="mt-1 divide-y divide-border">
-                {shown.map((run) => (
+                {runs.map((run) => (
                     <li key={run.id}>
                         <Link
                             href={`/activities/${run.id}`}
-                            aria-label={`view activity · ${runSummary(run)}`}
+                            aria-label={`view activity · ${run.started_at} · ${runSummary(run)}`}
                             className="focus-ring flex items-center gap-3 py-2 text-sm text-foreground tabular-nums hover:text-horizon-ink"
                         >
+                            <span className="w-12 flex-none">
+                                {run.started_at}
+                            </span>
                             <span className="flex-1">{run.km} km</span>
                             {run.seconds != null && (
                                 <span>{formatDurationHMS(run.seconds)}</span>
@@ -97,15 +94,6 @@ function RunList({ runs }: Readonly<{ runs: PlanDay['activities'] }>) {
                     </li>
                 ))}
             </ul>
-            {hidden > 0 && (
-                <button
-                    type="button"
-                    onClick={() => setExpanded(true)}
-                    className="focus-ring mt-1 text-sm font-semibold text-horizon-ink"
-                >
-                    + {hidden} more
-                </button>
-            )}
         </div>
     );
 }

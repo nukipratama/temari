@@ -677,8 +677,8 @@ it('dayPayload explains a long day that covered its distance in pieces', functio
         'phase' => PlanPhase::Build,
         'date' => $today,
     ]);
-    $inPieces = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 10.0, 'seconds' => 3000], ['id' => 2, 'km' => 10.0, 'seconds' => 3000]]];
-    $inOne = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 18.0, 'seconds' => 5400], ['id' => 2, 'km' => 2.0, 'seconds' => 600]]];
+    $inPieces = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 10.0, 'seconds' => 3000, 'moving_time' => 3000, 'started_at' => '06:00'], ['id' => 2, 'km' => 10.0, 'seconds' => 3000, 'moving_time' => 3000, 'started_at' => '17:30']]];
+    $inOne = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 18.0, 'seconds' => 5400, 'moving_time' => 5400, 'started_at' => '06:00'], ['id' => 2, 'km' => 2.0, 'seconds' => 600, 'moving_time' => 600, 'started_at' => '17:30']]];
 
     $render = fn (array $activity, PlannedSessionStatus $status): ?string => PlanRenderer::dayPayload(
         $session,
