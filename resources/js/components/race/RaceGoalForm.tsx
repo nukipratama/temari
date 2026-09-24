@@ -26,6 +26,7 @@ interface RaceGoalFormProps {
         name: string | null;
     } | null;
     projection: RaceProjection | null;
+    onSaved: () => void;
     className?: string;
 }
 
@@ -46,6 +47,7 @@ const FIELD_LABEL = 'text-label-micro text-text-2';
 export default function RaceGoalForm({
     race,
     projection,
+    onSaved,
     className,
 }: Readonly<RaceGoalFormProps>) {
     const [raceDate, setRaceDate] = useState(race?.race_date ?? '');
@@ -92,6 +94,7 @@ export default function RaceGoalForm({
             {
                 preserveScroll: true,
                 onStart: () => setProcessing(true),
+                onSuccess: onSaved,
                 onFinish: () => setProcessing(false),
             },
         );

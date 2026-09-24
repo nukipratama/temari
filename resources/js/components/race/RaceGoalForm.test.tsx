@@ -26,7 +26,9 @@ function lastPostCall() {
 
 describe('RaceGoalForm', () => {
     it('labels itself for creating a race when there is none', () => {
-        render(<RaceGoalForm race={null} projection={null} />);
+        render(
+            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+        );
 
         expect(screen.getByText('set your race')).toBeInTheDocument();
         expect(
@@ -35,7 +37,9 @@ describe('RaceGoalForm', () => {
     });
 
     it('labels itself for editing once a race is set', () => {
-        render(<RaceGoalForm race={RACE} projection={null} />);
+        render(
+            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+        );
 
         expect(screen.getByText('edit your race')).toBeInTheDocument();
         expect(
@@ -44,7 +48,9 @@ describe('RaceGoalForm', () => {
     });
 
     it('submits the form with distance in meters and goal time in seconds', () => {
-        render(<RaceGoalForm race={null} projection={null} />);
+        render(
+            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+        );
 
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
@@ -76,7 +82,9 @@ describe('RaceGoalForm', () => {
     });
 
     it('accepts a custom distance typed directly, not just a preset pill', () => {
-        render(<RaceGoalForm race={null} projection={null} />);
+        render(
+            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+        );
 
         // race_date is required for the native form submit event to fire at
         // all — without it the click never reaches router.post.
@@ -92,8 +100,23 @@ describe('RaceGoalForm', () => {
         expect(lastPostCall()?.[1]).toMatchObject({ distance_m: 15_000 });
     });
 
+    it('reports a successful save to its owner', () => {
+        const onSaved = vi.fn();
+        render(
+            <RaceGoalForm race={RACE} projection={null} onSaved={onSaved} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'update race' }));
+        expect(onSaved).not.toHaveBeenCalled();
+
+        lastPostCall()?.[2]?.onSuccess?.({} as never);
+        expect(onSaved).toHaveBeenCalledOnce();
+    });
+
     it('sends a null name when left blank', () => {
-        render(<RaceGoalForm race={null} projection={null} />);
+        render(
+            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+        );
 
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
@@ -104,7 +127,9 @@ describe('RaceGoalForm', () => {
     });
 
     it('shows a saving state between the router request starting and finishing', () => {
-        render(<RaceGoalForm race={null} projection={null} />);
+        render(
+            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+        );
 
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
@@ -126,7 +151,9 @@ describe('RaceGoalForm', () => {
     });
 
     it('refuses to submit a goal time the server would reject outright', () => {
-        render(<RaceGoalForm race={null} projection={null} />);
+        render(
+            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+        );
 
         fireEvent.change(screen.getByLabelText('Minutes'), {
             target: { value: '0' },
@@ -139,7 +166,9 @@ describe('RaceGoalForm', () => {
     });
 
     it('stops the date picker short of a race day the server would reject', () => {
-        render(<RaceGoalForm race={null} projection={null} />);
+        render(
+            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+        );
 
         const min = screen.getByLabelText('Race day').getAttribute('min') ?? '';
 
@@ -150,7 +179,13 @@ describe('RaceGoalForm', () => {
     });
 
     it('warns without blocking submission when the goal implies an implausible pace', () => {
-        render(<RaceGoalForm race={RACE} projection={PROJECTION} />);
+        render(
+            <RaceGoalForm
+                race={RACE}
+                projection={PROJECTION}
+                onSaved={() => {}}
+            />,
+        );
 
         // 10K in 25:00 = 150 sec/km, under the world-record-pace floor.
         fireEvent.change(screen.getByLabelText('Minutes'), {
@@ -169,7 +204,13 @@ describe('RaceGoalForm', () => {
     });
 
     it("warns when the goal is well ahead of the athlete's own projected range for the same distance", () => {
-        render(<RaceGoalForm race={RACE} projection={PROJECTION} />);
+        render(
+            <RaceGoalForm
+                race={RACE}
+                projection={PROJECTION}
+                onSaved={() => {}}
+            />,
+        );
 
         // 10K in 33:20 = 200 sec/km: a plausible pace, but well inside
         // PERSONALIZED_STRETCH_RATIO of the projection's own low_sec (2,900).
@@ -186,7 +227,13 @@ describe('RaceGoalForm', () => {
     });
 
     it('stays quiet about ambition once the custom distance no longer matches the projection', () => {
-        render(<RaceGoalForm race={RACE} projection={PROJECTION} />);
+        render(
+            <RaceGoalForm
+                race={RACE}
+                projection={PROJECTION}
+                onSaved={() => {}}
+            />,
+        );
 
         fireEvent.change(screen.getByLabelText('Minutes'), {
             target: { value: '33' },
@@ -205,7 +252,9 @@ describe('RaceGoalForm', () => {
     });
 
     it('pre-fills from the active race for editing', () => {
-        render(<RaceGoalForm race={RACE} projection={null} />);
+        render(
+            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+        );
 
         expect(
             (screen.getByLabelText('Race day') as HTMLInputElement).value,

@@ -13,6 +13,7 @@ code_refs:
   - app/Services/Inertia/GamificationProps.php
   - resources/js/components/race/RaceDuel.tsx
   - resources/js/components/race/ProjectionRangeBar.tsx
+  - resources/js/components/race/RaceGoalForm.tsx
   - resources/js/pages/Race.tsx
 ---
 
@@ -53,6 +54,8 @@ This is deliberately **not** reconciled with [VdotEstimator](app/Services/Run/Me
 ## The page: goal against projection
 
 The page leads with one duel card, [RaceDuel](resources/js/components/race/RaceDuel.tsx), under a compact "your race." header with a "plan →" link. It sets the goal time against the projected finish with the gap in words ("8:29 behind", "2:10 ahead", "on goal" within 5 seconds), a straight [ProjectionRangeBar](resources/js/components/race/ProjectionRangeBar.tsx) marking the goal against the projected range, then the race line and the PR basis. A Temari watermark is posed from the gap relative to the goal time. With no projection the card shows the goal alone. Why this shape: [[race-page-leads-with-goal-vs-projection]].
+
+Under the card, a row behind a hairline holds "edit race" and a quiet ember "clear race". "edit race" expands [RaceGoalForm](resources/js/components/race/RaceGoalForm.tsx) inline, collapsed by default; a successful save collapses it again, and reopening remounts it on the saved values. "clear race" confirms through the concerned-pose `TemariNudgeModal` before `DELETE /race`, which retires the race and regenerates the plan onto its self-scaled arc. With no race set, the page shows only a one-line prompt and a "set a race" button that expands the same form.
 
 ## No fitness trend here any more
 
