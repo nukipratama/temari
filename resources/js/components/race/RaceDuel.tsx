@@ -42,6 +42,12 @@ const GAP_PILL: Record<GoalGapVerdict, string> = {
     on: 'bg-muted text-foreground',
 };
 
+const PROJECTED_TONE: Record<GoalGapVerdict, string> = {
+    behind: 'text-ember-ink',
+    ahead: 'text-leaf-ink',
+    on: 'text-foreground',
+};
+
 const TIME = 'mt-1 font-mono text-headline-xs font-extrabold tabular-nums';
 
 /** The race's goal time facing the projected finish, with the gap between them in words. */
@@ -95,7 +101,12 @@ export default function RaceDuel({
                             >
                                 on track for
                             </Eyebrow>
-                            <p className={cn(TIME, 'text-icon-accent')}>
+                            <p
+                                className={cn(
+                                    TIME,
+                                    PROJECTED_TONE[gap.verdict],
+                                )}
+                            >
                                 {formatDurationHMS(projection.predicted_sec)}
                             </p>
                         </div>

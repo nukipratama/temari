@@ -36,6 +36,7 @@ describe('RaceDuel', () => {
         expect(screen.getByText('on track for')).toBeInTheDocument();
         expect(screen.getByText('51:40')).toBeInTheDocument();
         expect(screen.getByText('1:40 behind')).toHaveClass('text-ember-ink');
+        expect(screen.getByText('51:40')).toHaveClass('text-ember-ink');
     });
 
     it('draws an ahead gap in the leaf family', () => {
@@ -47,6 +48,7 @@ describe('RaceDuel', () => {
         );
 
         expect(screen.getByText('2:10 ahead')).toHaveClass('text-leaf-ink');
+        expect(screen.getByText('47:50')).toHaveClass('text-leaf-ink');
     });
 
     it('says on goal when the projection sits within a few seconds', () => {
