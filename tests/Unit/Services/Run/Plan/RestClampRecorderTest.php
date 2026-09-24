@@ -202,7 +202,6 @@ it('never overwrites an eased target it already recorded', function (): void {
         ->and($session->fresh()->clamped_km)->toBe(4.2);
 });
 
-/** The render-time clamp exempts a pinned row, so nothing may excuse one here. */
 it('never records against a pinned row', function (): void {
     $user = User::factory()->create();
     bottomOutReadiness($user);

@@ -335,7 +335,7 @@ function briefingOnlyHeaders(object $actingAs): array
 // the caches are warmed by a first pass that is not counted. Scoped resolvers
 // must be forgotten between the two the way a real second request forgets them,
 // or the memos carry over and the count reads lower than any request ever is.
-// The week is pinned, so the readiness clamp stays out of it; the clamped day
+// Today is a rest day, so the readiness clamp stays out of it; the clamped day
 // is budgeted by the test below.
 it('paints Home inside its query budget', function (): void {
     Carbon::setTestNow('2026-09-09 09:00:00');
@@ -353,9 +353,11 @@ it('paints Home inside its query budget', function (): void {
         'week_ending' => Carbon::today()->startOfWeek(Carbon::MONDAY)->subDay()->toDateString(),
     ]);
     foreach (range(0, 6) as $offset) {
+        $date = Carbon::today()->startOfWeek(Carbon::MONDAY)->addDays($offset);
         PlannedSession::factory()->for($user)->create([
-            'date' => Carbon::today()->startOfWeek(Carbon::MONDAY)->addDays($offset)->toDateString(),
+            'date' => $date->toDateString(),
             'pinned' => true,
+            ...($date->isToday() ? ['session_type' => 'rest'] : []),
         ]);
     }
 
@@ -372,7 +374,9 @@ it('paints Home inside its query budget', function (): void {
     // 17: was 16 against a fixture whose week_ending was never a real Sunday, so
     // BriefingContext::lastWeekToDate() always took its early-exit branch. The
     // fixture now carries the real previous Sunday, so that branch's read runs.
-    expect($queries)->toBeLessThanOrEqual(17);
+    // 18: a pinned today no longer skips the readiness check, so its
+    // hydration-backlog read runs here as it does for any other today.
+    expect($queries)->toBeLessThanOrEqual(18);
 
     Carbon::setTestNow();
 });

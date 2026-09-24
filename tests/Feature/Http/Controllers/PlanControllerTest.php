@@ -492,3 +492,26 @@ it('refuses to move a session onto a day that is not a rest day', function (): v
     expect($from->fresh()->session_type->value)->toBe('tempo')
         ->and($to->fresh()->session_type->value)->toBe('race');
 });
+
+it('still advises the step-down beside a session the athlete pinned to today', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        'form_status' => 'overreaching',
+        'monotony' => 1.0,
+    ]);
+    PlannedSession::factory()->for($user)->pinned()->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => 'interval',
+    ]);
+
+    $todayDay = collect($this->actingAs($user)
+        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
+        ->assertSuccessful()
+        ->json('props.weeks'))
+        ->flatMap(fn (array $week): array => $week['days'])
+        ->firstWhere('date', Carbon::today()->toDateString());
+
+    expect($todayDay['session_type'])->toBe('interval')
+        ->and($todayDay['clamp']['session_type'])->toBe('rest');
+});

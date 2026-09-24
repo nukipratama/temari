@@ -47,9 +47,7 @@ final readonly class ClampNarrationContext
             ->whereDate('date', $date->toDateString())
             ->first();
 
-        // A pinned row is exempt from the clamp at render time, so there is
-        // nothing to explain here either.
-        if ($session === null || $session->pinned) {
+        if ($session === null) {
             return null;
         }
 

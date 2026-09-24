@@ -191,7 +191,7 @@ final class PlanPageAssembler
         // knowable today, so clamping never reaches past this one row. Held
         // back while recent load is still unscored, same guard as RestClampRecorder::record().
         $todaySession = $sessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
-        $clamp = ($todaySession !== null && ! $todaySession->pinned && ! $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today))
+        $clamp = ($todaySession !== null && ! $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today))
             ? ReadinessClamp::apply(
                 $todaySession->session_type,
                 $todaySession->phase,
