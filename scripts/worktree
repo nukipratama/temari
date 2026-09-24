@@ -247,9 +247,6 @@ shared test MySQL, Redis index $test_redis_db; see .env.testing.
 Stack is up, PHP and npm dependencies are installed, both migration sets
 completed and assets are built; pages load at http://localhost:${app_port}.
 Run ./vendor/bin/sail npm run dev only when you need HMR.
-
-/devtools, /devtools/narration, /horizon and /pulse use HTTP Basic; any username,
-password = DEVTOOLS_PASSWORD from this worktree's .env.
 EOF
 }
 
