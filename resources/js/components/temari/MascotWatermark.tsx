@@ -10,8 +10,9 @@ interface MascotWatermarkProps {
 }
 
 /**
- * Temari as a faint 200px watermark bleeding off a card's edge, behind the
- * content. The card must be `relative isolate overflow-hidden`.
+ * Temari as a faint watermark bleeding off a card's edge, behind the content,
+ * sized in rem so it scales with the root type step alongside its offsets. The
+ * card must be `relative isolate overflow-hidden`.
  */
 export default function MascotWatermark({
     pose,
@@ -22,7 +23,7 @@ export default function MascotWatermark({
             pose={pose}
             size={200}
             className={cn(
-                'pointer-events-none absolute -z-10 opacity-16 dark:opacity-20',
+                'pointer-events-none absolute -z-10 size-50 opacity-16 dark:opacity-20',
                 className,
             )}
         />

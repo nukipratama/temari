@@ -11,6 +11,11 @@ code_refs:
 
 # A watermark replaces the mascot's corner peek
 
+> **Fact update, 2026-09-24.** The watermark is sized `12.5rem` rather than 200px. The root type
+> steps up to 19.2px and 21.6px on wide screens, and a px size under rem offsets slid it further off
+> the card there. Today's session box is full width and translucent rather than stopping short. The
+> decision below is unchanged.
+
 ## Context
 
 [[mascot-is-the-living-brand-mark]] put Temari in a card's top-left corner as a 96–112px **corner peek**, with a float that made copy wrap round her, at most once per page. Everywhere else she was a 28px **gutter tag**. The owner's review in prod (#1142) found three faults:
