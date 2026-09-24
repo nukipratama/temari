@@ -98,6 +98,22 @@ it('ends a self-scaled season early and starts a race-oriented one when a race i
         ->and(Season::query()->where('user_id', $user->id)->count())->toBe(2);
 });
 
+it('keeps a race season\'s ends_at in sync with the race date when the same race row moves, without changing the season identity', function (): void {
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(9)->toDateString()]);
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+    expect($season->ends_at->toDateString())->toBe($race->race_date->toDateString());
+
+    // The race is edited in place (same row, same id) rather than superseded.
+    $race->update(['race_date' => Carbon::today()->addWeeks(13)->toDateString()]);
+
+    $resynced = $this->service->ensureCurrent($user, Carbon::today());
+
+    expect($resynced->id)->toBe($season->id)
+        ->and($resynced->race_goal_id)->toBe($race->id)
+        ->and($resynced->ends_at->toDateString())->toBe($race->fresh()->race_date->toDateString());
+});
+
 it('retargets the season in place, rather than opening a duplicate row, when the race is set the same day the season started', function (): void {
     $user = User::factory()->create();
     $selfScaled = $this->service->ensureCurrent($user, Carbon::today());

@@ -84,6 +84,7 @@ final readonly class SeasonService
         if ($current !== null && $this->isCurrent($current, $race, $today)) {
             $this->reanchorIfCollapsed($current, $user, $today);
             if ($race !== null) {
+                $this->syncEndsAtToRaceDate($current, $race);
                 $this->appendBlockGoals($current, $race, $user, $today);
             }
 
@@ -236,6 +237,24 @@ final readonly class SeasonService
         $race = $previous?->raceGoal;
 
         return $race !== null && ! $race->race_date->startOfDay()->isAfter($today);
+    }
+
+    /**
+     * A race-oriented season ends on its race day per
+     * `docs/features/plan-periodizer.md`. `race_goal_id` staying the same
+     * (the athlete's active race row was edited in place rather than
+     * superseded — see {@see \Database\Seeders\Demo\DemoRunSeeder::seedRaceGoal()})
+     * leaves {@see self::isCurrent()} treating the season as unchanged, so
+     * nothing else here would otherwise notice the race moved and refresh
+     * `ends_at` to match — leaving {@see SeasonSummaryBuilder::plannedWeeks()},
+     * which always reads the race's date fresh, running past the season's
+     * own stored end.
+     */
+    private function syncEndsAtToRaceDate(Season $season, RaceGoal $race): void
+    {
+        if (! $season->ends_at->isSameDay($race->race_date)) {
+            $season->update(['ends_at' => $race->race_date->toDateString()]);
+        }
     }
 
     private function isCurrent(Season $season, ?RaceGoal $race, Carbon $today): bool
