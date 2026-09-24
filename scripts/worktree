@@ -13,7 +13,7 @@ Usage:
   scripts/worktree create <name> [base]
   scripts/worktree adopt [path]
   scripts/worktree setup <slot>
-  scripts/worktree remove <path>
+  scripts/worktree remove [--force] <path>
   scripts/worktree prune
 EOF
   exit 1
@@ -148,6 +148,23 @@ allocate_slot_for() {
   done
 }
 
+SETUP_LOG=""
+step() {
+  local label="$1"
+  local started=$SECONDS
+  local status
+  shift
+
+  if "$@" >>"$SETUP_LOG" 2>&1; then
+    printf 'worktree: %s (%ss)\n' "$label" "$((SECONDS - started))"
+  else
+    status=$?
+    printf 'worktree: %s FAILED; last lines of %s:\n' "$label" "$SETUP_LOG" >&2
+    tail -n 40 "$SETUP_LOG" >&2
+    return "$status"
+  fi
+}
+
 setup_impl() {
   local worktree="$1"
   local slot="$2"
@@ -171,6 +188,8 @@ setup_impl() {
   reserve_slot_for "$worktree" "$slot" "$git_common_dir"
 
   cd "$worktree"
+  SETUP_LOG="${worktree}/storage/logs/worktree-setup.log"
+  : > "$SETUP_LOG"
   [ -f .env ] || cp .env.example .env
   [ -f .env.testing ] || cp .env.testing.example .env.testing
 
@@ -213,31 +232,31 @@ EOF
     docker compose -f compose.shared-services.yml --project-directory "$(dirname "$git_common_dir")" "$@"
   }
 
-  shared up -d --wait
+  step "shared MySQL/Redis up" shared up -d --wait
 
   db_username="$(env_value .env DB_USERNAME)"
-  shared exec -T \
+  step "dev schemas" shared exec -T \
     -e DB_DATABASE="$db_schema" \
     -e DB_ANALYTICS_DATABASE="$db_analytics_schema" \
     -e DB_USERNAME="$db_username" \
     -e DB_PASSWORD="$DB_PASSWORD" \
     mysql sh < docker/mysql/init/01-databases.sh
 
-  shared exec -T mysql-test \
-    mysql -uroot -p"${DB_PASSWORD}" \
+  step "test schema" shared exec -T -e MYSQL_PWD="$DB_PASSWORD" mysql-test \
+    mysql -uroot \
     -e "CREATE DATABASE IF NOT EXISTS \`${test_db_schema}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-  docker compose up -d
-  docker compose exec -u root app chown www-data:www-data node_modules /var/cache/composer /var/cache/npm
+  step "app container up" docker compose up -d
+  step "volume ownership" docker compose exec -u root app chown www-data:www-data node_modules /var/cache/composer /var/cache/npm
 
   app() { docker compose exec -T app "$@"; }
 
-  [ -f vendor/autoload.php ] || app composer install
-  grep -qE '^APP_KEY=.+' .env || app php artisan key:generate
-  app php artisan migrate --force
-  app php artisan migrate --database=analytics --path=database/migrations/analytics --force
-  app test -x node_modules/.bin/vite || app npm ci --no-audit --no-fund
-  app npm run build
+  [ -f vendor/autoload.php ] || step "composer install" app composer install
+  grep -qE '^APP_KEY=.+' .env || step "app key" app php artisan key:generate
+  step "migrations" app php artisan migrate --force
+  step "analytics migrations" app php artisan migrate --database=analytics --path=database/migrations/analytics --force
+  app test -x node_modules/.bin/vite || step "npm ci" app npm ci --no-audit --no-fund
+  step "asset build" app npm run build
 
   cat <<EOF
 worktree: slot $slot configured; APP_PORT=$app_port, VITE_PORT=$vite_port.
@@ -247,6 +266,7 @@ shared test MySQL, Redis index $test_redis_db; see .env.testing.
 Stack is up, PHP and npm dependencies are installed, both migration sets
 completed and assets are built; pages load at http://localhost:${app_port}.
 Run ./vendor/bin/sail npm run dev only when you need HMR.
+Full setup output: storage/logs/worktree-setup.log.
 EOF
 }
 
@@ -300,13 +320,13 @@ clean_slot_data() {
       }
     done
 
-    shared exec -T mysql mysql -uroot -p"${DB_PASSWORD}" \
+    shared exec -T -e MYSQL_PWD="$DB_PASSWORD" mysql mysql -uroot \
       -e "DROP DATABASE IF EXISTS \`${db_schema}\`; DROP DATABASE IF EXISTS \`${db_analytics_schema}\`;" || {
       fail "could not drop ${db_schema} on the shared MySQL"
       return 1
     }
 
-    test_schemas="$(shared exec -T mysql-test mysql -uroot -p"${DB_PASSWORD}" -Nse \
+    test_schemas="$(shared exec -T -e MYSQL_PWD="$DB_PASSWORD" mysql-test mysql -uroot -Nse \
       "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${test_db_schema}' OR SCHEMA_NAME LIKE '${test_db_schema}\\_test\\_%';")" || {
       fail "could not list ${test_db_schema} schemas on the shared test MySQL"
       return 1
@@ -314,7 +334,7 @@ clean_slot_data() {
     for schema in $test_schemas; do
       case "$schema" in
         "$test_db_schema"|"${test_db_schema}_test_"*)
-          shared exec -T mysql-test mysql -uroot -p"${DB_PASSWORD}" -e "DROP DATABASE IF EXISTS \`${schema}\`;" || {
+          shared exec -T -e MYSQL_PWD="$DB_PASSWORD" mysql-test mysql -uroot -e "DROP DATABASE IF EXISTS \`${schema}\`;" || {
             fail "could not drop ${schema} on the shared test MySQL"
             return 1
           }
@@ -339,6 +359,27 @@ clean_slot_data() {
   )
 }
 
+unsaved_work() {
+  local worktree="$1"
+  local branch="$2"
+  local changes
+  local unpushed
+
+  changes="$(git -C "$worktree" status --porcelain)"
+  if [ -n "$changes" ]; then
+    fail "${worktree} has uncommitted changes; commit and push them first, or re-run with --force to discard them:" || true
+    printf '%s\n' "$changes" | head -n 20 >&2
+    return 1
+  fi
+
+  [ -n "$branch" ] && git -C "$worktree" show-ref --verify --quiet "refs/heads/${branch}" || return 0
+  unpushed="$(git -C "$worktree" rev-list --count "refs/heads/${branch}" --not --exclude="$branch" --branches --remotes)"
+  if [ "$unpushed" -ne 0 ]; then
+    fail "branch ${branch} has ${unpushed} commit(s) on no remote or other branch; push them first, or re-run with --force to delete them"
+    return
+  fi
+}
+
 release_slot() {
   local slot_dir="$1"
   rm -f "${slot_dir}/path" "${slot_dir}/branch"
@@ -356,7 +397,7 @@ clean_stale_slot() {
   owner="$(<"${common_dir}/${LOCKS_NAME}/slot-${slot}/path")"
   echo "worktree: reclaiming slot ${slot}; ${owner} is no longer a git worktree" >&2
   [ ! -e "$owner" ] || echo "worktree: left ${owner} on disk for you to inspect or delete" >&2
-  (cd "$main_checkout" && docker compose -p "$project" down --remove-orphans >&2) || return
+  (cd "$main_checkout" && docker compose --progress quiet -p "$project" down --remove-orphans) || return
   clean_slot_data "${main_checkout}/.env.example" "$slot" "$common_dir" || return
   remove_project_volumes "$project"
 }
@@ -405,6 +446,7 @@ adopt_cmd() {
 
 remove_impl() {
   local requested_path="$1"
+  local force="$2"
   local force_cleanup="${TEMARI_WORKTREE_FORCE_CLEANUP:-false}"
   local worktree
   local git_dir
@@ -468,9 +510,13 @@ remove_impl() {
   fi
   [ ! -f "${slot_dir}/branch" ] || generated_branch="$(<"${slot_dir}/branch")"
 
+  if [ "$force" != true ] && [ "$force_cleanup" != true ]; then
+    unsaved_work "$worktree" "$generated_branch" || return
+  fi
+
   project="$(compose_project_name "$worktree" || true)"
   if [ -f "${worktree}/.env" ]; then
-    if ! (cd "$worktree" && docker compose down --remove-orphans); then
+    if ! (cd "$worktree" && docker compose --progress quiet down --remove-orphans); then
       if [ "$force_cleanup" != true ]; then
         fail "could not stop ${worktree}; its slot remains reserved"
         return
@@ -616,8 +662,13 @@ case "$command" in
     prune_cmd
     ;;
   remove)
+    force=false
+    if [ "${1:-}" = --force ]; then
+      force=true
+      shift
+    fi
     [ $# -eq 1 ] || usage
-    remove_impl "$1"
+    remove_impl "$1" "$force"
     ;;
   *) usage ;;
 esac
