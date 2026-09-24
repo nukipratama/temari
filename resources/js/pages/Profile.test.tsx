@@ -34,7 +34,7 @@ beforeEach(() => {
 
 describe('Profile', () => {
     it('renders the eyebrow and the editorial greeting with the first name', () => {
-        render(<Profile identity={identity} stats={stats} />);
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
 
         expect(screen.getByText('Profile')).toBeInTheDocument();
         expect(screen.getByText('Ada,')).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe('Profile', () => {
         ]);
 
         const { container } = render(
-            <Profile identity={identity} stats={stats} />,
+            <Profile mood="easy" identity={identity} stats={stats} />,
         );
 
         expect(screen.getByText('Ada,')).toBeInTheDocument();
@@ -69,13 +69,19 @@ describe('Profile', () => {
             demoLoginEnabled: false,
         });
 
-        render(<Profile identity={{ ...identity, name: '' }} stats={stats} />);
+        render(
+            <Profile
+                mood="easy"
+                identity={{ ...identity, name: '' }}
+                stats={stats}
+            />,
+        );
 
         expect(screen.getByText('Runner,')).toBeInTheDocument();
     });
 
     it('renders the lifetime stat tiles in the hero', () => {
-        render(<Profile identity={identity} stats={stats} />);
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
 
         expect(screen.getByText('Total km')).toBeInTheDocument();
         expect(screen.getByText('544.1')).toBeInTheDocument();
@@ -86,6 +92,7 @@ describe('Profile', () => {
     it('shows an empty state instead of zeros for a brand-new athlete with no activity', () => {
         render(
             <Profile
+                mood="easy"
                 identity={{ ...identity, first_run_at: null }}
                 stats={{
                     total_runs: 0,
@@ -107,6 +114,7 @@ describe('Profile', () => {
     it('renders the time-in-zone bar when the window has zone time', () => {
         render(
             <Profile
+                mood="easy"
                 identity={identity}
                 stats={stats}
                 timeInZone={{ Z1: 15, Z2: 60, Z3: 25 }}
@@ -120,13 +128,13 @@ describe('Profile', () => {
     });
 
     it('omits the time-in-zone bar when no run recorded heart rate', () => {
-        render(<Profile identity={identity} stats={stats} />);
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
 
         expect(screen.queryByText(/Time in zone/)).not.toBeInTheDocument();
     });
 
     it('prompts for a race when none is active', () => {
-        render(<Profile identity={identity} stats={stats} />);
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
 
         expect(screen.getByText('Got a race coming up?')).toBeInTheDocument();
     });
@@ -145,13 +153,13 @@ describe('Profile', () => {
             },
         });
 
-        render(<Profile identity={identity} stats={stats} />);
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
 
         expect(screen.getByText('Jakarta Half Marathon')).toBeInTheDocument();
     });
 
     it('points at Plan when there is no season', () => {
-        render(<Profile identity={identity} stats={stats} />);
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
 
         expect(screen.getByText(/No season yet/)).toBeInTheDocument();
     });
@@ -159,6 +167,7 @@ describe('Profile', () => {
     it('renders the season card when a season exists', () => {
         render(
             <Profile
+                mood="easy"
                 identity={identity}
                 stats={stats}
                 season={{
@@ -199,6 +208,7 @@ describe('Profile', () => {
     it('renders the progression card when progressionByCategory is provided', () => {
         render(
             <Profile
+                mood="easy"
                 identity={identity}
                 stats={stats}
                 progressionByCategory={{
@@ -217,7 +227,7 @@ describe('Profile', () => {
     });
 
     it('renders no VDOT, threshold or pace-target rail when fitness is absent', () => {
-        render(<Profile identity={identity} stats={stats} />);
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
 
         expect(screen.queryByText('VDOT')).not.toBeInTheDocument();
         expect(screen.queryByText('Threshold')).not.toBeInTheDocument();
@@ -227,6 +237,7 @@ describe('Profile', () => {
     it('renders VDOT, threshold and the pace ladder when fitness is provided', async () => {
         render(
             <Profile
+                mood="easy"
                 identity={identity}
                 stats={stats}
                 fitness={{
@@ -275,7 +286,7 @@ describe('Profile', () => {
             },
         });
 
-        render(<Profile identity={identity} stats={stats} />);
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
 
         expect(screen.queryByText(/Reconnect/)).not.toBeInTheDocument();
     });
@@ -288,7 +299,7 @@ describe('Profile', () => {
             stravaSync: { state: 'revoked', last_synced_at: null },
         });
 
-        render(<Profile identity={identity} stats={stats} />);
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
 
         expect(screen.getByText('Reconnect').closest('a')).toHaveAttribute(
             'href',
@@ -299,6 +310,7 @@ describe('Profile', () => {
     it('renders the profile voice quote when profileVoice is provided', () => {
         render(
             <Profile
+                mood="easy"
                 identity={identity}
                 stats={stats}
                 profileVoice={{
@@ -319,7 +331,7 @@ describe('Profile', () => {
     });
 
     it('renders no in-page Settings row — the topbar gear replaces it', () => {
-        render(<Profile identity={identity} stats={stats} />);
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
 
         expect(
             screen.queryByRole('link', { name: 'Settings' }),

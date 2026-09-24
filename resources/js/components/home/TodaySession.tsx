@@ -5,7 +5,9 @@ import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
 import { AskedRanResult, ChangeRow } from '@/components/plan/DeltaPair';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { renderNarration } from '@/components/temari/Citation';
-import FaceIcon from '@/components/temari/FaceIcon';
+import MascotPeek, {
+    MascotPeekClearance,
+} from '@/components/temari/MascotPeek';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
@@ -194,8 +196,8 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
 }
 
 /**
- * The prototype's today message card, carrying the whole of today: a
- * leaf-ringed `FaceIcon` beside the "today" eyebrow and the session the plan
+ * The prototype's today message card, carrying the whole of today: Temari
+ * peeking from the corner, posed to today's vibe, beside the "today" eyebrow and the session the plan
  * asks for with its pace and any readiness step-down, then Temari's read on it
  * across the card's full width.
  */
@@ -217,17 +219,22 @@ export default function TodaySession({
             !(voice.status === 'done' && voice.content === null));
 
     return (
-        <Card as="section" className="border-today-accent">
-            <div className="flex items-start gap-3">
-                <FaceIcon
-                    size={today !== null ? 60 : 42}
-                    ring="var(--color-leaf)"
-                />
-                <div className="min-w-0 flex-1">
+        <Card
+            as="section"
+            className="relative overflow-hidden border-today-accent"
+        >
+            <MascotPeek pose={briefing.mood} />
+            <div className="flow-root">
+                <MascotPeekClearance />
+                <div className="min-w-0">
                     <Eyebrow token="micro" className="text-icon-accent">
                         Today
                     </Eyebrow>
-                    {today !== null && <TodayPrescription day={today} />}
+                    {today !== null && (
+                        <div className="clear-left">
+                            <TodayPrescription day={today} />
+                        </div>
+                    )}
                 </div>
             </div>
             {showsVoice && (

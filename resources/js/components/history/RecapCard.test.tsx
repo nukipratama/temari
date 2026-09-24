@@ -39,7 +39,7 @@ describe('RecapCard', () => {
 
         expect(mascot?.getAttribute('data-mascot')).toBe('gassed');
         expect(mascot?.getAttribute('width')).toBe('28');
-        expect(screen.queryByTestId('recap-peek-clearance')).toBeNull();
+        expect(screen.queryByTestId('mascot-peek-clearance')).toBeNull();
     });
 
     it('peeks from the corner and wraps the copy around it when it holds the page peek', () => {
@@ -50,7 +50,7 @@ describe('RecapCard', () => {
 
         expect(mascot?.getAttribute('width')).toBe('96');
         expect(mascot?.getAttribute('class')).toContain('absolute');
-        expect(screen.getByTestId('recap-peek-clearance')).toBeInTheDocument();
+        expect(screen.getByTestId('mascot-peek-clearance')).toBeInTheDocument();
     });
 
     it('falls back to the neutral pose when the period has no mood', () => {

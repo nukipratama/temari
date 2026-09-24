@@ -77,6 +77,17 @@ beforeEach(() => {
 });
 
 describe('TodaySession', () => {
+    it('peeks Temari from the corner, posed to the daily mood, with the copy wrapping round her', () => {
+        const { container } = render(
+            <TodaySession briefing={briefing('Easy 6k.')} />,
+        );
+        const mascot = container.querySelector('svg[data-mascot]');
+
+        expect(mascot?.getAttribute('data-mascot')).toBe('blazing');
+        expect(mascot?.getAttribute('width')).toBe('96');
+        expect(screen.getByTestId('mascot-peek-clearance')).toBeInTheDocument();
+    });
+
     it('leads with the opening line and follows with the rest', () => {
         render(
             <TodaySession
@@ -150,7 +161,10 @@ describe('TodaySession', () => {
         expect(
             screen.queryByText('temari is reading your first week\u2026'),
         ).not.toBeInTheDocument();
-        expect(container.querySelector('section')?.children).toHaveLength(1);
+        const blocks = Array.from(
+            container.querySelector('section')?.children ?? [],
+        ).filter((child) => child.tagName.toLowerCase() !== 'svg');
+        expect(blocks).toHaveLength(1);
     });
 
     it('labels the block as today', () => {
@@ -176,41 +190,6 @@ describe('TodaySession', () => {
         render(<TodaySession briefing={briefing('', 'queued')} />);
 
         expect(screen.getByRole('status')).toBeInTheDocument();
-    });
-
-    it("renders Temari's face on the leaf ring the prototype's today card uses", () => {
-        const { container } = render(
-            <TodaySession briefing={briefing('Easy 6k.')} />,
-        );
-
-        const face = container.querySelector('[data-face-icon]');
-        expect(face).toBeInTheDocument();
-        expect(face?.querySelector('circle')).toHaveAttribute(
-            'stroke',
-            'var(--color-leaf)',
-        );
-    });
-
-    it('grows the face to span the label and the prescription beside it', () => {
-        const { container } = render(
-            <TodaySession briefing={briefing('Easy 6k.')} today={day()} />,
-        );
-
-        expect(container.querySelector('[data-face-icon]')).toHaveAttribute(
-            'width',
-            '60',
-        );
-    });
-
-    it('keeps the face small when there is only the label to sit beside', () => {
-        const { container } = render(
-            <TodaySession briefing={briefing('Easy 6k.')} />,
-        );
-
-        expect(container.querySelector('[data-face-icon]')).toHaveAttribute(
-            'width',
-            '42',
-        );
     });
 
     it('states the session, its distance and its pace above the voice', () => {

@@ -20,6 +20,8 @@ use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
 use App\Services\Run\Plan\WeekSessionTypesBuilder;
 use App\Services\Run\ProgressionSeriesBuilder;
+use App\Services\Run\Story\Temari;
+use App\Services\Run\Story\Vibe;
 use App\Services\AI\AnalysisType;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Collection;
@@ -55,6 +57,8 @@ class ProfileController extends Controller
         SeasonSummaryBuilder $seasonSummaryBuilder,
         ResolveActiveRaceAction $activeRace,
         WeekSessionTypesBuilder $weekSessionTypes,
+        Vibe $vibe,
+        Temari $temari,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -101,6 +105,7 @@ class ProfileController extends Controller
                 'has_activity' => $loadLifetime()['has_activity'],
             ],
             'profileVoice' => fn (): array => $this->resolveProfileVoice($user),
+            'mood' => fn (): string => $temari->moodForVibe($vibe->current($user, $today)),
             'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user), $activeRace($user->id))),
             'fitness' => Inertia::defer(fn (): ?array => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $weekSessionTypes, $user, $today, $activeRace)),
             'timeInZone' => Inertia::defer(fn (): ?array => $timeInZoneSummary->forUser($user, $today) ?: null),

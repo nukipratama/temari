@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import MascotPeek from './MascotPeek';
+import MascotPeek, { MascotPeekClearance } from './MascotPeek';
 
 function svgOf(container: HTMLElement): SVGSVGElement {
     const svg = container.querySelector('svg');
@@ -38,5 +38,13 @@ describe('MascotPeek', () => {
         const svg = svgOf(render(<MascotPeek pose="easy" onSky />).container);
 
         expect(svg.getAttribute('data-theme')).toBe('dark');
+    });
+
+    it('reserves the corner with a decorative float', () => {
+        const { container } = render(<MascotPeekClearance />);
+        const span = container.querySelector('span');
+
+        expect(span?.getAttribute('aria-hidden')).toBe('true');
+        expect(span?.getAttribute('class')).toContain('float-left');
     });
 });
