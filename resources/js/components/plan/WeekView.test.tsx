@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { PlanDay } from '@/lib/plan';
+import type { PlanDay, SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
-import ThisWeek from './ThisWeek';
+import WeekView from './WeekView';
 
 const TODAY = '2026-06-17';
 
@@ -70,7 +70,7 @@ const WEEK: PlanDay[] = [
         compliance_score: 100,
         actual_km: 6,
         prescribed_km: 6,
-        activities: [{ id: 91, km: 6, seconds: 2160 }],
+        activities: [{ id: 91, km: 6, seconds: 2160, started_at: '06:00' }],
     }),
     day({
         id: 2,
@@ -90,11 +90,28 @@ const WEEK: PlanDay[] = [
     }),
 ];
 
-function renderWeek(overrides: Partial<Parameters<typeof ThisWeek>[0]> = {}) {
+function summaryWeek(
+    overrides: Partial<SeasonSummaryWeek> = {},
+): SeasonSummaryWeek {
+    return {
+        week_start: '2026-06-15',
+        phase: 'base',
+        zone: 'block',
+        type: 'current',
+        planned_km: 30.4,
+        actual_km: 12,
+        sessions: 5,
+        ...overrides,
+    };
+}
+
+function renderWeek(overrides: Partial<Parameters<typeof WeekView>[0]> = {}) {
     const onMove = vi.fn();
     const onSkip = vi.fn();
     render(
-        <ThisWeek
+        <WeekView
+            week={summaryWeek()}
+            weekNumber={3}
             days={WEEK}
             today={TODAY}
             focus={null}
@@ -112,9 +129,69 @@ const selectedTab = () =>
         .getAllByRole('tab')
         .find((tab) => tab.getAttribute('aria-selected') === 'true');
 
-describe('ThisWeek', () => {
+describe('WeekView', () => {
     afterEach(() => {
         vi.restoreAllMocks();
+    });
+
+    it('heads the week with its number, dates, target, sessions and adherence', () => {
+        renderWeek();
+
+        expect(screen.getByText('Week 3')).toBeInTheDocument();
+        expect(screen.getByText('jun 15–21')).toBeInTheDocument();
+        expect(
+            screen.getByText('30 km target · 5 sessions · 50%'),
+        ).toBeInTheDocument();
+    });
+
+    it('heads an eased week with the eased target and the original beside it', () => {
+        renderWeek({
+            week: summaryWeek({ planned_km: 24.6, eased_from_km: 26.9 }),
+        });
+
+        expect(screen.getByText('27')).toBeInTheDocument();
+        expect(screen.getByText('25 km target')).toBeInTheDocument();
+    });
+
+    it('marks a deload week and the race week in words', () => {
+        renderWeek({
+            week: summaryWeek({ phase: 'deload' }),
+            raceDate: '2026-06-21',
+        });
+
+        expect(screen.getByText('deload week')).toBeInTheDocument();
+        expect(screen.getByText('race week')).toBeInTheDocument();
+    });
+
+    it('marks a plain week not at all', () => {
+        renderWeek({ raceDate: '2026-07-05' });
+
+        expect(screen.queryByText('deload week')).not.toBeInTheDocument();
+        expect(screen.queryByText('race week')).not.toBeInTheDocument();
+    });
+
+    it('offers the way back only when given one', () => {
+        const onBack = vi.fn();
+        renderWeek({ week: summaryWeek({ type: 'history' }), onBack });
+        fireEvent.click(
+            screen.getByRole('button', { name: /back to this week/i }),
+        );
+
+        expect(onBack).toHaveBeenCalled();
+    });
+
+    it('draws no way back on the current week', () => {
+        renderWeek();
+
+        expect(
+            screen.queryByRole('button', { name: /back to this week/i }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('says how another week went without calling it so far', () => {
+        renderWeek({ week: summaryWeek({ type: 'history' }) });
+
+        expect(screen.getByText('1 done · 1 missed')).toBeInTheDocument();
     });
 
     it('opens on today', () => {

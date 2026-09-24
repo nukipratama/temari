@@ -15,7 +15,6 @@ import {
     ChangeRow,
     DeltaTag,
 } from '@/components/plan/DeltaPair';
-import MiniSessionBar from '@/components/plan/MiniSessionBar';
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
 import TemariTake from '@/components/plan/TemariTake';
 import { Icon } from '@/components/ui/Icon';
@@ -63,6 +62,40 @@ function daySummary(day: PlanDay): string {
 function runSummary(run: PlanDay['activities'][number]): string {
     const time = run.seconds == null ? null : formatDurationHMS(run.seconds);
     return [`${run.km} km`, time].filter((part) => part !== null).join(' · ');
+}
+
+function RunList({ runs }: Readonly<{ runs: PlanDay['activities'] }>) {
+    return (
+        <div className="mt-3">
+            <p className="text-label-micro text-text-2">
+                {runs.length === 1 ? 'Run' : 'Runs'}
+            </p>
+            <ul className="mt-1 divide-y divide-border">
+                {runs.map((run) => (
+                    <li key={run.id}>
+                        <Link
+                            href={`/activities/${run.id}`}
+                            aria-label={`view activity · ${run.started_at} · ${runSummary(run)}`}
+                            className="focus-ring flex items-center gap-3 py-2 text-sm text-foreground tabular-nums hover:text-horizon-ink"
+                        >
+                            <span className="w-12 flex-none">
+                                {run.started_at}
+                            </span>
+                            <span className="flex-1">{run.km} km</span>
+                            {run.seconds != null && (
+                                <span>{formatDurationHMS(run.seconds)}</span>
+                            )}
+                            <Icon
+                                icon={ArrowRight}
+                                className="size-3.5 text-horizon-ink"
+                                aria-hidden
+                            />
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 }
 
 function complianceLabel(day: PlanDay): string {
@@ -209,10 +242,7 @@ export function hasDayDetail(
  * was run), small change tags, and the verdict. Tags never carry the old
  * value or an arrow; those live in {@see DayDetail}'s labelled rows.
  */
-export function DayHeadline({
-    day,
-    withMiniBar = false,
-}: Readonly<{ day: PlanDay; withMiniBar?: boolean }>) {
+export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     const judged = judgedDayResult(day);
     const pace = judged === null ? paceLabel(day) : null;
     const isRest = day.session_type === 'rest';
@@ -264,7 +294,6 @@ export function DayHeadline({
                     Ran anyway · {daySummary(day)}
                 </span>
             )}
-            {withMiniBar && <MiniSessionBar segments={day.segments} />}
             {!isRest && STATUS_LABEL[status] && (
                 <span
                     title={STATUS_MEANING[status]}
@@ -414,24 +443,7 @@ export default function DayDetail({
                 </p>
             )}
             <SessionBarGraph segments={day.segments} />
-            {day.activities.length > 0 && (
-                <div className="mt-3 flex min-w-0 flex-col gap-2">
-                    {day.activities.map((run) => (
-                        <Link
-                            key={run.id}
-                            href={`/activities/${run.id}`}
-                            className="focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
-                        >
-                            View activity · {runSummary(run)}
-                            <Icon
-                                icon={ArrowRight}
-                                className="size-3"
-                                aria-hidden
-                            />
-                        </Link>
-                    ))}
-                </div>
-            )}
+            {day.activities.length > 0 && <RunList runs={day.activities} />}
             {(canMove || canSkip) && (
                 <div className="mt-3">
                     {picking ? (

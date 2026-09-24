@@ -369,6 +369,20 @@ it('reports each run duration on elapsed time', function (): void {
     expect($byDate['2026-08-03']['runs'][0]['seconds'])->toBe(3_600);
 });
 
+it('carries each run\'s local start time', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->create([
+        'activity_id' => $activity->id,
+        'start_date_local' => Carbon::parse('2026-08-03 05:42:10'),
+        'distance' => 10_000.0,
+    ]);
+
+    $byDate = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-03'), Carbon::parse('2026-08-03'));
+
+    expect($byDate['2026-08-03']['runs'][0]['started_at'])->toBe('05:42');
+});
+
 /**
  * The ran pace beside a graded day is moving time over distance, not elapsed
  * time — a run's stoppage time never lands on a paused watch. Carried

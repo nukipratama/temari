@@ -15,7 +15,7 @@ code_refs:
   - resources/js/components/temari/FlagWrong.tsx
   - resources/js/components/temari/FlagSheet.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
-  - resources/js/components/plan/WeekDayRow.tsx
+  - resources/js/components/plan/WeekView.tsx
   - routes/web.php
   - app/Services/AI/AnalysisService.php
   - app/Http/Controllers/DevtoolsFeedbackController.php
@@ -57,7 +57,7 @@ Ownership lives in [StoreFeedbackRequest::authorize()](../../app/Http/Requests/S
 [FlagWrong](../../resources/js/components/temari/FlagWrong.tsx) is one icon-only ghost button that opens a bottom sheet titled `something off?`: the subject's four reasons as single-select chips, an optional note, `send` (disabled until a reason is chosen) and `never mind`. There is no toast — the control itself goes away, which is the confirmation: an answered question stops being asked. It is mounted twice:
 
 - On every `done` narration block, from inside [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx), at the end of the `generated …` meta line under the paragraph, so it follows narration wherever it renders (home, run detail, trends, plan, the recaps) and inherits that block's `onSky` styling. It is drawn whether or not that block may be reread, and the `reread` pill keeps its own line below. A block that has no row yet (`analysis.id === null`) has nothing to flag, so it draws none; a `done` block with no `generated_at` draws the flag alone, right-aligned, on the line the meta text would have occupied. A meta line is ~16px and the tap target is 44px, so this placement passes `compact`: the icon draws on a 20px box and the 44px target is pushed back out with a pseudo-element.
-- On the collapsed plan-day trigger row in [WeekDayRow](../../resources/js/components/plan/WeekDayRow.tsx), at its right edge, since a plan day carries no narration meta line of its own. It keeps the full 44px box there, that row already being taller. Labelled `flag this day` against the narration's `flag this read` — a wrong prescription and a wrong reading of it are different complaints. The trigger is itself a button, so the flag is its sibling in the row rather than nested inside it.
+- At the right edge of the day panel's header in [WeekView](../../resources/js/components/plan/WeekView.tsx), beside the selected day's headline, since a plan day carries no narration meta line of its own. It keeps the full 44px box there. Labelled `flag this day` against the narration's `flag this read` — a wrong prescription and a wrong reading of it are different complaints.
 
 It posts through `router.post` with `preserveState`, so the confirmation survives the redirect back.
 

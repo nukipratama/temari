@@ -493,7 +493,12 @@ export interface WeekPlanDay {
     /** Every run logged that day, oldest first — a day can hold more than one,
      *  and each gets its own line rather than being folded into a single
      *  summary whose distance and duration came from different runs. */
-    activities: { id: number; km: number; seconds: number | null }[];
+    activities: {
+        id: number;
+        km: number;
+        seconds: number | null;
+        started_at: string;
+    }[];
     /** This athlete has already flagged this day as wrong. */
     flagged?: boolean;
 }

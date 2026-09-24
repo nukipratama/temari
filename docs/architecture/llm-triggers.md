@@ -283,7 +283,7 @@ rendered somewhere a user can see — both directions matter, and only one of th
 | `monthly_recap` | `MonthlyRecapNarrator` | synthetic user+month · `Y-m` | staged at ingest, narrated 1st | calendar month card |
 | `profile_voice` | `ProfileVoiceNarrator` | synthetic user · ISO week | scheduled + ingest | `ProfileHero` |
 | `trend_read` | `TrendReadNarrator` | synthetic user+range · `7d` | scheduled | `NarrationCard` on Trends |
-| `plan_day_voice` | `PlanDayVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest, after scoring | `WeekDayRow`, collapsed, labelled "Temari's read" |
+| `plan_day_voice` | `PlanDayVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest, after scoring | the Plan day panel's `DayDetail`, labelled "Temari's read" |
 | `plan_clamp_voice` | `PlanClampVoiceNarrator` | synthetic user+day · `Y-m-d` | ingest listener, 00:01 briefing | an eased day's voice before credit, or an unrecorded step-down, on both surfaces |
 | `plan_season_voice` | `PlanSeasonVoiceNarrator` | `Season` · none | `plan:regenerate`, Plan page, first week | `SeasonHeaderCard`, always visible |
 | *(not an Analysis row)* | `RunQuestionNarrator` | `RunQuestion` rows per activity | user | `AskAboutRun` on the run page |

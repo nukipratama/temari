@@ -9,7 +9,7 @@ code_refs:
   - app/Services/Run/Plan/PlanRenderer.php
   - app/Services/Run/Plan/ReadinessClamp.php
   - app/Services/Run/Plan/ComplianceScorer.php
-  - resources/js/components/plan/WeekDayRow.tsx
+  - resources/js/components/plan/DayDetail.tsx
 ---
 
 # A credited day shows its result, not a second menu

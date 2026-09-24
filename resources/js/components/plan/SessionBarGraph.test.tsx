@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { PlanSessionSegment } from '@/types/inertia';
 
-import SessionBarGraph from './SessionBarGraph';
+import SessionBarGraph, { zoneColor } from './SessionBarGraph';
 
 function segment(
     overrides: Partial<PlanSessionSegment> = {},
@@ -218,5 +218,15 @@ describe('SessionBarGraph', () => {
 
         expect(screen.getByText('main set')).toBeInTheDocument();
         expect(screen.queryByText(/× main set/)).not.toBeInTheDocument();
+    });
+});
+
+describe('zoneColor', () => {
+    it('maps a known zone to its ramp colour', () => {
+        expect(zoneColor('Z5')).toBe('#b8302f');
+    });
+
+    it('falls back to a neutral for an unknown zone', () => {
+        expect(zoneColor('Z9')).toBe('var(--color-text-3)');
     });
 });
