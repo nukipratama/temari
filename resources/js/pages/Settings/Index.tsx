@@ -43,9 +43,6 @@ import {
     type NotificationPrefs,
 } from './useNotificationPrefs';
 
-// The demo account can't be deleted; the backend guard rejects it and the
-// shared ErrorBanner surfaces the reason, so the confirm modal stays generic.
-
 interface TelegramPayload {
     connected: boolean;
     username: string | null;
@@ -234,6 +231,7 @@ export default function Settings({
  */
 function AccountActions() {
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const { isDemo } = useDemoGuard();
 
     return (
         <div className="mt-3 mb-2 flex flex-col items-center gap-3 min-[900px]:flex-row min-[900px]:justify-center">
@@ -245,30 +243,34 @@ function AccountActions() {
                 <Icon icon={LogOut} width={16} height={16} aria-hidden />
                 log out
             </button>
-            <button
-                type="button"
-                onClick={() => setConfirmOpen(true)}
-                className="focus-ring rounded p-1 font-sans text-xs font-bold text-ember-ink transition hover:opacity-80"
-            >
-                delete account
-            </button>
-            <TemariNudgeModal
-                open={confirmOpen}
-                onClose={() => setConfirmOpen(false)}
-                pose="concerned"
-                title="sure you want to delete your account?"
-                body={
-                    <>
-                        All your runs, cards, and Strava connection will be
-                        removed and can't be undone. If you just want to switch
-                        Strava accounts, this is also how.
-                    </>
-                }
-                primaryLabel="yes, delete my account"
-                primaryIcon={UserX}
-                primaryClassName="bg-ember-deep text-cream hover:opacity-90"
-                onPrimary={() => router.delete('/account')}
-            />
+            {!isDemo && (
+                <>
+                    <button
+                        type="button"
+                        onClick={() => setConfirmOpen(true)}
+                        className="focus-ring rounded p-1 font-sans text-xs font-bold text-ember-ink transition hover:opacity-80"
+                    >
+                        delete account
+                    </button>
+                    <TemariNudgeModal
+                        open={confirmOpen}
+                        onClose={() => setConfirmOpen(false)}
+                        pose="concerned"
+                        title="sure you want to delete your account?"
+                        body={
+                            <>
+                                All your runs, cards, and Strava connection will
+                                be removed and can't be undone. If you just want
+                                to switch Strava accounts, this is also how.
+                            </>
+                        }
+                        primaryLabel="yes, delete my account"
+                        primaryIcon={UserX}
+                        primaryClassName="bg-ember-deep text-cream hover:opacity-90"
+                        onPrimary={() => router.delete('/account')}
+                    />
+                </>
+            )}
         </div>
     );
 }

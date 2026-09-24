@@ -310,6 +310,18 @@ describe('Settings', () => {
         });
     });
 
+    it('hides the delete-account control from the demo account, which the server refuses to delete', () => {
+        setMockPage({
+            auth: { user: makeUser({ is_demo: true }) },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        render(<Settings />);
+
+        expect(screen.queryByText('delete account')).not.toBeInTheDocument();
+        expect(screen.getByText('log out')).toBeInTheDocument();
+    });
+
     it('opens a confirmation before deleting the account', () => {
         vi.mocked(router.delete).mockReset();
         render(<Settings />);
