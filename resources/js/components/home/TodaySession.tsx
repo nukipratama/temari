@@ -102,7 +102,7 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
     return (
         <div
             id="anchor-session-today"
-            className="mt-2 rounded-lg bg-muted px-3 py-2.5"
+            className="mt-2 mr-18 rounded-lg bg-muted/40 px-3 py-2.5"
         >
             <p className="text-sm font-semibold text-foreground">
                 {parts.join(' · ')}
