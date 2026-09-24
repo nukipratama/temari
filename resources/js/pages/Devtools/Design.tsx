@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { renderNarration } from '@/components/temari/Citation';
+import MascotWatermark from '@/components/temari/MascotWatermark';
 import TemariMascot, {
     type MascotPose,
     POSES,
@@ -160,23 +161,19 @@ function MascotGallery() {
 
             <Section
                 title="Temari mascot · presentation"
-                note="Corner peek (cropped by the card edge, one per page), gutter tag (voice lines on tight cards) and sleepy inline (empty states). Demos only; surfaces adopt them in later slices."
+                note="Watermark (faint, bleeding off the bottom-right corner, behind the content), gutter tag (voice lines on tight cards) and sleepy inline (empty states)."
             >
                 <div className="flex flex-wrap gap-3">
-                    <div className="relative w-[340px] max-w-full overflow-hidden rounded-md bg-sky pad-hero text-cream">
-                        <div className="max-w-[72%]">
-                            <div className="font-serif text-headline-sm italic">
-                                week 38
-                            </div>
-                            <p className="mt-1 text-sm text-ink-on-sky">
-                                4 runs · 31 km, and the long one finally held.
-                            </p>
+                    <div className="relative isolate w-[340px] max-w-full overflow-hidden rounded-md border border-border bg-card pad-hero">
+                        <div className="font-serif text-headline-sm italic">
+                            week 38
                         </div>
-                        <TemariMascot
+                        <p className="mt-1 text-sm text-text-2">
+                            4 runs · 31 km, and the long one finally held.
+                        </p>
+                        <MascotWatermark
                             pose="blazing"
-                            size={128}
-                            onSky
-                            className="absolute -right-11 -bottom-12"
+                            className="-right-14 -bottom-15"
                         />
                     </div>
                     <div className="flex w-[340px] max-w-full gap-2.5 rounded-md border border-border bg-card pad-card">

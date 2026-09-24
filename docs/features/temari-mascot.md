@@ -6,6 +6,7 @@ status: living
 reviewed: 2026-09-24
 code_refs:
   - resources/js/components/temari/TemariMascot.tsx
+  - resources/js/components/temari/MascotWatermark.tsx
   - resources/js/components/temari/MascotPeek.tsx
   - resources/js/components/TemariMark.tsx
   - resources/js/components/HeaderBrandMark.tsx
@@ -16,7 +17,7 @@ code_refs:
 Temari is the app's running companion, the same character that narrates every recap, speech and
 insight. It is drawn as the **living brand mark**: the logo's two nested arcs, posed to a mood,
 with a small face inside. Why this replaced the one-smile `FaceIcon` is recorded in
-[[mascot-is-the-living-brand-mark]].
+[[mascot-is-the-living-brand-mark]]; how it is presented, in [[mascot-watermark-replaces-the-corner-peek]].
 
 **No dedicated route.** Every pose, size, motion and presentation mode is rendered live on
 `/devtools/design` ([Design.tsx](../../resources/js/pages/Devtools/Design.tsx)) on both the page
@@ -49,11 +50,12 @@ counter-rotating arcs).
 
 ## Presentation modes
 
-A page carries **at most one corner peek**; every other placement uses a lighter mode.
+The heroes and Today carry a **watermark**; the recap cards still peek from the corner, at most once per page.
 
 | mode | what it is | surfaces |
 |---|---|---|
-| Corner peek | [MascotPeek](../../resources/js/components/temari/MascotPeek.tsx), cropped by the card's top-left corner. `MascotPeekClearance` floats a spacer so copy wraps round it | RunHero, ProfileHero (`panel`, 112px); TodaySession, the Feed's newest recap, the Calendar's monthly recap (`card`, 96px) |
+| Watermark | [MascotWatermark](../../resources/js/components/temari/MascotWatermark.tsx), 200px and faint, bleeding off the card's edge behind the content; each surface passes its own placement, where its content leaves the face readable. The card is `relative isolate overflow-hidden` | top-right: RunHero (below the share button), TodaySession (beside the eyebrow), ProfileHero (the header's open middle from 900px) |
+| Corner peek | [MascotPeek](../../resources/js/components/temari/MascotPeek.tsx), cropped by the card's top-left corner. `MascotPeekClearance` floats a spacer so copy wraps round it | the Feed's newest recap, the Calendar's monthly recap (96px) |
 | Gutter tag | 28px beside the voice line | RunLenses header, later recaps, NoPlanCard, Race projection |
 | Sleepy inline | the `sleepy` pose beside the copy | EmptyPanel, EmptyRunsState (`thinking` while a sync runs) |
 | Hero + draw-in | 72px, traced in once | Onboarding's connected step, TemariNudgeModal (its `pose` prop: `neutral` for the notification and demo nudges, `concerned` for Settings' delete-account confirmation) |
@@ -75,5 +77,6 @@ built from its geometry, but the mark itself **never reacts** to mood. It is dra
 ## See also
 
 - [[mascot-is-the-living-brand-mark]]: the decision and what was rejected
+- [[mascot-watermark-replaces-the-corner-peek]]: why the peek became a watermark
 - [[design-tokens]]: the palette these strokes resolve through
 - [[voice-and-tone]]: what Temari actually *says*

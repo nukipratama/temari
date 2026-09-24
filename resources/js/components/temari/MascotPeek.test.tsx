@@ -23,15 +23,10 @@ describe('MascotPeek', () => {
         expect(classes).toContain('-left-7.5');
     });
 
-    it('sizes to the surface it peeks from', () => {
-        const card = svgOf(render(<MascotPeek pose="easy" />).container);
-        const panel = svgOf(
-            render(<MascotPeek pose="easy" fit="panel" />).container,
-        );
+    it('draws at the card peek size', () => {
+        const svg = svgOf(render(<MascotPeek pose="easy" />).container);
 
-        expect(card.getAttribute('width')).toBe('96');
-        expect(panel.getAttribute('width')).toBe('112');
-        expect(panel.getAttribute('class')).toContain('-left-8.5');
+        expect(svg.getAttribute('width')).toBe('96');
     });
 
     it('passes the sky ground through', () => {

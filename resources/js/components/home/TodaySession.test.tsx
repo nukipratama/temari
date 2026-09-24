@@ -89,15 +89,15 @@ describe('TodaySession', () => {
         ).toBe('thinking');
     });
 
-    it('peeks Temari from the corner, posed to the daily mood, with the copy wrapping round her', () => {
+    it('draws Temari as a watermark, posed to the daily mood, with nothing reserving room beside the eyebrow', () => {
         const { container } = render(
             <TodaySession briefing={briefing('Easy 6k.')} />,
         );
         const mascot = container.querySelector('svg[data-mascot]');
 
         expect(mascot?.getAttribute('data-mascot')).toBe('blazing');
-        expect(mascot?.getAttribute('width')).toBe('96');
-        expect(screen.getByTestId('mascot-peek-clearance')).toBeInTheDocument();
+        expect(mascot?.getAttribute('width')).toBe('200');
+        expect(screen.queryByTestId('mascot-peek-clearance')).toBeNull();
     });
 
     it('leads with the opening line and follows with the rest', () => {
@@ -141,15 +141,6 @@ describe('TodaySession', () => {
 
         expect(screen.getByText('You ran 25.5 km.')).toBeInTheDocument();
         expect(screen.getByText('Take it easy today.')).toBeInTheDocument();
-    });
-
-    it('starts the voice at the card edge, outside the mascot row', () => {
-        render(<TodaySession briefing={briefing('Easy 6k.')} today={day()} />);
-
-        const mascotRow = screen.getByText('Today').closest('div')
-            ?.parentElement as HTMLElement;
-
-        expect(mascotRow).not.toContainElement(screen.getByText('Easy 6k.'));
     });
 
     it('says it is reading while the very first briefing is being written', () => {
