@@ -1,5 +1,12 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Race from './Race';
@@ -35,7 +42,8 @@ describe('Race', () => {
             'your goal',
             'on track for',
             'Jakarta 10K',
-            'edit your race',
+            'edit race',
+            'clear race',
         ];
         const text = container.textContent ?? '';
         const positions = headings.map((h) => text.indexOf(h));
@@ -44,24 +52,59 @@ describe('Race', () => {
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
     });
 
-    it('shows the empty state when no race is set', () => {
+    it('shows only a short line and a set-a-race button when no race is set', () => {
         render(<Race race={null} projection={null} />);
 
         expect(
-            screen.getByText('no race on the calendar yet.'),
+            screen.getByText(/set a race and temari projects your finish/),
         ).toBeInTheDocument();
         expect(screen.queryByText('your goal')).not.toBeInTheDocument();
+        expect(screen.queryByText('set your race')).not.toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'set race' }),
-        ).toBeInTheDocument();
+            screen.queryByRole('button', { name: /clear race/i }),
+        ).not.toBeInTheDocument();
     });
 
-    it('keeps the goal form on the page whether or not a race is set', () => {
-        const { rerender } = render(<Race race={null} projection={null} />);
-        expect(screen.getByText('set your race')).toBeInTheDocument();
+    it('expands the goal form from "set a race"', () => {
+        render(<Race race={null} projection={null} />);
 
-        rerender(<Race race={RACE} projection={PROJECTION} />);
+        const toggle = screen.getByRole('button', { name: 'set a race' });
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        fireEvent.click(toggle);
+
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(toggle).toHaveAttribute('aria-controls', 'race-goal-form');
+        expect(screen.getByText('set your race')).toBeInTheDocument();
+    });
+
+    it('keeps the goal form collapsed until "edit race" opens it', () => {
+        render(<Race race={RACE} projection={PROJECTION} />);
+
+        expect(screen.queryByText('edit your race')).not.toBeInTheDocument();
+        const toggle = screen.getByRole('button', { name: 'edit race' });
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+        fireEvent.click(toggle);
+
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
         expect(screen.getByText('edit your race')).toBeInTheDocument();
+    });
+
+    it('collapses the form again after a successful save', () => {
+        render(<Race race={RACE} projection={PROJECTION} />);
+        fireEvent.click(screen.getByRole('button', { name: 'edit race' }));
+
+        fireEvent.click(screen.getByRole('button', { name: 'update race' }));
+        act(() => {
+            vi.mocked(router.post)
+                .mock.calls.at(-1)?.[2]
+                ?.onSuccess?.({} as never);
+        });
+
+        expect(screen.queryByText('edit your race')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'edit race' }),
+        ).toHaveAttribute('aria-expanded', 'false');
     });
 
     it('links across to the plan instead of drawing the schedule tabs', () => {
@@ -102,12 +145,10 @@ describe('Race', () => {
         expect(mascots[0]).toHaveAttribute('width', '200');
     });
 
-    it('draws Temari only in the empty state when no race is set', () => {
+    it('draws no Temari when no race is set', () => {
         const { container } = render(<Race race={null} projection={null} />);
 
-        const mascots = container.querySelectorAll('svg[data-mascot]');
-        expect(mascots).toHaveLength(1);
-        expect(mascots[0]).toHaveAttribute('data-mascot', 'sleepy');
+        expect(container.querySelector('svg[data-mascot]')).toBeNull();
     });
 
     it('states the gap between the goal and the projection', () => {
@@ -116,31 +157,53 @@ describe('Race', () => {
         expect(screen.getByText('1:40 behind')).toBeInTheDocument();
     });
 
-    /**
-     * Only rendered when a race exists — there is nothing to clear otherwise,
-     * and a control that cannot work should not be drawn at all.
-     */
-    it('offers to clear the race, and only when one is set', () => {
-        const { unmount } = render(
-            <Race race={RACE} projection={PROJECTION} />,
-        );
-        expect(
-            screen.getByRole('button', { name: /clear this race/i }),
-        ).toBeInTheDocument();
-        unmount();
+    it('asks through a concerned Temari before clearing the race', () => {
+        render(<Race race={RACE} projection={PROJECTION} />);
 
-        render(<Race race={null} projection={null} />);
+        fireEvent.click(screen.getByRole('button', { name: 'clear race' }));
+
+        const dialog = screen.getByRole('dialog');
         expect(
-            screen.queryByRole('button', { name: /clear this race/i }),
-        ).not.toBeInTheDocument();
+            within(dialog).getByText('clear Jakarta 10K?'),
+        ).toBeInTheDocument();
+        expect(
+            within(dialog).getByText(/steady rhythm with regular deloads/),
+        ).toBeInTheDocument();
+        expect(dialog.querySelector('svg[data-mascot]')).toHaveAttribute(
+            'data-mascot',
+            'concerned',
+        );
     });
 
-    it('clears through to the race endpoint', () => {
+    it('keeps the race when the confirmation is dismissed', async () => {
         const remove = vi.spyOn(router, 'delete').mockImplementation(() => {});
         render(<Race race={RACE} projection={PROJECTION} />);
 
+        fireEvent.click(screen.getByRole('button', { name: 'clear race' }));
         fireEvent.click(
-            screen.getByRole('button', { name: /clear this race/i }),
+            within(screen.getByRole('dialog')).getByRole('button', {
+                name: 'keep it',
+            }),
+        );
+
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+        expect(remove).not.toHaveBeenCalled();
+        remove.mockRestore();
+    });
+
+    it('clears through to the race endpoint once confirmed', () => {
+        const remove = vi.spyOn(router, 'delete').mockImplementation(() => {});
+        render(<Race race={{ ...RACE, name: null }} projection={PROJECTION} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'clear race' }));
+        const dialog = screen.getByRole('dialog');
+        expect(
+            within(dialog).getByText('clear your race?'),
+        ).toBeInTheDocument();
+        fireEvent.click(
+            within(dialog).getByRole('button', { name: 'clear race' }),
         );
 
         expect(remove).toHaveBeenCalledWith('/race');

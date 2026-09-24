@@ -266,7 +266,7 @@ function AccountActions() {
                         }
                         primaryLabel="yes, delete my account"
                         primaryIcon={UserX}
-                        primaryClassName="bg-ember-deep text-cream hover:opacity-90"
+                        primaryClassName="bg-ember-deep text-cream hover:bg-ember-deep hover:opacity-90"
                         onPrimary={() => router.delete('/account')}
                     />
                 </>
