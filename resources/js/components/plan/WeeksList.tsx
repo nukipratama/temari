@@ -76,9 +76,7 @@ export default function WeeksList({
                         <span className="flex-none text-right font-mono text-xs tabular-nums text-text-2">
                             {weekKm(week)}
                             {adherence != null && (
-                                <span className="block text-text-3">
-                                    {adherence}%
-                                </span>
+                                <span className="block">{adherence}%</span>
                             )}
                         </span>
                     </>
