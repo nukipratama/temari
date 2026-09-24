@@ -7,7 +7,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import MascotPeek, {
     MascotPeekClearance,
 } from '@/components/temari/MascotPeek';
-import TemariMascot from '@/components/temari/TemariMascot';
+import TemariMascot, { writingPose } from '@/components/temari/TemariMascot';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { cn } from '@/lib/cn';
 import { renderBold } from '@/lib/richText';
@@ -61,7 +61,7 @@ export default function RecapCard({
     peek = false,
     className,
 }: Readonly<RecapCardProps>) {
-    const pose = mood ?? 'neutral';
+    const pose = writingPose(mood ?? 'neutral', analysis);
     const notificationsReachable = useNotificationsReachable();
 
     return (

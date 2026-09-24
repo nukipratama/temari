@@ -20,6 +20,19 @@ function analysis(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
 }
 
 describe('TemariTake', () => {
+    it('shows Temari thinking while the take is being written', () => {
+        const { container } = render(
+            <TemariTake
+                analysis={analysis({ status: 'queued', content: null })}
+            />,
+        );
+
+        expect(container.querySelector('svg[data-mascot]')).toHaveAttribute(
+            'data-mascot',
+            'thinking',
+        );
+    });
+
     it('labels the block and renders the narration in the prose register', () => {
         render(<TemariTake analysis={analysis()} />);
 

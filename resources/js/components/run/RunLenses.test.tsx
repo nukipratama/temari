@@ -53,6 +53,24 @@ const defaultProps = {
 };
 
 describe('RunLenses', () => {
+    it('thinks in the header while either lens is being written', () => {
+        const { container } = render(
+            <RunLenses
+                {...defaultProps}
+                insight={{
+                    ...makeAnalysis(2, 'run_insight', 'pending'),
+                    status: 'processing',
+                }}
+            />,
+        );
+
+        expect(
+            container
+                .querySelector('svg[data-mascot]')
+                ?.getAttribute('data-mascot'),
+        ).toBe('thinking');
+    });
+
     it('tags the voice header with a 28px mascot posed to the run mood', () => {
         const { container } = render(
             <RunLenses {...defaultProps} mood="overloaded" />,

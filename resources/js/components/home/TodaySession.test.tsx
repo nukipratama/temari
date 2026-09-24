@@ -77,6 +77,18 @@ beforeEach(() => {
 });
 
 describe('TodaySession', () => {
+    it("thinks in the corner while today's read is being written", () => {
+        const { container } = render(
+            <TodaySession briefing={briefing('', 'processing')} />,
+        );
+
+        expect(
+            container
+                .querySelector('svg[data-mascot]')
+                ?.getAttribute('data-mascot'),
+        ).toBe('thinking');
+    });
+
     it('peeks Temari from the corner, posed to the daily mood, with the copy wrapping round her', () => {
         const { container } = render(
             <TodaySession briefing={briefing('Easy 6k.')} />,

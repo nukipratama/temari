@@ -31,6 +31,7 @@ export default function TemariTake({
             <div className="mt-1">
                 <AnalysisStatus
                     analysis={analysis}
+                    thinkingMark
                     inertiaReloadProps={['planNarration']}
                     size="sm"
                     allowReanalyze={allowReanalyze}

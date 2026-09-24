@@ -8,6 +8,7 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import MascotPeek, {
     PANEL_PEEK_CLEARANCE,
 } from '@/components/temari/MascotPeek';
+import { writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import Skeleton from '@/components/ui/Skeleton';
@@ -59,7 +60,7 @@ export default function ProfileHero({
                 }}
             />
 
-            <MascotPeek pose={mood} fit="panel" />
+            <MascotPeek pose={writingPose(mood, voice)} fit="panel" />
 
             <header
                 className={cn(
