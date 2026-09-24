@@ -32,6 +32,29 @@ describe('TemariNudgeModal', () => {
         ).toBeInTheDocument();
     });
 
+    it('takes the pose its caller asks for, neutral by default', () => {
+        const { rerender } = render(
+            <TemariNudgeModal open onClose={vi.fn()} {...baseProps} />,
+        );
+        expect(document.querySelector('svg[data-mascot]')).toHaveAttribute(
+            'data-mascot',
+            'neutral',
+        );
+
+        rerender(
+            <TemariNudgeModal
+                open
+                onClose={vi.fn()}
+                {...baseProps}
+                pose="concerned"
+            />,
+        );
+        expect(document.querySelector('svg[data-mascot]')).toHaveAttribute(
+            'data-mascot',
+            'concerned',
+        );
+    });
+
     it('draws Temari in with the one-shot trace', () => {
         render(<TemariNudgeModal open onClose={vi.fn()} {...baseProps} />);
         const mascot = document.querySelector('svg[data-mascot]');

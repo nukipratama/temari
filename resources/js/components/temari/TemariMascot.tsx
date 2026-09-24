@@ -2,7 +2,7 @@ import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
 
-export type MascotPose = Mood | 'neutral' | 'sleepy' | 'thinking';
+export type MascotPose = Mood | 'neutral' | 'concerned' | 'sleepy' | 'thinking';
 
 type Arc = readonly [from: number, to: number];
 type Eyes =
@@ -35,6 +35,14 @@ export const POSES: Readonly<Record<MascotPose, PoseSpec>> = {
         innerColor: 'var(--color-foreground)',
         eyes: 'dot',
         mouth: 'smile',
+    },
+    concerned: {
+        outer: [[0, 330]],
+        inner: [[0, 240]],
+        innerColor: 'var(--color-foreground)',
+        eyes: 'dot',
+        brows: 'worried',
+        mouth: 'flat',
     },
     blazing: {
         outer: [[0, 352]],

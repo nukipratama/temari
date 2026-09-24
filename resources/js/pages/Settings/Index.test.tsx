@@ -318,6 +318,9 @@ describe('Settings', () => {
         expect(
             screen.getByText('sure you want to delete your account?'),
         ).toBeInTheDocument();
+        expect(
+            document.querySelector('[role="dialog"] svg[data-mascot]'),
+        ).toHaveAttribute('data-mascot', 'concerned');
         // Nothing is deleted until the user confirms.
         expect(router.delete).not.toHaveBeenCalled();
     });
