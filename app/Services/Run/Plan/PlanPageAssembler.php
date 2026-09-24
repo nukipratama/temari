@@ -324,8 +324,8 @@ final class PlanPageAssembler
     /**
      * A `Race` day carries no redistributable volume — `$kmFor` is deliberately
      * race-blind, so the event contributes nothing to the week's target and is
-     * never scaled itself. The race is whatever distance it is; what
-     * redistributes is the training around it.
+     * never scaled itself. Only easy running absorbs the week's surplus or
+     * shortfall: long, tempo and interval days keep their size.
      *
      * @param  Collection<int, PlannedSession>  $currentWeekSessions
      * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null $clamp
@@ -372,17 +372,29 @@ final class PlanPageAssembler
             $todayFixedKm = $clamp !== null && ! EffectiveSession::isRecordedOn($todaySession) ? $clamp['core_km'] : $kmFor($todaySession);
         }
 
-        $eligibleDaysKm = [];
+        $easyDaysKm = [];
+        $keySessionsKm = 0.0;
         foreach ($currentWeekSessions as $s) {
             if ($s->pinned || ! $s->date->isAfter($today)) {
                 continue;
             }
-            $eligibleDaysKm[$s->date->toDateString()] = $kmFor($s);
+            if (self::runsEasy($s)) {
+                $easyDaysKm[$s->date->toDateString()] = $kmFor($s);
+            } else {
+                $keySessionsKm += $kmFor($s);
+            }
         }
 
-        $remainingTargetKm = max(0.0, $weekTargetKm - $completedKm - $pinnedKm - $todayFixedKm);
+        $remainingEasyKm = max(0.0, $weekTargetKm - $completedKm - $pinnedKm - $todayFixedKm - $keySessionsKm);
 
-        return VolumeRedistributor::redistribute($eligibleDaysKm, $remainingTargetKm);
+        return VolumeRedistributor::redistribute($easyDaysKm, $remainingEasyKm);
+    }
+
+    private static function runsEasy(PlannedSession $s): bool
+    {
+        return $s->session_type === SessionType::Easy
+            || (in_array($s->session_type, [SessionType::Tempo, SessionType::Interval], true)
+                && IntensityPrescription::fromSession($s)?->isEasy() === true);
     }
 
     private function completedKmInRange(User $user, Carbon $from, Carbon $to): float

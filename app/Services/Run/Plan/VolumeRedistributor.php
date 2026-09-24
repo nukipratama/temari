@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 /**
- * "The week's volume redistributes rather than being lost" — a render-time
- * recompute, not a specific-day-swap heuristic. Any Plan-page read
- * recomputes the remaining unpinned, non-past training days of the current
- * week from (this week's volume target - already completed - pinned days'
- * volume), spread across those days by a single scale factor applied to each
- * day's own core km ({@see SegmentGenerator::coreKmFor()}) — continuous, not
- * bucketed to a small set of discrete sizes, since {@see SegmentGenerator}
- * already takes an arbitrary target distance for any session type. A
+ * The week's easy running flexes to fit what has been run — a render-time
+ * recompute, not a specific-day-swap heuristic. Any Plan-page read recomputes
+ * the remaining unpinned, non-past easy days of the current week from (this
+ * week's volume target - already completed - pinned days' volume - the key
+ * sessions still ahead), spread across those days by a single scale factor
+ * applied to each day's own core km ({@see SegmentGenerator::coreKmFor()}).
+ * Long, tempo and interval days never resize: surplus or shortfall past the
+ * easy days' bounds is dropped, not crammed into a key session. A
  * readiness-clamped day's lost volume folds in automatically, since the
  * caller excludes it from `$eligibleDaysKm` and its now-fixed (clamped)
  * output from the target the same way a completed run would be. Never
