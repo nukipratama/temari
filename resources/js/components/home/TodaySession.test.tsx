@@ -100,6 +100,15 @@ describe('TodaySession', () => {
         expect(screen.queryByTestId('mascot-peek-clearance')).toBeNull();
     });
 
+    it('keeps the session box out of the watermark lane, translucent', () => {
+        const { container } = render(
+            <TodaySession briefing={briefing('Easy 6k.')} today={day()} />,
+        );
+        const box = container.querySelector('#anchor-session-today');
+
+        expect(box).toHaveClass('mr-18', 'bg-muted/40');
+    });
+
     it('leads with the opening line and follows with the rest', () => {
         render(
             <TodaySession

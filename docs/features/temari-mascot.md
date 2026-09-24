@@ -53,7 +53,7 @@ Every hero, Today and every recap card carries its own **watermark**; smaller pl
 
 | mode | what it is | surfaces |
 |---|---|---|
-| Watermark | [MascotWatermark](../../resources/js/components/temari/MascotWatermark.tsx), 200px and faint, bleeding off the card's edge behind the content; each surface passes its own placement, where its content leaves the face readable. The card is `relative isolate overflow-hidden` | top-right: RunHero (below the share button), TodaySession (beside the eyebrow), ProfileHero (the header's open middle from 900px); bottom-right, where the voice text ends: every RecapCard, weekly in the Feed and monthly in the Calendar |
+| Watermark | [MascotWatermark](../../resources/js/components/temari/MascotWatermark.tsx), 200px and faint, bleeding off the card's edge behind the content; each surface passes its own placement, where its content leaves the face readable. The card is `relative isolate overflow-hidden` | top-right: RunHero (below the share button), TodaySession (beside the eyebrow, with the session box stopping short and translucent so she keeps a lane), ProfileHero (the header's open middle from 900px); bottom-right, where the voice text ends: every RecapCard, weekly in the Feed and monthly in the Calendar |
 | Gutter tag | 40px beside the voice line, above the eyes-only cut so the whole face shows | RunLenses header, NoPlanCard, Race projection |
 | Sleepy inline | the `sleepy` pose beside the copy | EmptyPanel, EmptyRunsState (`thinking` while a sync runs) |
 | Hero + draw-in | 72px, traced in once | Onboarding's connected step, TemariNudgeModal (its `pose` prop: `neutral` for the notification and demo nudges, `concerned` for Settings' delete-account confirmation) |
