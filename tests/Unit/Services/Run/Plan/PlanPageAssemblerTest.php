@@ -282,3 +282,40 @@ it('measures the week already run from the first planned day, not the calendar M
 
     expect($sunday['distance_km'])->toBe($sunday['asked_km']);
 });
+
+it('counts a pinned day already run once, not as both pinned and completed volume', function (): void {
+    Carbon::setTestNow('2026-08-13 08:00:00'); // Thursday
+    $user = assemblerAthlete();
+
+    foreach ([
+        ['2026-08-10', SessionType::Rest, false],
+        ['2026-08-11', SessionType::Easy, true],
+        ['2026-08-12', SessionType::Rest, true],
+        ['2026-08-13', SessionType::Tempo, true],
+        ['2026-08-14', SessionType::Rest, false],
+        ['2026-08-15', SessionType::Easy, false],
+        ['2026-08-16', SessionType::Long, false],
+    ] as [$date, $type, $pinned]) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $date,
+            'session_type' => $type,
+            'volume_multiplier' => 1.0,
+            'pinned' => $pinned,
+        ]);
+    }
+
+    $dayOn = fn (string $date): array => collect(
+        collect($this->assembler->weeks($user, Carbon::today()))
+            ->firstOrFail(fn (array $week): bool => $week['type'] === 'current')['days'],
+    )->firstOrFail(fn (array $day): bool => $day['date'] === $date);
+
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-08-11 06:00'),
+        'distance' => $dayOn('2026-08-11')['asked_km'] * 1000,
+    ]);
+
+    $sunday = $dayOn('2026-08-16');
+
+    expect($sunday['distance_km'])->toBe($sunday['asked_km']);
+});
