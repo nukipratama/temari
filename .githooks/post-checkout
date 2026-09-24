@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# post-checkout: set up a worktree made by plain `git worktree add`, so any agent or
+# tool gets the same isolated Temari slot that `scripts/worktree create` provides.
+set -uo pipefail
+
+[[ "$1" =~ ^0+$ ]] && [ "$3" = 1 ] || exit 0
+[ -z "${TEMARI_WORKTREE_SKIP_SETUP:-}" ] || exit 0
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+
+[ "$(git rev-parse --path-format=absolute --git-dir)" != "$(git rev-parse --path-format=absolute --git-common-dir)" ] || exit 0
+[ ! -f .claude-worktree-slot ] || exit 0
+[ -x scripts/worktree ] || exit 0
+
+if ! docker info >/dev/null 2>&1; then
+  echo "post-checkout: Docker is not reachable; run scripts/worktree adopt in this worktree once it is." >&2
+  exit 0
+fi
+
+scripts/worktree adopt "$PWD" >&2 ||
+  echo "post-checkout: worktree setup failed; fix the error above and re-run scripts/worktree adopt." >&2
+exit 0
