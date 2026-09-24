@@ -170,6 +170,7 @@ export const STATUS_LABEL: Record<string, string> = {
     partial: 'partial',
     missed: 'missed',
     overreached: 'overreached',
+    hot: 'ran hot',
     skip: 'skipped',
 };
 
@@ -179,7 +180,8 @@ export const STATUS_MEANING: Record<string, string> = {
     partial:
         'short on the distance, or the run missed what the session was for',
     missed: 'no run, or too little to count',
-    overreached: 'well past the distance, or ran harder than the session asked',
+    overreached: 'well past the distance',
+    hot: 'ran harder than the session asked',
     skip: 'excused, not graded',
 };
 
@@ -189,8 +191,14 @@ export const STATUS_TONE: Record<string, string> = {
     partial: 'text-citrus-ink',
     missed: 'text-ember-ink',
     overreached: 'text-horizon-ink',
+    hot: 'text-citrus-ink',
     skip: 'text-text-3',
 };
+
+/** An overreached day graded on intent, not distance: it ran too hard, not too far. */
+export function ranHot(day: PlanDay): boolean {
+    return day.status === 'overreached' && day.hot_note !== null;
+}
 
 /** The same verdict as a bar fill, for the week's planned-vs-actual chart. */
 export const STATUS_BAR_FILL: Record<string, string> = {

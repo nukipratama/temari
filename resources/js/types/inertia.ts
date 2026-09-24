@@ -479,6 +479,8 @@ export interface WeekPlanDay {
     /** Why a long day that covered its distance still reads `partial` — it
      *  arrived in pieces rather than in one run. Null on every other day. */
     credit_note: string | null;
+    /** Why an overreached day ran hot, from the intent judge; null when distance alone overreached. */
+    hot_note: string | null;
     /** The credited runs' own pace — moving time over distance, the best
      *  single run for Tempo/Interval, the day's total otherwise — from
      *  `SessionMatcher::ranPaceSecPerKmFor()`. Null until the day is

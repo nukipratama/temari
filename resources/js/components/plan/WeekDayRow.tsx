@@ -37,6 +37,7 @@ import {
     paceEaseDelta,
     paceLabel,
     prescriptionWhy,
+    ranHot,
     SESSION_TYPE_ICON,
     SESSION_TYPE_LABEL,
     sessionPurpose,
@@ -184,7 +185,10 @@ export default function WeekDayRow({
     const editable = day.date > today;
     // A day excused before it passes is still `planned` server-side until
     // plan:score-compliance runs the next morning; the row says "skipped" now.
-    const status = day.skipped ? 'skip' : day.status;
+    let status: string = day.skipped ? 'skip' : day.status;
+    if (status === 'overreached' && ranHot(day)) {
+        status = 'hot';
+    }
 
     const isValidMoveTarget = (target: PlanDay) =>
         target.date !== day.date &&
@@ -220,6 +224,7 @@ export default function WeekDayRow({
         showsPoint ||
         day.clamp !== null ||
         Boolean(day.credit_note) ||
+        Boolean(day.hot_note) ||
         day.activities.length > 0 ||
         canMove ||
         canSkip;
@@ -443,6 +448,11 @@ export default function WeekDayRow({
                 {day.credit_note && (
                     <p className="mt-2 text-xs italic text-text-2">
                         {day.credit_note}
+                    </p>
+                )}
+                {day.hot_note && (
+                    <p className="mt-2 text-xs italic text-text-2">
+                        {day.hot_note}
                     </p>
                 )}
                 <SessionBarGraph segments={day.segments} />

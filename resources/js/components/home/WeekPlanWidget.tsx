@@ -11,7 +11,7 @@ import Card from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
 import { formatKm, parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
-import { deltaDirection } from '@/lib/plan';
+import { deltaDirection, ranHot } from '@/lib/plan';
 
 const PHASE_LABEL: Record<string, string> = {
     base: 'base',
@@ -27,6 +27,7 @@ const STATUS_LABEL: Record<string, string> = {
     partial: 'partial',
     missed: 'missed',
     overreached: 'overreached',
+    hot: 'ran hot',
     skip: 'skipped',
 };
 
@@ -70,7 +71,8 @@ function weekdayAbbr(iso: string): string {
 /** Native-tooltip + accessible detail for a day cell: status, the 0-100
  *  compliance score when one exists, and whether a rest day got run anyway. */
 function dayDetail(day: WeekPlanDay): string {
-    const parts = [STATUS_LABEL[day.status] ?? day.status];
+    const status = ranHot(day) ? 'hot' : day.status;
+    const parts = [STATUS_LABEL[status] ?? status];
     if (day.session_type !== 'rest') {
         parts.push(`planned ${kmFigure(day.distance_km)} km`);
     }

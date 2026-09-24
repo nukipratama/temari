@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
+use App\Enums\IntentVerdict;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -943,4 +944,36 @@ it("dayPayload computes an Easy day's ran pace from the whole day, not one run",
 
     // 3,400s over the combined 10km — neither run's own pace (300 or 400 sec/km) on its own.
     expect($payload['ran_pace_sec_per_km'])->toBe(340);
+});
+
+it('dayPayload says why a day ran hot, and stays quiet when the distance alone overreached', function (): void {
+    $today = Carbon::parse('2026-08-10');
+    $render = fn (array $attributes): ?string => PlanRenderer::dayPayload(
+        PlannedSession::factory()->create([
+            'session_type' => SessionType::Easy,
+            'phase' => PlanPhase::Build,
+            'date' => $today->copy()->subDay(),
+            'intent_verdict' => IntentVerdict::TooHard,
+            ...$attributes,
+        ]),
+        $today,
+        null,
+        [],
+        null,
+        false,
+        20.0,
+        1.0,
+        INF,
+        RENDERER_PACES,
+        PlannedSessionStatus::Overreached,
+    )['hot_note'];
+
+    expect($render(['compliance_score' => 103, 'intent_evidence' => ['basis' => 'heart_rate', 'zone' => 'Z2', 'above_zone_pct' => 64]]))
+        ->toBe('64% of the run sat above Z2.')
+        ->and($render(['compliance_score' => 103, 'intent_evidence' => ['basis' => 'pace', 'pace_sec' => 407, 'ceiling_pace_sec' => 408]]))
+        ->toBe('averaged 6:47/km, past the 6:48/km ceiling for this run.')
+        ->and($render(['compliance_score' => 140, 'intent_evidence' => ['basis' => 'pace', 'pace_sec' => 407, 'ceiling_pace_sec' => 408]]))
+        ->toBeNull()
+        ->and($render(['compliance_score' => 103, 'intent_verdict' => IntentVerdict::Hit]))
+        ->toBeNull();
 });

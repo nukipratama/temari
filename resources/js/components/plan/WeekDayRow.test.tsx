@@ -53,6 +53,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         eased_from: null,
         pace_eased_from: null,
         credit_note: null,
+        hot_note: null,
         ran_pace_sec_per_km: null,
         actual_km: null,
         credited_km: null,
@@ -1092,5 +1093,45 @@ describe('WeekDayRow', () => {
         expect(
             screen.queryByRole('button', { name: 'flag this day' }),
         ).toBeNull();
+    });
+
+    it('reads an easy day run too hard as ran hot, with the evidence once expanded', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                session_type: 'easy',
+                status: 'overreached',
+                compliance_score: 103,
+                prescribed_km: 6.8,
+                actual_km: 7,
+                credited_km: 7,
+                hot_note: '64% of the run sat above Z2.',
+            }),
+        });
+
+        expect(screen.getByText(/^ran hot/)).toBeInTheDocument();
+        expect(screen.queryByText(/^overreached/)).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /easy/i }));
+
+        expect(
+            screen.getByText('64% of the run sat above Z2.'),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps overreached for a day that simply ran well past its distance', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                session_type: 'easy',
+                status: 'overreached',
+                compliance_score: 140,
+                prescribed_km: 5,
+                actual_km: 7,
+                credited_km: 7,
+            }),
+        });
+
+        expect(screen.getByText(/^overreached/)).toBeInTheDocument();
     });
 });
