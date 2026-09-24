@@ -111,9 +111,7 @@ class DemoRunSeeder
     }
 
     /**
-     * Idempotent: every row is keyed on a deterministic identity (blueprint seed,
-     * activity_id, ISO week, …) via updateOrCreate, so re-running converges to the
-     * same dataset instead of duplicating or hitting the unique constraint.
+     * Idempotent: clears the previous run's timeline first, so re-seeding on any day converges.
      *
      * @param  Closure(string): void|null  $log  optional reporter (command::info etc.)
      */
@@ -125,6 +123,7 @@ class DemoRunSeeder
 
         $this->analysisService->withoutDispatching(function () use ($log, &$count): void {
             $user = $this->ensureDemoUser($log);
+            $this->resetGeneratedData($user, $log);
 
             $blueprints = $this->library->all();
             usort($blueprints, fn (RunBlueprint $a, RunBlueprint $b): int => $a->startsAt <=> $b->startsAt);
@@ -785,6 +784,26 @@ class DemoRunSeeder
         $log("Demo user ready: {$user->email} (id={$user->id})");
 
         return $user;
+    }
+
+    /** Deletes this user's seeded runs and derived rows; Analysis has no FK, so its rows go by id. */
+    private function resetGeneratedData(User $user, Closure $log): void
+    {
+        $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
+        $cardIds = RunCard::query()->whereIn('activity_id', $activityIds)->pluck('id');
+        $weeklyIds = WeeklySnapshot::query()->where('user_id', $user->id)->pluck('id');
+
+        Analysis::query()
+            ->where(fn ($q) => $q->where('subject_type', Activity::class)->whereIn('subject_id', $activityIds))
+            ->orWhere(fn ($q) => $q->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
+            ->orWhere(fn ($q) => $q->where('subject_type', WeeklySnapshot::class)->whereIn('subject_id', $weeklyIds))
+            ->delete();
+
+        Activity::query()->where('user_id', $user->id)->delete();
+        WeeklySnapshot::query()->where('user_id', $user->id)->delete();
+        PlannedSession::query()->where('user_id', $user->id)->delete();
+
+        $log('Cleared previously seeded runs and their derived rows.');
     }
 
     private function seedOne(User $user, RunBlueprint $blueprint): void

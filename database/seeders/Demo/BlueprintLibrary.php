@@ -390,12 +390,12 @@ class BlueprintLibrary
                 location: $this->loc(0),
             ),
             new RunBlueprint(
-                startsAt: Carbon::today()->setTime(6, 30),
+                startsAt: Carbon::today()->subDays(2)->setTime(6, 30),
                 distanceM: 5_200,
                 targetPaceSecPerKm: 395,
                 hrProfile: HrProfile::NegSplit,
                 name: 'Morning negative split',
-                tags: ['negative_split', 'past_you_today'],
+                tags: ['negative_split', 'past_you_recent'],
                 location: $this->loc(0),
             ),
             // Treadmill: no summary_polyline / no latlng stream, HR+cadence intact.

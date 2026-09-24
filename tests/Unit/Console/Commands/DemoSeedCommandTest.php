@@ -150,11 +150,12 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
 
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
 
-    // Core row counts — 35 scripted + RNG fillers @ 65% over ~180d + 1 D-0
-    // cold-start run; exact match fails loud on drift.
+    // Core row counts — 35 scripted (one moved off today to D-2, which now
+    // excludes a filler that used to land there) + RNG fillers @ 65% over
+    // ~180d + 1 D-0 cold-start run; exact match fails loud on drift.
     $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
     $activityCount = $activityIds->count();
-    expect($activityCount)->toBe(127)
+    expect($activityCount)->toBe(126)
         ->and(RunCard::query()->whereIn('activity_id', $activityIds)->count())
         ->toBe($activityCount)
         ->and(StoryLine::query()->where('user_id', $user->id)->where('kind', StoryLine::KIND_POST_RUN)->count())
@@ -365,6 +366,23 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
             ->where('analysis_type', AnalysisType::TrendRead)
             ->count())->toBe(count(AnalysisType::TREND_READ_RANGES))
         ->and(InboxNotification::query()->where('user_id', $user->id)->count())->toBe($inboxCount);
+
+    // #1165: every blueprint anchors to Carbon::today(), so its identity
+    // shifts whenever "today" does. A re-seed on a *later* calendar day must
+    // still replace the timeline instead of stacking a second copy of it
+    // onto the account — the bug left several runs piled onto most days.
+    Carbon::setTestNow('2026-05-20 12:00:00');
+    $this->artisan('demo:seed')->assertSuccessful();
+
+    $driftedActivityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
+    expect($driftedActivityIds)->toHaveCount($activityCount);
+
+    $runsPerDay = ActivityDetail::query()
+        ->whereIn('activity_id', $driftedActivityIds)
+        ->get()
+        ->groupBy(fn (ActivityDetail $detail) => $detail->start_date_local->toDateString())
+        ->map->count();
+    expect($runsPerDay->max())->toBe(1, 'A re-seed on a later day must replace the timeline, not stack a second run onto the same date.');
 });
 
 it('leaves every analysis done and rule-based-served unless --with-edge-states is passed', function (): void {
