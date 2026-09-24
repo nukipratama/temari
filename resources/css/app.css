@@ -693,6 +693,24 @@ body {
     animation-delay: var(--reveal-delay, 0s);
 }
 
+@keyframes mascot-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.mascot-spin,
+.mascot-spin-reverse {
+    transform-box: view-box;
+    transform-origin: 50px 50px;
+    animation: mascot-spin 1.6s linear infinite;
+}
+
+.mascot-spin-reverse {
+    animation-direction: reverse;
+    animation-duration: 1.1s;
+}
+
 @media (prefers-reduced-motion: reduce) {
     /* Movement goes, the opacity change stays — the same split `.pressable`
        makes. */
@@ -714,6 +732,11 @@ body {
 
     .draw-in {
         stroke-dasharray: none;
+        animation: none;
+    }
+
+    .mascot-spin,
+    .mascot-spin-reverse {
         animation: none;
     }
 

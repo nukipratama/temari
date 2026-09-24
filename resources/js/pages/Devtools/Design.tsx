@@ -3,6 +3,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { renderNarration } from '@/components/temari/Citation';
 import FaceIcon, { DARK_FACE } from '@/components/temari/FaceIcon';
+import TemariMascot, {
+    type MascotPose,
+    POSES,
+} from '@/components/temari/TemariMascot';
 import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 import {
@@ -24,6 +28,9 @@ const CARD_PADDINGS = ['panel', 'card', 'hero'] as const;
 
 /** Every size the app draws Temari's face at, smallest first. */
 const FACE_SIZES = [26, 34, 36, 40, 42, 48, 56, 64, 72] as const;
+
+const MASCOT_POSES = Object.keys(POSES) as MascotPose[];
+const MASCOT_SIZES = [22, 28, 48, 72, 96] as const;
 
 const TYPE_SPECIMENS: ReadonlyArray<[string, string, string]> = [
     ['display-lg', 'font-serif italic text-display-lg', 'Eight point two'],
@@ -82,6 +89,125 @@ function Section({
             )}
             <div className="mt-3">{children}</div>
         </section>
+    );
+}
+
+function MascotGallery() {
+    const [replay, setReplay] = useState(0);
+
+    return (
+        <>
+            <Section
+                title="Temari mascot · poses"
+                note="The living brand mark: the logo's two arcs, posed per run mood, plus neutral, sleepy (empty states) and thinking (pending narration). The inner arc carries the mood's -ink tier so it holds contrast on both grounds, except blazing, which keeps its vivid gold; switch the ground in Settings to review the other one."
+            >
+                <div className="flex flex-wrap items-end gap-2.5">
+                    {MASCOT_POSES.map((pose) => (
+                        <Specimen key={pose} label={pose}>
+                            <TemariMascot pose={pose} size={72} />
+                        </Specimen>
+                    ))}
+                </div>
+            </Section>
+
+            <Section
+                title="Temari mascot · on sky"
+                note="Fixed-dark surfaces pass onSky, which resolves every token against the dark ground whatever the app ground is."
+            >
+                <div className="flex flex-wrap items-end gap-2.5 rounded-md bg-sky pad-card">
+                    {MASCOT_POSES.map((pose) => (
+                        <Specimen key={pose} label={pose} onSky>
+                            <TemariMascot pose={pose} size={72} onSky />
+                        </Specimen>
+                    ))}
+                </div>
+            </Section>
+
+            <Section
+                title="Temari mascot · sizes"
+                note="Below 32px the face drops to eyes only; the pose carries the mood."
+            >
+                {(['easy', 'gassed', 'blazing'] as const).map((pose) => (
+                    <div
+                        key={pose}
+                        className="flex flex-wrap items-end gap-2.5"
+                    >
+                        {MASCOT_SIZES.map((size) => (
+                            <Specimen key={size} label={`${pose} ${size}px`}>
+                                <TemariMascot pose={pose} size={size} />
+                            </Specimen>
+                        ))}
+                    </div>
+                ))}
+            </Section>
+
+            <Section
+                title="Temari mascot · motion"
+                note="A one-shot draw-in for hero moments and the counter-rotating thinking loader. Both hold still under reduced motion."
+            >
+                <div className="flex flex-wrap items-end gap-2.5">
+                    <Specimen key={replay} label="draw-in">
+                        <TemariMascot pose="blazing" size={72} drawIn />
+                    </Specimen>
+                    <Specimen label="thinking">
+                        <TemariMascot pose="thinking" size={48} />
+                    </Specimen>
+                </div>
+                <button
+                    type="button"
+                    className="mt-2 text-meta underline"
+                    onClick={() => setReplay((n) => n + 1)}
+                >
+                    replay draw-in
+                </button>
+            </Section>
+
+            <Section
+                title="Temari mascot · presentation"
+                note="Corner peek (cropped by the card edge, one per page), gutter tag (voice lines on tight cards) and sleepy inline (empty states). Demos only; surfaces adopt them in later slices."
+            >
+                <div className="flex flex-wrap gap-3">
+                    <div className="relative w-[340px] max-w-full overflow-hidden rounded-md bg-sky pad-hero text-cream">
+                        <div className="max-w-[72%]">
+                            <div className="font-serif text-headline-sm italic">
+                                week 38
+                            </div>
+                            <p className="mt-1 text-sm text-ink-on-sky">
+                                4 runs · 31 km, and the long one finally held.
+                            </p>
+                        </div>
+                        <TemariMascot
+                            pose="blazing"
+                            size={128}
+                            onSky
+                            className="absolute -right-11 -bottom-12"
+                        />
+                    </div>
+                    <div className="flex w-[340px] max-w-full gap-2.5 rounded-md border border-border bg-card pad-card">
+                        <TemariMascot
+                            pose="easy"
+                            size={28}
+                            className="mt-0.5"
+                        />
+                        <div>
+                            <div className="font-serif text-sm text-leaf-ink italic">
+                                temari
+                            </div>
+                            <p className="narration-dense">
+                                that was a proper easy one. hr stayed flat the
+                                whole way.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex w-[340px] max-w-full items-center gap-3 rounded-md border border-border bg-card pad-card">
+                        <TemariMascot pose="sleepy" size={44} />
+                        <p className="text-sm text-text-2">
+                            no runs this week yet.
+                        </p>
+                    </div>
+                </div>
+            </Section>
+        </>
     );
 }
 
@@ -540,6 +666,8 @@ export default function Design() {
                             ))}
                         </div>
                     </Section>
+
+                    <MascotGallery />
 
                     <Section
                         title="Citation affordance"
