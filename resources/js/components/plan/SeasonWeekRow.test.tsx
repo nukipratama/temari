@@ -123,13 +123,12 @@ describe('SeasonWeekRow', () => {
         expect(screen.getByText(/· 90%/)).toBeInTheDocument();
     });
 
-    it('heads the current week with its target alone, no percentage', () => {
+    it('heads the current week with its target and its adherence so far', () => {
         renderRow({ week: week({ type: 'current' }) });
 
         expect(
-            screen.getByText('30 km target · 5 sessions'),
+            screen.getByText('30 km target · 5 sessions · 90%'),
         ).toBeInTheDocument();
-        expect(screen.queryByText(/· 90%/)).not.toBeInTheDocument();
     });
 
     it('lays the current week out open as a day strip, with no volume chart', () => {

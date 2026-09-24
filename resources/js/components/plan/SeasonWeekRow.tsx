@@ -133,7 +133,7 @@ export default function SeasonWeekRow({
                         </>
                     )}
                     {week.sessions} sessions
-                    {!isCurrent && adherence != null && ` · ${adherence}%`}
+                    {adherence != null && ` · ${adherence}%`}
                 </span>
             </span>
         </>
