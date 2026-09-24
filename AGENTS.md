@@ -8,6 +8,7 @@ This is the canonical project guidance shared by agents. Runtime entrypoints may
 - For manual isolation, run `scripts/worktree create <name> [base]` to create a worktree (allocates a slot, branches from `base`, assigns ports, a `temari-slot<N>` Compose project and isolated schemas on the shared MySQL/Redis services, installs dependencies, runs both migration sets, and rolls back on failure) and `scripts/worktree remove <path>` to tear one down. Re-running `create` with the same name reuses the existing worktree and re-runs setup.
 - `scripts/worktree remove` deletes the worktree and its `worktree-<name>` branch outright, so unpushed commits are discarded — push the branch before removing it.
 - Run long commands in the foreground, never background them; never `artisan tinker <file>`, use `--execute`. Stop tests, builds, and servers when their task ends.
+- Multi-slice work ships as a GitHub stack (`gh stack`): one PR per layer, merged by the owner. Read the `temari` skill's "Stacked PRs" section before starting one.
 - Work items, agent briefs and decisions live in GitHub issues and the [kanban board](https://github.com/users/nukipratama/projects/1), not in local files: find them with `gh issue list --label wave:*` and `gh issue view <n>`, and the decision log is issue #916. A card moves Ready → In progress on dispatch → In review when its PR opens → Done on merge, and every PR carries `Closes #<n>`. `.planning/` is gitignored scratch space only.
 
 ### PR handoff standard
@@ -79,7 +80,7 @@ output, `./vendor/bin/sail composer gate 2>&1 | tee <file>` and read `${PIPESTAT
 pipe's exit code rather than the gate's.
 
 Running several agents at once, each in its own `git worktree`? See the `temari` skill's
-"Parallel worktrees & stacked PRs" section before starting a second Sail stack.
+"Parallel worktrees" section before starting a second Sail stack.
 
 Merging `main` into a branch must be committed as `chore(<scope>): merge main into <branch>` —
 the commit-msg hook rejects git's default merge message and carries no exemption for merges.
