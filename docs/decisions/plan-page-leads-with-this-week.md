@@ -11,6 +11,10 @@ code_refs:
 
 # The Plan page leads with this week
 
+> **Fact update, 2026-09-24.** The desktop width cap was dropped: a narrower Plan column read as
+> inconsistent beside every other page, so Plan uses the shared page container width. The decision
+> below is otherwise unchanged.
+
 ## Context
 
 The prototype-parity program (`PS4`, decisions P22–P24) gave the Plan page one nested timeline: a season card, then a rail of week cards, with the current week open onto a volume chart and seven stacked day rows. The owner's review (#1143) found three faults:

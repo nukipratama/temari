@@ -125,7 +125,7 @@ export default function Plan({
     return (
         <>
             <Head title="Plan" />
-            <PageContainer className="min-[1280px]:max-w-column">
+            <PageContainer>
                 <Eyebrow token="hero" tone="ink-2">
                     Plan
                 </Eyebrow>

@@ -204,13 +204,10 @@ describe('Plan', () => {
         ).toBeInTheDocument();
     });
 
-    it('caps the page to one narrower centred column on desktop', () => {
+    it('uses the same page width as every other page on desktop', () => {
         const { container } = renderPlan();
 
         expect(container.querySelector('.reveal')).toHaveClass(
-            'min-[1280px]:max-w-column',
-        );
-        expect(container.querySelector('.reveal')).not.toHaveClass(
             'min-[1280px]:max-w-column-wide',
         );
     });
