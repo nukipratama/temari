@@ -96,7 +96,7 @@ describe('Race', () => {
 
         const mascots = container.querySelectorAll('svg[data-mascot]');
         expect(mascots).toHaveLength(1);
-        expect(mascots[0]).toHaveAttribute('width', '28');
+        expect(mascots[0]).toHaveAttribute('width', '40');
     });
 
     it('draws Temari only in the empty state when no race is set', () => {

@@ -22,7 +22,7 @@ export default function NoPlanCard({
     return (
         <Card as="section">
             <div className="flex items-start gap-2.5">
-                <TemariMascot size={28} />
+                <TemariMascot size={40} />
                 <div>
                     <p className="text-base font-semibold text-foreground">
                         No plan yet.

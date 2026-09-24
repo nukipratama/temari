@@ -69,6 +69,6 @@ describe('ProjectionBlock', () => {
 
         const mascot = container.querySelector('svg[data-mascot]');
         expect(mascot).not.toBeNull();
-        expect(mascot).toHaveAttribute('width', '28');
+        expect(mascot).toHaveAttribute('width', '40');
     });
 });

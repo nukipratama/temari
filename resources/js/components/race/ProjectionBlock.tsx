@@ -69,7 +69,7 @@ export default function ProjectionBlock({
             />
             <div className="reveal">
                 <div className="relative flex items-center gap-2">
-                    <TemariMascot size={28} />
+                    <TemariMascot size={40} />
                     <Eyebrow token="micro" tone="ink-2">
                         Projected finish
                     </Eyebrow>

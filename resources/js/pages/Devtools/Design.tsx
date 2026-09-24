@@ -177,11 +177,7 @@ function MascotGallery() {
                         />
                     </div>
                     <div className="flex w-[340px] max-w-full gap-2.5 rounded-md border border-border bg-card pad-card">
-                        <TemariMascot
-                            pose="easy"
-                            size={28}
-                            className="mt-0.5"
-                        />
+                        <TemariMascot pose="easy" size={40} />
                         <div>
                             <div className="font-serif text-sm text-leaf-ink italic">
                                 temari

@@ -13,12 +13,12 @@ describe('NoPlanCard', () => {
         ).toHaveAttribute('href', '/plan');
     });
 
-    it('tags the copy with the 28px mascot', () => {
+    it('tags the copy with the 40px mascot', () => {
         const { container } = render(<NoPlanCard />);
 
         expect(container.querySelector('svg[data-mascot]')).toHaveAttribute(
             'width',
-            '28',
+            '40',
         );
     });
 

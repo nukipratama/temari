@@ -109,7 +109,7 @@ not an empty state.
 ## What Temari says — story + adaptive claims
 
 The heart of the page is [RunLenses](../../resources/js/components/run/RunLenses.tsx):
-a heading tagged with a 28px Temari (posed to the run's mood, thinking while either lens is written) over **one** narration card, whose two halves are separated
+a heading tagged with a 40px Temari (posed to the run's mood, thinking while either lens is written) over **one** narration card, whose two halves are separated
 by a hairline rather than split into two panels. It is fed two `Analysis`
 payloads the controller resolves from `RunController::RUN_INSIGHT_TYPES`:
 
