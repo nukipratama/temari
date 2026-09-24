@@ -67,8 +67,8 @@ describe('ProjectionBlock', () => {
             <ProjectionBlock projection={PROJECTION} />,
         );
 
-        const face = container.querySelector('[data-face-icon]');
-        expect(face).not.toBeNull();
-        expect(face).toHaveAttribute('width', '18');
+        const mascot = container.querySelector('svg[data-mascot]');
+        expect(mascot).not.toBeNull();
+        expect(mascot).toHaveAttribute('width', '28');
     });
 });

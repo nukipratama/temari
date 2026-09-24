@@ -24,6 +24,7 @@ interface PoseSpec {
 const OUTER_R = 37.5;
 const INNER_R = 23;
 const EYES_ONLY_BELOW = 32;
+const FACE_ONLY_ZOOM = 100 / 40;
 
 const moodInk = (mood: Mood) => `var(--color-mood-${mood}-ink)`;
 
@@ -190,6 +191,8 @@ interface TemariMascotProps {
     onSky?: boolean;
     /** Trace the arcs in once on mount, for the big-moment surfaces. */
     drawIn?: boolean;
+    /** Just the face, cropped to fill the box, for a slot another ring already frames. */
+    faceOnly?: boolean;
     className?: string;
 }
 
@@ -202,15 +205,17 @@ export default function TemariMascot({
     size = 48,
     onSky = false,
     drawIn = false,
+    faceOnly = false,
     className,
 }: Readonly<TemariMascotProps>) {
     const spec = POSES[pose];
-    const eyesOnly = size < EYES_ONLY_BELOW;
+    const renderedScale = faceOnly ? size * FACE_ONLY_ZOOM : size;
+    const eyesOnly = renderedScale < EYES_ONLY_BELOW;
     const spinning = pose === 'thinking';
 
     return (
         <svg
-            viewBox="0 0 100 100"
+            viewBox={faceOnly ? '30 30 40 40' : '0 0 100 100'}
             width={size}
             height={size}
             className={cn('flex-none', className)}
@@ -218,53 +223,59 @@ export default function TemariMascot({
             data-mascot={pose}
             data-theme={onSky ? 'dark' : undefined}
         >
-            <g
-                fill="none"
-                strokeWidth="11"
-                strokeLinecap="round"
-                transform={spec.tilt ? `rotate(${spec.tilt} 50 50)` : undefined}
-            >
+            {!faceOnly && (
                 <g
-                    stroke="var(--color-horizon)"
-                    strokeDasharray={spec.dashedOuter ? '0.1 17' : undefined}
-                    className={cn(spinning && 'mascot-spin')}
-                    data-arc="outer"
+                    fill="none"
+                    strokeWidth="11"
+                    strokeLinecap="round"
+                    transform={
+                        spec.tilt ? `rotate(${spec.tilt} 50 50)` : undefined
+                    }
                 >
-                    {spec.outer.map((arc) => (
-                        <path
-                            key={arc.join()}
-                            d={arcPath(arc, OUTER_R)}
-                            pathLength={
-                                drawIn && !spec.dashedOuter ? 1 : undefined
-                            }
-                            className={cn(
-                                drawIn && !spec.dashedOuter && 'draw-in',
-                            )}
-                        />
-                    ))}
+                    <g
+                        stroke="var(--color-horizon)"
+                        strokeDasharray={
+                            spec.dashedOuter ? '0.1 17' : undefined
+                        }
+                        className={cn(spinning && 'mascot-spin')}
+                        data-arc="outer"
+                    >
+                        {spec.outer.map((arc) => (
+                            <path
+                                key={arc.join()}
+                                d={arcPath(arc, OUTER_R)}
+                                pathLength={
+                                    drawIn && !spec.dashedOuter ? 1 : undefined
+                                }
+                                className={cn(
+                                    drawIn && !spec.dashedOuter && 'draw-in',
+                                )}
+                            />
+                        ))}
+                    </g>
+                    <g
+                        stroke={spec.innerColor}
+                        className={cn(spinning && 'mascot-spin-reverse')}
+                        data-arc="inner"
+                    >
+                        {spec.inner.map((arc) => (
+                            <path
+                                key={arc.join()}
+                                d={arcPath(arc, INNER_R)}
+                                pathLength={drawIn ? 1 : undefined}
+                                className={cn(drawIn && 'draw-in')}
+                                style={
+                                    drawIn
+                                        ? ({
+                                              '--reveal-delay': '0.25s',
+                                          } as React.CSSProperties)
+                                        : undefined
+                                }
+                            />
+                        ))}
+                    </g>
                 </g>
-                <g
-                    stroke={spec.innerColor}
-                    className={cn(spinning && 'mascot-spin-reverse')}
-                    data-arc="inner"
-                >
-                    {spec.inner.map((arc) => (
-                        <path
-                            key={arc.join()}
-                            d={arcPath(arc, INNER_R)}
-                            pathLength={drawIn ? 1 : undefined}
-                            className={cn(drawIn && 'draw-in')}
-                            style={
-                                drawIn
-                                    ? ({
-                                          '--reveal-delay': '0.25s',
-                                      } as React.CSSProperties)
-                                    : undefined
-                            }
-                        />
-                    ))}
-                </g>
-            </g>
+            )}
             <g
                 color="var(--color-foreground)"
                 fill="none"

@@ -1,7 +1,7 @@
 import { X } from 'lucide-react';
 import { useRef, type ReactNode } from 'react';
 
-import FaceIcon from '@/components/temari/FaceIcon';
+import TemariMascot from '@/components/temari/TemariMascot';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { useExitTransition } from '@/hooks/useExitTransition';
@@ -83,7 +83,7 @@ export default function TemariNudgeModal({
                 </div>
 
                 <div className="flex flex-col items-center gap-4 px-6 pb-6 pt-1 text-center">
-                    <FaceIcon size={72} />
+                    <TemariMascot size={72} drawIn />
                     <h2
                         id="temari-nudge-title"
                         className="font-serif text-2xl tracking-tight text-foreground"

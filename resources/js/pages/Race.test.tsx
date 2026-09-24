@@ -94,19 +94,17 @@ describe('Race', () => {
             <Race race={RACE} projection={PROJECTION} />,
         );
 
-        const faces = container.querySelectorAll('[data-face-icon]');
-        expect(faces).toHaveLength(1);
-        expect(faces[0]).toHaveAttribute('width', '18');
+        const mascots = container.querySelectorAll('svg[data-mascot]');
+        expect(mascots).toHaveLength(1);
+        expect(mascots[0]).toHaveAttribute('width', '28');
     });
 
     it('draws Temari only in the empty state when no race is set', () => {
         const { container } = render(<Race race={null} projection={null} />);
 
-        const faces = container.querySelectorAll('[data-face-icon]');
-        expect(faces).toHaveLength(1);
-        // 40, as RaceGoalScreen.tsx:226-243 draws it. Only Plan's whole-page
-        // empty state takes 48. See PS12.
-        expect(faces[0]).toHaveAttribute('width', '40');
+        const mascots = container.querySelectorAll('svg[data-mascot]');
+        expect(mascots).toHaveLength(1);
+        expect(mascots[0]).toHaveAttribute('data-mascot', 'sleepy');
     });
 
     it('shows the saved race summary figures', () => {

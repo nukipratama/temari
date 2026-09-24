@@ -13,10 +13,13 @@ describe('NoPlanCard', () => {
         ).toHaveAttribute('href', '/plan');
     });
 
-    it('draws the FaceIcon the prototype puts beside the copy', () => {
+    it('tags the copy with the 28px mascot', () => {
         const { container } = render(<NoPlanCard />);
 
-        expect(container.querySelector('[data-face-icon]')).toBeInTheDocument();
+        expect(container.querySelector('svg[data-mascot]')).toHaveAttribute(
+            'width',
+            '28',
+        );
     });
 
     it("keeps the week's own numbers, which the plan card would otherwise carry", () => {

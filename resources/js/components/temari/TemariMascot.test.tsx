@@ -136,6 +136,31 @@ describe('TemariMascot', () => {
 
         expect(svg.getAttribute('aria-hidden')).toBe('true');
     });
+
+    it('draws only the face, cropped to fill the box, when faceOnly', () => {
+        const svg = svgOf(
+            render(<TemariMascot size={26} faceOnly />).container,
+        );
+
+        expect(svg.querySelector('[data-arc]')).toBeNull();
+        expect(svg.getAttribute('viewBox')).toBe('30 30 40 40');
+    });
+
+    it('keeps the full face when the crop renders it large enough to read', () => {
+        const cropped = svgOf(
+            render(<TemariMascot size={26} faceOnly />).container,
+        );
+        const tiny = svgOf(
+            render(<TemariMascot size={12} faceOnly />).container,
+        );
+
+        expect(
+            cropped.querySelector('[data-face]')?.getAttribute('data-face'),
+        ).toBe('full');
+        expect(
+            tiny.querySelector('[data-face]')?.getAttribute('data-face'),
+        ).toBe('eyes');
+    });
 });
 
 describe('arcPath', () => {

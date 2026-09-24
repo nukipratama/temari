@@ -26,7 +26,7 @@ import StepProgress, {
     type OnboardingStep,
 } from '@/components/onboarding/StepProgress';
 import PushNotificationToggle from '@/components/PushNotificationToggle';
-import FaceIcon from '@/components/temari/FaceIcon';
+import TemariMascot from '@/components/temari/TemariMascot';
 import Chip from '@/components/ui/Chip';
 import DateField from '@/components/ui/DateField';
 import { Icon, IconComponent, TelegramIcon } from '@/components/ui/Icon';
@@ -349,7 +349,7 @@ export default function OnboardingIndex({
                                 className="pointer-events-none absolute size-60 rounded-full blur-[34px]"
                                 style={{ background: FACE_GLOW }}
                             />
-                            <FaceIcon size={72} />
+                            <TemariMascot pose="blazing" size={72} drawIn />
                         </div>
                         <PageHero
                             size="quote-lg"
@@ -615,7 +615,7 @@ export default function OnboardingIndex({
                                     />
                                 </svg>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <FaceIcon size={26} />
+                                    <TemariMascot size={36} faceOnly />
                                 </div>
                             </div>
                             <div className="relative min-w-0 flex-1">
