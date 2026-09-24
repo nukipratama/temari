@@ -24,7 +24,7 @@ One controller, one page component. [LegalController](../../app/Http/Controllers
 The wording that also appears *inside* the app lives in code, not in this note and not twice in the copy:
 
 - **AI data use** — [DataUseStatement](../../app/Support/DataUseStatement.php), also rendered on Settings. `/ai-use` opens with it and `/privacy` embeds it as a section.
-- **Not medical advice** — [TrainingDisclaimer](../../app/Support/TrainingDisclaimer.php). The Plan tab renders `TEXT` from a server prop rather than a local constant ([PlanController](../../app/Http/Controllers/PlanController.php) → [Plan.tsx](../../resources/js/pages/Plan.tsx)), `/training-disclaimer` uses it as the intro and expands on it with `scope()`, and `/terms` quotes it as a section.
+- **Not medical advice** — [TrainingDisclaimer](../../app/Support/TrainingDisclaimer.php). The Plan tab renders `HEADLINE` from a server prop as a footer line linking to `/training-disclaimer` ([PlanController](../../app/Http/Controllers/PlanController.php) → [Plan.tsx](../../resources/js/pages/Plan.tsx)), `/training-disclaimer` uses `TEXT` as the intro and expands on it with `scope()`, and `/terms` quotes it as a section.
 
 [LegalDocumentsTest](../../tests/Unit/Support/LegalDocumentsTest.php) asserts both, so a second wording cannot quietly appear alongside the first. The remaining prose lives in [LegalDocuments](../../app/Support/LegalDocuments.php).
 

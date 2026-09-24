@@ -12,7 +12,6 @@ import type { PlanRecalibrationState } from '@/types/inertia';
 
 import SeasonHeaderCard from '@/components/plan/SeasonHeaderCard';
 import SeasonTimeline from '@/components/plan/SeasonTimeline';
-import PlanRaceTabs from '@/components/race/PlanRaceTabs';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
@@ -21,9 +20,10 @@ import PageContainer from '@/components/ui/PageContainer';
 import { SkeletonRows, SkeletonStats } from '@/components/ui/Skeleton';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { appLayout } from '@/layouts/appLayout';
+import { cn } from '@/lib/cn';
 import {
     formatDurationHMS,
-    formatNaiveIdDate,
+    formatNaiveMonthDayId,
     todayLocalIso,
 } from '@/lib/pace';
 
@@ -55,7 +55,6 @@ interface PlanProps {
     adaptation?: PlanAdaptation | null;
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
     disclaimerHeadline: string;
-    disclaimer: string;
     planNarration?: PlanNarration;
     /** Seconds left before Regenerate may run again, or null when it's free to click. */
     regenerateCooldownSeconds?: number | null;
@@ -85,7 +84,6 @@ export default function Plan({
     seasonAdherencePct = null,
     adaptation = null,
     disclaimerHeadline,
-    disclaimer,
     planNarration = PLAN_NARRATION_DEFAULT,
     regenerateCooldownSeconds = null,
     planRecalibration,
@@ -131,39 +129,48 @@ export default function Plan({
                 <Eyebrow token="hero" tone="ink-2">
                     Plan
                 </Eyebrow>
-                <div className="mt-2 mb-3 flex items-start justify-between gap-3">
+                <div className="mt-2 flex items-center justify-between gap-3">
                     <h1 className="font-serif text-quote-lg text-foreground italic">
-                        the weeks
-                        <br />
-                        <em className="text-horizon-ink">ahead.</em>
+                        the weeks <em className="text-horizon-ink">ahead.</em>
                     </h1>
                     <button
                         type="button"
-                        className="focus-ring pad-chip text-label-micro pressable mt-1 inline-flex flex-none items-center gap-1 rounded-full bg-muted text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-60"
+                        className="focus-ring pressable inline-flex h-8 min-w-8 flex-none items-center justify-center gap-1 rounded-full bg-muted px-2 text-label-micro text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-60"
                         onClick={regenerate}
                         disabled={regenerating || regenerateCooling}
+                        aria-label={
+                            regenerating
+                                ? 'replanning'
+                                : regenerateCooling
+                                  ? `regenerate, next in ${formatDurationHMS(regenerateCooldown)}`
+                                  : 'regenerate'
+                        }
                     >
                         <Icon
                             icon={regenerateCooling ? Clock : RefreshCw}
-                            className="size-3"
+                            className={cn(
+                                'size-3.5',
+                                regenerating && 'animate-spin',
+                            )}
                             aria-hidden
                         />
-                        {regenerating
-                            ? 'replanning…'
-                            : regenerateCooling
-                              ? `next in ${formatDurationHMS(regenerateCooldown)}`
-                              : 'regenerate'}
+                        {regenerateCooling && (
+                            <span aria-hidden>
+                                {formatDurationHMS(regenerateCooldown)}
+                            </span>
+                        )}
                     </button>
                 </div>
-                <p className="mb-4 text-sm leading-relaxed text-text-2">
+                <p className="mt-1 mb-4 text-xs text-text-2">
                     {race
-                        ? `built around ${race.name ?? 'your race'} on ${formatNaiveIdDate(race.race_date, 'long')}, about ${sessionsPerWeek} sessions a week.`
-                        : `no race set yet, so this cycles a steady build-and-deload rhythm, about ${sessionsPerWeek} sessions a week.`}{' '}
+                        ? `${race.name ?? 'your race'} · ${formatNaiveMonthDayId(race.race_date)}`
+                        : 'no race set · steady build and deload'}
+                    {` · ${sessionsPerWeek} sessions a week · `}
                     <Link
                         href="/race"
                         className="focus-ring inline-flex items-center gap-0.5 font-semibold text-horizon-ink"
                     >
-                        {race ? 'change your race' : 'set a race'}
+                        {race ? 'race goal' : 'set a race'}
                         <Icon
                             icon={ArrowRight}
                             className="size-3"
@@ -171,8 +178,6 @@ export default function Plan({
                         />
                     </Link>
                 </p>
-
-                <PlanRaceTabs active="plan" className="mb-4" />
 
                 {planRecalibration?.pending && (
                     <div
@@ -253,20 +258,15 @@ export default function Plan({
                     }
                 </Deferred>
 
-                <Card padding="panel" className="mt-6">
-                    <p className="text-label-micro text-text-2">
-                        {disclaimerHeadline}
-                    </p>
-                    <p className="mt-2 text-sm leading-relaxed text-text-2">
-                        {disclaimer}
-                    </p>
+                <footer className="mt-8 border-t border-border pt-3 text-xs text-text-3">
+                    {disclaimerHeadline} ·{' '}
                     <Link
                         href="/training-disclaimer"
-                        className="focus-ring mt-2 inline-block text-sm text-text-2 underline underline-offset-2 hover:text-foreground"
+                        className="focus-ring text-text-2 underline underline-offset-2 hover:text-foreground"
                     >
-                        what the plan can and cannot see
+                        read more
                     </Link>
-                </Card>
+                </footer>
             </PageContainer>
         </>
     );

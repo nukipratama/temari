@@ -17,9 +17,8 @@ final class TrainingDisclaimer
 
     /**
      * The scope of what the plan engine can and cannot see, for the standalone
-     * page. The Plan tab shows {@see self::HEADLINE} and {@see self::TEXT} and
-     * links here for the rest; it sits beside the numbers it qualifies, so it
-     * needs no expansion inline.
+     * page. The Plan tab shows {@see self::HEADLINE} as a footer line linking
+     * here.
      *
      * @return list<string>
      */

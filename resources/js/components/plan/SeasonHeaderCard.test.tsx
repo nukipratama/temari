@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SeasonSummaryWeek } from '@/lib/plan';
@@ -73,29 +73,38 @@ function renderCard(
     );
 }
 
+function openBand() {
+    fireEvent.click(screen.getByRole('button', { name: /^Week \d+ of \d+/ }));
+}
+
 describe('SeasonHeaderCard', () => {
     it('places the athlete in the season', () => {
         renderCard();
 
-        expect(screen.getByText('Season · Week 2 of 12')).toBeInTheDocument();
-        expect(screen.getByText('build · jun 15 – sep 4')).toBeInTheDocument();
+        expect(screen.getByText('Week 2 of 12 · build')).toBeInTheDocument();
+        expect(screen.queryByText('jun 15 – sep 4')).not.toBeInTheDocument();
+
+        openBand();
+
+        expect(screen.getByText('jun 15 – sep 4')).toBeInTheDocument();
     });
 
     it('shows the season adherence figure', () => {
         renderCard();
 
         expect(screen.getByText('82%')).toBeInTheDocument();
-        expect(screen.getByText('Adherence')).toBeInTheDocument();
+        expect(screen.getByText(/adherence/)).toBeInTheDocument();
     });
 
     it('omits adherence entirely when nothing has been scored yet', () => {
         renderCard({ adherencePct: null });
 
-        expect(screen.queryByText('Adherence')).not.toBeInTheDocument();
+        expect(screen.queryByText(/adherence/)).not.toBeInTheDocument();
     });
 
     it('draws one labelled bar per phase, tallest at the biggest volume', () => {
         const { container } = renderCard();
+        openBand();
 
         expect(screen.getByText('base')).toBeInTheDocument();
         expect(screen.getByText('build')).toBeInTheDocument();
@@ -112,12 +121,14 @@ describe('SeasonHeaderCard', () => {
             "Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built.";
 
         renderCard({ underReadyLine: line });
+        openBand();
 
         expect(screen.getByText(line)).toBeInTheDocument();
     });
 
     it('says nothing about readiness without the line', () => {
         renderCard({ underReadyLine: null });
+        openBand();
 
         expect(screen.queryByText(/tighter than/)).not.toBeInTheDocument();
     });
@@ -149,17 +160,18 @@ describe('SeasonHeaderCard', () => {
             endsAt: '2026-08-10',
             weeks: GENERAL_ZONE_CURRENT,
         });
+        openBand();
 
         // Not the raw phase ('build'), and not the whole season's span
         // ('2026-05-25 – 2026-08-10') — just the general run's own dates.
-        expect(
-            screen.getByText('maintain · may 25 – jun 7'),
-        ).toBeInTheDocument();
-        expect(screen.queryByText(/^build ·/)).not.toBeInTheDocument();
+        expect(screen.getByText('Week 2 of 12 · maintain')).toBeInTheDocument();
+        expect(screen.getByText('may 25 – jun 7')).toBeInTheDocument();
+        expect(screen.queryByText(/· build$/)).not.toBeInTheDocument();
     });
 
     it('adds a "maintain" legend entry first, filled while the current week is in it', () => {
         renderCard({ weeks: GENERAL_ZONE_CURRENT });
+        openBand();
 
         expect(screen.getByText('maintain')).toBeInTheDocument();
         expect(screen.queryByText('build')).not.toBeInTheDocument();
@@ -179,6 +191,9 @@ describe('SeasonHeaderCard', () => {
                 discriminator: null,
             } as AnalysisPayload,
         });
+        expect(screen.queryByText("Temari's take")).not.toBeInTheDocument();
+
+        openBand();
 
         expect(screen.getByText("Temari's take")).toBeInTheDocument();
         expect(screen.getByText('base held together.')).toBeInTheDocument();
