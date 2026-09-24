@@ -33,7 +33,7 @@ final readonly class ClampNarrationContext
 
     /**
      * @return array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool}|null
-     *                                                                                                                   null when the day has no session, is pinned, or already fits under the ceiling
+     *                                                                                                                   null when the day has no session, or already fits under the ceiling
      */
     public function forUserOn(int $userId, Carbon $date): ?array
     {
