@@ -457,6 +457,32 @@ it('dayPayload keeps the forecast wording on a day not yet credited', function (
     PlannedSessionStatus::Skip,
 ]);
 
+it('dayPayload takes ran_anyway from the live verdict over the stored row', function (): void {
+    $today = Carbon::parse('2026-08-10');
+    $session = PlannedSession::factory()->make([
+        'date' => $today->copy()->subDay(),
+        'session_type' => SessionType::Rest,
+        'ran_anyway' => false,
+    ]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done, null, null, null, INF, true);
+
+    expect($payload['ran_anyway'])->toBeTrue();
+});
+
+it('dayPayload keeps the stored ran_anyway when no live verdict is given', function (): void {
+    $today = Carbon::parse('2026-08-10');
+    $session = PlannedSession::factory()->make([
+        'date' => $today->copy()->subDay(),
+        'session_type' => SessionType::Rest,
+        'ran_anyway' => true,
+    ]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done);
+
+    expect($payload['ran_anyway'])->toBeTrue();
+});
+
 it('dayPayload narrates the clamp on a day still to be run', function (): void {
     $today = Carbon::parse('2026-08-10');
     [$session, $clamp] = tempoSessionWithEasyClamp($today, 'Templated floor.');

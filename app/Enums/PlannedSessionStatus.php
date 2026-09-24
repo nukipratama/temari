@@ -13,7 +13,7 @@ namespace App\Enums;
  * `Overreached`/`Skip` and writes it back — see
  * {@see \App\Services\Run\Plan\SessionMatcher::scoreFor()} for the km-ratio
  * bands that decide it. `PlanPageAssembler`/`CurrentWeekPlanBuilder` read the
- * stored value directly; `SessionMatcher::statuses()` survives only as a
+ * stored value directly; `SessionMatcher::scoreRange()` survives only as a
  * defensive live-compute fallback for a past row the daily command hasn't
  * reached yet.
  */
