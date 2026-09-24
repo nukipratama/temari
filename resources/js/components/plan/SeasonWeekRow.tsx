@@ -4,6 +4,7 @@ import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import { DeltaPair } from '@/components/plan/DeltaPair';
+import ThisWeek from '@/components/plan/ThisWeek';
 import WeekDayRow from '@/components/plan/WeekDayRow';
 import WeekVolumeChart from '@/components/plan/WeekVolumeChart';
 import Chip from '@/components/ui/Chip';
@@ -62,7 +63,8 @@ function WeekMarks({
 }
 
 /**
- * One week on the season rail. A week the plan has day-level rows for opens
+ * One week on the season rail. The current week lays out open as its day
+ * strip and day panel; any other week the plan has day-level rows for opens
  * into its volume chart and seven day rows; a week outside that window (older
  * history, or far enough ahead that the day plan isn't decided yet) renders as
  * a flat summary card instead.
@@ -102,6 +104,41 @@ export default function SeasonWeekRow({
         focusDay !== null &&
         (detail?.days.some((day) => day.date === focusDay) ?? false);
 
+    const heading = (
+        <>
+            <span className="w-16 flex-none text-label-micro text-text-2">
+                Week {weekNumber}
+            </span>
+            <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">
+                        {weekRangeLabel(week.week_start)}
+                    </span>
+                    <WeekMarks phase={week.phase} raceWeek={raceWeek} />
+                </span>
+                <span className="mt-0.5 block text-label-micro text-text-3">
+                    {week.eased_from_km == null ? (
+                        `${Math.round(week.planned_km)} km target · `
+                    ) : (
+                        <>
+                            <DeltaPair
+                                from={`${Math.round(week.eased_from_km)}`}
+                                to={`${Math.round(week.planned_km)} km target`}
+                                direction={deltaDirection(
+                                    week.eased_from_km,
+                                    week.planned_km,
+                                )}
+                            />{' '}
+                            ·{' '}
+                        </>
+                    )}
+                    {week.sessions} sessions
+                    {!isCurrent && adherence != null && ` · ${adherence}%`}
+                </span>
+            </span>
+        </>
+    );
+
     return (
         <div className="flex gap-3">
             <div className="flex w-3 flex-none flex-col items-center">
@@ -119,7 +156,29 @@ export default function SeasonWeekRow({
                 )}
             </div>
             <div className="min-w-0 flex-1 pb-3">
-                {detail === null ? (
+                {isCurrent && detail !== null ? (
+                    <div
+                        className={cn(
+                            cardVariants({ padding: 'none' }),
+                            'border-icon-accent',
+                        )}
+                    >
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            {heading}
+                        </div>
+                        <div className="px-4 pb-4">
+                            <ThisWeek
+                                days={detail.days}
+                                today={today}
+                                focus={focus}
+                                dayNarration={dayNarration}
+                                focusDay={focusDay}
+                                onMove={onMove}
+                                onSkip={onSkip}
+                            />
+                        </div>
+                    </div>
+                ) : detail === null ? (
                     <div
                         className={cn(
                             cardVariants({ padding: 'none' }),
@@ -127,8 +186,8 @@ export default function SeasonWeekRow({
                         )}
                     >
                         <div className="flex items-center gap-3">
-                            <span className="w-9 flex-none text-label-micro text-text-2">
-                                Wk {weekNumber}
+                            <span className="w-16 flex-none text-label-micro text-text-2">
+                                Week {weekNumber}
                             </span>
                             <p className="min-w-0 flex-1 text-sm font-semibold text-foreground">
                                 {weekRangeLabel(week.week_start)}
@@ -142,52 +201,14 @@ export default function SeasonWeekRow({
                     </div>
                 ) : (
                     <Collapsible
-                        defaultOpen={isCurrent || holdsFocusDay}
+                        defaultOpen={holdsFocusDay}
                         className={cn(
                             cardVariants({ padding: 'none' }),
-                            'overflow-hidden',
-                            isCurrent
-                                ? 'border-icon-accent'
-                                : 'border-border-strong',
+                            'overflow-hidden border-border-strong',
                         )}
                     >
                         <CollapsibleTrigger className="group focus-ring flex w-full items-center gap-3 px-4 py-3 text-left">
-                            <span className="w-9 flex-none text-label-micro text-text-2">
-                                Wk {weekNumber}
-                            </span>
-                            <span className="min-w-0 flex-1">
-                                <span className="flex flex-wrap items-center gap-2">
-                                    <span className="text-sm font-semibold text-foreground">
-                                        {weekRangeLabel(week.week_start)}
-                                    </span>
-                                    <WeekMarks
-                                        phase={week.phase}
-                                        raceWeek={raceWeek}
-                                    />
-                                </span>
-                                <span className="mt-0.5 block text-label-micro text-text-3">
-                                    {week.eased_from_km == null ? (
-                                        `${Math.round(week.planned_km)} km target · `
-                                    ) : (
-                                        <>
-                                            <DeltaPair
-                                                from={`${Math.round(week.eased_from_km)}`}
-                                                to={`${Math.round(week.planned_km)} km target`}
-                                                direction={deltaDirection(
-                                                    week.eased_from_km,
-                                                    week.planned_km,
-                                                )}
-                                            />{' '}
-                                            ·{' '}
-                                        </>
-                                    )}
-                                    {week.sessions} sessions
-                                    {isCurrent && ' · this week'}
-                                    {!isCurrent &&
-                                        adherence != null &&
-                                        ` · ${adherence}%`}
-                                </span>
-                            </span>
+                            {heading}
                             <Icon
                                 icon={ChevronDown}
                                 className="size-4 flex-none text-text-2 transition-transform group-aria-expanded:rotate-180"
@@ -195,21 +216,8 @@ export default function SeasonWeekRow({
                             />
                         </CollapsibleTrigger>
                         <CollapsibleContent className="border-t border-border-strong px-4 py-3">
-                            {focus && (
-                                <div className="mb-3">
-                                    <p className="text-sm font-semibold text-foreground">
-                                        {focus.headline}
-                                    </p>
-                                    <p className="mt-1 text-sm leading-relaxed text-text-2">
-                                        {focus.detail}
-                                    </p>
-                                </div>
-                            )}
                             <div className="flex flex-col gap-2">
-                                <WeekVolumeChart
-                                    days={detail.days}
-                                    isCurrent={isCurrent}
-                                />
+                                <WeekVolumeChart days={detail.days} />
                                 {detail.days.map((day) => (
                                     <WeekDayRow
                                         key={day.date}

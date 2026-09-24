@@ -229,6 +229,21 @@ export function computeAdherence(
     return Math.round(total / scored.length);
 }
 
+const TALLIED_STATUSES = ['done', 'partial', 'missed', 'overreached'] as const;
+
+/** How a week's graded days have gone so far, e.g. `1 done · 2 missed`; empty before any day is graded. */
+export function complianceTally(
+    days: ReadonlyArray<{ status: string }>,
+): string {
+    return TALLIED_STATUSES.map((status) => ({
+        status,
+        count: days.filter((d) => d.status === status).length,
+    }))
+        .filter(({ count }) => count > 0)
+        .map(({ status, count }) => `${count} ${status}`)
+        .join(' · ');
+}
+
 /** "jun 12–18" for a week start, collapsing the month when both ends share it. */
 export function weekRangeLabel(weekStartIso: string): string {
     const monday = mondayOf(weekStartIso);

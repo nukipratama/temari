@@ -172,7 +172,7 @@ describe('Plan', () => {
         expect(screen.getByRole('status')).toHaveTextContent(
             'the current plan stays in place',
         );
-        expect(screen.getByText('tempo')).toBeInTheDocument();
+        expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
 
     it('names the race it is built around once one is set', () => {
@@ -202,12 +202,29 @@ describe('Plan', () => {
         expect(screen.getByText('base phase')).toBeInTheDocument();
     });
 
-    it('opens the current week onto its chart and day rows', () => {
+    it('lays the current week out as a day strip over the first session still to run', () => {
         renderPlan();
 
-        expect(screen.getByText('Volume this week')).toBeInTheDocument();
-        expect(screen.getByText('tempo')).toBeInTheDocument();
-        expect(screen.getByText('rest')).toBeInTheDocument();
+        expect(screen.queryByText('Volume this week')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('tab', { name: 'Thu, 8.0 km, tempo' }),
+        ).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('tab', { name: 'Fri, rest' })).toHaveAttribute(
+            'aria-selected',
+            'false',
+        );
+        expect(screen.getByRole('tabpanel')).toHaveTextContent(/tempo/);
+    });
+
+    it('opens the day the home week card asked for when it is in this week', () => {
+        window.history.replaceState({}, '', '/plan?day=2026-06-19');
+
+        renderPlan();
+
+        expect(screen.getByRole('tab', { name: 'Fri, rest' })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
     });
 
     it('scrolls to the day the home week card asked for', () => {
@@ -227,7 +244,7 @@ describe('Plan', () => {
 
         renderPlan();
 
-        expect(screen.getByText('Volume this week')).toBeInTheDocument();
+        expect(screen.getByRole('tablist')).toBeInTheDocument();
         expect(scrollIntoView).not.toHaveBeenCalled();
     });
 
@@ -251,7 +268,6 @@ describe('Plan', () => {
 
     it('skips a session through the sessions endpoint', () => {
         renderPlan();
-        fireEvent.click(screen.getByRole('button', { name: /tempo/i }));
         fireEvent.click(
             screen.getByRole('button', { name: /skip this session/i }),
         );
@@ -265,7 +281,6 @@ describe('Plan', () => {
 
     it('moves a session onto the day picked from the weekday grid', () => {
         renderPlan();
-        fireEvent.click(screen.getByRole('button', { name: /tempo/i }));
         fireEvent.click(
             screen.getByRole('button', { name: /move this session/i }),
         );
@@ -280,7 +295,6 @@ describe('Plan', () => {
 
     it('offers no Pin, Block or Delete action anywhere', () => {
         renderPlan();
-        fireEvent.click(screen.getByRole('button', { name: /tempo/i }));
 
         expect(screen.queryByRole('button', { name: /^pin$/i })).toBeNull();
         expect(screen.queryByRole('button', { name: /^block$/i })).toBeNull();

@@ -63,15 +63,10 @@ describe('WeekVolumeChart', () => {
         expect(screen.getByText('1 done · 1 missed')).toBeInTheDocument();
     });
 
-    it('says "this week" and "so far" only for the current week', () => {
-        const { rerender } = render(<WeekVolumeChart days={WEEK} />);
-        expect(screen.getByText('Volume that week')).toBeInTheDocument();
+    it('names the week it charts as that week', () => {
+        render(<WeekVolumeChart days={WEEK} />);
 
-        rerender(<WeekVolumeChart days={WEEK} isCurrent />);
-        expect(screen.getByText('Volume this week')).toBeInTheDocument();
-        expect(
-            screen.getByText('1 done · 1 missed so far'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Volume that week')).toBeInTheDocument();
     });
 
     it('labels every day of the week by its weekday', () => {

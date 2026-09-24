@@ -2,19 +2,12 @@ import type { PlanDay } from '@/lib/plan';
 
 import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
-import { computeAdherence, STATUS_BAR_FILL, weekdayLabel } from '@/lib/plan';
-
-const TALLIED_STATUSES = ['done', 'partial', 'missed', 'overreached'] as const;
-
-function complianceTally(days: PlanDay[]): string {
-    return TALLIED_STATUSES.map((status) => ({
-        status,
-        count: days.filter((d) => d.status === status).length,
-    }))
-        .filter(({ count }) => count > 0)
-        .map(({ status, count }) => `${count} ${status}`)
-        .join(' · ');
-}
+import {
+    complianceTally,
+    computeAdherence,
+    STATUS_BAR_FILL,
+    weekdayLabel,
+} from '@/lib/plan';
 
 /**
  * The week's planned-vs-actual volume, one column per day: a dashed outline
@@ -23,8 +16,7 @@ function complianceTally(days: PlanDay[]): string {
  */
 export default function WeekVolumeChart({
     days,
-    isCurrent = false,
-}: Readonly<{ days: PlanDay[]; isCurrent?: boolean }>) {
+}: Readonly<{ days: PlanDay[] }>) {
     const maxKm = Math.max(
         ...days.map((d) => Math.max(d.distance_km, d.actual_km ?? 0)),
         1,
@@ -37,13 +29,10 @@ export default function WeekVolumeChart({
             <div className="flex items-center justify-between gap-3">
                 <div>
                     <p className="text-label-micro text-text-2">
-                        Volume {isCurrent ? 'this week' : 'that week'}
+                        Volume that week
                     </p>
                     {tally !== '' && (
-                        <p className="mt-1 text-xs text-text-2">
-                            {tally}
-                            {isCurrent && ' so far'}
-                        </p>
+                        <p className="mt-1 text-xs text-text-2">{tally}</p>
                     )}
                 </div>
                 {adherence != null && (
