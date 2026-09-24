@@ -120,32 +120,40 @@ describe('Devtools/Design', () => {
         ).toBeInTheDocument();
     });
 
-    it("renders Temari's face at every shipped size against the live tokens", () => {
+    it('renders every mascot pose, on both the page ground and sky', () => {
         cleanup = declareTokens();
         const { container } = render(<Design />);
 
-        for (const heading of ["Temari's face", "Temari's face on sky"]) {
+        for (const heading of [
+            'Temari mascot · poses',
+            'Temari mascot · on sky',
+        ]) {
             expect(
                 screen.getByRole('heading', { name: heading }),
             ).toBeInTheDocument();
         }
 
-        const faces = Array.from(
-            container.querySelectorAll('[data-face-icon]'),
-        ).map((el) => el.getAttribute('width'));
-        for (const size of [
-            '26',
-            '34',
-            '36',
-            '40',
-            '42',
-            '48',
-            '56',
-            '64',
-            '72',
+        const poses = new Set(
+            Array.from(container.querySelectorAll('svg[data-mascot]')).map(
+                (el) => el.getAttribute('data-mascot'),
+            ),
+        );
+        for (const pose of [
+            'neutral',
+            'blazing',
+            'easy',
+            'chill',
+            'wobbly',
+            'gassed',
+            'overloaded',
+            'sleepy',
+            'thinking',
         ]) {
-            expect(faces).toContain(size);
+            expect(poses).toContain(pose);
         }
+        expect(
+            container.querySelector('svg[data-mascot][data-theme="dark"]'),
+        ).not.toBeNull();
     });
 
     it('renders the citation treatment, drawn and undrawn, on real narration', () => {

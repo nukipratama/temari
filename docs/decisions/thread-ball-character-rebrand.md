@@ -6,13 +6,16 @@ status: superseded
 superseded_by: temari-keeps-score-persona
 reviewed: 2026-08-11
 code_refs:
-  - resources/js/components/temari/FaceIcon.tsx
   - resources/js/components/TemariMark.tsx
   - app/Enums/Rarity.php
   - resources/css/app.css
 ---
 
 # Rebrand Temari from bunny/Daybreak to a thread-ball character
+
+> **`FaceIcon` is gone too (2026-09-24).** The flat face that replaced this note's art was itself
+> replaced by the living brand mark, the logo's arcs posed per mood. See
+> [[mascot-is-the-living-brand-mark]]. The decision below is unchanged; only its surfaces are.
 
 > **`shareCard.ts` is gone too (2026-09-18).** `#968` retired the client canvas renderer; the
 > share card is now server-rendered only. The decision below is unchanged, only its surfaces are.

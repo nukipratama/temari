@@ -8,9 +8,9 @@ The one-line goal: **sound like a training partner who keeps score** — still w
 
 temari (the character's name is lowercase, even at the start of a sentence — see [Register](#register) below) is a ball-bodied character with a face on its surface: brows, eyes and a mouth. It moves by bouncing and rolling, never walking.
 
-**Since `PP2` the drawing carries none of that range.** The rendering is one flat line-art icon, [FaceIcon.tsx](../resources/js/components/temari/FaceIcon.tsx): a ring, a face disc, two brows, two eyes and one fixed smile. The ten expressions, the mood halo, the eight pose names, the season thread coverage and the six accessory slots were all cut with the mascot rig — the frozen prototype draws none of them. What survives of mood in the art is the **ring colour**: the recap cards tint it to the week's mood, Today's and Profile's hero cards to leaf. See [[temari-mascot]].
+**The drawing carries only a little of that range.** Since the living-brand-mark redesign the character is the logo's two arcs posed per mood, [TemariMascot.tsx](../resources/js/components/temari/TemariMascot.tsx): one pose per run mood plus sleepy and thinking, with a small face inside. The ten expressions, the eight pose names, the season thread coverage and the six accessory slots of the old mascot rig stay gone. See [[temari-mascot]].
 
-This matters for copy. The face no longer carries range, so **the words have to.** temari keeps score, and flat, unimpressed and skeptical reads now live entirely in the sentence — praise reads as earned only because the writing is willing to withhold it.
+This matters for copy. A pose signals the mood; it cannot say *why*, so **the words still have to.** temari keeps score, and flat, unimpressed and skeptical reads now live entirely in the sentence — praise reads as earned only because the writing is willing to withhold it.
 
 The character's name is internal design context, not user-facing material. Never explain, gloss, or riff on it in a prompt, in copy, or in narration.
 

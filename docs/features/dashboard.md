@@ -3,7 +3,7 @@ title: Dashboard
 description: The home page — today's session and the voice on it, this week's plan widget carrying the week's own numbers, then the Past You verdict and its evidence
 tags: [feature, dashboard]
 status: living
-reviewed: 2026-09-17
+reviewed: 2026-09-24
 code_refs:
   - resources/js/pages/Home.tsx
   - app/Http/Controllers/DashboardController.php
@@ -42,7 +42,7 @@ Both halves of the ring count **training days only, against the non-rest rows th
 
 `snapshot` is **the current week's row or null**, never the newest one behind it: the card reads it as this week's actual against `planned_km_this_week`, and an athlete whose open week has no snapshot yet (a fresh signup mid-backfill) would otherwise be shown a previous week's distance as their own week's total.
 
-When `weekPlan` is null the slot draws [NoPlanCard](resources/js/components/home/NoPlanCard.tsx), the prototype's `planState: 'empty'` branch — a `FaceIcon`, "No plan yet." and a link into Plan. The shipped page used to render nothing here at all. It carries the week's km and TRIMP on a strip under the rule, since the plan card that normally states them is not drawn: an athlete without a plan still ran this week, and the numbers used to live in the disclosure that is now gone.
+When `weekPlan` is null the slot draws [NoPlanCard](resources/js/components/home/NoPlanCard.tsx), the prototype's `planState: 'empty'` branch: Temari's 28px gutter tag, "No plan yet." and a link into Plan. The shipped page used to render nothing here at all. It carries the week's km and TRIMP on a strip under the rule, since the plan card that normally states them is not drawn: an athlete without a plan still ran this week, and the numbers used to live in the disclosure that is now gone.
 
 `PP3` cut the widget's `N Credited In A Row` line and the `streak_days` metric behind it (P27): the prototype's plan card draws a credited/total ring and a phase badge, and no "in a row" line. "Streak" now survives in exactly one place, the week-grained [WeeklySnapshot::consecutiveWeekStreak()](app/Models/WeeklySnapshot.php) chip on Trends.
 
@@ -72,7 +72,7 @@ Every row shows **average pace and average HR for both runs** (HR is left off wh
 
 ## Today's session
 
-[TodaySession](resources/js/components/home/TodaySession.tsx) is the one forward-looking block on an otherwise backward-looking page: a leaf-ringed `FaceIcon`, sized to span the "Today" eyebrow and the prescription row beside it, what today asks for, then the voice describing it, on a `today-accent` edged card (`PS3` moved it off the `sky` panel it used to sit on, see [[design-tokens]]).
+[TodaySession](resources/js/components/home/TodaySession.tsx) is the one forward-looking block on an otherwise backward-looking page: Temari peeking from the card's corner, posed to the daily vibe (`briefing.mood`) and thinking while today's read is written, beside the "Today" eyebrow; what today asks for, clearing the peek at full width, then the voice describing it, on a `today-accent` edged card (`PS3` moved it off the `sky` panel it used to sit on, see [[design-tokens]]).
 
 The prescription is `weekPlan`'s row for today, passed down by the page and drawn as one line: the session type, its distance and the core set's pace. A day the plan has already judged states both figures it recorded instead, one line per side — `asked N km · pace` then `ran N km · pace`, no arrows — from the same `judgedDayResult()` and shared `AskedRanResult` (see [DeltaPair.tsx](resources/js/components/plan/DeltaPair.tsx)) the Plan page's day rows read, so the two pages cannot phrase the day differently. A recorded readiness ease is the session itself: the line states the eased session as a delta pair (the replaced type and/or distance struck through, tagged `eased`), with what it was eased from and the clamp line explaining it beneath, as ordinary prose rather than a footnote. A clamp that shows but was never recorded still renders beneath the stored prescription as a marked step-down. See [[the-eased-session-leads]] and [[the-clamp-explains-itself]]. When no plan covers today the block is the voice alone.
 
