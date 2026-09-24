@@ -47,11 +47,22 @@ const oneClaim = [
 ];
 
 const defaultProps = {
+    mood: 'easy' as const,
     story: makeAnalysis(1, 'post_run_speech', 'done', "This run's story."),
     insight: claimsAnalysis(oneClaim),
 };
 
 describe('RunLenses', () => {
+    it('tags the voice header with a 28px mascot posed to the run mood', () => {
+        const { container } = render(
+            <RunLenses {...defaultProps} mood="overloaded" />,
+        );
+        const mascot = container.querySelector('svg[data-mascot]');
+
+        expect(mascot?.getAttribute('data-mascot')).toBe('overloaded');
+        expect(mascot?.getAttribute('width')).toBe('28');
+    });
+
     it('heads the one voice card and labels both halves of it', () => {
         render(<RunLenses {...defaultProps} isChainHead />);
         expect(

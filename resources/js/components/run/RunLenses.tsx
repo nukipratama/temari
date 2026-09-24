@@ -8,10 +8,10 @@ import {
 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
-import type { AnalysisPayload, SharedProps } from '@/types/inertia';
+import type { AnalysisPayload, Mood, SharedProps } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import FaceIcon from '@/components/temari/FaceIcon';
+import TemariMascot from '@/components/temari/TemariMascot';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
@@ -43,6 +43,7 @@ interface RunInsightClaim {
 }
 
 interface RunLensesProps {
+    mood: Mood;
     /** The post-run story (PostRunSpeech). */
     story: AnalysisPayload;
     /** The adaptive claims block (RunInsight) — a variable-length list of anchored observations. */
@@ -180,6 +181,7 @@ function LensLabel({
  * surface, separated by a hairline rather than split into two cards.
  */
 export default function RunLenses({
+    mood,
     story,
     insight,
     isChainHead = false,
@@ -212,7 +214,7 @@ export default function RunLenses({
     return (
         <section className={className}>
             <header className="mb-3 flex items-center gap-3">
-                <FaceIcon size={40} />
+                <TemariMascot pose={mood} size={28} />
                 <div className="min-w-0 flex-1">
                     <h2 className="font-serif text-quote-md italic text-foreground">
                         What Temari says

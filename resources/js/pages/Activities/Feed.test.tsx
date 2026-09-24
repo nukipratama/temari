@@ -1,10 +1,46 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { WeeklySnapshotWithRecap } from '@/types/inertia';
+
 import { makeUser, setMockDeferred, setMockPage } from '@/test/setup';
 
 import RunsIndex from './Feed';
 import { run } from './runFixture';
+
+function recapSnapshot(
+    id: number,
+    weekEnding: string,
+    content: string,
+): WeeklySnapshotWithRecap {
+    return {
+        id,
+        user_id: 1,
+        week_ending: weekEnding,
+        distance_km: 10,
+        runs: 1,
+        weekly_trimp: 50,
+        atl_7d: 40,
+        ctl_42d: 40,
+        form: 0,
+        form_status: 'optimal',
+        avg_decoupling: null,
+        monotony: null,
+        strain: null,
+        is_current_week: false,
+        is_chain_head: false,
+        recap_analysis: {
+            id,
+            status: 'done',
+            content,
+            type: 'weekly_recap',
+            subject_type: 'weekly_snapshot',
+            subject_id: id,
+            discriminator: null,
+        },
+        notification_retry_after_seconds: null,
+    };
+}
 
 vi.mock('@/components/run/RunListRow', () => ({
     default: ({ detail }: { detail: { name: string } }) => (
@@ -284,5 +320,29 @@ describe('Activities/Feed', () => {
         expect(
             screen.queryByText(/Viewing the week of/),
         ).not.toBeInTheDocument();
+    });
+
+    it('gives the page one peek: the newest week that has a recap', () => {
+        render(
+            <RunsIndex
+                runs={[
+                    run(1, 'This week', '2026-05-26T06:00:00'),
+                    run(2, 'Last week', '2026-05-19T06:00:00'),
+                    run(3, 'Older', '2026-05-12T06:00:00'),
+                ]}
+                rangeFilter="8w"
+                weeklySnapshots={[
+                    recapSnapshot(20, '2026-05-24', 'last week recap'),
+                    recapSnapshot(30, '2026-05-17', 'older recap'),
+                ]}
+            />,
+        );
+
+        const clearances = screen.getAllByTestId('recap-peek-clearance');
+
+        expect(clearances).toHaveLength(1);
+        expect(clearances[0].parentElement).toHaveTextContent(
+            'last week recap',
+        );
     });
 });

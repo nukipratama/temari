@@ -31,6 +31,40 @@ beforeEach(() => {
 });
 
 describe('RecapCard', () => {
+    it('tags a recap with the 28px mascot posed to its mood by default', () => {
+        const { container } = render(
+            <RecapCard mood="gassed" analysis={analysis()} />,
+        );
+        const mascot = container.querySelector('svg[data-mascot]');
+
+        expect(mascot?.getAttribute('data-mascot')).toBe('gassed');
+        expect(mascot?.getAttribute('width')).toBe('28');
+        expect(screen.queryByTestId('recap-peek-clearance')).toBeNull();
+    });
+
+    it('peeks from the corner and wraps the copy around it when it holds the page peek', () => {
+        const { container } = render(
+            <RecapCard mood="easy" analysis={analysis()} peek />,
+        );
+        const mascot = container.querySelector('svg[data-mascot]');
+
+        expect(mascot?.getAttribute('width')).toBe('96');
+        expect(mascot?.getAttribute('class')).toContain('absolute');
+        expect(screen.getByTestId('recap-peek-clearance')).toBeInTheDocument();
+    });
+
+    it('falls back to the neutral pose when the period has no mood', () => {
+        const { container } = render(
+            <RecapCard mood={null} analysis={analysis()} />,
+        );
+
+        expect(
+            container
+                .querySelector('svg[data-mascot]')
+                ?.getAttribute('data-mascot'),
+        ).toBe('neutral');
+    });
+
     it('renders the done narration and any chips passed in', () => {
         render(
             <RecapCard

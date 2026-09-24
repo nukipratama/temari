@@ -75,6 +75,9 @@ export default function RunsIndex({
         () => snapshotsByWeekEnding(weeklySnapshots),
         [weeklySnapshots],
     );
+    const peekWeekEnding = buckets.find((bucket) =>
+        snapshotsByWeek.has(bucket.weekEnding),
+    )?.weekEnding;
 
     const hasRuns = runs.length > 0;
 
@@ -123,6 +126,10 @@ export default function RunsIndex({
                                             }
                                             notes={notes}
                                             moods={moods}
+                                            peekRecap={
+                                                bucket.weekEnding ===
+                                                peekWeekEnding
+                                            }
                                         />
                                     </div>
                                 ))}

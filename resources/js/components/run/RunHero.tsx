@@ -10,11 +10,14 @@ import {
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
 import MapWeatherPanel from '@/components/run/MapWeatherPanel';
-import FaceIcon from '@/components/temari/FaceIcon';
+import MascotPeek, {
+    PANEL_PEEK_CLEARANCE,
+} from '@/components/temari/MascotPeek';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import MoodChip from '@/components/ui/MoodChip';
 import { useCountUp } from '@/hooks/useCountUp';
+import { cn } from '@/lib/cn';
 import { formatPace, formatShortDateTimeId } from '@/lib/pace';
 import { revealDelay } from '@/lib/styles';
 
@@ -88,9 +91,11 @@ export default function RunHero({
     ];
 
     return (
-        <section className="rounded-panel border border-border-strong bg-card p-5 shadow-e1">
-            <header className="flex items-start gap-3.5">
-                <FaceIcon size={56} />
+        <section className="relative overflow-hidden rounded-panel border border-border-strong bg-card p-5 shadow-e1">
+            <MascotPeek pose={mood} fit="panel" />
+            <header
+                className={cn('flex items-start gap-3.5', PANEL_PEEK_CLEARANCE)}
+            >
                 <div className="min-w-0 flex-1">
                     <Eyebrow token="micro" tone="ink-2">
                         {formatShortDateTimeId(detail.start_date_local)}
