@@ -111,13 +111,7 @@ class DemoRunSeeder
     }
 
     /**
-     * Idempotent: most rows key on a deterministic identity (blueprint seed,
-     * activity_id, ISO week, …) via updateOrCreate. The scripted+filler
-     * timeline does not — every blueprint is anchored to Carbon::today(), so
-     * its identity shifts whenever "today" does — so resetGeneratedData()
-     * clears the previous run first and this rebuilds it from scratch every
-     * time, converging to the same dataset regardless of which calendar day
-     * the seed runs on.
+     * Idempotent: clears the previous run's timeline first, so re-seeding on any day converges.
      *
      * @param  Closure(string): void|null  $log  optional reporter (command::info etc.)
      */
@@ -792,24 +786,7 @@ class DemoRunSeeder
         return $user;
     }
 
-    /**
-     * Clears the demo user's previously seeded runs and their derived rows
-     * before rebuilding the timeline, so a re-seed on a different calendar
-     * day replaces the dataset instead of stacking a second copy onto it
-     * (RunBlueprint::seed() hashes the blueprint's Carbon::today()-anchored
-     * start date, so that identity — and updateOrCreate's match on it —
-     * moves every time "today" does, and re-running always leaves the prior
-     * run's rows behind otherwise). Scoped to this user's own rows only.
-     *
-     * Deleting Activity cascades to ActivityDetail, ActivityStream, RunCard,
-     * the post_run StoryLine and RunQuestion rows via their own FKs.
-     * PersonalRecord.activity_id is nullOnDelete rather than cascaded, but
-     * detectAndStore() re-keys on (user_id, category) as the same blueprints
-     * reseed, so those rows heal in place without needing to be cleared here.
-     * Analysis is polymorphic and carries no FK, so its Activity/RunCard/
-     * WeeklySnapshot-scoped rows are deleted explicitly by the ids about to
-     * be replaced.
-     */
+    /** Deletes this user's seeded runs and derived rows; Analysis has no FK, so its rows go by id. */
     private function resetGeneratedData(User $user, Closure $log): void
     {
         $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
