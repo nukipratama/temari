@@ -118,7 +118,7 @@ final readonly class Periodizer
      * Y-m-d. Reads nothing and writes nothing — everything it needs is in
      * {@see PlanInputs}.
      *
-     * @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null, ...}>
+     * @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
     public function rowsFor(PlanInputs $inputs): array
     {
@@ -238,7 +238,7 @@ final readonly class Periodizer
 
     /**
      * @param array<string, array{phase: PlanPhase, session_type: SessionType, ...}> $rows
-     * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null, ...}>
+     * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
     private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart): array
     {
@@ -328,10 +328,10 @@ final readonly class Periodizer
     }
 
     /**
-     * @param array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null, ...}> $rows
+     * @param array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}> $rows
      * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null}> $fixedSessions
      * @param Carbon $weekStart
-     * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null, ...}>
+     * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
     private static function capQualityAroundWeeklyHardDays(array $rows, array $fixedSessions, Carbon $weekStart): array
     {

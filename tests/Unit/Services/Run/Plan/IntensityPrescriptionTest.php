@@ -20,5 +20,5 @@ it('serializes the persisted prescription contract and restores it from a row', 
 });
 
 it('recognises a zero-minute prescription as easy', function (): void {
-    expect(new IntensityPrescription(0, null, null, 'easy volume')->isEasy())->toBeTrue();
+    expect(new IntensityPrescription(0, null, null, null)->isEasy())->toBeTrue();
 });

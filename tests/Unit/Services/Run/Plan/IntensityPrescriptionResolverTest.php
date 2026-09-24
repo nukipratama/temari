@@ -91,3 +91,9 @@ it('keeps comparable evidence separate for threshold and race-specific work', fu
         ->and(IntensityPrescriptionResolver::familyKey(SessionType::Tempo, 42_195, 12_000))->toBe('race_tempo')
         ->and(IntensityPrescriptionResolver::familyKey(SessionType::Long, 50_000, 21_000))->toBe('race_long');
 });
+
+it('stores no reason for a day that prescribes no quality', function (): void {
+    expect($this->resolver->resolve(SessionType::Rest, PlanPhase::Build, null, null, null)->reason)->toBeNull()
+        ->and($this->resolver->resolve(SessionType::Easy, PlanPhase::Build, null, null, null)->reason)->toBeNull()
+        ->and($this->resolver->resolve(SessionType::Long, PlanPhase::Base, null, null, null)->reason)->toBeNull();
+});
