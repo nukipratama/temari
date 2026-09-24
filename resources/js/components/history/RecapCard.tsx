@@ -4,10 +4,8 @@ import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import SendNotificationButton from '@/components/SendNotificationButton';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import MascotPeek, {
-    MascotPeekClearance,
-} from '@/components/temari/MascotPeek';
-import TemariMascot, { writingPose } from '@/components/temari/TemariMascot';
+import MascotWatermark from '@/components/temari/MascotWatermark';
+import { writingPose } from '@/components/temari/TemariMascot';
 import { useNotificationsReachable } from '@/hooks/useNotificationsReachable';
 import { cn } from '@/lib/cn';
 import { renderBold } from '@/lib/richText';
@@ -33,8 +31,6 @@ interface RecapCardProps {
     /** The "send this recap" affordance, only offered once narration is done. */
     notification?: { url: string; retryAfterSeconds: number | null } | null;
     size?: 'week' | 'month';
-    /** The page's one corner peek; every other recap carries the gutter tag. */
-    peek?: boolean;
     className?: string;
 }
 
@@ -42,7 +38,7 @@ const DEFAULT_RELOAD_PROPS = ['weeklySnapshots', 'historicalSnapshots'];
 
 /**
  * Temari's narrative recap for a week or a month: Temari posed to the period's
- * mood, peeking from the corner or tagged beside a single column holding the period's chips, then the narration, then the
+ * mood, as a watermark behind a single column holding the period's chips, then the narration, then the
  * "send it" affordance once the block is done. Shared shape for the Feed's
  * weekly recap and the Calendar's monthly recap so both read as the same
  * feature at two grains.
@@ -58,7 +54,6 @@ export default function RecapCard({
     chips,
     notification = null,
     size = 'week',
-    peek = false,
     className,
 }: Readonly<RecapCardProps>) {
     const pose = writingPose(mood ?? 'neutral', analysis);
@@ -67,19 +62,13 @@ export default function RecapCard({
     return (
         <div
             className={cn(
-                'rounded-md border border-border-strong bg-card shadow-e1',
-                peek ? 'relative overflow-hidden' : 'flex items-start gap-2.5',
+                'relative isolate overflow-hidden rounded-md border border-border-strong bg-card shadow-e1',
                 size === 'week' ? 'p-3' : 'p-3.5',
                 className,
             )}
         >
-            {peek ? (
-                <MascotPeek pose={pose} />
-            ) : (
-                <TemariMascot pose={pose} size={28} />
-            )}
-            <div className="min-w-0 flex-1">
-                {peek && <MascotPeekClearance />}
+            <MascotWatermark pose={pose} className="-right-14 -bottom-15" />
+            <div className="min-w-0">
                 {(chips || (notification && analysis.status === 'done')) && (
                     <div
                         data-testid="recap-secondary"

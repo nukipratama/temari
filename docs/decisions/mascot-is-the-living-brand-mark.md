@@ -6,7 +6,6 @@ status: accepted
 reviewed: 2026-09-24
 code_refs:
   - resources/js/components/temari/TemariMascot.tsx
-  - resources/js/components/temari/MascotPeek.tsx
   - resources/js/components/TemariMark.tsx
   - app/Http/Controllers/ProfileController.php
 ---
@@ -31,7 +30,7 @@ After `PP2` the character was one flat `FaceIcon`: a ring, a face disc and a fix
 - **The logo's arcs are the character.** [TemariMascot](resources/js/components/temari/TemariMascot.tsx) draws [TemariMark](resources/js/components/TemariMark.tsx)'s two arcs posed per run mood (arc sweep, gap and tilt as body language, never data), plus `neutral`, `sleepy` for empty states and `thinking` for narration being written. A face sits inside and drops to eyes only when it would render under 32px.
 - **What it reacts to.** Run surfaces use the run's mood. Today and Profile use the daily vibe collapsed onto a mood by `Temari::moodForVibe`. Any card whose narration is queued or processing switches its own mascot to `thinking`.
 - **The logo never reacts.** The header, Login and share-card mark stay fixed.
-- **Presentation replaces the column.** A **corner peek** ([MascotPeek](resources/js/components/temari/MascotPeek.tsx)) is cropped by the card's top-left corner, with copy wrapping round it, **at most once per page**. Elsewhere a 28px **gutter tag** sits beside the voice line, a **sleepy** pose sits inline in empty states, and a one-shot **draw-in** marks the big moments. Trends, Login and Settings still carry no mascot.
+- **Presentation replaces the column.** A **corner peek** (`MascotPeek`, since deleted) is cropped by the card's top-left corner, with copy wrapping round it, **at most once per page**. Elsewhere a 28px **gutter tag** sits beside the voice line, a **sleepy** pose sits inline in empty states, and a one-shot **draw-in** marks the big moments. Trends, Login and Settings still carry no mascot.
 - **One Temari per card.** A card never shows a second mascot inside its own loading state.
 - **Colour.** The inner arc takes the mood's `-ink` tier so it holds contrast on both grounds; blazing keeps the vivid gold, which already clears the dark ground. Fixed-dark surfaces scope `data-theme="dark"` onto the svg.
 
