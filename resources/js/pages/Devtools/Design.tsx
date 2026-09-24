@@ -99,7 +99,7 @@ function MascotGallery() {
         <>
             <Section
                 title="Temari mascot · poses"
-                note="The living brand mark: the logo's two arcs, posed per run mood, plus neutral, sleepy (empty states) and thinking (pending narration). The inner arc carries the mood's -ink tier so it holds contrast on both grounds; switch the ground in Settings to review the other one."
+                note="The living brand mark: the logo's two arcs, posed per run mood, plus neutral, sleepy (empty states) and thinking (pending narration). The inner arc carries the mood's -ink tier so it holds contrast on both grounds, except blazing, which keeps its vivid gold; switch the ground in Settings to review the other one."
             >
                 <div className="flex flex-wrap items-end gap-2.5">
                     {MASCOT_POSES.map((pose) => (

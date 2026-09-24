@@ -38,7 +38,7 @@ export const POSES: Readonly<Record<MascotPose, PoseSpec>> = {
     blazing: {
         outer: [[0, 352]],
         inner: [[0, 345]],
-        innerColor: moodInk('blazing'),
+        innerColor: 'var(--color-mood-blazing)',
         eyes: 'happy',
         mouth: 'grin',
     },

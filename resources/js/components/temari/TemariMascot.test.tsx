@@ -45,6 +45,14 @@ describe('TemariMascot', () => {
         ).toBe('var(--color-mood-gassed-ink)');
     });
 
+    it('keeps blazing on the vivid gold, which already clears the dark ground', () => {
+        const svg = svgOf(render(<TemariMascot pose="blazing" />).container);
+
+        expect(
+            svg.querySelector('[data-arc="inner"]')?.getAttribute('stroke'),
+        ).toBe('var(--color-mood-blazing)');
+    });
+
     it('breaks the outer arc in two when overloaded', () => {
         const svg = svgOf(render(<TemariMascot pose="overloaded" />).container);
 
