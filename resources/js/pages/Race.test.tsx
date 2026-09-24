@@ -23,17 +23,18 @@ const PROJECTION = {
 };
 
 describe('Race', () => {
-    it('draws the prototype section list in order once a race is set', () => {
+    it('leads with the duel under a compact header once a race is set', () => {
         const { container } = render(
             <Race race={RACE} projection={PROJECTION} />,
         );
 
         const headings = [
             'Race',
-            'your race,',
-            'race goal',
+            'your race.',
+            'plan',
+            'your goal',
+            'on track for',
             'Jakarta 10K',
-            'Projected finish',
             'edit your race',
         ];
         const text = container.textContent ?? '';
@@ -43,14 +44,13 @@ describe('Race', () => {
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
     });
 
-    it('swaps the headline and shows the empty state when no race is set', () => {
+    it('shows the empty state when no race is set', () => {
         render(<Race race={null} projection={null} />);
 
-        expect(screen.getByText(/give the plan/)).toBeInTheDocument();
         expect(
             screen.getByText('no race on the calendar yet.'),
         ).toBeInTheDocument();
-        expect(screen.queryByText('Projected finish')).not.toBeInTheDocument();
+        expect(screen.queryByText('your goal')).not.toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'set race' }),
         ).toBeInTheDocument();
@@ -64,19 +64,22 @@ describe('Race', () => {
         expect(screen.getByText('edit your race')).toBeInTheDocument();
     });
 
-    it('marks the race tab as current in the schedule switcher', () => {
+    it('links across to the plan instead of drawing the schedule tabs', () => {
         render(<Race race={null} projection={null} />);
 
-        expect(screen.getByText('race goal').closest('a')).toHaveAttribute(
-            'aria-current',
-            'page',
+        expect(screen.getByRole('link', { name: 'plan' })).toHaveAttribute(
+            'href',
+            '/plan',
         );
+        expect(screen.queryByText('race goal')).not.toBeInTheDocument();
     });
 
-    it('explains there is no projection yet when the race has no PR to anchor from', () => {
+    it('shows the goal alone when the race has no projection yet', () => {
         render(<Race race={RACE} projection={null} />);
 
-        expect(screen.getByText(/No personal record yet/)).toBeInTheDocument();
+        expect(
+            screen.getByText('not enough recent runs to project yet'),
+        ).toBeInTheDocument();
     });
 
     it('draws no fitness chart — that block is cut (P26)', () => {
@@ -89,14 +92,14 @@ describe('Race', () => {
         expect(screen.queryByText(/^Fitness/i)).not.toBeInTheDocument();
     });
 
-    it('draws Temari only in the projection block when a race is set', () => {
+    it('draws Temari only as the duel card watermark when a race is set', () => {
         const { container } = render(
             <Race race={RACE} projection={PROJECTION} />,
         );
 
         const mascots = container.querySelectorAll('svg[data-mascot]');
         expect(mascots).toHaveLength(1);
-        expect(mascots[0]).toHaveAttribute('width', '40');
+        expect(mascots[0]).toHaveAttribute('width', '200');
     });
 
     it('draws Temari only in the empty state when no race is set', () => {
@@ -107,11 +110,10 @@ describe('Race', () => {
         expect(mascots[0]).toHaveAttribute('data-mascot', 'sleepy');
     });
 
-    it('shows the saved race summary figures', () => {
+    it('states the gap between the goal and the projection', () => {
         render(<Race race={RACE} projection={PROJECTION} />);
 
-        expect(screen.getByText('10.0 km')).toBeInTheDocument();
-        expect(screen.getByText('50:00')).toBeInTheDocument();
+        expect(screen.getByText('1:40 behind')).toBeInTheDocument();
     });
 
     /**

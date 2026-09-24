@@ -1,3 +1,5 @@
+import type { Mood } from '@/types/inertia';
+
 import { formatDurationHMS, formatPace } from '@/lib/pace';
 
 /**
@@ -87,4 +89,41 @@ export function ambitiousGoalWarning(
     }
 
     return `That's well ahead of your own projected range (${formatDurationHMS(projection.lowSec)}–${formatDurationHMS(projection.highSec)}). Ambitious, but you can still save it.`;
+}
+
+export const ON_GOAL_TOLERANCE_SEC = 5;
+
+export type GoalGapVerdict = 'behind' | 'ahead' | 'on';
+
+/** The projection against the goal, in words: "8:29 behind", "2:10 ahead" or "on goal". */
+export function goalGap(
+    goalSec: number,
+    predictedSec: number,
+): { verdict: GoalGapVerdict; label: string } {
+    const gapSec = Math.round(predictedSec) - goalSec;
+    if (Math.abs(gapSec) <= ON_GOAL_TOLERANCE_SEC) {
+        return { verdict: 'on', label: 'on goal' };
+    }
+    const verdict = gapSec > 0 ? 'behind' : 'ahead';
+
+    return {
+        verdict,
+        label: `${formatDurationHMS(Math.abs(gapSec))} ${verdict}`,
+    };
+}
+
+/** Temari's pose for how far the projection trails the goal, as a share of the goal time. */
+export function goalGapPose(goalSec: number, predictedSec: number): Mood {
+    const behindRatio = (predictedSec - goalSec) / goalSec;
+    if (behindRatio <= 0.01) {
+        return 'blazing';
+    }
+    if (behindRatio <= 0.03) {
+        return 'easy';
+    }
+    if (behindRatio <= 0.08) {
+        return 'wobbly';
+    }
+
+    return 'gassed';
 }
