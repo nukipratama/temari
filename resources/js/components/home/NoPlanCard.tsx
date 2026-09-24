@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react';
 
 import type { WeeklySnapshot } from '@/types/inertia';
 
-import FaceIcon from '@/components/temari/FaceIcon';
+import TemariMascot from '@/components/temari/TemariMascot';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 
@@ -21,8 +21,8 @@ export default function NoPlanCard({
 
     return (
         <Card as="section">
-            <div className="flex items-center gap-3.5">
-                <FaceIcon size={40} />
+            <div className="flex items-start gap-2.5">
+                <TemariMascot size={28} />
                 <div>
                     <p className="text-base font-semibold text-foreground">
                         No plan yet.

@@ -1,18 +1,13 @@
 import type { ReactNode } from 'react';
 
-import FaceIcon from '@/components/temari/FaceIcon';
+import TemariMascot from '@/components/temari/TemariMascot';
 import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 
 interface EmptyPanelProps {
-    /** Draw Temari's face beside or above the copy, as the prototype's empty states do. */
+    /** Draw Temari dozing beside the copy. */
     face?: boolean;
-    /**
-     * The prototype draws its face at 40 everywhere except Plan's whole-page
-     * "no plan yet.", which takes 48. Both axes are per-screen; see PS12.
-     */
-    faceSize?: 40 | 48;
-    /** Face left with the copy beside it, or face on top with everything centred. */
+    /** Temari left with the copy beside it, or inline with a centred title. */
     layout?: 'centered' | 'horizontal';
     title: string;
     body?: string;
@@ -23,7 +18,6 @@ interface EmptyPanelProps {
 
 export default function EmptyPanel({
     face = false,
-    faceSize = 40,
     layout = 'centered',
     title,
     body,
@@ -45,14 +39,19 @@ export default function EmptyPanel({
                 className,
             )}
         >
-            {face && <FaceIcon size={faceSize} />}
+            {face && horizontal && <TemariMascot pose="sleepy" size={40} />}
             <div className={cn(horizontal && 'min-w-0')}>
                 <p
                     className={cn(
                         'text-2xl text-text-2',
-                        face && !horizontal && 'mt-4',
+                        face &&
+                            !horizontal &&
+                            'inline-flex items-center gap-2.5',
                     )}
                 >
+                    {face && !horizontal && (
+                        <TemariMascot pose="sleepy" size={36} />
+                    )}
                     {title}
                 </p>
                 {body && (

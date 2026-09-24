@@ -32,6 +32,14 @@ describe('TemariNudgeModal', () => {
         ).toBeInTheDocument();
     });
 
+    it('draws Temari in with the one-shot trace', () => {
+        render(<TemariNudgeModal open onClose={vi.fn()} {...baseProps} />);
+        const mascot = document.querySelector('svg[data-mascot]');
+
+        expect(mascot).toHaveAttribute('width', '72');
+        expect(mascot?.querySelector('.draw-in')).not.toBeNull();
+    });
+
     it('wires the dialog to the title via aria-labelledby', () => {
         render(<TemariNudgeModal open onClose={vi.fn()} {...baseProps} />);
         const dialog = screen.getByRole('dialog');

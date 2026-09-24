@@ -52,7 +52,10 @@ describe('EmptyPanel', () => {
         const { container } = render(
             <EmptyPanel face title="Judul" className="" />,
         );
-        expect(container.querySelector('[data-face-icon]')).toBeInTheDocument();
+        expect(container.querySelector('svg[data-mascot]')).toHaveAttribute(
+            'data-mascot',
+            'sleepy',
+        );
     });
 
     it('omits the face by default', () => {
@@ -85,20 +88,18 @@ describe('EmptyPanel', () => {
         );
     });
 
-    it('draws the face at 40 by default and at 48 only when the caller asks', () => {
-        const { container, rerender } = render(
+    it('dozes inline with a centred title rather than stacked above it', () => {
+        const { container } = render(
             <EmptyPanel face title="Judul" className="" />,
         );
-        expect(container.querySelector('[data-face-icon]')).toHaveAttribute(
-            'width',
-            '40',
-        );
+        const title = screen.getByText('Judul');
 
-        rerender(<EmptyPanel face faceSize={48} title="Judul" className="" />);
-        expect(container.querySelector('[data-face-icon]')).toHaveAttribute(
+        expect(title.querySelector('svg[data-mascot]')).toHaveAttribute(
             'width',
-            '48',
+            '36',
         );
+        expect(title).toHaveClass('inline-flex');
+        expect(container.querySelectorAll('svg[data-mascot]')).toHaveLength(1);
     });
 
     it('lays the face beside the copy when the layout is horizontal', () => {
@@ -117,8 +118,11 @@ describe('EmptyPanel', () => {
             'text-left',
         );
         expect(container.firstElementChild).not.toHaveClass('text-center');
-        // The face is a sibling of the copy block, not stacked above it.
-        expect(screen.getByText('Judul')).not.toHaveClass('mt-4');
+        // Temari is a sibling of the copy block, not inside the title.
+        expect(screen.getByText('Judul').querySelector('svg')).toBeNull();
+        expect(
+            container.firstElementChild?.querySelector(':scope > svg'),
+        ).toHaveAttribute('width', '40');
     });
 
     it('renders as a div by default', () => {

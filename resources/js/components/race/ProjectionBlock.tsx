@@ -1,5 +1,5 @@
 import ProjectionGauge from '@/components/race/ProjectionGauge';
-import FaceIcon from '@/components/temari/FaceIcon';
+import TemariMascot from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import Card from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -68,11 +68,11 @@ export default function ProjectionBlock({
                 style={{ background: GLOW }}
             />
             <div className="reveal">
-                <div className="relative flex items-center gap-1.5">
+                <div className="relative flex items-center gap-2">
+                    <TemariMascot size={28} />
                     <Eyebrow token="micro" tone="ink-2">
                         Projected finish
                     </Eyebrow>
-                    <FaceIcon size={18} />
                 </div>
                 <div className="relative mt-2 flex justify-center">
                     <ProjectionGauge

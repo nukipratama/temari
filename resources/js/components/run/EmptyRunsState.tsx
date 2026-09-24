@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import type { SharedProps, StravaSyncState } from '@/types/inertia';
 
 import StravaSyncButton from '@/components/StravaSyncButton';
-import FaceIcon from '@/components/temari/FaceIcon';
+import TemariMascot from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
@@ -84,11 +84,17 @@ export default function EmptyRunsState({
         <div className="flex flex-col items-center gap-8 px-4 py-10">
             {/* Temari + headline */}
             <div className="flex flex-col items-center gap-5 text-center">
-                <FaceIcon size={72} />
                 <div>
-                    <Eyebrow token="hero" tone="horizon-ink" className="mb-3">
-                        {hero.eyebrow}
-                    </Eyebrow>
+                    <div className="mb-3 flex items-center justify-center gap-2.5">
+                        <TemariMascot
+                            pose={isSyncing ? 'thinking' : 'sleepy'}
+                            size={40}
+                            onSky={onSky}
+                        />
+                        <Eyebrow token="hero" tone="horizon-ink">
+                            {hero.eyebrow}
+                        </Eyebrow>
+                    </div>
                     <h2
                         className={cn(
                             'font-serif text-display-sm',

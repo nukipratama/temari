@@ -216,7 +216,6 @@ export default function Plan({
                         weeks!.length === 0 || season === null ? (
                             <EmptyPanel
                                 face
-                                faceSize={48}
                                 title="no plan yet."
                                 body="hit regenerate and temari will lay out the weeks ahead."
                                 className="mt-6"

@@ -59,6 +59,24 @@ function expectActionLinks() {
 }
 
 describe('EmptyRunsState', () => {
+    it('shows Temari thinking while a sync is in flight', () => {
+        renderWithState('syncing');
+
+        expect(document.querySelector('svg[data-mascot]')).toHaveAttribute(
+            'data-mascot',
+            'thinking',
+        );
+    });
+
+    it('shows Temari dozing when no sync is running', () => {
+        renderWithState('ready');
+
+        expect(document.querySelector('svg[data-mascot]')).toHaveAttribute(
+            'data-mascot',
+            'sleepy',
+        );
+    });
+
     it('starts polling hasRuns + stravaSync while a sync is in flight', () => {
         const { start, stop } = renderWithState('syncing');
 
