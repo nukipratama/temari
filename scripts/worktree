@@ -11,8 +11,10 @@ usage() {
   cat >&2 <<EOF
 Usage:
   scripts/worktree create <name> [base]
+  scripts/worktree adopt [path]
   scripts/worktree setup <slot>
   scripts/worktree remove <path>
+  scripts/worktree prune
 EOF
   exit 1
 }
@@ -113,7 +115,8 @@ slot_lock_is_stale() {
   local owner=""
 
   [ ! -f "${slot_dir}/path" ] || owner="$(<"${slot_dir}/path")"
-  [ -n "$owner" ] && [ ! -e "$owner" ]
+  [ -n "$owner" ] || return 1
+  [ ! -f "${owner}/.git" ] || ! git -C "$owner" rev-parse --git-dir >/dev/null 2>&1
 }
 
 ALLOCATED_SLOT=""
@@ -128,6 +131,9 @@ allocate_slot_for() {
   mkdir -p "$locks_dir"
   while true; do
     slot_dir="${locks_dir}/slot-${slot}"
+    if slot_lock_is_stale "$slot_dir"; then
+      clean_stale_slot "$slot" "$common_dir" || true
+    fi
     if mkdir "$slot_dir" 2>/dev/null || slot_lock_is_stale "$slot_dir"; then
       if printf '%s\n' "$worktree" > "${slot_dir}/path" &&
         printf '%s\n' "$branch" > "${slot_dir}/branch"; then
@@ -222,7 +228,7 @@ EOF
     -e "CREATE DATABASE IF NOT EXISTS \`${test_db_schema}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
   docker compose up -d
-  docker compose exec -u root app chown -R www-data:www-data node_modules /var/cache/composer /var/cache/npm
+  docker compose exec -u root app chown www-data:www-data node_modules /var/cache/composer /var/cache/npm
 
   app() { docker compose exec -T app "$@"; }
 
@@ -230,20 +236,20 @@ EOF
   grep -qE '^APP_KEY=.+' .env || app php artisan key:generate
   app php artisan migrate --force
   app php artisan migrate --database=analytics --path=database/migrations/analytics --force
+  app test -x node_modules/.bin/vite || app npm ci --no-audit --no-fund
+  app npm run build
 
   cat <<EOF
 worktree: slot $slot configured; APP_PORT=$app_port, VITE_PORT=$vite_port.
 DB: $db_schema (+ $db_analytics_schema) on shared MySQL. Redis: indices
 $redis_base-$((redis_base + 2)) on shared Redis. Tests: $test_db_schema on
 shared test MySQL, Redis index $test_redis_db; see .env.testing.
-Stack is up, PHP dependencies are installed, and both migration sets completed.
+Stack is up, PHP and npm dependencies are installed, both migration sets
+completed and assets are built; pages load at http://localhost:${app_port}.
+Run ./vendor/bin/sail npm run dev only when you need HMR.
 
 /devtools, /devtools/narration, /horizon and /pulse use HTTP Basic; any username,
 password = DEVTOOLS_PASSWORD from this worktree's .env.
-
-The PHP suites are ready. To also load pages in a browser:
-  ./vendor/bin/sail npm ci
-  ./vendor/bin/sail npm run dev
 EOF
 }
 
@@ -268,7 +274,7 @@ remove_project_volumes() {
 }
 
 clean_slot_data() {
-  local worktree="$1"
+  local env_file="$1"
   local slot="$2"
   local common_dir="$3"
   local db_schema="temari_slot${slot}"
@@ -281,11 +287,11 @@ clean_slot_data() {
   local service
   local index
 
-  [ -f "${worktree}/.env" ] || return
+  [ -f "$env_file" ] || return
 
   (
-    cd "$worktree"
-    export DB_PASSWORD="$(env_value .env DB_PASSWORD)"
+    cd "$(dirname "$common_dir")"
+    export DB_PASSWORD="$(env_value "$env_file" DB_PASSWORD)"
     shared() {
       docker compose -f compose.shared-services.yml --project-directory "$(dirname "$common_dir")" "$@"
     }
@@ -340,6 +346,64 @@ release_slot() {
   local slot_dir="$1"
   rm -f "${slot_dir}/path" "${slot_dir}/branch"
   rmdir "$slot_dir" 2>/dev/null || true
+}
+
+clean_stale_slot() {
+  local slot="$1"
+  local common_dir="$2"
+  local main_checkout
+  local project="temari-slot${slot}"
+  local owner
+
+  main_checkout="$(dirname "$common_dir")"
+  owner="$(<"${common_dir}/${LOCKS_NAME}/slot-${slot}/path")"
+  echo "worktree: reclaiming slot ${slot}; ${owner} is no longer a git worktree" >&2
+  [ ! -e "$owner" ] || echo "worktree: left ${owner} on disk for you to inspect or delete" >&2
+  (cd "$main_checkout" && docker compose -p "$project" down --remove-orphans >&2) || return
+  clean_slot_data "${main_checkout}/.env.example" "$slot" "$common_dir" || return
+  remove_project_volumes "$project"
+}
+
+prune_cmd() {
+  local common_dir
+  local slot_dir
+  local slot
+
+  common_dir="$(git_common_dir_for "$CHECKOUT_DIR")"
+  git -C "$(dirname "$common_dir")" worktree prune
+  for slot_dir in "${common_dir}/${LOCKS_NAME}"/slot-*; do
+    [ -d "$slot_dir" ] && slot_lock_is_stale "$slot_dir" || continue
+    slot="${slot_dir##*/slot-}"
+    if clean_stale_slot "$slot" "$common_dir"; then
+      release_slot "$slot_dir"
+      echo "worktree: released slot ${slot}" >&2
+    else
+      fail "could not reclaim slot ${slot}; its lock remains for retry" || true
+    fi
+  done
+}
+
+adopt_cmd() {
+  local worktree
+  local common_dir
+  local slot=""
+
+  worktree="$(absolute_path "${1:-$PWD}")" || {
+    fail "${1} does not exist"
+    return
+  }
+  [ -f "${worktree}/.git" ] && ! is_main_checkout "$worktree" || {
+    fail "${worktree} is not a linked worktree"
+    return
+  }
+  common_dir="$(git_common_dir_for "$worktree")"
+
+  [ ! -f "${worktree}/${SLOT_FILE}" ] || slot="$(<"${worktree}/${SLOT_FILE}")"
+  if ! is_positive_integer "$slot"; then
+    allocate_slot_for "$worktree" "" "$common_dir"
+    slot="$ALLOCATED_SLOT"
+  fi
+  TEMARI_WORKTREE_SETUP_DIR="$worktree" "$SCRIPT_PATH" setup "$slot"
 }
 
 remove_impl() {
@@ -416,7 +480,7 @@ remove_impl() {
       fi
     fi
 
-    if ! clean_slot_data "$worktree" "$slot" "$common_dir"; then
+    if ! clean_slot_data "${worktree}/.env" "$slot" "$common_dir"; then
       if [ "$force_cleanup" != true ]; then
         fail "could not clean slot ${slot} data; its worktree and lock remain for retry"
         return
@@ -500,7 +564,7 @@ create_cmd() {
   mkdir -p "$(dirname "$target")"
   allocate_slot_for "$target" "$branch" "$common_dir"
 
-  if ! git -C "$main_dir" worktree add "$target" -b "$branch" "$base_commit" >&2; then
+  if ! TEMARI_WORKTREE_SKIP_SETUP=1 git -C "$main_dir" worktree add "$target" -b "$branch" "$base_commit" >&2; then
     release_slot "${common_dir}/${LOCKS_NAME}/slot-${ALLOCATED_SLOT}"
     git -C "$main_dir" branch -D -- "$branch" >&2 2>/dev/null || true
     return 1
@@ -539,9 +603,17 @@ case "$command" in
     [ $# -ge 1 ] && [ $# -le 2 ] || usage
     create_cmd "$@"
     ;;
+  adopt)
+    [ $# -le 1 ] || usage
+    adopt_cmd "$@"
+    ;;
   setup)
     [ $# -eq 1 ] || usage
     setup_cmd "$1"
+    ;;
+  prune)
+    [ $# -eq 0 ] || usage
+    prune_cmd
     ;;
   remove)
     [ $# -eq 1 ] || usage

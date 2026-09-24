@@ -332,8 +332,8 @@ is 7011/7012, slot 2 is 7021/7022, and so on), `COMPOSE_PROJECT_NAME = temari-sl
 ceiling is the shared Redis `--databases 256`: dev takes indices `slot*3..+2`, so slot 84 is the last
 one that fits. Setup writes an untracked `compose.override.yaml` mounting the shared git dir so TIA
 works and joining the shared-services network, brings the shared stack and this worktree's `app` up,
-fixes cache-volume ownership, then bootstraps the app: `composer install`, `key:generate`, and
-**both** migration sets. Every step is guarded or idempotent, so re-running `scripts/worktree create
+then bootstraps the app: `composer install`, `key:generate`, **both** migration sets, `npm ci` and
+`npm run build`. Every step is guarded or idempotent, so re-running `scripts/worktree create
 <name>` after a failure reuses the existing worktree and resumes setup. `vendor/` is empty when it
 starts, so setup uses plain `docker compose exec` for all of it; `./vendor/bin/sail` works for
 everything afterwards.

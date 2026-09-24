@@ -69,10 +69,12 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -sf /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 # Caddy needs writable dirs for its PKI module even when auto_https is off.
-# ~/.pest holds TIA's dependency graph; it must exist here so the named volume
-# compose mounts over it inherits www-data ownership instead of being root's.
+# Named volumes compose mounts over ~/.pest, node_modules and the package caches
+# must exist here so a fresh volume inherits www-data ownership instead of root's.
 RUN mkdir -p /data/caddy /config/caddy /config/psysh /home/www-data/.pest \
-    && chown -R www-data:www-data /data/caddy /config/caddy /config/psysh /home/www-data/.pest
+        /var/www/html/node_modules /var/cache/composer /var/cache/npm \
+    && chown -R www-data:www-data /data/caddy /config/caddy /config/psysh /home/www-data/.pest \
+        /var/www/html/node_modules /var/cache/composer /var/cache/npm
 
 COPY docker/Caddyfile.dev /etc/frankenphp/Caddyfile
 COPY docker/php.dev.ini /usr/local/etc/php/conf.d/zz-app.ini
