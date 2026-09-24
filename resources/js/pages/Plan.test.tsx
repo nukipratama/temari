@@ -17,8 +17,6 @@ vi.mock('@/lib/pace', async () => {
 });
 
 const DISCLAIMER_HEADLINE = 'Training guidance, not medical advice';
-const DISCLAIMER =
-    'Temari prescribes from your own data, not from a medical assessment.';
 
 function day(overrides: Partial<PlanDay> = {}): PlanDay {
     return {
@@ -106,7 +104,6 @@ const BASE_PROPS: ComponentProps<typeof Plan> = {
     seasonAdherencePct: 82,
     adaptation: null,
     disclaimerHeadline: DISCLAIMER_HEADLINE,
-    disclaimer: DISCLAIMER,
 };
 
 function renderPlan(overrides: Partial<ComponentProps<typeof Plan>> = {}) {
@@ -118,7 +115,7 @@ describe('Plan', () => {
         window.history.replaceState({}, '', '/plan');
     });
 
-    it('leads with the eyebrow, headline and intro, in the prototype’s order', () => {
+    it('leads with the eyebrow, headline and a one-line race summary', () => {
         renderPlan();
 
         expect(screen.getByText('Plan')).toBeInTheDocument();
@@ -126,7 +123,7 @@ describe('Plan', () => {
             /the weeks\s*ahead\./i,
         );
         expect(
-            screen.getByText(/no race set yet, so this cycles/i),
+            screen.getByText(/no race set · steady build and deload/i),
         ).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /set a race/i }),
@@ -152,7 +149,9 @@ describe('Plan', () => {
         expect(screen.getByRole('heading')).toHaveTextContent(
             /the weeks\s*ahead\./i,
         );
-        expect(screen.getByText(DISCLAIMER)).toBeInTheDocument();
+        expect(
+            screen.getByText(/training guidance, not medical advice/i),
+        ).toBeInTheDocument();
         expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
             0,
         );
@@ -181,26 +180,24 @@ describe('Plan', () => {
             race: { race_date: '2026-10-12', name: 'Jakarta Half' },
         });
 
-        expect(
-            screen.getByText(/built around jakarta half/i),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole('link', { name: /change your race/i }),
-        ).toBeInTheDocument();
-    });
-
-    it('offers the schedule / race-goal tab switch', () => {
-        renderPlan();
-
+        expect(screen.getByText(/jakarta half · oct 12/i)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /race goal/i }),
         ).toHaveAttribute('href', '/race');
     });
 
+    it('carries no schedule / race-goal tab switch; the race line links out instead', () => {
+        renderPlan();
+
+        expect(
+            screen.queryByRole('link', { name: /schedule/i }),
+        ).not.toBeInTheDocument();
+    });
+
     it('renders the season header card above the timeline', () => {
         renderPlan();
 
-        expect(screen.getByText('Season · Week 1 of 12')).toBeInTheDocument();
+        expect(screen.getByText(/^Week 1 of 12/)).toBeInTheDocument();
         expect(screen.getByText('82%')).toBeInTheDocument();
         expect(screen.getByText('base phase')).toBeInTheDocument();
     });
@@ -301,17 +298,17 @@ describe('Plan', () => {
         renderPlan({ weeks: [] });
 
         expect(screen.getByText('no plan yet.')).toBeInTheDocument();
-        expect(screen.queryByText('Season · Week 1 of 12')).toBeNull();
+        expect(screen.queryByText(/^Week 1 of 12/)).toBeNull();
     });
 
-    it('keeps the training disclaimer and its legal link', () => {
+    it('keeps the training disclaimer as a one-line footer with its legal link', () => {
         renderPlan();
 
-        expect(screen.getByText(DISCLAIMER_HEADLINE)).toBeInTheDocument();
+        expect(screen.getByRole('contentinfo')).toHaveTextContent(
+            /training guidance, not medical advice/i,
+        );
         expect(
-            screen.getByRole('link', {
-                name: /what the plan can and cannot see/i,
-            }),
+            screen.getByRole('link', { name: /read more/i }),
         ).toHaveAttribute('href', '/training-disclaimer');
     });
 });
