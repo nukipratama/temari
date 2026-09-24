@@ -31,26 +31,15 @@ beforeEach(() => {
 });
 
 describe('RecapCard', () => {
-    it('tags a recap with the 28px mascot posed to its mood by default', () => {
+    it('carries its own watermark, posed to its mood', () => {
         const { container } = render(
             <RecapCard mood="gassed" analysis={analysis()} />,
         );
         const mascot = container.querySelector('svg[data-mascot]');
 
         expect(mascot?.getAttribute('data-mascot')).toBe('gassed');
-        expect(mascot?.getAttribute('width')).toBe('28');
-        expect(screen.queryByTestId('mascot-peek-clearance')).toBeNull();
-    });
-
-    it('peeks from the corner and wraps the copy around it when it holds the page peek', () => {
-        const { container } = render(
-            <RecapCard mood="easy" analysis={analysis()} peek />,
-        );
-        const mascot = container.querySelector('svg[data-mascot]');
-
-        expect(mascot?.getAttribute('width')).toBe('96');
-        expect(mascot?.getAttribute('class')).toContain('absolute');
-        expect(screen.getByTestId('mascot-peek-clearance')).toBeInTheDocument();
+        expect(mascot?.getAttribute('width')).toBe('200');
+        expect(mascot?.getAttribute('class')).toContain('-bottom-15');
     });
 
     it('thinks while its recap is being written', () => {

@@ -16,7 +16,6 @@ interface WeekSectionProps {
     snapshot: WeeklySnapshotWithRecap | null;
     notes: Record<number, RunNote>;
     moods: Record<number, Mood>;
-    peekRecap?: boolean;
 }
 
 const WeekSection = memo(function WeekSection({
@@ -24,7 +23,6 @@ const WeekSection = memo(function WeekSection({
     snapshot,
     notes,
     moods,
-    peekRecap = false,
 }: Readonly<WeekSectionProps>) {
     const useSnapshotTotals = snapshot !== null && !snapshot.is_current_week;
     const runCount =
@@ -77,7 +75,6 @@ const WeekSection = memo(function WeekSection({
                         retryAfterSeconds:
                             snapshot.notification_retry_after_seconds,
                     }}
-                    peek={peekRecap}
                     className="mb-2.5"
                 />
             )}

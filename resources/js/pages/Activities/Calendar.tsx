@@ -108,7 +108,6 @@ export default function Calendar({
                                     awaitingScheduleLabel="this month's recap isn't ready yet."
                                     isChainHead={monthlyRecap.is_chain_head}
                                     size="month"
-                                    peek
                                     inertiaReloadProps={['monthlyRecap']}
                                     notification={{
                                         url: `/recaps/monthly/${month}/send`,

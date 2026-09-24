@@ -322,8 +322,8 @@ describe('Activities/Feed', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('gives the page one peek: the newest week that has a recap', () => {
-        render(
+    it('gives every recap card its own watermark', () => {
+        const { container } = render(
             <RunsIndex
                 runs={[
                     run(1, 'This week', '2026-05-26T06:00:00'),
@@ -338,11 +338,6 @@ describe('Activities/Feed', () => {
             />,
         );
 
-        const clearances = screen.getAllByTestId('mascot-peek-clearance');
-
-        expect(clearances).toHaveLength(1);
-        expect(clearances[0].parentElement).toHaveTextContent(
-            'last week recap',
-        );
+        expect(container.querySelectorAll('svg[data-mascot]')).toHaveLength(2);
     });
 });
