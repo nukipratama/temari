@@ -304,7 +304,7 @@ export default function AnalysisStatus({
                 <span className="sr-only">temari&apos;s thinking it over…</span>
                 <div className="flex items-start gap-2.5">
                     {thinkingMark && (
-                        <TemariMascot pose="thinking" size={24} onSky={onSky} />
+                        <TemariMascot pose="thinking" size={40} onSky={onSky} />
                     )}
                     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                         {SKELETON_WIDTHS.map((width) => (

@@ -216,7 +216,7 @@ export default function RunLenses({
             <header className="mb-3 flex items-center gap-3">
                 <TemariMascot
                     pose={writingPose(mood, story, insight)}
-                    size={28}
+                    size={40}
                 />
                 <div className="min-w-0 flex-1">
                     <h2 className="font-serif text-quote-md italic text-foreground">

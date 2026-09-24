@@ -84,6 +84,10 @@ describe('AnalysisStatus', () => {
             'data-mascot',
             'thinking',
         );
+        expect(container.querySelector('svg[data-mascot]')).toHaveAttribute(
+            'width',
+            '40',
+        );
 
         rerender(
             <AnalysisStatus

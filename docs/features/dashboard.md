@@ -42,7 +42,7 @@ Both halves of the ring count **training days only, against the non-rest rows th
 
 `snapshot` is **the current week's row or null**, never the newest one behind it: the card reads it as this week's actual against `planned_km_this_week`, and an athlete whose open week has no snapshot yet (a fresh signup mid-backfill) would otherwise be shown a previous week's distance as their own week's total.
 
-When `weekPlan` is null the slot draws [NoPlanCard](resources/js/components/home/NoPlanCard.tsx), the prototype's `planState: 'empty'` branch: Temari's 28px gutter tag, "No plan yet." and a link into Plan. The shipped page used to render nothing here at all. It carries the week's km and TRIMP on a strip under the rule, since the plan card that normally states them is not drawn: an athlete without a plan still ran this week, and the numbers used to live in the disclosure that is now gone.
+When `weekPlan` is null the slot draws [NoPlanCard](resources/js/components/home/NoPlanCard.tsx), the prototype's `planState: 'empty'` branch: Temari's 40px gutter tag, "No plan yet." and a link into Plan. The shipped page used to render nothing here at all. It carries the week's km and TRIMP on a strip under the rule, since the plan card that normally states them is not drawn: an athlete without a plan still ran this week, and the numbers used to live in the disclosure that is now gone.
 
 `PP3` cut the widget's `N Credited In A Row` line and the `streak_days` metric behind it (P27): the prototype's plan card draws a credited/total ring and a phase badge, and no "in a row" line. "Streak" now survives in exactly one place, the week-grained [WeeklySnapshot::consecutiveWeekStreak()](app/Models/WeeklySnapshot.php) chip on Trends.
 
