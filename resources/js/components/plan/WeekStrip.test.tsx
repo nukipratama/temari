@@ -134,6 +134,7 @@ describe('WeekStrip', () => {
         });
 
         expect(tabs[0]).toHaveAttribute('aria-label', 'Mon, 4.0 km, partial');
+        expect(tabs[0]).toHaveTextContent('short');
     });
 
     it('exposes the selection as one selected tab controlling the panel', () => {
@@ -184,5 +185,25 @@ describe('WeekStrip', () => {
         fireEvent.keyDown(tabs[2], { key: 'a' });
 
         expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it('shows short forms of the long words on the tile, the full word in its label', () => {
+        const { tabs } = renderStrip({
+            days: [
+                day({ session_type: 'interval', status: 'planned' }),
+                day({ id: 2, date: '2026-06-16', skipped: true }),
+            ],
+        });
+
+        expect(tabs[0]).toHaveTextContent('reps');
+        expect(tabs[0]).toHaveAttribute(
+            'aria-label',
+            expect.stringContaining('interval'),
+        );
+        expect(tabs[1]).toHaveTextContent('skip');
+        expect(tabs[1]).toHaveAttribute(
+            'aria-label',
+            expect.stringContaining('skipped'),
+        );
     });
 });

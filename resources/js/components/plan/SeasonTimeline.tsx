@@ -1,43 +1,15 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
-import SeasonWeekRow from '@/components/plan/SeasonWeekRow';
-import WeekCluster from '@/components/plan/WeekCluster';
-import { PHASE_LABEL, phaseGroupKey } from '@/lib/plan';
-
-function plural(count: number, noun: string): string {
-    return `${count} ${noun}${count === 1 ? '' : 's'}`;
-}
+import WeeksList from '@/components/plan/WeeksList';
+import WeekView from '@/components/plan/WeekView';
 
 /**
- * The season split into runs of consecutive weeks sharing the same displayed
- * phase, in season order. Grouped by {@see phaseGroupKey} rather than the raw
- * `phase` so every general-zone week — the self-scaled cycle alternates
- * Build/Deload before the block opens — folds into one "maintain" run
- * instead of splitting into alternating Build/Deload runs.
- */
-function contiguousPhaseRuns(
-    weeks: SeasonSummaryWeek[],
-): SeasonSummaryWeek[][] {
-    const runs: SeasonSummaryWeek[][] = [];
-    for (const week of weeks) {
-        const last = runs[runs.length - 1];
-        if (last && phaseGroupKey(last[0]) === phaseGroupKey(week)) {
-            last.push(week);
-        } else {
-            runs.push([week]);
-        }
-    }
-    return runs;
-}
-
-/**
- * The season as a rail: the current phase in full, everything already behind
- * the athlete in it folded into one "N weeks behind" row, and every later
- * phase folded into "N weeks ahead" until asked for. Each week that the plan
- * has day-level rows for opens into its own chart and day list.
+ * The season's weeks: one week laid out open, this week by default, above a
+ * list of every week of the season. Picking a week the page holds day rows
+ * for shows it in place of this week until the visitor goes back.
  */
 export default function SeasonTimeline({
     weeks,
@@ -55,7 +27,7 @@ export default function SeasonTimeline({
     today: string;
     /** The goal race's date, passed down so its week is marked as one. */
     raceDate?: string | null;
-    /** The current week's adaptation verdict, shown as its focus line. */
+    /** The current week's adaptation verdict, shown as its note. */
     weekFocus: { headline: string; detail: string } | null;
     dayNarration: Record<string, AnalysisPayload>;
     /** The day the visitor arrived asking for, from `/plan?day=`. */
@@ -63,103 +35,61 @@ export default function SeasonTimeline({
     onMove: (day: PlanDay, toDate: string) => void;
     onSkip: (day: PlanDay) => void;
 }>) {
-    const [pastOpen, setPastOpen] = useState(false);
-    const [futureOpen, setFutureOpen] = useState(false);
+    const current = weeks.find((week) => week.type === 'current') ?? null;
+    const [shownWeekStart, setShownWeekStart] = useState(
+        () =>
+            weeks.find((week) =>
+                detailByWeekStart[week.week_start]?.days.some(
+                    (day) => day.date === focusDay,
+                ),
+            )?.week_start ??
+            current?.week_start ??
+            null,
+    );
+    const [pendingFocusDay, setPendingFocusDay] = useState(focusDay);
+    const viewRef = useRef<HTMLDivElement>(null);
 
-    const currentIndex = weeks.findIndex((w) => w.type === 'current');
-    if (currentIndex === -1) {
+    if (current === null) {
         return null;
     }
 
-    const current = weeks[currentIndex];
-    const numberOf = (week: SeasonSummaryWeek) => weeks.indexOf(week) + 1;
+    const shown =
+        weeks.find((week) => week.week_start === shownWeekStart) ?? current;
 
-    // The phase block is the contiguous run holding the current week, not
-    // every week sharing its name: a self-scaled season cycles build/deload
-    // repeatedly, so each pass through a phase is its own block of the
-    // timeline and the weeks between two Build blocks are not "in" either.
-    const runs = contiguousPhaseRuns(weeks);
-    const currentRun = runs.find((run) => run.includes(current)) ?? [current];
-    const runIndex = runs.indexOf(currentRun);
-
-    const pastInPhase = currentRun.slice(0, currentRun.indexOf(current));
-    const futureInPhase = currentRun.slice(currentRun.indexOf(current) + 1);
-    const laterPhaseRuns = runs.slice(runIndex + 1);
-    const laterPhaseWeeks = laterPhaseRuns.flat();
-
-    const row = (week: SeasonSummaryWeek, isLast: boolean) => (
-        <SeasonWeekRow
-            key={week.week_start}
-            week={week}
-            weekNumber={numberOf(week)}
-            detail={detailByWeekStart[week.week_start] ?? null}
-            isLast={isLast}
-            today={today}
-            raceDate={raceDate}
-            focus={week.type === 'current' ? weekFocus : null}
-            dayNarration={week.type === 'current' ? dayNarration : {}}
-            focusDay={focusDay}
-            onMove={onMove}
-            onSkip={onSkip}
-        />
-    );
-
-    const currentIsLast =
-        futureInPhase.length === 0 && laterPhaseWeeks.length === 0;
+    const show = (weekStart: string) => {
+        setShownWeekStart(weekStart);
+        setPendingFocusDay(null);
+        viewRef.current?.scrollIntoView({ block: 'start' });
+    };
 
     return (
-        <div className="flex flex-col gap-4">
-            <div>
-                <p className="mb-2 text-label-micro text-text-2">
-                    {PHASE_LABEL[phaseGroupKey(current)] ?? current.phase} phase
-                </p>
-                <div className="flex flex-col">
-                    {pastInPhase.length > 0 &&
-                        (pastOpen ? (
-                            pastInPhase.map((w) => row(w, false))
-                        ) : (
-                            <WeekCluster
-                                weeks={pastInPhase}
-                                label={`${plural(pastInPhase.length, 'week')} behind`}
-                                isLast={false}
-                                onExpand={() => setPastOpen(true)}
-                            />
-                        ))}
-                    {row(current, currentIsLast)}
-                    {futureInPhase.map((w, i) =>
-                        row(
-                            w,
-                            i === futureInPhase.length - 1 &&
-                                laterPhaseWeeks.length === 0,
-                        ),
-                    )}
-                </div>
+        <div className="flex flex-col gap-6">
+            <div ref={viewRef} className="scroll-mt-4">
+                <WeekView
+                    key={shown.week_start}
+                    week={shown}
+                    weekNumber={weeks.indexOf(shown) + 1}
+                    days={detailByWeekStart[shown.week_start]?.days ?? []}
+                    today={today}
+                    raceDate={raceDate}
+                    focus={shown === current ? weekFocus : null}
+                    dayNarration={dayNarration}
+                    focusDay={pendingFocusDay}
+                    onBack={
+                        shown === current
+                            ? undefined
+                            : () => show(current.week_start)
+                    }
+                    onMove={onMove}
+                    onSkip={onSkip}
+                />
             </div>
-
-            {laterPhaseWeeks.length > 0 &&
-                (futureOpen ? (
-                    laterPhaseRuns.map((phaseWeeks) => (
-                        <div key={phaseWeeks[0].week_start}>
-                            <p className="mb-2 text-label-micro text-text-2">
-                                {PHASE_LABEL[phaseGroupKey(phaseWeeks[0])] ??
-                                    phaseWeeks[0].phase}{' '}
-                                phase
-                            </p>
-                            <div className="flex flex-col">
-                                {phaseWeeks.map((w, i) =>
-                                    row(w, i === phaseWeeks.length - 1),
-                                )}
-                            </div>
-                        </div>
-                    ))
-                ) : (
-                    <WeekCluster
-                        weeks={laterPhaseWeeks}
-                        label={`${plural(laterPhaseWeeks.length, 'week')} ahead`}
-                        isLast
-                        onExpand={() => setFutureOpen(true)}
-                    />
-                ))}
+            <WeeksList
+                weeks={weeks}
+                detailByWeekStart={detailByWeekStart}
+                shownWeekStart={shown.week_start}
+                onShow={show}
+            />
         </div>
     );
 }

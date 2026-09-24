@@ -200,15 +200,6 @@ export function ranHot(day: PlanDay): boolean {
     return day.status === 'overreached' && day.hot_note !== null;
 }
 
-/** The same verdict as a bar fill, for the week's planned-vs-actual chart. */
-export const STATUS_BAR_FILL: Record<string, string> = {
-    done: 'bg-horizon',
-    partial: 'bg-citrus',
-    missed: 'bg-ember',
-    overreached: 'bg-citrus',
-    skip: 'bg-ink-3',
-};
-
 /**
  * A run of days as one adherence figure: the mean of whatever compliance
  * scores exist, capping each day at 100 before averaging so a single big

@@ -15,10 +15,10 @@ code_refs:
   - app/Services/AI/Agent/Tools/PlanContextTool.php
   - app/Services/AI/PlanNarrationRequester.php
   - app/Services/AI/Narrators/PlanClampVoiceNarrator.php
-  - resources/js/components/plan/WeekDayRow.tsx
+  - resources/js/components/plan/DayDetail.tsx
   - resources/js/components/home/TodaySession.tsx
   - resources/js/components/home/WeekPlanWidget.tsx
-  - resources/js/components/plan/SeasonWeekRow.tsx
+  - resources/js/components/plan/WeekView.tsx
 ---
 
 # The eased session leads, and the week total agrees with it

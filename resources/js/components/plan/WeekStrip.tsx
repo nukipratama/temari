@@ -46,6 +46,12 @@ function tileWord(day: PlanDay): string {
     return day.session_type;
 }
 
+const SHORT_WORD: Record<string, string> = {
+    skipped: 'skip',
+    partial: 'short',
+    interval: 'reps',
+};
+
 function tileKm(day: PlanDay): string | null {
     const km =
         day.actual_km ??
@@ -159,11 +165,11 @@ export default function WeekStrip({
                         </span>
                         <span
                             className={cn(
-                                'w-full truncate text-center font-mono text-[0.5rem] leading-none tracking-tight',
+                                'w-full truncate text-center font-mono text-[0.625rem] leading-none tracking-tight',
                                 WORD_TONE[state],
                             )}
                         >
-                            {word}
+                            {SHORT_WORD[word] ?? word}
                         </span>
                     </button>
                 );

@@ -194,12 +194,25 @@ describe('Plan', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('renders the season header card above the timeline', () => {
+    it('renders the season header card above the week and the weeks list', () => {
         renderPlan();
 
         expect(screen.getByText(/^Week 1 of 12/)).toBeInTheDocument();
         expect(screen.getByText('82%')).toBeInTheDocument();
-        expect(screen.getByText('base phase')).toBeInTheDocument();
+        expect(
+            screen.getByRole('list', { name: 'season weeks' }),
+        ).toBeInTheDocument();
+    });
+
+    it('caps the page to one narrower centred column on desktop', () => {
+        const { container } = renderPlan();
+
+        expect(container.querySelector('.reveal')).toHaveClass(
+            'min-[1280px]:max-w-column',
+        );
+        expect(container.querySelector('.reveal')).not.toHaveClass(
+            'min-[1280px]:max-w-column-wide',
+        );
     });
 
     it('lays the current week out as a day strip over the first session still to run', () => {

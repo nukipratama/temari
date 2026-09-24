@@ -1,7 +1,11 @@
 import type { PlanSessionSegment } from '@/types/inertia';
 
-import { zoneColor } from '@/components/plan/MiniSessionBar';
+import { HR_ZONE_COLORS, type HrZoneKey } from '@/lib/chartTokens';
 import { formatPace } from '@/lib/pace';
+
+export function zoneColor(zone: string): string {
+    return HR_ZONE_COLORS[zone as HrZoneKey] ?? 'var(--color-text-3)';
+}
 
 const SEGMENT_LABEL: Record<PlanSessionSegment['key'], string> = {
     warmup: 'warmup',
