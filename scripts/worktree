@@ -559,10 +559,13 @@ create_cmd() {
   fi
 
   mkdir -p "$(dirname "$target")"
-  allocate_slot_for "$target" "$branch" "$common_dir"
-
   if ! TEMARI_WORKTREE_SKIP_SETUP=1 git -C "$main_dir" worktree add "$target" -b "$branch" "$base_commit" >&2; then
-    release_slot "${common_dir}/${LOCKS_NAME}/slot-${ALLOCATED_SLOT}"
+    git -C "$main_dir" branch -D -- "$branch" >&2 2>/dev/null || true
+    return 1
+  fi
+
+  if ! allocate_slot_for "$target" "$branch" "$common_dir"; then
+    git -C "$main_dir" worktree remove "$target" --force >&2 || true
     git -C "$main_dir" branch -D -- "$branch" >&2 2>/dev/null || true
     return 1
   fi
