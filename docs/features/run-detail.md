@@ -65,7 +65,7 @@ would be a column of empty panels rather than a thin page.
 [RunHero](../../resources/js/components/run/RunHero.tsx) is a card-toned panel,
 not a fixed-dark sky panel: the prototype draws this screen's hero on the
 card surface, so it reacts to the ground like every other panel on the page.
-It opens with Temari peeking from the panel's corner, posed to the run's mood, then the as-recorded date and time, the run name in serif
+It opens with Temari as the panel's watermark, posed to the run's mood, then the as-recorded date and time, the run name in serif
 italic (a headline, so it keeps Fraunces) and the mood pill under it.
 
 The stat block is a **hierarchy, not a grid of six equals**. Distance is the one

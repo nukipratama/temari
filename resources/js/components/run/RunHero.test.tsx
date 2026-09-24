@@ -45,12 +45,12 @@ function renderHero(
 }
 
 describe('RunHero', () => {
-    it('peeks Temari from the panel corner, posed to the run mood', () => {
+    it('draws Temari as the panel watermark, posed to the run mood', () => {
         const { container } = renderHero({ mood: 'wobbly' });
         const mascot = container.querySelector('svg[data-mascot]');
 
         expect(mascot?.getAttribute('data-mascot')).toBe('wobbly');
-        expect(mascot?.getAttribute('width')).toBe('112');
+        expect(mascot?.getAttribute('width')).toBe('200');
     });
 
     it('heads the panel with the as-recorded date, the title and the mood', () => {

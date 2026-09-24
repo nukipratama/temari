@@ -17,6 +17,10 @@ code_refs:
 > Settings' delete-account confirmation, through `TemariNudgeModal`'s new `pose` prop. That modal
 > is why "Settings carries no mascot" below means the page itself; the confirmation it opens has
 > always drawn one. The decision below is unchanged.
+>
+> **Presentation superseded, 2026-09-24.** The corner peek and its once-per-page rule, and the
+> 28px gutter tag, are replaced by a watermark on every hero and recap card and a 40px tag; see
+> [[mascot-watermark-replaces-the-corner-peek]]. The rest of the decision below stands.
 
 ## Context
 

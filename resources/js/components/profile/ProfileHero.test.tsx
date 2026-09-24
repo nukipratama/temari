@@ -35,12 +35,12 @@ function renderHero(
 }
 
 describe('ProfileHero', () => {
-    it('peeks Temari from the panel corner, posed to the daily mood', () => {
+    it('draws Temari as the panel watermark, posed to the daily mood', () => {
         const { container } = renderHero({ mood: 'gassed' });
         const mascot = container.querySelector('svg[data-mascot]');
 
         expect(mascot?.getAttribute('data-mascot')).toBe('gassed');
-        expect(mascot?.getAttribute('width')).toBe('112');
+        expect(mascot?.getAttribute('width')).toBe('200');
     });
 
     it('renders the eyebrow, the est. date and every stat tile', () => {

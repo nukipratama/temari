@@ -5,15 +5,12 @@ import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import TimeInZoneBar from '@/components/profile/TimeInZoneBar';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
-import MascotPeek, {
-    PANEL_PEEK_CLEARANCE,
-} from '@/components/temari/MascotPeek';
+import MascotWatermark from '@/components/temari/MascotWatermark';
 import { writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import Skeleton from '@/components/ui/Skeleton';
 import { SCROLL_FADE_MASK, useScrollFade } from '@/hooks/useScrollFade';
-import { cn } from '@/lib/cn';
 import { formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 
@@ -50,7 +47,7 @@ export default function ProfileHero({
     const statRail = useScrollFade<HTMLDivElement>();
 
     return (
-        <section className="relative overflow-hidden rounded-panel border-2 border-border-strong bg-card p-5 shadow-e1 ring-[1.5px] ring-horizon/45">
+        <section className="relative isolate overflow-hidden rounded-panel border-2 border-border-strong bg-card p-5 shadow-e1 ring-[1.5px] ring-horizon/45">
             <span
                 aria-hidden
                 className="pointer-events-none absolute -right-14 -top-14 size-[220px] rounded-full"
@@ -60,14 +57,12 @@ export default function ProfileHero({
                 }}
             />
 
-            <MascotPeek pose={writingPose(mood, voice)} fit="panel" />
+            <MascotWatermark
+                pose={writingPose(mood, voice)}
+                className="-top-20 -right-14 min-[900px]:-top-16 min-[900px]:right-56"
+            />
 
-            <header
-                className={cn(
-                    'relative flex min-h-15 items-center gap-3.5',
-                    PANEL_PEEK_CLEARANCE,
-                )}
-            >
+            <header className="relative flex items-center gap-3.5">
                 <div className="min-w-0">
                     <Eyebrow token="micro" tone="horizon-ink">
                         ★ What temari says about you

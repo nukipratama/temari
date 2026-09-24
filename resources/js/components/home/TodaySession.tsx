@@ -5,9 +5,7 @@ import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
 import { AskedRanResult, ChangeRow } from '@/components/plan/DeltaPair';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { renderNarration } from '@/components/temari/Citation';
-import MascotPeek, {
-    MascotPeekClearance,
-} from '@/components/temari/MascotPeek';
+import MascotWatermark from '@/components/temari/MascotWatermark';
 import { writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
@@ -197,10 +195,9 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
 }
 
 /**
- * The prototype's today message card, carrying the whole of today: Temari
- * peeking from the corner, posed to today's vibe, beside the "today" eyebrow and the session the plan
- * asks for with its pace and any readiness step-down, then Temari's read on it
- * across the card's full width.
+ * The prototype's today message card, carrying the whole of today: Temari as
+ * a watermark posed to today's vibe, the "today" eyebrow, the session the plan
+ * asks for with its pace and any readiness step-down, then Temari's read on it.
  */
 export default function TodaySession({
     briefing,
@@ -222,22 +219,16 @@ export default function TodaySession({
     return (
         <Card
             as="section"
-            className="relative overflow-hidden border-today-accent"
+            className="relative isolate overflow-hidden border-today-accent"
         >
-            <MascotPeek pose={writingPose(briefing.mood, voice)} />
-            <div className="flow-root">
-                <MascotPeekClearance />
-                <div className="min-w-0">
-                    <Eyebrow token="micro" className="text-icon-accent">
-                        Today
-                    </Eyebrow>
-                    {today !== null && (
-                        <div className="clear-left">
-                            <TodayPrescription day={today} />
-                        </div>
-                    )}
-                </div>
-            </div>
+            <MascotWatermark
+                pose={writingPose(briefing.mood, voice)}
+                className="-top-18 -right-14"
+            />
+            <Eyebrow token="micro" className="text-icon-accent">
+                Today
+            </Eyebrow>
+            {today !== null && <TodayPrescription day={today} />}
             {showsVoice && (
                 <div className="mt-3">
                     <AnalysisStatus
