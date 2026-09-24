@@ -6,6 +6,7 @@ import type {
     PlanDayClamp,
     PlanDayEasedFrom,
     PlanDayPaceEasedFrom,
+    PlanSessionSegment,
     WeekPlanDay,
 } from '@/types/inertia';
 
@@ -169,6 +170,7 @@ export const STATUS_LABEL: Record<string, string> = {
     partial: 'partial',
     missed: 'missed',
     overreached: 'overreached',
+    hot: 'ran hot',
     skip: 'skipped',
 };
 
@@ -178,7 +180,8 @@ export const STATUS_MEANING: Record<string, string> = {
     partial:
         'short on the distance, or the run missed what the session was for',
     missed: 'no run, or too little to count',
-    overreached: 'well past the distance, or ran harder than the session asked',
+    overreached: 'well past the distance',
+    hot: 'ran harder than the session asked',
     skip: 'excused, not graded',
 };
 
@@ -188,8 +191,14 @@ export const STATUS_TONE: Record<string, string> = {
     partial: 'text-citrus-ink',
     missed: 'text-ember-ink',
     overreached: 'text-horizon-ink',
+    hot: 'text-citrus-ink',
     skip: 'text-text-3',
 };
+
+/** An overreached day graded on intent, not distance: it ran too hard, not too far. */
+export function ranHot(day: PlanDay): boolean {
+    return day.status === 'overreached' && day.hot_note !== null;
+}
 
 /** The same verdict as a bar fill, for the week's planned-vs-actual chart. */
 export const STATUS_BAR_FILL: Record<string, string> = {
@@ -330,9 +339,143 @@ export function volumeAdjustedFrom(day: PlanDay): number | null {
         return null;
     }
 
-    return Math.abs(day.asked_km - day.distance_km) > 0.05
+    return Math.round(Math.abs(day.asked_km - day.distance_km) * 10) >= 5
         ? day.asked_km
         : null;
+}
+
+export function sessionHasWork(day: PlanDay): boolean {
+    return day.segments.some((s) => s.zone > 'Z2');
+}
+
+/** What a session is for and how it should feel, in one line. */
+export function sessionPurpose(day: PlanDay): string | null {
+    const hasWork = sessionHasWork(day);
+    switch (day.session_type) {
+        case 'long':
+            return hasWork
+                ? 'long run with goal-pace work. rehearses race day on tired legs.'
+                : 'time on feet. builds the engine the race runs on. chatty pace the whole way.';
+        case 'tempo':
+            return hasWork
+                ? 'comfortably hard. teaches you to hold a pace without tipping over.'
+                : null;
+        case 'interval':
+            return hasWork
+                ? 'short, hard reps. lifts your ceiling so race pace feels roomier.'
+                : null;
+        case 'easy':
+            return "easy means easy. slow enough to talk, that's the whole point.";
+        case 'rest':
+            return 'rest day. this is where the training actually lands.';
+        case 'race':
+            return 'race day. trust the work, and start slower than you want to.';
+        default:
+            return null;
+    }
+}
+
+function segmentLabel(segment: PlanSessionSegment): string {
+    const minutes =
+        segment.minutes == null ? null : `${Math.round(segment.minutes)} min`;
+    const pace =
+        segment.pace_sec_per_km == null
+            ? segment.pace_label
+            : `${formatPace(segment.pace_sec_per_km)}/km`;
+
+    switch (segment.key) {
+        case 'warmup':
+            return `${minutes ?? 'easy'} warm-up`;
+        case 'recovery':
+            return `${minutes ?? 'easy'} jog`;
+        default:
+            if (segment.zone <= 'Z2') {
+                return segment.km == null
+                    ? 'easy to finish'
+                    : `${segment.km} km easy`;
+            }
+            return `${minutes ?? segment.pace_label} at ${pace}`;
+    }
+}
+
+function sameWork(a: PlanSessionSegment, b: PlanSessionSegment): boolean {
+    return (
+        a.key === b.key &&
+        a.zone === b.zone &&
+        Math.round(a.minutes ?? -1) === Math.round(b.minutes ?? -1)
+    );
+}
+
+/**
+ * The session's shape in one line: warm-up, the work, the way home. Repeated
+ * reps collapse to `4 × 3 min at 4:20/km, 2 min jog between`. Null for a
+ * single-block day, whose headline already says everything.
+ */
+export function sessionShape(segments: PlanSessionSegment[]): string | null {
+    if (segments.length < 2) {
+        return null;
+    }
+
+    const parts: string[] = [];
+    for (let i = 0; i < segments.length; i++) {
+        const work = segments[i];
+        let reps = 1;
+        while (
+            work.zone > 'Z2' &&
+            segments[i + 1]?.key === 'recovery' &&
+            segments[i + 2] !== undefined &&
+            sameWork(work, segments[i + 2])
+        ) {
+            reps++;
+            i += 2;
+        }
+        if (reps > 1) {
+            parts.push(
+                `${reps} × ${segmentLabel(work)}, ${segmentLabel(segments[i - 1])} between`,
+            );
+        } else {
+            parts.push(segmentLabel(work));
+        }
+    }
+
+    return parts.join(' → ');
+}
+
+const DOSE_WHY: Record<string, string> = {
+    'conservative start with sparse comparable evidence':
+        'starting modest. not enough sessions like this yet to size it up.',
+    'progressed after the latest comparable session was hit':
+        'a step up. you hit the last one.',
+    'stepped down after the latest comparable session was too hard':
+        'a notch down. the last one ran too hot.',
+    'held after the latest comparable session':
+        'same dose as last time. nail it before it grows.',
+    'bounded by this week’s easy-time reserve':
+        'capped so the week keeps enough easy running around it.',
+};
+
+const KEPT_EASY_WHY: Record<string, string> = {
+    'easy because the week has no safe room for meaningful quality':
+        'kept easy. the week has no safe room for real quality.',
+    'easy because the weekly hard-day budget is already full':
+        'kept easy. the week already has its hard days.',
+    'easy to preserve recovery between hard days':
+        'kept easy. too close to another hard day.',
+    'easy because the outing cannot safely fit the minimum quality structure':
+        "kept easy. the day's too short to fit a proper quality set.",
+};
+
+/** The engine's reason for today's dose, only when the day's segments still bear it out. */
+export function prescriptionWhy(day: PlanDay): string | null {
+    if (day.prescription_reason === null || day.eased_from) {
+        return null;
+    }
+
+    return (
+        (sessionHasWork(day) ? DOSE_WHY : KEPT_EASY_WHY)[
+            day.prescription_reason
+        ] ?? null
+    );
 }
 
 /** The core segment's own pace, in seconds/km — the number every pace figure

@@ -14,12 +14,12 @@ final readonly class IntensityPrescription
         public int $hardMinutes,
         public ?PaceBand $paceBand,
         public ?int $paceSecPerKm,
-        public string $reason,
+        public ?string $reason,
         public ?array $raceContext = null,
     ) {
     }
 
-    /** @return array{prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string, prescription_race_context: array<string, int|float|string>|null} */
+    /** @return array{prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null} */
     public function toArray(): array
     {
         return [
@@ -48,7 +48,7 @@ final readonly class IntensityPrescription
             $session->prescribed_hard_minutes,
             $session->prescribed_pace_band,
             $session->prescribed_pace_sec_per_km,
-            $session->prescription_reason ?? 'resolved coaching prescription',
+            $session->prescription_reason,
             $session->prescription_race_context,
         );
     }

@@ -56,6 +56,7 @@ function day(overrides: Partial<WeekPlanDay>): WeekPlanDay {
         eased_from: null,
         pace_eased_from: null,
         credit_note: null,
+        hot_note: null,
         ran_pace_sec_per_km: null,
         actual_km: null,
         credited_km: null,

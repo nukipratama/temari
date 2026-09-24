@@ -40,12 +40,12 @@ final class IntensityPrescriptionResolver
         ?int $hardMinutesAvailable = null,
     ): IntensityPrescription {
         if (! $type->isQuality()) {
-            return new IntensityPrescription(0, null, null, 'easy volume');
+            return new IntensityPrescription(0, null, null, null);
         }
 
         [$target, $band, $raceContext] = $this->target($type, $phase, $raceDistanceM, $raceGoalTimeSec, $paces);
         if ($target === 0 || $band === null) {
-            return new IntensityPrescription(0, null, null, 'easy volume', $raceContext);
+            return new IntensityPrescription(0, null, null, null, $raceContext);
         }
 
         $coldStart = $type === SessionType::Interval

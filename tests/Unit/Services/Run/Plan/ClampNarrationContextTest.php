@@ -90,12 +90,11 @@ it('resolves nothing for the pace-ease boundary — an Easy day at an EasyOnly c
     expect(resolveClamp($user))->toBeNull();
 });
 
-/** The renderer exempts a pinned row from the clamp, so there is nothing to explain. */
-it('resolves nothing for a pinned day', function (): void {
+it('explains the step-down on a pinned day too, since the renderer advises it there', function (): void {
     $user = tiredUser();
     clampDay($user, pinned: true);
 
-    expect(resolveClamp($user))->toBeNull();
+    expect(resolveClamp($user))->not->toBeNull();
 });
 
 it('resolves nothing when there is no session, or no user at all', function (): void {

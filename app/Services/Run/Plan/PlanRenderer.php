@@ -6,11 +6,13 @@ namespace App\Services\Run\Plan;
 
 use App\Actions\Feedback\ResolveFlaggedSubjectsAction;
 use App\Enums\FeedbackSubject;
+use App\Enums\IntentVerdict;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
+use App\Services\Run\Metrics\PaceFormatter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use LogicException;
@@ -364,6 +366,7 @@ final class PlanRenderer
                 'voice' => $status->isCredited() ? null : ReadinessClamp::paceEaseNote(),
             ] : null,
             'credit_note' => self::creditNote($sessionType, $status, $askedKm, $activity),
+            'hot_note' => self::hotNote($s, $status),
             'ran_pace_sec_per_km' => $status->isCredited() && $sessionType !== SessionType::Rest
                 ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [])
                 : null,
@@ -524,5 +527,25 @@ final class PlanRenderer
         }
 
         return 'the distance was there, but not in one run. a long day is time on feet in one go.';
+    }
+
+    /**
+     * Why a day graded overreached on intent rather than distance, from the
+     * judge's own evidence. Null when the distance alone overreached.
+     */
+    private static function hotNote(PlannedSession $s, PlannedSessionStatus $status): ?string
+    {
+        if ($status !== PlannedSessionStatus::Overreached || $s->intent_verdict !== IntentVerdict::TooHard
+            || ($s->compliance_score !== null && $s->compliance_score >= (int) round(SessionMatcher::OVERREACHED_FRACTION * 100))) {
+            return null;
+        }
+
+        $evidence = $s->intent_evidence ?? [];
+
+        return match (true) {
+            isset($evidence['above_zone_pct'], $evidence['zone']) => "{$evidence['above_zone_pct']}% of the run sat above {$evidence['zone']}.",
+            isset($evidence['pace_sec'], $evidence['ceiling_pace_sec']) => 'averaged '.PaceFormatter::format((float) $evidence['pace_sec']).'/km, past the '.PaceFormatter::format((float) $evidence['ceiling_pace_sec']).'/km ceiling for this run.',
+            default => 'ran harder than an easy day asks.',
+        };
     }
 }

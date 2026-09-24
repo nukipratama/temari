@@ -87,8 +87,7 @@ final readonly class RestClampRecorder
             ->where('date', $today->toDateString())
             ->first();
 
-        // A pinned row is exempt from the clamp at render time too, so it must
-        // not be excused by one here either.
+        // A pinned row is the athlete's own call: the step-down is advised beside it, never recorded.
         if ($session === null || $session->pinned || $session->rest_clamped_at !== null
             || $session->clamped_km !== null || $session->eased_pace_sec_per_km !== null) {
             return false;

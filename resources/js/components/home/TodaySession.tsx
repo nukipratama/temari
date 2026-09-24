@@ -15,7 +15,10 @@ import {
     judgedDayResult,
     paceEaseDelta,
     paceLabel,
+    prescriptionWhy,
     SESSION_TYPE_LABEL,
+    sessionPurpose,
+    sessionShape,
 } from '@/lib/plan';
 import { stripEdgeQuotes } from '@/lib/richText';
 
@@ -91,6 +94,9 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
             parts.push(pace);
         }
     }
+    const shape = judged === null ? sessionShape(day.segments) : null;
+    const purpose = judged === null ? sessionPurpose(day) : null;
+    const doseWhy = judged === null ? prescriptionWhy(day) : null;
 
     return (
         <div
@@ -100,6 +106,19 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
             <p className="text-sm font-semibold text-foreground">
                 {parts.join(' · ')}
             </p>
+            {shape && (
+                <p className="mt-1 text-xs leading-relaxed text-text-2">
+                    {shape}
+                </p>
+            )}
+            {purpose && (
+                <p className="mt-1.5 text-xs leading-relaxed text-foreground">
+                    {purpose}
+                    {doseWhy && (
+                        <span className="text-text-2 italic"> {doseWhy}</span>
+                    )}
+                </p>
+            )}
             {judged !== null && (
                 <AskedRanResult
                     askedKm={judged.askedKm}

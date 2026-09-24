@@ -143,7 +143,7 @@ it('marks last week\'s untouched sessions as missed on the Plan tab', function (
     expect($days->where('session_type', '!=', 'rest')->pluck('status')->unique()->all())->toBe(['missed']);
 });
 
-it('redistributes a half-missed week into the days that remain, up to the cap', function (): void {
+it('redistributes a half-missed week into the easy days that remain, up to the cap, and never into the long run', function (): void {
     $user = athleteWithFourWeekBaseline();
 
     Carbon::setTestNow(THIS_MONDAY.' 08:00:00');
@@ -179,9 +179,9 @@ it('redistributes a half-missed week into the days that remain, up to the cap', 
 
     $satOriginalKm = $kmFor(SessionType::Easy, false);
     $sunOriginalKm = $kmFor(SessionType::Long, false);
-    $scale = min(VolumeRedistributor::MAX_SCALE, $remainingTargetKm / ($satOriginalKm + $sunOriginalKm));
+    $scale = min(VolumeRedistributor::MAX_SCALE, ($remainingTargetKm - $sunOriginalKm) / $satOriginalKm);
 
     expect($days[$saturday]['distance_km'])->toBe(round($satOriginalKm * $scale, 1))
-        ->and($days[$sunday]['distance_km'])->toBe(round($sunOriginalKm * $scale, 1))
-        ->and($scale)->toBeGreaterThan(1.0); // real missed volume, genuinely redistributed
+        ->and($days[$sunday]['distance_km'])->toBe($days[$sunday]['asked_km'])
+        ->and($scale)->toBeGreaterThan(1.0);
 });

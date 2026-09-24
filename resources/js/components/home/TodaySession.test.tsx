@@ -59,6 +59,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         eased_from: null,
         pace_eased_from: null,
         credit_note: null,
+        hot_note: null,
         ran_pace_sec_per_km: null,
         actual_km: null,
         credited_km: null,
@@ -427,5 +428,64 @@ describe('TodaySession', () => {
         expect(
             container.querySelector('#anchor-session-today'),
         ).toBeInTheDocument();
+    });
+
+    it("lays out today's shape and says what it is for before the run", () => {
+        render(
+            <TodaySession
+                briefing={briefing('fine.')}
+                today={day({
+                    session_type: 'tempo',
+                    prescription_reason:
+                        'stepped down after the latest comparable session was too hard',
+                    segments: [
+                        {
+                            key: 'warmup',
+                            minutes: 15,
+                            zone: 'Z2',
+                            pace_label: 'easy',
+                            km: 2.2,
+                            pace_sec_per_km: 400,
+                        },
+                        {
+                            key: 'main',
+                            minutes: 20,
+                            zone: 'Z4',
+                            pace_label: 'threshold',
+                            km: 4,
+                            pace_sec_per_km: 300,
+                        },
+                    ],
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText('15 min warm-up → 20 min at 5:00/km'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/comfortably hard\. teaches you to hold a pace/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('a notch down. the last one ran too hot.', {
+                exact: false,
+            }),
+        ).toBeInTheDocument();
+    });
+
+    it('drops the shape once the day is credited', () => {
+        render(
+            <TodaySession
+                briefing={briefing('fine.')}
+                today={day({
+                    status: 'done',
+                    prescribed_km: 8,
+                    actual_km: 8,
+                    credited_km: 8,
+                })}
+            />,
+        );
+
+        expect(screen.queryByText(/easy means easy/)).not.toBeInTheDocument();
     });
 });
