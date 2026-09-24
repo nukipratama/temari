@@ -9,6 +9,7 @@ import {
     SESSION_TYPE_ICON,
     SESSION_TYPE_LABEL,
     clampSummary,
+    complianceTally,
     computeAdherence,
     deltaDirection,
     easedFromDelta,
@@ -93,6 +94,24 @@ describe('computeAdherence', () => {
                 { compliance_score: 83 },
             ]),
         ).toBe(81);
+    });
+});
+
+describe('complianceTally', () => {
+    it('counts each graded verdict in a fixed order and leaves the rest out', () => {
+        expect(
+            complianceTally([
+                { status: 'missed' },
+                { status: 'done' },
+                { status: 'planned' },
+                { status: 'missed' },
+                { status: 'skip' },
+            ]),
+        ).toBe('1 done · 2 missed');
+    });
+
+    it('is empty before any day is graded', () => {
+        expect(complianceTally([{ status: 'planned' }])).toBe('');
     });
 });
 

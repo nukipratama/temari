@@ -70,7 +70,7 @@ describe('SeasonTimeline', () => {
         renderTimeline();
 
         expect(screen.getByText('2 weeks behind')).toBeInTheDocument();
-        expect(screen.queryByText('Wk 1')).not.toBeInTheDocument();
+        expect(screen.queryByText('Week 1')).not.toBeInTheDocument();
     });
 
     it('folds every later phase into one cluster', () => {
@@ -95,8 +95,8 @@ describe('SeasonTimeline', () => {
         renderTimeline();
         fireEvent.click(screen.getByRole('button', { name: /2 weeks behind/ }));
 
-        expect(screen.getByText('Wk 1')).toBeInTheDocument();
-        expect(screen.getByText('Wk 2')).toBeInTheDocument();
+        expect(screen.getByText('Week 1')).toBeInTheDocument();
+        expect(screen.getByText('Week 2')).toBeInTheDocument();
         expect(screen.queryByText('2 weeks behind')).not.toBeInTheDocument();
     });
 
@@ -112,9 +112,9 @@ describe('SeasonTimeline', () => {
         renderTimeline();
         fireEvent.click(screen.getByRole('button', { name: /2 weeks ahead/ }));
 
-        expect(screen.getByText('Wk 3')).toBeInTheDocument();
-        expect(screen.getByText('Wk 4')).toBeInTheDocument();
-        expect(screen.getByText('Wk 5')).toBeInTheDocument();
+        expect(screen.getByText('Week 3')).toBeInTheDocument();
+        expect(screen.getByText('Week 4')).toBeInTheDocument();
+        expect(screen.getByText('Week 5')).toBeInTheDocument();
     });
 
     it('groups a self-scaled season by each pass through a phase, not by phase name', () => {
@@ -142,7 +142,7 @@ describe('SeasonTimeline', () => {
         expect(screen.getAllByText('build phase')).toHaveLength(2);
         expect(screen.getByText('deload phase')).toBeInTheDocument();
         // The second Build block is its own pass, not folded back into the first.
-        expect(screen.getByText('Wk 3')).toBeInTheDocument();
+        expect(screen.getByText('Week 3')).toBeInTheDocument();
     });
 
     it('merges every general-zone week into one "maintain" run, ignoring its alternating build/deload phase', () => {

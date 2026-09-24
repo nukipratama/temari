@@ -95,7 +95,7 @@ describe('SeasonWeekRow', () => {
     it('heads the week with its number, dates and volume', () => {
         renderRow();
 
-        expect(screen.getByText('Wk 3')).toBeInTheDocument();
+        expect(screen.getByText('Week 3')).toBeInTheDocument();
         expect(screen.getByText('jun 15–21')).toBeInTheDocument();
         expect(
             screen.getByText(/30 km target · 5 sessions/),
@@ -123,17 +123,29 @@ describe('SeasonWeekRow', () => {
         expect(screen.getByText(/· 90%/)).toBeInTheDocument();
     });
 
-    it('says "this week" instead of a percentage on the current week', () => {
+    it('heads the current week with its target and its adherence so far', () => {
         renderRow({ week: week({ type: 'current' }) });
 
-        expect(screen.getByText(/· this week/)).toBeInTheDocument();
-        expect(screen.queryByText(/· 90%/)).not.toBeInTheDocument();
+        expect(
+            screen.getByText('30 km target · 5 sessions · 90%'),
+        ).toBeInTheDocument();
     });
 
-    it('opens the current week by default', () => {
+    it('lays the current week out open as a day strip, with no volume chart', () => {
         renderRow({ week: week({ type: 'current' }) });
 
-        expect(screen.getByText('Volume this week')).toBeInTheDocument();
+        expect(screen.getAllByRole('tab')).toHaveLength(2);
+        expect(screen.getByRole('tabpanel')).toBeInTheDocument();
+        expect(screen.queryByText(/^Volume/)).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /Week 3/ }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('keeps the volume chart and day rows for a week other than the current one', () => {
+        renderRow({ focusDay: '2026-06-16' });
+
+        expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     });
 
     it('opens a past week holding the day that was asked for', () => {
@@ -156,13 +168,13 @@ describe('SeasonWeekRow', () => {
 
     it('reveals the chart and a row per day once expanded', () => {
         renderRow();
-        fireEvent.click(screen.getByRole('button', { name: /Wk 3/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Week 3/ }));
 
         expect(screen.getByText('Volume that week')).toBeInTheDocument();
         expect(screen.getAllByText('easy')).toHaveLength(2);
     });
 
-    it('carries the adaptation focus into the open week', () => {
+    it('carries the adaptation focus into the current week in full', () => {
         renderRow({
             week: week({ type: 'current' }),
             focus: {
@@ -180,7 +192,7 @@ describe('SeasonWeekRow', () => {
     it('renders a flat summary card for a week with no day-level plan', () => {
         renderRow({ detail: null });
 
-        expect(screen.getByText('Wk 3')).toBeInTheDocument();
+        expect(screen.getByText('Week 3')).toBeInTheDocument();
         expect(
             screen.getByText('30 km target · 5 sessions'),
         ).toBeInTheDocument();
