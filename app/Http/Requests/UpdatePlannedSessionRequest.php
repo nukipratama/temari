@@ -29,7 +29,7 @@ class UpdatePlannedSessionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'date' => ['sometimes', 'date'],
+            'date' => ['sometimes', 'date', 'after:today'],
             'skipped' => ['sometimes', 'boolean'],
             'pinned' => ['sometimes', 'boolean'],
         ];

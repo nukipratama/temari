@@ -453,3 +453,42 @@ function planBudgetFixture(): User
 
     return $user;
 }
+
+it('refuses to move a day that has already happened, leaving both rows as they were', function (): void {
+    $user = User::factory()->create();
+    $from = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->subDay()->toDateString(),
+        'session_type' => 'tempo',
+        'status' => PlannedSessionStatus::Done,
+    ]);
+    $to = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => 'rest',
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$from->id}", ['date' => $to->date->toDateString()])
+        ->assertSessionHasErrors('date');
+
+    expect($from->fresh()->session_type->value)->toBe('tempo')
+        ->and($to->fresh()->session_type->value)->toBe('rest');
+});
+
+it('refuses to move a session onto a day that is not a rest day', function (): void {
+    $user = User::factory()->create();
+    $from = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => 'tempo',
+    ]);
+    $to = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+        'session_type' => 'race',
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$from->id}", ['date' => $to->date->toDateString()])
+        ->assertSessionHasErrors('date');
+
+    expect($from->fresh()->session_type->value)->toBe('tempo')
+        ->and($to->fresh()->session_type->value)->toBe('race');
+});

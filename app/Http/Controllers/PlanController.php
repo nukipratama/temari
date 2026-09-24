@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -15,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -88,6 +90,10 @@ class PlanController extends Controller
         $today = Carbon::today();
         $touchedSessions = [$plannedSession];
 
+        if (isset($attributes['date']) && ! $plannedSession->date->isAfter($today)) {
+            throw ValidationException::withMessages(['date' => 'only a day still ahead can be moved.']);
+        }
+
         $occupant = $this->occupantOfMoveTarget($plannedSession, $attributes['date'] ?? null);
         if ($occupant !== null) {
             $touchedSessions[] = $occupant;
@@ -120,10 +126,16 @@ class PlanController extends Controller
             return null;
         }
 
-        return PlannedSession::query()
+        $occupant = PlannedSession::query()
             ->where('user_id', $plannedSession->user_id)
             ->whereDate('date', $toDate)
             ->first();
+
+        if ($occupant !== null && $occupant->session_type !== SessionType::Rest) {
+            throw ValidationException::withMessages(['date' => 'a session can only move onto a rest day.']);
+        }
+
+        return $occupant;
     }
 
     /**
