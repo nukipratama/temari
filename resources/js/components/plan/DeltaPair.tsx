@@ -31,11 +31,14 @@ export function DeltaPair({
     from,
     to,
     direction,
+    quiet = false,
     className,
 }: Readonly<{
     from: string;
     to: string;
     direction: DeltaPairDirection;
+    /** A change that is neither good nor bad news: the arrow keeps its direction but drops its colour. */
+    quiet?: boolean;
     className?: string;
 }>) {
     return (
@@ -43,7 +46,9 @@ export function DeltaPair({
             <span className="text-text-3 line-through decoration-text-3">
                 {from}
             </span>{' '}
-            <span className={DIRECTION_COLOR[direction]}>
+            <span
+                className={quiet ? 'text-text-2' : DIRECTION_COLOR[direction]}
+            >
                 {DIRECTION_GLYPH[direction]}
             </span>{' '}
             <span className="text-foreground">{to}</span>
@@ -53,7 +58,7 @@ export function DeltaPair({
 
 /**
  * The one mono tag a delta line may carry — only where the numbers alone
- * don't say why (`eased`, `week fit`). At most one per line.
+ * don't say why (`eased`, `trimmed`, `topped up`). At most one per line.
  */
 export function DeltaTag({ children }: Readonly<{ children: string }>) {
     return <span className="text-label-micro text-text-2">{children}</span>;
@@ -71,6 +76,7 @@ export function ChangeRow({
     to,
     direction,
     tag,
+    quiet = false,
     className,
 }: Readonly<{
     label: string;
@@ -78,6 +84,7 @@ export function ChangeRow({
     to: string;
     direction: DeltaPairDirection;
     tag: string;
+    quiet?: boolean;
     className?: string;
 }>) {
     return (
@@ -90,7 +97,12 @@ export function ChangeRow({
             <span className="text-label-micro inline-block min-w-10 text-text-3">
                 {label}
             </span>
-            <DeltaPair from={from} to={to} direction={direction} />
+            <DeltaPair
+                from={from}
+                to={to}
+                direction={direction}
+                quiet={quiet}
+            />
             <DeltaTag>{tag}</DeltaTag>
         </p>
     );

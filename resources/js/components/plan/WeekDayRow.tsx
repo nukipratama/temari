@@ -36,8 +36,10 @@ import {
     judgedDayResult,
     paceEaseDelta,
     paceLabel,
+    prescriptionWhy,
     SESSION_TYPE_ICON,
     SESSION_TYPE_LABEL,
+    sessionPurpose,
     STATUS_LABEL,
     STATUS_MEANING,
     STATUS_TONE,
@@ -162,6 +164,7 @@ export default function WeekDayRow({
     const isRest = day.session_type === 'rest';
     const ranAnyway = isRest && day.ran_anyway;
     const adjustedFrom = volumeAdjustedFrom(day);
+    const trimmed = adjustedFrom !== null && adjustedFrom > day.distance_km;
     const weekFitDelta =
         adjustedFrom === null
             ? null
@@ -169,6 +172,8 @@ export default function WeekDayRow({
                   from: `${adjustedFrom}`,
                   to: `${day.distance_km}`,
                   direction: deltaDirection(adjustedFrom, day.distance_km),
+                  tag: trimmed ? 'trimmed' : 'topped up',
+                  why: trimmed ? 'ahead on the week' : 'making up the week',
               };
     const sessionDelta = day.eased_from
         ? easedFromDelta(day.eased_from, day)
@@ -188,9 +193,13 @@ export default function WeekDayRow({
 
     const canMove = editable && !isRest && weekDays.some(isValidMoveTarget);
     const canSkip = editable && !isRest && !day.skipped;
-    const showsPrescriptionReason =
-        day.prescription_reason !== null &&
-        ['tempo', 'interval', 'long'].includes(day.session_type);
+    const purpose = ['long', 'tempo', 'interval'].includes(day.session_type)
+        ? sessionPurpose(day)
+        : null;
+    const doseWhy = day.eased_from
+        ? null
+        : prescriptionWhy(day.prescription_reason);
+    const showsPoint = purpose !== null || doseWhy !== null;
 
     // A rest day with nothing logged, no note, no clamp and no read has
     // nothing an expanded panel would show — a future day with a session
@@ -210,7 +219,7 @@ export default function WeekDayRow({
         Boolean(day.eased_from?.voice) ||
         Boolean(day.pace_eased_from?.voice) ||
         showsNarration ||
-        showsPrescriptionReason ||
+        showsPoint ||
         day.clamp !== null ||
         Boolean(day.credit_note) ||
         day.activities.length > 0 ||
@@ -223,7 +232,7 @@ export default function WeekDayRow({
         new Set(
             [
                 sessionDelta !== null || paceDelta !== null ? 'eased' : null,
-                weekFitDelta !== null ? 'week fit' : null,
+                weekFitDelta?.tag ?? null,
             ].filter((tag): tag is string => tag !== null),
         ),
     );
@@ -383,10 +392,11 @@ export default function WeekDayRow({
                         from={weekFitDelta.from}
                         to={weekFitDelta.to}
                         direction={weekFitDelta.direction}
-                        tag="week fit"
+                        tag={weekFitDelta.why}
+                        quiet
                     />
                 )}
-                {showsPrescriptionReason && (
+                {showsPoint && (
                     <div
                         className={cn(
                             sessionDelta || paceDelta || weekFitDelta
@@ -395,11 +405,18 @@ export default function WeekDayRow({
                         )}
                     >
                         <p className="text-label-micro text-text-3">
-                            why this dose
+                            the point
                         </p>
-                        <p className="mt-1 text-xs leading-relaxed text-text-2">
-                            {day.prescription_reason}
-                        </p>
+                        {purpose && (
+                            <p className="mt-1 text-xs leading-relaxed text-foreground">
+                                {purpose}
+                            </p>
+                        )}
+                        {doseWhy && (
+                            <p className="mt-1 text-xs italic text-text-2">
+                                {doseWhy}
+                            </p>
+                        )}
                     </div>
                 )}
                 {showsNarration && (
@@ -411,7 +428,7 @@ export default function WeekDayRow({
                             sessionDelta ||
                             paceDelta ||
                             weekFitDelta ||
-                            showsPrescriptionReason ||
+                            showsPoint ||
                             day.eased_from?.voice ||
                             day.pace_eased_from?.voice
                                 ? 'mt-2'

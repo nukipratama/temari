@@ -148,10 +148,10 @@ describe('WeekDayRow', () => {
      * The week-adjustment arrow used to always point down, even when the
      * number went up (#975). It must point the way the ask actually moved.
      */
-    it("tags the collapsed row 'week fit' but keeps the old value out of it, then shows the delta pointing down once expanded", () => {
+    it("tags a trimmed day 'trimmed' but keeps the old value out of the collapsed row, then explains it once expanded", () => {
         renderRow({ day: day({ distance_km: 3, asked_km: 8 }) });
 
-        expect(screen.getByText('week fit')).toBeInTheDocument();
+        expect(screen.getByText('trimmed')).toBeInTheDocument();
         expect(screen.queryByText('8')).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /tempo/i }));
@@ -159,7 +159,8 @@ describe('WeekDayRow', () => {
         expect(screen.getByText('km')).toBeInTheDocument();
         expect(screen.getByText('8')).toBeInTheDocument();
         expect(screen.getByText('3')).toBeInTheDocument();
-        expect(screen.getByText('↓')).toHaveClass('text-ember-ink');
+        expect(screen.getByText('ahead on the week')).toBeInTheDocument();
+        expect(screen.getByText('↓')).toHaveClass('text-text-2');
     });
 
     it("shows the week-fit delta pointing up when the week's redistribution raised the ask", () => {
@@ -168,13 +169,21 @@ describe('WeekDayRow', () => {
 
         expect(screen.getByText('3.6')).toBeInTheDocument();
         expect(screen.getByText('4.1')).toBeInTheDocument();
-        expect(screen.getByText('↑')).toHaveClass('text-leaf-ink');
+        expect(screen.getByText('↑')).toBeInTheDocument();
+        expect(screen.getAllByText('topped up')).toHaveLength(1);
+        expect(screen.getByText('making up the week')).toBeInTheDocument();
+    });
+
+    it('stays quiet about a resize too small to matter', () => {
+        renderRow({ day: day({ distance_km: 10.3, asked_km: 10.4 }) });
+
+        expect(screen.queryByText('trimmed')).not.toBeInTheDocument();
     });
 
     it('stays quiet when the redistributed figure matches what was asked', () => {
         renderRow({ day: day({ distance_km: 8, asked_km: 8 }) });
 
-        expect(screen.queryByText('week fit')).not.toBeInTheDocument();
+        expect(screen.queryByText('trimmed')).not.toBeInTheDocument();
     });
 
     it('stays quiet once the day is graded, even if distance and ask differ', () => {
@@ -188,7 +197,7 @@ describe('WeekDayRow', () => {
             }),
         });
 
-        expect(screen.queryByText('week fit')).not.toBeInTheDocument();
+        expect(screen.queryByText('trimmed')).not.toBeInTheDocument();
     });
 
     it('starts closed, as the prototype does', () => {
@@ -274,20 +283,65 @@ describe('WeekDayRow', () => {
         expect(screen.queryByText('Done')).not.toBeInTheDocument();
     });
 
-    it('explains the deterministic coaching reason for the selected dose', () => {
+    it("says what a quality session is for, and why today's dose moved", () => {
         renderRow({
             day: day({
                 prescription_reason:
-                    '25 hard minutes, held from your latest comparable session.',
+                    'progressed after the latest comparable session was hit',
             }),
         });
         expand();
 
-        expect(screen.getByText('why this dose')).toBeInTheDocument();
+        expect(screen.getByText('the point')).toBeInTheDocument();
         expect(
             screen.getByText(
-                '25 hard minutes, held from your latest comparable session.',
+                'comfortably hard. teaches you to hold a pace without tipping over.',
             ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('a step up. you hit the last one.'),
+        ).toBeInTheDocument();
+    });
+
+    it('never shows an engine placeholder as a reason', () => {
+        renderRow({
+            day: day({
+                session_type: 'long',
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 78,
+                        zone: 'Z2',
+                        pace_label: 'easy',
+                        km: 10.4,
+                        pace_sec_per_km: 450,
+                    },
+                ],
+                prescription_reason: 'easy volume',
+            }),
+        });
+        fireEvent.click(screen.getByRole('button', { name: /long run/i }));
+
+        expect(screen.queryByText('easy volume')).not.toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'time on feet. builds the engine the race runs on. chatty pace the whole way.',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('says why a quality day was kept easy', () => {
+        renderRow({
+            day: day({
+                session_type: 'easy',
+                prescription_reason:
+                    'easy to preserve recovery between hard days',
+            }),
+        });
+        fireEvent.click(screen.getByRole('button', { name: /easy/i }));
+
+        expect(
+            screen.getByText('kept easy. too close to another hard day.'),
         ).toBeInTheDocument();
     });
 
@@ -813,7 +867,7 @@ describe('WeekDayRow', () => {
         const trigger = screen.getByRole('button', { name: /easy/i });
         expect(trigger).toHaveTextContent('4.1 km · 6:40/km');
         expect(screen.getByText('eased')).toBeInTheDocument();
-        expect(screen.getByText('week fit')).toBeInTheDocument();
+        expect(screen.getByText('topped up')).toBeInTheDocument();
         expect(trigger).not.toHaveTextContent('5.9');
         expect(trigger).not.toHaveTextContent('3.6');
         expect(trigger).not.toHaveTextContent('tempo');
@@ -829,11 +883,10 @@ describe('WeekDayRow', () => {
         expect(screen.getByText('type')).toBeInTheDocument();
         expect(screen.getAllByText('km')).toHaveLength(2); // the eased-distance row and the week-fit row
         expect(screen.getByText('pace')).toBeInTheDocument();
-        // "eased" tags the collapsed row plus the type/km/pace rows (4); "week
-        // fit" tags the collapsed row plus its own row (2) — never more than
-        // two tags on any one line.
+        // "eased" tags the collapsed row plus the type/km/pace rows (4); the
+        // week resize tags the collapsed row and explains itself on its own row.
         expect(screen.getAllByText('eased')).toHaveLength(4);
-        expect(screen.getAllByText('week fit')).toHaveLength(2);
+        expect(screen.getByText('making up the week')).toBeInTheDocument();
     });
 
     it('keeps the collapsed row informative via its tags, and reveals the full detail once expanded', () => {

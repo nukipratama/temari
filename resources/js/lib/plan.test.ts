@@ -1,6 +1,8 @@
 import { Flag } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
+import type { PlanSessionSegment } from '@/types/inertia';
+
 import type { PlanDay, SeasonSummaryWeek } from './plan';
 
 import {
@@ -17,6 +19,9 @@ import {
     paceLabel,
     phaseGroupKey,
     phasesOf,
+    prescriptionWhy,
+    sessionPurpose,
+    sessionShape,
     volumeAdjustedFrom,
     weekdayLabel,
     weekRangeLabel,
@@ -444,6 +449,15 @@ describe('volumeAdjustedFrom', () => {
         ).toBeNull();
     });
 
+    it('ignores a resize under half a kilometre, float error included', () => {
+        expect(
+            volumeAdjustedFrom(planDay({ distance_km: 10.3, asked_km: 10.4 })),
+        ).toBeNull();
+        expect(
+            volumeAdjustedFrom(planDay({ distance_km: 4.1, asked_km: 3.6 })),
+        ).toBe(3.6);
+    });
+
     it('ignores rounding-sized drift', () => {
         expect(
             volumeAdjustedFrom(planDay({ distance_km: 8, asked_km: 8.02 })),
@@ -612,5 +626,72 @@ describe('race day', () => {
     it('names and marks race day, so the goal race never reads as an ordinary session', () => {
         expect(SESSION_TYPE_LABEL.race).toBe('race day');
         expect(SESSION_TYPE_ICON.race).toBe(Flag);
+    });
+});
+
+describe('sessionShape', () => {
+    const seg = (
+        key: PlanSessionSegment['key'],
+        zone: string,
+        minutes: number | null,
+        km: number | null,
+        pace: number | null = null,
+    ): PlanSessionSegment => ({
+        key,
+        zone,
+        minutes,
+        km,
+        pace_label: zone <= 'Z2' ? 'easy' : 'interval',
+        pace_sec_per_km: pace,
+    });
+
+    it('collapses repeated reps into one count', () => {
+        expect(
+            sessionShape([
+                seg('warmup', 'Z2', 15, 2.3),
+                seg('interval', 'Z5', 3, 0.7, 260),
+                seg('recovery', 'Z2', 2, 0.3),
+                seg('interval', 'Z5', 3, 0.7, 260),
+                seg('recovery', 'Z2', 2, 0.3),
+                seg('interval', 'Z5', 3, 0.7, 260),
+                seg('main', 'Z2', 20, 3.1),
+            ]),
+        ).toBe(
+            '15 min warm-up → 3 × 3 min at 4:20/km, 2 min jog between → 3.1 km easy',
+        );
+    });
+
+    it('says nothing for a single block the headline already covers', () => {
+        expect(sessionShape([seg('main', 'Z2', 50, 7.3)])).toBeNull();
+    });
+});
+
+describe('sessionPurpose', () => {
+    it('only calls a tempo comfortably hard when it has work above Z2', () => {
+        expect(
+            sessionPurpose(
+                planDay({
+                    session_type: 'tempo',
+                    segments: [
+                        {
+                            key: 'main',
+                            minutes: 40,
+                            zone: 'Z2',
+                            pace_label: 'easy',
+                            km: 6,
+                            pace_sec_per_km: 400,
+                        },
+                    ],
+                }),
+            ),
+        ).toBeNull();
+    });
+});
+
+describe('prescriptionWhy', () => {
+    it('hides engine placeholders and unknown strings', () => {
+        expect(prescriptionWhy('easy volume')).toBeNull();
+        expect(prescriptionWhy('resolved coaching prescription')).toBeNull();
+        expect(prescriptionWhy(null)).toBeNull();
     });
 });
