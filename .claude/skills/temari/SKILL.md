@@ -309,7 +309,7 @@ clean checkout selects nothing and exits 0. Cost of getting that wrong: it found
 - After changing a PHP enum exposed to TS: `./vendor/bin/sail artisan typescript:enums` (`--check` mirrors CI).
 - Local UI/demo data (deterministic, no LLM tokens, no Strava HTTP): `./vendor/bin/sail artisan demo:seed`. Idempotent, re-run any time to converge. It only upserts the current blueprint set, so to purge rows from retired blueprints do a full reset: `./vendor/bin/sail artisan migrate:fresh` then `demo:seed`.
 
-## Parallel worktrees & stacked PRs
+## Parallel worktrees
 
 Running several implementation agents concurrently, each in its own `git worktree`, is safe — setup
 pins each worktree's Compose project to `temari-slot<N>`, so every worktree gets its own isolated
@@ -434,18 +434,50 @@ The Docker image (`temari/dev`) and its build cache are shared across worktrees 
 local tag, not project-scoped) — only pass `--build` again if a worktree's slice actually touches
 `Dockerfile`/PHP extensions, so two worktrees don't race an in-flight rebuild.
 
-**Sequential (dependency-wave) slices** — when wave N+1 must branch off wave N's *unmerged* code —
-start the next worktree explicitly from the preceding branch:
-`git worktree add <worktree-root>/<name> wave1-branch`, then apply the setup from `AGENTS.md`.
-This is the one case where GitHub's native **stacked PRs** (public preview since 2026-07-30, `gh extension install
-github/gh-stack`) are worth reaching for: each layer's PR targets the layer below instead of
-`main`, and merging a lower layer auto-cascades the merge/rebase of everything above. Don't reach
-for it otherwise — most PRs in this repo are small, independent, and based directly off `main`;
-stacking a truly independent slice just adds process for no payoff. It's also free on CI: every
-job except `deploy` in `ci.yml` runs on hosted `ubuntu-latest`, and `deploy` only fires on
-`push: branches: [main]` — a stack's intermediate branches never touch the shared 4-core homelab
-runner. Merging an N-deep stack does mean N sequential prod deploys back-to-back (queued via
-`deploy-prod`'s concurrency group, not parallel) — expected, not a CI misfire.
+**Slices that build on each other** ship as a stack; see "Stacked PRs" below for how worktrees
+and stacks combine.
+
+## Stacked PRs
+
+Multi-slice work ships as a GitHub stack (`gh stack`, extension `github/gh-stack`): each **layer**
+is a PR based on the one below, so a big change is reviewed as small ones and lands in one merge.
+
+**When.** Stack slices that build on each other; a slice that stands alone is a plain PR off `main`.
+Parallel work splits by dependency:
+- independent parallel slices: a worktree each off `main`, plain PRs;
+- parallel slices sharing a foundation: land the foundation as layer 1, build the rest in worktrees
+  branched from it, then chain each onto the stack once its worktree is removed.
+
+**Layers.** One reviewable concern per layer, each with its own issue and `Closes #n`. Order:
+foundation first (a new primitive, plus any sign-off gallery), then one surface group per layer,
+cleanup and docs last. Each PR body opens with `Part of stack #N: A → B → this`. Build the next
+layer without waiting for review, stopping only at gates agreed during planning or at a fork. A fix
+found while the stack is open goes to the owner as a choice, next layer or a separate PR off `main`,
+recommending the stack for related work and `main` for unrelated bugs.
+
+**Building.** Build sequential layers in the main checkout: `gh stack add <branch>` starts the next
+layer. Open each PR with a handwritten title and body (`gh pr create --base <layer below>`), then
+`gh stack submit --auto` links it into the stack (`--auto` on its own creates drafts with generated
+titles). Every layer's PR runs CI, since `pull_request` fires whatever the base; `deploy` fires only
+on `main`.
+
+**Worktrees** (verified 2026-09-24): run every `gh stack` command from the main checkout, because
+inside a linked worktree the stack is invisible ("not part of a stack"). `gh stack rebase` stops on
+any layer checked out in another worktree; remove that worktree first.
+
+**Merging.** The owner merges. An agent merges only on an explicit "go merge": confirm every layer's
+CI is green and each diff matches its scope, then `gh stack merge <stack> --squash --yes`, which is
+all-or-nothing (merge up to a single PR only when the owner names it). Landing the whole stack pushes
+`main` once, so one CI run and one prod deploy; landing layer by layer deploys once per layer.
+
+**Housekeeping.**
+- The kanban automation moves cards on its own: editing a PR body sends its issue back to In
+  progress, and a merged stack can leave closed issues In progress. Re-check statuses after either.
+- A branch added to the stack by mistake stays in `.git/gh-stack` after `git branch -D`; drop its
+  entry from that JSON. Save `gh stack sync` for real syncs, since it rebases and force-pushes every
+  layer.
+- Squash-merged layers are not ancestors of `main`: confirm each PR merged, then `git branch -D` the
+  layer branches.
 
 ## Inspecting real state
 
