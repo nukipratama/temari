@@ -44,8 +44,9 @@ final readonly class SeasonStreakSummaryBuilder
         $context ??= SeasonGamificationContext::forSeason($user, $season, $today, $this->trainingLoad);
         $goals = $this->seasonGoalResolver->forSeason($user, $season, $context);
 
-        $totalWeeks = max(1, (int) $season->starts_at->diffInWeeks($season->ends_at) + 1);
-        $weekIndex = max(1, min($totalWeeks, (int) $season->starts_at->diffInWeeks($today) + 1));
+        $firstMonday = $season->starts_at->copy()->startOfWeek(Carbon::MONDAY);
+        $totalWeeks = max(1, (int) $firstMonday->diffInWeeks($season->ends_at->copy()->startOfWeek(Carbon::MONDAY)) + 1);
+        $weekIndex = max(1, min($totalWeeks, (int) $firstMonday->diffInWeeks($today->copy()->startOfWeek(Carbon::MONDAY)) + 1));
 
         return [
             'starts_at' => $season->starts_at->toDateString(),

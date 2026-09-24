@@ -42,6 +42,17 @@ it('builds the same season payload PlanController used to build inline, given an
         ->and($payload['block_opens_on'])->toBeNull();
 });
 
+it('counts season weeks as the plan\'s Monday weeks when the season opens mid-week', function (): void {
+    Carbon::setTestNow('2026-09-05 08:00:00');
+    $user = User::factory()->create();
+    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+    expect($season->starts_at->toDateString())->toBe('2026-09-05');
+
+    $payload = $this->builder->seasonPayload($user, $season, Carbon::parse('2026-09-24'));
+
+    expect($payload['week_index'])->toBe(4);
+});
+
 it('carries the day a race season\'s block opens', function (): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-13', 'distance_m' => 42_195]);
