@@ -113,6 +113,7 @@ export default function RunsShow({
                 {detailed && (
                     <>
                         <RunLenses
+                            mood={mood}
                             story={speechAnalysis}
                             insight={runInsight}
                             isChainHead={isChainHead}

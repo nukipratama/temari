@@ -45,6 +45,14 @@ function renderHero(
 }
 
 describe('RunHero', () => {
+    it('peeks Temari from the panel corner, posed to the run mood', () => {
+        const { container } = renderHero({ mood: 'wobbly' });
+        const mascot = container.querySelector('svg[data-mascot]');
+
+        expect(mascot?.getAttribute('data-mascot')).toBe('wobbly');
+        expect(mascot?.getAttribute('width')).toBe('112');
+    });
+
     it('heads the panel with the as-recorded date, the title and the mood', () => {
         renderHero();
         expect(screen.getByText('19 feb 2026 · 06:52')).toBeInTheDocument();
