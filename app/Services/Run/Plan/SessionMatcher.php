@@ -23,7 +23,7 @@ use Illuminate\Support\Carbon;
  * {@see PlannedSessionStatus::Partial}. `plan:score-compliance` (daily) is
  * what actually calls {@see self::scoreFor()} and persists the result onto
  * each {@see \App\Models\PlannedSession} row — this class stays render-safe
- * (`statuses()`) for a past row the daily command hasn't reached yet, so a
+ * (`scoreRange()`) for a past row the daily command hasn't reached yet, so a
  * page load never shows a stale `planned` for a day that's already over, and
  * for today, which the daily command deliberately never reaches.
  *
@@ -70,9 +70,10 @@ final readonly class SessionMatcher
     }
 
     /**
-     * `plan:score-compliance`'s entry point — the same per-day judgment as
-     * {@see self::statuses()}, but returning the full verdict (score,
-     * `ran_anyway`) each row needs written back, not just the status label.
+     * `plan:score-compliance`'s entry point, and also what `PlanPageAssembler`/
+     * `CurrentWeekPlanBuilder` call for the render-time fallback — the same
+     * per-day judgment as {@see self::statuses()}, but returning the full
+     * verdict (score, `ran_anyway`) rather than just the status label.
      *
      * @param  array<string, float>  $plannedKmByDate  Y-m-d => prescribed km (0.0 on a rest day)
      * @param  array<string, bool>  $excusedByDate  Y-m-d => whether this day is excused — the athlete skipped it,

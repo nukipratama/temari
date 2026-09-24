@@ -232,6 +232,7 @@ final class PlanRenderer
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, moving_time: int|null, started_at: string}>}|null  $activity  every run logged that day, for the planned-vs-actual bar and the links out
      * @param  ?int  $raceGoalTimeSec  the active race's `goal_time_sec` — what race day is prescribed at
+     * @param  ?bool  $ranAnyway  live verdict override for an unscored day; null keeps the row's own stored value
      * @return array<string, mixed>
      */
     public static function dayPayload(
@@ -250,6 +251,7 @@ final class PlanRenderer
         ?string $clampVoice = null,
         ?int $raceGoalTimeSec = null,
         float $longRunProgressionCapKm = INF,
+        ?bool $ranAnyway = null,
     ): array {
         $isToday = $s->date->isSameDay($today);
         $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
@@ -353,7 +355,7 @@ final class PlanRenderer
             'status' => $status->value,
             'compliance_score' => $s->compliance_score,
             'prescribed_km' => $s->prescribed_km,
-            'ran_anyway' => $s->ran_anyway,
+            'ran_anyway' => $ranAnyway ?? $s->ran_anyway,
             'prescription_reason' => $s->prescription_reason,
             'clamp' => match (true) {
                 $recordedEaseToday => self::clampPayload(self::stepDownFromEffective($effective, $paces), $clampVoice),

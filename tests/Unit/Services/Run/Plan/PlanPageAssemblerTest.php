@@ -166,6 +166,28 @@ it('renders the generated weeks with the current one marked as such', function (
         ->and($current['days'])->toHaveCount(7);
 });
 
+it('renders ran_anyway true for a past, unscored rest day with a logged run', function (): void {
+    $user = assemblerAthlete();
+    $restDay = Carbon::today()->subWeek();
+    PlannedSession::factory()->for($user)->create([
+        'date' => $restDay->toDateString(),
+        'session_type' => SessionType::Rest,
+    ]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $restDay->copy()->setTime(7, 0),
+        'distance' => 5_000.0,
+    ]);
+
+    $day = collect($this->assembler->weeks($user, Carbon::today()))
+        ->pluck('days')
+        ->flatten(1)
+        ->firstWhere('date', $restDay->toDateString());
+
+    expect($day['status'])->toBe('done')
+        ->and($day['ran_anyway'])->toBeTrue();
+});
+
 /** A tempo day eased to easy at 00:01, distance held: the Plan row still headlines tempo, easy as the step-down. */
 it('steps a tempo day eased to easy down on the Plan row today, tempo still leading', function (): void {
     $user = assemblerAthlete();

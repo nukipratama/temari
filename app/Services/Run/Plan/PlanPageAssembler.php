@@ -185,7 +185,7 @@ final class PlanPageAssembler
 
         $currentWeekKey = $currentWeekStart->toDateString();
 
-        $fallbackStatuses = $this->fallbackStatuses($user, $sessions, $today, $baselineData, $multiplierByWeek, $primaryEasyDateByWeek);
+        $fallbackVerdicts = $this->fallbackVerdicts($user, $sessions, $today, $baselineData, $multiplierByWeek, $primaryEasyDateByWeek);
 
         // Readiness clamp: TODAY's row only — a future day's readiness isn't
         // knowable today, so clamping never reaches past this one row. Held
@@ -251,11 +251,12 @@ final class PlanPageAssembler
                     $multiplierByWeek[$weekStartKey] ?? 1.0,
                     $baselineData['long_run_cap_km'],
                     $paces,
-                    $fallbackStatuses[$s->date->toDateString()] ?? $s->status,
+                    $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status,
                     $activityByDate[$s->date->toDateString()] ?? null,
                     $clampVoice,
                     $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
                     $baselineData['long_run_progression_cap_km'],
+                    $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
                 ))->all(),
             ];
         }
@@ -284,9 +285,9 @@ final class PlanPageAssembler
      * @param  array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}  $baselineData
      * @param  array<string, float>  $multiplierByWeek
      * @param  Collection<string, string|null>  $primaryEasyDateByWeek
-     * @return array<string, PlannedSessionStatus>
+     * @return array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>
      */
-    private function fallbackStatuses(
+    private function fallbackVerdicts(
         User $user,
         Collection $sessions,
         Carbon $today,
@@ -318,7 +319,7 @@ final class PlanPageAssembler
             $staleExcused[$date] = $s->isExcused();
         }
 
-        return $this->sessionMatcher->statuses($user, $stalePlannedKm, $staleExcused, $today);
+        return $this->sessionMatcher->scoreRange($user, $stalePlannedKm, $staleExcused, $today);
     }
 
     /**

@@ -144,6 +144,31 @@ it('credits a past day whose completed distance met the prescribed km', function
     Carbon::setTestNow();
 });
 
+it('renders ran_anyway true for a past, unscored rest day with a logged run', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    seedWeekOfSessions($user, $weekStart);
+
+    $monday = $weekStart->copy();
+    PlannedSession::query()->where('user_id', $user->id)->where('date', $monday->toDateString())->update([
+        'session_type' => SessionType::Rest,
+    ]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $monday->copy()->setTime(7, 0),
+        'distance' => 5_000.0,
+    ]);
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $day = collect($result['days'])->firstWhere('date', $monday->toDateString());
+
+    expect($day['status'])->toBe('done')
+        ->and($day['ran_anyway'])->toBeTrue();
+
+    Carbon::setTestNow();
+});
+
 it('applies the multi-week Build ramp, not an isolated week-1 multiplier', function (): void {
     Carbon::setTestNow('2026-08-24'); // a Monday, so "current week" starts exactly here
     $user = User::factory()->create();

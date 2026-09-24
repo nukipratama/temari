@@ -105,18 +105,18 @@ final readonly class CurrentWeekPlanBuilder
         $staleSessions = $currentWeekSessions->filter(
             fn (PlannedSession $s): bool => $s->status === PlannedSessionStatus::Planned && $s->date->lte($today),
         );
-        $fallbackStatuses = [];
+        $fallbackVerdicts = [];
         if ($staleSessions->isNotEmpty()) {
             $staleDates = $staleSessions->map(fn (PlannedSession $s): string => $s->date->toDateString())->all();
             $stalePlannedKmByDate = array_intersect_key($plannedKmByDate, array_flip($staleDates));
             $staleExcused = $staleSessions->mapWithKeys(
                 fn (PlannedSession $s): array => [$s->date->toDateString() => $s->isExcused()],
             )->all();
-            $fallbackStatuses = $this->sessionMatcher->statuses($user, $stalePlannedKmByDate, $staleExcused, $today);
+            $fallbackVerdicts = $this->sessionMatcher->scoreRange($user, $stalePlannedKmByDate, $staleExcused, $today);
         }
         $resolvedStatuses = $currentWeekSessions->mapWithKeys(
             fn (PlannedSession $s): array => [
-                $s->date->toDateString() => $fallbackStatuses[$s->date->toDateString()] ?? $s->status,
+                $s->date->toDateString() => $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status,
             ],
         )->all();
 
@@ -164,6 +164,7 @@ final readonly class CurrentWeekPlanBuilder
             $clampVoice,
             $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
             $baselineData['long_run_progression_cap_km'],
+            $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
         ))->values()->all();
 
         // A rest day asks for nothing and always scores Done, so counting it
