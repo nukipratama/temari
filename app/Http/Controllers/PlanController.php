@@ -95,6 +95,10 @@ class PlanController extends Controller
         }
 
         $occupant = $this->occupantOfMoveTarget($plannedSession, $attributes['date'] ?? null);
+        if ($occupant !== null && $occupant->session_type !== SessionType::Rest) {
+            throw ValidationException::withMessages(['date' => 'a session can only move onto a rest day.']);
+        }
+
         if ($occupant !== null) {
             $touchedSessions[] = $occupant;
             $this->swapSessions($plannedSession, $occupant);
@@ -126,16 +130,10 @@ class PlanController extends Controller
             return null;
         }
 
-        $occupant = PlannedSession::query()
+        return PlannedSession::query()
             ->where('user_id', $plannedSession->user_id)
             ->whereDate('date', $toDate)
             ->first();
-
-        if ($occupant !== null && $occupant->session_type !== SessionType::Rest) {
-            throw ValidationException::withMessages(['date' => 'a session can only move onto a rest day.']);
-        }
-
-        return $occupant;
     }
 
     /**

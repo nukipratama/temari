@@ -365,7 +365,7 @@ final class PlanPageAssembler
         // at a fraction of its prescription.
         $planStart = $currentWeekSessions->min(fn (PlannedSession $s): string => $s->date->toDateString());
         $completedKm = $this->completedKmInRange($user, Carbon::parse($planStart), $today->copy()->subDay());
-        $pinnedKm = $currentWeekSessions->filter(fn (PlannedSession $s): bool => $s->pinned && ! $s->date->lt($today->copy()->startOfDay()))->sum($kmFor);
+        $pinnedKm = $currentWeekSessions->filter(fn (PlannedSession $s): bool => $s->pinned && ! $s->date->lt($today))->sum($kmFor);
 
         $todayFixedKm = 0.0;
         if ($todaySession !== null && ! $todaySession->pinned) {
