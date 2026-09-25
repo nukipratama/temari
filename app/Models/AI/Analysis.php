@@ -29,6 +29,7 @@ use Override;
  * @property AnalysisType $analysis_type
  * @property string|null $discriminator
  * @property AnalysisStatus $status
+ * @property string|null $generation_token
  * @property string|null $content
  * @property string|null $content_fingerprint
  * @property ServedBy|null $served_by  Which producer wrote the current content; null while the row has never been Done.
@@ -49,6 +50,7 @@ use Override;
     'analysis_type',
     'discriminator',
     'status',
+    'generation_token',
     'content',
     'content_fingerprint',
     'served_by',
@@ -95,6 +97,7 @@ class Analysis extends Model
             'subject_id' => 'integer',
             'analysis_type' => AnalysisType::class,
             'status' => AnalysisStatus::class,
+            'generation_token' => 'string',
             'served_by' => ServedBy::class,
             'rule_based_reason' => AnalysisOrigin::class,
             'generated_at' => 'datetime',

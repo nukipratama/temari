@@ -44,8 +44,9 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
     public function __construct(
         public readonly int $subjectId,
         public readonly ?string $discriminator = null,
+        ?string $generationToken = null,
     ) {
-        parent::__construct();
+        parent::__construct($generationToken);
     }
 
     final public function handle(AnalysisService $service): void
@@ -59,7 +60,12 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             static::groupedTypes(),
         );
 
-        $pending = $rows->filter(fn (Analysis $row): bool => $row->status !== AnalysisStatus::Done);
+        $ownedRows = $rows->filter(fn (Analysis $row): bool => $row->generation_token === $this->generationToken);
+        if ($ownedRows->count() !== count(static::groupedTypes())) {
+            return;
+        }
+
+        $pending = $ownedRows->filter(fn (Analysis $row): bool => $row->status !== AnalysisStatus::Done);
         if ($pending->isEmpty()) {
             return;
         }
@@ -79,7 +85,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             // subject that never materializes dead-letters after the retry
             // budget instead of churning ai:self-heal forever at attempts=0.
             foreach ($pending as $row) {
-                $service->markProcessing($row);
+                $service->markProcessing($row, $this->generationToken);
             }
             $this->failPending($pending, $service, $e->getMessage());
 
@@ -91,7 +97,9 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         )->all();
 
         foreach ($pending as $row) {
-            $service->markProcessing($row);
+            if (! $service->markProcessing($row, $this->generationToken)) {
+                return;
+            }
         }
 
         $this->pendingRowIds = $pending->mapWithKeys(
@@ -106,31 +114,33 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 
         try {
             $fingerprint = $this->fingerprintFor($subject);
-            $this->finalizePending($pending, $service, $this->generateAll($subject), ServedBy::Llm, $fingerprint);
-            $this->afterGroupDone($service);
+            if ($this->finalizePending($pending, $service, $this->generateAll($subject), ServedBy::Llm, $fingerprint)) {
+                $this->afterGroupDone($service);
+            }
         } catch (ContentFilterException) {
             // Even the continuity-stripped retry content-filtered. Fill every
             // pending row from the rule-based narrator so the group settles Done
             // with benign content instead of dead-lettering the whole briefing.
-            $this->finalizePending(
+            if ($this->finalizePending(
                 $pending,
                 $service,
                 $this->ruleBasedPayload($pending),
                 ServedBy::RuleBased,
                 $fingerprint,
                 AnalysisOrigin::ContentFilter,
-            );
-            Log::info('narrator.ai.content_filter_fallback', [
-                'kind' => static::subjectType(),
-                'subject' => $this->subjectId,
-            ]);
-            $this->afterGroupDone($service);
+            )) {
+                Log::info('narrator.ai.content_filter_fallback', [
+                    'kind' => static::subjectType(),
+                    'subject' => $this->subjectId,
+                ]);
+                $this->afterGroupDone($service);
+            }
         } catch (Throwable $e) {
             $this->settleFailure(
                 $e,
                 $pending,
                 markFailed: fn () => $this->failPending($pending, $service, $e->getMessage()),
-                markRequeued: fn () => $pending->each(fn (Analysis $row) => $service->markQueued($row)),
+                markRequeued: fn () => $pending->each(fn (Analysis $row) => $service->markQueued($row, $this->generationToken)),
             );
         }
     }
@@ -149,7 +159,8 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             $this->subjectId,
             $this->discriminator,
             static::groupedTypes(),
-        )->filter(fn (Analysis $row): bool => $row->status !== AnalysisStatus::Done
+        )->filter(fn (Analysis $row): bool => $row->generation_token === $this->generationToken
+            && $row->status !== AnalysisStatus::Done
             && $row->status !== AnalysisStatus::Failed);
 
         $this->failPending($pending, $service, $e->getMessage());
@@ -159,7 +170,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
     private function failPending(Collection $pending, AnalysisService $service, string $reason): void
     {
         foreach ($pending as $row) {
-            $service->markFailed($row, $reason);
+            $service->markFailed($row, $reason, $this->generationToken);
         }
     }
 
@@ -202,18 +213,23 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         ServedBy $servedBy,
         ?string $fingerprint = null,
         ?AnalysisOrigin $ruleBasedReason = null,
-    ): void {
-        DB::transaction(function () use ($pending, $payload, $service, $fingerprint, $servedBy, $ruleBasedReason): void {
+    ): bool {
+        return DB::transaction(function () use ($pending, $payload, $service, $fingerprint, $servedBy, $ruleBasedReason): bool {
             foreach ($pending as $key => $row) {
-                $service->markDone(
+                if (! $service->markDone(
                     $row,
                     $payload[$key],
                     $servedBy,
                     fingerprint: $fingerprint,
                     ruleBasedReason: $ruleBasedReason,
                     startedEarly: $this->startedEarlyByType[$key] ?? false,
-                );
+                    generationToken: $this->generationToken,
+                )) {
+                    return false;
+                }
             }
+
+            return true;
         });
     }
 

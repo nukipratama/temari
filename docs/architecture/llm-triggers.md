@@ -188,7 +188,7 @@ credits the day and the post-ingest plan reconciliation settles, and only when t
 credited — a day still ahead asks for nothing.
 Each row carries a [`MaterialFingerprint`](../../app/Services/AI/MaterialFingerprint.php#L26) of
 what it describes, stamped by the job through
-[`AnalyzeRowJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeRowJob.php#L112), and an unchanged
+[`AnalyzeRowJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeRowJob.php#L136), and an unchanged
 fingerprint means the row is left alone — so a second run the same day that does not move the
 verdict re-bills nothing. `PlanSeasonVoice` carries a material fingerprint for the time-varying
 season signals above; unchanged season material relies on `AnalysisService`'s own idempotency.
@@ -253,7 +253,7 @@ flight, then resumes the earliest stalled link per user per family. **Every disp
 `invalidate: false`**, so recovery never re-bills content that already exists, and every sweep
 covers only [`RecentlyActiveUsers`](../../app/Actions/AI/RecentlyActiveUsers.php), so demo and
 athletes away from the app are excluded. Failed rows are bounded by
-[`MAX_SELF_HEAL_ATTEMPTS`](../../app/Models/AI/Analysis.php#L62) and then dead-letter to
+[`MAX_SELF_HEAL_ATTEMPTS`](../../app/Models/AI/Analysis.php#L78) and then dead-letter to
 `/devtools/narration` for a manual re-arm, which is itself a recovery-origin dispatch. See
 [[bounded-self-heal-and-dead-letter]].
 
@@ -301,16 +301,16 @@ is the one people misremember.
 | **daily cost ceiling** | **`Done`, rule-based** | no | **no — clears on the clock** |
 
 All three pauses resolve through
-[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L828), and an in-flight job reverts
+[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L942), and an in-flight job reverts
 its rows via [`haltForPausedGeneration()`](../../app/Jobs/AI/AnalyzeBaseJob.php#L193) without burning
 an attempt.
 
 **The cost ceiling is the exception in three ways.** It does not pause: a `pending` row is filled
 from the rule-based filler and marked `Done` by
-[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L882), so a capped day is not a
+[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L996), so a capped day is not a
 day of empty blocks. A `Failed` row is explicitly excluded and stays failed, keeping its dead-letter
 visibility. And a *manual* trigger past the ceiling is refused with a 409 rather than degraded,
-because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L793) asks with the budget
+because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L907) asks with the budget
 included while auto-dispatch asks without it. Two ceilings reach that behaviour through the same
 path — the per-athlete slice and the app-wide total above it, which gates callers holding no
 athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
@@ -320,7 +320,7 @@ Three more limits:
 
 - **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L120) filters the AI kickoff commands
   and every `SelfHealer` sweep, and
-  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L744) serves a demo user's
+  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L858) serves a demo user's
   manual trigger from the filler *before* any pause check — so the public demo spends nothing while
   still feeling live. See [[demo-triggers-served-rule-based]].
 - **The backfill age gate**, [84 days](../../config/ai.php#L43). The only limit that gates automatic
