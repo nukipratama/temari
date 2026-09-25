@@ -121,28 +121,32 @@ jobs:
             fi
           }
 
-          check_counts() { # $1=sql-fn  $2=table
-            local fn="$1" table="$2" live_n throwaway_n
-            live_n=$("$fn" "$LIVE_COMPOSE" "$LIVE_SERVICE" "SELECT COUNT(*) FROM $table" 2>/dev/null || echo -1)
-            throwaway_n=$("$fn" "docker compose -p $RESTORE_PROJECT -f $RESTORE_COMPOSE_FILE" "$RESTORE_SERVICE" "SELECT COUNT(*) FROM $table" 2>/dev/null || echo -1)
-            printf '  %-20s live=%-10s throwaway=%-10s' "$table" "$live_n" "$throwaway_n"
-            if [ "$throwaway_n" -gt "$live_n" ] || { [ "$live_n" -gt 0 ] && [ "$throwaway_n" -eq 0 ]; }; then
-              echo "  FAIL"
-              fail=1
+          check_counts() { # $1=sql-fn  $2=schema  $3=table
+            local fn="$1" schema="$2" table="$3" live_n throwaway_n live_status throwaway_status
+            if live_n=$("$fn" "$LIVE_COMPOSE" "$LIVE_SERVICE" "SELECT COUNT(*) FROM $table" 2>/dev/null); then
+              live_status=0
             else
-              echo "  OK"
+              live_status=$?
+            fi
+            if throwaway_n=$("$fn" "docker compose -p $RESTORE_PROJECT -f $RESTORE_COMPOSE_FILE" "$RESTORE_SERVICE" "SELECT COUNT(*) FROM $table" 2>/dev/null); then
+              throwaway_status=0
+            else
+              throwaway_status=$?
+            fi
+            if ! scripts/deploy/check-restore-counts.sh "$schema" "$table" "$live_status" "$live_n" "$throwaway_status" "$throwaway_n"; then
+              fail=1
             fi
           }
 
           echo "== default schema =="
           check_tables sql "default"
           for t in users activities ai_analyses planned_sessions; do
-            check_counts sql "$t"
+            check_counts sql "default" "$t"
           done
 
           echo "== analytics schema =="
           check_tables sql_analytics "analytics"
-          check_counts sql_analytics ai_token_usages
+          check_counts sql_analytics "analytics" ai_token_usages
 
           if [ "$fail" -ne 0 ]; then
             echo "::error::restore dry-run FAILED verification"
