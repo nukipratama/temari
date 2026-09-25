@@ -7,8 +7,7 @@ name: Refresh shards
 # one PR, but only when scripts/compare-shards.php decides the drift matters
 # enough to be worth a review.
 #
-# Runs on ubuntu-latest, never the homelab runner, for the same reason as
-# tia-baseline.yml — this box is shared with prod. The suite runs serially,
+# Runs on ubuntu-latest, never the homelab runner: that box is shared with prod. The suite runs serially,
 # without --parallel, so the recorded timings stay per-class.
 #
 # The PR is opened with the default GITHUB_TOKEN, so its own CI does not
@@ -18,8 +17,7 @@ name: Refresh shards
 
 on:
   schedule:
-    # 02:05 WIB, off the hour and clear of the nightly audit at 03:17 and the
-    # TIA baseline at 04:23.
+    # 02:05 WIB, off the hour and clear of the nightly audit at 03:17.
     - cron: '5 19 * * *'
   workflow_dispatch:
 
@@ -76,7 +74,7 @@ jobs:
           DB_PASSWORD: password
           CACHE_STORE: array
           SESSION_DRIVER: array
-        run: ./vendor/bin/pest --no-tia --compact --update-shards --exclude-group=structure
+        run: ./vendor/bin/pest --compact --update-shards --exclude-group=structure
 
       - name: Compare shard balance
         id: compare

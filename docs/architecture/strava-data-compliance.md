@@ -39,7 +39,7 @@ Strava has barred displaying one user's activity data to any other user since **
 - a route parameter the sweep cannot build **fails the test** until it is registered, so a newly added endpoint opts in instead of slipping past;
 - every parameterless authenticated GET page is loaded as a stranger and must not contain the other user's run.
 
-A third case renders the same run for its own owner, so a clean sweep can never be a vacuous one. `routes/**` is pinned to this directory in the Pest TIA watch map ([tests/Pest.php](tests/Pest.php)), because reading the route table produces no coverage edge that would otherwise re-run the sweeps when a route is added.
+A third case renders the same run for its own owner, so a clean sweep can never be a vacuous one. The local gate's changed-file Pest step pairs tests by class name, so a route change does not select these sweeps; they run in CI's full suite.
 
 ## AI: inference, not training
 

@@ -51,7 +51,7 @@ jobs:
         run: php scripts/check-see-references.php
 
       - name: Class/test 1:1 structure check
-        run: ./vendor/bin/pest --no-tia --group=structure
+        run: ./vendor/bin/pest --group=structure
 
       - name: Tests
         env:
@@ -70,7 +70,7 @@ jobs:
             coverage_args+=(--coverage-php="coverage-shard-${{ matrix.shard }}.cov")
           fi
 
-          ./vendor/bin/pest --no-tia --parallel --processes="$(nproc)" \
+          ./vendor/bin/pest --parallel --processes="$(nproc)" \
             --shard="${{ matrix.shard }}/${SHARD_TOTAL}" \
             "${coverage_args[@]}" \
             --exclude-group=structure \

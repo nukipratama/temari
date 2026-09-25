@@ -134,7 +134,7 @@ function releaseSharedDemoFixture(): void
  * Backstop for releaseSharedDemoFixture(): PHPUnit always calls afterAll()
  * once, after the last test of this file that actually ran — even when that
  * is not the test below (an earlier test fails before reaching it, or a
- * `--filter`/TIA-narrowed run never selects it at all). Flipping the flag
+ * `--filter` run never selects it at all). Flipping the flag
  * directly needs no live Application, unlike a throwaway-Application
  * `migrate:fresh`: it is the same plain static property RefreshDatabase's own
  * teardown already reads before every test, so whichever RefreshDatabase test
