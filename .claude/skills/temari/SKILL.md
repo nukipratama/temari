@@ -340,10 +340,11 @@ everything afterwards.
 
 Slot ownership is serialized by a persistent per-slot lock file: `create`, `adopt`, and `prune` hold
 it from the stale-owner check through cleanup and ownership transfer; `remove` holds it through
-cleanup, Git worktree removal, and reservation release after the existing safety checks. `scripts/worktree`
-uses `flock(1)` when available and Perl `Fcntl::flock` on macOS. If cleanup fails, the reservation
-stays in place for a later retry. `tests/scripts/worktree-races.sh` exercises these paths with an
-isolated fake checkout.
+cleanup, Git worktree removal, and reservation release after the existing safety checks. Failed-create
+rollback releases a reservation under the same lock after confirming that it still owns the slot.
+`scripts/worktree` uses `flock(1)` when available and Perl `Fcntl::flock` otherwise, and reports a clear
+error if neither is installed. `tests/scripts/worktree-races.sh` exercises both lock backends when
+`flock` is available, using an isolated fake checkout.
 
 ### Shared services
 

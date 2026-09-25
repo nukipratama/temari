@@ -6,6 +6,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 CHECKOUT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 SLOT_FILE=".claude-worktree-slot"
 LOCKS_NAME="temari-worktree-slots"
+MAX_WORKTREE_SLOTS=84
 
 usage() {
   cat >&2 <<EOF
@@ -46,14 +47,18 @@ with_slot_lock() {
   if [ "${TEMARI_FORCE_PERL_FLOCK:-false}" != true ] && command -v flock >/dev/null 2>&1; then
     flock -x "$lock_file" "$SCRIPT_PATH" "$@"
   else
-    perl -MFcntl=:flock - "$lock_file" "$SCRIPT_PATH" "$@" <<'PERL'
+    command -v perl >/dev/null 2>&1 || {
+      fail "slot locking needs util-linux flock or perl"
+      return 1
+    }
+    perl -MFcntl=:flock -e '
       my ($path, @command) = @ARGV;
       open my $lock, ">>", $path or die "could not open slot lock $path: $!\n";
       flock($lock, LOCK_EX) or die "could not acquire slot lock $path: $!\n";
       system @command;
       die "could not run locked command $command[0]: $!\n" if $? == -1;
       exit(($? & 127) ? 128 + ($? & 127) : $? >> 8);
-PERL
+    ' -- "$lock_file" "$SCRIPT_PATH" "$@"
   fi
 }
 
@@ -177,7 +182,11 @@ allocate_slot_locked() {
   fi
 
   if ! mkdir "$slot_dir" 2>/dev/null; then
-    return 10
+    if [ -d "$slot_dir" ]; then
+      return 10
+    fi
+    fail "could not create slot ${slot} reservation"
+    return 1
   fi
   if ! printf '%s\n' "$worktree" > "${slot_dir}/path" ||
     ! printf '%s\n' "$branch" > "${slot_dir}/branch"; then
@@ -199,7 +208,7 @@ allocate_slot_for() {
   local status
 
   mkdir -p "$locks_dir"
-  while true; do
+  while [ "$slot" -le "$MAX_WORKTREE_SLOTS" ]; do
     if allocated_slot="$(with_slot_lock "$slot" "$common_dir" __allocate_slot_locked "$worktree" "$branch" "$common_dir" "$slot")"; then
       ALLOCATED_SLOT="$allocated_slot"
       return 0
@@ -209,6 +218,9 @@ allocate_slot_for() {
     fi
     slot=$((slot + 1))
   done
+
+  fail "no free worktree slots; the maximum is ${MAX_WORKTREE_SLOTS}"
+  return 1
 }
 
 SETUP_LOG=""
@@ -447,6 +459,30 @@ release_slot() {
   local slot_dir="$1"
   rm -f "${slot_dir}/path" "${slot_dir}/branch"
   rmdir "$slot_dir" 2>/dev/null || true
+}
+
+release_slot_for_worktree_locked() {
+  local slot="$1"
+  local common_dir="$2"
+  local worktree="$3"
+  local expected_branch="$4"
+  local slot_dir="${common_dir}/${LOCKS_NAME}/slot-${slot}"
+  local owner=""
+  local branch=""
+
+  [ -d "$slot_dir" ] || return 0
+  [ ! -f "${slot_dir}/path" ] || owner="$(<"${slot_dir}/path")"
+  [ "$owner" = "$worktree" ] || {
+    fail "slot ${slot} no longer belongs to ${worktree}; refusing to release it"
+    return 1
+  }
+  [ ! -f "${slot_dir}/branch" ] || branch="$(<"${slot_dir}/branch")"
+  [ "$branch" = "$expected_branch" ] || {
+    fail "slot ${slot} branch changed; refusing to release it"
+    return 1
+  }
+
+  release_slot "$slot_dir"
 }
 
 clean_stale_slot() {
@@ -762,7 +798,8 @@ create_cmd() {
       git -C "$main_dir" worktree remove "$target" --force >&2 2>/dev/null || true
     fi
     git -C "$main_dir" branch -D -- "$branch" >&2 2>/dev/null || true
-    release_slot "${common_dir}/${LOCKS_NAME}/slot-${ALLOCATED_SLOT}"
+    with_slot_lock "$ALLOCATED_SLOT" "$common_dir" __release_slot_for_worktree_locked \
+      "$ALLOCATED_SLOT" "$common_dir" "$target" "$branch" || true
     return 1
   fi
 
@@ -795,6 +832,10 @@ case "$command" in
   __prune_slot_locked)
     [ $# -eq 2 ] || usage
     prune_slot_locked "$@"
+    ;;
+  __release_slot_for_worktree_locked)
+    [ $# -eq 4 ] || usage
+    release_slot_for_worktree_locked "$@"
     ;;
   __remove_slot_locked)
     [ $# -eq 6 ] || usage

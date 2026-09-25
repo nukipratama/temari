@@ -2,7 +2,29 @@
 set -Eeuo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-real_perl="$(command -v perl)"
+real_perl="$(command -v perl || true)"
+real_flock="$(command -v flock || true)"
+backend="${1:-perl}"
+case "$backend" in
+  perl)
+    [ -n "$real_perl" ] || {
+      echo 'FAIL: Perl backend test needs perl in PATH' >&2
+      exit 1
+    }
+    force_perl_flock=true
+    ;;
+  flock)
+    [ -n "$real_flock" ] || {
+      echo 'SKIP: flock backend is not available' >&2
+      exit 0
+    }
+    force_perl_flock=false
+    ;;
+  *)
+    echo "FAIL: unknown lock backend ${backend}" >&2
+    exit 1
+    ;;
+esac
 test_root="$(mktemp -d "${TMPDIR:-/tmp}/temari-worktree-races.XXXXXX")"
 test_root="$(cd "$test_root" && pwd -P)"
 running_pids=(none)
@@ -69,7 +91,8 @@ init_case() {
   export FAKE_REMOVE_AFTER_REMOVE="${case_dir}/remove-after-git"
   export FAKE_RELEASE_REMOVE="${case_dir}/release-remove"
   export FAKE_REAL_PERL="$real_perl"
-  export TEMARI_FORCE_PERL_FLOCK=true
+  export FAKE_REAL_FLOCK="$real_flock"
+  export TEMARI_FORCE_PERL_FLOCK="$force_perl_flock"
   export PATH="${FAKE_BIN}:${PATH}"
 
   mkdir -p "${FAKE_MAIN}/scripts" "${FAKE_COMMON}/worktrees" "${FAKE_BIN}" \
@@ -173,6 +196,14 @@ printf 'lock\n' >> "$FAKE_LOCK_ATTEMPTS"
 exec "$FAKE_REAL_PERL" "$@"
 EOF
   chmod +x "${FAKE_BIN}/perl"
+
+  cat > "${FAKE_BIN}/flock" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+printf 'lock\n' >> "$FAKE_LOCK_ATTEMPTS"
+exec "$FAKE_REAL_FLOCK" "$@"
+EOF
+  chmod +x "${FAKE_BIN}/flock"
 
   cat > "${FAKE_BIN}/jq" <<'EOF'
 #!/usr/bin/env bash
@@ -344,6 +375,27 @@ assert_eq "${case_dir}/next-adopter" "$(<"${FAKE_COMMON}/temari-worktree-slots/s
 assert_eq 2 "$(wc -l < "$FAKE_CLEAN_LOG" | tr -d ' ')" 'live owner caused a new cleanup after retry'
 echo 'PASS: interrupted reclaim retries and leaves live owners untouched'
 
+case_dir="${test_root}/slot-capacity"
+init_case "$case_dir"
+for slot in $(seq 1 84); do
+  owner="${case_dir}/owner-${slot}"
+  make_worktree "$owner"
+  mkdir -p "${FAKE_COMMON}/temari-worktree-slots/slot-${slot}"
+  printf '%s\n' "$owner" > "${FAKE_COMMON}/temari-worktree-slots/slot-${slot}/path"
+  printf 'worktree-owner-%s\n' "$slot" > "${FAKE_COMMON}/temari-worktree-slots/slot-${slot}/branch"
+done
+
+if "${FAKE_MAIN}/scripts/worktree" create creator > "${case_dir}/create.out" 2>&1; then
+  cat "${case_dir}/create.out" >&2
+  fail 'create succeeded after all documented worktree slots were occupied'
+fi
+assert_eq 84 "$(wc -l < "$FAKE_LOCK_ATTEMPTS" | tr -d ' ')" 'allocator attempted slots beyond the documented limit'
+if ! grep -q 'no free worktree slots; the maximum is 84' "${case_dir}/create.out"; then
+  cat "${case_dir}/create.out" >&2
+  fail 'allocator did not report that all documented worktree slots were occupied'
+fi
+echo 'PASS: allocation stops at the documented 84-slot limit'
+
 case_dir="${test_root}/remove-prune-create"
 init_case "$case_dir"
 remover="${FAKE_MAIN}/.claude/worktrees/remover"
@@ -391,3 +443,4 @@ running_pids=(none)
 assert_eq "${FAKE_MAIN}/.claude/worktrees/creator" "$(<"${FAKE_COMMON}/temari-worktree-slots/slot-1/path")" 'remove erased the new owner reservation'
 assert_eq 0 "$(wc -l < "$FAKE_CLEAN_LOG" | tr -d ' ')" 'create redundantly reclaimed the slot while remove held it'
 echo 'PASS: remove holds the slot through Git removal and preserves safety refusals'
+echo "PASS: lock backend ${backend}"
