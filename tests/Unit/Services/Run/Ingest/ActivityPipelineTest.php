@@ -33,6 +33,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
+use Laravel\Pulse\Facades\Pulse;
 
 uses(RefreshDatabase::class);
 
@@ -424,6 +425,28 @@ it('revokes the connection without burning detail_fail_count on a 401 (auth revo
 
     expect($connection->fresh()->isRevoked())->toBeTrue()
         ->and($activity->fresh()->detail_fail_count)->toBe(0);
+});
+
+it('ignores a stale 401 after credentials change during the detail fetch', function (): void {
+    $activity = makeActivityWithConnection();
+    $connection = $activity->user->stravaConnection;
+    $capturedVersion = $connection->credential_version;
+
+    Http::fake(function () use ($connection, $capturedVersion) {
+        $connection->update([
+            'credential_version' => $capturedVersion + 1,
+            'revoked_at' => null,
+        ]);
+
+        return Http::response(['error' => 'Authorization Error'], 401);
+    });
+    Pulse::shouldReceive('record')->never();
+
+    $this->pipeline->ingest($activity);
+
+    expect($connection->fresh()->isRevoked())->toBeFalse()
+        ->and($activity->fresh()->detail_fail_count)->toBe(0)
+        ->and($activity->fresh()->analyzed_at)->toBeNull();
 });
 
 it('revokes on a permanent token refresh failure (invalid_grant), budget untouched', function (): void {

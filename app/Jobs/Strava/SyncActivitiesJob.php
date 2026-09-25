@@ -77,7 +77,11 @@ class SyncActivitiesJob implements ShouldQueue
         } catch (StravaConnectionRevokedException $e) {
             // The API rejected the access token with a 401 (athlete deauthorized).
             // Same outcome as a failed refresh: revoke so we stop retrying.
-            if ($connection === null || ! $connection->markRevoked(expectedCredentialVersion: $credentialVersion)) {
+            if ($connection === null) {
+                return;
+            }
+
+            if (! $connection->markRevoked(expectedCredentialVersion: $credentialVersion)) {
                 Log::info('strava-sync ignored a stale API 401 after credentials changed', [
                     'user_id' => $user->id,
                 ]);
@@ -107,7 +111,11 @@ class SyncActivitiesJob implements ShouldQueue
             // refresh token out from under us). Mark the connection revoked so
             // sync stops instead of burning $tries on a token that will never
             // succeed.
-            if ($connection === null || ! $connection->markRevoked(expectedCredentialVersion: $credentialVersion)) {
+            if ($connection === null) {
+                return;
+            }
+
+            if (! $connection->markRevoked(expectedCredentialVersion: $credentialVersion)) {
                 Log::info('strava-sync ignored a stale refresh failure after credentials changed', [
                     'user_id' => $user->id,
                 ]);

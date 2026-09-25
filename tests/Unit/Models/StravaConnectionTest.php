@@ -123,6 +123,32 @@ it('stamps revoked_at via markRevoked and is a no-op when already revoked', func
     expect($connection->fresh()->revoked_at->equalTo($stampedAt))->toBeTrue();
 });
 
+it('ignores a stale revocation without notifying or purging stubs', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
+    $stub = Activity::factory()->stub()->for($user)->create();
+
+    $revoked = $connection->markRevoked(expectedCredentialVersion: 1);
+
+    expect($revoked)->toBeFalse()
+        ->and($connection->fresh()->isRevoked())->toBeFalse()
+        ->and(Activity::withStubs()->whereKey($stub->id)->exists())->toBeTrue();
+    Notification::assertNothingSent();
+});
+
+it('revokes when the expected credential version matches', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
+
+    $revoked = $connection->markRevoked(expectedCredentialVersion: 2);
+
+    expect($revoked)->toBeTrue()
+        ->and($connection->fresh()->isRevoked())->toBeTrue();
+    Notification::assertSentToTimes($user, StravaDisconnectedNotification::class, 1);
+});
+
 // One notification per revocation, from the one method every revoking call site
 // already goes through — eight of them, and a per-call-site notify would drift the
 // way "where can this user be reached" once did.
