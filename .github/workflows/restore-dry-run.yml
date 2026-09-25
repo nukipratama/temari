@@ -49,10 +49,12 @@ jobs:
           # sibling, just under the "analytics-pre-deploy-" prefix instead.
           sha="${{ inputs.backup_sha }}"
           if [ -n "$sha" ]; then
-            app=$(find "$BACKUP_DIR" -maxdepth 1 -type f -name "pre-deploy-$sha-*.sql.gz" -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2- || true)
+            # shellcheck disable=SC2012 # Generated backup filenames contain no whitespace.
+            app=$(ls -1t "$BACKUP_DIR"/pre-deploy-"$sha"-*.sql.gz 2>/dev/null | head -n1 || true)
             [ -n "$app" ] || { echo "::error::no backup found for sha $sha in $BACKUP_DIR"; exit 1; }
           else
-            app=$(find "$BACKUP_DIR" -maxdepth 1 -type f -name 'pre-deploy-*.sql.gz' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2- || true)
+            # shellcheck disable=SC2012 # Generated backup filenames contain no whitespace.
+            app=$(ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz 2>/dev/null | head -n1 || true)
             [ -n "$app" ] || { echo "::error::no pre-deploy-*.sql.gz found in $BACKUP_DIR"; exit 1; }
           fi
 
