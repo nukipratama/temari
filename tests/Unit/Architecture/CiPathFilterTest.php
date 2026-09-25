@@ -39,8 +39,23 @@ function ciFilterPattern(string $name): string
 /** Does the workflow classify `$path` as needing the backend jobs? */
 function ciClassifiesAsBackend(string $path): bool
 {
+    return ciMatchesPatterns($path, ['ARCH', 'BACKEND', 'MIRRORS', 'DOCS_READ_BY_TESTS']);
+}
+
+function ciClassifiesAsFrontend(string $path): bool
+{
+    return ciMatchesPatterns($path, ['ARCH', 'FRONTEND']);
+}
+
+function ciClassifiesAsDocker(string $path): bool
+{
+    return ciMatchesPatterns($path, ['ARCH']);
+}
+
+function ciMatchesPatterns(string $path, array $names): bool
+{
     return array_any(
-        ['ARCH', 'BACKEND', 'MIRRORS', 'DOCS_READ_BY_TESTS'],
+        $names,
         fn (string $name): bool => preg_match('#'.ciFilterPattern($name).'#', $path) === 1,
     );
 }
@@ -78,6 +93,53 @@ it('runs everything when the workflow itself changes', function (): void {
     expect(ciClassifiesAsBackend(CI_WORKFLOW))->toBeTrue(
         'A change to the CI workflow must not be able to skip the jobs it defines.',
     );
+    expect(ciClassifiesAsFrontend(CI_WORKFLOW))->toBeTrue();
+    expect(ciClassifiesAsDocker(CI_WORKFLOW))->toBeTrue();
+})->group('structure');
+
+it('routes public runtime assets and frontend test configuration to frontend CI only', function (): void {
+    $paths = [
+        'public/sw.js',
+        'public/offline.html',
+        'vitest.config.ts',
+        'prettier.config.js',
+    ];
+
+    foreach ($paths as $path) {
+        expect(ciClassifiesAsBackend($path))->toBeFalse("{$path} should not trigger backend CI.");
+        expect(ciClassifiesAsFrontend($path))->toBeTrue("{$path} should trigger frontend CI.");
+        expect(ciClassifiesAsDocker($path))->toBeFalse("{$path} should not trigger an image build.");
+    }
+})->group('structure');
+
+it('routes the worktree helper and both Compose suffixes to every check', function (): void {
+    $paths = [
+        'scripts/worktree',
+        'compose.prod.yaml',
+        'compose.shared-services.yml',
+    ];
+
+    foreach ($paths as $path) {
+        expect(ciClassifiesAsBackend($path))->toBeTrue("{$path} should trigger backend CI.");
+        expect(ciClassifiesAsFrontend($path))->toBeTrue("{$path} should trigger frontend CI.");
+        expect(ciClassifiesAsDocker($path))->toBeTrue("{$path} should trigger an image build.");
+    }
+})->group('structure');
+
+it('keeps renamed-away inputs in the changed path list', function (): void {
+    $workflow = File::get(base_path(CI_WORKFLOW));
+
+    expect($workflow)->toContain('git diff --no-renames --name-only "$base" HEAD');
+    expect(ciClassifiesAsFrontend('public/sw.js'))->toBeTrue();
+    expect(ciClassifiesAsDocker('scripts/worktree'))->toBeTrue();
+})->group('structure');
+
+it('unions the checks selected by mixed changes', function (): void {
+    $paths = ['docs/decisions/dark-is-the-default-ground.md', 'public/offline.html'];
+
+    expect(collect($paths)->contains(fn (string $path): bool => ciClassifiesAsBackend($path)))->toBeFalse();
+    expect(collect($paths)->contains(fn (string $path): bool => ciClassifiesAsFrontend($path)))->toBeTrue();
+    expect(collect($paths)->contains(fn (string $path): bool => ciClassifiesAsDocker($path)))->toBeFalse();
 })->group('structure');
 
 it('skips the heavy jobs for planning docs, which nothing asserts against', function (): void {
@@ -85,4 +147,8 @@ it('skips the heavy jobs for planning docs, which nothing asserts against', func
     // has been widened until it no longer saves anything.
     expect(ciClassifiesAsBackend('plan/README.md'))->toBeFalse();
     expect(ciClassifiesAsBackend('docs/decisions/dark-is-the-default-ground.md'))->toBeFalse();
+    expect(ciClassifiesAsFrontend('plan/README.md'))->toBeFalse();
+    expect(ciClassifiesAsFrontend('docs/decisions/dark-is-the-default-ground.md'))->toBeFalse();
+    expect(ciClassifiesAsDocker('plan/README.md'))->toBeFalse();
+    expect(ciClassifiesAsDocker('docs/decisions/dark-is-the-default-ground.md'))->toBeFalse();
 })->group('structure');

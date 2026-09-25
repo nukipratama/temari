@@ -86,6 +86,10 @@ The `build` job ([.github/workflows/ci.yml](.github/workflows/ci.yml#L311)) runs
 
 This exists because the build used to run *inside* the deploy job on the homelab runner, putting a five-stage `docker build` on the same four cores that serve live prod traffic. The secondary win is an offsite image history: the host only ever held `:latest`/`:previous` locally, so recovering further back than one deploy meant rebuilding from the commit.
 
+### Pull request check routing
+
+On pull requests, the `changes` job in [.github/workflows/ci.yml](../../.github/workflows/ci.yml#L64) compares the PR diff with its merge base. `Dockerfile`, `compose*.yaml`/`compose*.yml`, `.env.example`, `scripts/worktree`, and anything under `docker/` or `.github/` run backend CI, frontend CI, and the image build. Backend source and its PHP/config/tooling inputs run backend CI; frontend source, `public/sw.js`, `public/offline.html`, Vite/Vitest/Prettier/ESLint configuration, and frontend package or TypeScript configuration run frontend CI. Token-mirror inputs and the design-token docs also run backend CI because its structure tests read them. Other documentation-only changes skip those heavy checks. The diff disables rename detection so a renamed input's old path remains classified, and deletions continue to appear in the changed-path list. Pushes to `main` run all three checks.
+
 > **Unverified in prod.** The GHCR split has never run against the real homelab host. The first deploy after it merges should be watched: GHCR package permissions, `ghcr.io` egress from the host, and the pull's effect on deploy wall-clock are all untested assumptions.
 
 ## How a deploy runs

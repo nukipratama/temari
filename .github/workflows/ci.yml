@@ -53,14 +53,15 @@ jobs:
           base_ref='${{ github.base_ref }}'
           git fetch --no-tags --quiet origin "+refs/heads/${base_ref}:refs/remotes/origin/${base_ref}"
           base="$(git merge-base "origin/${base_ref}" HEAD)"
-          changed="$(git diff --name-only "$base" HEAD)"
+          # Keep both sides of renames so a renamed-away input still selects its checks.
+          changed="$(git diff --no-renames --name-only "$base" HEAD)"
           echo "diffing against ${base_ref} @ ${base:0:8}"
           printf '%s\n' "$changed" | sed 's/^/  /'
 
           match() { printf '%s\n' "$changed" | grep -qE "$1"; }
 
           # Anything infrastructural runs the lot (deploy stays main-push-only).
-          ARCH='^(Dockerfile|compose[^/]*\.yaml|\.env\.example)$|^(docker|\.github)/'
+          ARCH='^(Dockerfile|compose[^/]*\.ya?ml|\.env\.example|scripts/worktree)$|^(docker|\.github)/'
 
           # Backend also owns the token-mirror structure tests, which read files
           # that look like frontend or documentation. See MIRROR_FILES in
@@ -69,7 +70,7 @@ jobs:
           MIRRORS='^resources/(css|views|brand)/|^resources/js/lib/(shareCard|runcard|chartTokens)\.ts$|^resources/js/lib/card/palette\.ts$'
           DOCS_READ_BY_TESTS='^(CLAUDE|README)\.md$|^docs/design-tokens\.md$|^\.claude/skills/temari/SKILL\.md$'
           BACKEND='^(app|bootstrap|config|database|routes|tests)/|^scripts/.*\.php$|^composer\.(json|lock)$|^(phpunit\.xml|artisan|rector\.php|pint\.json)$|^phpstan.*\.neon$'
-          FRONTEND='^resources/(js|css|views)/|^scripts/.*\.mjs$|^(package\.json|package-lock\.json|vite\.config\.ts|eslint\.config\.js)$|^tsconfig.*\.json$|^\.prettierrc'
+          FRONTEND='^resources/(js|css|views)/|^public/(sw\.js|offline\.html)$|^scripts/.*\.mjs$|^(package\.json|package-lock\.json|vite\.config\.ts|vitest\.config\.ts|prettier\.config\.js|eslint\.config\.js)$|^tsconfig.*\.json$|^\.prettierrc'
 
           if match "$ARCH"; then
             b=true; f=true; d=true
