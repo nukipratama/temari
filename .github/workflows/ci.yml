@@ -81,6 +81,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Lint GitHub Actions workflows
+        run: docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work rhysd/actionlint:1.7.12 -color -config-file=/work/.github/actionlint.yaml -shellcheck=shellcheck .github/workflows/*.yml
       - name: Set up PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
@@ -259,9 +261,11 @@ jobs:
             echo "::error::backup already exists, refusing to overwrite: $out"
             exit 1
           fi
+          # shellcheck disable=SC2016 # Database variables must expand inside the container shell.
           $COMPOSE exec -T mysql sh -c \
             'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" "$DB_DATABASE"' \
             | gzip > "$out"
+          # shellcheck disable=SC2016 # Database variables must expand inside the container shell.
           tables=$($COMPOSE exec -T mysql sh -c \
             'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""' \
             | tr -d '[:space:]')
@@ -275,10 +279,13 @@ jobs:
             echo "::error::backup already exists, refusing to overwrite: $out"
             exit 1
           fi
+          # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
           if $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "USE $adb"' 2>/dev/null; then
             set -o pipefail
+            # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
             $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" --databases "$adb"' \
               | gzip > "$out"
+            # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
             tables=$($COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$adb\""' \
               | tr -d '[:space:]')
             scripts/deploy/verify-and-prune-backup.sh "Analytics backup" "$out" "$tables" "$BACKUP_DIR/analytics-pre-deploy-*.sql.gz" 7 "analytics-pre-deploy-"
@@ -330,12 +337,18 @@ jobs:
 
       - name: Healthcheck
         run: |
-          scripts/deploy/poll-health.sh http://127.0.0.1:7001/ready \
-            && echo "Readiness passed" \
-            || { echo "Readiness failed"; exit 1; }
-          scripts/deploy/poll-health.sh http://127.0.0.1:7001/up \
-            && echo "Dependency health passed" \
-            || { echo "Dependency health failed"; exit 1; }
+          if scripts/deploy/poll-health.sh http://127.0.0.1:7001/ready; then
+            echo "Readiness passed"
+          else
+            echo "Readiness failed"
+            exit 1
+          fi
+          if scripts/deploy/poll-health.sh http://127.0.0.1:7001/up; then
+            echo "Dependency health passed"
+          else
+            echo "Dependency health failed"
+            exit 1
+          fi
 
       - name: Smoke test
         run: |
@@ -422,8 +435,10 @@ jobs:
       - name: Deploy summary
         if: always()
         run: |
-          echo "## Deploy" >> $GITHUB_STEP_SUMMARY
-          echo "| | |" >> $GITHUB_STEP_SUMMARY
-          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| SHA | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Status | ${{ job.status == 'success' && '✅ Deployed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Deploy"
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| SHA | \`${{ github.sha }}\` |"
+            echo "| Status | ${{ job.status == 'success' && '✅ Deployed' || '❌ Failed' }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
