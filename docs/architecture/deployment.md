@@ -82,7 +82,7 @@ Why this matters: `plan:regenerate` can dispatch up to 9 rows per athlete, and t
 
 ## Where the image is built
 
-The `build` job ([.github/workflows/ci.yml](.github/workflows/ci.yml#L139)) runs on `ubuntu-latest`, gated by the same `push`-to-`main` condition as `deploy` but with no `needs`, so it builds in parallel with the test jobs. It pushes `ghcr.io/<owner>/<repo>/app:<git-sha>` using the job's own `GITHUB_TOKEN` widened to `packages: write` — **no new repository secret**. Layer cache is a registry cache (`cache-from`/`cache-to` on a `:buildcache` tag in the same GHCR package), not `type=gha`: the Actions cache is one 10 GB per-repo LRU that the hot composer and `node_modules` entries would evict a ~1 GB image cache out of between deploys.
+The `build` job ([.github/workflows/ci.yml](.github/workflows/ci.yml#L141)) runs on `ubuntu-latest`, gated by the same `push`-to-`main` condition as `deploy` but with no `needs`, so it builds in parallel with the test jobs. It pushes `ghcr.io/<owner>/<repo>/app:<git-sha>` using the job's own `GITHUB_TOKEN` widened to `packages: write` — **no new repository secret**. Layer cache is a registry cache (`cache-from`/`cache-to` on a `:buildcache` tag in the same GHCR package), not `type=gha`: the Actions cache is one 10 GB per-repo LRU that the hot composer and `node_modules` entries would evict a ~1 GB image cache out of between deploys.
 
 This exists because the build used to run *inside* the deploy job on the homelab runner, putting a five-stage `docker build` on the same four cores that serve live prod traffic. The secondary win is an offsite image history: the host only ever held `:latest`/`:previous` locally, so recovering further back than one deploy meant rebuilding from the commit.
 
