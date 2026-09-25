@@ -302,7 +302,7 @@ class StravaClient
                     return $connection;
                 }
 
-                return $this->performRefresh($connection);
+                return $this->performRefresh($connection, $connection->credential_version);
             },
         );
     }
@@ -312,7 +312,7 @@ class StravaClient
         return $connection->token_expires_at->isAfter(Carbon::now()->addSeconds(self::REFRESH_BUFFER_SECONDS));
     }
 
-    private function performRefresh(StravaConnection $connection): StravaConnection
+    private function performRefresh(StravaConnection $connection, int $credentialVersion): StravaConnection
     {
         try {
             $response = Http::asForm()->post(self::TOKEN_URL, [
@@ -357,13 +357,18 @@ class StravaClient
             );
         }
 
-        $connection->update([
+        $attributes = $connection->newInstance([
             'access_token' => $accessToken,
             'refresh_token' => $refreshToken,
             'token_expires_at' => new Carbon('@' . $expiresAt)->setTimezone(config('app.timezone')),
-        ]);
+        ])->getAttributes();
 
-        return $connection;
+        $connection->newQuery()
+            ->whereKey($connection->getKey())
+            ->where('credential_version', $credentialVersion)
+            ->update($attributes);
+
+        return $connection->refresh();
     }
 
     private function guardRateLimit(StravaReadPriority $priority): void

@@ -78,6 +78,43 @@ it('refreshes the token when it has already expired', function (): void {
         && $request['refresh_token'] === 'old-refresh');
 });
 
+it('keeps reconnect credentials when OAuth finishes during a token refresh', function (): void {
+    $connection = StravaConnection::factory()->create([
+        'access_token' => 'old-access',
+        'refresh_token' => 'old-refresh',
+        'token_expires_at' => Carbon::now()->subMinute(),
+        'scopes' => 'read,activity:read_all',
+    ]);
+    $oauthExpiresAt = Carbon::now()->addHours(6);
+    $oauthScopes = 'read,activity:read_all,profile:read_all';
+    $credentialVersion = $connection->credential_version + 1;
+
+    Http::fake(function () use ($connection, $credentialVersion, $oauthExpiresAt, $oauthScopes) {
+        StravaConnection::query()->findOrFail($connection->id)->update([
+            'access_token' => 'oauth-access',
+            'refresh_token' => 'oauth-refresh',
+            'token_expires_at' => $oauthExpiresAt,
+            'scopes' => $oauthScopes,
+            'credential_version' => $credentialVersion,
+        ]);
+
+        return Http::response([
+            'access_token' => 'stale-refresh-access',
+            'refresh_token' => 'stale-refresh-token',
+            'expires_at' => Carbon::now()->addHours(6)->timestamp,
+        ]);
+    });
+
+    $result = new StravaClient()->refreshIfExpired($connection);
+
+    expect($result->access_token)->toBe('oauth-access')
+        ->and($result->refresh_token)->toBe('oauth-refresh')
+        ->and($result->scopes)->toBe($oauthScopes)
+        ->and($result->credential_version)->toBe($credentialVersion);
+
+    Http::assertSent(fn ($request) => $request['refresh_token'] === 'old-refresh');
+});
+
 it('refreshes when the token is within the 60-second buffer', function (): void {
     Http::fake([
         'strava.com/oauth/token' => Http::response([

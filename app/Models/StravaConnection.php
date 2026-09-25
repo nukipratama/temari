@@ -47,11 +47,8 @@ class StravaConnection extends Model
     use HasFactory;
 
     /**
-     * Keep the two shared Inertia props that read this row in step with it:
-     * `stravaZoneScopeMissing` (granted scopes) and `stravaSync` (connection
-     * presence and revoked state). Every writer goes through the model — the
-     * OAuth connect/reconnect, the background token refresh and
-     * `markRevoked()` — so a save is the one hook that catches all of them.
+     * Keep `stravaZoneScopeMissing` and `stravaSync` in step with OAuth saves and
+     * revocations; token refresh changes neither cached fact and uses a version-checked write.
      */
     #[Override]
     protected static function booted(): void
