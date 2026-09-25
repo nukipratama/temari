@@ -36,6 +36,27 @@ git_common_dir_for() {
   git -C "$1" rev-parse --path-format=absolute --git-common-dir
 }
 
+with_slot_lock() {
+  local slot="$1"
+  local common_dir="$2"
+  local lock_file="${common_dir}/${LOCKS_NAME}/lock-slot-${slot}.lock"
+  shift 2
+
+  mkdir -p "${common_dir}/${LOCKS_NAME}"
+  if [ "${TEMARI_FORCE_PERL_FLOCK:-false}" != true ] && command -v flock >/dev/null 2>&1; then
+    flock -x "$lock_file" "$SCRIPT_PATH" "$@"
+  else
+    perl -MFcntl=:flock - "$lock_file" "$SCRIPT_PATH" "$@" <<'PERL'
+      my ($path, @command) = @ARGV;
+      open my $lock, ">>", $path or die "could not open slot lock $path: $!\n";
+      flock($lock, LOCK_EX) or die "could not acquire slot lock $path: $!\n";
+      system @command;
+      die "could not run locked command $command[0]: $!\n" if $? == -1;
+      exit(($? & 127) ? 128 + ($? & 127) : $? >> 8);
+PERL
+  fi
+}
+
 is_main_checkout() {
   [ "$(git_dir_for "$1")" = "$(git_common_dir_for "$1")" ]
 }
@@ -73,7 +94,7 @@ set_env_var() {
   fi
 }
 
-reserve_slot_for() {
+reserve_slot_for_locked() {
   local worktree="$1"
   local slot="$2"
   local common_dir="$3"
@@ -89,6 +110,14 @@ reserve_slot_for() {
   fi
 
   mkdir -p "$locks_dir"
+  if [ -d "$slot_dir" ] && slot_lock_is_stale "$slot_dir"; then
+    clean_stale_slot "$slot" "$common_dir" || {
+      fail "could not reclaim slot ${slot}; its reservation remains for retry"
+      return 1
+    }
+    release_slot "$slot_dir"
+  fi
+
   if mkdir "$slot_dir" 2>/dev/null; then
     if ! printf '%s\n' "$worktree" > "${slot_dir}/path"; then
       rmdir "$slot_dir" 2>/dev/null || true
@@ -110,6 +139,14 @@ reserve_slot_for() {
   printf '%s\n' "$slot" > "${worktree}/${SLOT_FILE}"
 }
 
+reserve_slot_for() {
+  local worktree="$1"
+  local slot="$2"
+  local common_dir="$3"
+
+  with_slot_lock "$slot" "$common_dir" __reserve_slot_locked "$worktree" "$slot" "$common_dir"
+}
+
 slot_lock_is_stale() {
   local slot_dir="$1"
   local owner=""
@@ -120,29 +157,55 @@ slot_lock_is_stale() {
 }
 
 ALLOCATED_SLOT=""
+allocate_slot_locked() {
+  local worktree="$1"
+  local branch="$2"
+  local common_dir="$3"
+  local slot="$4"
+  local slot_dir="${common_dir}/${LOCKS_NAME}/slot-${slot}"
+
+  if [ -d "$slot_dir" ]; then
+    if slot_lock_is_stale "$slot_dir"; then
+      clean_stale_slot "$slot" "$common_dir" >&2 || {
+        fail "could not reclaim slot ${slot}; its reservation remains for retry"
+        return 1
+      }
+      release_slot "$slot_dir"
+    else
+      return 10
+    fi
+  fi
+
+  if ! mkdir "$slot_dir" 2>/dev/null; then
+    return 10
+  fi
+  if ! printf '%s\n' "$worktree" > "${slot_dir}/path" ||
+    ! printf '%s\n' "$branch" > "${slot_dir}/branch"; then
+    rm -f "${slot_dir}/path" "${slot_dir}/branch"
+    rmdir "$slot_dir" 2>/dev/null || true
+    return 1
+  fi
+
+  printf '%s\n' "$slot"
+}
+
 allocate_slot_for() {
   local worktree="$1"
   local branch="$2"
   local common_dir="$3"
   local locks_dir="${common_dir}/${LOCKS_NAME}"
   local slot=1
-  local slot_dir
+  local allocated_slot
+  local status
 
   mkdir -p "$locks_dir"
   while true; do
-    slot_dir="${locks_dir}/slot-${slot}"
-    if slot_lock_is_stale "$slot_dir"; then
-      clean_stale_slot "$slot" "$common_dir" || true
-    fi
-    if mkdir "$slot_dir" 2>/dev/null || slot_lock_is_stale "$slot_dir"; then
-      if printf '%s\n' "$worktree" > "${slot_dir}/path" &&
-        printf '%s\n' "$branch" > "${slot_dir}/branch"; then
-        ALLOCATED_SLOT="$slot"
-        return
-      fi
-      rm -f "${slot_dir}/path" "${slot_dir}/branch"
-      rmdir "$slot_dir" 2>/dev/null || true
-      return 1
+    if allocated_slot="$(with_slot_lock "$slot" "$common_dir" __allocate_slot_locked "$worktree" "$branch" "$common_dir" "$slot")"; then
+      ALLOCATED_SLOT="$allocated_slot"
+      return 0
+    else
+      status=$?
+      [ "$status" -eq 10 ] || return "$status"
     fi
     slot=$((slot + 1))
   done
@@ -402,23 +465,34 @@ clean_stale_slot() {
   remove_project_volumes "$project"
 }
 
+prune_slot_locked() {
+  local slot="$1"
+  local common_dir="$2"
+  local slot_dir="${common_dir}/${LOCKS_NAME}/slot-${slot}"
+
+  [ -d "$slot_dir" ] && slot_lock_is_stale "$slot_dir" || return 0
+  clean_stale_slot "$slot" "$common_dir" || {
+    fail "could not reclaim slot ${slot}; its reservation remains for retry"
+    return 1
+  }
+  release_slot "$slot_dir"
+  echo "worktree: released slot ${slot}" >&2
+}
+
 prune_cmd() {
   local common_dir
   local slot_dir
   local slot
+  local status=0
 
   common_dir="$(git_common_dir_for "$CHECKOUT_DIR")"
   git -C "$(dirname "$common_dir")" worktree prune
   for slot_dir in "${common_dir}/${LOCKS_NAME}"/slot-*; do
-    [ -d "$slot_dir" ] && slot_lock_is_stale "$slot_dir" || continue
+    [ -d "$slot_dir" ] || continue
     slot="${slot_dir##*/slot-}"
-    if clean_stale_slot "$slot" "$common_dir"; then
-      release_slot "$slot_dir"
-      echo "worktree: released slot ${slot}" >&2
-    else
-      fail "could not reclaim slot ${slot}; its lock remains for retry" || true
-    fi
+    with_slot_lock "$slot" "$common_dir" __prune_slot_locked "$slot" "$common_dir" || status=1
   done
+  return "$status"
 }
 
 adopt_cmd() {
@@ -444,6 +518,105 @@ adopt_cmd() {
   TEMARI_WORKTREE_SETUP_DIR="$worktree" "$SCRIPT_PATH" setup "$slot"
 }
 
+remove_slot_locked() {
+  local worktree="$1"
+  local force="$2"
+  local force_cleanup="$3"
+  local common_dir="$4"
+  local slot="$5"
+  local expected_branch="$6"
+  local git_dir
+  local actual_common_dir
+  local metadata_slot
+  local slot_dir="${common_dir}/${LOCKS_NAME}/slot-${slot}"
+  local owner=""
+  local generated_branch=""
+  local main_checkout
+  local project=""
+  local branch_delete_status=0
+
+  [ -d "$worktree" ] && [ -f "${worktree}/.git" ] || {
+    fail "${worktree} changed while waiting for slot ${slot}; refusing to remove it"
+    return
+  }
+
+  git_dir="$(git_dir_for "$worktree")"
+  actual_common_dir="$(git_common_dir_for "$worktree")"
+  [ "$git_dir" != "$actual_common_dir" ] && [ "$actual_common_dir" -ef "$common_dir" ] || {
+    fail "${worktree} changed repositories while waiting for slot ${slot}"
+    return
+  }
+
+  [ -f "${worktree}/${SLOT_FILE}" ] || {
+    fail "${worktree} lost its Temari slot metadata while waiting for slot ${slot}"
+    return
+  }
+  metadata_slot="$(<"${worktree}/${SLOT_FILE}")"
+  [ "$metadata_slot" = "$slot" ] || {
+    fail "${worktree} changed slot metadata while waiting for slot ${slot}"
+    return
+  }
+
+  [ ! -f "${slot_dir}/path" ] || owner="$(<"${slot_dir}/path")"
+  if [ -n "$owner" ] && [ "$owner" != "$worktree" ]; then
+    fail "slot ${slot} belongs to ${owner}; refusing to release it"
+    return
+  fi
+  [ ! -f "${slot_dir}/branch" ] || generated_branch="$(<"${slot_dir}/branch")"
+  [ "$generated_branch" = "$expected_branch" ] || {
+    fail "slot ${slot} branch changed while waiting for its lock"
+    return
+  }
+
+  if [ "$force" != true ] && [ "$force_cleanup" != true ]; then
+    unsaved_work "$worktree" "$generated_branch" || return
+  fi
+
+  if [ -z "$owner" ]; then
+    mkdir -p "$slot_dir" || return
+    printf '%s\n' "$worktree" > "${slot_dir}/path" || {
+      fail "could not reserve slot ${slot} before removing ${worktree}"
+      return 1
+    }
+  fi
+
+  main_checkout="$(dirname "$common_dir")"
+  project="$(compose_project_name "$worktree" || true)"
+  if [ -f "${worktree}/.env" ]; then
+    if ! (cd "$worktree" && docker compose --progress quiet down --remove-orphans); then
+      if [ "$force_cleanup" != true ]; then
+        fail "could not stop ${worktree}; its slot remains reserved"
+        return
+      fi
+    fi
+
+    if ! clean_slot_data "${worktree}/.env" "$slot" "$common_dir"; then
+      if [ "$force_cleanup" != true ]; then
+        fail "could not clean slot ${slot} data; its worktree and lock remain for retry"
+        return
+      fi
+    fi
+  fi
+
+  if ! remove_project_volumes "$project" && [ "$force_cleanup" != true ]; then
+    fail "could not remove ${worktree} volumes; its worktree and lock remain for retry"
+    return
+  fi
+
+  git -C "$main_checkout" worktree remove "$worktree" --force >&2
+  if [ -n "$generated_branch" ] &&
+    git -C "$main_checkout" show-ref --verify --quiet "refs/heads/${generated_branch}"; then
+    git -C "$main_checkout" branch -D -- "$generated_branch" >&2 || branch_delete_status=$?
+  fi
+  release_slot "$slot_dir"
+
+  if [ "$branch_delete_status" -ne 0 ]; then
+    fail "removed ${worktree} and released slot ${slot}, but could not delete branch ${generated_branch}"
+    return "$branch_delete_status"
+  fi
+  echo "worktree: removed ${worktree} and released slot ${slot}" >&2
+}
+
 remove_impl() {
   local requested_path="$1"
   local force="$2"
@@ -457,8 +630,6 @@ remove_impl() {
   local slot_dir
   local owner=""
   local generated_branch=""
-  local project=""
-  local branch_delete_status=0
 
   worktree="$(absolute_path "$requested_path")" || {
     echo "worktree: ${requested_path} is already absent" >&2
@@ -514,40 +685,8 @@ remove_impl() {
     unsaved_work "$worktree" "$generated_branch" || return
   fi
 
-  project="$(compose_project_name "$worktree" || true)"
-  if [ -f "${worktree}/.env" ]; then
-    if ! (cd "$worktree" && docker compose --progress quiet down --remove-orphans); then
-      if [ "$force_cleanup" != true ]; then
-        fail "could not stop ${worktree}; its slot remains reserved"
-        return
-      fi
-    fi
-
-    if ! clean_slot_data "${worktree}/.env" "$slot" "$common_dir"; then
-      if [ "$force_cleanup" != true ]; then
-        fail "could not clean slot ${slot} data; its worktree and lock remain for retry"
-        return
-      fi
-    fi
-  fi
-
-  if ! remove_project_volumes "$project" && [ "$force_cleanup" != true ]; then
-    fail "could not remove ${worktree} volumes; its worktree and lock remain for retry"
-    return
-  fi
-
-  git -C "$main_checkout" worktree remove "$worktree" --force >&2
-  if [ -n "$generated_branch" ] &&
-    git -C "$main_checkout" show-ref --verify --quiet "refs/heads/${generated_branch}"; then
-    git -C "$main_checkout" branch -D -- "$generated_branch" >&2 || branch_delete_status=$?
-  fi
-  release_slot "$slot_dir"
-
-  if [ "$branch_delete_status" -ne 0 ]; then
-    fail "removed ${worktree} and released slot ${slot}, but could not delete branch ${generated_branch}"
-    return "$branch_delete_status"
-  fi
-  echo "worktree: removed ${worktree} and released slot ${slot}" >&2
+  with_slot_lock "$slot" "$common_dir" __remove_slot_locked \
+    "$worktree" "$force" "$force_cleanup" "$common_dir" "$slot" "$generated_branch"
 }
 
 create_cmd() {
@@ -645,6 +784,22 @@ command="$1"
 shift
 
 case "$command" in
+  __reserve_slot_locked)
+    [ $# -eq 3 ] || usage
+    reserve_slot_for_locked "$@"
+    ;;
+  __allocate_slot_locked)
+    [ $# -eq 4 ] || usage
+    allocate_slot_locked "$@"
+    ;;
+  __prune_slot_locked)
+    [ $# -eq 2 ] || usage
+    prune_slot_locked "$@"
+    ;;
+  __remove_slot_locked)
+    [ $# -eq 6 ] || usage
+    remove_slot_locked "$@"
+    ;;
   create)
     [ $# -ge 1 ] && [ $# -le 2 ] || usage
     create_cmd "$@"

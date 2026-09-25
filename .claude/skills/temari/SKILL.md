@@ -338,6 +338,13 @@ then bootstraps the app: `composer install`, `key:generate`, **both** migration 
 starts, so setup uses plain `docker compose exec` for all of it; `./vendor/bin/sail` works for
 everything afterwards.
 
+Slot ownership is serialized by a persistent per-slot lock file: `create`, `adopt`, and `prune` hold
+it from the stale-owner check through cleanup and ownership transfer; `remove` holds it through
+cleanup, Git worktree removal, and reservation release after the existing safety checks. `scripts/worktree`
+uses `flock(1)` when available and Perl `Fcntl::flock` on macOS. If cleanup fails, the reservation
+stays in place for a later retry. `tests/scripts/worktree-races.sh` exercises these paths with an
+isolated fake checkout.
+
 ### Shared services
 
 Each worktree's own MySQL+Redis was cheap at 2-3 worktrees but doesn't scale: `docker stats` during
