@@ -125,6 +125,14 @@ class StravaConnection extends Model
 
             $connection->update(['revoked_at' => $revokedAt]);
 
+            // Purge un-ingested stubs; the drain skips revoked connections, and
+            // withStubs bypasses the analyzed-only scope. Keep it atomic so a
+            // reconnect's catch-up stubs cannot be purged afterward.
+            Activity::withStubs()
+                ->where('user_id', $connection->user_id)
+                ->whereNull('analyzed_at')
+                ->delete();
+
             return $connection;
         });
 
@@ -138,16 +146,6 @@ class StravaConnection extends Model
         if ($notify) {
             $connection->user->notify(new StravaDisconnectedNotification($revokedAt));
         }
-
-        // Purge this user's un-ingested stubs: the ingest drain only selects
-        // activities whose connection is non-revoked, so stubs inserted before a
-        // mid-sync 401 would otherwise sit orphaned forever. withStubs() opts out
-        // of AnalyzedScope (which forces analyzed_at IS NOT NULL) — without it this
-        // delete would match nothing.
-        Activity::withStubs()
-            ->where('user_id', $connection->user_id)
-            ->whereNull('analyzed_at')
-            ->delete();
 
         return true;
     }
