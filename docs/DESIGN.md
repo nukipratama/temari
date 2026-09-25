@@ -3,7 +3,7 @@ title: temari — System Design
 description: Apex overview of what temari is, its design principles, subsystems, and data lifecycle
 tags: [architecture, moc]
 status: living
-reviewed: 2026-09-02
+reviewed: 2026-09-25
 code_refs:
   - app/Services/Run/Ingest/ActivityPipeline.php
   - app/Services/AI/AnalysisService.php
@@ -23,7 +23,7 @@ A personal running companion: it connects to Strava, ingests each run, computes 
 
 ## Core design principles
 
-- **Cost-predictable LLM.** AI narration never auto-retries; failed blocks wait for a manual re-trigger. Dispatch is idempotent and windowed so the same recap is never re-billed. See [[decisions/index|the ADRs]] and [app/Services/AI/AnalysisService.php](app/Services/AI/AnalysisService.php).
+- **Cost-predictable LLM.** A failed block gets a bounded automatic retry (`Analysis::MAX_SELF_HEAL_ATTEMPTS`) and then dead-letters for a manual re-trigger. Dispatch is idempotent and windowed so the same recap is never re-billed, and per-athlete and app-wide daily cost ceilings fill blocks rule-based instead of spending past them. See [[ai-pipeline]], [[decisions/index|the ADRs]] and [app/Services/AI/AnalysisService.php](app/Services/AI/AnalysisService.php).
 - **One casual English voice.** All UI/vibes/copy speak plain, warm English; domain words (pace, splits, HR) stay as-is, running-speak. Rules in [[voice-and-tone]].
 - **Two grounds, the device's by default.** A `data-theme` attribute on `<html>` (never a `.dark` class) switches a ground-reactive semantic layer over a fixed named palette; with nothing stored the ground follows `prefers-color-scheme`, and an explicit light or dark is reachable from Settings. Tokens in [[design-tokens]].
 - **Metering survives app resets.** A separate `analytics` DB connection holds token-usage/metering so it outlives `migrate:fresh`. See [config/database.php](config/database.php).
@@ -34,9 +34,9 @@ A personal running companion: it connects to Strava, ingests each run, computes 
 Backend logic is split by domain under `app/Services/`:
 
 - **Ingestion** — Strava sync → detail/streams/weather fetch → metrics → run cards + story, all idempotent and transactional. Entry: [app/Services/Run/Ingest/ActivityPipeline.php](app/Services/Run/Ingest/ActivityPipeline.php); Strava access via [app/Services/Strava/StravaClient.php](app/Services/Strava/StravaClient.php) (circuit breaker + per-client rate limit). See [[run-ingest-pipeline]]; metrics in [[stream-analysis]] + [[training-load-metrics]]; Strava resilience in [[strava-client]].
-- **AI narration** — one narrator per analysis type → queued job → an [Analysis](app/Models/AI/Analysis.php) row (pending/queued/processing/done/failed). Orchestrated by [app/Services/AI/AnalysisService.php](app/Services/AI/AnalysisService.php). See [[ai-pipeline]]; prompt-context + the demo filler in [[ai-narration-internals]].
+- **AI narration** — one narrator per analysis type → queued job → an [Analysis](app/Models/AI/Analysis.php) row (pending/queued/processing/done/failed). Orchestrated by [app/Services/AI/AnalysisService.php](app/Services/AI/AnalysisService.php). See [[ai-pipeline]]; prompt-context + the rule-based filler in [[ai-narration-internals]].
 - **Gamification** — milestones, personal records, card rarities, streak tracking, and the daily [[vibe-and-mood]] that drives Temari's tone. Under `app/Services/Gamification/` and `app/Services/Run/Story/`.
-- **Notifications** — Telegram push for post-run summaries, weekly recaps, and streak-at-risk reminders (`streak:remind` Saturdays 18:00). Telegram connection is opt-in per notification type. See [[telegram-notifications]] and `app/Console/Commands/Gamification/StreakRemindCommand.php`.
+- **Notifications** — every notification lands in the in-app inbox and, where reachable, also goes out over Telegram and web push: post-run and recap narration, the morning briefing, race-eve and plan-change notices, Strava disconnects, and streak-at-risk reminders (`streak:remind` Saturdays 18:00). One master switch governs *what* is sent and per-channel mutes govern *where*; the demo account is never pushed. Routing lives in [app/Services/Notifications/ChannelRouter.php](app/Services/Notifications/ChannelRouter.php). See [[notification-inbox]] and [[telegram-notifications]].
 - **Geo / Weather** — best-effort reverse-geocode (Nominatim) and weather snapshot (Open-Meteo) augment each run. Under `app/Services/Geo/` and `app/Services/Weather/`. See [[geo-reverse-geocoding]] + [[weather-integration]].
 - **Frontend** — Inertia 2 + React 19 pages in `resources/js/pages/`, rendered by controllers in `app/Http/Controllers/`. See [[frontend-architecture]] for the wiring, [[features/index|Features]] for each screen.
 
@@ -46,7 +46,7 @@ Backend logic is split by domain under `app/Services/`:
 2. The ingest pipeline fetches detail, computes metrics (HR zones, pace, training load, PRs), reverse-geocodes, attaches weather, and atomically writes the run card + story layer.
 3. AI narrators generate per-block narratives as Analysis rows; cadence-based scheduled commands fire weekly/monthly/daily recaps once their window closes.
 4. Post-ingest corrections: `weather:correct-forecast` (03:15 daily) replaces transient forecast data with settled archive data for runs ingested in the forecast window overlap. See [[weather-integration]].
-5. Streak monitoring: `streak:remind` (Saturday 18:00) nudges users whose live weekly streak is at risk, sending a `StreakReminderNotification` via Telegram. See the streak-reminder feature note.
+5. Streak monitoring: `streak:remind` (Saturday 18:00) nudges users whose live weekly streak is at risk, sending a `StreakReminderNotification` through the same inbox / Telegram / web-push routing. See the streak-reminder feature note.
 6. Inertia controllers render React pages that read the activities, cards, records, and Analysis content.
 
 ## Where the conventions live

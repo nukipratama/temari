@@ -35,6 +35,8 @@ change the scope or verification.
 
 ## Codebase map
 
+System overview (principles, subsystems, data lifecycle): [docs/DESIGN.md](../../../docs/DESIGN.md).
+
 Backend logic is split by domain under `app/Services/`:
 - **AI/** — narrators + the Analysis pipeline (see *AI narration pipeline* below).
 - **Run/** — ingest (Strava activity → `ActivityDetail` + streams), metrics (`TrainingLoad`, `PersonalRecords`, VDOT/threshold estimators, `WeeklyAggregator`), and story (`Vibe`, `Temari`, `BriefingComposer`, `RunCardFactory`).
