@@ -7,7 +7,7 @@ use Symfony\Component\Process\Process;
 
 it('serializes worktree slot lifecycle races', function (): void {
     $backends = ['perl'];
-    if ((new ExecutableFinder())->find('flock') !== null) {
+    if (new ExecutableFinder()->find('flock') !== null) {
         $backends[] = 'flock';
     }
 
