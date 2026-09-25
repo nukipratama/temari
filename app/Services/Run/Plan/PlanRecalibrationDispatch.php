@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 final class PlanRecalibrationDispatch
 {
@@ -21,6 +22,17 @@ final class PlanRecalibrationDispatch
         if ($user === null) {
             return;
         }
+
+        $lock = Cache::lock(
+            RecalibrateTrainingHistoryJob::overlapLockKey($userId),
+            RecalibrateTrainingHistoryJob::overlapLockTtlSeconds(),
+        );
+        if (! $lock->get()) {
+            RecalibrateTrainingHistoryJob::markDirty($userId);
+
+            return;
+        }
+        $lock->release();
 
         $user->forceFill([
             'plan_recalibration_started_at' => now(),

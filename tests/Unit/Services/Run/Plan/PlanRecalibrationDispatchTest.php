@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Run\Plan\PlanRecalibrationDispatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
@@ -36,4 +37,26 @@ it('can suppress recursive dispatch while recalibration updates zone-derived dat
     );
 
     Bus::assertNothingDispatched();
+});
+
+it('marks an in-progress recalibration dirty without re-arming its progress stamp', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+
+    PlanRecalibrationDispatch::forUserId($user->id);
+    $startedAt = $user->fresh()->plan_recalibration_started_at;
+    $lock = Cache::lock(
+        RecalibrateTrainingHistoryJob::overlapLockKey($user->id),
+        RecalibrateTrainingHistoryJob::overlapLockTtlSeconds(),
+    );
+    expect($lock->get())->toBeTrue();
+
+    PlanRecalibrationDispatch::forUserId($user->id);
+
+    Bus::assertDispatchedTimes(RecalibrateTrainingHistoryJob::class, 1);
+    expect($user->fresh()->plan_recalibration_started_at->toIso8601String())
+        ->toBe($startedAt->toIso8601String())
+        ->and(Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id)))->toBeTrue();
+
+    $lock->release();
 });

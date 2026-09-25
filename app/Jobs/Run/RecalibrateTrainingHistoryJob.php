@@ -9,6 +9,8 @@ use App\Services\Run\Plan\PlanRecalibrationService;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Support\Facades\Cache;
 
 final class RecalibrateTrainingHistoryJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -21,6 +23,10 @@ final class RecalibrateTrainingHistoryJob implements ShouldBeUniqueUntilProcessi
 
     public int $uniqueFor = 3600;
 
+    public int $timeout = 60;
+
+    private const int LOCK_TTL_SECONDS = 70;
+
     public function __construct(public readonly int $userId)
     {
     }
@@ -28,6 +34,40 @@ final class RecalibrateTrainingHistoryJob implements ShouldBeUniqueUntilProcessi
     public function uniqueId(): string
     {
         return (string) $this->userId;
+    }
+
+    /** @return array<int, WithoutOverlapping> */
+    public function middleware(): array
+    {
+        return [self::overlapMiddleware($this->userId)];
+    }
+
+    public static function overlapMiddleware(int $userId): WithoutOverlapping
+    {
+        return new WithoutOverlapping("training-recalibration:{$userId}")
+            ->shared()
+            ->releaseAfter(1)
+            ->expireAfter(self::LOCK_TTL_SECONDS);
+    }
+
+    public static function overlapLockKey(int $userId): string
+    {
+        return self::overlapMiddleware($userId)->getLockKey(new self($userId));
+    }
+
+    public static function overlapLockTtlSeconds(): int
+    {
+        return self::LOCK_TTL_SECONDS;
+    }
+
+    public static function dirtyMarkerKey(int $userId): string
+    {
+        return "training-recalibration:dirty:{$userId}";
+    }
+
+    public static function markDirty(int $userId): void
+    {
+        Cache::put(self::dirtyMarkerKey($userId), true, self::LOCK_TTL_SECONDS * 2);
     }
 
     public function handle(PlanRecalibrationService $recalibration): void
@@ -38,5 +78,9 @@ final class RecalibrateTrainingHistoryJob implements ShouldBeUniqueUntilProcessi
         }
 
         $recalibration->recalibrate($user);
+
+        if (Cache::pull(self::dirtyMarkerKey($this->userId))) {
+            self::dispatch($this->userId)->afterCommit();
+        }
     }
 }
