@@ -15,6 +15,7 @@ it('serializes worktree slot lifecycle races', function (): void {
         'PASS: two stale adopters serialize cleanup and claim separate slots',
         'PASS: prune and create serialize stale cleanup and ownership transfer',
         'PASS: interrupted reclaim retries and leaves live owners untouched',
+        'PASS: prune reclaims old incomplete reservations and leaves recent ones alone',
         'PASS: allocation stops at the documented 84-slot limit',
         'PASS: remove holds the slot through Git removal and preserves safety refusals',
     ];
