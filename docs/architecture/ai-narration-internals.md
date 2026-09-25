@@ -3,7 +3,7 @@ title: AI narration internals — context builders & the demo filler
 description: How prompt signals are assembled (context builders) and how copy is produced without the LLM (demo seed + unconfigured env).
 tags: [architecture, ai]
 status: living
-reviewed: 2026-09-17
+reviewed: 2026-09-25
 code_refs:
   - app/Services/AI/Context/ActivityNarrationContext.php
   - app/Services/AI/Agent/AgentToolbox.php
@@ -89,7 +89,7 @@ Recovery hours is "hours since the most recent activity start", sharper than day
 
 **Every `AnalysisType` is narrated.** There is no longer a class of types that skips the model: the run-insight blocks were the last holdout, filled inline from threshold arithmetic even with Azure configured, and they now go through [RunInsightNarrator](app/Services/AI/Narrators/RunInsightNarrator.php) like the rest. A block that cannot be narrated stays honestly `Pending` or `Failed` rather than being quietly templated — see [[ai-pipeline]].
 
-What remains is a **demo** path, not a production fallback.
+What remains is a **rule-based producer**: the demo's content, and a cheaper stand-in for real athletes wherever the LLM is not worth spending on (see *Beyond the demo*). It is never a fallback for a failure.
 
 [RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php) ([`fillFor`](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php#L59)) covers every `AnalysisType`, picking deterministically (seeded by subject id + discriminator) from Temari-voiced pools and weaving in the subject's real data where available. The run-insight types come from [RuleBasedRunInsights](app/Services/AI/RuleBased/RuleBasedRunInsights.php), which reads the run's own cadence, splits and zones so a seeded demo shows real numbers.
 
@@ -97,7 +97,7 @@ What remains is a **demo** path, not a production fallback.
 
 That class is deliberately shallower than the narrator it stands in for: it answers only what a single `ActivityDetail` can, with no rolling pace average over the user's history and no VDOT-derived easy-pace nudge. It is a demo stand-in, not a second implementation to keep in sync.
 
-No *dispatch* path reaches the filler any more: a paused or failing block stays `Pending` / `Failed` instead. It runs in exactly two places — the demo seed below, and the content-filter break in [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php#L44) / [AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php#L78), where a continuity-stripped retry that still trips Azure's output filter degrades to a benign line rather than dead-lettering. That benign line becomes the next `prev_narrative`, which is what breaks the poison loop.
+No failure path falls back to the filler: a paused or failing block stays `Pending` / `Failed` instead. Besides the demo seed below and the real-athlete fills in *Beyond the demo*, it runs at the content-filter break in [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php#L44) / [AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php#L78), where a continuity-stripped retry that still trips Azure's output filter degrades to a benign line rather than dead-lettering. That benign line becomes the next `prev_narrative`, which is what breaks the poison loop.
 
 ### The demo seed path
 
