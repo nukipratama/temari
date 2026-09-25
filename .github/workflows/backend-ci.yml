@@ -78,7 +78,7 @@ jobs:
             --fail-on-deprecation --fail-on-risky \
             --fail-on-phpunit-warning --fail-on-phpunit-notice \
             --fail-on-phpunit-deprecation 2>&1 | tee /tmp/pest-output.txt
-          exit ${PIPESTATUS[0]}
+          exit "${PIPESTATUS[0]}"
 
       - name: Pest summary
         if: always()
@@ -125,6 +125,7 @@ jobs:
         run: |
           ./vendor/bin/phpcov merge --clover=coverage-merged-clover.xml coverage-shards
 
+          # shellcheck disable=SC2016 # PHP variables are evaluated by php, so the shell must leave this snippet literal.
           php -r '
             $xml = simplexml_load_file("coverage-merged-clover.xml");
             $metrics = $xml->project->metrics;
@@ -145,7 +146,9 @@ jobs:
           {
             echo "### Backend · Coverage (merged, ${{ env.SHARD_TOTAL }}-way shard)"
             echo ""
-            [ -f coverage-merged-clover.xml ] && php -r '
+            if [ -f coverage-merged-clover.xml ]; then
+              # shellcheck disable=SC2016 # PHP variables are evaluated by php, so the shell must leave this snippet literal.
+              php -r '
               $xml = @simplexml_load_file("coverage-merged-clover.xml");
               if ($xml === false) { exit(0); }
               $metrics = $xml->project->metrics;
@@ -154,7 +157,8 @@ jobs:
               $pct = $statements > 0 ? ($covered / $statements) * 100 : 100.0;
               echo "| | |\n| --- | --- |\n";
               printf("| Lines | %.1f%% (%d/%d) |\n", $pct, $covered, $statements);
-            '
+              '
+            fi
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 

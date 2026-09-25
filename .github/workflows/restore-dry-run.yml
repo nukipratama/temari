@@ -49,9 +49,11 @@ jobs:
           # sibling, just under the "analytics-pre-deploy-" prefix instead.
           sha="${{ inputs.backup_sha }}"
           if [ -n "$sha" ]; then
-            app=$(ls -1t "$BACKUP_DIR/pre-deploy-$sha-"*.sql.gz 2>/dev/null | head -n1 || true)
+            # shellcheck disable=SC2012 # Generated backup filenames contain no whitespace.
+            app=$(ls -1t "$BACKUP_DIR"/pre-deploy-"$sha"-*.sql.gz 2>/dev/null | head -n1 || true)
             [ -n "$app" ] || { echo "::error::no backup found for sha $sha in $BACKUP_DIR"; exit 1; }
           else
+            # shellcheck disable=SC2012 # Generated backup filenames contain no whitespace.
             app=$(ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz 2>/dev/null | head -n1 || true)
             [ -n "$app" ] || { echo "::error::no pre-deploy-*.sql.gz found in $BACKUP_DIR"; exit 1; }
           fi
@@ -59,9 +61,11 @@ jobs:
           analytics="$BACKUP_DIR/analytics-$(basename "$app")"
           [ -f "$analytics" ] || { echo "::error::no matching analytics backup at $analytics"; exit 1; }
 
-          echo "app=$app" >> "$GITHUB_OUTPUT"
-          echo "analytics=$analytics" >> "$GITHUB_OUTPUT"
-          echo "label=$(basename "$app")" >> "$GITHUB_OUTPUT"
+          {
+            echo "app=$app"
+            echo "analytics=$analytics"
+            echo "label=$(basename "$app")"
+          } >> "$GITHUB_OUTPUT"
 
           echo "Selected pair ($(basename "$app")):"
           ls -lh "$app" "$analytics"
