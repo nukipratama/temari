@@ -82,14 +82,24 @@ jobs:
           SESSION_DRIVER: array
         # memory_limit=-1 is not optional: merging the coverage graph for this
         # suite exhausted a 512M limit locally while unserialising ~80MB.
+        # No --coverage: under --parallel, Pest 5.0.1's coverage-piggybacked recording
+        # throws in every worker at shutdown and silently writes no graph.json.
         run: |
           php -d memory_limit=-1 ./vendor/bin/pest \
             --parallel --processes="$(nproc)" \
-            --tia --coverage --fresh
+            --tia --fresh
 
       - name: Resolve the baseline path
         id: baseline
         run: echo "path=$(./vendor/bin/pest --baseline)" >> "$GITHUB_OUTPUT"
+
+      - name: Require the dependency graph
+        run: |
+          if [ ! -s "${{ steps.baseline.outputs.path }}/graph.json" ]; then
+            echo "::error::graph.json was not recorded; refusing to publish a baseline Pest cannot use"
+            ls -la "${{ steps.baseline.outputs.path }}"
+            exit 1
+          fi
 
       - name: Upload the baseline
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
