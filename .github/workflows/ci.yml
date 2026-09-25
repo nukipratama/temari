@@ -69,7 +69,7 @@ jobs:
           # in DesignTokenDocsTest.php - if either grows, this pattern must too.
           MIRRORS='^resources/(css|views|brand)/|^resources/js/lib/(shareCard|runcard|chartTokens)\.ts$|^resources/js/lib/card/palette\.ts$'
           DOCS_READ_BY_TESTS='^(CLAUDE|README)\.md$|^docs/design-tokens\.md$|^\.claude/skills/temari/SKILL\.md$'
-          BACKEND='^(app|bootstrap|config|database|routes|tests)/|^scripts/.*\.php$|^composer\.(json|lock)$|^(phpunit\.xml|artisan|rector\.php|pint\.json)$|^phpstan.*\.neon$'
+          BACKEND='^(app|bootstrap|config|database|routes|tests)/|^scripts/.*\.(php|sh)$|^composer\.(json|lock)$|^(phpunit\.xml|artisan|rector\.php|pint\.json)$|^phpstan.*\.neon$'
           FRONTEND='^resources/(js|css|views)/|^public/(sw\.js|offline\.html)$|^scripts/.*\.mjs$|^(package\.json|package-lock\.json|vite\.config\.ts|vitest\.config\.ts|prettier\.config\.js|eslint\.config\.js)$|^tsconfig.*\.json$|^\.prettierrc'
 
           if match "$ARCH"; then

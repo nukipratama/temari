@@ -112,6 +112,14 @@ it('routes public runtime assets and frontend test configuration to frontend CI 
     }
 })->group('structure');
 
+it('routes shell deployment helpers to backend CI only', function (): void {
+    $path = 'scripts/deploy/check-restore-counts.sh';
+
+    expect(ciClassifiesAsBackend($path))->toBeTrue();
+    expect(ciClassifiesAsFrontend($path))->toBeFalse();
+    expect(ciClassifiesAsDocker($path))->toBeFalse();
+})->group('structure');
+
 it('routes the worktree helper and both Compose suffixes to every check', function (): void {
     $paths = [
         'scripts/worktree',
