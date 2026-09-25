@@ -3,15 +3,23 @@
 declare(strict_types=1);
 
 use App\Enums\PlannedSessionStatus;
+use App\Enums\IntentVerdict;
+use App\Enums\SessionType;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
+use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\Run\Plan\ComplianceScorer;
+use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\PlanPageAssembler;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Carbon;
@@ -239,6 +247,136 @@ it('moves a session by swapping it with whatever already sits on the target day'
         ->and($to->fresh()->session_type->value)->toBe('tempo')
         ->and($from->fresh()->pinned)->toBeTrue()
         ->and($to->fresh()->pinned)->toBeTrue();
+});
+
+it('moves a generated quality prescription with its workout and keeps its rendered and graded intent', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    TrainingPreference::factory()->for($user)->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '5km',
+        'value_sec' => 1500,
+        'set_at' => '2026-08-01',
+    ]);
+    Season::factory()->for($user)->create(['anchor_weekly_volume_km' => 28.0]);
+    app(Periodizer::class)->regenerate($user);
+
+    $quality = PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->whereDate('date', '>', Carbon::today()->toDateString())
+        ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval])
+        ->where('prescribed_hard_minutes', '>', 0)
+        ->whereNotNull('prescribed_pace_sec_per_km')
+        ->orderBy('date')
+        ->firstOrFail();
+    $rest = PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->whereDate('date', '>', Carbon::today()->addWeek()->toDateString())
+        ->where('session_type', SessionType::Rest)
+        ->orderBy('date')
+        ->firstOrFail();
+    $workoutFields = [
+        'session_type',
+        'skipped',
+        'prescribed_hard_minutes',
+        'prescribed_pace_band',
+        'prescribed_pace_sec_per_km',
+        'prescription_reason',
+        'prescription_race_context',
+        'race_distance_m',
+    ];
+    $qualityWorkout = $quality->only($workoutFields);
+    $restWorkout = $rest->only($workoutFields);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$quality->id}", ['date' => $rest->date->toDateString()])
+        ->assertRedirect();
+
+    expect($quality->fresh()->only($workoutFields))->toBe($restWorkout)
+        ->and($rest->fresh()->only($workoutFields))->toBe($qualityWorkout)
+        ->and($quality->fresh()->pinned)->toBeTrue()
+        ->and($rest->fresh()->pinned)->toBeTrue();
+
+    $renderedDay = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))
+        ->flatMap(fn (array $week): array => $week['days'])
+        ->firstWhere('date', $rest->date->toDateString());
+    $prescribedSegment = collect($renderedDay['segments'])
+        ->first(fn (array $segment): bool => $segment['pace_sec_per_km'] === $qualityWorkout['prescribed_pace_sec_per_km']);
+
+    expect($renderedDay['session_type'])->toBe($qualityWorkout['session_type']->value)
+        ->and($prescribedSegment)->not->toBeNull();
+
+    $runKm = (float) $renderedDay['distance_km'];
+    $runPace = $qualityWorkout['prescribed_pace_sec_per_km'] - 5;
+    $paceText = sprintf('%d:%02d', intdiv($runPace, 60), $runPace % 60);
+    $summary = collect(['30s', '1min', '3min', '5min', '10min', '20min', '30min', '60min'])
+        ->mapWithKeys(fn (string $window): array => ["best_{$window}_pace" => $paceText])
+        ->all();
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'start_date_local' => $rest->date->copy()->setTime(6, 0),
+        'distance' => $runKm * 1000,
+        'moving_time' => (int) round($runKm * $runPace),
+        'elapsed_time' => (int) round($runKm * $runPace),
+        'stream_summary' => $summary,
+    ]);
+    $verdict = app(ComplianceScorer::class)->verdictsFor(
+        $user,
+        PlannedSession::query()->whereKey($rest->id)->get(),
+        $rest->date->copy(),
+    )[$rest->date->toDateString()];
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit);
+});
+
+it('moves race distance with the race workout', function (): void {
+    $user = User::factory()->create();
+    $race = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => SessionType::Race,
+        'race_distance_m' => 10_000,
+    ]);
+    $rest = PlannedSession::factory()->for($user)->rest()->create([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$race->id}", ['date' => $rest->date->toDateString()])
+        ->assertRedirect();
+
+    expect($race->fresh()->race_distance_m)->toBeNull()
+        ->and($rest->fresh()->session_type)->toBe(SessionType::Race)
+        ->and($rest->fresh()->race_distance_m)->toBe(10_000);
+});
+
+it('rolls back both rows when a session swap fails after its first write', function (): void {
+    $user = User::factory()->create();
+    $quality = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => 'threshold',
+        'prescribed_pace_sec_per_km' => 330,
+        'prescription_reason' => 'conservative start',
+    ]);
+    $rest = PlannedSession::factory()->for($user)->rest()->create([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+    ]);
+    $qualityBefore = $quality->fresh()->getAttributes();
+    $restBefore = $rest->fresh()->getAttributes();
+    $failed = false;
+    DB::listen(function (QueryExecuted $query) use (&$failed): void {
+        if (! $failed && str_starts_with(strtolower($query->sql), 'update `planned_sessions`')) {
+            $failed = true;
+            throw new RuntimeException('planned session swap failed');
+        }
+    });
+    $this->withoutExceptionHandling();
+
+    expect(fn () => $this->actingAs($user)->patch("/plan/sessions/{$quality->id}", ['date' => $rest->date->toDateString()]))
+        ->toThrow(RuntimeException::class, 'planned session swap failed');
+
+    expect($quality->fresh()->getAttributes())->toBe($qualityBefore)
+        ->and($rest->fresh()->getAttributes())->toBe($restBefore);
 });
 
 it('clamps today\'s session against the readiness ceiling without mutating the stored row', function (): void {
