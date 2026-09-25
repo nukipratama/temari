@@ -36,4 +36,7 @@ it('serializes worktree slot lifecycle races', function (): void {
         }
         expect($process->getOutput())->toContain("PASS: lock backend {$backend}");
     }
-})->group('structure');
+})->skip(
+    fn (): bool => new ExecutableFinder()->find('bash') === null,
+    'The race harness needs bash, which the Alpine dev image does not ship; CI runs it.',
+);
