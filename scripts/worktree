@@ -7,6 +7,7 @@ CHECKOUT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 SLOT_FILE=".claude-worktree-slot"
 LOCKS_NAME="temari-worktree-slots"
 MAX_WORKTREE_SLOTS=84
+INCOMPLETE_SLOT_TTL_MINUTES=5
 
 usage() {
   cat >&2 <<EOF
@@ -157,7 +158,10 @@ slot_lock_is_stale() {
   local owner=""
 
   [ ! -f "${slot_dir}/path" ] || owner="$(<"${slot_dir}/path")"
-  [ -n "$owner" ] || return 1
+  if [ -z "$owner" ]; then
+    [ -n "$(find "$slot_dir" -prune -mmin "+${INCOMPLETE_SLOT_TTL_MINUTES}" -print -quit 2>/dev/null)" ]
+    return
+  fi
   [ ! -f "${owner}/.git" ] || ! git -C "$owner" rev-parse --git-dir >/dev/null 2>&1
 }
 
@@ -493,9 +497,14 @@ clean_stale_slot() {
   local owner
 
   main_checkout="$(dirname "$common_dir")"
-  owner="$(<"${common_dir}/${LOCKS_NAME}/slot-${slot}/path")"
-  echo "worktree: reclaiming slot ${slot}; ${owner} is no longer a git worktree" >&2
-  [ ! -e "$owner" ] || echo "worktree: left ${owner} on disk for you to inspect or delete" >&2
+  owner=""
+  [ ! -f "${common_dir}/${LOCKS_NAME}/slot-${slot}/path" ] || owner="$(<"${common_dir}/${LOCKS_NAME}/slot-${slot}/path")"
+  if [ -n "$owner" ]; then
+    echo "worktree: reclaiming slot ${slot}; ${owner} is no longer a git worktree" >&2
+    [ ! -e "$owner" ] || echo "worktree: left ${owner} on disk for you to inspect or delete" >&2
+  else
+    echo "worktree: reclaiming incomplete slot ${slot}; reservation has no owner path" >&2
+  fi
   (cd "$main_checkout" && docker compose --progress quiet -p "$project" down --remove-orphans) || return
   clean_slot_data "${main_checkout}/.env.example" "$slot" "$common_dir" || return
   remove_project_volumes "$project"

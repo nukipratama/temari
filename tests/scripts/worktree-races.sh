@@ -286,6 +286,21 @@ assert_no_slot_lock_glob_matches() {
   done
 }
 
+case_dir="${test_root}/incomplete-reservations"
+init_case "$case_dir"
+mkdir -p "${FAKE_COMMON}/temari-worktree-slots/slot-1" \
+  "${FAKE_COMMON}/temari-worktree-slots/slot-2"
+touch -t 200001010000 "${FAKE_COMMON}/temari-worktree-slots/slot-1"
+"${FAKE_MAIN}/scripts/worktree" prune > "${case_dir}/prune.out" 2>&1 || {
+  cat "${case_dir}/prune.out" >&2
+  fail 'prune failed while reclaiming an incomplete slot'
+}
+[ ! -e "${FAKE_COMMON}/temari-worktree-slots/slot-1" ] || fail 'old incomplete reservation was not reclaimed'
+[ -d "${FAKE_COMMON}/temari-worktree-slots/slot-2" ] || fail 'recent incomplete reservation was reclaimed'
+grep -q 'reclaiming incomplete slot 1' "${case_dir}/prune.out" || fail 'prune did not identify the incomplete reservation'
+assert_eq 1 "$(wc -l < "$FAKE_CLEAN_LOG" | tr -d ' ')" 'prune did not clean exactly the old incomplete reservation'
+echo 'PASS: prune reclaims old incomplete reservations and leaves recent ones alone'
+
 case_dir="${test_root}/two-adopters"
 init_case "$case_dir"
 make_stale_slot 1 "${case_dir}/removed-worktree"
