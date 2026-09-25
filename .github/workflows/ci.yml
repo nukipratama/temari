@@ -58,32 +58,9 @@ jobs:
           echo "diffing against ${base_ref} @ ${base:0:8}"
           printf '%s\n' "$changed" | sed 's/^/  /'
 
-          match() { printf '%s\n' "$changed" | grep -qE "$1"; }
-
-          # Anything infrastructural runs the lot (deploy stays main-push-only).
-          ARCH='^(Dockerfile|compose[^/]*\.ya?ml|\.env\.example|scripts/worktree)$|^(docker|\.github)/'
-
-          # Backend also owns the token-mirror structure tests, which read files
-          # that look like frontend or documentation. See MIRROR_FILES in
-          # tests/Unit/Architecture/DesignTokenMirrorsTest.php and the doc list
-          # in DesignTokenDocsTest.php - if either grows, this pattern must too.
-          MIRRORS='^resources/(css|views|brand)/|^resources/js/lib/(shareCard|runcard|chartTokens)\.ts$|^resources/js/lib/card/palette\.ts$'
-          DOCS_READ_BY_TESTS='^(CLAUDE|README)\.md$|^docs/design-tokens\.md$|^\.claude/skills/temari/SKILL\.md$'
-          BACKEND='^(app|bootstrap|config|database|routes|tests)/|^scripts/.*\.(php|sh)$|^composer\.(json|lock)$|^(phpunit\.xml|artisan|rector\.php|pint\.json)$|^phpstan.*\.neon$'
-          FRONTEND='^resources/(js|css|views)/|^public/(sw\.js|offline\.html)$|^scripts/.*\.mjs$|^(package\.json|package-lock\.json|vite\.config\.ts|vitest\.config\.ts|prettier\.config\.js|eslint\.config\.js)$|^tsconfig.*\.json$|^\.prettierrc'
-
-          if match "$ARCH"; then
-            b=true; f=true; d=true
-          else
-            b=false; f=false; d=false
-            match "$BACKEND" && b=true
-            match "$MIRRORS" && b=true
-            match "$DOCS_READ_BY_TESTS" && b=true
-            match "$FRONTEND" && f=true
-          fi
-
-          echo "backend=$b frontend=$f docker=$d"
-          { echo "backend=$b"; echo "frontend=$f"; echo "docker=$d"; } >> "$GITHUB_OUTPUT"
+          checks="$(printf '%s\n' "$changed" | scripts/ci/classify-checks.sh)"
+          printf '%s\n' "$checks"
+          printf '%s\n' "$checks" >> "$GITHUB_OUTPUT"
 
   secret-scan:
     runs-on: ubuntu-latest
