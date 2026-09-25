@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\ZoneFetcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Pulse\Facades\Pulse;
 
 uses(RefreshDatabase::class);
 
@@ -109,6 +110,29 @@ it('marks the connection revoked when the fetcher reports a 401, unlike a generi
     $this->artisan('strava:sync-zones')->assertSuccessful();
 
     expect($user->stravaConnection()->first()->isRevoked())->toBeTrue();
+});
+
+it('ignores a stale 401 after credentials change during the zone fetch', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create([
+        'credential_version' => 2,
+        'scopes' => 'read,activity:read_all,profile:read_all',
+    ]);
+
+    $fetcher = Mockery::mock(ZoneFetcher::class);
+    $fetcher->shouldReceive('fetch')->once()->andReturnUsing(function () use ($connection): never {
+        $connection->update(['credential_version' => 3, 'revoked_at' => null]);
+
+        throw new StravaConnectionRevokedException('401 unauthorized');
+    });
+    $this->app->instance(ZoneFetcher::class, $fetcher);
+    Pulse::shouldReceive('record')->never();
+
+    $this->artisan('strava:sync-zones')
+        ->expectsOutputToContain('ignored stale auth failure after credentials changed')
+        ->assertSuccessful();
+
+    expect($connection->fresh()->isRevoked())->toBeFalse();
 });
 
 it('keeps syncing other users and still succeeds when one connection throws', function (): void {

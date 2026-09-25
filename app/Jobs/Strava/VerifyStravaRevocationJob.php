@@ -40,13 +40,14 @@ class VerifyStravaRevocationJob implements ShouldQueue
     public function __construct(
         public readonly int $connectionId,
         public readonly string $source,
+        public readonly ?int $credentialVersion = null,
     ) {
     }
 
     public function handle(StravaClient $client): void
     {
         $connection = StravaConnection::query()->find($this->connectionId);
-        if ($connection === null || $connection->isRevoked()) {
+        if ($connection === null || $connection->isRevoked() || $this->credentialVersion === null || $connection->credential_version !== $this->credentialVersion) {
             return;
         }
 
@@ -71,7 +72,9 @@ class VerifyStravaRevocationJob implements ShouldQueue
 
     private function revoke(StravaConnection $connection): void
     {
-        $connection->markRevoked();
+        if (! $connection->markRevoked(expectedCredentialVersion: $this->credentialVersion)) {
+            return;
+        }
 
         Pulse::record('strava_revoked', $this->source)->count();
         Log::info("strava.webhook {$this->source} — connection revoked (verified)", [

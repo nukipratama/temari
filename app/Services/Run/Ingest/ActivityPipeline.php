@@ -79,6 +79,8 @@ class ActivityPipeline
             return;
         }
 
+        $credentialVersion = $connection->credential_version;
+
         try {
             $detail = $this->client
                 ->get($connection, "/activities/{$activity->strava_external_id}", $source, $priority)
@@ -88,7 +90,7 @@ class ActivityPipeline
             // own exponential backoff.
             throw $e;
         } catch (StravaConnectionRevokedException|StravaTokenRefreshFailedException $e) {
-            $this->markConnectionRevoked($activity, $connection, $e);
+            $this->markConnectionRevoked($activity, $connection, $credentialVersion, $e);
 
             return;
         } catch (StravaTokenRefreshTransientException $e) {
@@ -193,10 +195,12 @@ class ActivityPipeline
      * a revocation is not the activity's fault and must not burn its retry
      * budget (mirrors SyncActivitiesJob).
      */
-    private function markConnectionRevoked(Activity $activity, StravaConnection $connection, Throwable $e): void
+    private function markConnectionRevoked(Activity $activity, StravaConnection $connection, int $credentialVersion, Throwable $e): void
     {
-        $connection->markRevoked();
-        Log::warning('ingest revoked connection after Strava auth failure', [
+        $revoked = $connection->markRevoked(expectedCredentialVersion: $credentialVersion);
+        Log::log($revoked ? 'warning' : 'info', $revoked
+            ? 'ingest revoked connection after Strava auth failure'
+            : 'ingest ignored a stale Strava auth failure after credentials changed', [
             'activity_id' => $activity->id,
             'reason' => $e->getMessage(),
         ]);

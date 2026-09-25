@@ -27,6 +27,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Laravel\Pulse\Facades\Pulse;
 
 uses(RefreshDatabase::class);
 
@@ -217,6 +218,22 @@ it('revokes the connection and returns 0 (no rethrow) when the API rejects the t
         ->and($connection->fresh()->revoked_at)->not->toBeNull();
     Queue::assertNothingPushed();
     Notification::assertSentTo($user, StravaDisconnectedNotification::class);
+});
+
+it('ignores a stale API 401 after credentials change during the summary fetch', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldReceive('fetchNewSummaries')->once()->andReturnUsing(function () use ($connection): never {
+        $connection->update(['credential_version' => 3, 'revoked_at' => null]);
+
+        throw new StravaConnectionRevokedException('401 unauthorized');
+    });
+    Pulse::shouldReceive('record')->never();
+
+    expect(orchestrator($fetcher)->syncUser($user))->toBe(0)
+        ->and($connection->fresh()->isRevoked())->toBeFalse();
 });
 
 it('syncUser no-ops when the Strava kill-switch is off', function (): void {

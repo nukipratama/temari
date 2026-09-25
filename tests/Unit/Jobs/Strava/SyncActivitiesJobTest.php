@@ -16,6 +16,7 @@ use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
+use Laravel\Pulse\Facades\Pulse;
 
 uses(RefreshDatabase::class);
 
@@ -150,6 +151,40 @@ it('revokes the connection when the API rejects the token with a 401', function 
     new SyncActivitiesJob($user->id)->handle($orchestrator);
 
     expect($connection->fresh()->isRevoked())->toBeTrue();
+});
+
+it('ignores a stale API 401 after credentials change during the sync', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
+
+    $orchestrator = Mockery::mock(SyncOrchestrator::class);
+    $orchestrator->shouldReceive('syncUser')->once()->andReturnUsing(function () use ($connection): never {
+        $connection->update(['credential_version' => 3, 'revoked_at' => null]);
+
+        throw new StravaConnectionRevokedException('401 unauthorized');
+    });
+    Pulse::shouldReceive('record')->never();
+
+    new SyncActivitiesJob($user->id)->handle($orchestrator);
+
+    expect($connection->fresh()->isRevoked())->toBeFalse();
+});
+
+it('ignores a stale refresh failure after credentials change during the sync', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
+
+    $orchestrator = Mockery::mock(SyncOrchestrator::class);
+    $orchestrator->shouldReceive('syncUser')->once()->andReturnUsing(function () use ($connection): never {
+        $connection->update(['credential_version' => 3, 'revoked_at' => null]);
+
+        throw new StravaTokenRefreshFailedException('refresh rejected');
+    });
+    Pulse::shouldReceive('record')->never();
+
+    new SyncActivitiesJob($user->id)->handle($orchestrator);
+
+    expect($connection->fresh()->isRevoked())->toBeFalse();
 });
 
 it('no-ops on a deleted user', function (): void {

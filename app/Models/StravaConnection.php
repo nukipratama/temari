@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 use Override;
 
 /**
@@ -26,6 +27,7 @@ use Override;
  * @property Carbon $token_expires_at
  * @property string $scopes
  * @property Carbon|null $revoked_at
+ * @property int $credential_version
  * @property-read User $user
  */
 #[Fillable([
@@ -36,6 +38,7 @@ use Override;
     'token_expires_at',
     'scopes',
     'revoked_at',
+    'credential_version',
 ])]
 #[Hidden(['access_token', 'refresh_token'])]
 class StravaConnection extends Model
@@ -54,8 +57,10 @@ class StravaConnection extends Model
     protected static function booted(): void
     {
         static::saved(function (StravaConnection $connection): void {
-            SharedPropCacheKey::StravaZoneScopeMissing->forget($connection->user_id);
-            SharedPropCacheKey::StravaSync->forget($connection->user_id);
+            DB::afterCommit(function () use ($connection): void {
+                SharedPropCacheKey::StravaZoneScopeMissing->forget($connection->user_id);
+                SharedPropCacheKey::StravaSync->forget($connection->user_id);
+            });
         });
     }
 
@@ -97,43 +102,52 @@ class StravaConnection extends Model
      * `$notify` is false only for an account deletion, whose cascade takes the
      * inbox row with it anyway.
      */
-    public function markRevoked(bool $notify = true): void
+    public function markRevoked(bool $notify = true, ?int $expectedCredentialVersion = null): bool
     {
         if ($this->revoked_at !== null) {
-            return;
+            return false;
         }
 
         $revokedAt = Carbon::now();
 
-        // The check above cannot see a concurrent revocation: no lock covers
-        // every caller, so two failing jobs can each hold an active copy of this
-        // row. Whoever flips revoked_at away from null wins, and only the winner
-        // notifies and purges; the model save below is what busts the shared
-        // prop caches.
-        $claimed = static::query()
-            ->whereKey($this->getKey())
-            ->whereNull('revoked_at')
-            ->update(['revoked_at' => $revokedAt]);
+        // Serialize this claim with reconnects so an older API failure cannot revoke new credentials.
+        $connection = static::query()->getConnection()->transaction(function () use ($expectedCredentialVersion, $revokedAt): ?self {
+            $connection = static::query()
+                ->whereKey($this->getKey())
+                ->whereNull('revoked_at')
+                ->when($expectedCredentialVersion !== null, fn ($query) => $query->where('credential_version', $expectedCredentialVersion))
+                ->lockForUpdate()
+                ->first();
 
-        if ($claimed === 0) {
-            return;
+            if ($connection === null) {
+                return null;
+            }
+
+            $connection->update(['revoked_at' => $revokedAt]);
+
+            // Purge un-ingested stubs; the drain skips revoked connections, and
+            // withStubs bypasses the analyzed-only scope. Keep it atomic so a
+            // reconnect's catch-up stubs cannot be purged afterward.
+            Activity::withStubs()
+                ->where('user_id', $connection->user_id)
+                ->whereNull('analyzed_at')
+                ->delete();
+
+            return $connection;
+        });
+
+        if ($connection === null) {
+            return false;
         }
 
-        $this->update(['revoked_at' => $revokedAt]);
+        $this->setAttribute('revoked_at', $revokedAt);
+        $this->syncOriginalAttribute('revoked_at');
 
         if ($notify) {
-            $this->user->notify(new StravaDisconnectedNotification($revokedAt));
+            $connection->user->notify(new StravaDisconnectedNotification($revokedAt));
         }
 
-        // Purge this user's un-ingested stubs: the ingest drain only selects
-        // activities whose connection is non-revoked, so stubs inserted before a
-        // mid-sync 401 would otherwise sit orphaned forever. withStubs() opts out
-        // of AnalyzedScope (which forces analyzed_at IS NOT NULL) — without it this
-        // delete would match nothing.
-        Activity::withStubs()
-            ->where('user_id', $this->user_id)
-            ->whereNull('analyzed_at')
-            ->delete();
+        return true;
     }
 
     /**
@@ -149,6 +163,7 @@ class StravaConnection extends Model
             'refresh_token' => 'encrypted',
             'token_expires_at' => 'datetime',
             'revoked_at' => 'datetime',
+            'credential_version' => 'integer',
         ];
     }
 }

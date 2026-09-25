@@ -364,7 +364,9 @@ it('updates an existing user on subsequent strava callbacks', function (): void 
     $existingUser->refresh()->load('stravaConnection');
     expect($existingUser->name)->toBe('New Name')
         ->and($existingUser->stravaConnection->access_token)->toBe('new-access')
-        ->and($existingUser->stravaConnection->refresh_token)->toBe('new-refresh');
+        ->and($existingUser->stravaConnection->refresh_token)->toBe('new-refresh')
+        ->and($existingUser->stravaConnection->credential_version)->toBe(1)
+        ->and($existingUser->stravaConnection->revoked_at)->toBeNull();
 
     // Re-login on an existing connection must NOT re-trigger a backfill.
     Bus::assertNotDispatched(SyncActivitiesJob::class);
@@ -459,6 +461,40 @@ it('does not re-dispatch SyncZonesJob on a reconnect that grants no new scopes',
         ->assertRedirect(route('dashboard'));
 
     Bus::assertNotDispatched(SyncZonesJob::class);
+});
+
+it('reactivates a revoked connection and dispatches one incremental sync', function (): void {
+    $existingUser = User::factory()->create();
+    $connection = StravaConnection::factory()->for($existingUser)->revoked()->create([
+        'strava_athlete_id' => 987654,
+        'credential_version' => 4,
+        'scopes' => 'read,activity:read_all,profile:read_all',
+    ]);
+
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'reactivated-access';
+    $stravaUser->refreshToken = 'reactivated-refresh';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('987654');
+    $stravaUser->shouldReceive('getName')->andReturn('Existing Runner');
+    $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/new.png');
+
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->get(route('auth.strava.callback', ['scope' => 'read,activity:read_all,profile:read_all']))
+        ->assertRedirect(route('dashboard'));
+
+    $connection->refresh();
+    expect($connection->isRevoked())->toBeFalse()
+        ->and($connection->credential_version)->toBe(5)
+        ->and($connection->access_token)->toBe('reactivated-access')
+        ->and($connection->refresh_token)->toBe('reactivated-refresh');
+
+    Bus::assertDispatchedTimes(SyncActivitiesJob::class, 1);
+    Bus::assertDispatched(SyncActivitiesJob::class, fn (SyncActivitiesJob $job): bool => $job->userId === $existingUser->id);
+    Bus::assertDispatched(SyncZonesJob::class, fn (SyncZonesJob $job): bool => $job->userId === $existingUser->id);
+    Bus::assertNotDispatched(KickoffRecapsJob::class);
 });
 
 it('redirects back to login when strava returns an error', function (): void {

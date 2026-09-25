@@ -49,6 +49,8 @@ The whole design hinges on classifying *why* a call failed, because each cause w
 
 Only genuine *Strava-is-down* signals (5xx + timeouts) move the breaker. A `401` is one athlete's problem and a `429` means Strava is healthy but busy — neither should trip a global breaker. The two job consumers act on each exception: [SyncActivitiesJob](app/Jobs/Strava/SyncActivitiesJob.php#L57) maps revocations to `markRevoked()`, releases on rate-limit/transient-refresh, and drops silently on an open breaker; [IngestActivityJob](app/Jobs/Strava/IngestActivityJob.php#L61) routes both rate-limit and open-breaker through a `ThrottlesExceptions` middleware so a backoff doesn't burn its failure budget.
 
+Each API-driven revoke carries the connection's `credential_version` captured before its request. `markRevoked()` claims the row only while that version still matches, while a successful OAuth reconnect clears `revoked_at` and increments the version. A delayed 401 from the previous grant therefore cannot revoke the replacement credentials. The webhook verification job carries the captured version in its queued payload too; legacy queued jobs without one are ignored.
+
 ## The circuit breaker
 
 [StravaCircuitBreaker](app/Services/Strava/StravaCircuitBreaker.php) is a three-state machine whose state is **durable** in the `app_config` table (not cache), so it survives restarts and is shared across containers.

@@ -6,8 +6,11 @@ use App\Jobs\Strava\SyncZonesJob;
 use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
+use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\ZoneFetcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Pulse\Facades\Pulse;
 
 uses(RefreshDatabase::class);
 
@@ -114,4 +117,38 @@ it('no-ops when the user has no Strava connection', function (): void {
     $fetcher->shouldNotReceive('fetch');
 
     new SyncZonesJob($user->id)->handle($fetcher);
+});
+
+it('ignores a stale API 401 after credentials change during the zone fetch', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
+
+    $fetcher = Mockery::mock(ZoneFetcher::class);
+    $fetcher->shouldReceive('fetch')->once()->andReturnUsing(function () use ($connection): never {
+        $connection->update(['credential_version' => 3, 'revoked_at' => null]);
+
+        throw new StravaConnectionRevokedException('401 unauthorized');
+    });
+    Pulse::shouldReceive('record')->never();
+
+    new SyncZonesJob($user->id)->handle($fetcher);
+
+    expect($connection->fresh()->isRevoked())->toBeFalse();
+});
+
+it('ignores a stale refresh failure after credentials change during the zone fetch', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
+
+    $fetcher = Mockery::mock(ZoneFetcher::class);
+    $fetcher->shouldReceive('fetch')->once()->andReturnUsing(function () use ($connection): never {
+        $connection->update(['credential_version' => 3, 'revoked_at' => null]);
+
+        throw new StravaTokenRefreshFailedException('refresh rejected');
+    });
+    Pulse::shouldReceive('record')->never();
+
+    new SyncZonesJob($user->id)->handle($fetcher);
+
+    expect($connection->fresh()->isRevoked())->toBeFalse();
 });

@@ -49,6 +49,8 @@ class SyncZonesJob implements ShouldQueue
             return;
         }
 
+        $credentialVersion = $connection->credential_version;
+
         // The manual editor is the source of truth once a user has set it; a
         // Strava sync must never overwrite that choice unless the user asked
         // for it explicitly ($force).
@@ -77,7 +79,13 @@ class SyncZonesJob implements ShouldQueue
 
             return;
         } catch (StravaConnectionRevokedException $e) {
-            $connection->markRevoked();
+            if (! $connection->markRevoked(expectedCredentialVersion: $credentialVersion)) {
+                Log::info('strava-zone-sync ignored a stale API 401 after credentials changed', [
+                    'user_id' => $user->id,
+                ]);
+
+                return;
+            }
 
             Log::warning('strava-zone-sync revoked connection after API 401', [
                 'user_id' => $user->id,
@@ -95,7 +103,13 @@ class SyncZonesJob implements ShouldQueue
 
             return;
         } catch (StravaTokenRefreshFailedException $e) {
-            $connection->markRevoked();
+            if (! $connection->markRevoked(expectedCredentialVersion: $credentialVersion)) {
+                Log::info('strava-zone-sync ignored a stale refresh failure after credentials changed', [
+                    'user_id' => $user->id,
+                ]);
+
+                return;
+            }
 
             Log::warning('strava-zone-sync revoked connection after token refresh failure', [
                 'user_id' => $user->id,
