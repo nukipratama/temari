@@ -2,11 +2,11 @@
 set -eu
 
 usage() {
-  echo "Usage: $0 <schema> <table> <live-status> <live-output> <throwaway-status> <throwaway-output>" >&2
+  echo "Usage: $0 <schema> <table> <live-status> <live-output> <throwaway-status> <throwaway-output> <live-error-file> <throwaway-error-file>" >&2
   exit 2
 }
 
-[ "$#" -eq 6 ] || usage
+[ "$#" -eq 8 ] || usage
 
 SCHEMA="$1"
 TABLE="$2"
@@ -14,14 +14,22 @@ LIVE_STATUS="$3"
 LIVE_COUNT="$4"
 THROWAWAY_STATUS="$5"
 THROWAWAY_COUNT="$6"
+LIVE_ERROR_FILE="$7"
+THROWAWAY_ERROR_FILE="$8"
 
 if [ "$LIVE_STATUS" != "0" ]; then
   echo "::error::$SCHEMA — live count query failed for $TABLE"
+  if [ -s "$LIVE_ERROR_FILE" ]; then
+    sed 's/^/  /' "$LIVE_ERROR_FILE"
+  fi
   exit 1
 fi
 
 if [ "$THROWAWAY_STATUS" != "0" ]; then
   echo "::error::$SCHEMA — throwaway count query failed for $TABLE"
+  if [ -s "$THROWAWAY_ERROR_FILE" ]; then
+    sed 's/^/  /' "$THROWAWAY_ERROR_FILE"
+  fi
   exit 1
 fi
 

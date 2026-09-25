@@ -122,20 +122,23 @@ jobs:
           }
 
           check_counts() { # $1=sql-fn  $2=schema  $3=table
-            local fn="$1" schema="$2" table="$3" live_n throwaway_n live_status throwaway_status
-            if live_n=$("$fn" "$LIVE_COMPOSE" "$LIVE_SERVICE" "SELECT COUNT(*) FROM $table" 2>/dev/null); then
+            local fn="$1" schema="$2" table="$3" live_n throwaway_n live_status throwaway_status live_err throwaway_err
+            live_err="$(mktemp)"
+            throwaway_err="$(mktemp)"
+            if live_n=$("$fn" "$LIVE_COMPOSE" "$LIVE_SERVICE" "SELECT COUNT(*) FROM $table" 2>"$live_err"); then
               live_status=0
             else
               live_status=$?
             fi
-            if throwaway_n=$("$fn" "docker compose -p $RESTORE_PROJECT -f $RESTORE_COMPOSE_FILE" "$RESTORE_SERVICE" "SELECT COUNT(*) FROM $table" 2>/dev/null); then
+            if throwaway_n=$("$fn" "docker compose -p $RESTORE_PROJECT -f $RESTORE_COMPOSE_FILE" "$RESTORE_SERVICE" "SELECT COUNT(*) FROM $table" 2>"$throwaway_err"); then
               throwaway_status=0
             else
               throwaway_status=$?
             fi
-            if ! scripts/deploy/check-restore-counts.sh "$schema" "$table" "$live_status" "$live_n" "$throwaway_status" "$throwaway_n"; then
+            if ! scripts/deploy/check-restore-counts.sh "$schema" "$table" "$live_status" "$live_n" "$throwaway_status" "$throwaway_n" "$live_err" "$throwaway_err"; then
               fail=1
             fi
+            rm -f "$live_err" "$throwaway_err"
           }
 
           echo "== default schema =="
