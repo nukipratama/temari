@@ -44,15 +44,15 @@ vitest_changed() {
 
 # rector.php's own paths are app/ and tests/, so a changed file outside them is
 # not ours to check; deleted files are excluded by --diff-filter=ACMR.
+changed_paths() {
+  git diff --name-only --diff-filter=ACMR "$1...HEAD"
+  git diff --name-only --diff-filter=ACMR
+  git ls-files --others --exclude-standard
+}
+
 rector_changed() {
   base=$(sh scripts/vitest-changed-base.sh) || return 1
-  files=$(
-    {
-      git diff --name-only --diff-filter=ACMR "$base...HEAD"
-      git diff --name-only --diff-filter=ACMR
-      git ls-files --others --exclude-standard
-    } | grep -E '^(app|tests)/.+\.php$' | sort -u
-  )
+  files=$(changed_paths "$base" | grep -E '^(app|tests)/.+\.php$' | sort -u)
   if [ -z "$files" ]; then
     echo "    no changed PHP files under app/ or tests/"
     return 0
@@ -60,17 +60,30 @@ rector_changed() {
   echo "$files" | xargs vendor/bin/rector process --dry-run --no-progress-bar
 }
 
+# The full suite is CI's; locally Pest runs only the tests paired with changed
+# files, so the gate stays seconds long however many worktrees run it.
+pest_changed() {
+  base=$(sh scripts/vitest-changed-base.sh) || return 1
+  tests=$(changed_paths "$base" | sh scripts/changed-tests.sh)
+  if [ -z "$tests" ]; then
+    echo "    no changed classes or tests; CI runs the full suite"
+    return 0
+  fi
+  echo "$tests" | sed 's/^/    /'
+  echo "$tests" | xargs vendor/bin/pest
+}
+
 step "config:clear" php artisan config:clear --ansi
 step "typescript:enums --check" php artisan typescript:enums --check
 step "doc citations" php scripts/check-doc-citations.php
 step "see references" php scripts/check-see-references.php
 step "palette" npm run check:palette
-step "pest structure" vendor/bin/pest --no-tia --group=structure
+step "pest structure" vendor/bin/pest --group=structure
 step "vitest structure" npx vitest run resources/js/test/structure.test.ts
 step "typecheck" npm run typecheck
 step "rector changed" rector_changed
 step "vitest changed" vitest_changed
-step "pest" vendor/bin/pest --parallel --processes="${GATE_PEST_PROCESSES:-3}"
+step "pest changed" pest_changed
 
 if [ "$MODE" = full ]; then
   step "pint" vendor/bin/pint --test
@@ -78,7 +91,7 @@ if [ "$MODE" = full ]; then
   step "lint" npm run lint
   step "phpstan" vendor/bin/phpstan analyse
   step "rector" vendor/bin/rector --dry-run
-  step "pest --no-tia" vendor/bin/pest --no-tia --parallel
+  step "pest" vendor/bin/pest --parallel
   step "vitest coverage" npm run test:coverage
   step "build" npm run build
   step "check:chunks" npm run check:chunks

@@ -19,9 +19,8 @@ FROM node@sha256:2bdb65ed1dab192432bc31c95f94155ca5ad7fc1392fb7eb7526ab682fa5bf1
 FROM dunglas/frankenphp@${FRANKENPHP_DIGEST} AS dev
 WORKDIR /var/www/html
 
-# pcov is dev-stage only: Pest 5's TIA engine cannot build its test→source
-# dependency graph without a coverage driver. The runtime stage below stays
-# driver-free.
+# pcov is dev-stage only: local coverage runs need a coverage driver. The
+# runtime stage below stays driver-free.
 RUN install-php-extensions \
         pdo_mysql \
         redis \
@@ -37,10 +36,8 @@ RUN install-php-extensions \
 # server-rendered run-card SVG to PNG for the Telegram post-run photo.
 # fontconfig is how librsvg resolves the SVG's font-family names; font-dejavu is
 # the fallback, font-jetbrains-mono one of the three families the card names.
-# git is TIA's changed-file source; Pest hard-fails "requires git" without it.
-# github-cli is dev-only: Pest's TIA `baselined()` shells out to `gh` to pull
-# the shared dependency graph recorded by .github/workflows/tia-baseline.yml.
-RUN apk add --no-cache librsvg font-dejavu font-jetbrains-mono fontconfig git github-cli
+# git is the gate's changed-file source (rector, vitest --changed, Pest tests).
+RUN apk add --no-cache librsvg font-dejavu font-jetbrains-mono fontconfig git
 
 # Installing git is only half of it — the bind-mounted repo is owned by the host
 # user, so git refuses it as "dubious ownership". That half is fixed by

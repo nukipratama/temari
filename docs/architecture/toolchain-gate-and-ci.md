@@ -33,11 +33,13 @@ Rector pass was the slowest single step the hook ever carried, so it moved to th
 
 - **fast** (`composer gate`, `sh scripts/gate.sh`): config clear, TS-enum drift check, the doc-citation
   and `{@see}` guards, the design-token palette guard, the structural Pest + Vitest suites, `tsc`,
-  Rector `--dry-run` scoped to files changed since the merge-base, Vitest `--changed`, then the full
-  Pest suite in parallel. Meant to run in a couple of minutes before every push.
+  Rector `--dry-run` scoped to files changed since the merge-base, Vitest `--changed`, then only the
+  Pest tests paired with changed files ([scripts/changed-tests.sh](../../scripts/changed-tests.sh):
+  `{Name}Test.php` for each changed class, plus changed tests). Seconds, not minutes, so any number of
+  worktrees can gate at once; the full suite is CI's.
 - **full** (`composer check:full`, `sh scripts/gate.sh --full`): everything fast mode runs, plus
-  Pint/PHPStan/full-tree Rector (all in `--test`/dry-run form), ESLint/Prettier `--check`, Pest
-  `--no-tia` (forces real execution instead of replaying TIA's cache), Vitest coverage, the asset
+  Pint/PHPStan/full-tree Rector (all in `--test`/dry-run form), ESLint/Prettier `--check`, the full
+  Pest suite in parallel, Vitest coverage, the asset
   build, and the bundle-chunk budget check. This reproduces what CI runs, opt-in and slow — for when
   the fast gate isn't enough confidence before a push.
 

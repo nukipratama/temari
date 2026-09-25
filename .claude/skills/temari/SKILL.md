@@ -243,58 +243,33 @@ Pint/phpstan/eslint run on **pre-commit**; the fast gate runs **scoped rector on
 full-tree `rector --dry-run` stays in **CI** and `check:full`. CI is the
 full gate and is what `main` is protected by; coverage is CI-owned and only in `check:full`.
 
-**When CI's coverage gate goes red** you can reproduce it locally — `pcov` ships in the dev image
-(it is what TIA records with), so this is a debugging tool, not a routine step:
+**Local Pest runs always execute.** The gate's `pest changed` step runs only the `{Name}Test.php`
+files paired with the PHP classes changed since the merge base, plus changed test files
+([scripts/changed-tests.sh](../../../scripts/changed-tests.sh), the same basename pairing as
+`EveryClassHasATestTest`); the `structure` group still runs in full. The whole suite and coverage are
+CI's, on free GitHub-hosted runners, so a change that breaks some *other* class's test is caught
+there, not locally. There is no test impact analysis: Pest 5's TIA was removed because it silently
+fell back to full runs and its CI baseline never published a usable graph (#1226).
+
+**When CI's coverage gate goes red** you can reproduce it locally — `pcov` ships in the dev image,
+so this is a debugging tool, not a routine step:
 
 ```bash
-./vendor/bin/sail bin pest --no-tia --coverage --filter=Name   # ~6s: is MY class covered?
-./vendor/bin/sail bin pest --no-tia --parallel --coverage --min=95   # ~64s: will the gate pass?
+./vendor/bin/sail bin pest --coverage --filter=Name   # ~6s: is MY class covered?
+./vendor/bin/sail bin pest --parallel --coverage --min=95   # ~64s: will the gate pass?
 ```
 
 The filtered run reports 0.0% for everything else, which is expected — read only your own class's row.
-**`--no-tia` is mandatory here, and not for the obvious reason.** A TIA replay does reconstruct coverage
-in principle, but on a suite this size `--tia --coverage` does not run at all: it throws
-`InvalidCoverageDataException` against an existing graph, and with `--fresh` exhausts a 512M
-`memory_limit` merging an ~80MB coverage graph.
 
-**Pest 5 TIA is on for every local run** (`pest()->tia()->locally()` in [tests/Pest.php](../../../tests/Pest.php), backed by
-pcov in the dev image). Unaffected tests are **replayed from a cached dependency graph** rather than
-executed, so a run after a small change costs a fraction of the full suite. Two consequences worth
-internalising:
-
-- A green `--filter=Name` with nothing changed is a *cached* pass, not a fresh execution. Pass
-  **`--no-tia`** when you need to genuinely re-run, or `--fresh` to discard the graph and re-record.
-- TIA is coverage-driven, so tests that read the filesystem (`File::allFiles`, `glob`) record no
-  edges. Those tests are pinned to run via the `watch()` map in [tests/Pest.php](../../../tests/Pest.php),
-  which is the **only** lever Pest gives you — there is no "always run" marker. The map is
-  hand-maintained and guarded by `TiaWatchMapTest`, which fails if a filesystem-scanning test is not
-  routed through it. It has rotted once: `NarratorsCoverageTest` globs the narrator and tool
-  directories, and a new narrator passed locally under TIA while failing under `--no-tia`.
-- **The map cannot cover a file the graph already knows, and that is most of `resources/js`.**
-  Pest's watch hook collects a changed path only when `! isset($this->fileIds[$rel])`
-  (`vendor/pestphp/pest/src/Plugins/Tia/Graph.php`), so every component Pest has linked through
-  Inertia page resolution — anything a feature test renders — never reaches the map. The
-  `resources/js/**/*.tsx` entry is therefore dead for exactly the most-edited files in the repo;
-  `resources/css/**` works only because nothing links it. **The globs are fine** — verified by
-  probing the matcher, `**` compiles to `.*` and spans path segments. Because of this,
-  [scripts/gate.sh](../../../scripts/gate.sh) runs `pest --no-tia --group=structure` (1.5s) rather
-  than trusting TIA for the architecture gates. Found when an unregistered translucent panel in a component three
-  directories deep passed the local gate and broke `main`.
-- A fresh clone or worktree records the graph from cold (~47s). `pest()->tia()->baselined()` skips
-  that by pulling the graph published by [tia-baseline.yml](../../../.github/workflows/tia-baseline.yml)
-  via `gh`, which ships in the dev image. It needs `GH_TOKEN` set; unset, Pest just records locally.
-
-CI passes `--no-tia` on both Pest steps: a narrowed run would quietly shrink the 95% coverage gate.
-
-TIA works in **worktrees** too, but only because `worktree-setup.sh` writes a `compose.override.yaml`
-that bind-mounts the shared git dir **at the same absolute path it has on the host**. A worktree's
-`.git` is a *file* holding that host path, so mounting it anywhere else leaves the pointer dangling,
-and TIA panics on an unresolvable repo rather than degrading. Same path in and out means git resolves
-the repo from `/var/www/html` natively, with **no git environment variables at all** — which matters
-because Composer strips `GIT_DIR`/`GIT_WORK_TREE` from every script it runs, so anything built on
-them died under `composer gate` anyway. A worktree stack brought up without that override falls
-through to TIA off (the `tests/Pest.php` guard), which is degraded but not broken. Each worktree
-records its own graph from cold on first run.
+Worktrees need **git inside the container** for the gate's changed-file steps (rector, `vitest
+--changed`, `pest changed`). `worktree-setup.sh` writes a `compose.override.yaml` that bind-mounts the
+shared git dir **at the same absolute path it has on the host**. A worktree's `.git` is a *file*
+holding that host path, so mounting it anywhere else leaves the pointer dangling. Same path in and out
+means git resolves the repo from `/var/www/html` natively, with **no git environment variables at
+all** — which matters because Composer strips `GIT_DIR`/`GIT_WORK_TREE` from every script it runs, so
+anything built on them died under `composer gate` anyway. A worktree stack brought up without that
+override fails the gate at its first changed-file step (`vitest-changed-base: git cannot read this
+checkout`).
 
 Setting `GIT_DIR` was the old mechanism and it was actively harmful: with `GIT_DIR` pointing at a
 worktree slot under a differently-mounted common dir, container-side git persisted
@@ -332,8 +307,8 @@ Slot numbering is a formula (`scripts/worktree`), not a fixed table, and `create
 never hand-pick one: `APP_PORT = 7000 + slot*10 + 1`, `VITE_PORT = +2` (main stays 7001/7002, slot 1
 is 7011/7012, slot 2 is 7021/7022, and so on), `COMPOSE_PROJECT_NAME = temari-slot<N>`. The real
 ceiling is the shared Redis `--databases 256`: dev takes indices `slot*3..+2`, so slot 84 is the last
-one that fits. Setup writes an untracked `compose.override.yaml` mounting the shared git dir so TIA
-works and joining the shared-services network, brings the shared stack and this worktree's `app` up,
+one that fits. Setup writes an untracked `compose.override.yaml` mounting the shared git dir so the
+gate's changed-file steps work, and joining the shared-services network, brings the shared stack and this worktree's `app` up,
 then bootstraps the app: `composer install`, `key:generate`, **both** migration sets, `npm ci` and
 `npm run build`. Every step is guarded or idempotent, so re-running `scripts/worktree create
 <name>` after a failure reuses the existing worktree and resumes setup. `vendor/` is empty when it
@@ -414,10 +389,10 @@ always runs as `www-data` — no manual fix needed.
 
 **Throughput, rule of thumb.** `docker stats` during a real `pest --parallel` run showed `app`
 dominates resource use regardless of the shared-services consolidation (peak ~300% CPU; `mysql_test`
-was a distant second at 168%, everything else negligible) — so the ceiling is CPU, not RAM, same as
-before: at most **two** worktrees may run the gate's Pest step at the same time
-(`GATE_PEST_PROCESSES` defaults to 3, and a third concurrent run starves them all), and
-`check:full` — rector, coverage and the Vite build — in **one** worktree at a time. Sharing
+was a distant second at 168%, everything else negligible) — so the ceiling is CPU, not RAM. That is
+why full-suite runs are CI's: the gate's `pest changed` step runs a few paired test files, so any
+number of worktrees can gate at once, and a full local `pest --parallel` (including `check:full` —
+rector, coverage and the Vite build) is a rare opt-in, **one** worktree at a time. Sharing
 MySQL/Redis mainly buys back memory/container overhead for idle worktrees, not CPU headroom during
 genuinely concurrent heavy test runs.
 

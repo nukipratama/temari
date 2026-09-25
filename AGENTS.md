@@ -67,12 +67,10 @@ Everything runs in Docker via **Sail** (no host PHP/Node). Stop at the first fai
 ./vendor/bin/sail up -d                      # start the stack
 ./vendor/bin/sail pest --group=structure     # fast 1:1 + aggregate structural gate (run first)
 ./vendor/bin/sail bin pest --filter=Name     # a single test / file while iterating
-./vendor/bin/sail bin pest --no-tia ...      # force real execution (TIA replays unchanged tests from cache)
-./vendor/bin/sail bin pest --parallel        # full PHP suite
 ./vendor/bin/sail npm run test               # frontend (Vitest); `test:coverage` for the 95% gate
 ./vendor/bin/sail npm run build              # build assets (`npm run dev` for HMR)
 ./vendor/bin/sail bin pint                    # format PHP (pre-commit also runs phpstan + eslint)
-./vendor/bin/sail composer gate              # fast pre-push gate (~1-2 min); CI is the full gate
+./vendor/bin/sail composer gate              # fast pre-push gate: tests for changed files only; CI runs the full suite
 ./vendor/bin/sail composer check:full        # reproduce CI locally, opt-in, slow
 ```
 
