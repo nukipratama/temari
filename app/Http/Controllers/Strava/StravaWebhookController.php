@@ -158,7 +158,7 @@ class StravaWebhookController extends Controller
         // queue a job that confirms the grant is really gone against the Strava
         // API before revoking (see VerifyStravaRevocationJob). Queued so the
         // webhook still acks fast.
-        VerifyStravaRevocationJob::dispatch($connection->id, $source);
+        VerifyStravaRevocationJob::dispatch($connection->id, $source, $connection->credential_version);
     }
 
     private function deleteLocalActivity(StravaConnection $connection, int $stravaActivityId): void

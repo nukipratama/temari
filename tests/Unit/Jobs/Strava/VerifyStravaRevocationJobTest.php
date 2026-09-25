@@ -16,7 +16,7 @@ uses(RefreshDatabase::class);
 
 function runVerifyJob(StravaConnection $connection, string $source = 'webhook_deauth'): void
 {
-    new VerifyStravaRevocationJob($connection->id, $source)->handle(app(StravaClient::class));
+    new VerifyStravaRevocationJob($connection->id, $source, $connection->credential_version)->handle(app(StravaClient::class));
 }
 
 function freshConnection(): StravaConnection
@@ -73,4 +73,34 @@ it('no-ops when the connection is already revoked', function (): void {
     runVerifyJob($connection);
 
     Http::assertNothingSent();
+});
+
+it('does not revoke after a reconnect replaces the credentials while the check is in flight', function (): void {
+    $connection = freshConnection();
+    $capturedVersion = $connection->credential_version;
+
+    Http::fake(function () use ($connection, $capturedVersion) {
+        $connection->update([
+            'credential_version' => $capturedVersion + 1,
+            'revoked_at' => null,
+        ]);
+
+        return Http::response(['error' => 'Authorization Error'], 401);
+    });
+
+    new VerifyStravaRevocationJob($connection->id, 'webhook_deauth', $capturedVersion)
+        ->handle(app(StravaClient::class));
+
+    expect($connection->fresh()->isRevoked())->toBeFalse()
+        ->and(StravaSyncLog::query()->where('user_id', $connection->user_id)->exists())->toBeFalse();
+});
+
+it('does not verify a queued event without a captured credential version', function (): void {
+    $connection = freshConnection();
+    Http::fake(['strava.com/api/v3/athlete' => Http::response(['error' => 'Authorization Error'], 401)]);
+
+    new VerifyStravaRevocationJob($connection->id, 'webhook_deauth')->handle(app(StravaClient::class));
+
+    Http::assertNothingSent();
+    expect($connection->fresh()->isRevoked())->toBeFalse();
 });

@@ -51,6 +51,12 @@ it('casts strava_athlete_id to an integer on read', function (): void {
     expect($connection->strava_athlete_id)->toBe(987654);
 });
 
+it('casts credential_version to an integer on read', function (): void {
+    $connection = StravaConnection::factory()->make(['user_id' => 1, 'credential_version' => '4']);
+
+    expect($connection->credential_version)->toBe(4);
+});
+
 it('hides sensitive tokens from array serialization', function (): void {
     $connection = StravaConnection::factory()->make(['user_id' => 1]);
 

@@ -49,6 +49,9 @@ class SyncActivitiesJob implements ShouldQueue
             return;
         }
 
+        $connection = $user->stravaConnection;
+        $credentialVersion = $connection?->credential_version;
+
         try {
             if ($this->stravaActivityId !== null) {
                 $orchestrator->syncSingleActivity($user, $this->stravaActivityId);
@@ -74,9 +77,12 @@ class SyncActivitiesJob implements ShouldQueue
         } catch (StravaConnectionRevokedException $e) {
             // The API rejected the access token with a 401 (athlete deauthorized).
             // Same outcome as a failed refresh: revoke so we stop retrying.
-            $connection = $user->stravaConnection;
-            if ($connection !== null) {
-                $connection->markRevoked();
+            if ($connection === null || ! $connection->markRevoked(expectedCredentialVersion: $credentialVersion)) {
+                Log::info('strava-sync ignored a stale API 401 after credentials changed', [
+                    'user_id' => $user->id,
+                ]);
+
+                return;
             }
 
             Pulse::record('strava_revoked', 'api_401')->count();
@@ -101,9 +107,12 @@ class SyncActivitiesJob implements ShouldQueue
             // refresh token out from under us). Mark the connection revoked so
             // sync stops instead of burning $tries on a token that will never
             // succeed.
-            $connection = $user->stravaConnection;
-            if ($connection !== null) {
-                $connection->markRevoked();
+            if ($connection === null || ! $connection->markRevoked(expectedCredentialVersion: $credentialVersion)) {
+                Log::info('strava-sync ignored a stale refresh failure after credentials changed', [
+                    'user_id' => $user->id,
+                ]);
+
+                return;
             }
 
             // Surface revocations as a trend on the /pulse Strava-health card.

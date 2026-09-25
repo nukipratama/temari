@@ -31,15 +31,20 @@ class SyncZonesCommand extends Command
         }
 
         foreach ($users as $user) {
+            $connection = $user->stravaConnection;
+            $credentialVersion = $connection?->credential_version;
+
             try {
                 $this->syncOne($user, $fetcher);
             } catch (StravaConnectionRevokedException|StravaTokenRefreshFailedException $e) {
                 // Same as SyncZonesJob: a 401 or a rejected refresh means the athlete
                 // deauthorized us. Revoke so this stops being retried every month and
                 // the UI stops showing a stale "connected" state.
-                $user->stravaConnection?->markRevoked();
+                $revoked = $connection?->markRevoked(expectedCredentialVersion: $credentialVersion) ?? false;
 
-                $this->warn("user {$user->id}: connection revoked — {$e->getMessage()}");
+                $this->warn($revoked
+                    ? "user {$user->id}: connection revoked — {$e->getMessage()}"
+                    : "user {$user->id}: ignored stale auth failure after credentials changed");
             } catch (Throwable $e) {
                 // One bad connection must not abort the scheduled run for the
                 // other users — mirrors strava:sync.

@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
@@ -67,7 +68,7 @@ class StravaAuthController extends Controller
             return redirect()->route('dashboard');
         }
 
-        [$user, $isFreshConnection, $zoneScopeNewlyGranted] = $upserted;
+        [$user, $isFreshConnection, $zoneScopeNewlyGranted, $wasRevoked, $hasZoneScope] = $upserted;
 
         Auth::login($user, remember: true);
 
@@ -83,12 +84,14 @@ class StravaAuthController extends Controller
                 new SyncActivitiesJob($user->id),
                 new KickoffRecapsJob($user->id),
             ])->dispatch();
+        } elseif ($wasRevoked) {
+            SyncActivitiesJob::dispatch($user->id);
         }
 
         // Zones need their own trigger beyond "fresh connection": an already-connected
         // user who reconnects specifically to grant `profile:read_all` (the
         // StravaZoneReconnectBanner flow) must not wait for the monthly sweep.
-        if ($isFreshConnection || $zoneScopeNewlyGranted) {
+        if ($isFreshConnection || $zoneScopeNewlyGranted || ($wasRevoked && $hasZoneScope)) {
             SyncZonesJob::dispatch($user->id);
         }
 
@@ -126,10 +129,12 @@ class StravaAuthController extends Controller
      * that is true only when the Strava connection was created for the first
      * time (so the caller can kick off a one-time history backfill), and a flag
      * that is true when this callback newly granted `profile:read_all` on an
-     * already-existing connection (so the caller can kick off a zone sync).
+     * already-existing connection (so the caller can kick off a zone sync),
+     * whether an existing connection was revoked before this callback, and
+     * whether its resulting grant includes the zone scope.
      * Returns null when a new athlete is refused during maintenance.
      *
-     * @return array{0: User, 1: bool, 2: bool}|null
+     * @return array{0: User, 1: bool, 2: bool, 3: bool, 4: bool}|null
      */
     private function upsertUser(SocialiteUser $stravaUser, string $grantedScopes = ''): ?array
     {
@@ -161,13 +166,22 @@ class StravaAuthController extends Controller
         $connection = StravaConnection::where('strava_athlete_id', $stravaUser->getId())->first();
 
         if ($connection !== null) {
-            $hadZoneScope = str_contains((string) $connection->scopes, 'profile:read_all');
-            $connection->user->fill($userAttributes)->save();
-            $connection->fill($connectionAttributes)->save();
+            return DB::transaction(function () use ($connection, $userAttributes, $connectionAttributes): array {
+                $connection = StravaConnection::query()->lockForUpdate()->findOrFail($connection->id);
+                $hadZoneScope = $connection->hasZoneScope();
+                $wasRevoked = $connection->isRevoked();
+                $user = $connection->user;
+                $user->fill($userAttributes)->save();
+                $connection->fill([
+                    ...$connectionAttributes,
+                    'revoked_at' => null,
+                    'credential_version' => $connection->credential_version + 1,
+                ])->save();
 
-            $zoneScopeNewlyGranted = ! $hadZoneScope && str_contains($scopes, 'profile:read_all');
+                $zoneScopeNewlyGranted = ! $hadZoneScope && $connection->hasZoneScope();
 
-            return [$connection->user, false, $zoneScopeNewlyGranted];
+                return [$user, false, $zoneScopeNewlyGranted, $wasRevoked, $connection->hasZoneScope()];
+            });
         }
 
         if (app()->isDownForMaintenance()) {
@@ -182,7 +196,7 @@ class StravaAuthController extends Controller
             ...$connectionAttributes,
         ]);
 
-        return [$user, true, false];
+        return [$user, true, false, false, str_contains($scopes, 'profile:read_all')];
     }
 
     /** @param array<string, mixed> $connectionAttributes */

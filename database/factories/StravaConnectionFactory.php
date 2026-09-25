@@ -26,6 +26,7 @@ class StravaConnectionFactory extends Factory
             'refresh_token' => Str::random(40),
             'token_expires_at' => now()->addHours(6),
             'scopes' => 'read,activity:read_all',
+            'credential_version' => 0,
         ];
     }
 

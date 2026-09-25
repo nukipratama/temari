@@ -58,6 +58,8 @@ class SyncOrchestrator
             return 0;
         }
 
+        $credentialVersion = $connection->credential_version;
+
         try {
             ['summaries' => $summaries, 'api_calls' => $apiCalls] = $this->fetcher->fetchNewSummaries($connection, StravaReadSource::fromSyncSource($source), $since);
             if ($summaries === []) {
@@ -85,10 +87,14 @@ class SyncOrchestrator
             // revoke so sync stops picking this connection every hour instead of
             // crashing the scheduled command (parity with the SyncActivitiesJob
             // token-refresh-failure path).
-            $connection->markRevoked();
-            Pulse::record('strava_revoked', 'api_401')->count();
+            $revoked = $connection->markRevoked(expectedCredentialVersion: $credentialVersion);
+            if ($revoked) {
+                Pulse::record('strava_revoked', 'api_401')->count();
+            }
             $this->logSync($user->id, 'error', 0, 0, $e->getMessage(), source: $source);
-            Log::warning('strava-sync revoked connection after API 401', [
+            Log::log($revoked ? 'warning' : 'info', $revoked
+                ? 'strava-sync revoked connection after API 401'
+                : 'strava-sync ignored a stale API 401 after credentials changed', [
                 'user_id' => $user->id,
                 'reason' => $e->getMessage(),
             ]);

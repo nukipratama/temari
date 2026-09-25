@@ -215,7 +215,8 @@ it('queues a verification job on athlete deauthorization instead of revoking on 
     Bus::assertDispatched(
         VerifyStravaRevocationJob::class,
         fn (VerifyStravaRevocationJob $job): bool => $job->connectionId === $connection->id
-            && $job->source === 'webhook_deauth',
+            && $job->source === 'webhook_deauth'
+            && $job->credentialVersion === $connection->credential_version,
     );
 });
 
