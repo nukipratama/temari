@@ -440,13 +440,17 @@ it('ignores a stale 401 after credentials change during the detail fetch', funct
 
         return Http::response(['error' => 'Authorization Error'], 401);
     });
-    Pulse::shouldReceive('record')->never();
+    $pulseEntry = Mockery::mock();
+    $pulseEntry->shouldReceive('count')->andReturnSelf();
+    $pulseEntry->shouldReceive('sum')->andReturnSelf();
+    Pulse::shouldReceive('record')->andReturn($pulseEntry)->zeroOrMoreTimes();
 
     $this->pipeline->ingest($activity);
 
     expect($connection->fresh()->isRevoked())->toBeFalse()
         ->and($activity->fresh()->detail_fail_count)->toBe(0)
         ->and($activity->fresh()->analyzed_at)->toBeNull();
+    Pulse::shouldNotHaveReceived('record', ['strava_revoked', Mockery::any()]);
 });
 
 it('revokes on a permanent token refresh failure (invalid_grant), budget untouched', function (): void {
