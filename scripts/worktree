@@ -52,13 +52,16 @@ with_slot_lock() {
       fail "slot locking needs util-linux flock or perl"
       return 1
     }
-    perl -MFcntl=:flock -e '
+    perl -MFcntl=:flock,F_GETFD,F_SETFD,FD_CLOEXEC -e '
       my ($path, @command) = @ARGV;
       open my $lock, ">>", $path or die "could not open slot lock $path: $!\n";
       flock($lock, LOCK_EX) or die "could not acquire slot lock $path: $!\n";
-      system @command;
-      die "could not run locked command $command[0]: $!\n" if $? == -1;
-      exit(($? & 127) ? 128 + ($? & 127) : $? >> 8);
+      my $flags = fcntl($lock, F_GETFD, 0);
+      defined $flags or die "could not inspect slot lock $path: $!\n";
+      defined fcntl($lock, F_SETFD, $flags & ~FD_CLOEXEC)
+        or die "could not preserve slot lock $path across exec: $!\n";
+      exec @command;
+      die "could not run locked command $command[0]: $!\n";
     ' -- "$lock_file" "$SCRIPT_PATH" "$@"
   fi
 }

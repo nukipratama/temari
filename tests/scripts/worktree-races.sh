@@ -30,6 +30,7 @@ test_root="$(cd "$test_root" && pwd -P)"
 running_pids=(none)
 cleanup() {
   [ -z "${FAKE_RELEASE_CLEAN:-}" ] || touch "$FAKE_RELEASE_CLEAN"
+  [ -z "${FAKE_RELEASE_REMOVE:-}" ] || touch "$FAKE_RELEASE_REMOVE"
   for pid in "${running_pids[@]}"; do
     [ "$pid" != none ] || continue
     wait "$pid" 2>/dev/null || true
