@@ -259,19 +259,13 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
 
     private function narratorDeadlineSeconds(): int
     {
-        $available = $this->availableNarratorDeadlineSeconds();
+        $available = $this->remainingWorkerSeconds() - (int) config('azure_openai.timeout');
+        $available = min((int) config('ai.agent.deadline_seconds'), $available);
         if ($available <= 0) {
             throw new UnavailableException('Activity narration reached the worker safety deadline');
         }
 
         return $available;
-    }
-
-    private function availableNarratorDeadlineSeconds(): int
-    {
-        $available = $this->remainingWorkerSeconds() - (int) config('azure_openai.timeout');
-
-        return max(0, min((int) config('ai.agent.deadline_seconds'), $available));
     }
 
     private function remainingWorkerSeconds(): int
