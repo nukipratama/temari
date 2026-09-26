@@ -111,17 +111,17 @@ final readonly class PlanRecalibrationService
 
         $recomputed = 0;
         foreach ($activities as $activity) {
-            if ($activity->detail === null || $activity->stream === null || $activity->stream->data === []) {
+            try {
+                if ($activity->detail === null || $activity->stream === null || $activity->stream->data === []) {
+                    continue;
+                }
+
+                $this->activityPipeline->recomputeSummary($activity, rebuildAggregates: false, reconcileMaxHeartRate: false);
+                $recomputed++;
+            } finally {
                 $activity->unsetRelation('detail');
                 $activity->unsetRelation('stream');
-
-                continue;
             }
-
-            $this->activityPipeline->recomputeSummary($activity, rebuildAggregates: false, reconcileMaxHeartRate: false);
-            $activity->unsetRelation('detail');
-            $activity->unsetRelation('stream');
-            $recomputed++;
         }
 
         $snapshots = $this->weeklyAggregator->rebuildFor($user);

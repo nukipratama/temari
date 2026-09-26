@@ -23,9 +23,9 @@ final class RecalibrateTrainingHistoryJob implements ShouldBeUniqueUntilProcessi
 
     public int $uniqueFor = 3600;
 
-    public int $timeout = 60;
+    public int $timeout = 120;
 
-    private const int LOCK_TTL_SECONDS = 70;
+    private const int LOCK_TTL_SECONDS = 150;
 
     public function __construct(public readonly int $userId)
     {
