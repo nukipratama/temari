@@ -6,8 +6,10 @@ namespace App\Services\Strava;
 
 use App\Enums\StravaReadPriority;
 use App\Enums\StravaReadSource;
+use App\Enums\StravaGrantReleaseStatus;
 use App\Models\Analytics\StravaRead;
 use App\Models\StravaConnection;
+use App\Models\StravaGrantToken;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
@@ -19,9 +21,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Pulse\Facades\Pulse;
-use Throwable;
 
 class StravaClient
 {
@@ -175,51 +177,47 @@ class StravaClient
         };
     }
 
-    /**
-     * Hands the athlete's grant back to Strava, which is what frees their slot
-     * against the app's athlete allocation — until this is called, an account
-     * deleted here still occupies one on Strava's side.
-     *
-     * Total by design: every caller is on a path that is going to finish
-     * (a deletion, an operator freeing a slot) whether or not Strava answers,
-     * so a failure is reported as `false` and logged rather than thrown.
-     *
-     * Deliberately outside {@see self::get()}'s gauntlet, the same way the
-     * webhook subscription calls are: it spends none of the read budget those
-     * buckets meter, and a refused revocation says nothing about whether
-     * Strava is healthy, so it must not move the circuit breaker either.
-     */
-    public function deauthorize(StravaConnection $connection): bool
+    public function deauthorizeGrantToken(StravaGrantToken $grant): StravaGrantReleaseResult
     {
         try {
-            $connection = $this->refreshIfExpired($connection);
+            $tokens = $this->requestRefreshedTokens($grant->refresh_token, release: true);
+        } catch (StravaTokenRefreshFailedException $e) {
+            return new StravaGrantReleaseResult(StravaGrantReleaseStatus::Rejected, $e->getMessage());
+        } catch (StravaTokenRefreshTransientException $e) {
+            return new StravaGrantReleaseResult(StravaGrantReleaseStatus::Failed, $e->getMessage());
+        }
 
+        if (! app(StravaGrantLedger::class)->persistGrantRefresh(
+            $grant->strava_athlete_id,
+            $grant->credential_version,
+            $tokens['refresh_token'],
+        )) {
+            return new StravaGrantReleaseResult(StravaGrantReleaseStatus::Stale);
+        }
+
+        try {
             $response = Http::asForm()->post(self::DEAUTHORIZE_URL, [
-                'access_token' => $connection->access_token,
+                'access_token' => $tokens['access_token'],
             ]);
-        } catch (Throwable $e) {
-            Log::warning('strava deauthorize could not be delivered', [
-                'user_id' => $connection->user_id,
-                'reason' => $e->getMessage(),
-            ]);
-
-            return false;
+        } catch (ConnectionException $e) {
+            return new StravaGrantReleaseResult(StravaGrantReleaseStatus::Failed, $e->getMessage());
         }
 
-        if ($response->failed()) {
-            Log::warning('strava refused the deauthorize', [
-                'user_id' => $connection->user_id,
-                'status' => $response->status(),
-            ]);
-
-            return false;
+        if ($response->status() === 401 || ($response->failed() && $response->json('error') === 'invalid_grant')) {
+            return new StravaGrantReleaseResult(
+                StravaGrantReleaseStatus::Rejected,
+                "Strava reported the grant as unavailable (HTTP {$response->status()}).",
+            );
         }
 
-        Log::info('strava deauthorize accepted', [
-            'user_id' => $connection->user_id,
-        ]);
+        if (! $response->successful()) {
+            return new StravaGrantReleaseResult(
+                StravaGrantReleaseStatus::Failed,
+                "Strava returned HTTP {$response->status()}.",
+            );
+        }
 
-        return true;
+        return new StravaGrantReleaseResult(StravaGrantReleaseStatus::Released);
     }
 
     public static function apiBaseUrl(): string
@@ -314,12 +312,30 @@ class StravaClient
 
     private function performRefresh(StravaConnection $connection, int $credentialVersion): StravaConnection
     {
+        $tokens = $this->requestRefreshedTokens($connection->refresh_token);
+
+        app(StravaGrantLedger::class)->persistConnectionRefresh(
+            $connection,
+            $credentialVersion,
+            $tokens['access_token'],
+            $tokens['refresh_token'],
+            $tokens['expires_at'],
+        );
+
+        return $connection->refresh();
+    }
+
+    /**
+     * @return array{access_token: string, refresh_token: string, expires_at: Carbon}
+     */
+    private function requestRefreshedTokens(string $refreshToken, bool $release = false): array
+    {
         try {
             $response = Http::asForm()->post(self::TOKEN_URL, [
                 'client_id' => config('services.strava.client_id'),
                 'client_secret' => config('services.strava.client_secret'),
                 'grant_type' => 'refresh_token',
-                'refresh_token' => $connection->refresh_token,
+                'refresh_token' => $refreshToken,
             ]);
         } catch (ConnectionException $e) {
             // Transport failure / timeout reaching the token endpoint: Strava is
@@ -332,11 +348,13 @@ class StravaClient
         }
 
         if ($response->failed()) {
-            if ($response->status() === 400) {
-                // Only a 400 invalid_grant is a permanent deauthorization: the
-                // refresh token will never succeed, so the caller revokes.
+            $invalidGrant = $response->json('error') === 'invalid_grant';
+            $rejected = ($response->status() === 400 && $invalidGrant)
+                || ($release && $response->status() === 401);
+
+            if ($rejected) {
                 throw new StravaTokenRefreshFailedException(
-                    'Strava token refresh failed with status 400 (invalid_grant).',
+                    "Strava token refresh rejected the grant with status {$response->status()}.",
                 );
             }
 
@@ -357,18 +375,11 @@ class StravaClient
             );
         }
 
-        $attributes = $connection->newInstance([
+        return [
             'access_token' => $accessToken,
             'refresh_token' => $refreshToken,
-            'token_expires_at' => new Carbon('@' . $expiresAt)->setTimezone(config('app.timezone')),
-        ])->getAttributes();
-
-        $connection->newQuery()
-            ->whereKey($connection->getKey())
-            ->where('credential_version', $credentialVersion)
-            ->update($attributes);
-
-        return $connection->refresh();
+            'expires_at' => new Carbon('@' . $expiresAt)->setTimezone(config('app.timezone')),
+        ];
     }
 
     private function guardRateLimit(StravaReadPriority $priority): void

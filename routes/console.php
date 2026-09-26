@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Console\SchedulerChain;
+use App\Jobs\Strava\RetryOrphanedStravaGrantReleasesJob;
 use App\Services\AI\MaintainerAlerter;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Foundation\Inspiring;
@@ -158,6 +159,9 @@ Schedule::command('analytics:prune')->dailyAt('02:25')->withoutOverlapping(15)->
 // long before the athlete cap does — see docs/decisions/background-hydration-drain.md.
 // Bounded withoutOverlapping so a strand self-releases, not 24h.
 Schedule::command('strava:sync')->hourly()->withoutOverlapping(55)->onOneServer();
+
+// Retry grants whose local connection is gone or revoked until Strava confirms release.
+Schedule::job(new RetryOrphanedStravaGrantReleasesJob())->dailyAt('02:40')->withoutOverlapping(30)->onOneServer();
 
 // Every 5 minutes: paced drain of pending activity stubs (the Strava rate-limit
 // pacer). Its input is strava:sync stubs + detail-fetch retries (webhook activities

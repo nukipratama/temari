@@ -3,7 +3,7 @@ title: Strava connection (OAuth, sync, webhook)
 description: Connecting Strava, the manual "Sync now" button, and the live push webhook.
 tags: [feature, strava]
 status: living
-reviewed: 2026-09-20
+reviewed: 2026-09-26
 code_refs:
   - resources/js/pages/Auth/Login.tsx
   - app/Http/Controllers/Auth/StravaAuthController.php
@@ -16,6 +16,12 @@ code_refs:
   - resources/js/components/FlashNotice.tsx
   - app/Services/Inertia/StravaProps.php
   - app/Services/Strava/StravaClient.php
+  - app/Services/Strava/StravaGrantLedger.php
+  - app/Services/Strava/StravaGrantReleaseService.php
+  - app/Jobs/Strava/RetryOrphanedStravaGrantReleasesJob.php
+  - app/Console/Commands/Strava/SlotsCommand.php
+  - app/Models/StravaGrantEvent.php
+  - app/Models/StravaGrantToken.php
   - app/Console/Commands/Strava/RemoveAthleteCommand.php
   - routes/web.php
 ---
@@ -67,13 +73,11 @@ The `/devtools/pulse` Strava kill-switch (`AppConfigKey::StravaEnabled`) is enfo
 
 ## Releasing the grant
 
-Marking a connection revoked is a local fact only — it stops Temari reading, and changes nothing on Strava, where the athlete goes on occupying one of the app's athlete slots. [StravaClient::deauthorize()](../../app/Services/Strava/StravaClient.php) is what actually frees it, POSTing the athlete's access token to `oauth/deauthorize`. Three callers:
+The current Strava grant is kept in an append-only `strava_grant_events` history and a separate `strava_grant_tokens` row. The mirrored refresh token is encrypted and versioned with the connection; neither table has a user foreign key, so the athlete id and release obligation survive account deletion. Only an accepted release or Strava's `401` / `invalid_grant` response removes the token. Failed releases retain the latest rotated refresh token for another attempt.
 
-- **Account deletion.** [UserEraser](../../app/Services/User/UserEraser.php) releases the grant before it removes anything, so an athlete who deletes their account stops counting against the app. Best effort, and it cannot be otherwise: nobody who asked to be deleted stays undeleted because Strava was unreachable, so `deauthorize()` reports a refusal as `false` and logs it rather than throwing.
-- **`strava:remove-athlete {user}`** ([RemoveAthleteCommand](../../app/Console/Commands/Strava/RemoveAthleteCommand.php)) releases one athlete on Strava and then removes the account itself, through the same `UserEraser` the in-app delete button and `user:remove` use — the operator asked for that athlete to be gone, and a freed slot behind an account that still exists is half the job. It prints what will go before asking (`--force` skips the prompt), refuses the demo account, and removes the account even when Strava declines the deauthorize, since nobody stays half-removed because Strava was unreachable. An athlete whose grant is already revoked has nothing to release and is still removed. The command calls `UserEraser::releaseStravaGrant()` directly so the operator is told whether Strava took it; `erase()` then meets a connection that call already marked revoked and skips its own best-effort release. The demo refusal, confirm-or-abort gate and closing token-usage note are shared with `user:remove` via `App\Console\Commands\Concerns\ConfirmsPermanentRemoval`.
-- **Maintenance refusal.** A new OAuth callback during maintenance has no local account to retain or delete, so [StravaAuthController](../../app/Http/Controllers/Auth/StravaAuthController.php) deauthorizes the just-issued grant before returning the guest to the maintenance page. Returning athletes keep their existing grant and can sign in.
+Local revocation and Strava release are separate facts. Local revocation stops Temari reading and leaves the athlete occupying a Strava slot until Strava accepts the deauthorize request (or confirms the grant is already invalid). [UserEraser](../../app/Services/User/UserEraser.php) attempts release before deleting the account; if Strava is unreachable, the user is still deleted and the orphan token remains for retry. `RetryOrphanedStravaGrantReleasesJob` retries every grant without an active local connection daily, with no age cutoff, and excludes the demo user.
 
-The call sits outside `StravaClient::get()`'s gauntlet, like the webhook subscription calls: it spends none of the read budget those buckets meter, and a refused revocation says nothing about Strava's health, so it must not move the circuit breaker. Note the dated obligation in [[strava-data-compliance]] — `oauth/deauthorize` becomes `oauth/revoke` on 2027-06-01.
+`strava:slots` lists current holders, release attempts, and the latest error. `--release=<athlete-id>` attempts one release and locally revokes an active connection while leaving its account intact. `--release-orphans` attempts all non-demo grants without an active connection. Both prompt before making the request unless `--force` is supplied. `strava:remove-athlete {user}` remains the operator path that releases a grant and permanently removes the account; it refuses the demo account. A new OAuth callback during maintenance records and immediately attempts release of the refused grant, while returning athletes keep their existing connection. Note the dated obligation in [[strava-data-compliance]] — `oauth/deauthorize` becomes `oauth/revoke` on 2027-06-01.
 
 ## Webhook (live push)
 

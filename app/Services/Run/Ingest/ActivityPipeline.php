@@ -197,7 +197,7 @@ class ActivityPipeline
      */
     private function markConnectionRevoked(Activity $activity, StravaConnection $connection, int $credentialVersion, Throwable $e): void
     {
-        $revoked = $connection->markRevoked(expectedCredentialVersion: $credentialVersion);
+        $revoked = $connection->markRevoked(expectedCredentialVersion: $credentialVersion, stravaRejected: true);
         Log::log($revoked ? 'warning' : 'info', $revoked
             ? 'ingest revoked connection after Strava auth failure'
             : 'ingest ignored a stale Strava auth failure after credentials changed', [

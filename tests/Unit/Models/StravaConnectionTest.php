@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\StravaConnection;
+use App\Models\StravaGrantEvent;
+use App\Models\StravaGrantToken;
 use App\Models\User;
 use App\Notifications\StravaDisconnectedNotification;
+use App\Enums\StravaGrantEventType;
+use App\Services\Strava\StravaGrantLedger;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -147,6 +151,41 @@ it('revokes when the expected credential version matches', function (): void {
     expect($revoked)->toBeTrue()
         ->and($connection->fresh()->isRevoked())->toBeTrue();
     Notification::assertSentToTimes($user, StravaDisconnectedNotification::class, 1);
+});
+
+it('keeps the grant when a connection is only locally revoked', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create();
+    app(StravaGrantLedger::class)->recordGrant(
+        $connection->strava_athlete_id,
+        $user->id,
+        $connection->credential_version,
+        $connection->refresh_token,
+        StravaGrantEventType::Granted,
+    );
+
+    $connection->markRevoked();
+
+    expect(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->exists())->toBeTrue()
+        ->and(StravaGrantEvent::query()->where('strava_athlete_id', $connection->strava_athlete_id)->count())->toBe(1);
+});
+
+it('releases the current mirrored grant when Strava rejects a connection token', function (): void {
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 3]);
+    app(StravaGrantLedger::class)->recordGrant(
+        $connection->strava_athlete_id,
+        $user->id,
+        $connection->credential_version,
+        $connection->refresh_token,
+        StravaGrantEventType::Granted,
+    );
+
+    $connection->markRevoked(expectedCredentialVersion: 3, stravaRejected: true);
+
+    expect(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->exists())->toBeFalse()
+        ->and(StravaGrantEvent::query()->where('strava_athlete_id', $connection->strava_athlete_id)->orderBy('id')->get()->map(fn (StravaGrantEvent $event) => $event->event)->all())
+        ->toBe([StravaGrantEventType::Granted, StravaGrantEventType::Rejected]);
 });
 
 // One notification per revocation, from the one method every revoking call site

@@ -72,7 +72,7 @@ class VerifyStravaRevocationJob implements ShouldQueue
 
     private function revoke(StravaConnection $connection): void
     {
-        if (! $connection->markRevoked(expectedCredentialVersion: $this->credentialVersion)) {
+        if (! $connection->markRevoked(expectedCredentialVersion: $this->credentialVersion, stravaRejected: true)) {
             return;
         }
 

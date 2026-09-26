@@ -27,7 +27,7 @@ Every read is issued against [`StravaClient::apiBaseUrl()`](app/Services/Strava/
 
 ## The request gauntlet
 
-Every call goes through [`StravaClient::get()`](app/Services/Strava/StravaClient.php#L48), which runs four guards in a fixed order before the HTTP call and one router after it:
+Every call goes through [`StravaClient::get()`](app/Services/Strava/StravaClient.php#L64), which runs four guards in a fixed order before the HTTP call and one router after it:
 
 1. **Breaker gate** — bail out fast if the circuit is [open](app/Services/Strava/StravaClient.php#L51) (throws `StravaCircuitOpenException`, no HTTP call made).
 2. **Token freshness** — [`refreshIfExpired()`](app/Services/Strava/StravaClient.php#L73) rotates an expiring access token (see below).
@@ -37,7 +37,7 @@ Every call goes through [`StravaClient::get()`](app/Services/Strava/StravaClient
 
 ## Error routing — the load-bearing distinction
 
-The whole design hinges on classifying *why* a call failed, because each cause wants a different reaction. [`get()`](app/Services/Strava/StravaClient.php#L48) routes the response status:
+The whole design hinges on classifying *why* a call failed, because each cause wants a different reaction. [`get()`](app/Services/Strava/StravaClient.php#L64) routes the response status:
 
 | Upstream signal | Throws | Touches breaker? | Caller reaction |
 | --- | --- | --- | --- |

@@ -262,6 +262,10 @@ function AccountActions() {
                                 All your runs, cards, and Strava connection will
                                 be removed and can't be undone. If you just want
                                 to switch Strava accounts, this is also how.
+                                Your Strava refresh token is kept securely only
+                                until Strava confirms release or that the grant
+                                is no longer active; your profile and activity
+                                data are deleted with your account.
                             </>
                         }
                         primaryLabel="yes, delete my account"
