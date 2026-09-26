@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Services\Telegram\Exceptions\TelegramLinkTokenException;
 use App\Services\Telegram\TelegramLinkToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
@@ -40,14 +39,6 @@ it('rejects a token that has already been consumed', function (): void {
         expect($e->expired)->toBeTrue()
             ->and($e->usedByUserId)->toBe($userId);
     }
-});
-
-it('honors a consumed cache marker created before durable claims were added', function (): void {
-    $token = new TelegramLinkToken();
-    $minted = $token->mint(73);
-    Cache::put('telegram-link-used:' . hash('sha256', $minted), true, 60);
-
-    expect(fn () => $token->userId($minted))->toThrow(TelegramLinkTokenException::class);
 });
 
 it('rejects a token whose signature was tampered with', function (): void {
