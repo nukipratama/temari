@@ -83,6 +83,22 @@ it('lists the user\'s analyzed runs in reverse chronological order', function ()
         ->assertJsonPath('props.runs.1.detail.name', 'Older Run');
 });
 
+it('stamps each run\'s effort onto its detail and never ships stream_summary to the client', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::now(),
+        'workout_type' => null,
+        'stream_summary' => ['zones' => []],
+    ]);
+
+    $this->actingAs($user)
+        ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'activeView,runs'))
+        ->assertSuccessful()
+        ->assertJsonPath('props.runs.0.detail.effort', 'unknown')
+        ->assertJsonMissingPath('props.runs.0.detail.stream_summary');
+});
+
 it('ships the persisted post-run mood per run so the list mascot matches the backend', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();

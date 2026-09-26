@@ -141,7 +141,7 @@ thirds of the pairs point the same way, no pair points the opposite way, and the
 aggregate agrees. The aggregate reads each pair's change in multiples of its own
 metric's threshold (efficiency change ÷ 3%, pace change ÷ 2%) and needs a window
 mean of at least ±1 in the verdict's direction
-([aggregateDirection()](app/Services/Run/Story/PastYouTrendBuilder.php#L173)), so
+([aggregateDirection()](app/Services/Run/Story/PastYouTrendBuilder.php#L221)), so
 windows mixing efficiency and pace pairs average on one scale. Flat pairs are allowed. If any pair points the other way, the
 verdict is `mixed`, a distinct state that keeps every row visible and states the
 split. If the evidence is not mixed but does not meet the vote or aggregate
@@ -157,7 +157,7 @@ Each pair ships its deciding `metric` and a `pace_relation`, and the trend ships
 `verdict_metric` (`ef`, `pace`, or `mixed` when pairs used both), the mean
 `pace_relation`, and an `hr_relation` that bands the mean HR shift at
 `SAME_HR_BPM` (2 bpm, inclusive)
-([verdictMetric()](app/Services/Run/Story/PastYouTrendBuilder.php#L188)). The
+([verdictMetric()](app/Services/Run/Story/PastYouTrendBuilder.php#L236)). The
 home copy reads those words rather than re-deriving thresholds; see
 [[dashboard]].
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use Override;
+use App\Enums\Effort;
 use App\Enums\ExperienceLevel;
 use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
@@ -37,6 +38,7 @@ final class GenerateTypeScriptEnumsCommand extends Command
      */
     private const array ENUMS = [
         Rarity::class,
+        Effort::class,
         PrCategory::class,
         AnalysisStatus::class,
         AnalysisType::class,

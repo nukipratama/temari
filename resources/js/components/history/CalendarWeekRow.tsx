@@ -7,6 +7,7 @@ import type { WeeklySnapshotWithRecap } from '@/types/inertia';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+import { EFFORT_EDGE_CLASS } from '@/lib/effort';
 import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
 import { formatPace } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
@@ -20,7 +21,7 @@ import {
 import WeeklyStatusChips from './WeeklyStatusChips';
 
 const CELL_BASE =
-    'flex min-h-8 flex-col items-center justify-center gap-0.5 rounded-xs border border-border-strong bg-card py-1.5 font-mono text-[0.59375rem] leading-[1.2] font-bold text-foreground';
+    'relative flex min-h-8 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xs border border-border-strong bg-card py-1.5 font-mono text-[0.59375rem] leading-[1.2] font-bold text-foreground';
 
 /**
  * One Mon-Sun row of the calendar: a week-summary button on the left, seven day
@@ -174,6 +175,15 @@ function DayBox({ cell }: Readonly<{ cell: CalendarCell }>) {
                         MOOD_FILL[cell.mood],
                     )}
                     title={MOOD_LABEL[cell.mood]}
+                />
+            )}
+            {cell.effort !== null && (
+                <span
+                    aria-hidden
+                    className={cn(
+                        'absolute inset-x-0 bottom-0',
+                        EFFORT_EDGE_CLASS[cell.effort],
+                    )}
                 />
             )}
         </>

@@ -23,6 +23,7 @@ const pair: PastYouComparison = {
         average_heartrate: 152,
         elevation_gain_m: 40,
         ingest_state: 'summary',
+        effort: null,
     },
     past: {
         activity_id: 102,
@@ -32,6 +33,7 @@ const pair: PastYouComparison = {
         average_heartrate: 158,
         elevation_gain_m: 40,
         ingest_state: 'summary',
+        effort: null,
     },
 };
 

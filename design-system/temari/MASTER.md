@@ -64,6 +64,8 @@ Three faces, one job each. No fourth face.
 | Plus Jakarta Sans | `font-sans` | UI, controls, and multi-sentence narrator prose (`.narration`) |
 | JetBrains Mono | `font-mono` + `tabular-nums` | **Every number**, uppercase labels, timestamps |
 
+- **Section headings are mono uppercase eyebrows** (`.text-label-small`), never Fraunces. The serif
+  stays reserved for Temari's voice lines and page titles.
 - A voice line is at most two lines of what Temari says. Anything longer is prose, and prose is sans.
 - **Hero number:** each section may lead with one number set large in mono (`.text-stat` and up).
   Its unit and target sit beside it at label size in `text-text-3`: `32.3 / 27.9 km`.
@@ -109,6 +111,13 @@ sheets and modals.
 - Tiles take the effort color of the day's session.
 - Day status is a glyph, never a color: lucide `Check` = done, `X` = missed, a dot = today.
 
+### Calendar cells
+
+- A 3px effort bar on the **bottom edge**, colored per the effort table, alongside the existing
+  mood dot — both signals stay, neither replaces the other.
+- Several runs in one day show the hardest of them (hard > steady > easy > unknown).
+- A planned rest day with no run gets the dashed rest bar; a day with no run and no plan gets none.
+
 ### Buttons
 
 - One `horizon` CTA per view at most. Secondary actions are ghost or outline.
@@ -147,6 +156,7 @@ Popovers, sheets and modals keep `surface-elev` + `shadow-e2`…`e4`
 - ❌ Effort colors used for anything other than effort
 - ❌ Sans or serif numbers
 - ❌ Serif on multi-sentence prose
+- ❌ Section headings in serif
 - ❌ A fourth typeface
 - ❌ A fill color used as text (use its `-ink`)
 - ❌ Dropping the light ground or the dark ground

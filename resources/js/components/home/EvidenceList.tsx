@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import type { PastYouTrend, TrendDirection } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
+import { EFFORT_STRIPE_CLASS } from '@/lib/effort';
 import { activityUrl } from '@/lib/routes';
 import {
     type EvidenceReading,
@@ -37,7 +38,10 @@ export default function EvidenceList({
                     <Link
                         href={activityUrl({ activity_id: row.activityId })}
                         aria-label={ariaLabel(row)}
-                        className="focus-ring block py-2.5 transition-colors hover:bg-muted"
+                        className={cn(
+                            'focus-ring block py-2.5 pl-2.5 transition-colors hover:bg-muted',
+                            EFFORT_STRIPE_CLASS[row.effort ?? 'unknown'],
+                        )}
                     >
                         <span className="font-sans text-[0.65625rem] text-foreground">
                             {row.label}

@@ -4,27 +4,40 @@ declare(strict_types=1);
 
 namespace App\Actions\Run;
 
+use App\Enums\Effort;
 use App\Enums\Rarity;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
+use App\Services\Run\Metrics\RunEffort;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
  * Builds the per-day cell grid for the /calendar month view. Each cell carries
- * the day's aggregated distance / pace / weighted HR / TRIMP / mood so the
- * frontend renders rich detail without a second query. The grid spans whole
+ * the day's aggregated distance / pace / weighted HR / TRIMP / mood / effort so
+ * the frontend renders rich detail without a second query. The grid spans whole
  * Mon-Sun weeks ($gridStart..$gridEnd) padded around the visible month.
  */
 class BuildCalendarCellsAction
 {
+    /** Rest never wins a run comparison — it's only ever a restless day's own effort. */
+    private const array EFFORT_RANK = [
+        'hard' => 3,
+        'steady' => 2,
+        'easy' => 1,
+        'unknown' => 0,
+        'rest' => -1,
+    ];
+
     /**
-     * @return array<int, array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null}>
+     * @return array<int, array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null, effort: string|null}>
      */
     public function __invoke(User $user, Carbon $gridStart, Carbon $gridEnd, Carbon $monthStart, Carbon $monthEnd): array
     {
@@ -40,12 +53,16 @@ class BuildCalendarCellsAction
                 'activity_details.elapsed_time',
                 'activity_details.average_heartrate',
                 'activity_details.trimp_edwards',
+                'activity_details.workout_type',
+                'activity_details.stream_summary',
             ])
             ->get();
 
         $activityIds = $details->pluck('activity_id')->all();
         $moodByActivity = $this->moodsForActivities($activityIds);
         $rarityByActivity = $this->raritiesForActivities($activityIds);
+        $effortByActivity = RunEffort::forDetails($user->id, $details);
+        $restDates = $this->restDatesFor($user, $gridStart, $gridEnd);
 
         $byDay = $details->groupBy(fn ($row): string => Carbon::parse($row->start_date_local)->toDateString());
 
@@ -54,7 +71,7 @@ class BuildCalendarCellsAction
         $todayKey = Carbon::today()->toDateString();
         while ($cursor->lessThanOrEqualTo($gridEnd)) {
             $dateKey = $cursor->toDateString();
-            $cells[] = $this->cellFor($cursor, $dateKey, $byDay->get($dateKey), $moodByActivity, $rarityByActivity, $monthStart, $monthEnd, $todayKey);
+            $cells[] = $this->cellFor($cursor, $dateKey, $byDay->get($dateKey), $moodByActivity, $rarityByActivity, $effortByActivity, $restDates, $monthStart, $monthEnd, $todayKey);
             $cursor->addDay();
         }
 
@@ -65,9 +82,11 @@ class BuildCalendarCellsAction
      * @param  Collection<int, ActivityDetail>|null  $rows
      * @param  array<int, string>  $moodByActivity
      * @param  array<int, Rarity>  $rarityByActivity
-     * @return array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null}
+     * @param  array<int, Effort>  $effortByActivity
+     * @param  array<int, string>  $restDates
+     * @return array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null, effort: string|null}
      */
-    private function cellFor(Carbon $cursor, string $dateKey, ?Collection $rows, array $moodByActivity, array $rarityByActivity, Carbon $monthStart, Carbon $monthEnd, string $todayKey): array
+    private function cellFor(Carbon $cursor, string $dateKey, ?Collection $rows, array $moodByActivity, array $rarityByActivity, array $effortByActivity, array $restDates, Carbon $monthStart, Carbon $monthEnd, string $todayKey): array
     {
         $base = [
             'date' => $dateKey,
@@ -86,6 +105,7 @@ class BuildCalendarCellsAction
                 'mood' => null,
                 'rarity' => null,
                 'activity_id' => null,
+                'effort' => in_array($dateKey, $restDates, true) ? Effort::Rest->value : null,
             ];
         }
 
@@ -121,6 +141,7 @@ class BuildCalendarCellsAction
             'mood' => $moodByActivity[$primaryId] ?? null,
             'rarity' => $this->rarestOf($rows, $rarityByActivity)?->value,
             'activity_id' => $rows->count() === 1 ? $primaryId : null,
+            'effort' => $this->hardestEffort($rows, $effortByActivity)->value,
         ];
     }
 
@@ -143,6 +164,46 @@ class BuildCalendarCellsAction
         }
 
         return $best;
+    }
+
+    /**
+     * The day's hardest run wins the cell's effort bar: several runs on one
+     * day show as whichever pushed hardest, never diluted to an average.
+     *
+     * @param  Collection<int, ActivityDetail>  $rows
+     * @param  array<int, Effort>  $effortByActivity
+     */
+    private function hardestEffort(Collection $rows, array $effortByActivity): Effort
+    {
+        $best = Effort::Unknown;
+
+        foreach ($rows as $row) {
+            $effort = $effortByActivity[(int) $row->getAttribute('activity_id')] ?? Effort::Unknown;
+            if (self::EFFORT_RANK[$effort->value] > self::EFFORT_RANK[$best->value]) {
+                $best = $effort;
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * Planned rest days the athlete hasn't excused (skipped or clamped away),
+     * so an empty cell can still show the dashed rest bar rather than nothing.
+     *
+     * @return array<int, string>
+     */
+    private function restDatesFor(User $user, Carbon $gridStart, Carbon $gridEnd): array
+    {
+        return PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->where('session_type', SessionType::Rest->value)
+            ->where('skipped', false)
+            ->whereNull('rest_clamped_at')
+            ->whereBetween('date', [$gridStart->toDateString(), $gridEnd->toDateString()])
+            ->get(['date'])
+            ->map(fn (PlannedSession $session): string => $session->date->toDateString())
+            ->all();
     }
 
     /**

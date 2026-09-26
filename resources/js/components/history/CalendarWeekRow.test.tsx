@@ -25,6 +25,7 @@ function cellsFor(
         mood: null,
         rarity: null,
         activity_id: null,
+        effort: null,
         ...r,
     }));
 }
@@ -104,6 +105,62 @@ describe('CalendarWeekRow', () => {
         for (const day of ['4', '5', '6', '7', '8', '9', '10']) {
             expect(screen.getByText(day)).toBeInTheDocument();
         }
+    });
+
+    it("colors the day's bottom edge with its hardest effort", () => {
+        const week = weekFor([
+            {
+                date: '2026-05-04',
+                day: 4,
+                distance_km: 8,
+                activity_id: 55,
+                effort: 'hard',
+            },
+            { date: '2026-05-05', day: 5 },
+            { date: '2026-05-06', day: 6 },
+            { date: '2026-05-07', day: 7 },
+            { date: '2026-05-08', day: 8 },
+            { date: '2026-05-09', day: 9 },
+            { date: '2026-05-10', day: 10 },
+        ]);
+        render(<CalendarWeekRow week={week} snapshot={null} />);
+
+        expect(
+            screen
+                .getByRole('link', { name: /2026-05-04/ })
+                .querySelector('.border-ember'),
+        ).toBeInTheDocument();
+    });
+
+    it('gives a planned rest day with no run the dashed rest bar', () => {
+        const week = weekFor([
+            { date: '2026-05-04', day: 4, effort: 'rest' },
+            { date: '2026-05-05', day: 5 },
+            { date: '2026-05-06', day: 6 },
+            { date: '2026-05-07', day: 7 },
+            { date: '2026-05-08', day: 8 },
+            { date: '2026-05-09', day: 9 },
+            { date: '2026-05-10', day: 10 },
+        ]);
+        render(<CalendarWeekRow week={week} snapshot={null} />);
+
+        const cell = screen.getByLabelText('2026-05-04: no run');
+
+        expect(
+            cell.querySelector('.border-dashed.border-border'),
+        ).toBeInTheDocument();
+    });
+
+    it('gives a day with no run and no plan no effort bar at all', () => {
+        render(<CalendarWeekRow week={PLAIN_WEEK} snapshot={null} />);
+
+        const cell = screen.getByLabelText('2026-05-05: no run');
+
+        expect(
+            cell.querySelector(
+                '.border-leaf, .border-citrus, .border-ember, .border-dashed',
+            ),
+        ).not.toBeInTheDocument();
     });
 
     it('links a day that resolved to one activity', () => {
