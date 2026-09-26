@@ -53,19 +53,19 @@
                     </tr>
                 </x-pulse::thead>
                 <tbody>
-                    @foreach ($recentIssues as $failure)
-                        <tr wire:key="{{ $failure->analysis_id }}-{{ $failure->channel }}-spacer" class="h-2 first:h-0"></tr>
-                        <tr wire:key="{{ $failure->analysis_id }}-{{ $failure->channel }}-row">
+                    @foreach ($recentIssues as $issue)
+                        <tr wire:key="{{ $issue->analysis_id }}-{{ $issue->channel }}-spacer" class="h-2 first:h-0"></tr>
+                        <tr wire:key="{{ $issue->analysis_id }}-{{ $issue->channel }}-row">
                             <x-pulse::td class="max-w-[1px]">
                                 <code class="block truncate text-xs text-foreground">
-                                    {{ $failure->status->value }} · {{ $failure->channel }} · analysis #{{ $failure->analysis_id }}
+                                    {{ $issue->status->value }} · {{ $issue->channel }} · analysis #{{ $issue->analysis_id }}
                                 </code>
-                                <p class="mt-1 truncate text-xs {{ $failure->status->value === 'abandoned' ? 'text-text-2' : 'text-ember-ink' }}" title="{{ $failure->error }}">
-                                    {{ \Illuminate\Support\Str::limit((string) $failure->error, 120) }}
+                                <p class="mt-1 truncate text-xs {{ $issue->status->value === 'abandoned' ? 'text-text-2' : 'text-ember-ink' }}" title="{{ $issue->error }}">
+                                    {{ \Illuminate\Support\Str::limit((string) $issue->error, 120) }}
                                 </p>
                             </x-pulse::td>
                             <x-pulse::td numeric class="whitespace-nowrap font-bold text-text-2">
-                                {{ $failure->settled_at?->ago(syntax: Carbon\CarbonInterface::DIFF_ABSOLUTE, short: true) ?? '—' }}
+                                {{ $issue->settled_at?->ago(syntax: Carbon\CarbonInterface::DIFF_ABSOLUTE, short: true) ?? '—' }}
                             </x-pulse::td>
                         </tr>
                     @endforeach
