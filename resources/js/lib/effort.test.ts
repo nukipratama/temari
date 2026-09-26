@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Effort } from '@/types/inertia';
 
-import { EFFORT_LABEL, EFFORT_STRIPE_CLASS } from './effort';
+import { EFFORT_EDGE_CLASS, EFFORT_LABEL, EFFORT_STRIPE_CLASS } from './effort';
 
 const ALL_EFFORTS: Effort[] = ['easy', 'steady', 'hard', 'rest', 'unknown'];
 
@@ -34,6 +34,27 @@ describe('effort', () => {
                 expect(EFFORT_STRIPE_CLASS[effort]).toContain('border-l-[3px]');
                 expect(EFFORT_STRIPE_CLASS[effort]).not.toMatch(/\bbg-/);
                 expect(EFFORT_STRIPE_CLASS[effort]).not.toMatch(/rounded/);
+            }
+        });
+    });
+
+    describe('EFFORT_EDGE_CLASS', () => {
+        it('matches EFFORT_STRIPE_CLASS colors, moved to the bottom edge', () => {
+            for (const effort of ALL_EFFORTS) {
+                const stripe = EFFORT_STRIPE_CLASS[effort].replace(
+                    'border-l-[3px]',
+                    'border-b-[3px]',
+                );
+
+                expect(EFFORT_EDGE_CLASS[effort]).toBe(stripe);
+            }
+        });
+
+        it('gives every edge a square 3px bottom border, never a fill', () => {
+            for (const effort of ALL_EFFORTS) {
+                expect(EFFORT_EDGE_CLASS[effort]).toContain('border-b-[3px]');
+                expect(EFFORT_EDGE_CLASS[effort]).not.toMatch(/\bbg-/);
+                expect(EFFORT_EDGE_CLASS[effort]).not.toMatch(/rounded/);
             }
         });
     });
