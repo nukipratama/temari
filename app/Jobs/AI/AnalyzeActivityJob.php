@@ -195,8 +195,8 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
         // group must fail before the speech LLM is ever billed, not after.
         $insight = $this->resolveInsight($subject, $detail, $persistGenerated);
 
-        $speechDeadlineSeconds = $this->availableNarratorDeadlineSeconds();
-        if ($speechDeadlineSeconds < self::MINIMUM_SPEECH_DEADLINE_SECONDS) {
+        $availableWorkerSeconds = $this->remainingWorkerSeconds() - (int) config('azure_openai.timeout');
+        if ($availableWorkerSeconds < self::MINIMUM_SPEECH_DEADLINE_SECONDS) {
             $speech = Analysis::query()
                 ->forSubject(Activity::class, $subject->id, AnalysisType::PostRunSpeech)
                 ->first();
@@ -209,6 +209,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             return [AnalysisType::RunInsight->value => $insight];
         }
 
+        $speechDeadlineSeconds = min((int) config('ai.agent.deadline_seconds'), $availableWorkerSeconds);
         $speech = $this->narrating(
             AnalysisType::PostRunSpeech,
             fn (): string => app(PostRunSpeechNarrator::class)->generate(

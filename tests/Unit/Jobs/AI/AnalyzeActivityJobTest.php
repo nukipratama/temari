@@ -70,7 +70,7 @@ it('writes speech + insight rows Done from one job run', function (): void {
         'azure_openai.api_key' => 'fake',
         'azure_openai.timeout' => 5,
         'ai.agent.deadline_seconds' => 20,
-        'horizon.defaults.supervisor-ai.timeout' => 60,
+        'horizon.defaults.supervisor-ai.timeout' => 90,
     ]);
     $activity = seedActivityForJob();
 
@@ -106,7 +106,51 @@ it('writes speech + insight rows Done from one job run', function (): void {
     }
 });
 
-it('persists insight and leaves speech Pending when its worst-case call no longer fits', function (): void {
+it('uses a shortened speech deadline when enough worker time remains', function (): void {
+    config([
+        'azure_openai.uri' => 'https://x.openai.azure.com',
+        'azure_openai.api_key' => 'fake',
+        'azure_openai.timeout' => 5,
+        'ai.agent.deadline_seconds' => 90,
+        'horizon.defaults.supervisor-ai.timeout' => 120,
+    ]);
+    Carbon::setTestNow('2026-09-26 06:00:00');
+    $activity = seedActivityForJob();
+
+    $insightMock = Mockery::mock(RunInsightNarrator::class);
+    $insightMock->shouldReceive('generate')
+        ->once()
+        ->withArgs(function ($passedActivity, $detail, $deadlineSeconds) use ($activity): bool {
+            Carbon::setTestNow(Carbon::now()->addSeconds(40));
+
+            return $passedActivity->is($activity) && $deadlineSeconds === 90;
+        })
+        ->andReturn(['claims' => [sampleClaim('persisted before speech')]]);
+    app()->instance(RunInsightNarrator::class, $insightMock);
+
+    $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
+    $speechMock->shouldReceive('generate')
+        ->once()
+        ->withArgs(fn ($a, $d, $mood, $deadlineSeconds): bool => $mood === 'blazing' && $deadlineSeconds === 65)
+        ->andReturn('nice run');
+    app()->instance(PostRunSpeechNarrator::class, $speechMock);
+
+    try {
+        new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+
+        $rows = Analysis::query()
+            ->where('subject_type', Activity::class)
+            ->where('subject_id', $activity->id)
+            ->get();
+
+        expect($rows)->toHaveCount(2)
+            ->and($rows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue();
+    } finally {
+        Carbon::setTestNow();
+    }
+});
+
+it('persists insight and leaves speech Pending when less than its minimum deadline remains', function (): void {
     config([
         'azure_openai.uri' => 'https://x.openai.azure.com',
         'azure_openai.api_key' => 'fake',
