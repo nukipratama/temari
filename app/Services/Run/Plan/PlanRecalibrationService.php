@@ -85,7 +85,8 @@ final readonly class PlanRecalibrationService
                 }
             });
 
-        if (! $dryRun && ($dirty || Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id)))) {
+        $lateDirty = ! $dryRun && Cache::pull(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id));
+        if ($dirty || $lateDirty) {
             RecalibrateTrainingHistoryJob::dispatch($user->id)->delay(5)->afterCommit();
         }
 
