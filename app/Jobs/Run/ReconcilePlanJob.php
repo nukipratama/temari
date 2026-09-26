@@ -40,7 +40,7 @@ final class ReconcilePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQue
         return [
             new WithoutOverlapping("plan-reconciliation:{$this->userId}")
                 ->releaseAfter(10)
-                ->expireAfter(3600),
+                ->expireAfter(150),
         ];
     }
 
