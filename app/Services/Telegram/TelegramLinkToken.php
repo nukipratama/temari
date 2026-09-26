@@ -7,6 +7,7 @@ namespace App\Services\Telegram;
 use App\Models\TelegramLinkTokenUse;
 use App\Services\Telegram\Exceptions\TelegramLinkTokenException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Mints and verifies the deep-link token that carries the logged-in user's
@@ -66,7 +67,10 @@ class TelegramLinkToken
             throw new TelegramLinkTokenException('Telegram link token has expired.', expired: true);
         }
 
-        if (TelegramLinkTokenUse::query()->whereKey(hash('sha256', $token))->exists()) {
+        if (
+            TelegramLinkTokenUse::query()->whereKey(hash('sha256', $token))->exists()
+            || Cache::has($this->consumedKey($token))
+        ) {
             throw new TelegramLinkTokenException('Telegram link token was already used.', expired: true);
         }
 
@@ -121,6 +125,11 @@ class TelegramLinkToken
     private function sign(string $body): string
     {
         return substr(hash_hmac('sha256', $body, (string) config('app.key'), binary: true), 0, self::SIGNATURE_BYTES);
+    }
+
+    private function consumedKey(string $token): string
+    {
+        return 'telegram-link-used:' . hash('sha256', $token);
     }
 
     private function base64UrlEncode(string $binary): string
