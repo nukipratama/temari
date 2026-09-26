@@ -214,7 +214,7 @@ it('abandons a stale claim without sending again and fences its late finisher', 
         ->where('channel', 'telegram')
         ->update(['claimed_at' => now()->subMinutes(16)]);
 
-    expect($claim->recoverStale())->toBe(['webpush_rearmed' => 0, 'telegram_abandoned' => 1]);
+    expect($claim->recoverStale())->toBe(['webpush_rearmed' => [], 'telegram_abandoned' => 1]);
     channelSend($user, new TelegramMessage(text: 'No duplicate', deliveryKey: $analysisId));
 
     Http::assertSentCount(0);

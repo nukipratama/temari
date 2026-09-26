@@ -153,7 +153,7 @@ it('reclaims and sends a stale web push once with the new claim version', functi
         ->where('channel', 'webpush')
         ->update(['claimed_at' => now()->subMinutes(16)]);
 
-    expect($claim->recoverStale())->toBe(['webpush_rearmed' => 1, 'telegram_abandoned' => 0]);
+    expect($claim->recoverStale())->toBe(['webpush_rearmed' => [$analysis->id], 'telegram_abandoned' => 0]);
 
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->once();

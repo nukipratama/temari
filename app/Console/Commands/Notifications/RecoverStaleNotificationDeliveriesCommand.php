@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Notifications;
 
+use App\Jobs\Notifications\RetryStaleWebPushNotificationJob;
 use App\Services\Notifications\NotificationDeliveryClaim;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -16,7 +17,11 @@ class RecoverStaleNotificationDeliveriesCommand extends Command
     public function handle(NotificationDeliveryClaim $claim): int
     {
         $recovered = $claim->recoverStale();
-        $this->info("Recovered stale deliveries: {$recovered['webpush_rearmed']} web push re-armed, {$recovered['telegram_abandoned']} Telegram abandoned.");
+        foreach ($recovered['webpush_rearmed'] as $analysisId) {
+            RetryStaleWebPushNotificationJob::dispatch($analysisId);
+        }
+
+        $this->info('Recovered stale deliveries: '.count($recovered['webpush_rearmed'])." web push re-armed, {$recovered['telegram_abandoned']} Telegram abandoned.");
 
         return self::SUCCESS;
     }

@@ -98,6 +98,18 @@ class NotificationDeliveryClaim
             ]) !== 0;
     }
 
+    public function markRearmedWebPushSkipped(int $analysisId): bool
+    {
+        return $this->rowFor($analysisId, 'webpush')
+            ->where('status', NotificationDeliveryStatus::Pending->value)
+            ->whereNull('claimed_at')
+            ->update([
+                'status' => NotificationDeliveryStatus::Failed->value,
+                'error' => 'Retry skipped because current preferences or channel eligibility no longer allow web push.',
+                'settled_at' => now(),
+            ]) !== 0;
+    }
+
     public function recordForcedSent(int $analysisId, string $channel): bool
     {
         if (NotificationDelivery::query()->insertOrIgnore([
@@ -134,13 +146,11 @@ class NotificationDeliveryClaim
         ]) !== 0;
     }
 
-    /**
-     * @return array{webpush_rearmed: int, telegram_abandoned: int}
-     */
+    /** @return array{webpush_rearmed: list<int>, telegram_abandoned: int} */
     public function recoverStale(): array
     {
         $cutoff = now()->subMinutes(self::STALE_AFTER_MINUTES);
-        $recovered = ['webpush_rearmed' => 0, 'telegram_abandoned' => 0];
+        $recovered = ['webpush_rearmed' => [], 'telegram_abandoned' => 0];
 
         NotificationDelivery::query()
             ->where('status', NotificationDeliveryStatus::Pending->value)
@@ -163,7 +173,9 @@ class NotificationDeliveryClaim
                             'claimed_at' => null,
                             'settled_at' => null,
                         ]);
-                        $recovered['webpush_rearmed'] += (int) ($updated !== 0);
+                        if ($updated !== 0) {
+                            $recovered['webpush_rearmed'][] = $row->analysis_id;
+                        }
                     } elseif ($row->channel === 'telegram') {
                         $updated = $claim->update([
                             'status' => NotificationDeliveryStatus::Abandoned->value,

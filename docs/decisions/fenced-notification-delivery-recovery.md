@@ -9,6 +9,7 @@ code_refs:
   - app/Enums/NotificationDeliveryStatus.php
   - app/Models/NotificationDelivery.php
   - app/Services/Notifications/NotificationDeliveryClaim.php
+  - app/Jobs/Notifications/RetryStaleWebPushNotificationJob.php
   - app/Notifications/Channels/TelegramChannel.php
   - app/Notifications/Channels/IdempotentWebPushChannel.php
   - app/Console/Commands/Notifications/RecoverStaleNotificationDeliveriesCommand.php
@@ -26,7 +27,7 @@ A worker can stop after claiming a notification but before it records the provid
 
 ## Decision
 
-Each claim stamps `claimed_at` and increments `claim_version`. Workers can settle only the pending row with the version they received. Every five minutes, the recovery command scans pending claims older than 15 minutes. It clears the web-push claim and increments its version so a queued retry can claim it again. It changes stale Telegram claims to terminal `Abandoned`, also incrementing the version, so an automatic retry cannot repeat an ambiguous message.
+Each claim stamps `claimed_at` and increments `claim_version`. Workers can settle only the pending row with the version they received. Every five minutes, the recovery command scans pending claims older than 15 minutes. It clears the web-push claim, increments its version, and queues a web-push retry job for the same analysis. The job checks current preferences and channel eligibility before claiming and sending; if the retry is no longer eligible, it settles the unclaimed row as `Failed` with that reason rather than leaving it marked in flight. The command changes stale Telegram claims to terminal `Abandoned`, also incrementing the version, so an automatic retry cannot repeat an ambiguous message.
 
 Claim and settle fencing is implemented in `app/Services/Notifications/NotificationDeliveryClaim.php:31` and `app/Services/Notifications/NotificationDeliveryClaim.php:75`; both channel wrappers pass the version at `app/Notifications/Channels/TelegramChannel.php:90` and `app/Notifications/Channels/IdempotentWebPushChannel.php:72`. The scheduled sweep is registered at `routes/console.php:159`, and the operator signal is rendered at `app/Livewire/Pulse/NotificationDeliveryHealth.php:28`.
 
@@ -38,7 +39,7 @@ Claim and settle fencing is implemented in `app/Services/Notifications/Notificat
 | Provider failure recorded | The row is `Failed`; a later attempt can claim a new version and retry. | The provider error remains visible until the retry settles. |
 | Old worker finishes after recovery or reclaim | Its version no longer matches, so its completion is a no-op. | A late result cannot overwrite the newer state. |
 
-The scheduler never sends a notification. The `Notification Delivery` Pulse card surfaces `Abandoned` rows with their channel, analysis ID, and stored reason. For Telegram, an operator checks the chat outcome before using the existing manual **Send notification** control; that explicit resend can duplicate a message if Telegram accepted the original attempt.
+The scheduled command queues a web-push retry; the queue worker performs the provider send. The `Notification Delivery` Pulse card surfaces `Abandoned` rows with their channel, analysis ID, and stored reason. For Telegram, an operator checks the chat outcome before using the existing manual **Send notification** control; that explicit resend can duplicate a message if Telegram accepted the original attempt.
 
 On schema rollback, the down migration maps `Abandoned` to legacy `Sent` and retains an unknown-outcome reason in `error`. That keeps the previous enum readable and prevents its failed-row retry path from resending Telegram automatically.
 
