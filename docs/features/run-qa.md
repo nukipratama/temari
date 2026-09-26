@@ -73,6 +73,14 @@ insight set minus the claim-shaping bits, and shrinks to the run summary plus th
 three history reads when the activity is still `summary` state. The full agent
 mechanics are in [[ai-narration-internals]] and [[narration-agents-on-openai-php]].
 
+Each question is answered exactly once. The job takes the row with one
+conditional update that stamps a fresh `claim_token` and `claimed_at`, and every
+later write is fenced on that token. A first delivery never takes a live claim,
+a queue retry takes over from its dead predecessor, and any delivery may reclaim
+a claim older than the lease, which is the queue's `retry_after`. A duplicate
+delivery never reaches the narrator, and a finisher that was taken over cannot
+overwrite the row.
+
 Failure is per-question and terminal: a failed question is marked `failed` with
 its error and the user asks again. There is no self-heal sweep for questions,
 unlike narration rows ([[bounded-self-heal-and-dead-letter]]).

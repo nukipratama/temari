@@ -33,6 +33,8 @@ use Override;
  * @property string|null $answer
  * @property AnalysisStatus $status
  * @property string|null $error
+ * @property string|null $claim_token
+ * @property Carbon|null $claimed_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read User $user
@@ -82,6 +84,7 @@ class RunQuestion extends Model
             'user_id' => 'integer',
             'activity_id' => 'integer',
             'status' => AnalysisStatus::class,
+            'claimed_at' => 'datetime',
         ];
     }
 }

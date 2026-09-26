@@ -16,6 +16,7 @@ use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\Narrators\RunQuestionNarrator;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
+use Illuminate\Contracts\Queue\Job as JobContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -44,6 +45,52 @@ function fakeQuestionNarrator(mixed $result): RunQuestionNarrator
     $mock = Mockery::mock(RunQuestionNarrator::class);
     $expectation = $mock->shouldReceive('generate');
     $result instanceof Throwable ? $expectation->andThrow($result) : $expectation->andReturn($result);
+
+    return $mock;
+}
+
+/**
+ * A queue delivery of the job at a given attempt; each release() it makes is
+ * appended to $released, so a test can count the jobs a delivery re-enqueued.
+ *
+ * @param  ArrayObject<int, int>|null  $released
+ */
+function questionDelivery(int $rowId, int $attempts, ?ArrayObject $released = null): AnswerRunQuestionJob
+{
+    $released ??= new ArrayObject();
+    $fake = Mockery::mock(JobContract::class);
+    $fake->shouldReceive('attempts')->andReturn($attempts);
+    $fake->shouldReceive('release')->andReturnUsing(function (int $delay) use ($released): void {
+        $released->append($delay);
+    });
+
+    $job = new AnswerRunQuestionJob($rowId);
+    $job->setJob($fake);
+
+    return $job;
+}
+
+/**
+ * A narrator that counts every billed call and runs $during inside the first
+ * one, which is where a competing delivery would land while the call is in
+ * flight.
+ *
+ * @param  ArrayObject<int, string>  $calls
+ */
+function countingQuestionNarrator(ArrayObject $calls, string $answer, ?Closure $during = null, ?Throwable $throw = null): RunQuestionNarrator
+{
+    $mock = Mockery::mock(RunQuestionNarrator::class);
+    $mock->shouldReceive('generate')->andReturnUsing(function () use ($calls, $answer, $during, $throw): string {
+        $calls->append($answer);
+        if ($during !== null && count($calls) === 1) {
+            $during();
+        }
+        if ($throw !== null) {
+            throw $throw;
+        }
+
+        return $answer;
+    });
 
     return $mock;
 }
@@ -213,4 +260,166 @@ it('does nothing when the question row is gone', function (): void {
     new AnswerRunQuestionJob(9999)->failed(new RuntimeException('gone'));
 
     expect(RunQuestion::query()->count())->toBe(0);
+});
+
+it('lets only one of two competing deliveries reach the narrator', function (): void {
+    $row = questionRow();
+    $calls = new ArrayObject();
+    $released = new ArrayObject();
+    $narrator = countingQuestionNarrator($calls, 'first', function () use ($row, $calls, $released): void {
+        questionDelivery($row->id, 1, $released)->handle(
+            app(AnalysisService::class),
+            countingQuestionNarrator($calls, 'second'),
+        );
+    });
+
+    questionDelivery($row->id, 1, $released)->handle(app(AnalysisService::class), $narrator);
+
+    expect($calls->getArrayCopy())->toBe(['first'])
+        ->and($released)->toHaveCount(0)
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->answer)->toBe('first');
+});
+
+it('lets only one of two retries that read the same stale claim win the row', function (): void {
+    $row = questionRow(['question' => [
+        'status' => AnalysisStatus::Processing,
+        'claim_token' => 'dead-worker',
+        'claimed_at' => Carbon::now(),
+    ]]);
+
+    $claim = function (RunQuestion $reader) use ($row): ?string {
+        $job = questionDelivery($row->id, 2);
+        $method = new ReflectionMethod($job, 'claim');
+
+        return $method->invoke($job, $reader);
+    };
+
+    $readerA = RunQuestion::query()->find($row->id);
+    $readerB = RunQuestion::query()->find($row->id);
+
+    $tokenA = $claim($readerA);
+    $tokenB = $claim($readerB);
+
+    expect([$tokenA, $tokenB])->toContain(null)
+        ->and($tokenA === null)->not->toBe($tokenB === null);
+});
+
+it('answers a duplicated delivery of the same job once', function (): void {
+    $row = questionRow();
+    $calls = new ArrayObject();
+    $job = new AnswerRunQuestionJob($row->id);
+    $duplicate = unserialize(serialize($job));
+
+    $job->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'answered'));
+    $duplicate->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'again'));
+
+    expect($calls->getArrayCopy())->toBe(['answered'])
+        ->and($row->refresh()->answer)->toBe('answered');
+});
+
+it('turns a stale finisher into a no-op once a retry has taken the claim over', function (): void {
+    $row = questionRow();
+    $calls = new ArrayObject();
+    $released = new ArrayObject();
+    $stale = countingQuestionNarrator($calls, 'stale', function () use ($row, $calls, $released): void {
+        questionDelivery($row->id, 2, $released)->handle(
+            app(AnalysisService::class),
+            countingQuestionNarrator($calls, 'retry'),
+        );
+    });
+
+    questionDelivery($row->id, 1, $released)->handle(app(AnalysisService::class), $stale);
+
+    expect($calls->getArrayCopy())->toBe(['stale', 'retry'])
+        ->and($released)->toHaveCount(0)
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->answer)->toBe('retry');
+});
+
+it('keeps a stale failure or requeue from touching a row a retry now owns', function (Throwable $failure): void {
+    $row = questionRow();
+    $calls = new ArrayObject();
+    $released = new ArrayObject();
+    $stale = countingQuestionNarrator($calls, 'stale', function () use ($row, $calls, $released): void {
+        questionDelivery($row->id, 2, $released)->handle(
+            app(AnalysisService::class),
+            countingQuestionNarrator($calls, 'retry'),
+        );
+    }, $failure);
+
+    try {
+        questionDelivery($row->id, 1, $released)->handle(app(AnalysisService::class), $stale);
+    } catch (RuntimeException) {
+    }
+
+    expect($calls)->toHaveCount(2)
+        ->and($released)->toHaveCount(0)
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->answer)->toBe('retry')
+        ->and($row->error)->toBeNull();
+})->with([
+    'transient' => [new TransientUpstreamException('429', retryAfterSeconds: 30)],
+    'terminal' => [new UnavailableException('down')],
+    'unexpected' => [new RuntimeException('kaboom')],
+]);
+
+it('recovers a processing row whose lease has run out', function (): void {
+    Carbon::setTestNow('2026-09-26 12:00:00');
+    config()->set('queue.connections.redis.retry_after', 420);
+    $row = questionRow(['question' => [
+        'status' => AnalysisStatus::Processing,
+        'claim_token' => 'dead-worker',
+        'claimed_at' => Carbon::now()->subSeconds(421),
+    ]]);
+    $calls = new ArrayObject();
+
+    questionDelivery($row->id, 1)->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'recovered'));
+
+    expect($calls->getArrayCopy())->toBe(['recovered'])
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->claim_token)->not->toBe('dead-worker');
+});
+
+it('leaves a live claim to its holder on a first delivery', function (): void {
+    Carbon::setTestNow('2026-09-26 12:00:00');
+    config()->set('queue.connections.redis.retry_after', 420);
+    $row = questionRow(['question' => [
+        'status' => AnalysisStatus::Processing,
+        'claim_token' => 'live-worker',
+        'claimed_at' => Carbon::now()->subSeconds(419),
+    ]]);
+    $calls = new ArrayObject();
+
+    questionDelivery($row->id, 1)->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'stolen'));
+
+    expect($calls)->toHaveCount(0)
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Processing)
+        ->and($row->claim_token)->toBe('live-worker');
+});
+
+it('lets a retry take over its predecessor before the lease runs out', function (): void {
+    Carbon::setTestNow('2026-09-26 12:00:00');
+    config()->set('queue.connections.redis.retry_after', 420);
+    $row = questionRow(['question' => [
+        'status' => AnalysisStatus::Processing,
+        'claim_token' => 'timed-out-attempt',
+        'claimed_at' => Carbon::now()->subSeconds(419),
+    ]]);
+    $calls = new ArrayObject();
+
+    questionDelivery($row->id, 2)->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'retried'));
+
+    expect($calls->getArrayCopy())->toBe(['retried'])
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Done);
+});
+
+it('reclaims a processing row left without a lease by an earlier deploy', function (): void {
+    $row = questionRow(['question' => ['status' => AnalysisStatus::Processing]]);
+    $calls = new ArrayObject();
+
+    questionDelivery($row->id, 1)->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'answered'));
+
+    expect($calls->getArrayCopy())->toBe(['answered'])
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Done);
 });
