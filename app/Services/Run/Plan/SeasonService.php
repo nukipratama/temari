@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\AI\HydrationBacklog;
 use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Run\Metrics\TrainingLoad;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -78,6 +79,22 @@ final readonly class SeasonService
     }
 
     public function ensureCurrent(User $user, Carbon $today): Season
+    {
+        try {
+            return DB::transaction(function () use ($user, $today): Season {
+                User::query()->whereKey($user->id)->lockForUpdate()->first();
+                $this->season->forget($user->id);
+
+                return $this->ensureCurrentLocked($user, $today);
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            $this->season->forget($user->id);
+
+            return $this->season->latest($user->id) ?? throw $e;
+        }
+    }
+
+    private function ensureCurrentLocked(User $user, Carbon $today): Season
     {
         [$today, $race, $current] = $this->currentContext($user, $today);
 
@@ -331,10 +348,10 @@ final readonly class SeasonService
         }
 
         foreach ($goals as $goal) {
-            SeasonGoal::query()->create([
-                'season_id' => $season->id,
-                ...$goal,
-            ]);
+            SeasonGoal::query()->firstOrCreate(
+                ['season_id' => $season->id, 'metric' => $goal['metric']],
+                $goal,
+            );
         }
     }
 
@@ -381,11 +398,17 @@ final readonly class SeasonService
         $existing = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
 
         if (! in_array(self::RACE_MARGIN_METRIC, $existing, true)) {
-            SeasonGoal::query()->create(['season_id' => $season->id, ...self::raceMarginGoal()]);
+            SeasonGoal::query()->firstOrCreate(
+                ['season_id' => $season->id, 'metric' => self::RACE_MARGIN_METRIC],
+                self::raceMarginGoal(),
+            );
         }
 
         if (! in_array(self::PEAK_WEEKLY_KM_METRIC, $existing, true)) {
-            SeasonGoal::query()->create(['season_id' => $season->id, ...$this->peakWeeklyKmGoal($season, $race, $user)]);
+            SeasonGoal::query()->firstOrCreate(
+                ['season_id' => $season->id, 'metric' => self::PEAK_WEEKLY_KM_METRIC],
+                $this->peakWeeklyKmGoal($season, $race, $user),
+            );
         }
 
         $season->update(['block_goals_appended_at' => Carbon::now()]);

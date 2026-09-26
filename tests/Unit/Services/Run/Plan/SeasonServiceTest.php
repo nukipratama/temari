@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -477,4 +478,48 @@ it('releases held increases only once the window is scored, and never on an ordi
     expect($stillHeld)->toBeTrue()
         ->and($heldAfterRead)->toBeTrue()
         ->and($season->fresh()->increases_held)->toBeFalse();
+});
+
+it('re-reads under the athlete lock, so a caller holding a stale "no season" read reuses the season another caller opened', function (): void {
+    $user = User::factory()->create();
+    $callerA = app()->make(SeasonService::class, ['season' => new ResolveSeasonAction()]);
+    expect($callerA->peekCurrent($user, Carbon::today()))->toBeNull();
+
+    $openedByB = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+    $seenByA = $callerA->ensureCurrent($user, Carbon::today());
+
+    expect($seenByA->id)->toBe($openedByB->id)
+        ->and(Season::query()->where('user_id', $user->id)->count())->toBe(1)
+        ->and(SeasonGoal::query()->where('season_id', $openedByB->id)->count())->toBe(5);
+});
+
+it('appends each block goal once when a second caller still holds the pre-append season', function (): void {
+    $user = User::factory()->create();
+    seasonServiceWeeks($user, 30.0);
+    RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-08', 'distance_m' => 10_000]);
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+
+    Carbon::setTestNow('2026-11-23 08:00:00');
+    $callerA = app()->make(SeasonService::class, ['season' => new ResolveSeasonAction()]);
+    expect($callerA->peekCurrent($user, Carbon::today())?->block_goals_appended_at)->toBeNull();
+
+    app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+    $callerA->ensureCurrent($user, Carbon::today());
+
+    $metrics = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric');
+    expect($metrics)->toHaveCount(6)
+        ->and($metrics->duplicates())->toBeEmpty();
+});
+
+it('returns the existing season when a create still hits the seasons unique index', function (): void {
+    $user = User::factory()->create();
+    $existing = $this->service->ensureCurrent($user, Carbon::today());
+
+    $staleRead = Mockery::mock(ResolveSeasonAction::class)->makePartial();
+    $staleRead->shouldReceive('latest')->with($user->id)->twice()->andReturn(null, $existing);
+    $season = app()->make(SeasonService::class, ['season' => $staleRead])->ensureCurrent($user, Carbon::today());
+
+    expect($season->id)->toBe($existing->id)
+        ->and(Season::query()->where('user_id', $user->id)->count())->toBe(1)
+        ->and(SeasonGoal::query()->where('season_id', $existing->id)->count())->toBe(5);
 });
