@@ -91,67 +91,85 @@ export default function RunsShow({
     return (
         <>
             <Head title={detail.name ?? 'Run'} />
-            <PageContainer className="flex flex-col gap-4">
+            <PageContainer>
                 <Eyebrow token="hero" tone="ink-3">
                     Activity
                 </Eyebrow>
 
-                <RunHydratingNotice hydrating={awaitingDetail} />
-
-                <RunHero
-                    detail={detail}
-                    mood={mood}
-                    duration={cardProps.duration}
-                    paceSec={paceSec}
-                    hr={hr}
-                    trimp={trimp}
-                    onShare={shareData ? () => setShareOpen(true) : undefined}
-                />
-
-                {detailed && <PastYouCard match={pastYou} />}
-
-                {detailed && (
-                    <>
-                        <RunLenses
-                            mood={mood}
-                            story={speechAnalysis}
-                            insight={runInsight}
-                            isChainHead={isChainHead}
-                            drawnAnchors={anchors}
-                        />
-
-                        <AskAboutRun
-                            activityId={activity.id}
-                            summaryOnly={activity.ingest_state === 'summary'}
-                        />
-
-                        <Eyebrow token="hero" tone="ink-3" className="mt-2">
-                            The breakdown
-                        </Eyebrow>
-
-                        <VitalsCard detail={detail} summary={summary} />
-
-                        {zonePct && (
-                            <TimeInZoneBar
-                                zones={zonePct}
-                                label="Time in zone · this run"
-                                anchored
-                            />
-                        )}
-
-                        {(perKm.length > 0 || partialSplit) && (
-                            <SplitsChart rows={perKm} partial={partialSplit} />
-                        )}
-
-                        {laps.length > 0 && <LapsCarousel laps={laps} />}
-                    </>
+                {awaitingDetail && (
+                    <div className="mt-4">
+                        <RunHydratingNotice hydrating={awaitingDetail} />
+                    </div>
                 )}
+
+                <div className="mt-6 flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
+                    <RunHero
+                        detail={detail}
+                        mood={mood}
+                        duration={cardProps.duration}
+                        paceSec={paceSec}
+                        hr={hr}
+                        trimp={trimp}
+                        onShare={
+                            shareData ? () => setShareOpen(true) : undefined
+                        }
+                    />
+
+                    {detailed && <PastYouCard match={pastYou} />}
+
+                    {detailed && (
+                        <>
+                            <RunLenses
+                                mood={mood}
+                                story={speechAnalysis}
+                                insight={runInsight}
+                                isChainHead={isChainHead}
+                                drawnAnchors={anchors}
+                            />
+
+                            <AskAboutRun
+                                activityId={activity.id}
+                                summaryOnly={
+                                    activity.ingest_state === 'summary'
+                                }
+                            />
+
+                            <section>
+                                <Eyebrow token="small" tone="ink-3">
+                                    The breakdown
+                                </Eyebrow>
+                                <div className="mt-3 flex flex-col gap-4">
+                                    <VitalsCard
+                                        detail={detail}
+                                        summary={summary}
+                                    />
+                                    {zonePct && (
+                                        <TimeInZoneBar
+                                            zones={zonePct}
+                                            label="Time in zone · this run"
+                                            anchored
+                                        />
+                                    )}
+                                </div>
+                            </section>
+
+                            {(perKm.length > 0 || partialSplit) && (
+                                <SplitsChart
+                                    rows={perKm}
+                                    partial={partialSplit}
+                                />
+                            )}
+
+                            {laps.length > 0 && <LapsCarousel laps={laps} />}
+                        </>
+                    )}
+                </div>
 
                 <Eyebrow
                     as="footer"
                     token="micro"
                     tone="ink-3"
-                    className="mt-2 text-center"
+                    className="mt-6 text-center"
                 >
                     Synced from Strava · {syncedAt}
                     {activity.strava_external_id != null &&

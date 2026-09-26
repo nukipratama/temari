@@ -223,9 +223,26 @@ it('does not run the past-you match or the relative-effort baseline on an insigh
     $response->assertJsonPath('component', 'Runs/Show');
     $response->assertJsonPath('props.speechAnalysis.type', AnalysisType::PostRunSpeech->value);
     $response->assertJsonPath('props.runInsight.type', AnalysisType::RunInsight->value);
-    foreach (['pastYou', 'card', 'storyLine', 'moodFallback', 'isChainHead'] as $skipped) {
+    foreach (['pastYou', 'card', 'storyLine', 'moodFallback', 'isChainHead', 'detail'] as $skipped) {
         $response->assertJsonMissingPath("props.{$skipped}");
     }
+});
+
+it('stamps the viewed run\'s own effort onto detail on a full load', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today(),
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('detail.effort', 'easy'));
 });
 
 /**

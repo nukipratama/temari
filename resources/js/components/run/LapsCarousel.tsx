@@ -23,7 +23,7 @@ export default function LapsCarousel({
 
     return (
         <section className={className}>
-            <Eyebrow token="micro" tone="ink-2" className="mb-2 px-0.5">
+            <Eyebrow token="small" tone="ink-2" className="mb-2 px-0.5">
                 Laps
             </Eyebrow>
             <ul
@@ -40,10 +40,9 @@ export default function LapsCarousel({
                         <li
                             key={`lap-${lap.lap}`}
                             className={cn(
-                                'flex w-32 flex-none flex-col gap-2 rounded-md border p-3.5 shadow-e1',
-                                isFastest
-                                    ? 'border-horizon-ink bg-horizon/10'
-                                    : 'border-border-strong bg-card',
+                                'flex w-32 flex-none flex-col gap-2 rounded-sm bg-secondary p-3.5',
+                                isFastest &&
+                                    'ring-[1.5px] ring-inset ring-icon-accent',
                             )}
                         >
                             <div className="flex items-center justify-between gap-2">

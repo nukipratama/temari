@@ -285,22 +285,6 @@
         "horizon/0.08": {
             "text": []
         },
-        "horizon/0.1": {
-            "over": {
-                "resources/js/components/run/LapsCarousel.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/run/LapsCarousel.test.tsx": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "horizon-ink",
-                "foreground",
-                "text-2",
-                "icon-accent"
-            ]
-        },
         "horizon/0.14": {
             "over": {
                 "resources/js/components/run/EmptyRunsState.tsx": [

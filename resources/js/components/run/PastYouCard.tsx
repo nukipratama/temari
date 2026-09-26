@@ -5,7 +5,6 @@ import type { Effort } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 import { EFFORT_STRIPE_CLASS } from '@/lib/effort';
 import { formatDuration } from '@/lib/pace';
@@ -36,10 +35,10 @@ function relationTone(relation: Relation, betterWhen: Relation): string {
 }
 
 /**
- * "You vs past you" — the claim the whole app is built on, drawn as the
- * prototype does: its own card directly under the hero, leading with the pace
- * delta and linking to the run it is measured against. No match means no card,
- * not an empty state.
+ * "You vs past you" — the claim the whole app is built on: its own lane
+ * section directly under the hero, leading with the pace delta and linking to
+ * the run it is measured against. No match means no section, not an empty
+ * state.
  *
  * The wording is built entirely from the `relation` words
  * {@see PastYouMatcher::findMatchContext} already computes (pace banded against
@@ -58,15 +57,10 @@ export default function PastYouCard({
     const evenPace = pace.relation === 'same';
 
     return (
-        <Card as="section" padding="hero" className={cn('relative', className)}>
-            <span
-                aria-hidden
-                className={cn(
-                    'absolute inset-y-0 left-0',
-                    EFFORT_STRIPE_CLASS[match.effort],
-                )}
-            />
-            <Eyebrow token="micro" tone="ink-2">
+        <section
+            className={cn('pl-3', EFFORT_STRIPE_CLASS[match.effort], className)}
+        >
+            <Eyebrow token="small" tone="ink-2">
                 You vs past you
             </Eyebrow>
             <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 font-mono font-bold leading-tight tabular-nums text-icon-accent">
@@ -121,7 +115,7 @@ export default function PastYouCard({
                     />
                 )}
             </dl>
-        </Card>
+        </section>
     );
 }
 

@@ -15,6 +15,8 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import MoodChip from '@/components/ui/MoodChip';
 import { useCountUp } from '@/hooks/useCountUp';
+import { cn } from '@/lib/cn';
+import { EFFORT_STRIPE_CLASS } from '@/lib/effort';
 import { formatPace, formatShortDateTimeId } from '@/lib/pace';
 import { revealDelay } from '@/lib/styles';
 
@@ -88,7 +90,12 @@ export default function RunHero({
     ];
 
     return (
-        <section className="relative isolate overflow-hidden rounded-panel border border-border-strong bg-card p-5 shadow-e1">
+        <section
+            className={cn(
+                'relative isolate overflow-hidden pl-3',
+                EFFORT_STRIPE_CLASS[detail.effort ?? 'unknown'],
+            )}
+        >
             <MascotWatermark pose={mood} className="-top-3 -right-14" />
             <header className="flex items-start gap-3.5">
                 <div className="min-w-0 flex-1">
@@ -121,14 +128,12 @@ export default function RunHero({
                 <div className="mt-4 flex items-end justify-between gap-3">
                     <div className="reveal" style={revealDelay(0)}>
                         <div className="flex items-baseline gap-1">
-                            <b className="font-mono text-stat font-bold tabular-nums tracking-[-0.02em] text-foreground">
+                            <b className="text-stat">
                                 {display(detail.distance, distanceKm, (n) =>
                                     n.toFixed(2),
                                 )}
                             </b>
-                            <span className="text-label-micro text-text-2">
-                                km
-                            </span>
+                            <span className="text-meta">km</span>
                         </div>
                         <Eyebrow token="micro" tone="ink-3" className="mt-1">
                             DISTANCE
@@ -153,7 +158,7 @@ export default function RunHero({
                         <div
                             key={stat.label}
                             style={revealDelay(index + 1)}
-                            className="reveal flex items-center gap-1.5 rounded-sm bg-muted px-2 py-2 min-[360px]:gap-2 min-[360px]:px-2.5"
+                            className="reveal flex items-center gap-1.5 rounded-sm bg-secondary px-2 py-2 min-[360px]:gap-2 min-[360px]:px-2.5"
                         >
                             <Icon
                                 icon={stat.icon}
