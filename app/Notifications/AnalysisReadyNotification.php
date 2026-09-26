@@ -9,8 +9,8 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
-use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Concerns\AppendsUnreadBadge;
+use App\Notifications\Concerns\RechecksRouteAtDelivery;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
@@ -34,6 +34,7 @@ use NotificationChannels\WebPush\WebPushMessage;
 class AnalysisReadyNotification extends Notification implements ShouldQueue
 {
     use AppendsUnreadBadge;
+    use RechecksRouteAtDelivery;
     use Queueable;
 
     public int $tries = 3;
@@ -73,17 +74,6 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
             && $eligibility->isOptedIn($this->analysis, $notifiable);
 
         return $reachableNow ? $channels : [];
-    }
-
-    public function shouldSend(User $notifiable, string $channel): bool
-    {
-        if ($channel === InAppChannel::class) {
-            return true;
-        }
-
-        $currentUser = $notifiable->fresh();
-
-        return $currentUser !== null && in_array($channel, $this->via($currentUser), true);
     }
 
     public function toTelegram(User $notifiable): TelegramMessage
