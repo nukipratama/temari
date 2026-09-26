@@ -94,6 +94,35 @@ it('writes speech + insight rows Done from one job run', function (): void {
     }
 });
 
+it('ignores a group job after a newer generation owns its rows', function (): void {
+    $activity = seedActivityForJob();
+    $currentToken = 'current-generation';
+
+    foreach (AnalyzeActivityJob::groupedTypes() as $type) {
+        Analysis::factory()->queued()->create([
+            'subject_type' => Activity::class,
+            'subject_id' => $activity->id,
+            'analysis_type' => $type,
+            'discriminator' => null,
+            'generation_token' => $currentToken,
+        ]);
+    }
+
+    $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
+    $speechMock->shouldNotReceive('generate');
+    app()->instance(PostRunSpeechNarrator::class, $speechMock);
+    $insightMock = Mockery::mock(RunInsightNarrator::class);
+    $insightMock->shouldNotReceive('generate');
+    app()->instance(RunInsightNarrator::class, $insightMock);
+
+    new AnalyzeActivityJob($activity->id, null, 'stale-generation')->handle(app(AnalysisService::class));
+
+    $rows = Analysis::query()->where('subject_id', $activity->id)->get();
+    expect($rows)->toHaveCount(2)
+        ->and($rows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Queued))->toBeTrue()
+        ->and($rows->every(fn (Analysis $row): bool => $row->generation_token === $currentToken))->toBeTrue();
+});
+
 it('stamps every group row with the activity material fingerprint at generation', function (): void {
     $activity = seedActivityForJob();
 

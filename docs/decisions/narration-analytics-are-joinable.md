@@ -74,9 +74,9 @@ not to replay them.
 an LLM was billed, so it can never record that the rule-based filler answered — that is precisely
 the case with no usage row. The producer is a property of the content, so it belongs beside the
 content. [ServedBy](app/Services/AI/ServedBy.php) is written by every path that settles a row
-Done, funnelled through [`markDone()`](app/Services/AI/AnalysisService.php#L257): `llm` by
+Done, funnelled through [`markDone()`](app/Services/AI/AnalysisService.php#L337): `llm` by
 default, `rule_based` from
-[`fillRuleBased()`](app/Services/AI/AnalysisService.php#L892) (demo seed, demo triggers, the
+[`fillRuleBased()`](app/Services/AI/AnalysisService.php#L1093) (demo seed, demo triggers, the
 ceiling degrade) and from the two content-filter fallbacks
 ([row](app/Jobs/AI/AnalyzeRowJob.php#L75), [group](app/Jobs/AI/AnalyzeGroupJob.php#L105)). It is
 nullable, because a row that has never been Done was served by neither and historical rows predate
@@ -85,12 +85,12 @@ the column.
 **5. Superseded narrations are kept.**
 [AnalysisVersion](app/Models/AI/AnalysisVersion.php) snapshots content, fingerprint, `served_by`
 and `generated_at` in
-[`archivePreviousVersion()`](app/Services/AI/AnalysisService.php#L356), on the same transition as
+[`archivePreviousVersion()`](app/Services/AI/AnalysisService.php#L484), on the same transition as
 (4) and only when the row already held content — a first narration supersedes nothing. On the app
 connection with a real cascading foreign key, so a deleted block leaves no orphan history.
 
 **6. A content-filter event names the athlete.** `user_id` on `ai_content_filter_events`, resolved
-through [`AnalysisSubjectMap::ownerId()`](app/Jobs/AI/AnalyzeRowJob.php#L155) — bare and nullable
+through [`AnalysisSubjectMap::ownerId()`](app/Jobs/AI/AnalyzeRowJob.php#L180) — bare and nullable
 for the same cross-connection reason as (2).
 
 **7. All of it is bounded by the existing 90-day retention.**

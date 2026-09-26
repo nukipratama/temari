@@ -76,6 +76,43 @@ function fakeContentFilterRowJob(int $id): AnalyzeRowJob
     };
 }
 
+function fakeSupersededRowJob(int $id, string $newToken, ArrayObject $afterDoneCalls, bool $contentFilter = false): AnalyzeRowJob
+{
+    $generationToken = Analysis::query()->findOrFail($id)->generation_token;
+
+    return new class ($id, $generationToken, $newToken, $afterDoneCalls, $contentFilter) extends AnalyzeRowJob {
+        /** @param ArrayObject<int, int> $afterDoneCalls */
+        public function __construct(
+            int $analysisId,
+            ?string $generationToken,
+            private readonly string $newToken,
+            private readonly ArrayObject $afterDoneCalls,
+            private readonly bool $contentFilter,
+        ) {
+            parent::__construct($analysisId, $generationToken);
+        }
+
+        protected function generateContent(Analysis $row): string
+        {
+            Analysis::query()->whereKey($row->id)->update([
+                'status' => AnalysisStatus::Queued,
+                'generation_token' => $this->newToken,
+            ]);
+
+            if ($this->contentFilter) {
+                throw new ContentFilterException('content filtered');
+            }
+
+            return 'generated';
+        }
+
+        protected function afterDone(Analysis $row, AnalysisService $service): void
+        {
+            $this->afterDoneCalls->append($row->id);
+        }
+    };
+}
+
 function fakeTransientRowJob(int $id, ?int $retryAfter = null): AnalyzeRowJob
 {
     return new class ($id, $retryAfter) extends AnalyzeRowJob {
@@ -135,13 +172,13 @@ function countingRowJob(int $id, ArrayObject $calls, Closure $fail): AnalyzeRowJ
     };
 }
 
-function makeRowForRowJobTest(): Analysis
+function makeRowForRowJobTest(string $discriminator = '2026-05-18'): Analysis
 {
     return Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
         'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => '2026-05-18',
+        'discriminator' => $discriminator,
     ]);
 }
 
@@ -154,6 +191,65 @@ it('marks row Done with content on successful generation', function (): void {
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('generated')
         ->and($fresh->attempts)->toBe(1);
+});
+
+it('does not reclaim a Processing row on a duplicate delivery but permits a queue retry', function (): void {
+    config([
+        'azure_openai.uri' => 'https://x.openai.azure.com',
+        'azure_openai.api_key' => 'fake',
+    ]);
+    $row = makeRowForRowJobTest();
+    $row->update(['status' => AnalysisStatus::Processing, 'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS]);
+
+    $duplicate = fakeSuccessRowJob($row->id);
+    attachFakeJob($duplicate, 1);
+    $duplicate->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Processing)
+        ->and($row->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and($row->fresh()->content)->toBeNull();
+
+    $retryRow = makeRowForRowJobTest('2026-05-19');
+    $retryRow->update([
+        'status' => AnalysisStatus::Processing,
+        'attempts' => 1,
+    ]);
+    $retry = fakeSuccessRowJob($retryRow->id);
+    attachFakeJob($retry, 2);
+    $retry->handle(app(AnalysisService::class));
+
+    expect($retryRow->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($retryRow->fresh()->attempts)->toBe(2)
+        ->and($retryRow->fresh()->content)->toBe('generated');
+});
+
+it('does not run the completion hook after a newer generation takes ownership', function (): void {
+    $row = makeRowForRowJobTest();
+    $row->update(['generation_token' => 'older-generation']);
+    $afterDoneCalls = new ArrayObject();
+
+    fakeSupersededRowJob($row->id, 'newer-generation', $afterDoneCalls)->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($row->fresh()->generation_token)->toBe('newer-generation')
+        ->and($row->fresh()->content)->toBeNull()
+        ->and($afterDoneCalls->count())->toBe(0);
+});
+
+it('does not record or advance a fallback after a newer generation takes ownership', function (): void {
+    $row = makeRowForRowJobTest();
+    $row->update(['generation_token' => 'older-generation']);
+    $afterDoneCalls = new ArrayObject();
+    $eventCount = ContentFilterEvent::query()->count();
+
+    fakeSupersededRowJob($row->id, 'newer-generation', $afterDoneCalls, contentFilter: true)
+        ->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($row->fresh()->generation_token)->toBe('newer-generation')
+        ->and($row->fresh()->content)->toBeNull()
+        ->and(ContentFilterEvent::query()->count())->toBe($eventCount)
+        ->and($afterDoneCalls->count())->toBe(0);
 });
 
 it('reverts the row to Pending without billing when generation is paused', function (): void {
@@ -421,7 +517,9 @@ it('settles a budget-spent row stranded in Processing to Failed so it dead-lette
     $row->update(['status' => AnalysisStatus::Processing, 'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS]);
 
     $calls = new ArrayObject();
-    countingRowJob($row->id, $calls, fn (): Throwable => new RuntimeException('never reached'))->handle(app(AnalysisService::class));
+    $job = countingRowJob($row->id, $calls, fn (): Throwable => new RuntimeException('never reached'));
+    attachFakeJob($job, 2);
+    $job->handle(app(AnalysisService::class));
 
     expect($calls->count())->toBe(0)
         ->and($row->fresh()->status)->toBe(AnalysisStatus::Failed)
@@ -439,6 +537,34 @@ it('deletes an obsolete row instead of failing it forever', function (): void {
     fakeObsoleteRowJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh())->toBeNull();
+});
+
+it('does not delete a newer generation when an obsolete job settles', function (): void {
+    $row = makeRowForRowJobTest();
+    $row->update(['generation_token' => 'older-generation']);
+
+    $job = new class ($row->id, 'older-generation') extends AnalyzeRowJob {
+        public function __construct(int $analysisId, ?string $generationToken)
+        {
+            parent::__construct($analysisId, $generationToken);
+        }
+
+        protected function generateContent(Analysis $row): string
+        {
+            Analysis::query()->whereKey($row->id)->update([
+                'status' => AnalysisStatus::Queued,
+                'generation_token' => 'newer-generation',
+            ]);
+
+            throw new ObsoleteAnalysisException('subject was replaced');
+        }
+    };
+
+    $job->handle(app(AnalysisService::class));
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($row->fresh()->generation_token)->toBe('newer-generation')
+        ->and($row->fresh()->content)->toBeNull();
 });
 
 it('attributes the content-filter event to the athlete whose narration tripped it', function (): void {

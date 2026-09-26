@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use Closure;
+use RuntimeException;
 use App\Enums\FeedbackSubject;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBaseJob;
@@ -23,11 +24,13 @@ use App\Services\Telegram\NotificationEligibility;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Laravel\Pulse\Facades\Pulse;
 
 class AnalysisService
@@ -246,12 +249,97 @@ class AnalysisService
         }
     }
 
-    public function markProcessing(Analysis $row): void
+    /** @return Builder<Analysis> */
+    private function generationQuery(Analysis $row, ?string $generationToken): Builder
     {
-        $row->update([
-            'status' => AnalysisStatus::Processing,
-            'attempts' => $row->attempts + 1,
-        ]);
+        $query = Analysis::query()->whereKey($row->getKey());
+
+        return $generationToken === null
+            ? $query->whereNull('generation_token')
+            : $query->where('generation_token', $generationToken);
+    }
+
+    public function markProcessing(
+        Analysis $row,
+        ?string $generationToken = null,
+        bool $allowProcessing = false,
+    ): bool {
+        $generationToken ??= $row->generation_token;
+        $eligibleStatuses = [AnalysisStatus::Pending, AnalysisStatus::Queued, AnalysisStatus::Failed];
+        if ($allowProcessing) {
+            $eligibleStatuses[] = AnalysisStatus::Processing;
+        }
+
+        $updated = $this->generationQuery($row, $generationToken)
+            ->whereIn('status', $eligibleStatuses)
+            ->update([
+                'status' => AnalysisStatus::Processing,
+                'attempts' => DB::raw('attempts + 1'),
+            ]) === 1;
+
+        if ($updated) {
+            $row->forceFill([
+                'status' => AnalysisStatus::Processing,
+                'attempts' => $row->attempts + 1,
+            ])->syncOriginal();
+        }
+
+        return $updated;
+    }
+
+    /** @param Collection<string, Analysis> $rows */
+    public function markGroupProcessing(Collection $rows, ?string $generationToken = null, bool $allowProcessing = false): bool
+    {
+        $rows = $rows->values();
+        if ($rows->isEmpty()) {
+            return false;
+        }
+
+        $generationToken ??= $rows->first()->generation_token;
+        $eligibleStatuses = [AnalysisStatus::Pending, AnalysisStatus::Queued, AnalysisStatus::Failed];
+        if ($allowProcessing) {
+            $eligibleStatuses[] = AnalysisStatus::Processing;
+        }
+
+        return DB::transaction(function () use ($rows, $generationToken, $eligibleStatuses): bool {
+            $query = Analysis::query()->whereKey($rows->map(fn (Analysis $row): int => $row->id)->all());
+            $query = $generationToken === null
+                ? $query->whereNull('generation_token')
+                : $query->where('generation_token', $generationToken);
+            $currentRows = (clone $query)->orderBy('id')->lockForUpdate()->get();
+
+            if ($currentRows->count() !== $rows->count()
+                || ! $currentRows->every(fn (Analysis $row): bool => in_array($row->status, $eligibleStatuses, true))) {
+                return false;
+            }
+
+            $updated = $query->whereIn('status', $eligibleStatuses)->update([
+                'status' => AnalysisStatus::Processing,
+                'attempts' => DB::raw('attempts + 1'),
+            ]);
+            if ($updated !== $rows->count()) {
+                throw new RuntimeException('Could not atomically claim every narration row');
+            }
+
+            $attemptsById = [];
+            foreach ($currentRows as $currentRow) {
+                $attemptsById[$currentRow->id] = $currentRow->attempts;
+            }
+
+            foreach ($rows as $row) {
+                $attempts = $attemptsById[$row->id] ?? null;
+                if ($attempts === null) {
+                    throw new RuntimeException('Could not find a claimed narration row');
+                }
+
+                $row->forceFill([
+                    'status' => AnalysisStatus::Processing,
+                    'attempts' => $attempts + 1,
+                ])->syncOriginal();
+            }
+
+            return true;
+        });
     }
 
     public function markDone(
@@ -262,69 +350,97 @@ class AnalysisService
         ?string $fingerprint = null,
         ?AnalysisOrigin $ruleBasedReason = null,
         bool $startedEarly = false,
-    ): void {
-        $this->archivePreviousVersion($row);
-        $this->supersedeFeedback($row);
+        ?string $generationToken = null,
+    ): bool {
+        $generationToken ??= $row->generation_token;
 
-        // Only an LLM serve can be "early". $isEarlyNow is the live check;
-        // a row that started early but finished after the drain emptied
-        // (straddled) is not marked, since the replay that would ever
-        // regenerate it has already run — it re-requests itself instead.
-        $isEarlyNow = $servedBy === ServedBy::Llm && $this->isEarlyPassRow($row);
-        $straddled = $servedBy === ServedBy::Llm && $startedEarly && ! $isEarlyNow;
-
-        $row->update([
-            'status' => AnalysisStatus::Done,
-            'content' => $content,
-            'error' => null,
-            'served_by' => $servedBy,
-            // Only a rule-based fill ever carries a reason, and only when its
-            // caller declares one; an LLM serve always clears it.
-            'rule_based_reason' => $servedBy === ServedBy::RuleBased ? $ruleBasedReason : null,
-            'generated_at' => $generatedAt ?? Carbon::now(),
-            'stale_at' => null,
-            // Only per-run activity groups pass a fingerprint; other types
-            // write the existing value back untouched.
-            'content_fingerprint' => $fingerprint ?? $row->content_fingerprint,
-            // Cleared by an ordinary re-narration once history has landed —
-            // see SettleEarlyNarrationAction.
-            'narrated_early_at' => $isEarlyNow ? Carbon::now() : null,
-        ]);
-
-        // Skipped under withoutDispatching (demo seed) so a freshly seeded demo
-        // stays instantly re-narratable on demand. afterCommit: AnalyzeGroupJob
-        // wraps several markDone() calls in one DB::transaction(), and the
-        // Redis-backed cooldown isn't rolled back by a transaction abort, so
-        // starting it eagerly could cool a row whose Done status never committed.
-        if (! $this->dispatchSuppressed) {
-            DB::afterCommit(fn () => $row->startCooldown());
-        }
-
-        if ($straddled) {
-            // The straddling row's own content may have read a history that
-            // finished landing mid-generation; ask for it once more now,
-            // rather than trust the replay that already ran without it.
-            if (! $this->dispatchSuppressed) {
-                DB::afterCommit(fn () => $this->request(
-                    $row->subject_type,
-                    $row->subject_id,
-                    $row->analysis_type,
-                    $row->discriminator,
-                    invalidate: true,
-                ));
+        return DB::transaction(function () use ($row, $content, $servedBy, $generatedAt, $fingerprint, $ruleBasedReason, $startedEarly, $generationToken): bool {
+            $current = $this->generationQuery($row, $generationToken)->lockForUpdate()->first();
+            if ($current === null) {
+                return false;
             }
-        } elseif (! $this->dispatchSuppressed
-            && ! $isEarlyNow
-            && $this->origin->current() !== AnalysisOrigin::Return
-            && $this->eligibility->isNotifiable($row)) {
-            // Suppressed while early: every channel's delivery claim is keyed
-            // on this row's id for good, so notifying now would permanently
-            // spend it on a run that cannot yet know whether it set a PR —
-            // the replay's regeneration is the row's one real send.
-            $this->eligibility->resolveUser($row)?->notify(
-                new AnalysisReadyNotification($row)->afterCommit(),
-            );
-        }
+
+            $this->archivePreviousVersion($current);
+            $this->supersedeFeedback($current);
+
+            // Only an LLM serve can be "early". $isEarlyNow is the live check;
+            // a row that started early but finished after the drain emptied
+            // (straddled) is not marked, since the replay that would ever
+            // regenerate it has already run — it re-requests itself instead.
+            $isEarlyNow = $servedBy === ServedBy::Llm && $this->isEarlyPassRow($current);
+            $straddled = $servedBy === ServedBy::Llm && $startedEarly && ! $isEarlyNow;
+
+            $current->update([
+                'status' => AnalysisStatus::Done,
+                'content' => $content,
+                'error' => null,
+                'served_by' => $servedBy,
+                // Only a rule-based fill ever carries a reason, and only when its
+                // caller declares one; an LLM serve always clears it.
+                'rule_based_reason' => $servedBy === ServedBy::RuleBased ? $ruleBasedReason : null,
+                'generated_at' => $generatedAt ?? Carbon::now(),
+                'stale_at' => null,
+                // Only per-run activity groups pass a fingerprint; other types
+                // write the existing value back untouched.
+                'content_fingerprint' => $fingerprint ?? $current->content_fingerprint,
+                // Cleared by an ordinary re-narration once history has landed —
+                // see SettleEarlyNarrationAction.
+                'narrated_early_at' => $isEarlyNow ? Carbon::now() : null,
+            ]);
+            $row->setRawAttributes($current->getAttributes());
+            $row->syncOriginal();
+
+            // Skipped under withoutDispatching (demo seed) so a freshly seeded demo
+            // stays instantly re-narratable on demand. afterCommit: AnalyzeGroupJob
+            // wraps several markDone() calls in one DB::transaction(), and the
+            // Redis-backed cooldown isn't rolled back by a transaction abort, so
+            // starting it eagerly could cool a row whose Done status never committed.
+            if (! $this->dispatchSuppressed) {
+                DB::afterCommit(fn () => $row->startCooldown());
+            }
+
+            if ($straddled) {
+                // The straddling row's own content may have read a history that
+                // finished landing mid-generation; ask for it once more now,
+                // rather than trust the replay that already ran without it.
+                if (! $this->dispatchSuppressed) {
+                    DB::afterCommit(fn () => $this->request(
+                        $row->subject_type,
+                        $row->subject_id,
+                        $row->analysis_type,
+                        $row->discriminator,
+                        invalidate: true,
+                    ));
+                }
+            } elseif (! $this->dispatchSuppressed
+                && ! $isEarlyNow
+                && $this->origin->current() !== AnalysisOrigin::Return
+                && $this->eligibility->isNotifiable($row)) {
+                // Suppressed while early: every channel's delivery claim is keyed
+                // on this row's id for good, so notifying now would permanently
+                // spend it on a run that cannot yet know whether it set a PR —
+                // the replay's regeneration is the row's one real send.
+                $this->eligibility->resolveUser($row)?->notify(
+                    new AnalysisReadyNotification($row)->afterCommit(),
+                );
+            }
+
+            return true;
+        });
+    }
+
+    public function deleteObsoleteRow(Analysis $row, ?string $generationToken = null): bool
+    {
+        $generationToken ??= $row->generation_token;
+
+        return DB::transaction(function () use ($row, $generationToken): bool {
+            $current = $this->generationQuery($row, $generationToken)
+                ->where('status', AnalysisStatus::Processing)
+                ->lockForUpdate()
+                ->first();
+
+            return $current?->delete() ?? false;
+        });
     }
 
     /**
@@ -398,12 +514,18 @@ class AnalysisService
             ->update(['superseded_at' => Carbon::now()]);
     }
 
-    public function markFailed(Analysis $row, string $error): void
+    public function markFailed(Analysis $row, string $error, ?string $generationToken = null): void
     {
-        $row->update([
+        $generationToken ??= $row->generation_token;
+        $updated = $this->generationQuery($row, $generationToken)->update([
             'status' => AnalysisStatus::Failed,
             'error' => $error,
         ]);
+        if ($updated !== 1) {
+            return;
+        }
+
+        $row->forceFill(['status' => AnalysisStatus::Failed, 'error' => $error])->syncOriginal();
 
         // Feed the /pulse AI Pipeline-health card's failure-rate trend.
         Pulse::record('ai_failure', $row->analysis_type->value)->count();
@@ -444,18 +566,22 @@ class AnalysisService
         }
 
         if (! $justCreated) {
-            if ($invalidate) {
-                $this->invalidateDoneRow($row);
-            }
+            $claimed = DB::transaction(function () use ($row, $invalidate): bool {
+                if ($invalidate) {
+                    $this->invalidateDoneRow($row);
+                }
 
-            if (! $this->claimForDispatch($row)) {
+                return $this->claimForDispatch($row);
+            });
+
+            if (! $claimed) {
                 return $row;
             }
         }
 
         /** @var class-string<AnalyzeRowJob> $jobClass */
         $jobClass = $type->jobClass();
-        $this->dispatchPending($this->stamped(new $jobClass($row->id)), $delaySeconds);
+        $this->dispatchPending($this->stamped(new $jobClass($row->id, $row->generation_token)), $delaySeconds);
 
         return $row;
     }
@@ -471,7 +597,6 @@ class AnalysisService
         ?int $delaySeconds,
     ): void {
         $rows = $this->upsertGroupRows($jobClass::subjectType(), $subjectId, $discriminator, $jobClass::groupedTypes());
-        $anyJustCreated = $rows->contains(fn (Analysis $row): bool => $row->wasRecentlyCreated);
         $ownerId = AnalysisSubjectMap::ownerId($jobClass::subjectType(), $subjectId);
 
         if (! $this->autoDispatchEnabled($ownerId)) {
@@ -484,25 +609,67 @@ class AnalysisService
             return;
         }
 
-        if ($invalidate) {
-            foreach ($rows as $row) {
-                $this->invalidateDoneRow($row);
+        $generationToken = DB::transaction(function () use ($jobClass, $subjectId, $discriminator, $rows, $invalidate): ?string {
+            $typeValues = array_map(fn (AnalysisType $type): string => $type->value, $jobClass::groupedTypes());
+            $groupRows = Analysis::query()
+                ->where('subject_type', $jobClass::subjectType())
+                ->where('subject_id', $subjectId)
+                ->where('discriminator', $discriminator)
+                ->whereIn('analysis_type', $typeValues)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            if ($groupRows->count() !== count($typeValues)
+                || $groupRows->contains(fn (Analysis $row): bool => in_array($row->status, [AnalysisStatus::Queued, AnalysisStatus::Processing], true))) {
+                return null;
             }
-        }
 
-        $claimedAny = $anyJustCreated;
+            if ($invalidate) {
+                foreach ($rows as $row) {
+                    $this->invalidateDoneRow($row);
+                }
 
-        foreach ($rows as $row) {
-            if (! $row->wasRecentlyCreated && $this->claimForDispatch($row)) {
-                $claimedAny = true;
+                $groupRows = Analysis::query()
+                    ->where('subject_type', $jobClass::subjectType())
+                    ->where('subject_id', $subjectId)
+                    ->where('discriminator', $discriminator)
+                    ->whereIn('analysis_type', $typeValues)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
             }
-        }
 
-        if (! $claimedAny) {
+            $claimable = $groupRows->filter(fn (Analysis $row): bool => in_array($row->status, [AnalysisStatus::Pending, AnalysisStatus::Failed], true));
+            if ($claimable->isEmpty()) {
+                return null;
+            }
+
+            $generationToken = (string) Str::uuid();
+            $now = Carbon::now();
+
+            Analysis::query()
+                ->whereIn('id', $groupRows->modelKeys())
+                ->update(['generation_token' => $generationToken]);
+
+            $claimed = Analysis::query()
+                ->whereIn('id', $claimable->modelKeys())
+                ->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Failed])
+                ->update([
+                    'status' => AnalysisStatus::Queued,
+                    'generation_token' => $generationToken,
+                    'queued_at' => $now,
+                    'error' => null,
+                ]);
+
+            return $claimed === $claimable->count() ? $generationToken : null;
+        });
+
+        if ($generationToken === null) {
             return;
         }
 
-        $this->dispatchPending($this->stamped(new $jobClass($subjectId, $discriminator)), $delaySeconds);
+        $this->dispatchPending($this->stamped(new $jobClass($subjectId, $discriminator, $generationToken)), $delaySeconds);
     }
 
     /**
@@ -536,16 +703,14 @@ class AnalysisService
             [
                 'status' => $canDispatch ? AnalysisStatus::Queued : AnalysisStatus::Pending,
                 'queued_at' => $canDispatch ? Carbon::now() : null,
+                'generation_token' => $canDispatch ? (string) Str::uuid() : null,
             ],
         );
     }
 
     /**
-     * Bulk-fetch all group rows in one SELECT and insert any missing ones in one
-     * INSERT IGNORE + one re-SELECT. Returns a Collection keyed by the
-     * AnalysisType value (so callers can look up by type without rescanning) in
-     * the order of $groupTypes; rows this call brought into existence carry
-     * `wasRecentlyCreated`, which drives the dispatch decision in dispatchGroup().
+     * Fetch all group rows and insert any missing ones. Rows this call actually
+     * inserted carry `wasRecentlyCreated`; concurrent inserts do not.
      *
      * @param  array<int, AnalysisType>  $groupTypes
      * @return Collection<string, Analysis>
@@ -605,8 +770,8 @@ class AnalysisService
      * INSERT IGNORE dedupes against the ai_analyses unique index over the stored
      * `discriminator_key` generated column, so a concurrent creator collapses to
      * the same row. It bypasses Eloquent, hence the explicit timestamps and enum
-     * values, and the re-read rows are flagged `wasRecentlyCreated` by hand
-     * because a SELECT would otherwise report them as pre-existing.
+     * values. Insert one type at a time so the affected-row result identifies
+     * exactly which rows this caller created.
      *
      * @param  array<int, string>  $typeValues
      * @return Collection<string, Analysis>
@@ -617,23 +782,29 @@ class AnalysisService
         ?string $discriminator,
         array $typeValues,
     ): Collection {
-        $canDispatch = $this->autoDispatchEnabled();
         $now = Carbon::now();
+        $createdValues = [];
 
-        Analysis::query()->insertOrIgnore(array_map(fn (string $value): array => [
-            'subject_type' => $subjectType,
-            'subject_id' => $subjectId,
-            'analysis_type' => $value,
-            'discriminator' => $discriminator,
-            'status' => ($canDispatch ? AnalysisStatus::Queued : AnalysisStatus::Pending)->value,
-            'queued_at' => $canDispatch ? $now : null,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ], $typeValues));
+        foreach ($typeValues as $value) {
+            $inserted = Analysis::query()->insertOrIgnore([
+                'subject_type' => $subjectType,
+                'subject_id' => $subjectId,
+                'analysis_type' => $value,
+                'discriminator' => $discriminator,
+                'status' => AnalysisStatus::Pending->value,
+                'queued_at' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            if ($inserted === 1) {
+                $createdValues[] = $value;
+            }
+        }
 
         return $this->fetchGroupRows($subjectType, $subjectId, $discriminator, $typeValues)
-            ->each(function (Analysis $row): void {
-                $row->wasRecentlyCreated = true;
+            ->each(function (Analysis $row) use ($createdValues): void {
+                $row->wasRecentlyCreated = in_array($row->analysis_type->value, $createdValues, true);
             });
     }
 
@@ -653,11 +824,18 @@ class AnalysisService
             return;
         }
 
-        $row->update([
+        $attributes = [
             'status' => AnalysisStatus::Pending,
             'error' => null,
             ...($this->origin->current() === AnalysisOrigin::User ? ['attempts' => 0] : []),
-        ]);
+        ];
+        $updated = $this->generationQuery($row, $row->generation_token)
+            ->where('status', AnalysisStatus::Done)
+            ->update($attributes);
+
+        if ($updated === 1) {
+            $row->forceFill($attributes)->syncOriginal();
+        }
     }
 
     /**
@@ -669,12 +847,13 @@ class AnalysisService
     private function claimForDispatch(Analysis $row): bool
     {
         $now = Carbon::now();
+        $generationToken = (string) Str::uuid();
 
-        $claimed = Analysis::query()
-            ->whereKey($row->getKey())
+        $claimed = $this->generationQuery($row, $row->generation_token)
             ->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Failed])
             ->update([
                 'status' => AnalysisStatus::Queued,
+                'generation_token' => $generationToken,
                 'queued_at' => $now,
                 'error' => null,
             ]) === 1;
@@ -682,6 +861,7 @@ class AnalysisService
         if ($claimed) {
             $row->forceFill([
                 'status' => AnalysisStatus::Queued,
+                'generation_token' => $generationToken,
                 'queued_at' => $now,
                 'error' => null,
             ])->syncOriginal();
@@ -690,13 +870,17 @@ class AnalysisService
         return $claimed;
     }
 
-    public function markQueued(Analysis $row): void
+    public function markQueued(Analysis $row, ?string $generationToken = null): void
     {
-        $row->update([
+        $generationToken ??= $row->generation_token;
+        $attributes = [
             'status' => AnalysisStatus::Queued,
             'queued_at' => Carbon::now(),
             'error' => null,
-        ]);
+        ];
+        if ($this->generationQuery($row, $generationToken)->update($attributes) === 1) {
+            $row->forceFill($attributes)->syncOriginal();
+        }
     }
 
     /**
@@ -705,12 +889,16 @@ class AnalysisService
      * for the empty state and ai:self-heal re-dispatches it later, but its
      * self-heal budget is preserved (this was not a real LLM attempt).
      */
-    public function revertToPending(Analysis $row): void
+    public function revertToPending(Analysis $row, ?string $generationToken = null): void
     {
-        $row->update([
+        $generationToken ??= $row->generation_token;
+        $attributes = [
             'status' => AnalysisStatus::Pending,
             'queued_at' => null,
-        ]);
+        ];
+        if ($this->generationQuery($row, $generationToken)->update($attributes) === 1) {
+            $row->forceFill($attributes)->syncOriginal();
+        }
     }
 
     private function dispatchPending(PendingDispatch $pending, ?int $delaySeconds): void
@@ -890,26 +1078,36 @@ class AnalysisService
      * rather than hiding a break behind plausible content — on a day the ceiling
      * trips repeatedly, filling it would erase that signal every time.
      */
-    public function degradeToRuleBased(Analysis $row): void
+    public function degradeToRuleBased(Analysis $row, ?string $generationToken = null): void
     {
         if ($row->status === AnalysisStatus::Done || $row->status === AnalysisStatus::Failed) {
             return;
         }
 
-        $this->fillRuleBased($row, AnalysisOrigin::Capped);
-        $this->ceilingLedger->recordDegradedFill();
+        if ($this->fillRuleBased($row, AnalysisOrigin::Capped, $generationToken ?? $row->generation_token)) {
+            $this->ceilingLedger->recordDegradedFill();
+        }
     }
 
-    private function fillRuleBased(Analysis $row, ?AnalysisOrigin $reason = null): void
-    {
-        $this->withoutDispatching(function () use ($row, $reason): void {
-            $this->markDone(
+    private function fillRuleBased(
+        Analysis $row,
+        ?AnalysisOrigin $reason = null,
+        ?string $generationToken = null,
+    ): bool {
+        $markedDone = false;
+        $generationToken ??= $row->generation_token;
+
+        $this->withoutDispatching(function () use ($row, $reason, $generationToken, &$markedDone): void {
+            $markedDone = $this->markDone(
                 $row,
                 app(RuleBasedNarrationFiller::class)->fillFor($row),
                 ServedBy::RuleBased,
                 ruleBasedReason: $reason,
+                generationToken: $generationToken,
             );
         });
+
+        return $markedDone;
     }
 
     /**

@@ -449,6 +449,57 @@ it('activity group debounces — sibling-type requests dispatch only one Analyze
     );
 
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
+    expect(Analysis::query()->where('subject_id', $activity->id)->pluck('generation_token')->unique())
+        ->toHaveCount(1)
+        ->and(Analysis::query()->where('subject_id', $activity->id)->first()->generation_token)->not->toBeNull();
+});
+
+it('does not claim a pending sibling when another group row is already active', function (): void {
+    $activity = Activity::factory()->create();
+    $rows = $this->service->upsertGroupRows(
+        Activity::class,
+        $activity->id,
+        null,
+        AnalyzeActivityJob::groupedTypes(),
+    );
+    $token = 'active-generation';
+    $rows->first()->update([
+        'status' => AnalysisStatus::Queued,
+        'generation_token' => $token,
+    ]);
+    Bus::dispatch(new AnalyzeActivityJob($activity->id, null, $token));
+
+    $this->service->requestActivityGroup($activity);
+
+    Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
+    expect(Analysis::query()->where('subject_id', $activity->id)->where('status', AnalysisStatus::Pending)->count())
+        ->toBe(1);
+});
+
+it('does not invalidate a completed sibling while another group row is active', function (): void {
+    $activity = Activity::factory()->create();
+    $rows = $this->service->upsertGroupRows(
+        Activity::class,
+        $activity->id,
+        null,
+        AnalyzeActivityJob::groupedTypes(),
+    );
+    $token = 'active-generation';
+    $active = $rows->first();
+    $done = $rows->last();
+    $active->update(['status' => AnalysisStatus::Queued, 'generation_token' => $token]);
+    $done->update([
+        'status' => AnalysisStatus::Done,
+        'generation_token' => $token,
+        'content' => 'completed sibling',
+    ]);
+    Bus::dispatch(new AnalyzeActivityJob($activity->id, null, $token));
+
+    $this->service->requestActivityGroup($activity, invalidate: true);
+
+    Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
+    expect($done->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($done->fresh()->content)->toBe('completed sibling');
 });
 
 it('requestBriefing creates the suggestion row and dispatches one AnalyzeBriefingMascotVoiceJob', function (): void {
@@ -1052,7 +1103,7 @@ it('markFailed does not alert while a Failed row is still under the retry budget
     $service->markFailed($row, 'Azure 500');
 });
 
-it('markProcessing increments attempts', function (): void {
+it('increments attempts atomically from a stale row model', function (): void {
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
@@ -1061,11 +1112,14 @@ it('markProcessing increments attempts', function (): void {
         'attempts' => 0,
     ]);
 
+    $stale = $row->fresh();
     $this->service->markProcessing($row);
+    expect($this->service->markProcessing($stale))->toBeFalse()
+        ->and($this->service->markProcessing($stale, allowProcessing: true))->toBeTrue();
 
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Processing)
-        ->and($fresh->attempts)->toBe(1);
+        ->and($fresh->attempts)->toBe(2);
 });
 
 it('accepts a Model instance as the subject', function (): void {
@@ -1232,7 +1286,37 @@ it('upsertGroupRows flags nothing when every row already exists', function (): v
     expect($rows->contains(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toBeFalse();
 });
 
-it('inserted group rows carry the Queued status, queued_at and timestamps Eloquent would have set', function (): void {
+it('marks only rows inserted by this caller as recently created when an insert races', function (): void {
+    $activity = Activity::factory()->create();
+    $insertedByRacer = false;
+
+    DB::listen(function (QueryExecuted $query) use ($activity, &$insertedByRacer): void {
+        if ($insertedByRacer || ! str_contains(strtolower($query->sql), 'select') || ! str_contains($query->sql, 'ai_analyses')) {
+            return;
+        }
+
+        $insertedByRacer = true;
+        Analysis::factory()->create([
+            'subject_type' => Activity::class,
+            'subject_id' => $activity->id,
+            'analysis_type' => AnalysisType::RunInsight,
+            'discriminator' => null,
+        ]);
+    });
+
+    $rows = $this->service->upsertGroupRows(
+        Activity::class,
+        $activity->id,
+        null,
+        AnalyzeActivityJob::groupedTypes(),
+    );
+
+    expect($insertedByRacer)->toBeTrue()
+        ->and($rows->get(AnalysisType::PostRunSpeech->value)->wasRecentlyCreated)->toBeTrue()
+        ->and($rows->get(AnalysisType::RunInsight->value)->wasRecentlyCreated)->toBeFalse();
+});
+
+it('newly staged group rows are Pending until the whole group is claimed', function (): void {
     Carbon::setTestNow('2026-05-18 07:10:59');
     $activity = Activity::factory()->create();
 
@@ -1243,8 +1327,9 @@ it('inserted group rows carry the Queued status, queued_at and timestamps Eloque
         AnalyzeActivityJob::groupedTypes(),
     )->get(AnalysisType::PostRunSpeech->value);
 
-    expect($row->status)->toBe(AnalysisStatus::Queued)
-        ->and($row->queued_at?->toDateTimeString())->toBe('2026-05-18 07:10:59')
+    expect($row->status)->toBe(AnalysisStatus::Pending)
+        ->and($row->queued_at)->toBeNull()
+        ->and($row->generation_token)->toBeNull()
         ->and($row->created_at?->toDateTimeString())->toBe('2026-05-18 07:10:59')
         ->and($row->updated_at?->toDateTimeString())->toBe('2026-05-18 07:10:59')
         ->and($row->attempts)->toBe(0);
@@ -1280,6 +1365,32 @@ it('a second dispatchGroup on a fully Done group does not re-dispatch', function
     $this->service->requestActivityGroup($activity);
 
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
+});
+
+it('does not let a finishing job overwrite a newer group generation', function (): void {
+    $activity = Activity::factory()->create();
+    $this->service->requestActivityGroup($activity);
+    $stale = Analysis::query()->where('subject_id', $activity->id)->firstOrFail();
+    $oldToken = $stale->generation_token;
+
+    Analysis::query()->where('subject_id', $activity->id)->update([
+        'status' => AnalysisStatus::Done->value,
+        'content' => 'previous generation',
+    ]);
+
+    $this->service->requestActivityGroup($activity, invalidate: true);
+
+    $fresh = Analysis::query()->whereKey($stale->id)->firstOrFail();
+    expect($oldToken)->not->toBeNull()
+        ->and($fresh->generation_token)->not->toBe($oldToken)
+        ->and($fresh->status)->toBe(AnalysisStatus::Queued)
+        ->and($this->service->markDone(
+            $stale,
+            'late previous generation',
+            ServedBy::Llm,
+            generationToken: $oldToken,
+        ))->toBeFalse()
+        ->and($fresh->fresh()->content)->toBe('previous generation');
 });
 
 it('markDone fans out a notification for a notifiable, wired type', function (): void {
@@ -1848,6 +1959,26 @@ it('marks a rule-based trigger as rule-based', function (): void {
     $row = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
     expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased);
+});
+
+it('does not count a rule-based fill after a newer generation takes ownership', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    $row = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    $row->update(['generation_token' => 'older-generation']);
+    $stale = $row->fresh();
+    $row->update([
+        'status' => AnalysisStatus::Queued,
+        'generation_token' => 'newer-generation',
+    ]);
+    $ledger = app(CostCeilingLedger::class);
+    $degradedFills = $ledger->today()['degradedFills'];
+
+    $this->service->degradeToRuleBased($stale, 'older-generation');
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($row->fresh()->generation_token)->toBe('newer-generation')
+        ->and($row->fresh()->content)->toBeNull()
+        ->and($ledger->today()['degradedFills'])->toBe($degradedFills);
 });
 
 // ── rule_based_reason: why (not merely that) a row was served rule-based ──

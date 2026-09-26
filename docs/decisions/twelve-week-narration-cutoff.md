@@ -69,13 +69,13 @@ Gating the *age* of the material was not enough, because the discriminator was i
 
 That cap is **365 days, deliberately wider than the 84-day narration cutoff**. The two bounds answer different questions and collapsing them would make one of them dead code: the discriminator range closes the set of rows a caller can mint, while the narration cutoff decides which of those are worth an LLM call. Between 84 and 365 days a trigger is valid and answered by the filler; past 365 it is not a request the app models at all.
 
-**A blocked trigger is served, not refused.** It resolves through [AnalysisService::requestRuleBased()](app/Services/AI/AnalysisService.php#L114) with `refillDone: false`, so the click always produces content — no dead button, no empty state a retry cannot fill — while a row that already holds real, billed-for prose is never clobbered.
+**A blocked trigger is served, not refused.** It resolves through [AnalysisService::requestRuleBased()](app/Services/AI/AnalysisService.php#L130) with `refillDone: false`, so the click always produces content — no dead button, no empty state a retry cannot fill — while a row that already holds real, billed-for prose is never clobbered.
 
 ## Consequences
 
 - **Enables:** a bounded worst case per signup. The deepest a new connection can bill is 12 weeks of history, and no click can extend it.
 - **Costs:** narration on a run older than 12 weeks is deterministic rather than written. It reads as Temari but does not know the run; volume, pace and PR data are untouched, since the cutoff only governs prose.
-- **`RuleBasedNarrationFiller` is a production surface, not a seed-only helper.** This decision is the second of three paths that reach it in production, alongside the Azure content-filter fallback in [AnalyzeRowJob's `fillFor`](app/Jobs/AI/AnalyzeRowJob.php#L66) / [AnalyzeGroupJob's `ruleBasedPayload`](app/Jobs/AI/AnalyzeGroupJob.php#L187) and the public demo account's triggers. [[bounded-self-heal-and-dead-letter]] calls it "demo-seed-only", which was true when written and is not now.
+- **`RuleBasedNarrationFiller` is a production surface, not a seed-only helper.** This decision is the second of three paths that reach it in production, alongside the Azure content-filter fallback in [AnalyzeRowJob's `fillFor`](app/Jobs/AI/AnalyzeRowJob.php#L85) / [AnalyzeGroupJob's `ruleBasedPayload`](app/Jobs/AI/AnalyzeGroupJob.php#L187) and the public demo account's triggers. [[bounded-self-heal-and-dead-letter]] calls it "demo-seed-only", which was true when written and is not now.
 - **Raising the value re-opens the cost.** It is the one number that scales with signups rather than with usage, which is why it carries a comment in `.env.example` rather than being a bare tunable.
 
 ## See also

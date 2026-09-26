@@ -42,8 +42,13 @@ abstract class AnalyzeBaseJob implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [10, 60];
 
-    public function __construct()
+    public ?string $generationToken = null;
+
+    public function __construct(?string $generationToken = null)
     {
+        if ($generationToken !== null) {
+            $this->generationToken = $generationToken;
+        }
         $this->onQueue(self::QUEUE);
     }
 
@@ -147,7 +152,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
 
         foreach ($spent as $row) {
             if ($row->status !== AnalysisStatus::Failed) {
-                $service->markFailed($row, self::SPENT_BUDGET_ERROR);
+                $service->markFailed($row, self::SPENT_BUDGET_ERROR, $this->generationToken);
             }
         }
 
@@ -205,7 +210,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
 
         if ($service->costCeilingDegraded($ownerId)) {
             foreach ($rows as $row) {
-                $service->degradeToRuleBased($row);
+                $service->degradeToRuleBased($row, $this->generationToken);
             }
 
             return true;
@@ -217,7 +222,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
 
         foreach ($rows as $row) {
             if ($row->status !== AnalysisStatus::Pending) {
-                $service->revertToPending($row);
+                $service->revertToPending($row, $this->generationToken);
             }
         }
 

@@ -22,9 +22,9 @@ use Throwable;
 
 abstract class AnalyzeRowJob extends AnalyzeBaseJob
 {
-    public function __construct(public readonly int $analysisId)
+    public function __construct(public readonly int $analysisId, ?string $generationToken = null)
     {
-        parent::__construct();
+        parent::__construct($generationToken);
     }
 
     final public function handle(AnalysisService $service): void
@@ -32,7 +32,11 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
         $this->applyOrigin();
 
         $row = Analysis::query()->find($this->analysisId);
-        if ($row === null || $row->status === AnalysisStatus::Done) {
+        if ($row === null || $row->status === AnalysisStatus::Done || $row->generation_token !== $this->generationToken) {
+            return;
+        }
+
+        if ($this->attempts() <= 1 && $row->status === AnalysisStatus::Processing) {
             return;
         }
 
@@ -45,50 +49,67 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
         }
 
         $startedEarly = $service->isEarlyPassRow($row);
-        $service->markProcessing($row);
+        if (! $service->markProcessing(
+            $row,
+            $this->generationToken,
+            allowProcessing: $this->attempts() > 1,
+        )) {
+            return;
+        }
 
         try {
             $content = app(NarratedAnalysis::class)->during(
                 $row->id,
                 fn (): string => $this->generateContent($row),
             );
-            $service->markDone($row, $content, ServedBy::Llm, fingerprint: $this->fingerprintFor($row), startedEarly: $startedEarly);
-            $this->afterDone($row, $service);
+            if ($service->markDone(
+                $row,
+                $content,
+                ServedBy::Llm,
+                fingerprint: $this->fingerprintFor($row),
+                startedEarly: $startedEarly,
+                generationToken: $this->generationToken,
+            )) {
+                $this->afterDone($row, $service);
+            }
         } catch (ObsoleteAnalysisException $e) {
             // The subject is gone for good, so the row describes nothing. Left
             // Failed it would sit in /devtools/narration as "still auto-retrying" behind a
             // Try again that can never succeed, and burn a self-heal attempt
             // every hour proving it.
-            $row->delete();
-            Log::info('narrator.row.obsolete_deleted', [
-                'kind' => $row->analysis_type->value,
-                'subject' => $row->subject_id,
-                'discriminator' => $row->discriminator,
-                'reason' => $e->getMessage(),
-            ]);
+            if ($service->deleteObsoleteRow($row, $this->generationToken)) {
+                Log::info('narrator.row.obsolete_deleted', [
+                    'kind' => $row->analysis_type->value,
+                    'subject' => $row->subject_id,
+                    'discriminator' => $row->discriminator,
+                    'reason' => $e->getMessage(),
+                ]);
+            }
         } catch (ContentFilterException) {
             // The continuity-stripped retry still content-filtered. Degrade to
             // rule-based content instead of dead-lettering: the user gets a
             // benign line, and (for chained narrators) that benign line becomes
             // the next prev_narrative, breaking the poison loop at its source.
-            $service->markDone(
+            if ($service->markDone(
                 $row,
                 app(RuleBasedNarrationFiller::class)->fillFor($row),
                 ServedBy::RuleBased,
                 ruleBasedReason: AnalysisOrigin::ContentFilter,
-            );
-            Log::info('narrator.ai.content_filter_fallback', [
-                'kind' => $row->analysis_type->value,
-                'subject' => $row->subject_id,
-            ]);
-            $this->recordContentFilterFallback($row);
-            $this->afterDone($row, $service);
+                generationToken: $this->generationToken,
+            )) {
+                Log::info('narrator.ai.content_filter_fallback', [
+                    'kind' => $row->analysis_type->value,
+                    'subject' => $row->subject_id,
+                ]);
+                $this->recordContentFilterFallback($row);
+                $this->afterDone($row, $service);
+            }
         } catch (Throwable $e) {
             $this->settleFailure(
                 $e,
                 [$row],
-                markFailed: fn () => $service->markFailed($row, $e->getMessage()),
-                markRequeued: fn () => $service->markQueued($row),
+                markFailed: fn () => $service->markFailed($row, $e->getMessage(), $this->generationToken),
+                markRequeued: fn () => $service->markQueued($row, $this->generationToken),
             );
         }
     }
@@ -102,12 +123,13 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
     {
         $row = Analysis::query()->find($this->analysisId);
         if ($row === null
+            || $row->generation_token !== $this->generationToken
             || $row->status === AnalysisStatus::Done
             || $row->status === AnalysisStatus::Failed) {
             return;
         }
 
-        app(AnalysisService::class)->markFailed($row, $e->getMessage());
+        app(AnalysisService::class)->markFailed($row, $e->getMessage(), $this->generationToken);
     }
 
     abstract protected function generateContent(Analysis $row): string;
