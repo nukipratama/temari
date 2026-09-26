@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Telegram;
 
 use App\Jobs\Telegram\HandleTelegramUpdateJob;
+use App\Models\TelegramUpdateReceipt;
 use App\Services\Telegram\TelegramClient;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -41,13 +42,22 @@ class ListenCommand extends Command
         $maxBatches = (int) $this->option('max-batches');
         $this->info('Listening for Telegram updates (Ctrl-C to stop)...');
 
+        // Restarts replay pending updates from zero; durable receipts absorb them.
         $offset = 0;
         $batches = 0;
 
         while ($maxBatches === 0 || $batches < $maxBatches) {
             foreach ($client->getUpdates($offset, self::POLL_TIMEOUT_SECONDS) as $update) {
-                HandleTelegramUpdateJob::dispatchSync($update);
-                $offset = max($offset, (int) ($update['update_id'] ?? 0) + 1);
+                $updateId = $update['update_id'] ?? null;
+                if (! is_int($updateId) || $updateId < 0) {
+                    continue;
+                }
+
+                $offset = max($offset, $updateId + 1);
+
+                if (TelegramUpdateReceipt::record($updateId)) {
+                    HandleTelegramUpdateJob::dispatchSync($update);
+                }
             }
 
             $batches++;

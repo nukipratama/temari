@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Telegram;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\Telegram\HandleTelegramUpdateJob;
+use App\Models\TelegramUpdateReceipt;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -36,6 +37,12 @@ class TelegramWebhookController extends Controller
 
         /** @var array<string, mixed> $update */
         $update = $request->all();
+
+        $updateId = $update['update_id'] ?? null;
+        if (! is_int($updateId) || $updateId < 0 || ! TelegramUpdateReceipt::record($updateId)) {
+            return response()->json(['ok' => true]);
+        }
+
         HandleTelegramUpdateJob::dispatch($update);
 
         return response()->json(['ok' => true]);

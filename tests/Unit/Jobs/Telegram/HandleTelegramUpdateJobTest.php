@@ -3,11 +3,14 @@
 declare(strict_types=1);
 
 use App\Jobs\Telegram\HandleTelegramUpdateJob;
+use App\Jobs\Telegram\SendTelegramLinkWelcomeJob;
 use App\Models\TelegramConnection;
+use App\Models\TelegramLinkTokenUse;
 use App\Models\User;
 use App\Services\Telegram\TelegramClient;
 use App\Services\Telegram\TelegramLinkToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -37,6 +40,7 @@ function startUpdate(int $chatId, string $token, ?string $username = null): arra
 }
 
 it('links the chat and replies with a welcome naming the account on a valid token', function (): void {
+    Bus::fake();
     $user = User::factory()->create(['name' => 'Budi Santoso']);
     $token = app(TelegramLinkToken::class)->mint($user->id);
 
@@ -49,8 +53,32 @@ it('links the chat and replies with a welcome naming the account on a valid toke
         'revoked_at' => null,
     ]);
 
-    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Budi Santoso')
-        && $request['chat_id'] === 555);
+    expect(TelegramLinkTokenUse::query()->whereKey(hash('sha256', $token))->exists())->toBeTrue();
+    Bus::assertDispatchedTimes(SendTelegramLinkWelcomeJob::class, 1);
+    expect(Bus::dispatched(SendTelegramLinkWelcomeJob::class)->first()->chatId)->toBe(555);
+    Http::assertNothingSent();
+});
+
+it('lets one of two competing starts claim a token and send one welcome', function (): void {
+    Bus::fake();
+    $user = User::factory()->create(['name' => 'Budi Santoso']);
+    $token = app(TelegramLinkToken::class)->mint($user->id);
+
+    runUpdate(startUpdate(555, $token, 'budi_runs'));
+    runUpdate(startUpdate(999, $token, 'budi_again'));
+
+    $this->assertDatabaseHas('telegram_connections', ['user_id' => $user->id, 'chat_id' => 555]);
+    $this->assertDatabaseMissing('telegram_connections', ['user_id' => $user->id, 'chat_id' => 999]);
+    expect(TelegramLinkTokenUse::query()->whereKey(hash('sha256', $token))->exists())->toBeTrue();
+    Bus::assertDispatchedTimes(SendTelegramLinkWelcomeJob::class, 1);
+
+    Bus::dispatched(SendTelegramLinkWelcomeJob::class)->first()->handle(app(TelegramClient::class));
+
+    Http::assertSentCount(2);
+    Http::assertSent(fn ($request): bool => $request['chat_id'] === 555
+        && str_contains((string) $request['text'], 'Budi Santoso'));
+    Http::assertSent(fn ($request): bool => $request['chat_id'] === 999
+        && str_contains((string) $request['text'], 'valid anymore'));
 });
 
 it('does not link and replies with the expired copy on an expired token', function (): void {

@@ -12,6 +12,7 @@ use App\Services\Telegram\TelegramLinkToken;
 use App\Services\Telegram\TelegramReplies;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The shared linking core both delivery modes feed: the prod webhook
@@ -99,30 +100,37 @@ class HandleTelegramUpdateJob implements ShouldQueue
             return;
         }
 
-        // Clear any revoked row from another user that still holds this chat_id.
-        // Without this, the unique constraint on chat_id would cause the
-        // updateOrCreate below to throw when a Telegram account previously
-        // linked to user A (then /stop-ped) tries to link to user B.
-        TelegramConnection::query()
-            ->where('chat_id', $chatId)
-            ->where('user_id', '!=', $user->id)
-            ->whereNotNull('revoked_at')
-            ->delete();
+        $linkResult = DB::transaction(function () use ($chatId, $linkToken, $message, $token, $user): User|bool {
+            if (! $linkToken->consume($token)) {
+                return false;
+            }
 
-        TelegramConnection::query()->updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'chat_id' => $chatId,
-                'username' => $message['from']['username'] ?? null,
-                'revoked_at' => null,
-            ],
-        );
+            // Clear a revoked row from another user before reusing its chat id.
+            TelegramConnection::query()
+                ->where('chat_id', $chatId)
+                ->where('user_id', '!=', $user->id)
+                ->whereNotNull('revoked_at')
+                ->delete();
 
-        $client->sendMessage($chatId, TelegramReplies::welcome((string) $user->name));
+            TelegramConnection::query()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'chat_id' => $chatId,
+                    'username' => $message['from']['username'] ?? null,
+                    'revoked_at' => null,
+                ],
+            );
 
-        // Single use: burn the token so a leaked link can't re-bind the account
-        // within its TTL. Done after the welcome so a failed send retries cleanly.
-        $linkToken->consume($token);
+            return $user;
+        });
+
+        if ($linkResult === false) {
+            $client->sendMessage($chatId, TelegramReplies::expired());
+
+            return;
+        }
+
+        SendTelegramLinkWelcomeJob::dispatch($chatId, (string) $linkResult->name);
     }
 
     private function handleStop(TelegramClient $client, int $chatId): void

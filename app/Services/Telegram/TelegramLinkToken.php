@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Telegram;
 
+use App\Models\TelegramLinkTokenUse;
 use App\Services\Telegram\Exceptions\TelegramLinkTokenException;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Mints and verifies the deep-link token that carries the logged-in user's
@@ -18,9 +18,8 @@ use Illuminate\Support\Facades\Cache;
  * so the token is a compact base64url of `user_id|expires_at` plus a truncated
  * HMAC, NOT an encrypted blob (which blows past 64 chars).
  *
- * Single use: once a token has linked an account, {@see self::consume()} marks it
- * spent in the cache (auto-expiring at the token's own TTL) so a leaked link
- * can't be replayed to re-bind the account within the TTL window.
+ * Single use: a durable unique token-use row prevents a leaked link from being
+ * replayed to re-bind the account within the TTL window.
  */
 class TelegramLinkToken
 {
@@ -67,7 +66,7 @@ class TelegramLinkToken
             throw new TelegramLinkTokenException('Telegram link token has expired.', expired: true);
         }
 
-        if (Cache::has($this->consumedKey($token))) {
+        if (TelegramLinkTokenUse::query()->whereKey(hash('sha256', $token))->exists()) {
             throw new TelegramLinkTokenException('Telegram link token was already used.', expired: true);
         }
 
@@ -75,17 +74,20 @@ class TelegramLinkToken
     }
 
     /**
-     * Mark a token spent so it can't link again. TTL matches the token's own
-     * expiry, so the marker self-cleans once the token would have expired anyway.
+     * Atomically claim a token so only one transaction can link with it.
      */
-    public function consume(string $token): void
+    public function consume(string $token): bool
     {
         [, $expiresAt] = $this->verify($token);
 
-        $ttl = $expiresAt - Carbon::now()->getTimestamp();
-        if ($ttl > 0) {
-            Cache::put($this->consumedKey($token), true, $ttl);
+        if ($expiresAt < Carbon::now()->getTimestamp()) {
+            return false;
         }
+
+        return TelegramLinkTokenUse::query()->insertOrIgnore([
+            'token_hash' => hash('sha256', $token),
+            'expires_at' => Carbon::createFromTimestamp($expiresAt),
+        ]) === 1;
     }
 
     /**
@@ -114,11 +116,6 @@ class TelegramLinkToken
         }
 
         return [(int) $parts[0], (int) $parts[1]];
-    }
-
-    private function consumedKey(string $token): string
-    {
-        return 'telegram-link-used:' . hash('sha256', $token);
     }
 
     private function sign(string $body): string

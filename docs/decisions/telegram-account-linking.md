@@ -2,8 +2,9 @@
 title: Telegram account linking via signed deep-link token
 description: Linking a temari account to Telegram uses a signed, TTL-bounded deep-link token (not a pairing code); prod receives via webhook, dev via long-poll.
 tags: [decision, telegram]
-status: accepted
+status: superseded
 reviewed: 2026-06-25
+superseded_by: durable-telegram-update-receipts-and-link-claims
 code_refs:
   - app/Services/Telegram/TelegramLinkToken.php
   - app/Jobs/Telegram/HandleTelegramUpdateJob.php

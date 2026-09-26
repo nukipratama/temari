@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Services\Telegram\Exceptions\TelegramLinkTokenException;
 use App\Services\Telegram\TelegramLinkToken;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 it('round-trips a minted token back to the user id', function (): void {
     $token = new TelegramLinkToken();
@@ -21,11 +24,13 @@ it('fits within Telegram\'s deep-link start payload limits', function (): void {
 
 it('rejects a token that has already been consumed', function (): void {
     $token = new TelegramLinkToken();
-    $minted = $token->mint(7);
+    $userId = random_int(1_000, 2_000_000_000);
+    $minted = $token->mint($userId);
 
-    expect($token->userId($minted))->toBe(7);
+    expect($token->userId($minted))->toBe($userId);
 
-    $token->consume($minted);
+    expect($token->consume($minted))->toBeTrue()
+        ->and($token->consume($minted))->toBeFalse();
 
     try {
         $token->userId($minted);
