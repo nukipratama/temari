@@ -100,9 +100,9 @@ class HandleTelegramUpdateJob implements ShouldQueue
             return;
         }
 
-        $linkResult = DB::transaction(function () use ($chatId, $linkToken, $message, $token, $user): User|bool {
+        $linkedUser = DB::transaction(function () use ($chatId, $linkToken, $message, $token, $user): ?User {
             if (! $linkToken->consume($token)) {
-                return false;
+                return null;
             }
 
             // Clear a revoked row from another user before reusing its chat id.
@@ -124,13 +124,13 @@ class HandleTelegramUpdateJob implements ShouldQueue
             return $user;
         });
 
-        if ($linkResult === false) {
+        if ($linkedUser === null) {
             $client->sendMessage($chatId, TelegramReplies::expired());
 
             return;
         }
 
-        SendTelegramLinkWelcomeJob::dispatch($chatId, (string) $linkResult->name);
+        SendTelegramLinkWelcomeJob::dispatch($chatId, (string) $linkedUser->name);
     }
 
     private function handleStop(TelegramClient $client, int $chatId): void
