@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use Throwable;
 use App\Enums\IntentVerdict;
+use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
@@ -19,6 +20,7 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -38,42 +40,51 @@ final readonly class PlanRecalibrationService
     /**
      * @return array{activities: int, snapshots: int, sessions: int, stale_narrations: int}
      */
-    public function recalibrate(User $user, bool $dryRun = false): array
+    public function recalibrate(User $user, bool $dryRun = false, int $lockTtlSeconds = 3600): array
     {
         if ($user->is_demo) {
             throw new InvalidArgumentException('Demo users must be refreshed with demo:seed.');
         }
 
-        $startedAt = Carbon::now();
-        if (! $dryRun) {
-            $user->forceFill([
-                'plan_recalibration_started_at' => $startedAt,
-                'plan_recalibration_completed_at' => null,
-            ])->saveQuietly();
+        $result = Cache::lock(RecalibrateTrainingHistoryJob::overlapLockKey($user->id), $lockTtlSeconds)
+            ->block(30, function () use ($user, $dryRun): array {
+                $startedAt = Carbon::now();
+                if (! $dryRun) {
+                    $user->forceFill([
+                        'plan_recalibration_started_at' => $startedAt,
+                        'plan_recalibration_completed_at' => null,
+                    ])->saveQuietly();
+                }
+
+                DB::beginTransaction();
+
+                try {
+                    $result = PlanRecalibrationDispatch::withoutDispatching(
+                        fn (): array => $this->perform($user->fresh() ?? $user, $startedAt),
+                    );
+
+                    if ($dryRun) {
+                        DB::rollBack();
+                    } else {
+                        DB::commit();
+                        $user->forceFill(['plan_recalibration_completed_at' => Carbon::now()])->saveQuietly();
+                    }
+
+                    return $result;
+                } catch (Throwable $exception) {
+                    if (DB::transactionLevel() > 0) {
+                        DB::rollBack();
+                    }
+
+                    throw $exception;
+                }
+            });
+
+        if (Cache::pull(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id))) {
+            RecalibrateTrainingHistoryJob::dispatch($user->id)->delay(5)->afterCommit();
         }
 
-        DB::beginTransaction();
-
-        try {
-            $result = PlanRecalibrationDispatch::withoutDispatching(
-                fn (): array => $this->perform($user->fresh() ?? $user, $startedAt),
-            );
-
-            if ($dryRun) {
-                DB::rollBack();
-            } else {
-                DB::commit();
-                $user->forceFill(['plan_recalibration_completed_at' => Carbon::now()])->saveQuietly();
-            }
-
-            return $result;
-        } catch (Throwable $exception) {
-            if (DB::transactionLevel() > 0) {
-                DB::rollBack();
-            }
-
-            throw $exception;
-        }
+        return $result;
     }
 
     /**

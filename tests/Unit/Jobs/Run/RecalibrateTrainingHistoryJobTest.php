@@ -15,13 +15,11 @@ it('uses the user id as its unique queue key', function (): void {
     expect(new RecalibrateTrainingHistoryJob(42)->uniqueId())->toBe('42');
 });
 
-it('uses a per-user overlap lock that outlives its queue timeout', function (): void {
+it('shares a per-user service lock that outlives its queue timeout', function (): void {
     $job = new RecalibrateTrainingHistoryJob(42);
-    $middleware = $job->middleware()[0];
 
-    expect($middleware->getLockKey($job))->toBe('laravel-queue-overlap:training-recalibration:42')
-        ->and($middleware->releaseAfter)->toBe(1)
-        ->and($middleware->expiresAfter)->toBeGreaterThanOrEqual($job->timeout);
+    expect(RecalibrateTrainingHistoryJob::overlapLockKey(42))->toBe('training-recalibration:42')
+        ->and(RecalibrateTrainingHistoryJob::overlapLockTtlSeconds())->toBeGreaterThanOrEqual($job->timeout);
 });
 
 it('ignores a demo user', function (): void {
@@ -41,6 +39,10 @@ it('dispatches one follow-up after a run that was marked dirty', function (): vo
     new RecalibrateTrainingHistoryJob($user->id)->handle(app(PlanRecalibrationService::class));
 
     Bus::assertDispatchedTimes(RecalibrateTrainingHistoryJob::class, 1);
+    Bus::assertDispatched(
+        RecalibrateTrainingHistoryJob::class,
+        fn (RecalibrateTrainingHistoryJob $job): bool => $job->userId === $user->id && $job->delay === 5,
+    );
     expect(Cache::has(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id)))->toBeFalse();
 });
 

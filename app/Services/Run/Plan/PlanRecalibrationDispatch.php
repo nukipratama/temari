@@ -23,23 +23,29 @@ final class PlanRecalibrationDispatch
             return;
         }
 
+        RecalibrateTrainingHistoryJob::markDirty($userId);
         $lock = Cache::lock(
             RecalibrateTrainingHistoryJob::overlapLockKey($userId),
             RecalibrateTrainingHistoryJob::overlapLockTtlSeconds(),
         );
         if (! $lock->get()) {
-            RecalibrateTrainingHistoryJob::markDirty($userId);
-
             return;
         }
-        $lock->release();
 
-        $user->forceFill([
-            'plan_recalibration_started_at' => now(),
-            'plan_recalibration_completed_at' => null,
-        ])->saveQuietly();
+        try {
+            if (! Cache::pull(RecalibrateTrainingHistoryJob::dirtyMarkerKey($userId))) {
+                return;
+            }
 
-        RecalibrateTrainingHistoryJob::dispatch($userId)->afterCommit();
+            $user->forceFill([
+                'plan_recalibration_started_at' => now(),
+                'plan_recalibration_completed_at' => null,
+            ])->saveQuietly();
+
+            RecalibrateTrainingHistoryJob::dispatch($userId)->delay(5)->afterCommit();
+        } finally {
+            $lock->release();
+        }
     }
 
     public static function withoutDispatching(callable $callback): mixed
