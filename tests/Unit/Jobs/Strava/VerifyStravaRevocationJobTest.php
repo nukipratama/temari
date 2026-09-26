@@ -38,10 +38,10 @@ it('revokes the connection when Strava rejects the token with a 401 (genuine dea
         ->toBe(StravaSyncSource::Webhook);
 });
 
-it('revokes when the token refresh is permanently rejected (invalid_grant)', function (): void {
+it('revokes when the token refresh is permanently rejected (rejected refresh token)', function (): void {
     $connection = freshConnection();
     $connection->update(['token_expires_at' => Carbon::now()->subMinute()]);
-    Http::fake(['strava.com/oauth/token' => Http::response(['error' => 'invalid_grant'], 400)]);
+    Http::fake(['strava.com/oauth/token' => Http::response(stravaBadRequest('RefreshToken', 'refresh_token'), 400)]);
 
     runVerifyJob($connection);
 

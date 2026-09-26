@@ -453,14 +453,14 @@ it('ignores a stale 401 after credentials change during the detail fetch', funct
     Pulse::shouldNotHaveReceived('record', ['strava_revoked', Mockery::any()]);
 });
 
-it('revokes on a permanent token refresh failure (invalid_grant), budget untouched', function (): void {
+it('revokes on a permanent token refresh failure (rejected refresh token), budget untouched', function (): void {
     $activity = makeActivityWithConnection();
     $activity->update(['analyzed_at' => now(), 'detail_fail_count' => 0]);
     $connection = $activity->user->stravaConnection;
     $connection->update(['token_expires_at' => Carbon::now()->subMinute()]);
 
     Http::fake([
-        'strava.com/oauth/token' => Http::response(['error' => 'invalid_grant'], 400),
+        'strava.com/oauth/token' => Http::response(stravaBadRequest('RefreshToken', 'refresh_token'), 400),
     ]);
 
     $this->pipeline->ingest($activity);

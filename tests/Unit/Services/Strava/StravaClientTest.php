@@ -160,7 +160,20 @@ it('skips the refresh POST when another worker already refreshed under the lock'
     Http::assertNothingSent();
 });
 
-it('throws a permanent refresh exception for any 400 token response', function (array $response): void {
+it('throws a permanent refresh exception when a 400 names the refresh token', function (): void {
+    Http::fake([
+        'strava.com/oauth/token' => Http::response(stravaBadRequest('RefreshToken', 'refresh_token'), 400),
+    ]);
+
+    $connection = StravaConnection::factory()->create([
+        'token_expires_at' => Carbon::now()->subMinute(),
+    ]);
+
+    expect(fn () => new StravaClient()->refreshIfExpired($connection))
+        ->toThrow(StravaTokenRefreshFailedException::class);
+});
+
+it('throws a transient refresh exception for a 400 that does not name the refresh token', function (array $response, string $message): void {
     Http::fake([
         'strava.com/oauth/token' => Http::response($response, 400),
     ]);
@@ -170,15 +183,12 @@ it('throws a permanent refresh exception for any 400 token response', function (
     ]);
 
     expect(fn () => new StravaClient()->refreshIfExpired($connection))
-        ->toThrow(StravaTokenRefreshFailedException::class);
+        ->toThrow(StravaTokenRefreshTransientException::class, $message);
 })->with([
-    'OAuth invalid_grant' => [['error' => 'invalid_grant']],
-    'Strava bad refresh token' => [['message' => 'Bad refresh token']],
-    'message and errors body' => [[
-        'message' => 'Bad Request',
-        'errors' => [['resource' => 'RefreshToken', 'field' => 'refresh_token', 'code' => 'invalid']],
-    ]],
-    'other 400 body' => [['error' => 'invalid_client']],
+    'bad client secret' => [stravaBadRequest('Application', 'client_secret'), 'status 400 (Application client_secret).'],
+    'bad client id' => [stravaBadRequest('Application', 'client_id'), 'status 400 (Application client_id).'],
+    'OAuth invalid_grant' => [['error' => 'invalid_grant'], 'status 400.'],
+    'message only' => [['message' => 'Bad Request'], 'status 400.'],
 ]);
 
 it('throws a transient refresh exception on a non-400 refresh failure', function (int $status): void {
@@ -773,7 +783,7 @@ it('refreshes the mirrored token before deauthorizing the grant', function (): v
         && $request['access_token'] === 'fresh-access');
 });
 
-it('treats a 401 or invalid_grant while releasing as an already-free grant', function (array $response, int $status): void {
+it('treats a 401 or a rejected refresh token while releasing as an already-free grant', function (array $response, int $status): void {
     Http::fake(['https://www.strava.com/oauth/token' => Http::response($response, $status)]);
 
     $grant = StravaGrantToken::query()->create([
@@ -786,7 +796,7 @@ it('treats a 401 or invalid_grant while releasing as an already-free grant', fun
     Http::assertNotSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize');
 })->with([
     'unauthorized' => [[], 401],
-    'invalid grant' => [['error' => 'invalid_grant'], 400],
+    'rejected refresh token' => [stravaBadRequest('RefreshToken', 'refresh_token'), 400],
 ]);
 
 it('does not release a newer grant after an old refresh response arrives', function (): void {
