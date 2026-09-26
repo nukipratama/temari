@@ -70,6 +70,10 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             return;
         }
 
+        if ($this->attempts() <= 1 && $pending->contains(fn (Analysis $row): bool => $row->status === AnalysisStatus::Processing)) {
+            return;
+        }
+
         if ($this->haltForSpentRetryBudget($service, $pending)) {
             return;
         }
@@ -78,33 +82,31 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             return;
         }
 
-        try {
-            $subject = $this->resolveSubject($this->subjectId);
-        } catch (UnavailableException $e) {
-            // Bump attempts before failing (like markProcessing would), so a
-            // subject that never materializes dead-letters after the retry
-            // budget instead of churning ai:self-heal forever at attempts=0.
-            foreach ($pending as $row) {
-                $service->markProcessing($row, $this->generationToken);
-            }
-            $this->failPending($pending, $service, $e->getMessage());
-
-            return;
-        }
-
         $this->startedEarlyByType = $pending->mapWithKeys(
             fn (Analysis $row): array => [$row->analysis_type->value => $service->isEarlyPassRow($row)],
         )->all();
 
-        foreach ($pending as $row) {
-            if (! $service->markProcessing($row, $this->generationToken)) {
-                return;
-            }
+        if (! $service->markGroupProcessing(
+            $pending,
+            $this->generationToken,
+            allowProcessing: $this->attempts() > 1,
+        )) {
+            return;
         }
 
         $this->pendingRowIds = $pending->mapWithKeys(
             fn (Analysis $row): array => [$row->analysis_type->value => $row->id],
         )->all();
+
+        try {
+            $subject = $this->resolveSubject($this->subjectId);
+        } catch (UnavailableException $e) {
+            // The atomic claim already charged these rows, so a missing subject
+            // still consumes its bounded self-heal retry budget.
+            $this->failPending($pending, $service, $e->getMessage());
+
+            return;
+        }
 
         // Computed inside the try so a failure here (DB blip, a future bug in a
         // fingerprintFor() override) goes through the same settleFailure()
@@ -214,23 +216,37 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         ?string $fingerprint = null,
         ?AnalysisOrigin $ruleBasedReason = null,
     ): bool {
-        return DB::transaction(function () use ($pending, $payload, $service, $fingerprint, $servedBy, $ruleBasedReason): bool {
-            foreach ($pending as $key => $row) {
-                if (! $service->markDone(
-                    $row,
-                    $payload[$key],
-                    $servedBy,
-                    fingerprint: $fingerprint,
-                    ruleBasedReason: $ruleBasedReason,
-                    startedEarly: $this->startedEarlyByType[$key] ?? false,
-                    generationToken: $this->generationToken,
-                )) {
-                    return false;
+        try {
+            return DB::transaction(function () use ($pending, $payload, $service, $fingerprint, $servedBy, $ruleBasedReason): bool {
+                foreach ($pending as $key => $row) {
+                    if (! $service->markDone(
+                        $row,
+                        $payload[$key],
+                        $servedBy,
+                        fingerprint: $fingerprint,
+                        ruleBasedReason: $ruleBasedReason,
+                        startedEarly: $this->startedEarlyByType[$key] ?? false,
+                        generationToken: $this->generationToken,
+                    )) {
+                        throw new UnavailableException('Narration group no longer owns this row');
+                    }
                 }
+
+                return true;
+            });
+        } catch (UnavailableException) {
+            foreach ($pending as $row) {
+                $row->refresh();
             }
 
-            return true;
-        });
+            return false;
+        } catch (Throwable $e) {
+            foreach ($pending as $row) {
+                $row->refresh();
+            }
+
+            throw $e;
+        }
     }
 
     /**

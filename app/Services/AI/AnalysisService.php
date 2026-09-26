@@ -278,6 +278,61 @@ class AnalysisService
         return $updated;
     }
 
+    /** @param Collection<string, Analysis> $rows */
+    public function markGroupProcessing(Collection $rows, ?string $generationToken = null, bool $allowProcessing = false): bool
+    {
+        $rows = $rows->values();
+        if ($rows->isEmpty()) {
+            return false;
+        }
+
+        $generationToken ??= $rows->first()->generation_token;
+        $eligibleStatuses = [AnalysisStatus::Pending, AnalysisStatus::Queued, AnalysisStatus::Failed];
+        if ($allowProcessing) {
+            $eligibleStatuses[] = AnalysisStatus::Processing;
+        }
+
+        return DB::transaction(function () use ($rows, $generationToken, $eligibleStatuses): bool {
+            $query = Analysis::query()->whereKey($rows->map(fn (Analysis $row): int => $row->id)->all());
+            $query = $generationToken === null
+                ? $query->whereNull('generation_token')
+                : $query->where('generation_token', $generationToken);
+            $currentRows = (clone $query)->orderBy('id')->lockForUpdate()->get();
+
+            if ($currentRows->count() !== $rows->count()
+                || ! $currentRows->every(fn (Analysis $row): bool => in_array($row->status, $eligibleStatuses, true))) {
+                return false;
+            }
+
+            $updated = $query->whereIn('status', $eligibleStatuses)->update([
+                'status' => AnalysisStatus::Processing,
+                'attempts' => DB::raw('attempts + 1'),
+            ]);
+            if ($updated !== $rows->count()) {
+                throw new \RuntimeException('Could not atomically claim every narration row');
+            }
+
+            $attemptsById = [];
+            foreach ($currentRows as $currentRow) {
+                $attemptsById[$currentRow->id] = $currentRow->attempts;
+            }
+
+            foreach ($rows as $row) {
+                $attempts = $attemptsById[$row->id] ?? null;
+                if ($attempts === null) {
+                    throw new \RuntimeException('Could not find a claimed narration row');
+                }
+
+                $row->forceFill([
+                    'status' => AnalysisStatus::Processing,
+                    'attempts' => $attempts + 1,
+                ])->syncOriginal();
+            }
+
+            return true;
+        });
+    }
+
     public function markDone(
         Analysis $row,
         string $content,

@@ -42,8 +42,11 @@ abstract class AnalyzeBaseJob implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [10, 60];
 
-    public function __construct(public ?string $generationToken = null)
+    public ?string $generationToken = null;
+
+    public function __construct(?string $generationToken = null)
     {
+        $this->generationToken = $generationToken;
         $this->onQueue(self::QUEUE);
     }
 
