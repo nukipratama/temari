@@ -46,8 +46,9 @@ final readonly class PlanRecalibrationService
             throw new InvalidArgumentException('Demo users must be refreshed with demo:seed.');
         }
 
+        $dirty = false;
         $result = Cache::lock(RecalibrateTrainingHistoryJob::overlapLockKey($user->id), $lockTtlSeconds)
-            ->block(30, function () use ($user, $dryRun): array {
+            ->block(30, function () use ($user, $dryRun, &$dirty): array {
                 $startedAt = Carbon::now();
                 if (! $dryRun) {
                     $user->forceFill([
@@ -68,6 +69,10 @@ final readonly class PlanRecalibrationService
                     } else {
                         DB::commit();
                         $user->forceFill(['plan_recalibration_completed_at' => Carbon::now()])->saveQuietly();
+                        if (Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id))) {
+                            $dirty = true;
+                            Cache::forget(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id));
+                        }
                     }
 
                     return $result;
@@ -80,7 +85,7 @@ final readonly class PlanRecalibrationService
                 }
             });
 
-        if (! $dryRun && Cache::pull(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id))) {
+        if (! $dryRun && ($dirty || Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id)))) {
             RecalibrateTrainingHistoryJob::dispatch($user->id)->delay(5)->afterCommit();
         }
 
