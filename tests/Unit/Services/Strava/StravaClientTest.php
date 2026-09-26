@@ -160,9 +160,9 @@ it('skips the refresh POST when another worker already refreshed under the lock'
     Http::assertNothingSent();
 });
 
-it('throws a permanent refresh exception only on a 400 invalid_grant', function (): void {
+it('throws a permanent refresh exception on a 400 rejected refresh token', function (array $response): void {
     Http::fake([
-        'strava.com/oauth/token' => Http::response(['error' => 'invalid_grant'], 400),
+        'strava.com/oauth/token' => Http::response($response, 400),
     ]);
 
     $connection = StravaConnection::factory()->create([
@@ -171,7 +171,10 @@ it('throws a permanent refresh exception only on a 400 invalid_grant', function 
 
     expect(fn () => new StravaClient()->refreshIfExpired($connection))
         ->toThrow(StravaTokenRefreshFailedException::class);
-});
+})->with([
+    'OAuth invalid_grant' => [['error' => 'invalid_grant']],
+    'Strava bad refresh token' => [['message' => 'Bad refresh token']],
+]);
 
 it('treats another 400 refresh failure as transient', function (): void {
     Http::fake([
@@ -215,6 +218,24 @@ it('throws a transient refresh exception when the token endpoint times out', fun
 
     expect(fn () => new StravaClient()->refreshIfExpired($connection))
         ->toThrow(StravaTokenRefreshTransientException::class);
+});
+
+it('returns the connection instance if it is deleted during token refresh', function (): void {
+    $connection = StravaConnection::factory()->create([
+        'token_expires_at' => Carbon::now()->subMinute(),
+    ]);
+
+    Http::fake(function () use ($connection) {
+        StravaConnection::query()->whereKey($connection->id)->delete();
+
+        return Http::response([
+            'access_token' => 'fresh-access',
+            'refresh_token' => 'fresh-refresh',
+            'expires_at' => Carbon::now()->addHours(6)->timestamp,
+        ]);
+    });
+
+    expect(new StravaClient()->refreshIfExpired($connection))->toBe($connection);
 });
 
 it('makes authenticated GET requests to the Strava API', function (): void {

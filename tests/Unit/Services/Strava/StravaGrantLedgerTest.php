@@ -12,6 +12,7 @@ use App\Services\Strava\StravaGrantLedger;
 use App\Services\Strava\StravaGrantReleaseResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -56,6 +57,36 @@ it('mirrors connection refreshes through a credential-version checked write', fu
         Carbon::now()->addHours(6),
     ))->toBeFalse()
         ->and($grant->fresh()->refresh_token)->toBe('fresh-refresh');
+});
+
+it('keeps refreshed connection credentials when the grant mirror has advanced', function (): void {
+    Log::spy();
+
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 3]);
+    $ledger = app(StravaGrantLedger::class);
+    $ledger->recordGrant(
+        $connection->strava_athlete_id,
+        $user->id,
+        4,
+        'newer-refresh',
+        StravaGrantEventType::Reconnected,
+    );
+
+    expect($ledger->persistConnectionRefresh(
+        $connection,
+        3,
+        'fresh-access',
+        'fresh-refresh',
+        Carbon::now()->addHours(6),
+    ))->toBeTrue();
+
+    expect($connection->fresh()->access_token)->toBe('fresh-access')
+        ->and($connection->fresh()->refresh_token)->toBe('fresh-refresh')
+        ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->sole()->refresh_token)
+        ->toBe('newer-refresh');
+
+    Log::shouldHaveReceived('warning')->once();
 });
 
 it('does not record an old release outcome over a newer OAuth grant', function (): void {

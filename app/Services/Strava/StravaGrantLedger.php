@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use LogicException;
 
 final class StravaGrantLedger
@@ -121,7 +122,13 @@ final class StravaGrantLedger
             }
 
             if ($grant->credential_version !== $credentialVersion) {
-                throw new LogicException('The Strava grant ledger version does not match its connection.');
+                Log::warning('Skipped mirroring a Strava refresh because the grant version changed.', [
+                    'connection_id' => $connection->getKey(),
+                    'connection_credential_version' => $credentialVersion,
+                    'grant_credential_version' => $grant->credential_version,
+                ]);
+
+                return true;
             }
 
             $grant->refresh_token = $refreshToken;

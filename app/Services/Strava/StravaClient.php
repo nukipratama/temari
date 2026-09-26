@@ -322,7 +322,7 @@ class StravaClient
             $tokens['expires_at'],
         );
 
-        return $connection->refresh();
+        return $connection->fresh() ?? $connection;
     }
 
     /**
@@ -348,7 +348,8 @@ class StravaClient
         }
 
         if ($response->failed()) {
-            $invalidGrant = $response->json('error') === 'invalid_grant';
+            $invalidGrant = $response->json('error') === 'invalid_grant'
+                || strtolower((string) $response->json('message')) === 'bad refresh token';
             $rejected = ($response->status() === 400 && $invalidGrant)
                 || ($release && $response->status() === 401);
 
