@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
-use App\Enums\SessionType;
 use App\Enums\TrendDirection;
 use App\Enums\TrendVerdict;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Plan\PlannedSessionTypes;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -264,7 +263,7 @@ class PastYouTrendBuilder
     private function loadHistory(int $userId, Carbon $anchor): array
     {
         $historyStart = $anchor->copy()->subDays(self::WINDOW_DAYS + PastYouMatcher::MAX_GAP_DAYS)->startOfDay();
-        $plannedTypes = $this->plannedSessionTypesByDate($userId, $historyStart, $anchor);
+        $plannedTypes = PlannedSessionTypes::byDate($userId, $historyStart, $anchor);
 
         $rows = Activity::analyzedJoinConstraint(
             ActivityDetail::query()
@@ -303,40 +302,6 @@ class PastYouTrendBuilder
         }
 
         return $runs;
-    }
-
-    /** @return array<string, SessionType> keyed by local run date */
-    private function plannedSessionTypesByDate(int $userId, Carbon $from, Carbon $to): array
-    {
-        $runCounts = [];
-        $runCountsQuery = ActivityDetail::query()
-            ->join('activities', 'activities.id', '=', 'activity_details.activity_id')
-            ->where('activities.user_id', $userId)
-            ->whereBetween('activity_details.start_date_local', [$from, $to])
-            ->selectRaw('DATE(activity_details.start_date_local) AS run_date, COUNT(*) AS run_count')
-            ->groupBy('run_date');
-        foreach (Activity::analyzedJoinConstraint($runCountsQuery)->toBase()->get() as $row) {
-            $runCounts[(string) $row->run_date] = (int) $row->run_count;
-        }
-
-        $types = [];
-        foreach (PlannedSession::query()
-            ->where('user_id', $userId)
-            ->where('session_type', '!=', SessionType::Rest->value)
-            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
-            ->get(['date', 'session_type', 'skipped', 'rest_clamped_at']) as $session) {
-            if ($session->isExcused()) {
-                continue;
-            }
-
-            $date = $session->date->toDateString();
-            $type = $session->session_type;
-            if (($runCounts[$date] ?? 0) === 1) {
-                $types[$date] = $type;
-            }
-        }
-
-        return $types;
     }
 
     private function fitnessDelta(User $user, Carbon $anchor): ?float
