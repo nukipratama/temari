@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Enums\NotificationDeliveryStatus;
 use App\Services\Notifications\NotificationDeliveryClaim;
+use App\Services\Notifications\ChannelRouter;
 use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Models\AI\Analysis;
+use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\Channels\TelegramChannel;
@@ -96,6 +98,39 @@ it('sends nothing over a revoked connection', function (): void {
     channelSend($user, new TelegramMessage(text: 'Halo'));
 
     Http::assertNothingSent();
+});
+
+it('skips a queued Telegram send when muted and does not claim it', function (): void {
+    fakeTelegramOk();
+    $user = connectedUser();
+    $analysisId = Analysis::factory()->create()->id;
+
+    expect(app(ChannelRouter::class)->channelsFor($user))->toContain(TelegramChannel::class);
+    NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
+
+    channelSend($user, new TelegramMessage(text: 'Muted', deliveryKey: $analysisId, force: true));
+
+    Http::assertNothingSent();
+    $this->assertDatabaseMissing('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
+});
+
+it('sends a queued Telegram message to the current chat after a relink', function (): void {
+    fakeTelegramOk();
+    $user = connectedUser();
+    $analysisId = Analysis::factory()->create()->id;
+
+    expect(app(ChannelRouter::class)->channelsFor($user))->toContain(TelegramChannel::class);
+    $user->telegramConnection()->update(['chat_id' => 5252]);
+
+    channelSend($user, new TelegramMessage(text: 'Current link', deliveryKey: $analysisId));
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request): bool => $request['chat_id'] === 5252);
+    $this->assertDatabaseHas('notification_deliveries', [
+        'analysis_id' => $analysisId,
+        'channel' => 'telegram',
+        'status' => NotificationDeliveryStatus::Sent->value,
+    ]);
 });
 
 it('claims a keyed delivery and is idempotent across repeats', function (): void {

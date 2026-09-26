@@ -76,6 +76,21 @@ final readonly class ChannelRouter
     }
 
     /**
+     * Refresh queued user state before an outbound channel sends.
+     *
+     * @param  class-string  $channel
+     */
+    public function eligibleUserFor(User $user, string $channel): ?User
+    {
+        $currentUser = $user->fresh();
+        if ($currentUser === null || ! in_array($channel, $this->outboundChannelsFor($currentUser), true)) {
+            return null;
+        }
+
+        return $currentUser;
+    }
+
+    /**
      * Whether Temari can reach *out* to the user. Deliberately not
      * `channelsFor() !== []`, which the always-on inbox would make trivially
      * true: the callers asking this ("can the test send prove anything", "is

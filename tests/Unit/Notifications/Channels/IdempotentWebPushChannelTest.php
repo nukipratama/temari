@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\NotificationDeliveryStatus;
 use App\Models\AI\Analysis;
+use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Services\Notifications\NotificationDeliveryClaim;
+use App\Services\Notifications\ChannelRouter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +19,15 @@ uses(RefreshDatabase::class);
 
 function idempotentChannel(WebPushChannel $inner): IdempotentWebPushChannel
 {
-    return new IdempotentWebPushChannel($inner, app(NotificationDeliveryClaim::class));
+    return new IdempotentWebPushChannel($inner, app(NotificationDeliveryClaim::class), app(ChannelRouter::class));
+}
+
+function pushUser(): User
+{
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+
+    return $user;
 }
 
 it('claims the analysis on the webpush channel and delegates to the package channel', function (): void {
@@ -25,7 +35,7 @@ it('claims the analysis on the webpush channel and delegates to the package chan
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->once();
 
-    idempotentChannel($inner)->send(User::factory()->create(), new AnalysisReadyNotification($analysis));
+    idempotentChannel($inner)->send(pushUser(), new AnalysisReadyNotification($analysis));
 
     $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysis->id, 'channel' => 'webpush']);
 });
@@ -35,11 +45,26 @@ it('is idempotent — a second send for the same analysis does not re-deliver', 
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->once();
     $channel = idempotentChannel($inner);
-    $user = User::factory()->create();
+    $user = pushUser();
 
     $channel->send($user, new AnalysisReadyNotification($analysis));
     $channel->send($user, new AnalysisReadyNotification($analysis));
     // The `->once()` expectation asserts the package channel delivered a single time.
+});
+
+it('skips a queued web push when muted and does not claim it', function (): void {
+    $analysis = Analysis::factory()->create();
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+
+    expect(app(ChannelRouter::class)->channelsFor($user))->toContain(IdempotentWebPushChannel::class);
+    NotificationPreference::factory()->for($user)->create(['push_enabled' => false]);
+
+    $inner = Mockery::mock(WebPushChannel::class);
+    $inner->shouldNotReceive('send');
+    idempotentChannel($inner)->send($user, new AnalysisReadyNotification($analysis, force: true));
+
+    $this->assertDatabaseMissing('notification_deliveries', ['analysis_id' => $analysis->id, 'channel' => 'webpush']);
 });
 
 it('settles the claim as failed with its error so a retry can resend', function (): void {
@@ -47,7 +72,7 @@ it('settles the claim as failed with its error so a retry can resend', function 
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->andThrow(new RuntimeException('push boom'));
 
-    expect(fn () => idempotentChannel($inner)->send(User::factory()->create(), new AnalysisReadyNotification($analysis)))
+    expect(fn () => idempotentChannel($inner)->send(pushUser(), new AnalysisReadyNotification($analysis)))
         ->toThrow(RuntimeException::class);
 
     $this->assertDatabaseHas('notification_deliveries', [
@@ -64,7 +89,7 @@ it('re-delivers a forced send even when the analysis was already claimed', funct
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->twice();
     $channel = idempotentChannel($inner);
-    $user = User::factory()->create();
+    $user = pushUser();
 
     $channel->send($user, new AnalysisReadyNotification($analysis));
     $channel->send($user, new AnalysisReadyNotification($analysis, force: true));
@@ -75,7 +100,7 @@ it('records the claim after a forced send so a later automatic push is deduped',
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->once();
     $channel = idempotentChannel($inner);
-    $user = User::factory()->create();
+    $user = pushUser();
 
     $channel->send($user, new AnalysisReadyNotification($analysis, force: true));
 
@@ -90,7 +115,7 @@ it('keeps an existing claim when a forced send throws', function (): void {
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->andThrow(new RuntimeException('push boom'));
 
-    expect(fn () => idempotentChannel($inner)->send(User::factory()->create(), new AnalysisReadyNotification($analysis, force: true)))
+    expect(fn () => idempotentChannel($inner)->send(pushUser(), new AnalysisReadyNotification($analysis, force: true)))
         ->toThrow(RuntimeException::class);
 
     $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysis->id, 'channel' => 'webpush']);
@@ -101,7 +126,7 @@ it('sends a keyless notification (no deliveryKey) without claiming', function ()
     $inner->shouldReceive('send')->once();
     $notification = new class () extends Notification {};
 
-    idempotentChannel($inner)->send(User::factory()->create(), $notification);
+    idempotentChannel($inner)->send(pushUser(), $notification);
 
     expect(DB::table('notification_deliveries')->count())->toBe(0);
 });
