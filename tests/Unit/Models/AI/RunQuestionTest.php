@@ -7,15 +7,17 @@ use App\Models\AI\RunQuestion;
 use App\Models\User;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
-it('casts ids to integers and the status to its enum', function (): void {
-    $row = RunQuestion::factory()->create();
+it('casts ids to integers, the status to its enum and the claim time to a date', function (): void {
+    $row = RunQuestion::factory()->create(['claimed_at' => '2026-09-26 12:00:00']);
 
     expect($row->refresh()->user_id)->toBeInt()
         ->and($row->activity_id)->toBeInt()
-        ->and($row->status)->toBe(AnalysisStatus::Queued);
+        ->and($row->status)->toBe(AnalysisStatus::Queued)
+        ->and($row->claimed_at)->toBeInstanceOf(Carbon::class);
 });
 
 it('belongs to the asking user and the run it is about', function (): void {

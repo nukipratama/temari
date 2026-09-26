@@ -16,7 +16,10 @@ use App\Services\AI\Narrators\RunQuestionNarrator;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RunQuestion\RuleBasedRunAnswer;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -55,52 +58,57 @@ class AnswerRunQuestionJob implements ShouldQueue
             return;
         }
 
+        $claimToken = $this->claim($question);
+        if ($claimToken === null) {
+            return;
+        }
+
         $activity = Activity::query()->with('detail')->find($question->activity_id);
         $detail = $activity?->detail;
         if ($activity === null || $detail === null) {
-            $this->settleFailed($question, "Activity {$question->activity_id} not analyzed yet");
+            $this->settleFailed($question, "Activity {$question->activity_id} not analyzed yet", $claimToken);
 
             return;
         }
 
         if ($service->costCeilingDegraded($activity->user_id)) {
-            $question->update([
+            if ($this->settle($question, $claimToken, [
                 'status' => AnalysisStatus::Done,
                 'answer' => RuleBasedRunAnswer::for($detail, $question->question),
                 'error' => null,
-            ]);
-            app(CostCeilingLedger::class)->recordDegradedFill();
+            ])) {
+                app(CostCeilingLedger::class)->recordDegradedFill();
+            }
 
             return;
         }
 
         if ($service->generationPaused($activity->user_id)) {
-            $this->settleFailed($question, self::PAUSED_ERROR);
+            $this->settleFailed($question, self::PAUSED_ERROR, $claimToken);
 
             return;
         }
 
-        $question->update(['status' => AnalysisStatus::Processing]);
-
         try {
-            $question->update([
+            $this->settle($question, $claimToken, [
                 'status' => AnalysisStatus::Done,
                 'answer' => $narrator->generate($activity, $detail, $question->question),
                 'error' => null,
             ]);
         } catch (TransientUpstreamException $e) {
             if ($this->attempts() >= $this->tries) {
-                $this->settleFailed($question, $e->getMessage());
+                $this->settleFailed($question, $e->getMessage(), $claimToken);
 
                 return;
             }
 
-            $question->update(['status' => AnalysisStatus::Queued]);
-            $this->release($e->retryAfterSeconds ?? $this->backoff[0]);
+            if ($this->settle($question, $claimToken, ['status' => AnalysisStatus::Queued])) {
+                $this->release($e->retryAfterSeconds ?? $this->backoff[0]);
+            }
         } catch (UnavailableException $e) {
-            $this->settleFailed($question, $e->getMessage());
+            $this->settleFailed($question, $e->getMessage(), $claimToken);
         } catch (Throwable $e) {
-            $this->settleFailed($question, $e->getMessage());
+            $this->settleFailed($question, $e->getMessage(), $claimToken);
 
             throw $e;
         }
@@ -117,11 +125,62 @@ class AnswerRunQuestionJob implements ShouldQueue
             return;
         }
 
-        $this->settleFailed($question, $e->getMessage());
+        $question->update(['status' => AnalysisStatus::Failed, 'error' => $e->getMessage()]);
     }
 
-    private function settleFailed(RunQuestion $question, string $error): void
+    /**
+     * Takes the row in one conditional UPDATE, so only one delivery ever reaches
+     * the narrator. A first delivery never takes a live claim; a retry takes over
+     * from its dead predecessor, and any delivery may take a claim whose lease
+     * (the queue's retry_after) has run out. Returns the new claim token, or null
+     * when another delivery holds the row.
+     */
+    private function claim(RunQuestion $question): ?string
     {
-        $question->update(['status' => AnalysisStatus::Failed, 'error' => $error]);
+        $now = Carbon::now();
+        $token = (string) Str::uuid();
+        $leaseExpiredBefore = $now->copy()->subSeconds((int) config('queue.connections.redis.retry_after'));
+        $isRetry = $this->attempts() > 1;
+
+        $claimed = RunQuestion::query()
+            ->whereKey($question->id)
+            ->where(function (Builder $query) use ($isRetry, $leaseExpiredBefore): void {
+                $query->whereIn('status', [AnalysisStatus::Queued, AnalysisStatus::Failed])
+                    ->orWhere(function (Builder $processing) use ($isRetry, $leaseExpiredBefore): void {
+                        $processing->where('status', AnalysisStatus::Processing);
+                        if (! $isRetry) {
+                            $processing->where(fn (Builder $lease): Builder => $lease
+                                ->whereNull('claimed_at')
+                                ->orWhere('claimed_at', '<', $leaseExpiredBefore));
+                        }
+                    });
+            })
+            ->update([
+                'status' => AnalysisStatus::Processing,
+                'claim_token' => $token,
+                'claimed_at' => $now,
+            ]) === 1;
+
+        return $claimed ? $token : null;
+    }
+
+    /**
+     * Writes only while this delivery still holds the claim, so a finisher that
+     * was taken over lands as a no-op.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private function settle(RunQuestion $question, string $claimToken, array $attributes): bool
+    {
+        return RunQuestion::query()
+            ->whereKey($question->id)
+            ->where('claim_token', $claimToken)
+            ->where('status', AnalysisStatus::Processing)
+            ->update($attributes) === 1;
+    }
+
+    private function settleFailed(RunQuestion $question, string $error, string $claimToken): void
+    {
+        $this->settle($question, $claimToken, ['status' => AnalysisStatus::Failed, 'error' => $error]);
     }
 }
