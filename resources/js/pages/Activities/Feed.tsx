@@ -100,7 +100,7 @@ export default function RunsIndex({
                         hasRuns ? (
                             <div
                                 key={weekFilter ?? 'all'}
-                                className="mt-8 space-y-8"
+                                className="mt-8 flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0"
                             >
                                 {rangeAutoWidened && (
                                     <RangeWidenedNote

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Story;
 
 use App\Enums\ComparisonMetric;
+use App\Enums\Effort;
 use App\Enums\TrendDirection;
 
 /**
@@ -133,9 +134,10 @@ final readonly class PastYouComparison
     }
 
     /**
+     * @param  array<int, Effort>  $efforts  Keyed by activity id, from {@see \App\Services\Run\Metrics\RunEffort::forDetails}.
      * @return array{direction: string, metric: string, pace_relation: string, days_apart: int, similarity: float, pace_delta_sec: float, hr_delta_bpm: float|null, current: array<string, mixed>, past: array<string, mixed>}
      */
-    public function toArray(): array
+    public function toArray(array $efforts = []): array
     {
         return [
             'direction' => $this->direction()->value,
@@ -145,8 +147,8 @@ final readonly class PastYouComparison
             'similarity' => $this->similarity,
             'pace_delta_sec' => $this->paceDeltaSec,
             'hr_delta_bpm' => $this->hrDeltaBpm,
-            'current' => $this->current->toArray(),
-            'past' => $this->past->toArray(),
+            'current' => $this->current->toArray($efforts[$this->current->activityId] ?? null),
+            'past' => $this->past->toArray($efforts[$this->past->activityId] ?? null),
         ];
     }
 }

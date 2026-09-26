@@ -4,6 +4,9 @@
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 export const RARITY_VALUES = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
 
+export type Effort = 'easy' | 'steady' | 'hard' | 'rest' | 'unknown';
+export const EFFORT_VALUES = ['easy', 'steady', 'hard', 'rest', 'unknown'] as const;
+
 export type PrCategory = '1km' | '5km' | '10km' | '15km' | 'half_marathon' | 'marathon' | 'best_5min' | 'best_10min' | 'best_20min' | 'best_30min' | 'best_60min';
 export const PR_CATEGORY_VALUES = ['1km', '5km', '10km', '15km', 'half_marathon', 'marathon', 'best_5min', 'best_10min', 'best_20min', 'best_30min', 'best_60min'] as const;
 

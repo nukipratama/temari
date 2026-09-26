@@ -13,6 +13,7 @@ function match(overrides: Partial<PastYouMatch> = {}): PastYouMatch {
         past_km: 10.4,
         past_activity_id: 42,
         past_name: 'Morning easy',
+        effort: 'easy',
         ...overrides,
     };
 }
@@ -21,6 +22,13 @@ describe('PastYouCard', () => {
     it('renders nothing when there is no match', () => {
         const { container } = render(<PastYouCard match={null} />);
         expect(container).toBeEmptyDOMElement();
+    });
+
+    it("colors the card's leading-edge stripe by the viewed run's effort", () => {
+        render(<PastYouCard match={match({ effort: 'hard' })} />);
+        expect(document.querySelector('span[aria-hidden]')).toHaveClass(
+            'border-ember',
+        );
     });
 
     it('leads with the pace delta and names the run it beat', () => {
