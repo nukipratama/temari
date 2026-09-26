@@ -63,7 +63,7 @@ export default function StravaZoneReconnectBanner() {
                 </p>
                 <a
                     href="/auth/strava/redirect?from=/profile"
-                    className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1.5 font-sans text-[1.1875rem] leading-none font-bold text-white transition hover:bg-strava-orange-hover"
+                    className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 font-sans text-sm font-semibold text-text-2 transition hover:border-foreground/40 hover:text-foreground"
                 >
                     <Icon
                         icon={StravaIcon}

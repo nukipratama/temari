@@ -50,15 +50,6 @@ describe('StravaZoneReconnectBanner', () => {
         );
     });
 
-    it('sizes the CTA into the large-text contrast tier', () => {
-        setMockPage({ ...base, stravaZoneScopeMissing: true });
-        render(<StravaZoneReconnectBanner />);
-
-        const link = screen.getByText('reconnect').closest('a');
-        expect(link?.className).toContain('text-[1.1875rem]');
-        expect(link?.className).toContain('font-bold');
-    });
-
     it('hides itself for the rest of the session once dismissed', () => {
         setMockPage({ ...base, stravaZoneScopeMissing: true });
         const first = render(<StravaZoneReconnectBanner />);

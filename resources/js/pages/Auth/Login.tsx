@@ -17,10 +17,11 @@ import BrandMark from '@/components/BrandMark';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon, IconComponent } from '@/components/ui/Icon';
+import { Icon, IconComponent, StravaIcon } from '@/components/ui/Icon';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
+import { pillButtonVariants } from '@/lib/variants';
 
 // Lazy: the card and its rarity chrome are the heaviest thing on this route
 // and sit below the fold, so they stay out of its entry-chunk budget.
@@ -228,16 +229,12 @@ function ConnectPanel({
 
             <a
                 href={authStravaUrl}
-                className="focus-ring mt-3.5 flex w-full items-center justify-center gap-2 rounded-full bg-strava-orange py-3.5 text-sm font-bold text-white transition hover:bg-strava-orange-hover"
+                className={cn(
+                    pillButtonVariants({ tone: 'outline', size: 'md' }),
+                    'mt-3.5 w-full justify-center',
+                )}
             >
-                <svg
-                    viewBox="0 0 24 24"
-                    className="size-4"
-                    fill="currentColor"
-                    aria-hidden
-                >
-                    <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
-                </svg>
+                <Icon icon={StravaIcon} width={16} height={16} aria-hidden />
                 connect with Strava
             </a>
 

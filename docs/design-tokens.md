@@ -170,14 +170,12 @@ edge carries the contrast. Never darken them instead.
 | Mood | `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (+ `-bg`, `-ink`) | Calendar cells, mood badges. `-bg` is the pastel cell tint, `-ink` the label |
 | Rarity | `rarity-{common,uncommon,rare,epic,legendary}` (+ `-ink`) | Card rarity. Loud on purpose: it is the collectible signal |
 | Hues | `leaf` / `leaf-deep` / `leaf-ink`, `ember` / `ember-deep` / `ember-ink`, `citrus` / `citrus-ink`, `stone` | Semantic accents, and the effort scale on run rows and plan tiles (easy `leaf`, steady `citrus`, hard `ember`; mapping in MASTER.md). `citrus` otherwise marks PR / legendary celebration. `-ink` carries the label, `-deep` fills a dark CTA under `text-cream` and is never text. `citrus` has no `-deep`: it fills no CTA |
-| Strava | `strava-orange`, `strava-orange-hover` | The Strava reconnect CTA. MASTER.md moves connect buttons onto the standard pill with the vendor logo as the icon; these tokens retire when the login screen migrates |
 
-White on `strava-orange` (`#fc4c02`) is **Strava's own pair and scores 3.36:1**, under the 4.5:1 AA
-floor for normal text. Neither colour may move, so the reconnect CTA in
-[StravaZoneReconnectBanner.tsx](../resources/js/components/StravaZoneReconnectBanner.tsx) is set at
-`1.1875rem` bold instead — 19px at the base size and larger at the two desktop type steps. At
-18.66px bold and up the applicable AA threshold is 3:1, which the pair clears. Any
-other vendor mark reusing this pair must do the same or be listed as a documented exception.
+Every Strava/Telegram connect and reconnect button uses the standard pill
+(`pillButtonVariants` in [variants.ts](../resources/js/lib/variants.ts)) with the vendor logo kept
+as the icon, per MASTER.md's Buttons component spec. The dedicated `strava-orange` /
+`strava-orange-hover` tokens retired once the login screen and every remaining connect/reconnect
+site moved off them (#1271).
 
 Chart.js and inline SVG cannot read CSS custom properties off a canvas, so a small
 hex bridge mirrors the tokens in [chartTokens.ts](../resources/js/lib/chartTokens.ts). Import

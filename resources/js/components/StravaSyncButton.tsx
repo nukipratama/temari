@@ -7,6 +7,7 @@ import type { StravaSyncState } from '@/types/inertia';
 import StravaAction from '@/components/StravaAction';
 import { Icon, StravaIcon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+import { pillButtonVariants } from '@/lib/variants';
 
 interface StravaSyncButtonProps {
     state: StravaSyncState;
@@ -35,7 +36,7 @@ export default function StravaSyncButton({
             <a
                 href="/auth/strava/redirect"
                 className={cn(
-                    'inline-flex items-center gap-2 rounded-full bg-strava-orange px-5 py-2.5 text-sm font-semibold text-white hover:bg-strava-orange-hover',
+                    pillButtonVariants({ tone: 'outline', size: 'md' }),
                     className,
                 )}
             >
