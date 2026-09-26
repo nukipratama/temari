@@ -25,6 +25,14 @@ class TelegramLinkTokenUse extends Model
     #[Override]
     public $timestamps = false;
 
+    #[Override]
+    protected function casts(): array
+    {
+        return [
+            'expires_at' => 'datetime',
+        ];
+    }
+
     /** @return Builder<static> */
     public function prunable(): Builder
     {

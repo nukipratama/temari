@@ -25,6 +25,15 @@ class TelegramUpdateReceipt extends Model
     #[Override]
     public $timestamps = false;
 
+    #[Override]
+    protected function casts(): array
+    {
+        return [
+            'update_id' => 'integer',
+            'received_at' => 'datetime',
+        ];
+    }
+
     public static function record(int $updateId): bool
     {
         return static::query()->insertOrIgnore([
