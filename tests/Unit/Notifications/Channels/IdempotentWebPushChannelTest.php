@@ -13,6 +13,7 @@ use App\Services\Notifications\ChannelRouter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use NotificationChannels\WebPush\WebPushChannel;
 
 uses(RefreshDatabase::class);
@@ -51,6 +52,25 @@ it('is idempotent — a second send for the same analysis does not re-deliver', 
     $channel->send($user, new AnalysisReadyNotification($analysis));
     $channel->send($user, new AnalysisReadyNotification($analysis));
     // The `->once()` expectation asserts the package channel delivered a single time.
+});
+
+it('logs when a newer claim fences its send result', function (): void {
+    Log::spy();
+    $analysis = Analysis::factory()->create();
+    $inner = Mockery::mock(WebPushChannel::class);
+    $inner->shouldReceive('send')->once()->andReturnUsing(function () use ($analysis): void {
+        DB::table('notification_deliveries')
+            ->where('analysis_id', $analysis->id)
+            ->where('channel', 'webpush')
+            ->update(['claim_version' => 2]);
+    });
+
+    idempotentChannel($inner)->send(pushUser(), new AnalysisReadyNotification($analysis));
+
+    Log::shouldHaveReceived('info')->once()->with('webpush.delivery_record.fenced', [
+        'delivery_key' => $analysis->id,
+        'claim_version' => 1,
+    ]);
 });
 
 it('skips a queued web push when muted and does not claim it', function (): void {

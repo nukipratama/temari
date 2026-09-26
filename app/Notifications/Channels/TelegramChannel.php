@@ -94,6 +94,7 @@ class TelegramChannel
                     ? $this->claim->recordForcedSent($deliveryKey, self::CHANNEL)
                     : $this->claim->markSent($deliveryKey, self::CHANNEL, $claimVersion),
                 $deliveryKey,
+                $claimVersion,
             );
         }
     }
@@ -113,6 +114,7 @@ class TelegramChannel
                     ? $this->claim->recordForcedFailed($deliveryKey, self::CHANNEL, $e->getMessage())
                     : $this->claim->markFailed($deliveryKey, self::CHANNEL, $claimVersion, $e->getMessage()),
                 $deliveryKey,
+                $claimVersion,
             );
         }
 
@@ -134,10 +136,16 @@ class TelegramChannel
         throw $e;
     }
 
-    private function record(callable $write, int $deliveryKey): void
+    /** @param callable(): bool $write */
+    private function record(callable $write, int $deliveryKey, ?int $claimVersion): void
     {
         try {
-            $write();
+            if (! $write() && $claimVersion !== null) {
+                Log::info('telegram.delivery_record.fenced', [
+                    'delivery_key' => $deliveryKey,
+                    'claim_version' => $claimVersion,
+                ]);
+            }
         } catch (Throwable $e) {
             Log::warning('telegram.delivery_record.failed', [
                 'delivery_key' => $deliveryKey,

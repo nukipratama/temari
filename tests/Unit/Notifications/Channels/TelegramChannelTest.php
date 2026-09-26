@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -201,6 +202,39 @@ it('force-send swallows a failure (one-shot) but records it as a failed delivery
         'channel' => 'telegram',
         'status' => NotificationDeliveryStatus::Failed->value,
     ]);
+});
+
+it('logs when a newer claim fences its send result', function (): void {
+    Log::spy();
+    $user = connectedUser();
+    $analysisId = Analysis::factory()->create()->id;
+    Http::fake(['api.telegram.org/*' => function () use ($analysisId) {
+        DB::table('notification_deliveries')
+            ->where('analysis_id', $analysisId)
+            ->where('channel', 'telegram')
+            ->update(['claim_version' => 2]);
+
+        return Http::response(['ok' => true, 'result' => true]);
+    }]);
+
+    channelSend($user, new TelegramMessage(text: 'Overtaken', deliveryKey: $analysisId));
+
+    Log::shouldHaveReceived('info')->once()->with('telegram.delivery_record.fenced', [
+        'delivery_key' => $analysisId,
+        'claim_version' => 1,
+    ]);
+});
+
+it('does not log a forced failure that keeps an earlier delivery row', function (): void {
+    Log::spy();
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Bad Request'], 400)]);
+    $user = connectedUser();
+    $analysisId = Analysis::factory()->create()->id;
+    app(NotificationDeliveryClaim::class)->recordForcedSent($analysisId, 'telegram');
+
+    channelSend($user, new TelegramMessage(text: 'Forced', deliveryKey: $analysisId, force: true));
+
+    Log::shouldNotHaveReceived('info', ['telegram.delivery_record.fenced', Mockery::any()]);
 });
 
 it('abandons a stale claim without sending again and fences its late finisher', function (): void {
