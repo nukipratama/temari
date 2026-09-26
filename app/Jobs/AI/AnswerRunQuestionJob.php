@@ -141,14 +141,19 @@ class AnswerRunQuestionJob implements ShouldQueue
         $token = (string) Str::uuid();
         $leaseExpiredBefore = $now->copy()->subSeconds((int) config('queue.connections.redis.retry_after'));
         $isRetry = $this->attempts() > 1;
+        $priorToken = $question->claim_token;
 
         $claimed = RunQuestion::query()
             ->whereKey($question->id)
-            ->where(function (Builder $query) use ($isRetry, $leaseExpiredBefore): void {
+            ->where(function (Builder $query) use ($isRetry, $leaseExpiredBefore, $priorToken): void {
                 $query->whereIn('status', [AnalysisStatus::Queued, AnalysisStatus::Failed])
-                    ->orWhere(function (Builder $processing) use ($isRetry, $leaseExpiredBefore): void {
+                    ->orWhere(function (Builder $processing) use ($isRetry, $leaseExpiredBefore, $priorToken): void {
                         $processing->where('status', AnalysisStatus::Processing);
-                        if (! $isRetry) {
+                        if ($isRetry) {
+                            $processing->where(fn (Builder $q): Builder => $priorToken === null
+                                ? $q->whereNull('claim_token')
+                                : $q->where('claim_token', $priorToken));
+                        } else {
                             $processing->where(fn (Builder $lease): Builder => $lease
                                 ->whereNull('claimed_at')
                                 ->orWhere('claimed_at', '<', $leaseExpiredBefore));

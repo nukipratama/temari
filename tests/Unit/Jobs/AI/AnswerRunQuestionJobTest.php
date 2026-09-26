@@ -281,6 +281,30 @@ it('lets only one of two competing deliveries reach the narrator', function (): 
         ->and($row->answer)->toBe('first');
 });
 
+it('lets only one of two retries that read the same stale claim win the row', function (): void {
+    $row = questionRow(['question' => [
+        'status' => AnalysisStatus::Processing,
+        'claim_token' => 'dead-worker',
+        'claimed_at' => Carbon::now(),
+    ]]);
+
+    $claim = function (RunQuestion $reader) use ($row): ?string {
+        $job = questionDelivery($row->id, 2);
+        $method = new ReflectionMethod($job, 'claim');
+
+        return $method->invoke($job, $reader);
+    };
+
+    $readerA = RunQuestion::query()->find($row->id);
+    $readerB = RunQuestion::query()->find($row->id);
+
+    $tokenA = $claim($readerA);
+    $tokenB = $claim($readerB);
+
+    expect([$tokenA, $tokenB])->toContain(null)
+        ->and($tokenA === null)->not->toBe($tokenB === null);
+});
+
 it('answers a duplicated delivery of the same job once', function (): void {
     $row = questionRow();
     $calls = new ArrayObject();
