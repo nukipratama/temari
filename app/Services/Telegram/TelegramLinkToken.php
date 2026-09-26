@@ -71,7 +71,7 @@ class TelegramLinkToken
             TelegramLinkTokenUse::query()->whereKey(hash('sha256', $token))->exists()
             || Cache::has($this->consumedKey($token))
         ) {
-            throw new TelegramLinkTokenException('Telegram link token was already used.', expired: true);
+            throw new TelegramLinkTokenException('Telegram link token was already used.', expired: true, usedByUserId: $userId);
         }
 
         return $userId;

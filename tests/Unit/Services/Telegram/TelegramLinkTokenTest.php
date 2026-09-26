@@ -37,7 +37,8 @@ it('rejects a token that has already been consumed', function (): void {
         $token->userId($minted);
         $this->fail('Expected TelegramLinkTokenException was not thrown.');
     } catch (TelegramLinkTokenException $e) {
-        expect($e->expired)->toBeTrue();
+        expect($e->expired)->toBeTrue()
+            ->and($e->usedByUserId)->toBe($userId);
     }
 });
 

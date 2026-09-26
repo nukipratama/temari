@@ -88,6 +88,10 @@ class HandleTelegramUpdateJob implements ShouldQueue
         try {
             $userId = $linkToken->userId($token);
         } catch (TelegramLinkTokenException $e) {
+            if ($e->usedByUserId !== null && $this->chatLinkedTo($e->usedByUserId, $chatId)) {
+                return;
+            }
+
             $client->sendMessage($chatId, $e->expired ? TelegramReplies::expired() : TelegramReplies::generic());
 
             return;
@@ -125,12 +129,23 @@ class HandleTelegramUpdateJob implements ShouldQueue
         });
 
         if ($linkedUser === null) {
-            $client->sendMessage($chatId, TelegramReplies::expired());
+            if (! $this->chatLinkedTo($user->id, $chatId)) {
+                $client->sendMessage($chatId, TelegramReplies::expired());
+            }
 
             return;
         }
 
         SendTelegramLinkWelcomeJob::dispatch($chatId, (string) $linkedUser->name);
+    }
+
+    private function chatLinkedTo(int $userId, int $chatId): bool
+    {
+        return TelegramConnection::query()
+            ->where('user_id', $userId)
+            ->where('chat_id', $chatId)
+            ->whereNull('revoked_at')
+            ->exists();
     }
 
     private function handleStop(TelegramClient $client, int $chatId): void
