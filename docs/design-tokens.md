@@ -5,6 +5,11 @@ Single source of truth for the design system. All values are declared in the
 human-readable index. When a token moves, reflect it here. CLAUDE.md and the README point here
 instead of re-describing the palette so they do not drift again.
 
+**Composition lives elsewhere.** How screens use these tokens (sections and lane dividers, which
+face speaks, effort colors on run rows) is owned by
+[design-system/temari/MASTER.md](../design-system/temari/MASTER.md), the file the ui-ux-pro-max
+skill reads. This page owns the values and the mechanics behind them.
+
 **What owns what.** `app.css` owns the emitted values — the radius, spacing, elevation and type
 scales are declared there directly and nowhere else.
 [resources/brand/build-tokens.mjs](../resources/brand/build-tokens.mjs) owns the *colour
@@ -43,7 +48,7 @@ Three families, one job each:
 
 | Token | Family | Use |
 |---|---|---|
-| `font-serif` | Fraunces (italic) | Display headlines and page titles only — narrator prose is sans. Renamed from `font-display` in F3 to match the prototype's own token name. |
+| `font-serif` | Fraunces (italic) | Page titles and Temari's voice lines (a one-liner or verdict headline, two lines at most). Multi-sentence narrator prose is sans. Renamed from `font-display` in F3 to match the prototype's own token name. |
 | `font-sans` | Plus Jakarta Sans | Prose + UI (the readable **default** family) |
 | `font-mono` | JetBrains Mono | **Telemetry only** — numbers, stats, splits, uppercase metadata labels |
 
@@ -164,8 +169,8 @@ edge carries the contrast. Never darken them instead.
 | Line | `line`, `line-strong` | Borders. `line` is the default hairline; `line-strong` is the dashed placeholder edge |
 | Mood | `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (+ `-bg`, `-ink`) | Calendar cells, mood badges. `-bg` is the pastel cell tint, `-ink` the label |
 | Rarity | `rarity-{common,uncommon,rare,epic,legendary}` (+ `-ink`) | Card rarity. Loud on purpose: it is the collectible signal |
-| Hues | `leaf` / `leaf-deep` / `leaf-ink`, `ember` / `ember-deep` / `ember-ink`, `citrus` / `citrus-ink`, `stone` | Semantic accents; `citrus` reserved for PR / legendary celebration. `-ink` carries the label, `-deep` fills a dark CTA under `text-cream` and is never text. `citrus` has no `-deep`: it fills no CTA |
-| Strava | `strava-orange`, `strava-orange-hover` | Brand mark only — never themed or restyled |
+| Hues | `leaf` / `leaf-deep` / `leaf-ink`, `ember` / `ember-deep` / `ember-ink`, `citrus` / `citrus-ink`, `stone` | Semantic accents, and the effort scale on run rows and plan tiles (easy `leaf`, steady `citrus`, hard `ember`; mapping in MASTER.md). `citrus` otherwise marks PR / legendary celebration. `-ink` carries the label, `-deep` fills a dark CTA under `text-cream` and is never text. `citrus` has no `-deep`: it fills no CTA |
+| Strava | `strava-orange`, `strava-orange-hover` | The Strava reconnect CTA. MASTER.md moves connect buttons onto the standard pill with the vendor logo as the icon; these tokens retire when the login screen migrates |
 
 White on `strava-orange` (`#fc4c02`) is **Strava's own pair and scores 3.36:1**, under the 4.5:1 AA
 floor for normal text. Neither colour may move, so the reconnect CTA in
@@ -418,7 +423,8 @@ import { cn } from '@/lib/cn';
 className={cn(cardVariants({ tone, padding }), className)}
 ```
 
-**There is one card.** `cardVariants` is a single surface — `bg-card` on a `border` edge at
+**There is one card**, and MASTER.md limits where it goes: page sections are split by lane
+dividers, not wrapped in cards, and nothing nests inside one. `cardVariants` is a single surface — `bg-card` on a `border` edge at
 `rounded-md` with `shadow-e1` — in five tones, not a spread of competing treatments:
 
 | Tone | What it is |
