@@ -74,6 +74,18 @@ it('lists current holders with release details and a total', function (): void {
         ->toContain('Total: 1');
 });
 
+it('leaves the demo grant out of the holder list and total', function (): void {
+    [, $realConnection] = stravaSlotsHolder();
+    [, $demoConnection] = stravaSlotsHolder(demo: true);
+
+    Artisan::call('strava:slots');
+    $output = Artisan::output();
+
+    expect($output)->toContain((string) $realConnection->strava_athlete_id)
+        ->not->toContain((string) $demoConnection->strava_athlete_id)
+        ->toContain('Total: 1');
+});
+
 it('releases a live grant and revokes only the local connection', function (): void {
     fakeSlotsGrantRelease();
     [$user, $connection] = stravaSlotsHolder();

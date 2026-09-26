@@ -43,7 +43,8 @@ class SlotsCommand extends Command
             return $this->releaseOrphans($releases);
         }
 
-        $holders = $ledger->holderRows();
+        $demoUserIds = User::query()->where('is_demo', true)->pluck('id');
+        $holders = $ledger->holderRows()->reject(fn (stdClass $holder): bool => $demoUserIds->contains($holder->user_id));
         $rows = $holders->map(function (stdClass $holder): array {
             $userId = $holder->user_id === null || ! User::query()->whereKey($holder->user_id)->exists()
                 ? 'deleted'
