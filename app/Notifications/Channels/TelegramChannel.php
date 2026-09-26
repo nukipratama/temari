@@ -8,6 +8,7 @@ use Throwable;
 use App\Jobs\Telegram\Concerns\RevokesConnectionOnPermanentFailure;
 use App\Models\User;
 use App\Notifications\Messages\TelegramMessage;
+use App\Services\Notifications\ChannelRouter;
 use App\Services\Notifications\NotificationDeliveryClaim;
 use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Services\Telegram\TelegramClient;
@@ -35,11 +36,17 @@ class TelegramChannel
     public function __construct(
         private readonly TelegramClient $client,
         private readonly NotificationDeliveryClaim $claim,
+        private readonly ChannelRouter $router,
     ) {
     }
 
     public function send(User $notifiable, Notification $notification): void
     {
+        $notifiable = $this->router->eligibleUserFor($notifiable, self::class);
+        if ($notifiable === null) {
+            return;
+        }
+
         $connection = $notifiable->telegramConnection;
         if ($connection === null || $connection->isRevoked()) {
             return;

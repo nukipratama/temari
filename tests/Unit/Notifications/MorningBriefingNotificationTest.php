@@ -79,6 +79,16 @@ it('sends nothing once the master switch is off', function (): void {
     expect(new MorningBriefingNotification(briefingFor($user))->via($user))->toBe([]);
 });
 
+it('rechecks the master switch before a queued channel sends', function (): void {
+    $user = subscribedUser();
+    $notification = new MorningBriefingNotification(briefingFor($user));
+    expect($notification->via($user))->toContain(IdempotentWebPushChannel::class);
+
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
+
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
+});
+
 it('sends nothing to the demo identity', function (): void {
     $user = subscribedUser();
     TelegramConnection::factory()->for($user)->create();

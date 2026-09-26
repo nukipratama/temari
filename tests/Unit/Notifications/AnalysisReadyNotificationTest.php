@@ -19,6 +19,10 @@ use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\ChannelManager;
+use Illuminate\Notifications\SendQueuedNotifications;
+use Illuminate\Support\Facades\Queue;
+use NotificationChannels\WebPush\WebPushChannel;
 
 uses(RefreshDatabase::class);
 
@@ -78,6 +82,65 @@ it('routes nowhere when the notification master switch is off', function (): voi
     NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
     expect(viaFor(postRunAnalysis($user), $user))->toBe([]);
+});
+
+it('rechecks current preferences before a queued channel sends', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+    $analysis = postRunAnalysis($user);
+    Queue::fake();
+
+    $user->notify(new AnalysisReadyNotification($analysis));
+
+    $job = Queue::pushed(SendQueuedNotifications::class)->first(
+        fn (SendQueuedNotifications $queued): bool => $queued->channels === [IdempotentWebPushChannel::class],
+    );
+    expect($job)->toBeInstanceOf(SendQueuedNotifications::class);
+
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
+    $webPush = Mockery::mock(WebPushChannel::class);
+    $webPush->shouldNotReceive('send');
+    app()->instance(WebPushChannel::class, $webPush);
+
+    $job->handle(app(ChannelManager::class));
+
+    $this->assertDatabaseMissing('notification_deliveries', [
+        'analysis_id' => $analysis->id,
+        'channel' => 'webpush',
+    ]);
+});
+
+it('preserves a queued inbox notification when outbound preferences change', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+    $analysis = postRunAnalysis($user);
+    Queue::fake();
+
+    $user->notify(new AnalysisReadyNotification($analysis));
+
+    $inboxJob = Queue::pushed(SendQueuedNotifications::class)->first(
+        fn (SendQueuedNotifications $queued): bool => $queued->channels === [InAppChannel::class],
+    );
+    $pushJob = Queue::pushed(SendQueuedNotifications::class)->first(
+        fn (SendQueuedNotifications $queued): bool => $queued->channels === [IdempotentWebPushChannel::class],
+    );
+    expect($inboxJob)->toBeInstanceOf(SendQueuedNotifications::class)
+        ->and($pushJob)->toBeInstanceOf(SendQueuedNotifications::class);
+
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
+    $webPush = Mockery::mock(WebPushChannel::class);
+    $webPush->shouldNotReceive('send');
+    app()->instance(WebPushChannel::class, $webPush);
+
+    $channelManager = app(ChannelManager::class);
+    $pushJob->handle($channelManager);
+    $inboxJob->handle($channelManager);
+
+    $this->assertDatabaseHas('notifications', ['user_id' => $user->id]);
+    $this->assertDatabaseMissing('notification_deliveries', [
+        'analysis_id' => $analysis->id,
+        'channel' => 'webpush',
+    ]);
 });
 
 it('routes to the inbox alone without a connection', function (): void {

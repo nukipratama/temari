@@ -9,6 +9,7 @@ use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
+use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
@@ -60,6 +61,17 @@ class RaceTomorrowNotification extends Notification implements ShouldQueue
         }
 
         return app(ChannelRouter::class)->channelsFor($notifiable);
+    }
+
+    public function shouldSend(User $notifiable, string $channel): bool
+    {
+        if ($channel === InAppChannel::class) {
+            return true;
+        }
+
+        $currentUser = $notifiable->fresh();
+
+        return $currentUser !== null && in_array($channel, $this->via($currentUser), true);
     }
 
     public function toTelegram(User $notifiable): TelegramMessage

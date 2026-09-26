@@ -44,6 +44,17 @@ it('sends nothing at all once the master switch is off', function (): void {
     expect(new RaceTomorrowNotification(raceFor($user))->via($user))->toBe([]);
 });
 
+it('rechecks the master switch before a queued channel sends', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+    $notification = new RaceTomorrowNotification(raceFor($user));
+    expect($notification->via($user))->toContain(IdempotentWebPushChannel::class);
+
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
+
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
+});
+
 it('names the race and its distance, and points at the race page', function (): void {
     $user = User::factory()->create();
     $race = raceFor($user, 'jakarta half');

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Notifications\Channels;
 
 use Throwable;
+use App\Models\User;
+use App\Services\Notifications\ChannelRouter;
 use App\Services\Notifications\NotificationDeliveryClaim;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
@@ -29,11 +31,17 @@ class IdempotentWebPushChannel
     public function __construct(
         private readonly WebPushChannel $channel,
         private readonly NotificationDeliveryClaim $claim,
+        private readonly ChannelRouter $router,
     ) {
     }
 
-    public function send(object $notifiable, Notification $notification): void
+    public function send(User $notifiable, Notification $notification): void
     {
+        $notifiable = $this->router->eligibleUserFor($notifiable, self::class);
+        if ($notifiable === null) {
+            return;
+        }
+
         $rawKey = method_exists($notification, 'deliveryKey') ? $notification->deliveryKey() : null;
         $deliveryKey = is_int($rawKey) ? $rawKey : null;
         $force = method_exists($notification, 'forcesDelivery') && $notification->forcesDelivery();
