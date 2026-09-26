@@ -50,11 +50,13 @@ describe('RaceComparison', () => {
             />,
         );
 
-        expect(screen.getByText('vs race day')).toBeInTheDocument();
-        expect(screen.getByText(/Bandung 10K, nov 8\./)).toBeInTheDocument();
+        expect(
+            screen.getByText(/vs race day · \d+ days out/),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/Bandung 10K, nov 8/)).toBeInTheDocument();
     });
 
-    it('states days out, target time and pace, and fitness now', () => {
+    it('states target time and pace, and fitness now', () => {
         render(
             <RaceComparison
                 activeRace={race()}
@@ -63,7 +65,6 @@ describe('RaceComparison', () => {
             />,
         );
 
-        expect(screen.getByText('days out')).toBeInTheDocument();
         expect(screen.getByText('target')).toBeInTheDocument();
         expect(screen.getByText('52:00')).toBeInTheDocument();
         expect(screen.getByText(/10\.0 km at 5:12\/km/)).toBeInTheDocument();

@@ -56,11 +56,10 @@ interface WeekComparisonProps {
 }
 
 /**
- * "vs last week" — the widest of the three comparisons, since it carries
- * both halves of the page's question at once: km and runs are the gain,
- * form/TRIMP/monotony/strain are the cost. Every side-by-side number pair
- * sits in a stat tile per MASTER.md; neither side has a single number that
- * leads the whole section, so there's no hero here (direction A, #967).
+ * "vs last week" carries both halves of the page's question: km leads as
+ * the section's hero number with its delta beside it, runs is a plain stat
+ * line beneath it, and TRIMP/monotony/strain — three side-by-side secondary
+ * numbers — stay stat tiles per MASTER.md (direction A, #967; #1275).
  */
 export default function WeekComparison({
     weekComparison,
@@ -79,48 +78,43 @@ export default function WeekComparison({
             <p className="mt-1 text-xs text-text-3">
                 through {weekday}, so it&apos;s the same slice of both weeks.
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-                <Stat
-                    className={TILE}
-                    label="km this week"
-                    value={
-                        this_week_km !== null ? this_week_km.toFixed(1) : '—'
-                    }
-                    delta={
-                        this_week_km !== null && last_week_km !== null ? (
-                            <StatDelta
-                                value={this_week_km - last_week_km}
-                                unit=" km"
-                            />
-                        ) : undefined
-                    }
-                    sub={
-                        last_week_km !== null
-                            ? `${last_week_km.toFixed(1)} km by ${weekday} last week`
-                            : undefined
-                    }
-                />
-                <Stat
-                    className={TILE}
-                    label="runs this week"
-                    value={
-                        this_week_runs !== null ? String(this_week_runs) : '—'
-                    }
-                    delta={
-                        this_week_runs !== null && last_week_runs !== null ? (
-                            <StatDelta
-                                value={this_week_runs - last_week_runs}
-                                decimals={0}
-                            />
-                        ) : undefined
-                    }
-                    sub={
-                        last_week_runs !== null
-                            ? `${last_week_runs} by ${weekday} last week`
-                            : undefined
-                    }
-                />
-            </div>
+            <Stat
+                className="mt-3"
+                label="km this week"
+                value={this_week_km !== null ? this_week_km.toFixed(1) : '—'}
+                delta={
+                    this_week_km !== null && last_week_km !== null ? (
+                        <StatDelta
+                            value={this_week_km - last_week_km}
+                            unit=" km"
+                        />
+                    ) : undefined
+                }
+                sub={
+                    last_week_km !== null
+                        ? `${last_week_km.toFixed(1)} km by ${weekday} last week`
+                        : undefined
+                }
+            />
+            <Stat
+                className="mt-3"
+                size="sm"
+                label="runs this week"
+                value={this_week_runs !== null ? String(this_week_runs) : '—'}
+                delta={
+                    this_week_runs !== null && last_week_runs !== null ? (
+                        <StatDelta
+                            value={this_week_runs - last_week_runs}
+                            decimals={0}
+                        />
+                    ) : undefined
+                }
+                sub={
+                    last_week_runs !== null
+                        ? `${last_week_runs} by ${weekday} last week`
+                        : undefined
+                }
+            />
 
             <hr className="my-4 border-dashed border-border" />
 

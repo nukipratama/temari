@@ -21,7 +21,6 @@ import type { FitnessTrendPoint } from './panels/FitnessPanel';
 import { Stat, StatDelta } from './Stat';
 
 const DAYS_AGO = 30;
-const TILE = 'rounded-sm bg-secondary px-3 py-2.5';
 
 interface RaceComparisonProps {
     activeRace: ActiveRace | null;
@@ -31,13 +30,14 @@ interface RaceComparisonProps {
 }
 
 /**
- * "vs race day" closes the page: days out leads as the hero (the countdown
- * the section is named for), the target time sits below it as a plain
- * secondary reading, then fitness now and form today — a genuine
- * side-by-side pair — sit in stat tiles per MASTER.md. With no race set it
- * becomes "vs your own year" (today's fitness against the highest CTL in
- * 365 days, the same hero/secondary shape as MonthComparison) plus a
- * "set a race" link (direction A, #967).
+ * "vs race day" closes the page: the countdown moves into the eyebrow
+ * ("vs race day · N days out"), fitness now leads the section as its hero
+ * number, and target time and form today are plain stat lines beneath it
+ * — with only one secondary number at a time, per MASTER.md, neither pairs
+ * into a tile. With no race set it becomes "vs your own year" (today's
+ * fitness against the highest CTL in 365 days, the same hero/secondary
+ * shape as MonthComparison) plus a "set a race" link (direction A, #967;
+ * #1275).
  */
 export default function RaceComparison({
     activeRace,
@@ -100,19 +100,27 @@ export default function RaceComparison({
     return (
         <section className={className}>
             <Eyebrow as="h2" token="small" tone="ink-2">
-                vs race day
+                vs race day · {daysOut} days out
             </Eyebrow>
             <p className="mt-1 text-xs text-text-3">
                 {activeRace.name ?? 'your race'},{' '}
-                {formatNaiveMonthDayId(activeRace.race_date)}.
+                {formatNaiveMonthDayId(activeRace.race_date)}
+                {daysOut > 0
+                    ? `. ${weeksOut} full week${weeksOut === 1 ? '' : 's'} of training left`
+                    : '.'}
             </p>
             <Stat
                 className="mt-3"
-                label="days out"
-                value={String(daysOut)}
+                label="fitness now"
+                value={now !== null ? now.toFixed(1) : '—'}
+                delta={
+                    now !== null && monthAgo !== null ? (
+                        <StatDelta value={now - monthAgo} />
+                    ) : undefined
+                }
                 sub={
-                    daysOut > 0
-                        ? `${weeksOut} full week${weeksOut === 1 ? '' : 's'} of training left`
+                    monthAgo !== null
+                        ? `${monthAgo.toFixed(1)} a month ago`
                         : undefined
                 }
             />
@@ -126,33 +134,12 @@ export default function RaceComparison({
                 }`}
             />
             <hr className="my-4 border-dashed border-border" />
-            <div className="grid grid-cols-2 gap-2">
-                <Stat
-                    className={TILE}
-                    size="sm"
-                    label="fitness now"
-                    value={now !== null ? now.toFixed(1) : '—'}
-                    delta={
-                        now !== null && monthAgo !== null ? (
-                            <StatDelta value={now - monthAgo} />
-                        ) : undefined
-                    }
-                    sub={
-                        monthAgo !== null
-                            ? `${monthAgo.toFixed(1)} a month ago`
-                            : undefined
-                    }
-                />
-                <Stat
-                    className={TILE}
-                    size="sm"
-                    label="form today"
-                    value={
-                        load !== null ? formStatusWord(load.form_status) : '—'
-                    }
-                    sub="where you are now, not a race-week forecast"
-                />
-            </div>
+            <Stat
+                size="sm"
+                label="form today"
+                value={load !== null ? formStatusWord(load.form_status) : '—'}
+                sub="where you are now, not a race-week forecast"
+            />
         </section>
     );
 }
