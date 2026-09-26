@@ -99,6 +99,17 @@ class PlannedSession extends Model
     /** @use HasFactory<PlannedSessionFactory> */
     use HasFactory;
 
+    public const array WORKOUT_TRANSFER_FIELDS = [
+        'session_type',
+        'skipped',
+        'prescribed_hard_minutes',
+        'prescribed_pace_band',
+        'prescribed_pace_sec_per_km',
+        'prescription_reason',
+        'prescription_race_context',
+        'race_distance_m',
+    ];
+
     #[Override]
     protected static function booted(): void
     {
