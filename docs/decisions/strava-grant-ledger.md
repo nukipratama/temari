@@ -2,7 +2,8 @@
 title: Strava grant releases survive account deletion
 description: An encrypted, versioned refresh-token mirror and append-only grant history keep Strava slot releases retryable after local disconnection or account deletion.
 tags: [decision, strava]
-status: accepted
+status: superseded
+superseded_by: strava-token-refresh-400-rejection
 reviewed: 2026-09-26
 code_refs:
   - app/Models/StravaGrantEvent.php

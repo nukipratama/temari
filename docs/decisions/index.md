@@ -87,7 +87,8 @@ _Data_
 - [[date-cast-utc-shift]] — date columns cast `date:Y-m-d` to dodge a UTC off-by-one
 
 _Infra & Strava_
-- [[strava-grant-ledger]] — encrypted, versioned refresh tokens and append-only events preserve Strava slot releases after account deletion
+- [[strava-grant-ledger]] — encrypted, versioned refresh tokens and append-only events preserve Strava slot releases after account deletion *(token-refresh rejection rule superseded by [[strava-token-refresh-400-rejection]])*
+- [[strava-token-refresh-400-rejection]] — token refresh HTTP 400 keeps the existing permanent-rejection policy and documents the orphan-release configuration risk
 - [[summary-first-ingest]] — a connect stores the whole history from paged summaries; detail, streams and the story layer are hydrated only for runs someone opens
 - [[background-hydration-drain]] — a tick hydrates the summary-only backlog sized from the read headroom background calls may already spend *(its ordering half superseded by [[chronological-hydration-drain]])*
 - [[chronological-hydration-drain]] — the drain hydrates oldest-first, so a card's PR flag, mood and Past You comparison are right the moment a run lands
