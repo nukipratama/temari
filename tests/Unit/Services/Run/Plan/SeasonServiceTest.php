@@ -523,3 +523,15 @@ it('returns the existing season when a create still hits the seasons unique inde
         ->and(Season::query()->where('user_id', $user->id)->count())->toBe(1)
         ->and(SeasonGoal::query()->where('season_id', $existing->id)->count())->toBe(5);
 });
+
+it('re-reads the active race under the lock too, so a pre-lock memoized "no race" read does not stick', function (): void {
+    $user = User::factory()->create();
+    $staleRace = new ResolveActiveRaceAction();
+    expect($staleRace($user->id))->toBeNull();
+
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(9)->toDateString()]);
+
+    $season = app()->make(SeasonService::class, ['activeRace' => $staleRace])->ensureCurrent($user, Carbon::today());
+
+    expect($season->race_goal_id)->toBe($race->id);
+});
