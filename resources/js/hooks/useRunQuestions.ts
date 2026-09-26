@@ -48,9 +48,10 @@ function mergeThread(
     const byId = new Map(current.map((row) => [row.id, row]));
     for (const row of incoming) {
         const known = byId.get(row.id);
-        if (known === undefined || !(isPending(row) && !isPending(known))) {
-            byId.set(row.id, row);
+        if (known !== undefined && !isPending(known) && isPending(row)) {
+            continue;
         }
+        byId.set(row.id, row);
     }
 
     return [...byId.values()].sort((a, b) => a.id - b.id);
