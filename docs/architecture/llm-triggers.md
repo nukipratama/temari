@@ -63,7 +63,7 @@ whose origin is not `User` (a webhook, a devtools re-arm) still declares itself 
 wins because it runs after the middleware default. A job or console command, which never runs
 through that middleware, always declares itself with
 [`NarrationOrigin::set()`](../../app/Services/AI/NarrationOrigin.php#L32). Either way,
-[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L503) writes the current
+[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L659) writes the current
 [`AnalysisOrigin`](../../app/Services/AI/AnalysisOrigin.php#L19) onto the job it dispatches, and the
 job restores it before generating, so the metering row records what started the call rather than
 only which narrator answered. A dispatch site that is not an authenticated web request and declares
@@ -301,16 +301,16 @@ is the one people misremember.
 | **daily cost ceiling** | **`Done`, rule-based** | no | **no — clears on the clock** |
 
 All three pauses resolve through
-[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L942), and an in-flight job reverts
+[`blockingReason()`](../../app/Services/AI/AnalysisService.php#L1008), and an in-flight job reverts
 its rows via [`haltForPausedGeneration()`](../../app/Jobs/AI/AnalyzeBaseJob.php#L193) without burning
 an attempt.
 
 **The cost ceiling is the exception in three ways.** It does not pause: a `pending` row is filled
 from the rule-based filler and marked `Done` by
-[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L996), so a capped day is not a
+[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L1062), so a capped day is not a
 day of empty blocks. A `Failed` row is explicitly excluded and stays failed, keeping its dead-letter
 visibility. And a *manual* trigger past the ceiling is refused with a 409 rather than degraded,
-because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L907) asks with the budget
+because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L973) asks with the budget
 included while auto-dispatch asks without it. Two ceilings reach that behaviour through the same
 path — the per-athlete slice and the app-wide total above it, which gates callers holding no
 athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
@@ -320,7 +320,7 @@ Three more limits:
 
 - **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L120) filters the AI kickoff commands
   and every `SelfHealer` sweep, and
-  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L858) serves a demo user's
+  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L924) serves a demo user's
   manual trigger from the filler *before* any pause check — so the public demo spends nothing while
   still feeling live. See [[demo-triggers-served-rule-based]].
 - **The backfill age gate**, [84 days](../../config/ai.php#L43). The only limit that gates automatic

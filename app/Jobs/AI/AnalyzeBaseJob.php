@@ -46,7 +46,9 @@ abstract class AnalyzeBaseJob implements ShouldQueue
 
     public function __construct(?string $generationToken = null)
     {
-        $this->generationToken = $generationToken;
+        if ($generationToken !== null) {
+            $this->generationToken = $generationToken;
+        }
         $this->onQueue(self::QUEUE);
     }
 

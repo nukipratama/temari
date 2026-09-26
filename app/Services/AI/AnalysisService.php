@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use Closure;
+use RuntimeException;
 use App\Enums\FeedbackSubject;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBaseJob;
@@ -309,7 +310,7 @@ class AnalysisService
                 'attempts' => DB::raw('attempts + 1'),
             ]);
             if ($updated !== $rows->count()) {
-                throw new \RuntimeException('Could not atomically claim every narration row');
+                throw new RuntimeException('Could not atomically claim every narration row');
             }
 
             $attemptsById = [];
@@ -320,7 +321,7 @@ class AnalysisService
             foreach ($rows as $row) {
                 $attempts = $attemptsById[$row->id] ?? null;
                 if ($attempts === null) {
-                    throw new \RuntimeException('Could not find a claimed narration row');
+                    throw new RuntimeException('Could not find a claimed narration row');
                 }
 
                 $row->forceFill([

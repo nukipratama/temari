@@ -99,7 +99,7 @@ A flagged narration row carries a **replay** button: re-narrate that exact block
 [`AnalysisOrigin::Replay`](app/Services/AI/AnalysisOrigin.php), queued through the
 ordinary job path, so the row reads Queued until the new answer lands and then shows the
 diff against what it replaced (the snapshot is automatic in
-[`markDone()`](app/Services/AI/AnalysisService.php#L280)).
+[`markDone()`](app/Services/AI/AnalysisService.php#L337)).
 
 A replay is the operator's spend, not the athlete's, so it is measured against its own
 app-wide `azure_openai.replay_daily_cap` and never against the athlete's slice —
