@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 use App\Enums\PlannedSessionStatus;
 use App\Enums\IntentVerdict;
+use App\Enums\PaceBand;
 use App\Enums\SessionType;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\Run\ReconcilePlanJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\Feedback;
 use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -19,8 +22,9 @@ use App\Services\AI\AnalysisOrigin;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanPageAssembler;
-use Illuminate\Database\Events\QueryExecuted;
+use App\Services\Run\Plan\PlanReconciliationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -373,6 +377,69 @@ it('rolls back both rows when a session swap fails after its first write', funct
 
     expect($quality->fresh()->getAttributes())->toBe($qualityBefore)
         ->and($rest->fresh()->getAttributes())->toBe($restBefore);
+});
+
+it('preserves a controller move that lands while a queued reconciliation selects rows to delete', function (): void {
+    Bus::fake();
+    $user = User::factory()->create(['last_seen_at' => Carbon::today()->subDays(8)]);
+    $source = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'prescribed_pace_sec_per_km' => 330,
+        'pinned' => false,
+    ]);
+    $destination = PlannedSession::factory()->for($user)->rest()->create([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+        'pinned' => false,
+    ]);
+    $feedback = Feedback::factory()->for($user)->onPlanDay($source->id)->create();
+    $clamped = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDays(3)->toDateString(),
+        'clamped_km' => 3.6,
+        'rest_clamped_at' => Carbon::today(),
+    ]);
+    $user->forceFill(['plan_reconciliation_pending_from' => Carbon::yesterday()])->saveQuietly();
+    $selectedForDelete = false;
+
+    DB::connection()->beforeExecuting(function (string $sql) use (&$selectedForDelete, $user, $source, $destination): void {
+        $sql = strtolower($sql);
+        if ($selectedForDelete || ! str_starts_with(trim($sql), 'delete from `planned_sessions`')) {
+            return;
+        }
+
+        $selectedForDelete = true;
+        $this->actingAs($user)
+            ->patch("/plan/sessions/{$source->id}", ['date' => $destination->date->toDateString()])
+            ->assertRedirect();
+    });
+
+    new ReconcilePlanJob($user->id)->handle(app(PlanReconciliationService::class));
+
+    $refreshedClamp = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $clamped->date->toDateString())->firstOrFail();
+    expect($selectedForDelete)->toBeTrue()
+        ->and($source->fresh()->session_type)->toBe(SessionType::Rest)
+        ->and($source->fresh()->pinned)->toBeTrue()
+        ->and($destination->fresh()->session_type)->toBe(SessionType::Tempo)
+        ->and($destination->fresh()->prescribed_hard_minutes)->toBe(20)
+        ->and($destination->fresh()->pinned)->toBeTrue()
+        ->and($feedback->fresh())->not->toBeNull()
+        ->and($refreshedClamp->clamped_km)->toBe(3.6)
+        ->and($refreshedClamp->rest_clamped_at)->not->toBeNull()
+        ->and($user->fresh()->plan_reconciliation_pending_from)->toBeNull();
+
+    $hardDates = PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->whereBetween('date', [Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(), Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString()])
+        ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval])
+        ->where('prescribed_hard_minutes', '>', 0)
+        ->orderBy('date')
+        ->pluck('date');
+
+    for ($index = 1; $index < $hardDates->count(); $index++) {
+        expect(Carbon::parse($hardDates[$index])->diffInDays(Carbon::parse($hardDates[$index - 1])))->toBeGreaterThanOrEqual(2);
+    }
 });
 
 it('clamps today\'s session against the readiness ceiling without mutating the stored row', function (): void {
