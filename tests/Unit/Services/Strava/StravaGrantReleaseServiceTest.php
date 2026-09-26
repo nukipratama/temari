@@ -8,11 +8,15 @@ use App\Models\StravaConnection;
 use App\Models\StravaGrantEvent;
 use App\Models\StravaGrantToken;
 use App\Models\User;
+use App\Services\Strava\StravaClient;
 use App\Services\Strava\StravaGrantLedger;
 use App\Services\Strava\StravaGrantReleaseService;
+use Illuminate\Contracts\Cache\Lock;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -65,6 +69,26 @@ it('retains the rotated token and error after a failed release', function (): vo
         ->and(StravaGrantToken::query()->where('strava_athlete_id', 12345)->sole()->refresh_token)->toBe('rotated-refresh')
         ->and(StravaGrantEvent::query()->where('strava_athlete_id', 12345)->orderBy('id')->get()->last()->event)
         ->toBe(StravaGrantEventType::ReleaseFailed);
+});
+
+it('returns failed without sending requests when the refresh lock is busy', function (): void {
+    Http::fake();
+    app(StravaGrantLedger::class)->recordGrant(12345, 7, 4, 'stale-refresh', StravaGrantEventType::Granted);
+    $lock = Mockery::mock(Lock::class);
+    $lock->shouldReceive('block')
+        ->once()
+        ->with(StravaClient::REFRESH_LOCK_TTL_SECONDS, Mockery::type(Closure::class))
+        ->andThrow(new LockTimeoutException());
+    Cache::shouldReceive('lock')
+        ->once()
+        ->with(StravaClient::refreshLockKey(12345), StravaClient::REFRESH_LOCK_TTL_SECONDS)
+        ->andReturn($lock);
+
+    $result = app(StravaGrantReleaseService::class)->release(12345, expectedCredentialVersion: 4);
+
+    expect($result?->status)->toBe(StravaGrantReleaseStatus::Failed)
+        ->and($result?->error)->toBe('refresh lock busy');
+    Http::assertNothingSent();
 });
 
 it('removes the token when Strava reports invalid_grant during deauthorization', function (): void {

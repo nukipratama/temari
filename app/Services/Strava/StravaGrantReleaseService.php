@@ -7,6 +7,7 @@ namespace App\Services\Strava;
 use App\Enums\StravaGrantReleaseStatus;
 use App\Models\StravaGrantToken;
 use App\Models\User;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -23,33 +24,37 @@ final readonly class StravaGrantReleaseService
         bool $forced = false,
         ?int $expectedCredentialVersion = null,
     ): ?StravaGrantReleaseResult {
-        return Cache::lock(
-            StravaClient::refreshLockKey($stravaAthleteId),
-            StravaClient::REFRESH_LOCK_TTL_SECONDS,
-        )->block(StravaClient::REFRESH_LOCK_TTL_SECONDS, function () use ($stravaAthleteId, $forced, $expectedCredentialVersion): ?StravaGrantReleaseResult {
-            $grant = $this->ledger->currentGrantTokens()
-                ->where('strava_athlete_id', $stravaAthleteId)
-                ->when($expectedCredentialVersion !== null, fn ($query) => $query->where('credential_version', $expectedCredentialVersion))
-                ->first();
+        try {
+            return Cache::lock(
+                StravaClient::refreshLockKey($stravaAthleteId),
+                StravaClient::REFRESH_LOCK_TTL_SECONDS,
+            )->block(StravaClient::REFRESH_LOCK_TTL_SECONDS, function () use ($stravaAthleteId, $forced, $expectedCredentialVersion): ?StravaGrantReleaseResult {
+                $grant = $this->ledger->currentGrantTokens()
+                    ->where('strava_athlete_id', $stravaAthleteId)
+                    ->when($expectedCredentialVersion !== null, fn ($query) => $query->where('credential_version', $expectedCredentialVersion))
+                    ->first();
 
-            if ($grant === null) {
-                return $expectedCredentialVersion === null
-                    ? null
-                    : new StravaGrantReleaseResult(StravaGrantReleaseStatus::Stale);
-            }
+                if ($grant === null) {
+                    return $expectedCredentialVersion === null
+                        ? null
+                        : new StravaGrantReleaseResult(StravaGrantReleaseStatus::Stale);
+                }
 
-            $result = $this->client->deauthorizeGrantToken($grant);
+                $result = $this->client->deauthorizeGrantToken($grant);
 
-            if ($result->status === StravaGrantReleaseStatus::Stale) {
+                if ($result->status === StravaGrantReleaseStatus::Stale) {
+                    return $result;
+                }
+
+                if (! $this->ledger->recordReleaseOutcome($grant, $result, $forced)) {
+                    return new StravaGrantReleaseResult(StravaGrantReleaseStatus::Stale);
+                }
+
                 return $result;
-            }
-
-            if (! $this->ledger->recordReleaseOutcome($grant, $result, $forced)) {
-                return new StravaGrantReleaseResult(StravaGrantReleaseStatus::Stale);
-            }
-
-            return $result;
-        });
+            });
+        } catch (LockTimeoutException) {
+            return new StravaGrantReleaseResult(StravaGrantReleaseStatus::Failed, 'refresh lock busy');
+        }
     }
 
     /** @return Collection<int, StravaGrantToken> */
