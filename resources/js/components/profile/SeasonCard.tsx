@@ -5,7 +5,6 @@ import type { SeasonSummaryWeek } from '@/lib/plan';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import LegacyCard from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 import { formatNaiveMonthDayId } from '@/lib/pace';
 import { PHASE_LABEL, phasesOf } from '@/lib/plan';
@@ -41,7 +40,7 @@ export default function SeasonCard({
     weeks,
 }: Readonly<{ season: ProfileSeason | null; weeks: SeasonSummaryWeek[] }>) {
     return (
-        <LegacyCard as="section">
+        <section>
             <Eyebrow token="micro" tone="ink-3">
                 Season
             </Eyebrow>
@@ -64,7 +63,7 @@ export default function SeasonCard({
             ) : (
                 <SeasonBody season={season} weeks={weeks} />
             )}
-        </LegacyCard>
+        </section>
     );
 }
 

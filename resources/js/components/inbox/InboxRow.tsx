@@ -157,7 +157,7 @@ export default function InboxRow({
                             {stats.map((stat) => (
                                 <span
                                     key={stat.label}
-                                    className="inline-flex items-baseline gap-1 rounded-full bg-muted px-2 py-1 font-mono text-xs font-bold tabular-nums text-foreground"
+                                    className="inline-flex items-baseline gap-1 rounded-sm bg-secondary px-2 py-1 font-mono text-xs font-bold tabular-nums text-foreground"
                                 >
                                     {stat.value}
                                     <span className="text-label-micro text-text-3">

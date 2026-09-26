@@ -130,7 +130,7 @@ export default function ProfileHero({
                     {stats.map((stat) => (
                         <div
                             key={stat.label}
-                            className="grow shrink-0 basis-[108px] min-w-fit rounded-sm bg-muted px-2.5 py-3 text-center ring-1 ring-horizon/30"
+                            className="grow shrink-0 basis-[108px] min-w-fit rounded-sm bg-secondary px-2.5 py-3 text-center"
                         >
                             <Icon
                                 icon={stat.icon}
