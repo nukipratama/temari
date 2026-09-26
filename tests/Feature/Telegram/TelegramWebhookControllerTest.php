@@ -3,7 +3,12 @@
 declare(strict_types=1);
 
 use App\Jobs\Telegram\HandleTelegramUpdateJob;
+use App\Models\TelegramUpdateReceipt;
+use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['services.telegram.webhook_secret' => 'top-secret']);
@@ -11,7 +16,8 @@ beforeEach(function (): void {
 });
 
 it('dispatches the update job and acks when the secret token matches', function (): void {
-    $update = ['message' => ['chat' => ['id' => 1], 'text' => '/start abc']];
+    $updateId = random_int(1_000_000, 900_000_000);
+    $update = ['update_id' => $updateId, 'message' => ['chat' => ['id' => 1], 'text' => '/start abc']];
 
     $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'top-secret')
         ->postJson('/telegram/webhook', $update)
@@ -22,6 +28,40 @@ it('dispatches the update job and acks when the secret token matches', function 
         HandleTelegramUpdateJob::class,
         fn (HandleTelegramUpdateJob $job): bool => $job->update === $update,
     );
+    $this->assertDatabaseHas('telegram_update_receipts', ['update_id' => $updateId]);
+});
+
+it('acks a replayed update without dispatching it again', function (): void {
+    $updateId = random_int(1_000_000, 900_000_000);
+    $update = ['update_id' => $updateId, 'message' => ['chat' => ['id' => 1], 'text' => '/start abc']];
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'top-secret')
+        ->postJson('/telegram/webhook', $update)
+        ->assertOk()
+        ->assertJson(['ok' => true]);
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'top-secret')
+        ->postJson('/telegram/webhook', $update)
+        ->assertOk()
+        ->assertJson(['ok' => true]);
+
+    Bus::assertDispatchedTimes(HandleTelegramUpdateJob::class, 1);
+    expect(TelegramUpdateReceipt::query()->count())->toBe(1);
+});
+
+it('releases the receipt when dispatch fails so Telegram can retry the update', function (): void {
+    $updateId = random_int(1_000_000, 900_000_000);
+    $this->mock(Dispatcher::class)
+        ->shouldReceive('dispatch')
+        ->once()
+        ->andThrow(new RuntimeException('queue unavailable'));
+
+    $this->withoutExceptionHandling();
+
+    expect(fn () => $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'top-secret')
+        ->postJson('/telegram/webhook', ['update_id' => $updateId, 'message' => ['text' => '/stop']]))
+        ->toThrow(RuntimeException::class, 'queue unavailable');
+
+    expect(TelegramUpdateReceipt::query()->whereKey($updateId)->exists())->toBeFalse();
 });
 
 it('rejects a request whose secret token does not match', function (): void {

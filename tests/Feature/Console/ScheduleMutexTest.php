@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Console\Commands\ScheduleHeartbeatCommand;
 use App\Jobs\Strava\RetryOrphanedStravaGrantReleasesJob;
+use App\Models\TelegramLinkTokenUse;
+use App\Models\TelegramUpdateReceipt;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 
@@ -52,6 +54,15 @@ it('schedules the failed_jobs retention prune', function (): void {
 
     expect($event)->not->toBeNull('queue:prune-failed is not scheduled')
         ->and($event->command)->toContain('--hours=168');
+});
+
+it('preserves Telegram model namespaces in the scheduled prune commands', function (): void {
+    $commands = collect(app(Schedule::class)->events())
+        ->filter(fn (Event $event): bool => str_contains((string) $event->command, 'model:prune'))
+        ->pluck('command');
+
+    expect($commands->filter(fn (string $command): bool => str_contains($command, TelegramUpdateReceipt::class)))->toHaveCount(1)
+        ->and($commands->filter(fn (string $command): bool => str_contains($command, TelegramLinkTokenUse::class)))->toHaveCount(1);
 });
 
 /**

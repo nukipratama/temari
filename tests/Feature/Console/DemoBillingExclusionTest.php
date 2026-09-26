@@ -58,6 +58,7 @@ const NON_BILLING = [
     'ai:self-heal' => 'only re-kicks Pending rows; demo rows are seeded Done, and the sweeps that could bill draw from RecentlyActiveUsers, which applies notDemo()',
     'queue:prune-failed' => 'deletes rows, touches no user',
     'analytics:prune' => 'deletes rows, touches no user',
+    'model:prune' => 'deletes expired Telegram dedupe and token-use rows, touches no user',
     'geo:backfill-locations' => 'free Nominatim lookup, no LLM and no Strava call',
     'weather:correct-forecast' => 'free Open-Meteo lookup, no LLM and no Strava call',
     'weather:backfill' => 'free Open-Meteo lookup, no LLM and no Strava call',
