@@ -76,7 +76,7 @@ The pipeline is re-runnable: detail/stream/card/PR writes are all `updateOrCreat
 - **Permanent 4xx** (404 deleted / 403 unshared) → stamp `analyzed_at` so it stops re-fetching every drain. `ingest_state` stays `summary`: we never got the detail, and saying otherwise would be a lie the read paths trust.
 - **Transient 5xx / transport** → bump `detail_fail_count`; the stub stays pending until [MAX_DETAIL_FETCH_ATTEMPTS](app/Models/Activity.php) (5), then it's stamped handled to stop the loop.
 - **429 / open circuit** are re-thrown unchanged so [IngestActivityJob](app/Jobs/Strava/IngestActivityJob.php)'s `ThrottlesExceptions` middleware re-queues with backoff (against `retryUntil`, not a fixed attempt count) — these never burn the failure budget.
-- **Auth failure** (a detail-fetch 401 or an `invalid_grant` refresh) → `markRevoked()` and return **without** touching `detail_fail_count` (a revocation isn't the activity's fault); a **transient** token-endpoint blip is re-thrown so the job retries with backoff. Mirrors [SyncActivitiesJob](app/Jobs/Strava/SyncActivitiesJob.php)'s handling so a mid-sync revocation never strands a run as a detail-less ghost.
+- **Auth failure** (a detail-fetch 401 or a refresh `400` naming the `RefreshToken`) → `markRevoked()` and return **without** touching `detail_fail_count` (a revocation isn't the activity's fault); a **transient** token-endpoint blip is re-thrown so the job retries with backoff. Mirrors [SyncActivitiesJob](app/Jobs/Strava/SyncActivitiesJob.php)'s handling so a mid-sync revocation never strands a run as a detail-less ghost.
 
 ## Downstream of the commit
 

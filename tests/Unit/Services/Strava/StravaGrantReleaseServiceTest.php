@@ -71,6 +71,36 @@ it('retains the rotated token and error after a failed release', function (): vo
         ->toBe(StravaGrantEventType::ReleaseFailed);
 });
 
+it('keeps the token when the refresh 400 blames our client credentials', function (): void {
+    Http::fake([
+        'https://www.strava.com/oauth/token' => Http::response(stravaBadRequest('Application', 'client_secret'), 400),
+    ]);
+    app(StravaGrantLedger::class)->recordGrant(12345, 7, 4, 'stale-refresh', StravaGrantEventType::Granted);
+
+    $result = app(StravaGrantReleaseService::class)->release(12345, expectedCredentialVersion: 4);
+
+    expect($result?->status)->toBe(StravaGrantReleaseStatus::Failed)
+        ->and($result?->error)->toContain('(Application client_secret)')
+        ->and(StravaGrantToken::query()->where('strava_athlete_id', 12345)->sole()->refresh_token)->toBe('stale-refresh')
+        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 12345)->orderBy('id')->get()->last()->event)
+        ->toBe(StravaGrantEventType::ReleaseFailed);
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize');
+});
+
+it('removes the token when the refresh 400 rejects the refresh token', function (): void {
+    Http::fake([
+        'https://www.strava.com/oauth/token' => Http::response(stravaBadRequest('RefreshToken', 'refresh_token'), 400),
+    ]);
+    app(StravaGrantLedger::class)->recordGrant(12345, 7, 4, 'stale-refresh', StravaGrantEventType::Granted);
+
+    $result = app(StravaGrantReleaseService::class)->release(12345, expectedCredentialVersion: 4);
+
+    expect($result?->status)->toBe(StravaGrantReleaseStatus::Rejected)
+        ->and(StravaGrantToken::query()->where('strava_athlete_id', 12345)->exists())->toBeFalse()
+        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 12345)->orderBy('id')->get()->last()->event)
+        ->toBe(StravaGrantEventType::Rejected);
+});
+
 it('returns failed without sending requests when the refresh lock is busy', function (): void {
     Http::fake();
     app(StravaGrantLedger::class)->recordGrant(12345, 7, 4, 'stale-refresh', StravaGrantEventType::Granted);

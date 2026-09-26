@@ -190,7 +190,7 @@ class ActivityPipeline
     }
 
     /**
-     * A 401, or a permanent invalid_grant on refresh, means the athlete
+     * A 401, or a permanently rejected refresh token, means the athlete
      * deauthorized Strava. detail_fail_count is deliberately left untouched —
      * a revocation is not the activity's fault and must not burn its retry
      * budget (mirrors SyncActivitiesJob).
