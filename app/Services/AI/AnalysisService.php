@@ -883,15 +883,26 @@ class AnalysisService
         }
     }
 
-    /**
-     * Send a row back to Pending without burning an attempt, used by the
-     * analyze jobs when generation is paused or a row is deferred before its
-     * narrator call.
-     */
+    /** Send a row back to Pending when a paused or stale in-flight run resumes later. */
     public function revertToPending(Analysis $row, ?string $generationToken = null): void
     {
         $generationToken ??= $row->generation_token;
-        $updatedProcessing = $this->generationQuery($row, $generationToken)
+        $attributes = [
+            'status' => AnalysisStatus::Pending,
+            'queued_at' => null,
+        ];
+        if ($this->generationQuery($row, $generationToken)
+            ->where('status', '!=', AnalysisStatus::Done)
+            ->update($attributes) === 1) {
+            $row->forceFill($attributes)->syncOriginal();
+        }
+    }
+
+    /** Refund an attempt only when speech is deferred before its narrator starts. */
+    public function revertToPendingWithoutAttempt(Analysis $row, ?string $generationToken = null): void
+    {
+        $generationToken ??= $row->generation_token;
+        $updated = $this->generationQuery($row, $generationToken)
             ->where('status', AnalysisStatus::Processing)
             ->update([
                 'status' => AnalysisStatus::Pending,
@@ -899,24 +910,12 @@ class AnalysisService
                 'attempts' => DB::raw('CASE WHEN attempts > 0 THEN attempts - 1 ELSE 0 END'),
             ]) === 1;
 
-        if ($updatedProcessing) {
+        if ($updated) {
             $row->forceFill([
                 'status' => AnalysisStatus::Pending,
                 'queued_at' => null,
                 'attempts' => max(0, $row->attempts - 1),
             ])->syncOriginal();
-
-            return;
-        }
-
-        $attributes = [
-            'status' => AnalysisStatus::Pending,
-            'queued_at' => null,
-        ];
-        if ($this->generationQuery($row, $generationToken)
-            ->whereIn('status', [AnalysisStatus::Queued, AnalysisStatus::Pending, AnalysisStatus::Failed])
-            ->update($attributes) === 1) {
-            $row->forceFill($attributes)->syncOriginal();
         }
     }
 

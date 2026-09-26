@@ -6,15 +6,16 @@ use App\Jobs\AI\AnalyzeActivityJob;
 
 /**
  * A narrator's deadline can overshoot by one Azure request. Activity groups
- * share the worker's safe window across two narrator calls, so the second must
- * fit before the worker's hard timeout.
+ * share the worker's safe window, so each call receives only the deadline that
+ * remains after reserving its request timeout.
  */
-it('fits one narrator inside the worker and bounds the multi-call activity group', function (): void {
+it('fits one narrator and the minimum speech pass inside the worker', function (): void {
     $deadline = (int) config('ai.agent.deadline_seconds');
     $requestTimeout = (int) config('azure_openai.timeout');
     $workerTimeout = (int) config('horizon.defaults.supervisor-ai.timeout');
     $safetyMargin = AnalyzeActivityJob::WORKER_TIMEOUT_SAFETY_MARGIN_SECONDS;
     $singleCallWorstCase = $deadline + $requestTimeout;
+    $minimumSpeechCall = AnalyzeActivityJob::MINIMUM_SPEECH_DEADLINE_SECONDS + $requestTimeout;
 
     expect($deadline)->toBeGreaterThan(0)
         ->and($requestTimeout)->toBeGreaterThan(0)
@@ -22,9 +23,9 @@ it('fits one narrator inside the worker and bounds the multi-call activity group
             $workerTimeout,
             "ai.agent.deadline_seconds ({$deadline}) + azure_openai.timeout ({$requestTimeout}) + the activity safety margin ({$safetyMargin}) must stay under supervisor-ai timeout ({$workerTimeout}).",
         )
-        ->and(2 * $singleCallWorstCase)->toBeGreaterThan(
-            $workerTimeout - $safetyMargin,
-            'The activity group must keep its second narrator conditional on the remaining job deadline.',
+        ->and($minimumSpeechCall + $safetyMargin)->toBeLessThan(
+            $workerTimeout,
+            'The minimum speech deadline plus its request timeout and safety margin must fit inside supervisor-ai timeout.',
         );
 })->group('structure');
 

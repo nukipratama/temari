@@ -1122,7 +1122,7 @@ it('increments attempts atomically from a stale row model', function (): void {
         ->and($fresh->attempts)->toBe(2);
 });
 
-it('refunds the attempt when a processing row returns to Pending without a narrator call', function (): void {
+it('keeps the attempt when a processing row is reset for recovery', function (): void {
     $row = Analysis::factory()->queued()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => 1,
@@ -1135,7 +1135,7 @@ it('refunds the attempt when a processing row returns to Pending without a narra
     $this->service->revertToPending($row);
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Pending)
-        ->and($row->attempts)->toBe(0);
+        ->and($row->attempts)->toBe(1);
 });
 
 it('accepts a Model instance as the subject', function (): void {
