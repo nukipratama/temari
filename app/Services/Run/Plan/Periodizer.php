@@ -232,7 +232,6 @@ final readonly class Periodizer
             if (! $reran && $this->containsNewFixedSession($inputs, $current)) {
                 $inputs = $this->gatherer->forUser($user, $inputs->today);
                 $rows = $this->rowsFor($inputs);
-                $reran = true;
                 $current = $this->sessionsInHorizon($inputs);
             }
             $currentByDate = $current->keyBy(fn (PlannedSession $session): string => $session->date->toDateString());

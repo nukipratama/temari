@@ -98,7 +98,7 @@ class PlanController extends Controller
         $today = Carbon::today();
 
         try {
-            [$session, $occupant, $touchedSessions] = $periodizer->withRegenerationLock(
+            [$session, $occupant] = $periodizer->withRegenerationLock(
                 $user,
                 fn (): array => DB::transaction(function () use ($user, $plannedSession, $attributes, $today): array {
                     $session = PlannedSession::query()
@@ -120,16 +120,14 @@ class PlanController extends Controller
                         throw ValidationException::withMessages(['date' => 'a session can only move onto a rest day.']);
                     }
 
-                    $touchedSessions = [$session];
                     if ($occupant !== null) {
-                        $touchedSessions[] = $occupant;
                         $this->swapSessions($session, $occupant);
                         unset($attributes['date']);
                     }
 
                     $session->update($attributes);
 
-                    return [$session, $occupant, $touchedSessions];
+                    return [$session, $occupant];
                 }),
                 Periodizer::REQUEST_LOCK_WAIT_SECONDS,
             );
@@ -138,6 +136,7 @@ class PlanController extends Controller
         }
 
         if ($occupant !== null || $session->wasChanged(['session_type', 'skipped', 'date'])) {
+            $touchedSessions = $occupant === null ? [$session] : [$session, $occupant];
             foreach ($touchedSessions as $touchedSession) {
                 if ($touchedSession->status->isCredited() && $narrationRequester->isWithinCurrentWeek($touchedSession->date, $today)) {
                     $narrationRequester->requestDayNarration($touchedSession->user_id, $touchedSession->date);
