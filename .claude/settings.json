@@ -1,13 +1,4 @@
 {
-  "enabledPlugins": {
-    "laravel/claude-code": true,
-    "ui-ux-pro-max@ui-ux-pro-max-skill": true
-  },
-  "extraKnownMarketplaces": {
-    "ui-ux-pro-max-skill": {
-      "source": { "source": "github", "repo": "nextlevelbuilder/ui-ux-pro-max-skill" }
-    }
-  },
   "permissions": {
     "allow": [
       "Bash(python3 *ui-ux-pro-max/scripts/search.py *)",
@@ -35,15 +26,42 @@
       "Bash(docker volume rm *)"
     ]
   },
+  "hooks": {
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/worktree-hook-create.sh"
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/worktree-hook-remove.sh"
+          }
+        ]
+      }
+    ]
+  },
   "worktree": {
     "baseRef": "head"
   },
-  "hooks": {
-    "WorktreeCreate": [
-      { "hooks": [{ "type": "command", "command": "scripts/worktree-hook-create.sh" }] }
-    ],
-    "WorktreeRemove": [
-      { "hooks": [{ "type": "command", "command": "scripts/worktree-hook-remove.sh" }] }
-    ]
+  "enabledPlugins": {
+    "laravel/claude-code": true,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true
+  },
+  "extraKnownMarketplaces": {
+    "ui-ux-pro-max-skill": {
+      "source": {
+        "source": "github",
+        "repo": "nextlevelbuilder/ui-ux-pro-max-skill"
+      },
+      "autoUpdate": true
+    }
   }
 }
