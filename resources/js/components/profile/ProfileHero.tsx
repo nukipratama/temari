@@ -23,9 +23,9 @@ export interface HeroStat {
 /**
  * "What Temari says about you": Temari posed to today's vibe, her read on
  * the athlete, where their training time went, and the lifetime numbers
- * behind it. A card-toned
- * panel with a horizon halo, as the prototype draws it — not one of the app's
- * sky-gradient heroes.
+ * behind it. A card-toned panel with a horizon halo, as the prototype draws
+ * it — not one of the app's sky-gradient heroes. The thin inset lime ring
+ * marks it as Temari's read, not a bordered card.
  */
 export default function ProfileHero({
     mood,
@@ -47,7 +47,7 @@ export default function ProfileHero({
     const statRail = useScrollFade<HTMLDivElement>();
 
     return (
-        <section className="relative isolate overflow-hidden rounded-panel border-2 border-border-strong bg-card p-5 shadow-e1 ring-[1.5px] ring-horizon/45">
+        <section className="relative isolate overflow-hidden rounded-panel bg-card p-5 ring-1 ring-inset ring-horizon/35">
             <span
                 aria-hidden
                 className="pointer-events-none absolute -right-14 -top-14 size-[220px] rounded-full"

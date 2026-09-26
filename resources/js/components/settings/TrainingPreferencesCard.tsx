@@ -20,7 +20,6 @@ import { Icon, IconComponent } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { useExitTransition } from '@/hooks/useExitTransition';
-import { cardVariants } from '@/lib/variants';
 
 const SAVED_FLASH_MS = 2000;
 const NOTICE_EXIT_MS = 320;
@@ -195,7 +194,7 @@ export default function TrainingPreferencesCard({
     };
 
     return (
-        <div className={cardVariants()}>
+        <div>
             <SectionLabel size="micro">Training preferences</SectionLabel>
             <p className="mb-4 font-sans text-xs leading-relaxed text-text-2">
                 set at onboarding, change them any time.

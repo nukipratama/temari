@@ -121,7 +121,7 @@ export default function Inbox({
                                                 >
                                                     {BUCKET_LABEL[bucket]}
                                                 </Eyebrow>
-                                                <div className="flex flex-col gap-2.5">
+                                                <div className="flex flex-col divide-y divide-border">
                                                     {items.map((item) => (
                                                         <div
                                                             key={item.id}

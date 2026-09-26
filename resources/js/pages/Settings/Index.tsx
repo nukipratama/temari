@@ -36,7 +36,6 @@ import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
-import { cardVariants } from '@/lib/variants';
 
 import {
     useNotificationPrefs,
@@ -130,46 +129,46 @@ export default function Settings({
                     </PageHero>
                 </header>
 
-                <section>
-                    <SectionLabel>Appearance</SectionLabel>
-                    <div className="mt-3">
-                        <AppearanceCard />
-                    </div>
-                </section>
+                <div className="flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
+                    <section>
+                        <SectionLabel>Appearance</SectionLabel>
+                        <div className="mt-3">
+                            <AppearanceCard />
+                        </div>
+                    </section>
 
-                {/* One notification section, not three. The user holds a single
-                    model with two questions — what gets sent, and where it goes —
-                    and splitting those across "Notifications", "Push" and
-                    "Telegram" made them look unrelated. */}
-                <section className="mt-10">
-                    <SectionLabel>Notifications</SectionLabel>
-                    <div className={cn('mt-3', cardVariants())}>
-                        <NotificationPrefsPanel
-                            prefs={notificationPrefs}
-                            telegram={telegram}
-                            testCooldownSeconds={testCooldownSeconds}
-                        />
-                    </div>
-                </section>
+                    {/* One notification section, not three. The user holds a single
+                        model with two questions — what gets sent, and where it goes —
+                        and splitting those across "Notifications", "Push" and
+                        "Telegram" made them look unrelated. */}
+                    <section>
+                        <SectionLabel>Notifications</SectionLabel>
+                        <div className="mt-3">
+                            <NotificationPrefsPanel
+                                prefs={notificationPrefs}
+                                telegram={telegram}
+                                testCooldownSeconds={testCooldownSeconds}
+                            />
+                        </div>
+                    </section>
 
-                <section className="mt-10">
-                    <SectionLabel>Running</SectionLabel>
-                    {/* Preferences before the zones disclosure, as the
-                        prototype orders them: the open card first, the
-                        collapsed one under it. */}
-                    <div className="mt-3 flex flex-col gap-3">
-                        <TrainingPreferencesCard
-                            trainingPreferences={trainingPreferences}
-                        />
-                        <HrZonesDisclosure hrZones={hrZones} />
-                    </div>
-                </section>
+                    <section>
+                        <SectionLabel>Running</SectionLabel>
+                        {/* Preferences before the zones disclosure, as the
+                            prototype orders them: the open card first, the
+                            collapsed one under it. */}
+                        <div className="mt-3 flex flex-col divide-y divide-dashed divide-border [&>*]:py-4 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
+                            <TrainingPreferencesCard
+                                trainingPreferences={trainingPreferences}
+                            />
+                            <HrZonesDisclosure hrZones={hrZones} />
+                        </div>
+                    </section>
 
-                {dataUse ? (
-                    <section className="mt-10">
-                        <SectionLabel>{dataUse.headline}</SectionLabel>
-                        <div className={cn('mt-3', cardVariants())}>
-                            <ul className="flex list-disc flex-col gap-1.5 pl-4.5">
+                    {dataUse ? (
+                        <section>
+                            <SectionLabel>{dataUse.headline}</SectionLabel>
+                            <ul className="mt-3 flex list-disc flex-col gap-1.5 pl-4.5">
                                 {dataUse.points.map((point) => (
                                     <li
                                         key={point}
@@ -179,46 +178,40 @@ export default function Settings({
                                     </li>
                                 ))}
                             </ul>
+                        </section>
+                    ) : null}
+
+                    <section>
+                        <SectionLabel>The fine print</SectionLabel>
+                        <div className="mt-3">
+                            {LEGAL_ROWS.map((row, index) => (
+                                <Link
+                                    key={row.href}
+                                    href={row.href}
+                                    className={cn(
+                                        'focus-ring flex items-center justify-between gap-2 py-3.5 font-sans text-[0.8125rem] font-semibold text-foreground transition hover:text-horizon-ink',
+                                        index !== LEGAL_ROWS.length - 1 &&
+                                            'border-b border-dashed border-border',
+                                    )}
+                                >
+                                    {row.label}
+                                    <Icon
+                                        icon={ChevronRight}
+                                        width={16}
+                                        height={16}
+                                        className="shrink-0 text-text-3"
+                                        aria-hidden
+                                    />
+                                </Link>
+                            ))}
                         </div>
                     </section>
-                ) : null}
 
-                <section className="mt-10">
-                    <SectionLabel>The fine print</SectionLabel>
-                    <div
-                        className={cn(
-                            'mt-3',
-                            cardVariants({ padding: 'none' }),
-                            'px-4',
-                        )}
-                    >
-                        {LEGAL_ROWS.map((row, index) => (
-                            <Link
-                                key={row.href}
-                                href={row.href}
-                                className={cn(
-                                    'focus-ring flex items-center justify-between gap-2 py-3.5 font-sans text-[0.8125rem] font-semibold text-foreground transition hover:text-horizon-ink',
-                                    index !== LEGAL_ROWS.length - 1 &&
-                                        'border-b border-border-strong',
-                                )}
-                            >
-                                {row.label}
-                                <Icon
-                                    icon={ChevronRight}
-                                    width={16}
-                                    height={16}
-                                    className="shrink-0 text-text-3"
-                                    aria-hidden
-                                />
-                            </Link>
-                        ))}
-                    </div>
-                </section>
-
-                <section className="mt-10">
-                    <SectionLabel>Account</SectionLabel>
-                    <AccountActions />
-                </section>
+                    <section>
+                        <SectionLabel>Account</SectionLabel>
+                        <AccountActions />
+                    </section>
+                </div>
             </PageContainer>
         </>
     );
