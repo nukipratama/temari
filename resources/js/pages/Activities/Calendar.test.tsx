@@ -46,6 +46,7 @@ function cellsFor(
         mood: null,
         rarity: null,
         activity_id: null,
+        effort: null,
         ...r,
     }));
 }

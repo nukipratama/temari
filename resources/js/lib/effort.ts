@@ -22,3 +22,16 @@ export const EFFORT_STRIPE_CLASS: Record<Effort, string> = {
     rest: 'border-l-[3px] border-dashed border-border',
     unknown: 'border-l-[3px] border-solid border-border',
 };
+
+/**
+ * The same effort colors as {@link EFFORT_STRIPE_CLASS}, moved to the bottom
+ * edge for the calendar day cell, which already spends its leading edge on
+ * the today/current-month treatment.
+ */
+export const EFFORT_EDGE_CLASS: Record<Effort, string> = {
+    easy: 'border-b-[3px] border-solid border-leaf',
+    steady: 'border-b-[3px] border-solid border-citrus',
+    hard: 'border-b-[3px] border-solid border-ember',
+    rest: 'border-b-[3px] border-dashed border-border',
+    unknown: 'border-b-[3px] border-solid border-border',
+};
