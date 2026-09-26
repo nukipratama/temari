@@ -298,6 +298,8 @@ it('carries the viewed run\'s effort on the past-you match', function (): void {
         'moving_time' => 3_600,
         'elapsed_time' => 3_600,
         'start_date_local' => Carbon::today(),
+        'total_elevation_gain' => 20,
+        'weather_temp_c' => 25,
     ]);
     $past = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($past)->create([
@@ -305,6 +307,8 @@ it('carries the viewed run\'s effort on the past-you match', function (): void {
         'moving_time' => 3_600,
         'elapsed_time' => 3_600,
         'start_date_local' => Carbon::today()->subDays(30),
+        'total_elevation_gain' => 20,
+        'weather_temp_c' => 25,
     ]);
     PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
