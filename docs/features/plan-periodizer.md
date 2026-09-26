@@ -51,6 +51,9 @@ code_refs:
   - app/Jobs/AI/AnalyzePlanDayVoiceJob.php
   - resources/js/components/plan/PhaseRibbon.tsx
   - app/Jobs/AI/AnalyzePlanSeasonVoiceJob.php
+  - app/Jobs/Run/RecalibrateTrainingHistoryJob.php
+  - app/Console/Commands/Run/RecalibrateTrainingHistoryCommand.php
+  - app/Services/Run/Plan/PlanRecalibrationService.php
   - resources/js/pages/Plan.tsx
   - resources/js/components/plan/DayDetail.tsx
   - resources/js/components/plan/WeekView.tsx
@@ -112,6 +115,8 @@ Pin, block (`session_type = rest`) and delete were **cut** by the prototype-pari
 Each regeneration deletes every unpinned, still-`planned` row across the *full* 12-week horizon before writing (not just the freshly-computed weeks), so a shrinking horizon — e.g. switching from self-scaled to a near-term race — cleans up stale far-future rows from the old mode rather than leaving orphans. A row that already carries a verdict is exempt and is not rewritten either: since [[a-day-is-scored-when-it-is-run]] compliance is persisted at ingest, so a regeneration triggered later the same day would otherwise delete the score today's run had already earned. Two things hang off a deleted row and [Periodizer::persist()](app/Services/Run/Plan/Periodizer.php) carries them across the delete rather than losing them: today's readiness clamp (`clamped_km`/`rest_clamped_at`, stamped by [RestClampRecorder](app/Services/Run/Plan/RestClampRecorder.php)) is copied onto the row that replaces it — [[the-eased-session-leads]] only holds if the clamp survives a same-day regenerate — and every `plan_day` [Feedback](app/Models/Feedback.php) row filed against a deleted id is deleted with it, so `/devtools/feedback` never lists a flag against a day nothing enforces anymore.
 
 The exception is an explicit training-history recalibration. [PlanRecalibrationService](app/Services/Run/Plan/PlanRecalibrationService.php) recomputes stored stream summaries with current HR zones, rebuilds weekly aggregates, regrades past plan rows chronologically and regenerates the future plan. A unique per-user job runs after a profile or synced-zone change; `plan:recalibrate-history` provides the foreground rollout path with `--user` and `--dry-run`, and excludes the demo account. The Plan tab keeps the last coherent plan visible behind a quiet pending notice. Old plan-day narration remains visible but is marked stale until the athlete explicitly asks for a reread; recalibration itself spends no LLM tokens. See [[plan-recalibration-rewrites-history]].
+
+The foreground command has no worker timeout and uses a 3600-second lease for both per-user locks. If it is interrupted before those locks are released, force-release them in Tinker before plan edits and recalibrations can resume: `Cache::lock("plan-reconciliation:{id}")->forceRelease()` and `Cache::lock("training-recalibration:{id}")->forceRelease()`, replacing `{id}` with the affected user's id.
 
 The queued recalibration job has a 120-second timeout and a 150-second per-user lock. A benchmark of 1,008 activities completed in 34.66 seconds with 56 MB peak memory; linear extrapolation gives a rough 3,500-activity envelope before overhead, not a supported hard limit. The job retries until its ten-minute deadline; lock-contention releases do not spend the three-exception limit. With Redis `retry_after` set to 420 seconds, a job that repeatedly times out gets about two executions before that deadline. The run remains one atomic transaction, so an oversized history can still fail without progress. [[plan-recalibration-job-horizon]] records the timeout and runtime estimate, while [[plan-recalibration-retry-window]] records the retry window; [issue #1249](https://github.com/nukipratama/temari/issues/1249) tracks the durable follow-up.
 
