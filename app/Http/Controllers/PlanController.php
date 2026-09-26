@@ -100,39 +100,37 @@ class PlanController extends Controller
         try {
             [$session, $occupant, $touchedSessions] = $periodizer->withRegenerationLock(
                 $user,
-                function () use ($user, $plannedSession, $attributes, $today): array {
-                    return DB::transaction(function () use ($user, $plannedSession, $attributes, $today): array {
-                        $session = PlannedSession::query()
-                            ->where('user_id', $user->id)
-                            ->whereDate('date', $plannedSession->date->toDateString())
-                            ->lockForUpdate()
-                            ->first();
+                fn (): array => DB::transaction(function () use ($user, $plannedSession, $attributes, $today): array {
+                    $session = PlannedSession::query()
+                        ->where('user_id', $user->id)
+                        ->whereDate('date', $plannedSession->date->toDateString())
+                        ->lockForUpdate()
+                        ->first();
 
-                        if ($session === null || $session->id !== $plannedSession->id) {
-                            abort(409, 'This plan changed while you were editing. Reload and try again.');
-                        }
+                    if ($session === null || $session->id !== $plannedSession->id) {
+                        abort(409, 'This plan changed while you were editing. Reload and try again.');
+                    }
 
-                        if (isset($attributes['date']) && ! $session->date->isAfter($today)) {
-                            throw ValidationException::withMessages(['date' => 'only a day still ahead can be moved.']);
-                        }
+                    if (isset($attributes['date']) && ! $session->date->isAfter($today)) {
+                        throw ValidationException::withMessages(['date' => 'only a day still ahead can be moved.']);
+                    }
 
-                        $occupant = $this->occupantOfMoveTarget($session, $attributes['date'] ?? null);
-                        if ($occupant !== null && $occupant->session_type !== SessionType::Rest) {
-                            throw ValidationException::withMessages(['date' => 'a session can only move onto a rest day.']);
-                        }
+                    $occupant = $this->occupantOfMoveTarget($session, $attributes['date'] ?? null);
+                    if ($occupant !== null && $occupant->session_type !== SessionType::Rest) {
+                        throw ValidationException::withMessages(['date' => 'a session can only move onto a rest day.']);
+                    }
 
-                        $touchedSessions = [$session];
-                        if ($occupant !== null) {
-                            $touchedSessions[] = $occupant;
-                            $this->swapSessions($session, $occupant);
-                            unset($attributes['date']);
-                        }
+                    $touchedSessions = [$session];
+                    if ($occupant !== null) {
+                        $touchedSessions[] = $occupant;
+                        $this->swapSessions($session, $occupant);
+                        unset($attributes['date']);
+                    }
 
-                        $session->update($attributes);
+                    $session->update($attributes);
 
-                        return [$session, $occupant, $touchedSessions];
-                    });
-                },
+                    return [$session, $occupant, $touchedSessions];
+                }),
                 Periodizer::REQUEST_LOCK_WAIT_SECONDS,
             );
         } catch (LockTimeoutException) {
