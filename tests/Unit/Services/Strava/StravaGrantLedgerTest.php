@@ -86,7 +86,51 @@ it('keeps refreshed connection credentials when the grant mirror has advanced', 
         ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->sole()->refresh_token)
         ->toBe('newer-refresh');
 
-    Log::shouldHaveReceived('warning')->once();
+    Log::shouldHaveReceived('warning')->once()->with(
+        'Skipped mirroring a stale Strava refresh because a newer grant exists.',
+        [
+            'connection_id' => $connection->getKey(),
+            'connection_credential_version' => 3,
+            'grant_credential_version' => 4,
+        ],
+    );
+});
+
+it('distinguishes a grant mirror behind the connection when skipping a refresh', function (): void {
+    Log::spy();
+
+    $user = User::factory()->create();
+    $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 4]);
+    $ledger = app(StravaGrantLedger::class);
+    $ledger->recordGrant(
+        $connection->strava_athlete_id,
+        $user->id,
+        3,
+        'older-refresh',
+        StravaGrantEventType::Granted,
+    );
+
+    expect($ledger->persistConnectionRefresh(
+        $connection,
+        4,
+        'fresh-access',
+        'fresh-refresh',
+        Carbon::now()->addHours(6),
+    ))->toBeTrue();
+
+    expect($connection->fresh()->access_token)->toBe('fresh-access')
+        ->and($connection->fresh()->refresh_token)->toBe('fresh-refresh')
+        ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->sole()->refresh_token)
+        ->toBe('older-refresh');
+
+    Log::shouldHaveReceived('warning')->once()->with(
+        'Skipped mirroring a Strava refresh because the grant mirror is behind the connection.',
+        [
+            'connection_id' => $connection->getKey(),
+            'connection_credential_version' => 4,
+            'grant_credential_version' => 3,
+        ],
+    );
 });
 
 it('does not record an old release outcome over a newer OAuth grant', function (): void {

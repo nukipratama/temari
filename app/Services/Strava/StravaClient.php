@@ -348,9 +348,7 @@ class StravaClient
         }
 
         if ($response->failed()) {
-            $invalidGrant = $response->json('error') === 'invalid_grant'
-                || strtolower((string) $response->json('message')) === 'bad refresh token';
-            $rejected = ($response->status() === 400 && $invalidGrant)
+            $rejected = $response->status() === 400
                 || ($release && $response->status() === 401);
 
             if ($rejected) {

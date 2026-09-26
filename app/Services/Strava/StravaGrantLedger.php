@@ -122,7 +122,11 @@ final class StravaGrantLedger
             }
 
             if ($grant->credential_version !== $credentialVersion) {
-                Log::warning('Skipped mirroring a Strava refresh because the grant version changed.', [
+                $message = $grant->credential_version > $credentialVersion
+                    ? 'Skipped mirroring a stale Strava refresh because a newer grant exists.'
+                    : 'Skipped mirroring a Strava refresh because the grant mirror is behind the connection.';
+
+                Log::warning($message, [
                     'connection_id' => $connection->getKey(),
                     'connection_credential_version' => $credentialVersion,
                     'grant_credential_version' => $grant->credential_version,
