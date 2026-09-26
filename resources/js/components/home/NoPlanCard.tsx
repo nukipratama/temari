@@ -5,7 +5,6 @@ import type { WeeklySnapshot } from '@/types/inertia';
 
 import TemariMascot from '@/components/temari/TemariMascot';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 
 /**
  * The prototype's `planState: 'empty'` branch — what Today leads with before
@@ -20,7 +19,7 @@ export default function NoPlanCard({
     const trimp = snapshot?.weekly_trimp ?? null;
 
     return (
-        <Card as="section">
+        <section>
             <div className="flex items-start gap-2.5">
                 <TemariMascot size={40} />
                 <div>
@@ -48,6 +47,6 @@ export default function NoPlanCard({
                 this week · {km === null ? '—' : km.toFixed(1)} km ·{' '}
                 {trimp === null ? '—' : Math.round(trimp)} trimp
             </p>
-        </Card>
+        </section>
     );
 }

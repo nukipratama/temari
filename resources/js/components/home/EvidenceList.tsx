@@ -31,13 +31,13 @@ export default function EvidenceList({
     }
 
     return (
-        <ul className="mt-3 flex flex-col gap-px overflow-hidden rounded-md border border-border bg-border shadow-e1">
+        <ul className="mt-3 flex flex-col divide-y divide-border">
             {rows.map((row) => (
                 <li key={row.activityId}>
                     <Link
                         href={activityUrl({ activity_id: row.activityId })}
                         aria-label={ariaLabel(row)}
-                        className="focus-ring block bg-card px-3.5 py-2.5 transition-colors hover:bg-accent"
+                        className="focus-ring block py-2.5 transition-colors hover:bg-muted"
                     >
                         <span className="font-sans text-[0.65625rem] text-foreground">
                             {row.label}

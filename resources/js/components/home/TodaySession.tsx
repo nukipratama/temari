@@ -9,7 +9,7 @@ import MascotWatermark from '@/components/temari/MascotWatermark';
 import { writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
+import { cn } from '@/lib/cn';
 import {
     clampSummary,
     easedFromDelta,
@@ -60,7 +60,7 @@ function SessionVoice({
 
     return (
         <>
-            <p className="narration font-semibold">
+            <p className="font-serif text-headline-sm text-foreground italic">
                 {renderNarration(stripEdgeQuotes(lead), drawnAnchors)}
             </p>
             {body !== '' && (
@@ -88,23 +88,29 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
     const paceDelta = day.pace_eased_from
         ? paceEaseDelta(day.pace_eased_from, day)
         : null;
+    const heroKm = day.session_type !== 'rest' && judged === null;
     const parts = [SESSION_TYPE_LABEL[day.session_type] ?? day.session_type];
-    if (day.session_type !== 'rest' && judged === null) {
-        parts.push(`${day.distance_km} km`);
-        if (pace !== null) {
-            parts.push(pace);
-        }
+    if (heroKm && pace !== null) {
+        parts.push(pace);
     }
     const shape = judged === null ? sessionShape(day.segments) : null;
     const purpose = judged === null ? sessionPurpose(day) : null;
     const doseWhy = judged === null ? prescriptionWhy(day) : null;
 
     return (
-        <div
-            id="anchor-session-today"
-            className="mt-2 rounded-lg bg-muted/40 px-3 py-2.5"
-        >
-            <p className="text-sm font-semibold text-foreground">
+        <div id="anchor-session-today" className="mt-2">
+            {heroKm && (
+                <p className="flex items-baseline gap-1.5">
+                    <span className="text-stat">{day.distance_km}</span>
+                    <span className="text-meta">km</span>
+                </p>
+            )}
+            <p
+                className={cn(
+                    'text-sm font-semibold text-foreground',
+                    heroKm && 'mt-1',
+                )}
+            >
                 {parts.join(' · ')}
             </p>
             {shape && (
@@ -217,10 +223,7 @@ export default function TodaySession({
             !(voice.status === 'done' && voice.content === null));
 
     return (
-        <Card
-            as="section"
-            className="relative isolate overflow-hidden border-today-accent"
-        >
+        <section className="relative isolate overflow-hidden">
             <MascotWatermark
                 pose={writingPose(briefing.mood, voice)}
                 className="-top-18 -right-14"
@@ -246,6 +249,6 @@ export default function TodaySession({
                     />
                 </div>
             )}
-        </Card>
+        </section>
     );
 }
