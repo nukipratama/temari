@@ -86,3 +86,51 @@ it('treats a synced or hand-set source as the athlete stating their own zones', 
     'observed is the reconciler talking to itself' => ['observed', false],
     'default is nobody talking' => ['default', false],
 ]);
+
+function stravaSyncedZones(): array
+{
+    return [
+        'Z1' => ['lo' => 100, 'hi' => 125],
+        'Z2' => ['lo' => 125, 'hi' => 145],
+        'Z3' => ['lo' => 145, 'hi' => 165],
+        'Z4' => ['lo' => 165, 'hi' => 180],
+        'Z5' => ['lo' => 180, 'hi' => 999],
+    ];
+}
+
+it('writes changed Strava zones as a strava-sourced profile', function (): void {
+    $user = User::factory()->create();
+
+    expect(RunnerProfile::applyStravaZones($user->id, stravaSyncedZones()))->toBeTrue();
+
+    $profile = RunnerProfile::query()->where('user_id', $user->id)->sole();
+    expect($profile->source)->toBe('strava')
+        ->and($profile->hr_zones)->toEqual(stravaSyncedZones())
+        ->and($profile->strava_zones_synced_at)->not->toBeNull();
+});
+
+it('keeps a manual profile unless the sync is forced', function (bool $force, string $source): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['source' => 'manual']);
+
+    expect(RunnerProfile::applyStravaZones($user->id, stravaSyncedZones(), $force))->toBe($force)
+        ->and(RunnerProfile::query()->where('user_id', $user->id)->value('source'))->toBe($source);
+})->with([
+    'scheduled' => [false, 'manual'],
+    'forced' => [true, 'strava'],
+]);
+
+it('reports no change when the zones already match', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['source' => 'strava', 'hr_zones' => stravaSyncedZones()]);
+    $other = User::factory()->create();
+
+    expect(RunnerProfile::applyStravaZones($user->id, stravaSyncedZones()))->toBeFalse()
+        ->and(RunnerProfile::applyStravaZones($other->id, config('runner.hr_zones')))->toBeFalse()
+        ->and(RunnerProfile::query()->where('user_id', $other->id)->exists())->toBeFalse();
+});
+
+it('does not create a profile for a deleted user', function (): void {
+    expect(RunnerProfile::applyStravaZones(999_999, stravaSyncedZones()))->toBeFalse()
+        ->and(RunnerProfile::query()->where('user_id', 999_999)->exists())->toBeFalse();
+});

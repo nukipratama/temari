@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Jobs\Strava\SyncZonesJob;
 use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
@@ -10,6 +11,7 @@ use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\ZoneFetcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Laravel\Pulse\Facades\Pulse;
 
 uses(RefreshDatabase::class);
@@ -152,3 +154,92 @@ it('ignores a stale refresh failure after credentials change during the zone fet
 
     expect($connection->fresh()->isRevoked())->toBeFalse();
 });
+
+it('keeps a manual save that lands during the Strava fetch', function (bool $hadProfile): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    if ($hadProfile) {
+        RunnerProfile::factory()->for($user)->create(['source' => 'strava']);
+    }
+    $manualZones = config('runner.hr_zones');
+    $manualZones['Z5'] = ['lo' => 181, 'hi' => 999];
+
+    $fetcher = Mockery::mock(ZoneFetcher::class);
+    $fetcher->shouldReceive('fetch')->once()->andReturnUsing(function () use ($user, $manualZones): array {
+        RunnerProfile::query()->updateOrCreate(
+            ['user_id' => $user->id],
+            ['source' => 'manual', 'hr_zones' => $manualZones, 'max_hr' => 190, 'resting_hr' => 50],
+        );
+
+        return [
+            'Z1' => ['lo' => 100, 'hi' => 125],
+            'Z2' => ['lo' => 125, 'hi' => 145],
+            'Z3' => ['lo' => 145, 'hi' => 165],
+            'Z4' => ['lo' => 165, 'hi' => 180],
+            'Z5' => ['lo' => 180, 'hi' => 999],
+        ];
+    });
+
+    new SyncZonesJob($user->id)->handle($fetcher);
+
+    $profile = RunnerProfile::query()->where('user_id', $user->id)->sole();
+    expect($profile->source)->toBe('manual')
+        ->and($profile->hr_zones)->toEqual($manualZones);
+    Bus::assertNotDispatched(RecalibrateTrainingHistoryJob::class);
+})->with([
+    'existing profile' => [true],
+    'first profile' => [false],
+]);
+
+it('does not recreate a profile when the user is deleted during the Strava fetch', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $fetcher = Mockery::mock(ZoneFetcher::class);
+    $fetcher->shouldReceive('fetch')->once()->andReturnUsing(function () use ($user): array {
+        $user->delete();
+
+        return [
+            'Z1' => ['lo' => 100, 'hi' => 125],
+            'Z2' => ['lo' => 125, 'hi' => 145],
+            'Z3' => ['lo' => 145, 'hi' => 165],
+            'Z4' => ['lo' => 165, 'hi' => 180],
+            'Z5' => ['lo' => 180, 'hi' => 999],
+        ];
+    });
+
+    new SyncZonesJob($user->id)->handle($fetcher);
+
+    expect(RunnerProfile::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+it('requests recalibration only when the zones changed', function (bool $changed): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    $stored = [
+        'Z1' => ['lo' => 100, 'hi' => 125],
+        'Z2' => ['lo' => 125, 'hi' => 145],
+        'Z3' => ['lo' => 145, 'hi' => 165],
+        'Z4' => ['lo' => 165, 'hi' => 180],
+        'Z5' => ['lo' => 180, 'hi' => 999],
+    ];
+    RunnerProfile::factory()->for($user)->create(['source' => 'strava', 'hr_zones' => $stored]);
+    $fetched = $stored;
+    if ($changed) {
+        $fetched['Z5'] = ['lo' => 182, 'hi' => 999];
+    }
+
+    $fetcher = Mockery::mock(ZoneFetcher::class);
+    $fetcher->shouldReceive('fetch')->once()->andReturn($fetched);
+
+    new SyncZonesJob($user->id)->handle($fetcher);
+
+    $changed
+        ? Bus::assertDispatched(RecalibrateTrainingHistoryJob::class)
+        : Bus::assertNotDispatched(RecalibrateTrainingHistoryJob::class);
+})->with([
+    'changed' => [true],
+    'unchanged' => [false],
+]);

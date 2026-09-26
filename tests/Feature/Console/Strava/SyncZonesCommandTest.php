@@ -148,3 +148,35 @@ it('keeps syncing other users and still succeeds when one connection throws', fu
 
     $this->artisan('strava:sync-zones')->assertSuccessful();
 });
+
+it('keeps a manual save that lands during the Strava fetch', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all,profile:read_all']);
+    $manualZones = config('runner.hr_zones');
+    $manualZones['Z5'] = ['lo' => 181, 'hi' => 999];
+
+    $fetcher = Mockery::mock(ZoneFetcher::class);
+    $fetcher->shouldReceive('fetch')->once()->andReturnUsing(function () use ($user, $manualZones): array {
+        RunnerProfile::query()->updateOrCreate(
+            ['user_id' => $user->id],
+            ['source' => 'manual', 'hr_zones' => $manualZones, 'max_hr' => 190, 'resting_hr' => 50],
+        );
+
+        return [
+            'Z1' => ['lo' => 100, 'hi' => 125],
+            'Z2' => ['lo' => 125, 'hi' => 145],
+            'Z3' => ['lo' => 145, 'hi' => 165],
+            'Z4' => ['lo' => 165, 'hi' => 180],
+            'Z5' => ['lo' => 180, 'hi' => 999],
+        ];
+    });
+    $this->app->instance(ZoneFetcher::class, $fetcher);
+
+    $this->artisan('strava:sync-zones')
+        ->expectsOutputToContain('zones unchanged or set manually, skipped')
+        ->assertSuccessful();
+
+    $profile = RunnerProfile::query()->where('user_id', $user->id)->sole();
+    expect($profile->source)->toBe('manual')
+        ->and($profile->hr_zones)->toEqual($manualZones);
+});
