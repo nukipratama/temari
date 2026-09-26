@@ -9,6 +9,7 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
+use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\InboxMessage;
@@ -76,6 +77,10 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
 
     public function shouldSend(User $notifiable, string $channel): bool
     {
+        if ($channel === InAppChannel::class) {
+            return true;
+        }
+
         $currentUser = $notifiable->fresh();
 
         return $currentUser !== null && in_array($channel, $this->via($currentUser), true);

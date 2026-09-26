@@ -6,6 +6,7 @@ namespace App\Notifications;
 
 use App\Enums\NotificationKind;
 use App\Models\User;
+use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
@@ -55,6 +56,10 @@ class StreakReminderNotification extends Notification implements ShouldQueue
 
     public function shouldSend(User $notifiable, string $channel): bool
     {
+        if ($channel === InAppChannel::class) {
+            return true;
+        }
+
         $currentUser = $notifiable->fresh();
 
         return $currentUser !== null && in_array($channel, $this->via($currentUser), true);
