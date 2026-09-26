@@ -126,6 +126,8 @@ sheets and modals.
 
 - One `horizon` CTA per view at most. Secondary actions are ghost or outline.
 - Connect buttons (Strava, Telegram) use the standard pill; the vendor logo stays as the icon.
+- Login's connect is the page's one `horizon` CTA; every in-app Strava reconnect
+  (zone banner, profile chip, sync button, demo modal) stays `outline`.
 - Every tappable carries `.pressable`.
 
 ### Lists
@@ -146,6 +148,7 @@ Popovers, sheets and modals keep `surface-elev` + `shadow-e2`…`e4`
 - Whitespace and dashed lanes do the structuring; boxes are the exception.
 - Lime is scarce: the CTA, the active nav item, "earned" states, the today marker,
   and the ring around Temari's read on Profile only.
+- The Login hero's sky→horizon glow is the one sanctioned atmospheric.
 - The share card art is exempt from these rules (see the card-art exemption in design-tokens.md).
 
 ### Page Pattern

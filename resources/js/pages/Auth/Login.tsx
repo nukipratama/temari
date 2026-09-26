@@ -14,10 +14,10 @@ import { Suspense, useId, useState } from 'react';
 import type { SharedProps } from '@/types/inertia';
 
 import BrandMark from '@/components/BrandMark';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent, StravaIcon } from '@/components/ui/Icon';
+import PillButton from '@/components/ui/PillButton';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
@@ -208,9 +208,8 @@ interface ConnectPanelProps {
 }
 
 /**
- * The one place the Strava brand mark appears. Neutral ground on purpose: the
- * surrounding gold and sky accents stay off the panel so the mark keeps the
- * breathing room Strava's brand guidelines require.
+ * A dashed lane below the hero, not a raised panel: this is where a stranger
+ * reads the ask and decides. The one place the Strava brand mark appears.
  */
 function ConnectPanel({
     authStravaUrl,
@@ -219,7 +218,7 @@ function ConnectPanel({
     demoPending,
 }: Readonly<ConnectPanelProps>) {
     return (
-        <Card className="relative z-5 mx-3.5 -mt-4.5 gap-0 bg-muted px-4.5 pt-5 pb-4.5 text-foreground shadow-e3 ring-0 min-[900px]:mx-auto min-[900px]:-mt-7.5 min-[900px]:max-w-[440px]">
+        <section className="border-t border-dashed border-border px-4.5 py-6.5 text-foreground min-[900px]:mx-auto min-[900px]:max-w-column min-[1280px]:max-w-column-wide min-[900px]:px-6 min-[900px]:py-9">
             <div className="text-label-micro text-foreground">
                 start with your history
             </div>
@@ -230,7 +229,7 @@ function ConnectPanel({
             <a
                 href={authStravaUrl}
                 className={cn(
-                    pillButtonVariants({ tone: 'outline', size: 'md' }),
+                    pillButtonVariants({ tone: 'horizon', size: 'md' }),
                     'mt-3.5 w-full justify-center',
                 )}
             >
@@ -239,12 +238,11 @@ function ConnectPanel({
             </a>
 
             {demoLoginEnabled && (
-                <Button
-                    type="button"
-                    variant="ghost"
+                <PillButton
+                    tone="ghost"
                     onClick={onSubmitDemo}
                     disabled={demoPending}
-                    className="mt-2 h-auto w-full gap-1.5 px-0 py-2.5 text-sm font-semibold text-foreground"
+                    className="mt-2.5 w-full justify-center"
                 >
                     <Icon
                         icon={CirclePlay}
@@ -253,7 +251,7 @@ function ConnectPanel({
                         aria-hidden
                     />
                     try the demo
-                </Button>
+                </PillButton>
             )}
 
             <p className="mt-3 text-center text-xs leading-relaxed text-text-2">
@@ -265,7 +263,7 @@ function ConnectPanel({
                     what temari stores
                 </a>
             </p>
-        </Card>
+        </section>
     );
 }
 
@@ -276,8 +274,8 @@ function WhyList({
     return (
         <ul
             className={cn(
-                'mb-6 flex flex-col divide-y divide-border overflow-hidden rounded-2xl border border-border shadow-e1',
-                'min-[900px]:gap-2.5 min-[900px]:divide-y-0 min-[900px]:border-none min-[900px]:shadow-none',
+                'mb-6 flex flex-col divide-y divide-border',
+                'min-[900px]:gap-2.5 min-[900px]:divide-y-0',
                 wideClassName,
             )}
         >
@@ -290,7 +288,7 @@ function WhyList({
 
 function WhyRow({ icon, label, desc }: Readonly<WhyItem>) {
     return (
-        <li className="flex items-center gap-2.5 bg-card px-3.5 py-3 min-[900px]:flex-col min-[900px]:items-start min-[900px]:gap-2.5 min-[900px]:rounded-2xl min-[900px]:border min-[900px]:border-border-strong min-[900px]:p-4 min-[900px]:shadow-e1">
+        <li className="flex items-center gap-2.5 px-3.5 py-3 min-[900px]:flex-col min-[900px]:items-start min-[900px]:gap-2.5 min-[900px]:p-4">
             <span
                 aria-hidden
                 className="flex size-7.5 flex-none items-center justify-center rounded-lg bg-horizon/[0.18] text-icon-accent"
