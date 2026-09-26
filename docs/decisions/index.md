@@ -109,7 +109,8 @@ _Notifications_
 - [[inbox-is-an-always-on-channel]] — the notification centre is a router channel that is never unwired and never muted
 - [[demo-notifications-are-inbox-only]] — the demo identity has no outbound channel, so the public demo's inbox is populated while nothing leaves the app
 - [[durable-telegram-update-receipts-and-link-claims]] — update IDs are durably deduplicated before dispatch, and a single-use link claim commits atomically with the connection
-- [[fenced-notification-delivery-recovery]] — stale web-push claims re-arm, ambiguous Telegram sends become terminal, and old workers cannot settle a newer claim
+- [[fenced-notification-delivery-recovery]] — stale web-push claims re-arm, ambiguous Telegram sends become terminal, and old workers cannot settle a newer claim *(its web-push retry handoff is superseded by [[queue-resilient-stale-web-push-retries]])*
+- [[queue-resilient-stale-web-push-retries]] — a stale web-push claim stays discoverable until its queued retry atomically claims the next version
 
 _Design_
 - [[thread-ball-character-rebrand]] — full character replacement (bunny → thread-ball) and palette rename (Daybreak → Threadwork), tying the visual identity to the training arc *(its persona stance superseded by [[temari-keeps-score-persona]]; the visual decisions still stand)*

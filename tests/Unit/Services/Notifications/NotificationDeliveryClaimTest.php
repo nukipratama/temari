@@ -161,23 +161,28 @@ it('truncates a runaway error message', function (): void {
         ->and($error)->toEndWith('...');
 });
 
-it('re-arms stale web pushes and fences the old finisher after reclaim', function (): void {
+it('reclaims stale web pushes with a new version and fences the old finisher', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
     $oldVersion = $claim->claim($id, 'webpush');
     NotificationDelivery::query()->where('analysis_id', $id)->update(['claimed_at' => now()->subMinutes(16)]);
 
-    expect($claim->recoverStale())->toBe(['webpush_rearmed' => [$id], 'telegram_abandoned' => 0])
+    expect($claim->recoverStale())->toBe([
+        'webpush_retries' => [['analysis_id' => $id, 'claim_version' => $oldVersion]],
+        'telegram_abandoned' => 0,
+    ]);
+
+    $newVersion = $claim->claim($id, 'webpush');
+    expect($newVersion)->toBe(2)
         ->and($claim->markSent($id, 'webpush', $oldVersion))->toBeFalse();
 
     $row = NotificationDelivery::query()->firstOrFail();
     expect($row->status)->toBe(NotificationDeliveryStatus::Pending)
         ->and($row->claim_version)->toBe(2)
-        ->and($row->claimed_at)->toBeNull()
+        ->and($row->claimed_at)->not->toBeNull()
         ->and($row->settled_at)->toBeNull();
 
-    $newVersion = $claim->claim($id, 'webpush');
-    expect($newVersion)->toBe(3)
+    expect($claim->claim($id, 'webpush'))->toBeNull()
         ->and($claim->markFailed($id, 'webpush', $oldVersion, 'late failure'))->toBeFalse()
         ->and($claim->markSent($id, 'webpush', $newVersion))->toBeTrue();
 });
@@ -188,7 +193,8 @@ it('abandons stale Telegram claims and rejects both re-claim and late settlement
     $oldVersion = $claim->claim($id, 'telegram');
     NotificationDelivery::query()->where('analysis_id', $id)->update(['claimed_at' => now()->subMinutes(16)]);
 
-    expect($claim->recoverStale())->toBe(['webpush_rearmed' => [], 'telegram_abandoned' => 1])
+    expect($claim->claim($id, 'telegram'))->toBeNull()
+        ->and($claim->recoverStale())->toBe(['webpush_retries' => [], 'telegram_abandoned' => 1])
         ->and($claim->claim($id, 'telegram'))->toBeNull()
         ->and($claim->markSent($id, 'telegram', $oldVersion))->toBeFalse();
 
@@ -211,7 +217,10 @@ it('leaves fresh claims untouched during recovery', function (): void {
         ->where('analysis_id', $staleId)
         ->update(['claimed_at' => now()->subMinutes(16)]);
 
-    expect($claim->recoverStale())->toBe(['webpush_rearmed' => [$staleId], 'telegram_abandoned' => 1]);
+    expect($claim->recoverStale())->toBe([
+        'webpush_retries' => [['analysis_id' => $staleId, 'claim_version' => 1]],
+        'telegram_abandoned' => 1,
+    ]);
 
     $fresh = NotificationDelivery::query()->where('analysis_id', $freshId)->firstOrFail();
     expect($fresh->status)->toBe(NotificationDeliveryStatus::Pending)

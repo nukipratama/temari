@@ -39,16 +39,17 @@ it('recovers stale delivery claims for both outbound channels', function (): voi
     Queue::fake();
 
     $this->artisan('notifications:recover-deliveries')
-        ->expectsOutput('Recovered stale deliveries: 1 web push re-armed, 1 Telegram abandoned.')
+        ->expectsOutput('Recovered stale deliveries: 1 web push retries queued, 1 Telegram abandoned.')
         ->assertExitCode(0);
 
     expect($telegram->fresh()->status)->toBe(NotificationDeliveryStatus::Abandoned)
         ->and($telegram->fresh()->claim_version)->toBe(2)
         ->and($webpush->fresh()->status)->toBe(NotificationDeliveryStatus::Pending)
-        ->and($webpush->fresh()->claim_version)->toBe(2)
-        ->and($webpush->fresh()->claimed_at)->toBeNull();
+        ->and($webpush->fresh()->claim_version)->toBe(1)
+        ->and($webpush->fresh()->claimed_at)->not->toBeNull();
 
-    Queue::assertPushed(RetryStaleWebPushNotificationJob::class, 1);
+    Queue::assertPushed(RetryStaleWebPushNotificationJob::class, fn (RetryStaleWebPushNotificationJob $job): bool =>
+        $job->analysisId === $webpush->analysis_id && $job->claimVersion === 1);
 });
 
 it('queues and runs a web-push retry after the stale cutoff', function (): void {
@@ -73,12 +74,13 @@ it('queues and runs a web-push retry after the stale cutoff', function (): void 
     Queue::fake();
 
     $this->artisan('notifications:recover-deliveries')
-        ->expectsOutput('Recovered stale deliveries: 1 web push re-armed, 0 Telegram abandoned.')
+        ->expectsOutput('Recovered stale deliveries: 1 web push retries queued, 0 Telegram abandoned.')
         ->assertExitCode(0);
 
     $job = Queue::pushed(RetryStaleWebPushNotificationJob::class)->first();
     expect($job)->toBeInstanceOf(RetryStaleWebPushNotificationJob::class)
-        ->and($job->analysisId)->toBe($analysis->id);
+        ->and($job->analysisId)->toBe($analysis->id)
+        ->and($job->claimVersion)->toBe(1);
 
     $webPush = Mockery::mock(WebPushChannel::class);
     $webPush->shouldReceive('send')->once();
@@ -91,6 +93,27 @@ it('queues and runs a web-push retry after the stale cutoff', function (): void 
         'analysis_id' => $analysis->id,
         'channel' => 'webpush',
         'status' => NotificationDeliveryStatus::Sent->value,
-        'claim_version' => 3,
+        'claim_version' => 2,
     ]);
+});
+
+it('keeps a web-push retry discoverable across repeated sweeps', function (): void {
+    $analysis = Analysis::factory()->create();
+    NotificationDelivery::query()->create([
+        'analysis_id' => $analysis->id,
+        'channel' => 'webpush',
+        'status' => NotificationDeliveryStatus::Pending,
+        'created_at' => now()->subMinutes(16),
+        'claimed_at' => now()->subMinutes(16),
+        'claim_version' => 4,
+    ]);
+
+    $claim = app(NotificationDeliveryClaim::class);
+    $retry = [
+        'webpush_retries' => [['analysis_id' => $analysis->id, 'claim_version' => 4]],
+        'telegram_abandoned' => 0,
+    ];
+
+    expect($claim->recoverStale())->toBe($retry)
+        ->and($claim->recoverStale())->toBe($retry);
 });

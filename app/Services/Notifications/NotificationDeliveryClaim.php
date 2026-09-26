@@ -25,7 +25,7 @@ class NotificationDeliveryClaim
 
     /**
      * Claim the delivery before sending. insertOrIgnore is atomic on the unique
-     * (analysis_id, channel) pair. A failed or re-armed row is taken over with a
+     * (analysis_id, channel) pair. A failed or stale row is taken over with a
      * conditional version update, so only one retry receives the new fence.
      */
     public function claim(int $analysisId, string $channel): ?int
@@ -49,9 +49,10 @@ class NotificationDeliveryClaim
         }
 
         $version = $row->claim_version + 1;
+        $staleBefore = now()->subMinutes(self::STALE_AFTER_MINUTES);
         $updated = $this->rowFor($analysisId, $channel)
             ->where('claim_version', $row->claim_version)
-            ->where(function (Builder $claimable): void {
+            ->where(function (Builder $claimable) use ($channel, $staleBefore): void {
                 $claimable
                     ->where('status', NotificationDeliveryStatus::Failed->value)
                     ->orWhere(function (Builder $rearmed): void {
@@ -59,6 +60,15 @@ class NotificationDeliveryClaim
                             ->where('status', NotificationDeliveryStatus::Pending->value)
                             ->whereNull('claimed_at');
                     });
+
+                if ($channel === 'webpush') {
+                    $claimable->orWhere(function (Builder $stale) use ($staleBefore): void {
+                        $stale
+                            ->where('status', NotificationDeliveryStatus::Pending->value)
+                            ->whereNotNull('claimed_at')
+                            ->where('claimed_at', '<', $staleBefore);
+                    });
+                }
             })
             ->update([
                 'status' => NotificationDeliveryStatus::Pending->value,
@@ -98,14 +108,19 @@ class NotificationDeliveryClaim
             ]) !== 0;
     }
 
-    public function markRearmedWebPushSkipped(int $analysisId): bool
+    public function markStaleWebPushSkipped(int $analysisId, int $claimVersion): bool
     {
+        $staleBefore = now()->subMinutes(self::STALE_AFTER_MINUTES);
+
         return $this->rowFor($analysisId, 'webpush')
             ->where('status', NotificationDeliveryStatus::Pending->value)
-            ->whereNull('claimed_at')
+            ->where('claim_version', $claimVersion)
+            ->whereNotNull('claimed_at')
+            ->where('claimed_at', '<', $staleBefore)
             ->update([
                 'status' => NotificationDeliveryStatus::Failed->value,
                 'error' => 'Retry skipped because current preferences or channel eligibility no longer allow web push.',
+                'claimed_at' => null,
                 'settled_at' => now(),
             ]) !== 0;
     }
@@ -146,11 +161,11 @@ class NotificationDeliveryClaim
         ]) !== 0;
     }
 
-    /** @return array{webpush_rearmed: list<int>, telegram_abandoned: int} */
+    /** @return array{webpush_retries: list<array{analysis_id: int, claim_version: int}>, telegram_abandoned: int} */
     public function recoverStale(): array
     {
         $cutoff = now()->subMinutes(self::STALE_AFTER_MINUTES);
-        $recovered = ['webpush_rearmed' => [], 'telegram_abandoned' => 0];
+        $recovered = ['webpush_retries' => [], 'telegram_abandoned' => 0];
 
         NotificationDelivery::query()
             ->where('status', NotificationDeliveryStatus::Pending->value)
@@ -160,30 +175,24 @@ class NotificationDeliveryClaim
             ->orderBy('id')
             ->chunkById(100, function ($rows) use ($cutoff, &$recovered): void {
                 foreach ($rows as $row) {
-                    $claim = $this->rowFor($row->analysis_id, $row->channel)
-                        ->whereKey($row->id)
-                        ->where('status', NotificationDeliveryStatus::Pending->value)
-                        ->where('claim_version', $row->claim_version)
-                        ->where('claimed_at', '<', $cutoff);
-
                     if ($row->channel === 'webpush') {
-                        $updated = $claim->update([
-                            'claim_version' => $row->claim_version + 1,
-                            'error' => null,
-                            'claimed_at' => null,
-                            'settled_at' => null,
-                        ]);
-                        if ($updated !== 0) {
-                            $recovered['webpush_rearmed'][] = $row->analysis_id;
-                        }
+                        $recovered['webpush_retries'][] = [
+                            'analysis_id' => $row->analysis_id,
+                            'claim_version' => $row->claim_version,
+                        ];
                     } elseif ($row->channel === 'telegram') {
-                        $updated = $claim->update([
-                            'status' => NotificationDeliveryStatus::Abandoned->value,
-                            'claim_version' => $row->claim_version + 1,
-                            'error' => 'Delivery result is unknown after a stale claim; automatic retry was skipped to avoid a duplicate.',
-                            'claimed_at' => null,
-                            'settled_at' => now(),
-                        ]);
+                        $updated = $this->rowFor($row->analysis_id, $row->channel)
+                            ->whereKey($row->id)
+                            ->where('status', NotificationDeliveryStatus::Pending->value)
+                            ->where('claim_version', $row->claim_version)
+                            ->where('claimed_at', '<', $cutoff)
+                            ->update([
+                                'status' => NotificationDeliveryStatus::Abandoned->value,
+                                'claim_version' => $row->claim_version + 1,
+                                'error' => 'Delivery result is unknown after a stale claim; automatic retry was skipped to avoid a duplicate.',
+                                'claimed_at' => null,
+                                'settled_at' => now(),
+                            ]);
                         $recovered['telegram_abandoned'] += (int) ($updated !== 0);
                     }
                 }

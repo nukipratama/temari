@@ -18,7 +18,7 @@ use NotificationChannels\WebPush\WebPushChannel;
 
 uses(RefreshDatabase::class);
 
-it('sends a re-armed web push once through the current delivery gates', function (): void {
+it('reclaims a stale web push once through the current delivery gates', function (): void {
     $user = User::factory()->create();
     $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
     $activity = Activity::factory()->for($user)->create();
@@ -34,14 +34,14 @@ it('sends a re-armed web push once through the current delivery gates', function
         'channel' => 'webpush',
         'status' => NotificationDeliveryStatus::Pending,
         'created_at' => now()->subMinutes(16),
-        'claimed_at' => null,
-        'claim_version' => 2,
+        'claimed_at' => now()->subMinutes(16),
+        'claim_version' => 1,
     ]);
 
     $webPush = Mockery::mock(WebPushChannel::class);
     $webPush->shouldReceive('send')->once();
     app()->instance(WebPushChannel::class, $webPush);
-    $job = new RetryStaleWebPushNotificationJob($analysis->id);
+    $job = new RetryStaleWebPushNotificationJob($analysis->id, 1);
     $eligibility = app(NotificationEligibility::class);
 
     $job->handle(app(NotificationDeliveryClaim::class), $eligibility);
@@ -52,11 +52,11 @@ it('sends a re-armed web push once through the current delivery gates', function
         'analysis_id' => $analysis->id,
         'channel' => 'webpush',
         'status' => NotificationDeliveryStatus::Sent->value,
-        'claim_version' => 3,
+        'claim_version' => 2,
     ]);
 });
 
-it('settles a re-armed claim when preferences now suppress the retry', function (): void {
+it('settles a stale claim when preferences now suppress the retry', function (): void {
     $user = User::factory()->create();
     $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
     $activity = Activity::factory()->for($user)->create();
@@ -72,8 +72,8 @@ it('settles a re-armed claim when preferences now suppress the retry', function 
         'channel' => 'webpush',
         'status' => NotificationDeliveryStatus::Pending,
         'created_at' => now()->subMinutes(16),
-        'claimed_at' => null,
-        'claim_version' => 2,
+        'claimed_at' => now()->subMinutes(16),
+        'claim_version' => 1,
     ]);
     NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
@@ -81,7 +81,7 @@ it('settles a re-armed claim when preferences now suppress the retry', function 
     $webPush->shouldNotReceive('send');
     app()->instance(WebPushChannel::class, $webPush);
 
-    $job = new RetryStaleWebPushNotificationJob($analysis->id);
+    $job = new RetryStaleWebPushNotificationJob($analysis->id, 1);
     $job->handle(
         app(NotificationDeliveryClaim::class),
         app(NotificationEligibility::class),
@@ -91,7 +91,7 @@ it('settles a re-armed claim when preferences now suppress the retry', function 
         'analysis_id' => $analysis->id,
         'channel' => 'webpush',
         'status' => NotificationDeliveryStatus::Failed->value,
-        'claim_version' => 2,
+        'claim_version' => 1,
         'error' => 'Retry skipped because current preferences or channel eligibility no longer allow web push.',
     ]);
 });

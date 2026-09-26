@@ -54,7 +54,7 @@ despite that.
 
 | command | cadence | withoutOverlapping | onOneServer | why this TTL | measured locally on seeded data (1 user, 127 activities) |
 |---|---|---|---|---|---|
-| `notifications:recover-deliveries` | every 5 minutes | 10 | yes | one indexed scan of stale pending claims; versioned updates fence concurrent workers, then the command queues web-push retries without calling providers | not measured — added with fenced notification recovery |
+| `notifications:recover-deliveries` | every 5 minutes | 10 | yes | one indexed scan of stale pending claims; Telegram claims become terminal, while web-push retries stay discoverable until a worker claims a new version | not measured — added with fenced notification recovery |
 | `schedule:heartbeat` | every minute | — (deliberate) | yes | one idempotent `SETEX`; a lock would cost more than the write itself | ~1.1s, but exits on `redis unreachable` — `.env.example` ships `REDIS_HOST=127.0.0.1`/`CACHE_STORE=database` for local dev, so the real Redis `SETEX` path cannot be exercised in this worktree at all |
 | `ai:daily-briefing` | daily 00:01 | 30 | yes | per-user dispatch loop over active (7d) users; 30 min is generous headroom before the next day's run | ~1.9s — dispatched for 0 active users (the seeded demo user is excluded from AI kickoff billing) |
 | `demo:daily-refresh` | daily 00:13 | 10 | yes | single demo user, one synthetic run + rule-based fill | ~2.2s — the one command that actually touches the seeded user (rule-based refresh, no LLM) |

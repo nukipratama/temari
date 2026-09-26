@@ -30,22 +30,24 @@ class RetryStaleWebPushNotificationJob implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [30, 120];
 
-    public function __construct(public readonly int $analysisId)
-    {
+    public function __construct(
+        public readonly int $analysisId,
+        public readonly int $claimVersion,
+    ) {
     }
 
     public function handle(NotificationDeliveryClaim $claim, NotificationEligibility $eligibility): void
     {
         $analysis = Analysis::query()->find($this->analysisId);
         if ($analysis === null) {
-            $claim->markRearmedWebPushSkipped($this->analysisId);
+            $claim->markStaleWebPushSkipped($this->analysisId, $this->claimVersion);
 
             return;
         }
 
         $user = $eligibility->resolveUser($analysis);
         if ($user === null) {
-            $claim->markRearmedWebPushSkipped($this->analysisId);
+            $claim->markStaleWebPushSkipped($this->analysisId, $this->claimVersion);
 
             return;
         }
@@ -55,6 +57,6 @@ class RetryStaleWebPushNotificationJob implements ShouldQueue
             : new AnalysisReadyNotification($analysis);
 
         Notification::sendNow($user, $notification, [IdempotentWebPushChannel::class]);
-        $claim->markRearmedWebPushSkipped($this->analysisId);
+        $claim->markStaleWebPushSkipped($this->analysisId, $this->claimVersion);
     }
 }
