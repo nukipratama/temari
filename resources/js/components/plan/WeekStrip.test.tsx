@@ -104,6 +104,19 @@ describe('WeekStrip', () => {
         ]);
     });
 
+    it('rings the selected today tab in lime', () => {
+        const { tabs } = renderStrip();
+        expect(tabs[2].className).toContain('ring-icon-accent');
+        expect(tabs[0].className).not.toContain('ring-icon-accent');
+    });
+
+    it('rings today in lime even when another tab is selected', () => {
+        const { tabs } = renderStrip({ selectedDate: '2026-06-15' });
+        expect(tabs[2].className).toContain(
+            'ring-[1.5px] ring-inset ring-icon-accent',
+        );
+    });
+
     it('reads an honoured rest day as rest and a rest day run anyway as done', () => {
         const { tabs } = renderStrip({
             days: [

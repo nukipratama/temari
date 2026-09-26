@@ -128,6 +128,7 @@ export default function WeekStrip({
                 const visibleWord = tileVisibleWord(day);
                 const glyph = dayStatusGlyph(day);
                 const selected = day.date === selectedDate;
+                const isToday = state === 'today';
                 const effort = sessionTypeEffort(day.session_type);
 
                 return (
@@ -156,15 +157,14 @@ export default function WeekStrip({
                         className={cn(
                             'focus-ring relative flex min-w-0 flex-col items-center gap-1 overflow-hidden rounded-sm border border-border bg-card py-2 text-foreground',
                             selected &&
-                                'ring-2 ring-foreground ring-offset-1 ring-offset-card',
+                                (isToday
+                                    ? 'ring-2 ring-icon-accent ring-offset-1 ring-offset-card'
+                                    : 'ring-2 ring-foreground ring-offset-1 ring-offset-card'),
+                            !selected &&
+                                isToday &&
+                                'ring-[1.5px] ring-inset ring-icon-accent',
                         )}
                     >
-                        {state === 'today' && (
-                            <span
-                                aria-hidden
-                                className="absolute top-1 right-1 size-1.5 rounded-full bg-foreground"
-                            />
-                        )}
                         <span className="text-label-micro">
                             {weekdayLabel(day.date)}
                         </span>

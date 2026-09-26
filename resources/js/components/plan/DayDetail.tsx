@@ -34,7 +34,6 @@ import {
     sessionPurpose,
     STATUS_LABEL,
     STATUS_MEANING,
-    STATUS_TONE,
     volumeAdjustedFrom,
     weekdayLabel,
 } from '@/lib/plan';
@@ -298,10 +297,7 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
             {!isRest && STATUS_LABEL[status] && (
                 <span
                     title={STATUS_MEANING[status]}
-                    className={cn(
-                        'mt-1 flex items-center gap-1 text-label-micro',
-                        STATUS_TONE[status] ?? 'text-text-3',
-                    )}
+                    className="mt-1 flex items-center gap-1 text-label-micro text-text-2"
                 >
                     {dayStatusGlyph(day) !== null && (
                         <Icon

@@ -195,16 +195,6 @@ export const STATUS_MEANING: Record<string, string> = {
     skip: 'excused, not graded',
 };
 
-/** Label colour per compliance verdict. `planned` reads as neutral and is unlabelled. */
-export const STATUS_TONE: Record<string, string> = {
-    done: 'text-horizon-ink',
-    partial: 'text-citrus-ink',
-    missed: 'text-ember-ink',
-    overreached: 'text-horizon-ink',
-    hot: 'text-citrus-ink',
-    skip: 'text-text-3',
-};
-
 /**
  * Day status as a glyph, never a colour (design-system/temari/MASTER.md §
  * Plan week strip): the day tile, day cell and headline status label all read
