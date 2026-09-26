@@ -1,9 +1,17 @@
 {
   "enabledPlugins": {
-    "laravel/claude-code": true
+    "laravel/claude-code": true,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true
+  },
+  "extraKnownMarketplaces": {
+    "ui-ux-pro-max-skill": {
+      "source": { "source": "github", "repo": "nextlevelbuilder/ui-ux-pro-max-skill" }
+    }
   },
   "permissions": {
     "allow": [
+      "Bash(python3 *ui-ux-pro-max/scripts/search.py *)",
+      "Bash(python *ui-ux-pro-max/scripts/search.py *)",
       "Bash(./vendor/bin/sail bin pest)",
       "Bash(./vendor/bin/sail bin pest *)",
       "Bash(./vendor/bin/sail pest)",
