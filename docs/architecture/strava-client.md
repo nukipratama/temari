@@ -42,7 +42,7 @@ The whole design hinges on classifying *why* a call failed, because each cause w
 | Upstream signal | Throws | Touches breaker? | Caller reaction |
 | --- | --- | --- | --- |
 | `401` | [`StravaConnectionRevokedException`](app/Services/Strava/StravaClient.php#L91) | no | revoke the connection |
-| `429` | [`StravaRateLimitedException`](app/Services/Strava/StravaClient.php#L97) (seeded with `Retry-After`) | no | back off, Strava is up |
+| `429` | [`StravaRateLimitedException`](app/Services/Strava/StravaClient.php#L116) (seeded with `Retry-After`) | no | back off, Strava is up |
 | `5xx` | re-throws after [`recordFailure()`](app/Services/Strava/StravaClient.php#L91) | **yes** | back off, may open breaker |
 | timeout / connection error | re-throws after [`recordFailure()`](app/Services/Strava/StravaClient.php#L83) | **yes** | back off, may open breaker |
 | `2xx` (or non-5xx 4xx like 404) | returns | clears via [`recordSuccess()`](app/Services/Strava/StravaClient.php#L115) | proceed |
