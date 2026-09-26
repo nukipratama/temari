@@ -103,7 +103,9 @@ class RunnerProfile extends Model
             }
 
             // MySQL's JSON column reorders object keys, so compare key/value pairs, not order.
-            if ($zones == ($profile->hr_zones ?? config('runner.hr_zones'))) {
+            $changed = $zones != ($profile->hr_zones ?? config('runner.hr_zones'));
+
+            if (! $force && ! $changed) {
                 return false;
             }
 
@@ -116,7 +118,7 @@ class RunnerProfile extends Model
                 ],
             );
 
-            return true;
+            return $changed;
         });
     }
 

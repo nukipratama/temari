@@ -134,3 +134,14 @@ it('does not create a profile for a deleted user', function (): void {
     expect(RunnerProfile::applyStravaZones(999_999, stravaSyncedZones()))->toBeFalse()
         ->and(RunnerProfile::query()->where('user_id', 999_999)->exists())->toBeFalse();
 });
+
+it('flips a manual profile to strava on a forced sync with identical zones, reporting no change', function (): void {
+    $user = User::factory()->create();
+    RunnerProfile::factory()->for($user)->create(['source' => 'manual', 'hr_zones' => stravaSyncedZones()]);
+
+    expect(RunnerProfile::applyStravaZones($user->id, stravaSyncedZones(), force: true))->toBeFalse();
+
+    $profile = RunnerProfile::query()->where('user_id', $user->id)->sole();
+    expect($profile->source)->toBe('strava')
+        ->and($profile->strava_zones_synced_at)->not->toBeNull();
+});
