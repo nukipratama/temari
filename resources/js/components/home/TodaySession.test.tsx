@@ -76,6 +76,13 @@ beforeEach(() => {
     });
 });
 
+function expectSession(km: string, line: string) {
+    expect(
+        screen.getByText(km, { selector: '.text-stat' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(line)).toBeInTheDocument();
+}
+
 describe('TodaySession', () => {
     it("thinks in the corner while today's read is being written", () => {
         const { container } = render(
@@ -100,13 +107,29 @@ describe('TodaySession', () => {
         expect(screen.queryByTestId('mascot-peek-clearance')).toBeNull();
     });
 
-    it('lets the watermark show through a translucent session box', () => {
+    it('sets the session straight on the section, with no box nested inside', () => {
         const { container } = render(
             <TodaySession briefing={briefing('Easy 6k.')} today={day()} />,
         );
         const box = container.querySelector('#anchor-session-today');
 
-        expect(box).toHaveClass('bg-muted/40');
+        expect(box?.className).toBe('mt-2');
+    });
+
+    it("speaks today's lead line in the serif voice", () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.\n\nKeep it under 6:00.')}
+            />,
+        );
+
+        expect(screen.getByText('Easy 6k.')).toHaveClass(
+            'font-serif',
+            'italic',
+        );
+        expect(screen.getByText('Keep it under 6:00.')).not.toHaveClass(
+            'font-serif',
+        );
     });
 
     it('leads with the opening line and follows with the rest', () => {
@@ -212,9 +235,7 @@ describe('TodaySession', () => {
             />,
         );
 
-        expect(
-            screen.getByText('long run · 15 km · 6:00/km'),
-        ).toBeInTheDocument();
+        expectSession('15', 'long run · 6:00/km');
     });
 
     it('states the eased session beside the one the plan asked for, and why', () => {
@@ -235,9 +256,7 @@ describe('TodaySession', () => {
             />,
         );
 
-        expect(
-            screen.getByText('long run · 15 km · 6:00/km'),
-        ).toBeInTheDocument();
+        expectSession('15', 'long run · 6:00/km');
         expect(screen.getByText('eased today')).toBeInTheDocument();
         expect(screen.getByText('easy · 5.9 km · 7:30/km')).toBeInTheDocument();
 
@@ -276,12 +295,14 @@ describe('TodaySession', () => {
             />,
         );
 
-        expect(screen.getByText('easy · 6.4 km · 6:43/km')).toBeInTheDocument();
+        expectSession('6.4', 'easy · 6:43/km');
         // The type change reads as a labelled delta — the replaced type
         // struck through, the eased-into type at normal weight.
         expect(screen.getByText('type')).toBeInTheDocument();
         expect(container).toHaveTextContent(/tempo\s*→\s*easy/);
-        expect(screen.queryByText('km')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('km', { selector: '.text-label-micro' }),
+        ).not.toBeInTheDocument();
         expect(screen.getByText('eased')).toBeInTheDocument();
         expect(
             screen.getByText('you ran hard yesterday, so today runs easy.'),
@@ -315,9 +336,7 @@ describe('TodaySession', () => {
             />,
         );
 
-        expect(
-            screen.getByText('long run · 20 km · 6:40/km'),
-        ).toBeInTheDocument();
+        expectSession('20', 'long run · 6:40/km');
         expect(screen.getByText('pace')).toBeInTheDocument();
         expect(container).toHaveTextContent('6:00');
         expect(container).toHaveTextContent('6:40/km');

@@ -34,7 +34,7 @@ export default function VerdictHero({
 
             <h2
                 className={cn(
-                    'mt-2 text-[1.5625rem] font-semibold leading-tight',
+                    'mt-2 font-serif text-headline-sm italic',
                     TONE[verdict],
                 )}
             >
