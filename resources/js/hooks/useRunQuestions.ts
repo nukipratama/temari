@@ -36,6 +36,27 @@ function isPending(question: RunQuestion): boolean {
     return question.status === 'queued' || question.status === 'processing';
 }
 
+/**
+ * Folds a GET into the thread by server id rather than replacing it, so a row a
+ * POST just added survives a read that predates it, and a settled answer is
+ * never taken back to pending by an older read.
+ */
+function mergeThread(
+    current: ReadonlyArray<RunQuestion>,
+    incoming: ReadonlyArray<RunQuestion>,
+): ReadonlyArray<RunQuestion> {
+    const byId = new Map(current.map((row) => [row.id, row]));
+    for (const row of incoming) {
+        const known = byId.get(row.id);
+        if (known !== undefined && !isPending(known) && isPending(row)) {
+            continue;
+        }
+        byId.set(row.id, row);
+    }
+
+    return [...byId.values()].sort((a, b) => a.id - b.id);
+}
+
 export function useRunQuestions(activityId: number) {
     const [questions, setQuestions] = useState<ReadonlyArray<RunQuestion>>([]);
     const [suggestions, setSuggestions] = useState<ReadonlyArray<string>>([]);
@@ -46,6 +67,8 @@ export function useRunQuestions(activityId: number) {
     const [tick, setTick] = useState(0);
     const pollsLeftRef = useRef(MAX_POLLS);
     const mountedRef = useRef(true);
+    const loadsStartedRef = useRef(0);
+    const newestAppliedRef = useRef(0);
 
     const url = `/api/activities/${activityId}/questions`;
 
@@ -57,8 +80,12 @@ export function useRunQuestions(activityId: number) {
     }, []);
 
     const load = useCallback(async () => {
+        const generation = ++loadsStartedRef.current;
+        const isStale = () =>
+            !mountedRef.current || generation < newestAppliedRef.current;
+
         const response = await getJson(url);
-        if (!mountedRef.current) {
+        if (isStale()) {
             return;
         }
         if (!response.ok) {
@@ -69,12 +96,27 @@ export function useRunQuestions(activityId: number) {
             questions?: ReadonlyArray<RunQuestion>;
             suggestions?: ReadonlyArray<string>;
         } = await response.json();
-        if (!mountedRef.current) {
+        if (isStale()) {
             return;
         }
-        setQuestions(body.questions ?? []);
+        newestAppliedRef.current = generation;
+        setQuestions((prev) => mergeThread(prev, body.questions ?? []));
         setSuggestions(body.suggestions ?? []);
         setLoaded(true);
+    }, [url]);
+
+    const [threadUrl, setThreadUrl] = useState(url);
+    if (threadUrl !== url) {
+        setThreadUrl(url);
+        setQuestions([]);
+        setSuggestions([]);
+        setStalled(false);
+        setLoaded(false);
+    }
+
+    useEffect(() => {
+        newestAppliedRef.current = ++loadsStartedRef.current;
+        pollsLeftRef.current = MAX_POLLS;
     }, [url]);
 
     useEffect(() => {
@@ -123,7 +165,7 @@ export function useRunQuestions(activityId: number) {
                     const row: RunQuestion = await response.json();
                     pollsLeftRef.current = MAX_POLLS;
                     setStalled(false);
-                    setQuestions((prev) => [...prev, row]);
+                    setQuestions((prev) => mergeThread(prev, [row]));
                     setTick((n) => n + 1);
                     return true;
                 }
