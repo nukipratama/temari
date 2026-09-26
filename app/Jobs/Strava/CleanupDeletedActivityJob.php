@@ -15,14 +15,16 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
+use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\StravaClient;
+use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 
 /**
@@ -36,10 +38,22 @@ class CleanupDeletedActivityJob implements ShouldQueue
 {
     use Queueable;
 
+    private const int RETRY_WINDOW_HOURS = 24;
+
+    /**
+     * @var array<int, int>
+     */
+    public array $backoff = [60, 300, 900, 3600];
+
     public function __construct(
         public readonly int $userId,
         public readonly int $stravaActivityId,
     ) {
+    }
+
+    public function retryUntil(): DateTimeInterface
+    {
+        return now()->addHours(self::RETRY_WINDOW_HOURS);
     }
 
     public function handle(
@@ -141,9 +155,9 @@ class CleanupDeletedActivityJob implements ShouldQueue
     /**
      * Confirm the activity is genuinely gone from Strava (a 404) using the stored
      * token, rather than trusting the forgeable webhook body. A 2xx (still
-     * exists), a missing/revoked connection, or any non-404 error (rate limit,
-     * circuit open, revoked token, transport) all return false: we only delete
-     * when Strava positively confirms the removal.
+     * exists), a missing/revoked connection, a dead token or another 4xx return
+     * false, since retrying cannot change them. Rate limits, an open circuit,
+     * 5xx and transport failures propagate so the job retries within its window.
      */
     private function confirmDeletedOnStrava(StravaClient $client, ?StravaConnection $connection): bool
     {
@@ -154,8 +168,12 @@ class CleanupDeletedActivityJob implements ShouldQueue
         try {
             $client->get($connection, "/activities/{$this->stravaActivityId}", StravaReadSource::Cleanup);
         } catch (RequestException $e) {
+            if ($e->response->serverError()) {
+                throw $e;
+            }
+
             return $e->response->status() === 404;
-        } catch (Throwable) {
+        } catch (StravaConnectionRevokedException|StravaTokenRefreshFailedException) {
             return false;
         }
 

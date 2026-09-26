@@ -19,7 +19,10 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\StravaClient;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -228,4 +231,94 @@ it('does NOT delete when there is no live connection to verify against', functio
 
     expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue();
     Http::assertNothingSent();
+});
+
+function runCleanupJob(User $user, int $externalId): void
+{
+    new CleanupDeletedActivityJob($user->id, $externalId)->handle(
+        app(WeeklyAggregator::class),
+        app(PersonalRecords::class),
+        app(StravaClient::class),
+        app(ResolveTrailingWeeksAction::class),
+        app(SettleEarlyNarrationAction::class),
+    );
+}
+
+it('retries within a 24-hour window with a stepped backoff', function (): void {
+    $this->freezeTime();
+    $job = new CleanupDeletedActivityJob(1, 7_020);
+
+    expect($job->retryUntil()->getTimestamp())->toBe(now()->addHours(24)->getTimestamp())
+        ->and($job->backoff)->toBe([60, 300, 900, 3600]);
+});
+
+it('rethrows a transient Strava failure, then deletes once a retry confirms the 404', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 43]);
+    $activity = makeCleanupRun($user, 7_021, 5_000, now()->startOfWeek()->addDay());
+    Http::fake(['strava.com/api/v3/activities/7021' => Http::sequence()
+        ->push(['message' => 'Service Unavailable'], 503)
+        ->push(['message' => 'Record Not Found'], 404)]);
+
+    expect(fn () => runCleanupJob($user, 7_021))->toThrow(RequestException::class);
+    expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue();
+
+    runCleanupJob($user, 7_021);
+
+    expect(Activity::query()->whereKey($activity->id)->exists())->toBeFalse();
+});
+
+it('rethrows so the job retries when Strava cannot be asked', function (Closure $response, string $exception): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 44]);
+    $activity = makeCleanupRun($user, 7_022, 5_000, now()->startOfWeek()->addDay());
+    Http::fake(['strava.com/api/v3/activities/7022' => $response]);
+
+    expect(fn () => runCleanupJob($user, 7_022))->toThrow($exception);
+    expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue();
+})->with([
+    'rate limited' => [fn () => fn () => Http::response([], 429), StravaRateLimitedException::class],
+    'server error' => [fn () => fn () => Http::response([], 500), RequestException::class],
+    'transport failure' => [fn () => fn () => throw new ConnectionException('timed out'), ConnectionException::class],
+]);
+
+it('keeps the run without retrying when the answer cannot change', function (int $status): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 45]);
+    $activity = makeCleanupRun($user, 7_023, 5_000, now()->startOfWeek()->addDay());
+    Http::fake(['strava.com/api/v3/activities/7023' => Http::response([], $status)]);
+
+    runCleanupJob($user, 7_023);
+
+    expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue();
+})->with([
+    'still present' => [200],
+    'dead token' => [401],
+    'forbidden' => [403],
+]);
+
+it('deletes once and makes one Strava read when the webhook is delivered twice', function (): void {
+    $user = User::factory()->create();
+    $activity = makeCleanupRun($user, 7_024, 5_000, now()->startOfWeek()->addDay());
+    fakeStravaConfirms404($user, 7_024);
+
+    runCleanupJob($user, 7_024);
+    runCleanupJob($user, 7_024);
+
+    expect(Activity::query()->whereKey($activity->id)->exists())->toBeFalse();
+    Http::assertSentCount(1);
+});
+
+it('no-ops cleanly when the run was removed locally between retries', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 46]);
+    $activity = makeCleanupRun($user, 7_025, 5_000, now()->startOfWeek()->addDay());
+    Http::fake(['strava.com/api/v3/activities/7025' => Http::response([], 503)]);
+
+    expect(fn () => runCleanupJob($user, 7_025))->toThrow(RequestException::class);
+
+    $activity->delete();
+    runCleanupJob($user, 7_025);
+
+    Http::assertSentCount(1);
 });
