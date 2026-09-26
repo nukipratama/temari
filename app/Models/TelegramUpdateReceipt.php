@@ -33,6 +33,11 @@ class TelegramUpdateReceipt extends Model
         ]) === 1;
     }
 
+    public static function forget(int $updateId): void
+    {
+        static::query()->whereKey($updateId)->delete();
+    }
+
     /** @return Builder<static> */
     public function prunable(): Builder
     {

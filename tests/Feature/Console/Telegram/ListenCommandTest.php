@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Jobs\Telegram\HandleTelegramUpdateJob;
 use App\Models\TelegramUpdateReceipt;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
@@ -62,4 +63,19 @@ it('absorbs updates replayed after the listener restarts at offset zero', functi
 
     Bus::assertDispatchedTimes(HandleTelegramUpdateJob::class, 1);
     expect(TelegramUpdateReceipt::query()->whereKey($replayed['update_id'])->exists())->toBeTrue();
+});
+
+it('releases the receipt when synchronous handling fails so a listener restart can retry it', function (): void {
+    $update = ['update_id' => random_int(10_000_000, 900_000_000), 'message' => ['chat' => ['id' => 1], 'text' => '/stop']];
+    Http::fakeSequence('api.telegram.org/*')
+        ->push(['ok' => true, 'result' => [$update]]);
+    $this->mock(Dispatcher::class)
+        ->shouldReceive('dispatchSync')
+        ->once()
+        ->andThrow(new RuntimeException('handler failed'));
+
+    expect(fn () => $this->artisan('telegram:listen', ['--max-batches' => 1]))
+        ->toThrow(RuntimeException::class, 'handler failed');
+
+    expect(TelegramUpdateReceipt::query()->whereKey($update['update_id'])->exists())->toBeFalse();
 });

@@ -11,6 +11,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\App;
+use Throwable;
 
 /**
  * Dev-only manual foreground listener (like `queue:listen`, never scheduled).
@@ -56,7 +57,13 @@ class ListenCommand extends Command
                 $offset = max($offset, $updateId + 1);
 
                 if (TelegramUpdateReceipt::record($updateId)) {
-                    HandleTelegramUpdateJob::dispatchSync($update);
+                    try {
+                        HandleTelegramUpdateJob::dispatchSync($update);
+                    } catch (Throwable $exception) {
+                        TelegramUpdateReceipt::forget($updateId);
+
+                        throw $exception;
+                    }
                 }
             }
 

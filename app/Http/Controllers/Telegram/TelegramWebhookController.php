@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Telegram Bot API webhook endpoint.
@@ -43,7 +44,13 @@ class TelegramWebhookController extends Controller
             return response()->json(['ok' => true]);
         }
 
-        HandleTelegramUpdateJob::dispatch($update);
+        try {
+            HandleTelegramUpdateJob::dispatch($update);
+        } catch (Throwable $exception) {
+            TelegramUpdateReceipt::forget($updateId);
+
+            throw $exception;
+        }
 
         return response()->json(['ok' => true]);
     }

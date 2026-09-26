@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Console\SchedulerChain;
 use App\Jobs\Strava\RetryOrphanedStravaGrantReleasesJob;
+use App\Models\TelegramLinkTokenUse;
+use App\Models\TelegramUpdateReceipt;
 use App\Services\AI\MaintainerAlerter;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Foundation\Inspiring;
@@ -153,8 +155,8 @@ Schedule::command('analytics:prune')->dailyAt('02:25')->withoutOverlapping(15)->
 
 // Telegram webhook and long-poll receipts are retained for seven days; spent
 // link-token claims expire with their one-hour tokens.
-Schedule::command('model:prune --model=App\Models\TelegramUpdateReceipt')->dailyAt('02:30')->withoutOverlapping(15)->onOneServer();
-Schedule::command('model:prune --model=App\Models\TelegramLinkTokenUse')->dailyAt('02:31')->withoutOverlapping(15)->onOneServer();
+Schedule::command('model:prune', ['--model' => [TelegramUpdateReceipt::class]])->dailyAt('02:30')->withoutOverlapping(15)->onOneServer();
+Schedule::command('model:prune', ['--model' => [TelegramLinkTokenUse::class]])->dailyAt('02:31')->withoutOverlapping(15)->onOneServer();
 
 // Fallback poll behind the Strava webhook. Hourly around the clock rather than
 // only across the two running peaks: the old window left a five-hour overnight

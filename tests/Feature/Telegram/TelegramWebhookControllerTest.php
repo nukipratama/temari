@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Jobs\Telegram\HandleTelegramUpdateJob;
 use App\Models\TelegramUpdateReceipt;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 
@@ -45,6 +46,22 @@ it('acks a replayed update without dispatching it again', function (): void {
 
     Bus::assertDispatchedTimes(HandleTelegramUpdateJob::class, 1);
     expect(TelegramUpdateReceipt::query()->count())->toBe(1);
+});
+
+it('releases the receipt when dispatch fails so Telegram can retry the update', function (): void {
+    $updateId = random_int(1_000_000, 900_000_000);
+    $this->mock(Dispatcher::class)
+        ->shouldReceive('dispatch')
+        ->once()
+        ->andThrow(new RuntimeException('queue unavailable'));
+
+    $this->withoutExceptionHandling();
+
+    expect(fn () => $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'top-secret')
+        ->postJson('/telegram/webhook', ['update_id' => $updateId, 'message' => ['text' => '/stop']]))
+        ->toThrow(RuntimeException::class, 'queue unavailable');
+
+    expect(TelegramUpdateReceipt::query()->whereKey($updateId)->exists())->toBeFalse();
 });
 
 it('rejects a request whose secret token does not match', function (): void {
