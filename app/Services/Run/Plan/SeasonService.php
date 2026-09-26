@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\AI\HydrationBacklog;
 use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Run\Metrics\TrainingLoad;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -79,6 +80,23 @@ final readonly class SeasonService
 
     public function ensureCurrent(User $user, Carbon $today): Season
     {
+        try {
+            return DB::transaction(function () use ($user, $today): Season {
+                User::query()->whereKey($user->id)->lockForUpdate()->first();
+                $this->season->forget($user->id);
+                $this->activeRace->forget($user->id);
+
+                return $this->ensureCurrentLocked($user, $today);
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            $this->season->forget($user->id);
+
+            return $this->season->latest($user->id) ?? throw $e;
+        }
+    }
+
+    private function ensureCurrentLocked(User $user, Carbon $today): Season
+    {
         [$today, $race, $current] = $this->currentContext($user, $today);
 
         if ($current !== null && $this->isCurrent($current, $race, $today)) {
@@ -91,60 +109,58 @@ final readonly class SeasonService
             return $current;
         }
 
-        return DB::transaction(function () use ($user, $race, $today, $current): Season {
-            $anchorKm = $this->baseline->trailingWeeklyVolumeKm($user, $today);
-            $volumeFloorKm = $race !== null ? $this->baseline->recentWeeklyMeanKm($user, $today) : null;
-            $increasesHeld = $race !== null && $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
-            $opensWithRecovery = $race === null && self::followsARaceAlreadyRun($current, $today);
-            $endsAt = $race !== null
-                ? $race->race_date->toDateString()
-                : $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
-            $blockGoalsAppendedAt = $race !== null && self::blockHasOpened($race, $today) ? Carbon::now() : null;
+        $anchorKm = $this->baseline->trailingWeeklyVolumeKm($user, $today);
+        $volumeFloorKm = $race !== null ? $this->baseline->recentWeeklyMeanKm($user, $today) : null;
+        $increasesHeld = $race !== null && $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
+        $opensWithRecovery = $race === null && self::followsARaceAlreadyRun($current, $today);
+        $endsAt = $race !== null
+            ? $race->race_date->toDateString()
+            : $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
+        $blockGoalsAppendedAt = $race !== null && self::blockHasOpened($race, $today) ? Carbon::now() : null;
 
-            // A mode switch on the very same day the current season started
-            // (no history accumulated yet) retargets that row in place,
-            // rather than closing it and opening a second row for the same
-            // calendar day — which `unique(user_id, starts_at)` forbids, and
-            // which would leave a nonsensical zero-day season in history.
-            if ($current !== null && ! $today->isAfter($current->ends_at) && $current->starts_at->isSameDay($today)) {
-                $current->update([
-                    'race_goal_id' => $race?->id,
-                    'anchor_weekly_volume_km' => $anchorKm,
-                    'volume_floor_km' => $volumeFloorKm,
-                    'increases_held' => $increasesHeld,
-                    'opens_with_recovery' => $opensWithRecovery,
-                    'block_goals_appended_at' => $blockGoalsAppendedAt,
-                    'ends_at' => $endsAt,
-                ]);
-                SeasonGoal::query()->where('season_id', $current->id)->delete();
-                $this->generateGoals($current, $user, $race, $today);
-
-                return $current;
-            }
-
-            if ($current !== null && ! $today->isAfter($current->ends_at)) {
-                // Still within its stored window but the mode switched (race
-                // set/cleared) — close it early rather than leave it claiming
-                // a window it no longer covers.
-                $current->update(['ends_at' => $today->copy()->subDay()]);
-            }
-
-            $season = Season::query()->create([
-                'user_id' => $user->id,
+        // A mode switch on the very same day the current season started
+        // (no history accumulated yet) retargets that row in place,
+        // rather than closing it and opening a second row for the same
+        // calendar day — which `unique(user_id, starts_at)` forbids, and
+        // which would leave a nonsensical zero-day season in history.
+        if ($current !== null && ! $today->isAfter($current->ends_at) && $current->starts_at->isSameDay($today)) {
+            $current->update([
                 'race_goal_id' => $race?->id,
                 'anchor_weekly_volume_km' => $anchorKm,
                 'volume_floor_km' => $volumeFloorKm,
                 'increases_held' => $increasesHeld,
                 'opens_with_recovery' => $opensWithRecovery,
                 'block_goals_appended_at' => $blockGoalsAppendedAt,
-                'starts_at' => $today->toDateString(),
                 'ends_at' => $endsAt,
             ]);
+            SeasonGoal::query()->where('season_id', $current->id)->delete();
+            $this->generateGoals($current, $user, $race, $today);
 
-            $this->generateGoals($season, $user, $race, $today);
+            return $current;
+        }
 
-            return $season;
-        });
+        if ($current !== null && ! $today->isAfter($current->ends_at)) {
+            // Still within its stored window but the mode switched (race
+            // set/cleared) — close it early rather than leave it claiming
+            // a window it no longer covers.
+            $current->update(['ends_at' => $today->copy()->subDay()]);
+        }
+
+        $season = Season::query()->create([
+            'user_id' => $user->id,
+            'race_goal_id' => $race?->id,
+            'anchor_weekly_volume_km' => $anchorKm,
+            'volume_floor_km' => $volumeFloorKm,
+            'increases_held' => $increasesHeld,
+            'opens_with_recovery' => $opensWithRecovery,
+            'block_goals_appended_at' => $blockGoalsAppendedAt,
+            'starts_at' => $today->toDateString(),
+            'ends_at' => $endsAt,
+        ]);
+
+        $this->generateGoals($season, $user, $race, $today);
+
+        return $season;
     }
 
     /**
@@ -331,10 +347,10 @@ final readonly class SeasonService
         }
 
         foreach ($goals as $goal) {
-            SeasonGoal::query()->create([
-                'season_id' => $season->id,
-                ...$goal,
-            ]);
+            SeasonGoal::query()->firstOrCreate(
+                ['season_id' => $season->id, 'metric' => $goal['metric']],
+                $goal,
+            );
         }
     }
 
@@ -381,11 +397,17 @@ final readonly class SeasonService
         $existing = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
 
         if (! in_array(self::RACE_MARGIN_METRIC, $existing, true)) {
-            SeasonGoal::query()->create(['season_id' => $season->id, ...self::raceMarginGoal()]);
+            SeasonGoal::query()->firstOrCreate(
+                ['season_id' => $season->id, 'metric' => self::RACE_MARGIN_METRIC],
+                self::raceMarginGoal(),
+            );
         }
 
         if (! in_array(self::PEAK_WEEKLY_KM_METRIC, $existing, true)) {
-            SeasonGoal::query()->create(['season_id' => $season->id, ...$this->peakWeeklyKmGoal($season, $race, $user)]);
+            SeasonGoal::query()->firstOrCreate(
+                ['season_id' => $season->id, 'metric' => self::PEAK_WEEKLY_KM_METRIC],
+                $this->peakWeeklyKmGoal($season, $race, $user),
+            );
         }
 
         $season->update(['block_goals_appended_at' => Carbon::now()]);
