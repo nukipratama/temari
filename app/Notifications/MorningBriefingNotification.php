@@ -56,6 +56,13 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
         return app(ChannelRouter::class)->outboundOnly($notifiable);
     }
 
+    public function shouldSend(User $notifiable, string $channel): bool
+    {
+        $currentUser = $notifiable->fresh();
+
+        return $currentUser !== null && in_array($channel, $this->via($currentUser), true);
+    }
+
     public function toTelegram(User $notifiable): TelegramMessage
     {
         return new TelegramMessage(

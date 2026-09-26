@@ -53,6 +53,13 @@ class StreakReminderNotification extends Notification implements ShouldQueue
         return app(ChannelRouter::class)->channelsFor($notifiable);
     }
 
+    public function shouldSend(User $notifiable, string $channel): bool
+    {
+        $currentUser = $notifiable->fresh();
+
+        return $currentUser !== null && in_array($channel, $this->via($currentUser), true);
+    }
+
     public function toTelegram(User $notifiable): TelegramMessage
     {
         $url = route('dashboard');

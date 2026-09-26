@@ -74,6 +74,13 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
         return $reachableNow ? $channels : [];
     }
 
+    public function shouldSend(User $notifiable, string $channel): bool
+    {
+        $currentUser = $notifiable->fresh();
+
+        return $currentUser !== null && in_array($channel, $this->via($currentUser), true);
+    }
+
     public function toTelegram(User $notifiable): TelegramMessage
     {
         $presenter = app(AnalysisMessagePresenter::class);

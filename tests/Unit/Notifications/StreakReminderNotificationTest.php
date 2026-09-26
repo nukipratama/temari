@@ -93,6 +93,17 @@ it('routes nowhere when the notification master switch is off, on either channel
     expect(streakVia($user))->toBe([]);
 });
 
+it('rechecks the master switch before a queued channel sends', function (): void {
+    $user = User::factory()->create();
+    subscribeToPush($user);
+    $notification = new StreakReminderNotification(3);
+    expect($notification->via($user))->toContain(IdempotentWebPushChannel::class);
+
+    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
+
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
+});
+
 it('still routes when the master switch is on', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
