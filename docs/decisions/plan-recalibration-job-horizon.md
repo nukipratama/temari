@@ -2,7 +2,8 @@
 title: Plan recalibration has a bounded single-job horizon
 description: The atomic recalibration job has a measured runtime envelope and an explicit timeout until long histories can be resumed
 tags: [decision, run, plan]
-status: accepted
+status: superseded
+superseded_by: plan-recalibration-retry-window
 reviewed: 2026-09-26
 code_refs:
   - app/Jobs/Run/RecalibrateTrainingHistoryJob.php
