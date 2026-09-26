@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Strava;
 
+use App\Models\RunnerProfile;
 use App\Models\User;
 use App\Services\Run\Plan\PlanRecalibrationDispatch;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
@@ -14,7 +15,6 @@ use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use App\Services\Strava\ZoneFetcher;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class SyncZonesJob implements ShouldQueue
@@ -123,21 +123,8 @@ class SyncZonesJob implements ShouldQueue
             return;
         }
 
-        // No-op when Strava's zones match what's already effective — avoids
-        // creating a spurious `runner_profiles` row (and a false "calculated with old zones"
-        // flag) when strava zones ≈ the config default.
-        if ($zones === $user->hrProfile()['hr_zones']) {
-            return;
+        if (RunnerProfile::applyStravaZones($user->id, $zones, $this->force)) {
+            PlanRecalibrationDispatch::forUserId($user->id);
         }
-
-        $user->runnerProfile()->updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'hr_zones' => $zones,
-                'source' => 'strava',
-                'strava_zones_synced_at' => Carbon::now(),
-            ],
-        );
-        PlanRecalibrationDispatch::forUserId($user->id);
     }
 }

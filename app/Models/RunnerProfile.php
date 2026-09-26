@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Override;
 
 /**
@@ -78,6 +79,47 @@ class RunnerProfile extends Model
     public function hasExplicitZones(): bool
     {
         return in_array($this->source, self::EXPLICIT_ZONE_SOURCES, strict: true);
+    }
+
+    /**
+     * The one write path for Strava-synced zones. It re-reads the user and profile
+     * under row locks, so a manual save or account deletion that landed during
+     * the Strava fetch wins.
+     *
+     * @param  array<string, array{lo:int, hi:int}>  $zones
+     * @return bool Whether the stored zones changed.
+     */
+    public static function applyStravaZones(int $userId, array $zones, bool $force = false): bool
+    {
+        return DB::transaction(function () use ($userId, $zones, $force): bool {
+            if (! User::query()->whereKey($userId)->lockForUpdate()->exists()) {
+                return false;
+            }
+
+            $profile = static::query()->where('user_id', $userId)->lockForUpdate()->first();
+
+            if (! $force && $profile?->source === 'manual') {
+                return false;
+            }
+
+            // MySQL's JSON column reorders object keys, so compare key/value pairs, not order.
+            $changed = $zones != ($profile->hr_zones ?? config('runner.hr_zones'));
+
+            if (! $force && ! $changed) {
+                return false;
+            }
+
+            static::query()->updateOrCreate(
+                ['user_id' => $userId],
+                [
+                    'hr_zones' => $zones,
+                    'source' => 'strava',
+                    'strava_zones_synced_at' => Carbon::now(),
+                ],
+            );
+
+            return $changed;
+        });
     }
 
     /**

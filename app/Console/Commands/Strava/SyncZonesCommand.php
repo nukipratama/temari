@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Strava;
 
+use App\Models\RunnerProfile;
 use App\Models\User;
 use App\Services\Run\Plan\PlanRecalibrationDispatch;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
@@ -13,7 +14,6 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Carbon;
 use Throwable;
 
 #[Signature('strava:sync-zones
@@ -69,20 +69,12 @@ class SyncZonesCommand extends Command
             return;
         }
 
-        if ($zones === $user->hrProfile()['hr_zones']) {
-            $this->line("user {$user->id}: zones unchanged, skipped");
+        if (! RunnerProfile::applyStravaZones($user->id, $zones)) {
+            $this->line("user {$user->id}: zones unchanged or set manually, skipped");
 
             return;
         }
 
-        $user->runnerProfile()->updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'hr_zones' => $zones,
-                'source' => 'strava',
-                'strava_zones_synced_at' => Carbon::now(),
-            ],
-        );
         PlanRecalibrationDispatch::forUserId($user->id);
 
         $this->line("user {$user->id}: zones synced from Strava");
