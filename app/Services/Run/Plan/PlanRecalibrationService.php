@@ -26,6 +26,8 @@ use InvalidArgumentException;
 
 final readonly class PlanRecalibrationService
 {
+    private const int ACTIVITY_BATCH_SIZE = 25;
+
     public function __construct(
         private ActivityPipeline $activityPipeline,
         private WeeklyAggregator $weeklyAggregator,
@@ -99,20 +101,27 @@ final readonly class PlanRecalibrationService
     private function perform(User $user, Carbon $startedAt): array
     {
         $activities = Activity::query()
-            ->where('user_id', $user->id)
+            ->select('activities.*')
+            ->leftJoin('activity_details', 'activity_details.activity_id', '=', 'activities.id')
+            ->where('activities.user_id', $user->id)
             ->with(['detail', 'stream'])
-            ->get()
-            ->sortBy(fn (Activity $activity): string => $activity->detail?->start_date_local?->toIso8601String() ?? '')
-            ->values();
+            ->orderBy('activity_details.start_date_local')
+            ->orderBy('activities.id')
+            ->lazy(self::ACTIVITY_BATCH_SIZE);
 
         $recomputed = 0;
         foreach ($activities as $activity) {
-            if ($activity->detail === null || $activity->stream === null || $activity->stream->data === []) {
-                continue;
-            }
+            try {
+                if ($activity->detail === null || $activity->stream === null || $activity->stream->data === []) {
+                    continue;
+                }
 
-            $this->activityPipeline->recomputeSummary($activity, rebuildAggregates: false, reconcileMaxHeartRate: false);
-            $recomputed++;
+                $this->activityPipeline->recomputeSummary($activity, rebuildAggregates: false, reconcileMaxHeartRate: false);
+                $recomputed++;
+            } finally {
+                $activity->unsetRelation('detail');
+                $activity->unsetRelation('stream');
+            }
         }
 
         $snapshots = $this->weeklyAggregator->rebuildFor($user);

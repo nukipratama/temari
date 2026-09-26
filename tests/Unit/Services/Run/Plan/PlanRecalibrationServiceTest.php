@@ -11,6 +11,7 @@ use App\Models\PlannedSession;
 use App\Models\RunnerProfile;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Run\Plan\PlanRecalibrationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -67,6 +68,35 @@ it('does not auto-reconcile max HR while rebuilding under the current profile', 
     app(PlanRecalibrationService::class)->recalibrate($user);
 
     expect($profile->fresh()->max_hr)->toBe(180);
+});
+
+it('recomputes stream summaries in chronological order across bounded batches', function (): void {
+    Queue::fake();
+    $user = User::factory()->create();
+    $createdIds = [];
+
+    foreach (range(1, 30) as $daysAgo) {
+        $activity = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => Carbon::today()->subDays($daysAgo),
+        ]);
+        ActivityStream::factory()->for($activity)->create();
+        $createdIds[] = $activity->id;
+    }
+
+    $processedIds = [];
+    $pipeline = Mockery::mock(ActivityPipeline::class);
+    $pipeline->shouldReceive('recomputeSummary')
+        ->times(30)
+        ->andReturnUsing(function (Activity $activity, bool $rebuildAggregates, bool $reconcileMaxHeartRate) use (&$processedIds): void {
+            $processedIds[] = $activity->id;
+        });
+    app()->instance(ActivityPipeline::class, $pipeline);
+
+    $result = app(PlanRecalibrationService::class)->recalibrate($user);
+
+    expect($result['activities'])->toBe(30)
+        ->and($processedIds)->toBe(array_reverse($createdIds));
 });
 
 it('rolls back every write in dry-run mode', function (): void {

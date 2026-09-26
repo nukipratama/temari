@@ -30,6 +30,8 @@ Quality decisions are persisted on `planned_sessions`: hard minutes, pace band, 
 
 HR-zone updates dispatch one unique after-commit job per user. Start and completion markers live on the user, outside the plan rows the recalibration can replace; failure leaves the operation visibly pending and ordinary queue retry owns recovery. The foreground `plan:recalibrate-history` command is the rollout and repair path, supports one-user and dry-run modes, and excludes demo data.
 
+Activity streams are loaded and recomputed in chronological batches inside the same transaction as the rest of the rewrite. A failed batch rolls back the complete recalibration; no partial history is committed.
+
 Existing plan-day narration is not rewritten or re-billed. It stays readable with a stale marker, and only an explicit Reread may replace it. During recalibration the UI keeps the previous coherent plan visible with a quiet notice rather than exposing a half-rewritten result.
 
 ## Consequences

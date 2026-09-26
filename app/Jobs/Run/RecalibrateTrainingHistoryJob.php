@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Run;
 
+use DateTimeInterface;
 use App\Models\User;
 use App\Services\Run\Plan\PlanRecalibrationService;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -16,16 +17,16 @@ final class RecalibrateTrainingHistoryJob implements ShouldBeUniqueUntilProcessi
 {
     use Queueable;
 
-    public int $tries = 3;
+    public int $maxExceptions = 3;
 
     /** @var array<int, int> */
     public array $backoff = [30, 120];
 
     public int $uniqueFor = 3600;
 
-    public int $timeout = 60;
+    public int $timeout = 120;
 
-    private const int LOCK_TTL_SECONDS = 70;
+    private const int LOCK_TTL_SECONDS = 150;
 
     public function __construct(public readonly int $userId)
     {
@@ -34,6 +35,11 @@ final class RecalibrateTrainingHistoryJob implements ShouldBeUniqueUntilProcessi
     public function uniqueId(): string
     {
         return (string) $this->userId;
+    }
+
+    public function retryUntil(): DateTimeInterface
+    {
+        return now()->addMinutes(10);
     }
 
     public static function overlapLockKey(int $userId): string
