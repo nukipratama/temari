@@ -10,6 +10,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import { phaseColor } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
@@ -21,7 +22,6 @@ import {
     phasesOf,
     type Phase,
 } from '@/lib/plan';
-import { cardVariants } from '@/lib/variants';
 
 /** Shortest bar in the arc, as a percentage of the tallest. */
 const MIN_BAR_PCT = 35;
@@ -76,98 +76,102 @@ export default function SeasonHeaderCard({
             : { start: startsAt, end: endsAt };
 
     return (
-        <Collapsible
-            className={cn(
-                cardVariants({ padding: 'none' }),
-                'mb-3 overflow-hidden border-border-strong',
-            )}
-        >
-            <CollapsibleTrigger className="group focus-ring flex w-full items-center gap-3 px-3 pt-2.5 text-left">
-                <span className="min-w-0 flex-1 text-label-micro text-text-2">
-                    Week {weekIndex} of {totalWeeks}
-                    {currentGroupKey
-                        ? ` · ${PHASE_LABEL[currentGroupKey] ?? currentGroupKey}`
-                        : ''}
-                </span>
-                {adherencePct != null && (
-                    <span className="flex-none text-label-micro text-text-3">
-                        <span className="font-mono text-sm font-bold tabular-nums text-horizon-ink">
-                            {adherencePct}%
-                        </span>{' '}
-                        adherence
+        <section>
+            <Eyebrow token="small" className="text-foreground">
+                season
+            </Eyebrow>
+            <Collapsible className="mt-2">
+                <CollapsibleTrigger className="group focus-ring flex w-full items-center gap-3 text-left">
+                    <span className="min-w-0 flex-1 text-xs text-text-2">
+                        Week {weekIndex} of {totalWeeks}
+                        {currentGroupKey
+                            ? ` · ${PHASE_LABEL[currentGroupKey] ?? currentGroupKey}`
+                            : ''}
                     </span>
-                )}
-                <Icon
-                    icon={ChevronDown}
-                    className="size-4 flex-none text-text-2 transition-transform group-aria-expanded:rotate-180"
-                    aria-hidden
-                />
-            </CollapsibleTrigger>
-            <div className="px-3 pb-2.5">
-                <PhaseRibbon weeks={weeks} />
-            </div>
-            <CollapsibleContent className="border-t border-border-strong px-3 py-3">
-                <p className="text-xs text-text-2">
-                    {formatNaiveMonthDayId(headerSpan.start)} –{' '}
-                    {formatNaiveMonthDayId(headerSpan.end)}
-                </p>
+                    {adherencePct != null && (
+                        <span className="flex-none text-label-micro text-text-3">
+                            <span className="font-mono text-sm font-bold tabular-nums text-horizon-ink">
+                                {adherencePct}%
+                            </span>{' '}
+                            adherence
+                        </span>
+                    )}
+                    <Icon
+                        icon={ChevronDown}
+                        className="size-4 flex-none text-text-2 transition-transform group-aria-expanded:rotate-180"
+                        aria-hidden
+                    />
+                </CollapsibleTrigger>
+                <div className="mt-2.5">
+                    <PhaseRibbon weeks={weeks} />
+                </div>
+                <CollapsibleContent className="mt-3 border-t border-dashed border-border pt-3">
+                    <p className="text-xs text-text-2">
+                        {formatNaiveMonthDayId(headerSpan.start)} –{' '}
+                        {formatNaiveMonthDayId(headerSpan.end)}
+                    </p>
 
-                {phases.length > 0 && (
-                    <div className="mt-3 flex items-end gap-1.5">
-                        {phases.map((phase) => {
-                            const color = phaseColor(phase.key);
-                            const upcoming = phase.state === 'upcoming';
-                            return (
-                                <div
-                                    key={phase.key}
-                                    className="flex flex-1 flex-col items-center gap-1"
-                                >
-                                    <div className="flex h-8 w-full items-end overflow-hidden rounded-xs">
-                                        <div
-                                            className={cn(
-                                                'w-full rounded-t-xs',
-                                                upcoming &&
-                                                    'border border-dashed',
-                                            )}
-                                            style={{
-                                                height: `${barHeightPct(phase, phases)}%`,
-                                                backgroundColor: upcoming
-                                                    ? `color-mix(in oklab, ${color} 16%, transparent)`
-                                                    : color,
-                                                borderColor: upcoming
-                                                    ? color
-                                                    : undefined,
-                                                boxShadow:
-                                                    phase.state === 'current'
-                                                        ? `0 0 0 2px color-mix(in oklab, ${color} 35%, transparent)`
-                                                        : undefined,
-                                            }}
-                                        />
-                                    </div>
-                                    <span
-                                        className={cn(
-                                            'text-label-micro',
-                                            phase.state === 'current'
-                                                ? 'text-foreground'
-                                                : 'text-text-3',
-                                        )}
+                    {phases.length > 0 && (
+                        <div className="mt-3 flex items-end gap-1.5">
+                            {phases.map((phase) => {
+                                const color = phaseColor(phase.key);
+                                const upcoming = phase.state === 'upcoming';
+                                return (
+                                    <div
+                                        key={phase.key}
+                                        className="flex flex-1 flex-col items-center gap-1"
                                     >
-                                        {PHASE_LABEL[phase.key] ?? phase.key}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                                        <div className="flex h-8 w-full items-end overflow-hidden rounded-xs">
+                                            <div
+                                                className={cn(
+                                                    'w-full rounded-t-xs',
+                                                    upcoming &&
+                                                        'border border-dashed',
+                                                )}
+                                                style={{
+                                                    height: `${barHeightPct(phase, phases)}%`,
+                                                    backgroundColor: upcoming
+                                                        ? `color-mix(in oklab, ${color} 16%, transparent)`
+                                                        : color,
+                                                    borderColor: upcoming
+                                                        ? color
+                                                        : undefined,
+                                                    boxShadow:
+                                                        phase.state ===
+                                                        'current'
+                                                            ? `0 0 0 2px color-mix(in oklab, ${color} 35%, transparent)`
+                                                            : undefined,
+                                                }}
+                                            />
+                                        </div>
+                                        <span
+                                            className={cn(
+                                                'text-label-micro',
+                                                phase.state === 'current'
+                                                    ? 'text-foreground'
+                                                    : 'text-text-3',
+                                            )}
+                                        >
+                                            {PHASE_LABEL[phase.key] ??
+                                                phase.key}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
-                {underReadyLine && (
-                    <p className="mt-3 text-xs text-text-2">{underReadyLine}</p>
-                )}
+                    {underReadyLine && (
+                        <p className="mt-3 text-xs text-text-2">
+                            {underReadyLine}
+                        </p>
+                    )}
 
-                {narration && (
-                    <TemariTake analysis={narration} className="mt-3" />
-                )}
-            </CollapsibleContent>
-        </Collapsible>
+                    {narration && (
+                        <TemariTake analysis={narration} className="mt-3" />
+                    )}
+                </CollapsibleContent>
+            </Collapsible>
+        </section>
     );
 }

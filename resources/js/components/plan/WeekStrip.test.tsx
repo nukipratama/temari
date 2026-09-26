@@ -128,13 +128,16 @@ describe('WeekStrip', () => {
         expect(tabs[1]).toHaveAttribute('aria-label', 'Tue, 3.0 km, done');
     });
 
-    it('names a short run partial', () => {
+    it('names a short run partial, and shows its glyph rather than the word', () => {
         const { tabs } = renderStrip({
             days: [day({ status: 'partial', actual_km: 4, prescribed_km: 6 })],
         });
 
         expect(tabs[0]).toHaveAttribute('aria-label', 'Mon, 4.0 km, partial');
-        expect(tabs[0]).toHaveTextContent('short');
+        expect(tabs[0].querySelector('[data-icon="CircleDashed"]')).not.toBe(
+            null,
+        );
+        expect(tabs[0]).not.toHaveTextContent('short');
     });
 
     it('exposes the selection as one selected tab controlling the panel', () => {
@@ -187,12 +190,9 @@ describe('WeekStrip', () => {
         expect(onSelect).not.toHaveBeenCalled();
     });
 
-    it('shows short forms of the long words on the tile, the full word in its label', () => {
+    it('shows the short form of a still-ahead session type on its tile, the full word in its label', () => {
         const { tabs } = renderStrip({
-            days: [
-                day({ session_type: 'interval', status: 'planned' }),
-                day({ id: 2, date: '2026-06-16', skipped: true }),
-            ],
+            days: [day({ session_type: 'interval', status: 'planned' })],
         });
 
         expect(tabs[0]).toHaveTextContent('reps');
@@ -200,10 +200,44 @@ describe('WeekStrip', () => {
             'aria-label',
             expect.stringContaining('interval'),
         );
-        expect(tabs[1]).toHaveTextContent('skip');
-        expect(tabs[1]).toHaveAttribute(
+    });
+
+    it('tells overreached apart from a plain done day in its label, matching the glyph shown', () => {
+        const { tabs } = renderStrip({
+            days: [day({ status: 'overreached', actual_km: 12 })],
+        });
+
+        expect(tabs[0]).toHaveAttribute(
+            'aria-label',
+            expect.stringContaining('overreached'),
+        );
+        expect(tabs[0].querySelector('[data-icon="ArrowUp"]')).not.toBe(null);
+    });
+
+    it('shows a skipped day as its glyph, not the word, with the word kept in the label', () => {
+        const { tabs } = renderStrip({
+            days: [day({ skipped: true })],
+        });
+
+        expect(tabs[0].querySelector('[data-icon="Minus"]')).not.toBe(null);
+        expect(tabs[0]).not.toHaveTextContent('skip');
+        expect(tabs[0]).toHaveAttribute(
             'aria-label',
             expect.stringContaining('skipped'),
         );
+    });
+
+    it("colors every tile's edge by its session-type effort, not by status", () => {
+        const { tabs } = renderStrip({
+            days: [
+                day({ session_type: 'tempo', status: 'done' }),
+                day({ id: 2, date: '2026-06-16', session_type: 'rest' }),
+            ],
+        });
+
+        expect(tabs[0].querySelector('.border-citrus')).not.toBeNull();
+        expect(
+            tabs[1].querySelector('.border-dashed.border-border'),
+        ).not.toBeNull();
     });
 });

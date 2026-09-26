@@ -15,7 +15,6 @@ import SeasonTimeline from '@/components/plan/SeasonTimeline';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import { SkeletonRows, SkeletonStats } from '@/components/ui/Skeleton';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
@@ -209,12 +208,10 @@ export default function Plan({
                         'adaptation',
                     ]}
                     fallback={
-                        <>
-                            <Card padding="panel" className="mt-6">
-                                <SkeletonStats />
-                            </Card>
-                            <SkeletonRows count={4} className="mt-4" />
-                        </>
+                        <div className="mt-6 flex flex-col gap-4">
+                            <SkeletonStats />
+                            <SkeletonRows count={4} />
+                        </div>
                     }
                 >
                     {() =>
@@ -226,7 +223,7 @@ export default function Plan({
                                 className="mt-6"
                             />
                         ) : (
-                            <>
+                            <div className="mt-6 flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
                                 <SeasonHeaderCard
                                     weekIndex={season.week_index}
                                     totalWeeks={season.total_weeks}
@@ -253,7 +250,7 @@ export default function Plan({
                                     onMove={moveSession}
                                     onSkip={skipSession}
                                 />
-                            </>
+                            </div>
                         )
                     }
                 </Deferred>

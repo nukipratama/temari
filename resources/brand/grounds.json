@@ -400,9 +400,6 @@
                 "resources/js/pages/Devtools/Design.tsx": [
                     "paper"
                 ],
-                "resources/js/components/plan/WeekStrip.tsx": [
-                    "paper"
-                ],
                 "resources/js/components/narration/athlete/VersionDiff.tsx": [
                     "paper"
                 ],

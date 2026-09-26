@@ -63,7 +63,7 @@ export default function SeasonTimeline({
     };
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
             <div ref={viewRef} className="scroll-mt-4">
                 <WeekView
                     key={shown.week_start}

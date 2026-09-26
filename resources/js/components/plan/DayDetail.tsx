@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import {
     clampSummary,
+    dayStatusGlyph,
     deltaDirection,
     easedFromDelta,
     judgedDayResult,
@@ -298,10 +299,17 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
                 <span
                     title={STATUS_MEANING[status]}
                     className={cn(
-                        'mt-1 block text-label-micro',
+                        'mt-1 flex items-center gap-1 text-label-micro',
                         STATUS_TONE[status] ?? 'text-text-3',
                     )}
                 >
+                    {dayStatusGlyph(day) !== null && (
+                        <Icon
+                            icon={dayStatusGlyph(day)!}
+                            className="size-3"
+                            aria-hidden
+                        />
+                    )}
                     {STATUS_LABEL[status]}
                     {day.compliance_score != null &&
                         ` · ${complianceLabel(day)}`}

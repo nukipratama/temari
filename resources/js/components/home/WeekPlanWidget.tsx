@@ -9,8 +9,9 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
+import { EFFORT_EDGE_CLASS, sessionTypeEffort } from '@/lib/effort';
 import { formatKm, parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
-import { deltaDirection, ranHot } from '@/lib/plan';
+import { dayStatusGlyph, deltaDirection, ranHot } from '@/lib/plan';
 
 const PHASE_LABEL: Record<string, string> = {
     base: 'base',
@@ -41,17 +42,6 @@ const TYPE_ICON: Record<string, IconComponent> = {
     long: Feather,
     rest: Bed,
     race: Flag,
-};
-
-/** Compliance-v2's six statuses, colored distinctly so "did more than asked"
- *  (overreached) never reads the same as "hit it exactly" (done), and a
- *  `skip` (explicitly excused) never reads as a `missed` (didn't happen). */
-const STATUS_TONE: Record<string, string> = {
-    done: 'text-leaf-ink',
-    partial: 'text-leaf-ink opacity-60',
-    overreached: 'text-horizon-ink',
-    missed: 'text-ember-ink opacity-40',
-    skip: 'text-text-3',
 };
 
 const kmFigure = (km: number | null): string =>
@@ -102,12 +92,9 @@ function DayCell({
     hasElapsed,
 }: Readonly<{ day: WeekPlanDay; isToday: boolean; hasElapsed: boolean }>) {
     const isRest = day.session_type === 'rest';
-    let tone = STATUS_TONE[day.status] ?? 'text-foreground';
-    if (isRest) {
-        tone = day.ran_anyway ? 'text-leaf-ink' : 'text-foreground';
-    }
-
     const ran = hasElapsed && day.actual_km !== null;
+    const glyph = dayStatusGlyph(day);
+    const effort = sessionTypeEffort(day.session_type);
 
     return (
         <li title={dayDetail(day)}>
@@ -115,41 +102,52 @@ function DayCell({
                 href={`/plan?day=${day.date}`}
                 aria-label={`${weekdayAbbr(day.date)} · ${dayDetail(day)}`}
                 className={cn(
-                    'focus-ring flex flex-col items-center gap-0.5 rounded-lg py-1.5 transition-colors hover:bg-muted',
+                    'focus-ring relative flex flex-col items-center gap-0.5 overflow-hidden rounded-lg py-1.5 transition-colors hover:bg-muted',
                     isToday && 'ring-[1.5px] ring-inset ring-icon-accent',
                 )}
             >
-                <span className="font-mono text-[0.5625rem] uppercase tracking-[0.05em] text-foreground">
+                {glyph !== null && (
+                    <Icon
+                        icon={glyph}
+                        width={8}
+                        height={8}
+                        className="absolute top-1 right-1 text-foreground"
+                        aria-hidden
+                    />
+                )}
+                <span className="text-label-micro text-foreground">
                     {weekdayAbbr(day.date)}
                 </span>
                 <Icon
                     icon={TYPE_ICON[day.session_type] ?? Flame}
                     width={13}
                     height={13}
-                    className={tone}
+                    className="text-foreground"
                     aria-hidden
                 />
                 {ran ? (
                     <>
-                        <span
-                            className={cn(
-                                'font-mono text-[0.5625rem] font-bold',
-                                tone,
-                            )}
-                        >
+                        <span className="text-meta font-bold tabular-nums text-foreground">
                             {kmFigure(day.actual_km)} km
                         </span>
                         {!isRest && (
-                            <span className="font-mono text-[0.5rem] leading-none text-text-2">
+                            <span className="text-meta leading-none text-text-2">
                                 of {kmFigure(day.distance_km)}
                             </span>
                         )}
                     </>
                 ) : (
-                    <span className="font-mono text-[0.5rem] text-foreground">
+                    <span className="text-meta text-foreground">
                         {isRest ? 'rest' : `${kmFigure(day.distance_km)} km`}
                     </span>
                 )}
+                <span
+                    aria-hidden
+                    className={cn(
+                        'absolute inset-x-0 bottom-0',
+                        EFFORT_EDGE_CLASS[effort],
+                    )}
+                />
             </Link>
         </li>
     );

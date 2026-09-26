@@ -1,4 +1,14 @@
-import { Bed, Feather, Flag, Flame } from 'lucide-react';
+import {
+    ArrowUp,
+    Bed,
+    Check,
+    CircleDashed,
+    Feather,
+    Flag,
+    Flame,
+    Minus,
+    X,
+} from 'lucide-react';
 
 import type { IconComponent } from '@/components/ui/Icon';
 import type {
@@ -195,9 +205,40 @@ export const STATUS_TONE: Record<string, string> = {
     skip: 'text-text-3',
 };
 
+/**
+ * Day status as a glyph, never a colour (design-system/temari/MASTER.md §
+ * Plan week strip): the day tile, day cell and headline status label all read
+ * their icon from here rather than each keeping their own status→icon table.
+ * `planned`/`hot` carry no entry — an upcoming day shows no glyph, and `hot`
+ * is `overreached` read for intent rather than a status of its own.
+ */
+export const STATUS_GLYPH: Partial<Record<string, IconComponent>> = {
+    done: Check,
+    overreached: ArrowUp,
+    partial: CircleDashed,
+    missed: X,
+    skip: Minus,
+};
+
 /** An overreached day graded on intent, not distance: it ran too hard, not too far. */
 export function ranHot(day: PlanDay): boolean {
     return day.status === 'overreached' && day.hot_note !== null;
+}
+
+/**
+ * The status glyph a day tile/cell shows, per {@see STATUS_GLYPH}. A rest day
+ * kept as rest shows no glyph at all — its dashed effort edge already says
+ * "rest" — and a day excused before the scorer has run is still `planned`
+ * server-side, so `skipped` is checked ahead of `status`.
+ */
+export function dayStatusGlyph(day: PlanDay): IconComponent | null {
+    if (day.session_type === 'rest' && !day.ran_anyway) {
+        return null;
+    }
+    if (day.skipped) {
+        return STATUS_GLYPH.skip ?? null;
+    }
+    return STATUS_GLYPH[day.status] ?? null;
 }
 
 /**

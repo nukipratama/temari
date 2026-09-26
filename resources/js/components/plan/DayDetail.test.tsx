@@ -188,6 +188,22 @@ describe('DayHeadline and DayDetail', () => {
         expect(screen.getByText('partial · 60%')).toBeInTheDocument();
     });
 
+    it("carries the verdict's glyph beside its label, never as the only signal", () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                status: 'partial',
+                compliance_score: 60,
+            }),
+        });
+
+        expect(
+            screen
+                .getByText('partial · 60%')
+                .querySelector('[data-icon="CircleDashed"]'),
+        ).not.toBe(null);
+    });
+
     it('labels an overrun as distance completion without hiding the verdict', () => {
         renderRow({
             day: day({
