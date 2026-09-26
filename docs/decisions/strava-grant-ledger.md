@@ -16,6 +16,8 @@ code_refs:
   - database/migrations/2026_09_26_000002_create_strava_grant_ledger_tables.php
 ---
 
+> **Partly superseded (2026-09-26) by [[strava-refresh-rejection-names-the-refresh-token]].** Only a token-refresh `400` naming the `RefreshToken` now counts as a rejection; any other `400` keeps the token as a failed release, so the "Operational risk" consequence below no longer applies. The ledger, retention and retry decisions stand.
+
 # Strava grant releases survive account deletion
 
 **Status:** Accepted (documented 2026-09-26)

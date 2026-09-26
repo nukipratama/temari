@@ -421,6 +421,15 @@ function mockStravaDriver(callable $configure): MockInterface
     return $driver;
 }
 
+/** @return array{message: string, errors: list<array{resource: string, field: string, code: string}>} */
+function stravaBadRequest(string $resource, string $field): array
+{
+    return [
+        'message' => 'Bad Request',
+        'errors' => [['resource' => $resource, 'field' => $field, 'code' => 'invalid']],
+    ];
+}
+
 /**
  * A share-card fixture built straight from the value object, so a style test
  * asserts on what it draws rather than on how a run resolves into facts (that

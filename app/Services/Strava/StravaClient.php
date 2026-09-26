@@ -353,7 +353,10 @@ class StravaClient
         }
 
         if ($response->failed()) {
-            $rejected = $response->status() === 400
+            // A 400 about the Application (client id/secret) is our misconfiguration, not a dead grant.
+            $refreshTokenRejected = $response->status() === 400
+                && collect((array) $response->json('errors'))->contains('resource', 'RefreshToken');
+            $rejected = $refreshTokenRejected
                 || ($release && $response->status() === 401);
 
             if ($rejected) {
@@ -365,7 +368,7 @@ class StravaClient
             // 401 / 429 / 5xx are transient: the refresh may succeed on retry, so
             // the caller releases the job and backs off instead of revoking.
             throw new StravaTokenRefreshTransientException(
-                "Strava token refresh failed transiently with status {$response->status()}.",
+                "Strava token refresh failed transiently with status {$response->status()}{$this->errorSubject($response)}.",
             );
         }
 
@@ -384,6 +387,14 @@ class StravaClient
             'refresh_token' => $refreshToken,
             'expires_at' => new Carbon('@' . $expiresAt)->setTimezone(config('app.timezone')),
         ];
+    }
+
+    private function errorSubject(Response $response): string
+    {
+        $resource = $response->json('errors.0.resource');
+        $field = $response->json('errors.0.field');
+
+        return is_string($resource) && is_string($field) ? " ({$resource} {$field})" : '';
     }
 
     private function guardRateLimit(StravaReadPriority $priority): void
