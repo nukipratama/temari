@@ -542,12 +542,13 @@ it('reactivates a revoked connection and dispatches one incremental sync', funct
         ->assertRedirect(route('dashboard'));
 
     $connection->refresh();
+    $grant = StravaGrantToken::query()->where('strava_athlete_id', 987654)->sole();
     expect($connection->isRevoked())->toBeFalse()
         ->and($connection->credential_version)->toBe(5)
         ->and($connection->access_token)->toBe('reactivated-access')
         ->and($connection->refresh_token)->toBe('reactivated-refresh')
-        ->and(StravaGrantToken::query()->where('strava_athlete_id', 987654)->sole()->credential_version)->toBe(5)
-        ->and(StravaGrantToken::query()->where('strava_athlete_id', 987654)->sole()->refresh_token)->toBe('reactivated-refresh');
+        ->and($grant->credential_version)->toBe(5)
+        ->and($grant->refresh_token)->toBe('reactivated-refresh');
 
     Bus::assertDispatchedTimes(SyncActivitiesJob::class, 1);
     Bus::assertDispatched(SyncActivitiesJob::class, fn (SyncActivitiesJob $job): bool => $job->userId === $existingUser->id);

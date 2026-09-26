@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Strava;
 
+use App\Enums\StravaGrantReleaseStatus;
 use App\Enums\StravaReadPriority;
 use App\Enums\StravaReadSource;
-use App\Enums\StravaGrantReleaseStatus;
 use App\Models\Analytics\StravaRead;
 use App\Models\StravaConnection;
 use App\Models\StravaGrantToken;
@@ -21,9 +21,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Pulse\Facades\Pulse;
+use Throwable;
 
 class StravaClient
 {
@@ -33,7 +33,9 @@ class StravaClient
 
     private const int REFRESH_BUFFER_SECONDS = 60;
 
-    private const int REFRESH_LOCK_SECONDS = 15;
+    public const int REFRESH_LOCK_TTL_SECONDS = 90;
+
+    private const int REFRESH_LOCK_WAIT_SECONDS = 15;
 
     // Strava enforces rate limits per CLIENT (the whole app), not per athlete, so
     // these buckets are keyed globally and shared across every connected user. The
@@ -57,6 +59,11 @@ class StravaClient
 
     public function __construct(private readonly ?StravaCircuitBreaker $breaker = null)
     {
+    }
+
+    public static function refreshLockKey(int $stravaAthleteId): string
+    {
+        return "strava-refresh:{$stravaAthleteId}";
     }
 
     /**
@@ -288,11 +295,9 @@ class StravaClient
             return $connection;
         }
 
-        // Serialize refreshes per connection: without the lock two concurrent
-        // workers could both POST /oauth/token, and Strava's rotated
-        // refresh_token from the first call invalidates the second.
-        return Cache::lock("strava-refresh:{$connection->id}", self::REFRESH_LOCK_SECONDS)->block(
-            self::REFRESH_LOCK_SECONDS,
+        // Refreshes and grant releases share this athlete-level lock because each refresh rotates the token.
+        return Cache::lock(self::refreshLockKey($connection->strava_athlete_id), self::REFRESH_LOCK_TTL_SECONDS)->block(
+            self::REFRESH_LOCK_WAIT_SECONDS,
             function () use ($connection): StravaConnection {
                 // Re-read inside the lock: another worker may have just refreshed.
                 $connection->refresh();

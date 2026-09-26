@@ -809,9 +809,12 @@ it('does not release a newer grant after an old refresh response arrives', funct
         ]);
     });
 
-    expect(new StravaClient()->deauthorizeGrantToken($grant)->status)->toBe(StravaGrantReleaseStatus::Stale)
-        ->and($grant->refresh()->credential_version)->toBe(5)
-        ->and($grant->refresh()->refresh_token)->toBe('oauth-refresh');
+    $result = new StravaClient()->deauthorizeGrantToken($grant);
+    $refreshedGrant = $grant->fresh();
+
+    expect($result->status)->toBe(StravaGrantReleaseStatus::Stale)
+        ->and($refreshedGrant->credential_version)->toBe(5)
+        ->and($refreshedGrant->refresh_token)->toBe('oauth-refresh');
 
     Http::assertNotSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize');
 });

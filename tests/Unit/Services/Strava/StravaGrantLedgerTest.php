@@ -81,8 +81,10 @@ it('keeps refreshed connection credentials when the grant mirror has advanced', 
         Carbon::now()->addHours(6),
     ))->toBeTrue();
 
-    expect($connection->fresh()->access_token)->toBe('fresh-access')
-        ->and($connection->fresh()->refresh_token)->toBe('fresh-refresh')
+    $refreshedConnection = $connection->fresh();
+
+    expect($refreshedConnection->access_token)->toBe('fresh-access')
+        ->and($refreshedConnection->refresh_token)->toBe('fresh-refresh')
         ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->sole()->refresh_token)
         ->toBe('newer-refresh');
 
@@ -118,8 +120,10 @@ it('distinguishes a grant mirror behind the connection when skipping a refresh',
         Carbon::now()->addHours(6),
     ))->toBeTrue();
 
-    expect($connection->fresh()->access_token)->toBe('fresh-access')
-        ->and($connection->fresh()->refresh_token)->toBe('fresh-refresh')
+    $refreshedConnection = $connection->fresh();
+
+    expect($refreshedConnection->access_token)->toBe('fresh-access')
+        ->and($refreshedConnection->refresh_token)->toBe('fresh-refresh')
         ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->sole()->refresh_token)
         ->toBe('older-refresh');
 
