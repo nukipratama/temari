@@ -143,6 +143,7 @@ it('claims a keyed delivery and is idempotent across repeats', function (): void
 
     Http::assertSentCount(1);
     $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
+    $this->assertDatabaseCount('notification_deliveries', 1);
 });
 
 it('settles the keyed claim as failed with its error so a retry can resend', function (): void {
@@ -158,7 +159,7 @@ it('settles the keyed claim as failed with its error so a retry can resend', fun
         'channel' => 'telegram',
         'status' => NotificationDeliveryStatus::Failed->value,
     ]);
-    expect(app(NotificationDeliveryClaim::class)->claim($analysisId, 'telegram'))->toBeTrue();
+    expect(app(NotificationDeliveryClaim::class)->claim($analysisId, 'telegram'))->toBe(2);
 });
 
 it('revokes the connection and does not retry when the bot is blocked (403)', function (): void {
@@ -180,7 +181,12 @@ it('force-sends even when the delivery row already exists, and records the claim
     channelSend($user, new TelegramMessage(text: 'Resend', deliveryKey: $analysisId, force: true));
 
     Http::assertSentCount(1);
-    $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
+    $this->assertDatabaseHas('notification_deliveries', [
+        'analysis_id' => $analysisId,
+        'channel' => 'telegram',
+        'status' => NotificationDeliveryStatus::Sent->value,
+        'claim_version' => 1,
+    ]);
 });
 
 it('force-send swallows a failure (one-shot) but records it as a failed delivery', function (): void {
@@ -194,6 +200,31 @@ it('force-send swallows a failure (one-shot) but records it as a failed delivery
         'analysis_id' => $analysisId,
         'channel' => 'telegram',
         'status' => NotificationDeliveryStatus::Failed->value,
+    ]);
+});
+
+it('abandons a stale claim without sending again and fences its late finisher', function (): void {
+    fakeTelegramOk();
+    $user = connectedUser();
+    $analysisId = Analysis::factory()->create()->id;
+    $claim = app(NotificationDeliveryClaim::class);
+    $version = $claim->claim($analysisId, 'telegram');
+    DB::table('notification_deliveries')
+        ->where('analysis_id', $analysisId)
+        ->where('channel', 'telegram')
+        ->update(['claimed_at' => now()->subMinutes(16)]);
+
+    expect($claim->recoverStale())->toBe(['webpush_retries' => [], 'telegram_abandoned' => 1]);
+    channelSend($user, new TelegramMessage(text: 'No duplicate', deliveryKey: $analysisId));
+
+    Http::assertSentCount(0);
+    expect($claim->markSent($analysisId, 'telegram', $version))->toBeFalse();
+    $this->assertDatabaseCount('notification_deliveries', 1);
+    $this->assertDatabaseHas('notification_deliveries', [
+        'analysis_id' => $analysisId,
+        'channel' => 'telegram',
+        'status' => NotificationDeliveryStatus::Abandoned->value,
+        'claim_version' => 2,
     ]);
 });
 

@@ -9,7 +9,7 @@
     </x-pulse::card-header>
 
     <x-pulse::scroll :expand="$expand" wire:poll.30s="">
-        <div class="grid grid-cols-3 gap-2 mb-4">
+        <div class="grid grid-cols-4 gap-2 mb-4">
             @foreach ($statusBoxes as $box)
                 @include('livewire.pulse.partials.stat-tile', [
                     'label' => $box['label'],
@@ -30,6 +30,7 @@
                                 <span class="text-text-3">{{ number_format($channel['sent']) }} sent</span>
                                 <span class="text-text-3">{{ number_format($channel['pending']) }} in flight</span>
                                 <span class="{{ $channel['failed'] > 0 ? 'text-ember-ink font-bold' : 'text-text-3' }}">{{ number_format($channel['failed']) }} failed</span>
+                                <span class="{{ $channel['abandoned'] > 0 ? 'text-ember-ink font-bold' : 'text-text-3' }}">{{ number_format($channel['abandoned']) }} abandoned</span>
                             </span>
                         </div>
                     @endforeach
@@ -37,7 +38,7 @@
             </div>
         @endif
 
-        @if ($recentFailures->isEmpty())
+        @if ($recentIssues->isEmpty())
             <x-pulse::no-results />
         @else
             <x-pulse::table>
@@ -47,24 +48,24 @@
                 </colgroup>
                 <x-pulse::thead>
                     <tr>
-                        <x-pulse::th>Failed send</x-pulse::th>
+                        <x-pulse::th>Delivery issue</x-pulse::th>
                         <x-pulse::th class="text-right">When</x-pulse::th>
                     </tr>
                 </x-pulse::thead>
                 <tbody>
-                    @foreach ($recentFailures as $failure)
-                        <tr wire:key="{{ $failure->analysis_id }}-{{ $failure->channel }}-spacer" class="h-2 first:h-0"></tr>
-                        <tr wire:key="{{ $failure->analysis_id }}-{{ $failure->channel }}-row">
+                    @foreach ($recentIssues as $issue)
+                        <tr wire:key="{{ $issue->analysis_id }}-{{ $issue->channel }}-spacer" class="h-2 first:h-0"></tr>
+                        <tr wire:key="{{ $issue->analysis_id }}-{{ $issue->channel }}-row">
                             <x-pulse::td class="max-w-[1px]">
                                 <code class="block truncate text-xs text-foreground">
-                                    {{ $failure->channel }} · analysis #{{ $failure->analysis_id }}
+                                    {{ $issue->status->value }} · {{ $issue->channel }} · analysis #{{ $issue->analysis_id }}
                                 </code>
-                                <p class="mt-1 truncate text-xs text-ember-ink" title="{{ $failure->error }}">
-                                    {{ \Illuminate\Support\Str::limit((string) $failure->error, 120) }}
+                                <p class="mt-1 truncate text-xs {{ $issue->status->value === 'abandoned' ? 'text-text-2' : 'text-ember-ink' }}" title="{{ $issue->error }}">
+                                    {{ \Illuminate\Support\Str::limit((string) $issue->error, 120) }}
                                 </p>
                             </x-pulse::td>
                             <x-pulse::td numeric class="whitespace-nowrap font-bold text-text-2">
-                                {{ $failure->settled_at?->ago(syntax: Carbon\CarbonInterface::DIFF_ABSOLUTE, short: true) ?? '—' }}
+                                {{ $issue->settled_at?->ago(syntax: Carbon\CarbonInterface::DIFF_ABSOLUTE, short: true) ?? '—' }}
                             </x-pulse::td>
                         </tr>
                     @endforeach

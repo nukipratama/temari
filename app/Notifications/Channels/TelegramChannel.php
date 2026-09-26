@@ -63,8 +63,12 @@ class TelegramChannel
         // Automatic (keyed, non-force) sends claim before delivering; the claim is
         // atomic on the unique (analysis_id, channel) pair, so a racing retry that
         // already claimed it bails before re-sending.
-        if ($message->deliveryKey !== null && ! $message->force && ! $this->claim->claim($message->deliveryKey, self::CHANNEL)) {
-            return;
+        $claimVersion = null;
+        if ($message->deliveryKey !== null && ! $message->force) {
+            $claimVersion = $this->claim->claim($message->deliveryKey, self::CHANNEL);
+            if ($claimVersion === null) {
+                return;
+            }
         }
 
         try {
@@ -74,7 +78,7 @@ class TelegramChannel
                 $this->client->sendMessage($connection->chat_id, $message->text);
             }
         } catch (Throwable $e) {
-            $this->handleFailure($e, $notifiable, $message);
+            $this->handleFailure($e, $notifiable, $message, $claimVersion);
 
             return;
         }
@@ -83,8 +87,14 @@ class TelegramChannel
         // misread as a send failure (the message already went out) nor trigger a
         // duplicate on retry. A manual push has no claim of its own, so this is
         // also what dedupes a later automatic notification for the same row.
-        if ($message->deliveryKey !== null) {
-            $this->record(fn () => $this->claim->markSent($message->deliveryKey, self::CHANNEL), $message->deliveryKey);
+        $deliveryKey = $message->deliveryKey;
+        if ($deliveryKey !== null) {
+            $this->record(
+                fn (): bool => $claimVersion === null
+                    ? $this->claim->recordForcedSent($deliveryKey, self::CHANNEL)
+                    : $this->claim->markSent($deliveryKey, self::CHANNEL, $claimVersion),
+                $deliveryKey,
+            );
         }
     }
 
@@ -94,12 +104,15 @@ class TelegramChannel
      * stop. The automatic path rethrows so the queued notification's retry can
      * resend, which the failed claim now permits.
      */
-    private function handleFailure(Throwable $e, User $notifiable, TelegramMessage $message): void
+    private function handleFailure(Throwable $e, User $notifiable, TelegramMessage $message, ?int $claimVersion): void
     {
-        if ($message->deliveryKey !== null) {
+        $deliveryKey = $message->deliveryKey;
+        if ($deliveryKey !== null) {
             $this->record(
-                fn () => $this->claim->markFailed($message->deliveryKey, self::CHANNEL, $e->getMessage()),
-                $message->deliveryKey,
+                fn (): bool => $claimVersion === null
+                    ? $this->claim->recordForcedFailed($deliveryKey, self::CHANNEL, $e->getMessage())
+                    : $this->claim->markFailed($deliveryKey, self::CHANNEL, $claimVersion, $e->getMessage()),
+                $deliveryKey,
             );
         }
 

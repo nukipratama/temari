@@ -127,6 +127,6 @@ it('keys idempotency on the briefing row, so a second attempt is a no-op', funct
     $claim = new NotificationDeliveryClaim();
 
     expect(new MorningBriefingNotification($briefing)->deliveryKey())->toBe($briefing->id)
-        ->and($claim->claim($briefing->id, 'webpush'))->toBeTrue()
-        ->and($claim->claim($briefing->id, 'webpush'))->toBeFalse();
+        ->and($claim->claim($briefing->id, 'webpush'))->toBe(1)
+        ->and($claim->claim($briefing->id, 'webpush'))->toBeNull();
 });
