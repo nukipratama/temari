@@ -53,13 +53,7 @@ class NotificationDeliveryClaim
         $updated = $this->rowFor($analysisId, $channel)
             ->where('claim_version', $row->claim_version)
             ->where(function (Builder $claimable) use ($channel, $staleBefore): void {
-                $claimable
-                    ->where('status', NotificationDeliveryStatus::Failed->value)
-                    ->orWhere(function (Builder $rearmed): void {
-                        $rearmed
-                            ->where('status', NotificationDeliveryStatus::Pending->value)
-                            ->whereNull('claimed_at');
-                    });
+                $claimable->where('status', NotificationDeliveryStatus::Failed->value);
 
                 if ($channel === 'webpush') {
                     $claimable->orWhere(function (Builder $stale) use ($staleBefore): void {
