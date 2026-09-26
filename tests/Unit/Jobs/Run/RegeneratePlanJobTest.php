@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use DateTimeInterface;
 use App\Enums\PlanRegenerationReason;
 use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\User;
