@@ -275,25 +275,15 @@ it('moves a generated quality prescription with its workout and keeps its render
         ->where('session_type', SessionType::Rest)
         ->orderBy('date')
         ->firstOrFail();
-    $workoutFields = [
-        'session_type',
-        'skipped',
-        'prescribed_hard_minutes',
-        'prescribed_pace_band',
-        'prescribed_pace_sec_per_km',
-        'prescription_reason',
-        'prescription_race_context',
-        'race_distance_m',
-    ];
-    $qualityWorkout = $quality->only($workoutFields);
-    $restWorkout = $rest->only($workoutFields);
+    $qualityWorkout = $quality->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
+    $restWorkout = $rest->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
 
     $this->actingAs($user)
         ->patch("/plan/sessions/{$quality->id}", ['date' => $rest->date->toDateString()])
         ->assertRedirect();
 
-    expect($quality->fresh()->only($workoutFields))->toBe($restWorkout)
-        ->and($rest->fresh()->only($workoutFields))->toBe($qualityWorkout)
+    expect($quality->fresh()->only(PlannedSession::WORKOUT_TRANSFER_FIELDS))->toBe($restWorkout)
+        ->and($rest->fresh()->only(PlannedSession::WORKOUT_TRANSFER_FIELDS))->toBe($qualityWorkout)
         ->and($quality->fresh()->pinned)->toBeTrue()
         ->and($rest->fresh()->pinned)->toBeTrue();
 
@@ -328,12 +318,17 @@ it('moves a generated quality prescription with its workout and keeps its render
     expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit);
 });
 
-it('moves race distance with the race workout', function (): void {
+it('moves race distance with the race workout without changing the goal date', function (): void {
     $user = User::factory()->create();
+    $raceDate = Carbon::today()->addDay();
+    $goal = RaceGoal::factory()->for($user)->create([
+        'race_date' => $raceDate,
+        'distance_m' => 10_000,
+    ]);
     $race = PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->addDay()->toDateString(),
+        'date' => $raceDate->toDateString(),
         'session_type' => SessionType::Race,
-        'race_distance_m' => 10_000,
+        'race_distance_m' => $goal->distance_m,
     ]);
     $rest = PlannedSession::factory()->for($user)->rest()->create([
         'date' => Carbon::today()->addDays(2)->toDateString(),
@@ -345,7 +340,8 @@ it('moves race distance with the race workout', function (): void {
 
     expect($race->fresh()->race_distance_m)->toBeNull()
         ->and($rest->fresh()->session_type)->toBe(SessionType::Race)
-        ->and($rest->fresh()->race_distance_m)->toBe(10_000);
+        ->and($rest->fresh()->race_distance_m)->toBe(10_000)
+        ->and($goal->fresh()->race_date->toDateString())->toBe($raceDate->toDateString());
 });
 
 it('rolls back both rows when a session swap fails after its first write', function (): void {

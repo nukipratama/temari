@@ -142,18 +142,8 @@ class PlanController extends Controller
     private function swapSessions(PlannedSession $from, PlannedSession $to): void
     {
         DB::transaction(function () use ($from, $to): void {
-            $workoutFields = [
-                'session_type',
-                'skipped',
-                'prescribed_hard_minutes',
-                'prescribed_pace_band',
-                'prescribed_pace_sec_per_km',
-                'prescription_reason',
-                'prescription_race_context',
-                'race_distance_m',
-            ];
-            $fromWorkout = $from->only($workoutFields);
-            $toWorkout = $to->only($workoutFields);
+            $fromWorkout = $from->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
+            $toWorkout = $to->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
 
             $to->update([...$fromWorkout, 'pinned' => true]);
             $from->update([...$toWorkout, 'pinned' => true]);
