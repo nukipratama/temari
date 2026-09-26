@@ -141,7 +141,7 @@ class PostRunSpeechNarrator
     ) {
     }
 
-    public function generate(Activity $activity, ActivityDetail $detail, string $mood): string
+    public function generate(Activity $activity, ActivityDetail $detail, string $mood, ?int $deadlineSeconds = null): string
     {
         $decoded = $this->caller->call(
             kind: 'post_run_speech',
@@ -154,6 +154,7 @@ class PostRunSpeechNarrator
                 userId: $activity->user_id,
                 maxTokens: 1500,
                 toolbox: $this->toolbox($activity, $detail),
+                deadlineSeconds: $deadlineSeconds,
             ),
         );
 

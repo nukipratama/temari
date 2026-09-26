@@ -240,7 +240,7 @@ class RunInsightNarrator
     /**
      * @return array{claims: list<array{anchor: string, text: string, value: string|null, delta: string|null}>}
      */
-    public function generate(Activity $activity, ActivityDetail $detail): array
+    public function generate(Activity $activity, ActivityDetail $detail, ?int $deadlineSeconds = null): array
     {
         $decoded = $this->caller->call(
             kind: 'run_insight',
@@ -253,6 +253,7 @@ class RunInsightNarrator
                 userId: $activity->user_id,
                 maxTokens: 3000,
                 toolbox: $this->toolbox($activity, $detail),
+                deadlineSeconds: $deadlineSeconds,
             ),
             propertySchema: self::CLAIMS_PROPERTY_SCHEMA,
         );

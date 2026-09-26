@@ -65,16 +65,28 @@ function seedActivityForJob(): Activity
 }
 
 it('writes speech + insight rows Done from one job run', function (): void {
+    config([
+        'azure_openai.uri' => 'https://x.openai.azure.com',
+        'azure_openai.api_key' => 'fake',
+        'azure_openai.timeout' => 5,
+        'ai.agent.deadline_seconds' => 20,
+        'horizon.defaults.supervisor-ai.timeout' => 60,
+    ]);
     $activity = seedActivityForJob();
 
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
     // The speech is told the mood and nothing else about the run: the insight
     // claims are the other lens' material, not its own.
     $speechMock->shouldReceive('generate')
-        ->withArgs(fn ($a, $d, $mood): bool => $mood === 'blazing')
+        ->withArgs(fn ($a, $d, $mood, $deadlineSeconds): bool => $mood === 'blazing' && $deadlineSeconds === 20)
         ->andReturn('nice run');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
-    mockInsightNarrator([sampleClaim('tech text')]);
+
+    $insightMock = Mockery::mock(RunInsightNarrator::class);
+    $insightMock->shouldReceive('generate')
+        ->withArgs(fn ($a, $d, $deadlineSeconds): bool => $deadlineSeconds === 20)
+        ->andReturn(['claims' => [sampleClaim('tech text')]]);
+    app()->instance(RunInsightNarrator::class, $insightMock);
 
     new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
@@ -91,6 +103,50 @@ it('writes speech + insight rows Done from one job run', function (): void {
 
     foreach ($rows as $row) {
         expect($row->status)->toBe(AnalysisStatus::Done);
+    }
+});
+
+it('persists insight and leaves speech Pending when its worst-case call no longer fits', function (): void {
+    config([
+        'azure_openai.uri' => 'https://x.openai.azure.com',
+        'azure_openai.api_key' => 'fake',
+        'azure_openai.timeout' => 5,
+        'ai.agent.deadline_seconds' => 20,
+        'horizon.defaults.supervisor-ai.timeout' => 60,
+    ]);
+    Carbon::setTestNow('2026-09-26 06:00:00');
+    $activity = seedActivityForJob();
+
+    $insightMock = Mockery::mock(RunInsightNarrator::class);
+    $insightMock->shouldReceive('generate')
+        ->once()
+        ->withArgs(function ($passedActivity, $detail, $deadlineSeconds) use ($activity): bool {
+            Carbon::setTestNow(Carbon::now()->addSeconds(31));
+
+            return $passedActivity->is($activity) && $deadlineSeconds === 20;
+        })
+        ->andReturn(['claims' => [sampleClaim('persisted before speech')]]);
+    app()->instance(RunInsightNarrator::class, $insightMock);
+
+    $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
+    $speechMock->shouldNotReceive('generate');
+    app()->instance(PostRunSpeechNarrator::class, $speechMock);
+
+    try {
+        new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+
+        $rows = Analysis::query()
+            ->where('subject_id', $activity->id)
+            ->get()
+            ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
+
+        expect($rows[AnalysisType::RunInsight->value]->status)->toBe(AnalysisStatus::Done)
+            ->and($rows[AnalysisType::RunInsight->value]->attempts)->toBe(1)
+            ->and($rows[AnalysisType::PostRunSpeech->value]->status)->toBe(AnalysisStatus::Pending)
+            ->and($rows[AnalysisType::PostRunSpeech->value]->attempts)->toBe(0)
+            ->and($rows[AnalysisType::PostRunSpeech->value]->content)->toBeNull();
+    } finally {
+        Carbon::setTestNow();
     }
 });
 
@@ -272,7 +328,7 @@ it('no-ops when all rows already Done (idempotent)', function (): void {
     }
 });
 
-it('rethrows non-UnavailableException so Laravel can retry the whole group', function (): void {
+it('keeps the completed insight Done when speech generation throws', function (): void {
     $activity = seedActivityForJob();
 
     $insightMock = Mockery::mock(RunInsightNarrator::class);
@@ -286,11 +342,14 @@ it('rethrows non-UnavailableException so Laravel can retry the whole group', fun
     expect(fn () => new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class)))
         ->toThrow(RuntimeException::class, 'boom');
 
-    $rows = Analysis::query()->where('subject_id', $activity->id)->get();
-    foreach ($rows as $row) {
-        expect($row->status)->toBe(AnalysisStatus::Failed)
-            ->and($row->error)->toBe('boom');
-    }
+    $rows = Analysis::query()
+        ->where('subject_id', $activity->id)
+        ->get()
+        ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
+
+    expect($rows[AnalysisType::RunInsight->value]->status)->toBe(AnalysisStatus::Done)
+        ->and($rows[AnalysisType::PostRunSpeech->value]->status)->toBe(AnalysisStatus::Failed)
+        ->and($rows[AnalysisType::PostRunSpeech->value]->error)->toBe('boom');
 });
 
 it('shared retry config: tries=3, backoff=[10, 60]', function (): void {
@@ -406,7 +465,7 @@ it('marks a group the LLM answered as LLM-served, each narrator call attributed 
         ->and($rows[AnalysisType::RunInsight->value]->served_by)->toBe(ServedBy::Llm);
 });
 
-it('marks a content-filtered group as rule-based across every row it settles', function (): void {
+it('keeps the generated insight and fills only filtered speech from the rule-based narrator', function (): void {
     $activity = seedActivityForJob();
 
     $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
@@ -419,12 +478,13 @@ it('marks a content-filtered group as rule-based across every row it settles', f
     $rows = Analysis::query()
         ->where('subject_type', Activity::class)
         ->where('subject_id', $activity->id)
-        ->get();
+        ->get()
+        ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
 
-    expect($rows)->toHaveCount(2);
-    foreach ($rows as $row) {
-        expect($row->status)->toBe(AnalysisStatus::Done)
-            ->and($row->served_by)->toBe(ServedBy::RuleBased)
-            ->and($row->rule_based_reason)->toBe(AnalysisOrigin::ContentFilter);
-    }
+    expect($rows)->toHaveCount(2)
+        ->and($rows[AnalysisType::RunInsight->value]->status)->toBe(AnalysisStatus::Done)
+        ->and($rows[AnalysisType::RunInsight->value]->served_by)->toBe(ServedBy::Llm)
+        ->and($rows[AnalysisType::PostRunSpeech->value]->status)->toBe(AnalysisStatus::Done)
+        ->and($rows[AnalysisType::PostRunSpeech->value]->served_by)->toBe(ServedBy::RuleBased)
+        ->and($rows[AnalysisType::PostRunSpeech->value]->rule_based_reason)->toBe(AnalysisOrigin::ContentFilter);
 });

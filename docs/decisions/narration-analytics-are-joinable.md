@@ -50,7 +50,7 @@ through narrator signatures: [NarratedAnalysis](app/Services/AI/NarratedAnalysis
 `scoped` ambient holder — the same seam [NarrationOrigin](app/Services/AI/NarrationOrigin.php)
 already uses for `origin` — set around the generation by
 [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php#L49) and, per narrator call, by
-[`AnalyzeGroupJob::narrating()`](app/Jobs/AI/AnalyzeGroupJob.php#L175), and read at metering time
+[`AnalyzeGroupJob::narrating()`](app/Jobs/AI/AnalyzeGroupJob.php#L217), and read at metering time
 in [StructuredChatCaller](app/Services/AI/StructuredChatCaller.php#L257). A call made outside a
 narration (a run question) reads null and stays unattributed, exactly as an undeclared origin does.
 
@@ -76,9 +76,9 @@ the case with no usage row. The producer is a property of the content, so it bel
 content. [ServedBy](app/Services/AI/ServedBy.php) is written by every path that settles a row
 Done, funnelled through [`markDone()`](app/Services/AI/AnalysisService.php#L337): `llm` by
 default, `rule_based` from
-[`fillRuleBased()`](app/Services/AI/AnalysisService.php#L1093) (demo seed, demo triggers, the
+[`fillRuleBased()`](app/Services/AI/AnalysisService.php#L1111) (demo seed, demo triggers, the
 ceiling degrade) and from the two content-filter fallbacks
-([row](app/Jobs/AI/AnalyzeRowJob.php#L75), [group](app/Jobs/AI/AnalyzeGroupJob.php#L105)). It is
+([row](app/Jobs/AI/AnalyzeRowJob.php#L75), [group](app/Jobs/AI/AnalyzeGroupJob.php#L145)). It is
 nullable, because a row that has never been Done was served by neither and historical rows predate
 the column.
 
