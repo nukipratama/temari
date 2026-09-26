@@ -10,6 +10,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 final class ReconcilePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -31,6 +32,16 @@ final class ReconcilePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQue
     public function uniqueId(): string
     {
         return (string) $this->userId;
+    }
+
+    /** @return array<int, WithoutOverlapping> */
+    public function middleware(): array
+    {
+        return [
+            new WithoutOverlapping("plan-reconciliation:{$this->userId}")
+                ->releaseAfter(10)
+                ->expireAfter(3600),
+        ];
     }
 
     public function handle(PlanReconciliationService $reconciliation): void
