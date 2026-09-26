@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
@@ -69,10 +70,15 @@ it('does not auto-reconcile max HR while rebuilding under the current profile', 
 });
 
 it('rolls back every write in dry-run mode', function (): void {
+    Queue::fake();
     $user = User::factory()->create();
+    RecalibrateTrainingHistoryJob::markDirty($user->id);
 
     app(PlanRecalibrationService::class)->recalibrate($user, dryRun: true);
 
     expect($user->fresh()->plan_recalibration_started_at)->toBeNull()
-        ->and(PlannedSession::query()->where('user_id', $user->id)->exists())->toBeFalse();
+        ->and(PlannedSession::query()->where('user_id', $user->id)->exists())->toBeFalse()
+        ->and(Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id)))->toBeTrue();
+
+    Queue::assertNothingPushed();
 });

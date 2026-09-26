@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 final class PlanRecalibrationDispatch
 {
@@ -22,12 +23,29 @@ final class PlanRecalibrationDispatch
             return;
         }
 
-        $user->forceFill([
-            'plan_recalibration_started_at' => now(),
-            'plan_recalibration_completed_at' => null,
-        ])->saveQuietly();
+        RecalibrateTrainingHistoryJob::markDirty($userId);
+        $lock = Cache::lock(
+            RecalibrateTrainingHistoryJob::overlapLockKey($userId),
+            RecalibrateTrainingHistoryJob::overlapLockTtlSeconds(),
+        );
+        if (! $lock->get()) {
+            return;
+        }
 
-        RecalibrateTrainingHistoryJob::dispatch($userId)->afterCommit();
+        try {
+            if (! Cache::pull(RecalibrateTrainingHistoryJob::dirtyMarkerKey($userId))) {
+                return;
+            }
+
+            $user->forceFill([
+                'plan_recalibration_started_at' => now(),
+                'plan_recalibration_completed_at' => null,
+            ])->saveQuietly();
+
+            RecalibrateTrainingHistoryJob::dispatch($userId)->delay(5)->afterCommit();
+        } finally {
+            $lock->release();
+        }
     }
 
     public static function withoutDispatching(callable $callback): mixed
