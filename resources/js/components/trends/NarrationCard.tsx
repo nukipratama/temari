@@ -8,7 +8,6 @@ import AnalysisStatus, {
 } from '@/components/temari/AnalysisStatus';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import Skeleton from '@/components/ui/Skeleton';
 import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
@@ -34,13 +33,15 @@ function splitContent(content: string): { title: string; description: string } {
 }
 
 /**
- * The verdict card, the only place on Trends a call is made — everything
- * else on the page is evidence. Any state short of a written verdict (a
- * plain Pending row, still queued, or Failed) renders the same honest empty
- * card: every number on the page is real and current, only the sentence is
- * missing, with the same per-block "try again" every other narrated block
- * carries. Direction A (#967) deliberately does not distinguish those
- * states further — a mid-flight skeleton would just be more silence.
+ * The verdict, the only place on Trends a call is made — everything else on
+ * the page is evidence. Its headline is Temari's voice line (MASTER.md's
+ * Fraunces-italic register), same as Today's own read. Any state short of a
+ * written verdict (a plain Pending row, still queued, or Failed) renders the
+ * same honest empty block: every number on the page is real and current,
+ * only the sentence is missing, with the same per-block "try again" every
+ * other narrated block carries. Direction A (#967) deliberately does not
+ * distinguish those states further — a mid-flight skeleton would just be
+ * more silence.
  */
 export default function NarrationCard({
     analysis,
@@ -56,7 +57,7 @@ export default function NarrationCard({
 
     if (effectiveStatus === 'done' && analysis.content !== null) {
         return (
-            <Card as="section" tone="narration" className={className}>
+            <section className={className}>
                 <Eyebrow
                     token="micro"
                     className="mb-1.5 flex items-center gap-1.5 text-icon-accent"
@@ -72,7 +73,7 @@ export default function NarrationCard({
                         const { title, description } = splitContent(content);
                         return (
                             <>
-                                <p className="narration font-semibold">
+                                <p className="font-serif text-headline-sm text-foreground italic">
                                     {title}
                                 </p>
                                 {description !== '' && (
@@ -84,12 +85,12 @@ export default function NarrationCard({
                         );
                     }}
                 />
-            </Card>
+            </section>
         );
     }
 
     return (
-        <Card as="section" tone="empty" className={className}>
+        <section className={className}>
             <div className="flex items-center justify-between gap-3">
                 <Eyebrow
                     token="micro"
@@ -112,7 +113,7 @@ export default function NarrationCard({
                     </span>
                 </button>
             </div>
-            <p className="prose mt-2.5 text-sm leading-relaxed text-text-2">
+            <p className="mt-2.5 text-sm leading-relaxed text-text-2">
                 not written yet: every number on this page is here and current,
                 only temari&apos;s sentence is missing.
             </p>
@@ -120,7 +121,7 @@ export default function NarrationCard({
                 <Skeleton className="h-2.5 w-3/4" />
                 <Skeleton className="h-2.5 w-1/2" />
             </div>
-        </Card>
+        </section>
     );
 }
 

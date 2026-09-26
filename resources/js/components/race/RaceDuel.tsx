@@ -1,7 +1,6 @@
 import ProjectionRangeBar from '@/components/race/ProjectionRangeBar';
 import MascotWatermark from '@/components/temari/MascotWatermark';
 import Eyebrow from '@/components/ui/Eyebrow';
-import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 import { daysUntilId, formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
 import { type GoalGapVerdict, goalGap, goalGapPose } from '@/lib/raceGoal';
@@ -61,11 +60,7 @@ export default function RaceDuel({
     const daysToGo = daysUntilId(race.race_date);
 
     return (
-        <Card
-            as="section"
-            padding="hero"
-            className={cn('relative isolate overflow-hidden', className)}
-        >
+        <section className={cn('relative isolate overflow-hidden', className)}>
             <MascotWatermark
                 pose={
                     projection
@@ -147,6 +142,6 @@ export default function RaceDuel({
                     {CONFIDENCE_COPY[projection.confidence]}).
                 </p>
             )}
-        </Card>
+        </section>
     );
 }

@@ -4,7 +4,7 @@ import type {
     WeekComparison as WeekComparisonPayload,
 } from '@/types/inertia';
 
-import Card from '@/components/ui/LegacyCard';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import {
     formatSignedForm,
@@ -20,6 +20,8 @@ const CHIP_TONE: Record<string, string> = {
     neutral: 'border-border bg-muted text-text-2',
     warning: 'border-ember/35 bg-ember/15 text-ember-ink',
 };
+
+const TILE = 'rounded-sm bg-secondary px-3 py-2.5';
 
 function FormChip({ status }: Readonly<{ status: FormStatus }>) {
     return (
@@ -56,8 +58,9 @@ interface WeekComparisonProps {
 /**
  * "vs last week" — the widest of the three comparisons, since it carries
  * both halves of the page's question at once: km and runs are the gain,
- * form/TRIMP/monotony/strain are the cost, separated by a rule inside one
- * card (direction A, #967).
+ * form/TRIMP/monotony/strain are the cost. Every side-by-side number pair
+ * sits in a stat tile per MASTER.md; neither side has a single number that
+ * leads the whole section, so there's no hero here (direction A, #967).
  */
 export default function WeekComparison({
     weekComparison,
@@ -70,115 +73,113 @@ export default function WeekComparison({
 
     return (
         <section className={className}>
-            <h2 className="font-serif text-headline-sm text-foreground">
+            <Eyebrow as="h2" token="small" tone="ink-2">
                 vs last week
-            </h2>
+            </Eyebrow>
             <p className="mt-1 text-xs text-text-3">
                 through {weekday}, so it&apos;s the same slice of both weeks.
             </p>
-            <Card className="mt-2.5">
-                <div className="grid grid-cols-2 gap-3">
-                    <Stat
-                        label="km this week"
-                        value={
-                            this_week_km !== null
-                                ? this_week_km.toFixed(1)
-                                : '—'
-                        }
-                        delta={
-                            this_week_km !== null && last_week_km !== null ? (
-                                <StatDelta
-                                    value={this_week_km - last_week_km}
-                                    unit=" km"
-                                />
-                            ) : undefined
-                        }
-                        sub={
-                            last_week_km !== null
-                                ? `${last_week_km.toFixed(1)} km by ${weekday} last week`
-                                : undefined
-                        }
-                    />
-                    <Stat
-                        label="runs this week"
-                        value={
-                            this_week_runs !== null
-                                ? String(this_week_runs)
-                                : '—'
-                        }
-                        delta={
-                            this_week_runs !== null &&
-                            last_week_runs !== null ? (
-                                <StatDelta
-                                    value={this_week_runs - last_week_runs}
-                                    decimals={0}
-                                />
-                            ) : undefined
-                        }
-                        sub={
-                            last_week_runs !== null
-                                ? `${last_week_runs} by ${weekday} last week`
-                                : undefined
-                        }
-                    />
-                </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+                <Stat
+                    className={TILE}
+                    label="km this week"
+                    value={
+                        this_week_km !== null ? this_week_km.toFixed(1) : '—'
+                    }
+                    delta={
+                        this_week_km !== null && last_week_km !== null ? (
+                            <StatDelta
+                                value={this_week_km - last_week_km}
+                                unit=" km"
+                            />
+                        ) : undefined
+                    }
+                    sub={
+                        last_week_km !== null
+                            ? `${last_week_km.toFixed(1)} km by ${weekday} last week`
+                            : undefined
+                    }
+                />
+                <Stat
+                    className={TILE}
+                    label="runs this week"
+                    value={
+                        this_week_runs !== null ? String(this_week_runs) : '—'
+                    }
+                    delta={
+                        this_week_runs !== null && last_week_runs !== null ? (
+                            <StatDelta
+                                value={this_week_runs - last_week_runs}
+                                decimals={0}
+                            />
+                        ) : undefined
+                    }
+                    sub={
+                        last_week_runs !== null
+                            ? `${last_week_runs} by ${weekday} last week`
+                            : undefined
+                    }
+                />
+            </div>
 
-                <hr className="my-4 border-border" />
+            <hr className="my-4 border-dashed border-border" />
 
-                {load === null ? (
-                    <p className="text-sm text-text-3">
-                        not enough training history yet to read the cost side.
-                    </p>
-                ) : (
-                    <div className="flex flex-col gap-3">
-                        <div className="flex flex-wrap items-center gap-2.5">
-                            <span className="text-label-micro text-text-3">
-                                form
-                            </span>
-                            <FormChip status={load.form_status} />
-                            <span className="font-mono text-xs text-text-3">
-                                {formatSignedForm(load.form)}
-                            </span>
-                        </div>
-                        <p className="text-sm leading-relaxed text-foreground">
-                            {formStatusMeaning(load.form_status)}
-                        </p>
-                        <hr className="border-border" />
-                        <div className="grid grid-cols-3 gap-3">
-                            <Stat
-                                size="sm"
-                                label="weekly TRIMP"
-                                value={
-                                    load.weekly_trimp !== null
-                                        ? String(Math.round(load.weekly_trimp))
-                                        : '—'
-                                }
-                                sub={TRIMP_MEANING}
-                            />
-                            <Stat
-                                size="sm"
-                                label="monotony"
-                                value={
-                                    load.monotony !== null
-                                        ? load.monotony.toFixed(1)
-                                        : '—'
-                                }
-                                sub={MONOTONY_MEANING}
-                            />
-                            <Stat
-                                size="sm"
-                                label="strain"
-                                value={
-                                    load.strain !== null
-                                        ? String(Math.round(load.strain))
-                                        : '—'
-                                }
-                                sub={STRAIN_MEANING}
-                            />
-                        </div>
+            {load === null ? (
+                <p className="text-sm text-text-3">
+                    not enough training history yet to read the cost side.
+                </p>
+            ) : (
+                <div className="flex flex-col gap-3">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="text-label-micro text-text-3">
+                            form
+                        </span>
+                        <FormChip status={load.form_status} />
+                        <span className="font-mono text-xs text-text-3">
+                            {formatSignedForm(load.form)}
+                        </span>
                     </div>
-                )}
-            </Card>
+                    <p className="text-sm leading-relaxed text-foreground">
+                        {formStatusMeaning(load.form_status)}
+                    </p>
+                    <hr className="border-dashed border-border" />
+                    <div className="grid grid-cols-3 gap-2">
+                        <Stat
+                            className={TILE}
+                            size="sm"
+                            label="weekly TRIMP"
+                            value={
+                                load.weekly_trimp !== null
+                                    ? String(Math.round(load.weekly_trimp))
+                                    : '—'
+                            }
+                            sub={TRIMP_MEANING}
+                        />
+                        <Stat
+                            className={TILE}
+                            size="sm"
+                            label="monotony"
+                            value={
+                                load.monotony !== null
+                                    ? load.monotony.toFixed(1)
+                                    : '—'
+                            }
+                            sub={MONOTONY_MEANING}
+                        />
+                        <Stat
+                            className={TILE}
+                            size="sm"
+                            label="strain"
+                            value={
+                                load.strain !== null
+                                    ? String(Math.round(load.strain))
+                                    : '—'
+                            }
+                            sub={STRAIN_MEANING}
+                        />
+                    </div>
+                </div>
+            )}
         </section>
     );
 }

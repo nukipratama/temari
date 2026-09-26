@@ -5,7 +5,7 @@ import { type ElementType, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { eyebrowVariants } from '@/lib/variants';
 
-type EyebrowTag = 'div' | 'span' | 'h3' | 'dt' | 'footer';
+type EyebrowTag = 'div' | 'span' | 'h2' | 'h3' | 'dt' | 'footer';
 
 interface EyebrowProps extends VariantProps<typeof eyebrowVariants> {
     token: 'micro' | 'small' | 'hero';
