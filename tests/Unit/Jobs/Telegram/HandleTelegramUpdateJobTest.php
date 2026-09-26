@@ -108,6 +108,42 @@ it('treats a token as single-use: a second /start with the same token does not r
         && str_contains((string) $request['text'], 'valid anymore'));
 });
 
+it('stays silent when the chat already linked by a used token taps it again', function (): void {
+    $user = User::factory()->create(['name' => 'Budi Santoso']);
+    $token = app(TelegramLinkToken::class)->mint($user->id);
+
+    runUpdate(startUpdate(555, $token));
+    runUpdate(startUpdate(555, $token));
+
+    Http::assertSentCount(1);
+    Http::assertNotSent(fn ($request): bool => str_contains((string) $request['text'], 'valid anymore'));
+});
+
+it('stays silent when a retried start loses the token claim to its own committed link', function (): void {
+    $user = User::factory()->create();
+    $token = app(TelegramLinkToken::class)->mint($user->id);
+    TelegramConnection::factory()->for($user)->create(['chat_id' => 555]);
+    $linkToken = Mockery::mock(TelegramLinkToken::class);
+    $linkToken->shouldReceive('userId')->with($token)->andReturn($user->id);
+    $linkToken->shouldReceive('consume')->with($token)->andReturnFalse();
+
+    new HandleTelegramUpdateJob(startUpdate(555, $token))->handle(app(TelegramClient::class), $linkToken);
+
+    Http::assertNothingSent();
+});
+
+it('still replies expired to a used token when its chat has since stopped', function (): void {
+    $user = User::factory()->create();
+    $token = app(TelegramLinkToken::class)->mint($user->id);
+
+    runUpdate(startUpdate(555, $token));
+    runUpdate(['message' => ['chat' => ['id' => 555], 'text' => '/stop']]);
+    runUpdate(startUpdate(555, $token));
+
+    Http::assertSent(fn ($request): bool => $request['chat_id'] === 555
+        && str_contains((string) $request['text'], 'valid anymore'));
+});
+
 it('does not link and replies generically on a garbage token', function (): void {
     runUpdate(startUpdate(555, 'garbage-token'));
 

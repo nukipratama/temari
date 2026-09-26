@@ -6,8 +6,8 @@ namespace App\Notifications;
 
 use App\Models\AI\Analysis;
 use App\Models\User;
-use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Concerns\AppendsUnreadBadge;
+use App\Notifications\Concerns\RechecksRouteAtDelivery;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
 use Illuminate\Bus\Queueable;
@@ -31,6 +31,7 @@ use NotificationChannels\WebPush\WebPushMessage;
 class MorningBriefingNotification extends Notification implements ShouldQueue
 {
     use AppendsUnreadBadge;
+    use RechecksRouteAtDelivery;
     use Queueable;
 
     public int $tries = 3;
@@ -55,17 +56,6 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
         }
 
         return app(ChannelRouter::class)->outboundOnly($notifiable);
-    }
-
-    public function shouldSend(User $notifiable, string $channel): bool
-    {
-        if ($channel === InAppChannel::class) {
-            return true;
-        }
-
-        $currentUser = $notifiable->fresh();
-
-        return $currentUser !== null && in_array($channel, $this->via($currentUser), true);
     }
 
     public function toTelegram(User $notifiable): TelegramMessage
