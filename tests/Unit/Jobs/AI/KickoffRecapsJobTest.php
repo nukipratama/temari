@@ -5,10 +5,12 @@ declare(strict_types=1);
 use App\Actions\AI\KickoffMonthlyRecaps;
 use App\Actions\AI\KickoffWeeklyRecaps;
 use App\Actions\AI\RequestTodaysBriefing;
+use App\Enums\PlanRegenerationReason;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\KickoffRecapsJob;
+use App\Jobs\Run\RegeneratePlanJob;
 use App\Jobs\Strava\HydrateBacklogForUserJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -23,9 +25,12 @@ use App\Services\AI\NarrationOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
+use Illuminate\Contracts\Cache\Lock as CacheLock;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
@@ -130,6 +135,26 @@ it('re-sizes the plan against the history the backfill just landed', function ()
 
     expect(Carbon::today()->diffInWeeks(Carbon::parse($lastPlanned)))
         ->toBeGreaterThan(1.0);
+});
+
+it('queues onboarding regeneration when the plan lock is busy', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
+    [$weekly, $monthly] = kickoffRecapsDoubles();
+    $lock = Mockery::mock(CacheLock::class);
+    $lock->shouldReceive('block')->once()->andThrow(new LockTimeoutException());
+    $cache = Mockery::mock(Cache::getFacadeRoot())->makePartial();
+    $cache->shouldReceive('lock')
+        ->once()
+        ->with("plan-reconciliation:{$user->id}", 150)
+        ->andReturn($lock);
+    Cache::swap($cache);
+
+    new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HistoryNarrationGate::class));
+
+    Bus::assertDispatched(RegeneratePlanJob::class, fn (RegeneratePlanJob $job): bool => $job->userId === $user->id && $job->reason === PlanRegenerationReason::Onboarding);
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
 });
 
 /** Narrating first would describe a season that is about to be replaced. */

@@ -6,6 +6,7 @@ namespace App\Jobs\Run;
 
 use App\Models\User;
 use App\Services\Run\Plan\PlanReconciliationService;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -39,7 +40,7 @@ final class ReconcilePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQue
         return [
             new WithoutOverlapping("plan-reconciliation:{$this->userId}")
                 ->releaseAfter(10)
-                ->expireAfter(3600),
+                ->expireAfter(150),
         ];
     }
 
@@ -49,6 +50,10 @@ final class ReconcilePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQue
             return;
         }
 
-        $reconciliation->drain($this->userId);
+        try {
+            $reconciliation->drain($this->userId);
+        } catch (LockTimeoutException) {
+            $this->release(10);
+        }
     }
 }

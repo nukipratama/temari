@@ -14,7 +14,10 @@ use App\Models\Feedback;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
+use Closure;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -51,6 +54,12 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class Periodizer
 {
+    private const int REGENERATION_LOCK_SECONDS = 150;
+
+    private const int REGENERATION_LOCK_WAIT_SECONDS = 30;
+
+    public const int REQUEST_LOCK_WAIT_SECONDS = 2;
+
     /**
      * How many weeks ahead get materialized as rows. A race-oriented arc may
      * resolve to fewer weeks — it ends with race week, and nothing after race
@@ -67,34 +76,46 @@ final readonly class Periodizer
     ) {
     }
 
-    public function regenerate(User $user, ?Carbon $today = null): void
+    public function regenerate(
+        User $user,
+        ?Carbon $today = null,
+        int $lockWaitSeconds = self::REGENERATION_LOCK_WAIT_SECONDS,
+    ): void {
+        $this->withRegenerationLock($user, function () use ($user, $today): void {
+            $this->regenerateWithinLock($user, $today);
+        }, $lockWaitSeconds);
+    }
+
+    public function regenerateWithinLock(User $user, ?Carbon $today = null): void
     {
-        $this->persist($this->gatherer->forUser($user, $today ?? Carbon::today()));
+        $this->persist($user, $this->gatherer->forUser($user, $today ?? Carbon::today()));
     }
 
     public function regenerateIfChanged(User $user, ?Carbon $today = null): bool
     {
-        $today ??= Carbon::today();
-        $inputs = $this->gatherer->forUser($user, $today);
-        $adaptation = PlanAdaptation::query()
-            ->where('user_id', $user->id)
-            ->where('week_start', $inputs->currentWeekStart()->toDateString())
-            ->first();
+        return $this->withRegenerationLock($user, function () use ($user, $today): bool {
+            $today ??= Carbon::today();
+            $inputs = $this->gatherer->forUser($user, $today);
+            $adaptation = PlanAdaptation::query()
+                ->where('user_id', $user->id)
+                ->where('week_start', $inputs->currentWeekStart()->toDateString())
+                ->first();
 
-        if ($adaptation !== null && self::adaptationMatches($adaptation, $inputs)) {
-            return false;
-        }
+            if ($adaptation !== null && self::adaptationMatches($adaptation, $inputs)) {
+                return false;
+            }
 
-        // Ingest reconciliation can only move safety in one direction inside
-        // an open week. A newly healthy reading must not erase a deload or
-        // restore quality that an earlier settled verdict removed.
-        if ($adaptation !== null && self::wouldRelaxSafety($adaptation, $inputs)) {
-            return false;
-        }
+            // Ingest reconciliation can only move safety in one direction inside
+            // an open week. A newly healthy reading must not erase a deload or
+            // restore quality that an earlier settled verdict removed.
+            if ($adaptation !== null && self::wouldRelaxSafety($adaptation, $inputs)) {
+                return false;
+            }
 
-        $this->persist($inputs);
+            $this->persist($user, $inputs);
 
-        return true;
+            return true;
+        });
     }
 
     private static function adaptationMatches(PlanAdaptation $adaptation, PlanInputs $inputs): bool
@@ -158,41 +179,68 @@ final readonly class Periodizer
         return $rows;
     }
 
-    private function persist(PlanInputs $inputs): void
+    private function persist(User $user, PlanInputs $inputs): void
     {
         $rows = $this->rowsFor($inputs);
 
-        DB::transaction(function () use ($inputs, $rows): void {
+        DB::transaction(function () use ($user, $inputs, $rows): void {
+            $reran = false;
+            $current = $this->sessionsInHorizon($inputs);
+
+            if ($this->containsNewFixedSession($inputs, $current)) {
+                $inputs = $this->gatherer->forUser($user, $inputs->today);
+                $rows = $this->rowsFor($inputs);
+                $reran = true;
+                $current = $this->sessionsInHorizon($inputs);
+            }
+
             // Clear the full horizon's stale unpinned rows (not just the
             // freshly-computed weeks) so a shrinking horizon — e.g. a
             // self-scaled plan's far-future weeks after the user sets a
             // near-term race — doesn't leave orphaned rows from the old mode.
-            $toDelete = PlannedSession::query()
-                ->where('user_id', $inputs->userId)
-                ->where('pinned', false)
-                ->where('status', PlannedSessionStatus::Planned)
-                ->whereBetween('date', [$inputs->today->toDateString(), $inputs->horizonEnd()->toDateString()])
-                ->get(['id', 'date', 'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km']);
+            $toDelete = $current->filter(
+                fn (PlannedSession $session): bool =>
+                ! $session->pinned && $session->status === PlannedSessionStatus::Planned,
+            );
 
             // Today's row may carry a readiness clamp {@see RestClampRecorder}
             // stamped earlier the same day. The athlete was already told about
             // it, and the clamp only ever subtracts — so it survives onto the
             // row that replaces it rather than vanishing with the delete.
             $carriedClamps = $toDelete
-                ->filter(fn (PlannedSession $s): bool => $s->clamped_km !== null || $s->rest_clamped_at !== null || $s->eased_pace_sec_per_km !== null)
-                ->keyBy(fn (PlannedSession $s): string => $s->date->toDateString());
+                ->filter(fn (PlannedSession $session): bool => $session->clamped_km !== null || $session->rest_clamped_at !== null || $session->eased_pace_sec_per_km !== null)
+                ->keyBy(fn (PlannedSession $session): string => $session->date->toDateString());
+            $candidateIds = $toDelete->pluck('id');
 
-            PlannedSession::query()
-                ->whereIn('id', $toDelete->pluck('id'))
-                ->delete();
+            if ($candidateIds->isNotEmpty()) {
+                PlannedSession::query()
+                    ->whereIn('id', $candidateIds)
+                    ->where('pinned', false)
+                    ->where('status', PlannedSessionStatus::Planned)
+                    ->delete();
 
-            Feedback::query()
-                ->where('subject_type', FeedbackSubject::PlanDay)
-                ->whereIn('subject_id', $toDelete->pluck('id'))
-                ->delete();
+                $remainingIds = PlannedSession::query()->whereIn('id', $candidateIds)->pluck('id');
+                $deletedIds = $candidateIds->diff($remainingIds);
+
+                Feedback::query()
+                    ->where('subject_type', FeedbackSubject::PlanDay)
+                    ->whereIn('subject_id', $deletedIds)
+                    ->delete();
+            }
+
+            $current = $this->sessionsInHorizon($inputs);
+            if (! $reran && $this->containsNewFixedSession($inputs, $current)) {
+                $inputs = $this->gatherer->forUser($user, $inputs->today);
+                $rows = $this->rowsFor($inputs);
+                $current = $this->sessionsInHorizon($inputs);
+            }
+            $currentByDate = $current->keyBy(fn (PlannedSession $session): string => $session->date->toDateString());
 
             foreach ($rows as $date => $row) {
-                if (isset($inputs->settledDates[$date])) {
+                $existing = $currentByDate->get($date);
+                if (isset($inputs->settledDates[$date])
+                    || $existing?->pinned
+                    || ($existing !== null && $existing->status !== PlannedSessionStatus::Planned)) {
                     continue;
                 }
 
@@ -234,6 +282,56 @@ final readonly class Periodizer
                 ],
             );
         });
+    }
+
+    /**
+     * @template T
+     * @param Closure(): T $callback
+     * @return T
+     */
+    public function withRegenerationLock(
+        User $user,
+        Closure $callback,
+        int $waitSeconds = self::REGENERATION_LOCK_WAIT_SECONDS,
+        int $lockTtlSeconds = self::REGENERATION_LOCK_SECONDS,
+    ): mixed {
+        return Cache::lock("plan-reconciliation:{$user->id}", $lockTtlSeconds)
+            ->block($waitSeconds, $callback);
+    }
+
+    /** @return Collection<int, PlannedSession> */
+    private function sessionsInHorizon(PlanInputs $inputs): Collection
+    {
+        return PlannedSession::query()
+            ->where('user_id', $inputs->userId)
+            ->whereBetween('date', [$inputs->today->toDateString(), $inputs->horizonEnd()->toDateString()])
+            ->orderBy('date')
+            ->lockForUpdate()
+            ->get([
+                'id', 'date', 'pinned', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band',
+                'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km',
+            ]);
+    }
+
+    /** @param Collection<int, PlannedSession> $sessions */
+    private function containsNewFixedSession(PlanInputs $inputs, Collection $sessions): bool
+    {
+        foreach ($sessions as $session) {
+            $date = $session->date->toDateString();
+            if (($session->pinned && ! isset($inputs->pinnedDates[$date]))
+                || ($session->status !== PlannedSessionStatus::Planned && ! isset($inputs->settledDates[$date]))) {
+                return true;
+            }
+
+            $fixed = $inputs->fixedSessions[$date] ?? null;
+            if ($fixed !== null && ($fixed['session_type'] !== $session->session_type
+                || $fixed['prescribed_hard_minutes'] !== $session->prescribed_hard_minutes
+                || $fixed['prescribed_pace_band'] !== $session->prescribed_pace_band)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

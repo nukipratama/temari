@@ -18,11 +18,17 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\PlanInputsGatherer;
+use App\Services\Run\Plan\SeasonService;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\PlanAdapter;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -111,6 +117,87 @@ it('never overwrites a pinned row', function (): void {
     $fresh = $pinned->fresh();
     expect($fresh->session_type)->toBe(SessionType::Interval)
         ->and($fresh->pinned)->toBeTrue();
+});
+
+it('keeps a session pinned after input gathering and rebuilds the week around it', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    Season::factory()->for($user)->create(['anchor_weekly_volume_km' => 30.0]);
+    $session = PlannedSession::factory()->for($user)->rest()->create([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+        'pinned' => false,
+    ]);
+    $feedback = Feedback::factory()->for($user)->onPlanDay($session->id)->create();
+    $injected = false;
+
+    $vdotEstimator = Mockery::mock(VdotEstimator::class)->makePartial();
+    $vdotEstimator->shouldReceive('estimate')->andReturnUsing(function (User $user, ?Carbon $asOf) use (&$injected, $session): ?array {
+        if (! $injected) {
+            $injected = true;
+            $session->update([
+                'session_type' => SessionType::Tempo,
+                'prescribed_hard_minutes' => 20,
+                'prescribed_pace_band' => PaceBand::Threshold,
+                'prescribed_pace_sec_per_km' => 330,
+                'pinned' => true,
+            ]);
+        }
+
+        return null;
+    });
+    app()->instance(VdotEstimator::class, $vdotEstimator);
+    app()->forgetInstance(TrainingBaseline::class);
+    app()->forgetInstance(SeasonService::class);
+    app()->forgetInstance(PlanInputsGatherer::class);
+    app()->forgetInstance(Periodizer::class);
+
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+
+    $fresh = $session->fresh();
+    expect($injected)->toBeTrue()
+        ->and($fresh->session_type)->toBe(SessionType::Tempo)
+        ->and($fresh->prescribed_hard_minutes)->toBe(20)
+        ->and($fresh->pinned)->toBeTrue()
+        ->and($feedback->fresh())->not->toBeNull();
+
+    $hardDates = PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->whereBetween('date', [Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(), Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString()])
+        ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval])
+        ->orderBy('date')
+        ->pluck('date');
+
+    for ($index = 1; $index < $hardDates->count(); $index++) {
+        expect(Carbon::parse($hardDates[$index])->diffInDays(Carbon::parse($hardDates[$index - 1])))->toBeGreaterThanOrEqual(2);
+    }
+});
+
+it('rolls back deleted sessions and feedback when a regenerated row cannot be written', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'pinned' => false,
+    ]);
+    $feedback = Feedback::factory()->for($user)->onPlanDay($session->id)->create();
+    $before = $session->fresh()->getAttributes();
+    $failed = false;
+
+    DB::listen(function (QueryExecuted $query) use (&$failed): void {
+        if (! $failed && str_starts_with(strtolower($query->sql), 'insert into `planned_sessions`')) {
+            $failed = true;
+            throw new RuntimeException('planned session regeneration failed');
+        }
+    });
+
+    expect(fn () => app(Periodizer::class)->regenerate($user, Carbon::today()))
+        ->toThrow(RuntimeException::class, 'planned session regeneration failed');
+
+    expect($failed)->toBeTrue()
+        ->and($session->fresh()->getAttributes())->toBe($before)
+        ->and($feedback->fresh())->not->toBeNull()
+        ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(1);
 });
 
 it('never touches a row dated before today', function (): void {

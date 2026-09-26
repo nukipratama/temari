@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\PlanRegenerationReason;
 use App\Http\Requests\UpdateTrainingPreferencesRequest;
 use App\Models\User;
-use App\Services\AI\PlanNarrationRequester;
-use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\PlanRegenerationService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Carbon;
 
 class TrainingPreferencesController extends Controller
 {
     public function update(
         UpdateTrainingPreferencesRequest $request,
-        Periodizer $periodizer,
-        PlanNarrationRequester $narrationRequester,
+        PlanRegenerationService $regeneration,
     ): RedirectResponse {
         /** @var User $user */
         $user = $request->user();
@@ -35,12 +33,8 @@ class TrainingPreferencesController extends Controller
         // Run days, session count and long-run day decide the shape of every
         // week WeekPlanBuilder emits, so a saved preference that changed
         // nothing until Monday was a setting that appeared not to work.
-        $periodizer->regenerate($user);
-
-        if ($user->is_demo) {
-            $narrationRequester->ensureDemoFilled($user, Carbon::today());
-        } else {
-            $narrationRequester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
+        if (! $regeneration->regenerateForRequest($user, PlanRegenerationReason::Settings)) {
+            return back()->with('info', 'Your training preferences are saved. The plan update is queued.');
         }
 
         return back()->with('success', 'Your training preferences are saved. Your plan\'s been reshaped around them.');

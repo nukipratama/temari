@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Enums\PlanRegenerationReason;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\IntentVerdict;
 use App\Enums\SessionType;
+use App\Http\Controllers\PlanController;
+use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
@@ -16,15 +20,18 @@ use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanPageAssembler;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(RefreshDatabase::class);
 
@@ -373,6 +380,81 @@ it('rolls back both rows when a session swap fails after its first write', funct
 
     expect($quality->fresh()->getAttributes())->toBe($qualityBefore)
         ->and($rest->fresh()->getAttributes())->toBe($restBefore);
+});
+
+it('rejects a session edit when regeneration replaced its bound row', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'pinned' => false,
+    ]);
+    $staleSession = clone $session;
+
+    app(Periodizer::class)->regenerate($user);
+
+    $request = Mockery::mock(UpdatePlannedSessionRequest::class)->makePartial();
+    $request->shouldReceive('validated')->once()->andReturn([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+    ]);
+    $request->setUserResolver(fn (): User => $user);
+    $this->withoutExceptionHandling();
+
+    expect(fn () => app(PlanController::class)->update(
+        $request,
+        $staleSession,
+        app(Periodizer::class),
+        app(PlanNarrationRequester::class),
+    ))->toThrow(HttpException::class, 'This plan changed while you were editing. Reload and try again.');
+
+    expect(PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->whereDate('date', Carbon::today()->addDay()->toDateString())
+        ->value('id'))->not->toBe($session->id);
+});
+
+it('does not report a session edit as saved while regeneration holds the per-user lock', function (): void {
+    Carbon::setTestNow();
+    $user = User::factory()->create();
+    $source = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => SessionType::Tempo,
+    ]);
+    $destination = PlannedSession::factory()->for($user)->rest()->create([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+    ]);
+    $lock = Cache::lock("plan-reconciliation:{$user->id}", 3600);
+    expect($lock->get())->toBeTrue();
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$source->id}", ['date' => $destination->date->toDateString()])
+        ->assertRedirect()
+        ->assertSessionHas('info');
+
+    $lock->release();
+    expect($source->fresh()->session_type)->toBe(SessionType::Tempo)
+        ->and($destination->fresh()->session_type)->toBe(SessionType::Rest);
+});
+
+it('queues a manual regeneration when the per-user lock stays busy', function (): void {
+    Carbon::setTestNow();
+    Bus::fake();
+    $user = User::factory()->create();
+    $lock = Cache::lock("plan-reconciliation:{$user->id}", 3600);
+    expect($lock->get())->toBeTrue();
+
+    $this->actingAs($user)
+        ->post('/plan/regenerate')
+        ->assertRedirect()
+        ->assertSessionHas('info');
+
+    $lock->release();
+    Bus::assertDispatched(
+        RegeneratePlanJob::class,
+        fn (RegeneratePlanJob $job): bool =>
+        $job->userId === $user->id && $job->reason === PlanRegenerationReason::Manual,
+    );
+    expect(app(PlanNarrationRequester::class)->regenerateCooldownRemaining($user))->not->toBeNull();
 });
 
 it('clamps today\'s session against the readiness ceiling without mutating the stored row', function (): void {

@@ -50,41 +50,43 @@ final readonly class PlanRecalibrationService
 
         $dirty = false;
         $result = Cache::lock(RecalibrateTrainingHistoryJob::overlapLockKey($user->id), $lockTtlSeconds)
-            ->block(30, function () use ($user, $dryRun, &$dirty): array {
-                $startedAt = Carbon::now();
-                if (! $dryRun) {
-                    $user->forceFill([
-                        'plan_recalibration_started_at' => $startedAt,
-                        'plan_recalibration_completed_at' => null,
-                    ])->saveQuietly();
-                }
+            ->block(30, function () use ($user, $dryRun, $lockTtlSeconds, &$dirty): array {
+                return $this->periodizer->withRegenerationLock($user, function () use ($user, $dryRun, &$dirty): array {
+                    $startedAt = Carbon::now();
+                    if (! $dryRun) {
+                        $user->forceFill([
+                            'plan_recalibration_started_at' => $startedAt,
+                            'plan_recalibration_completed_at' => null,
+                        ])->saveQuietly();
+                    }
 
-                DB::beginTransaction();
+                    DB::beginTransaction();
 
-                try {
-                    $result = PlanRecalibrationDispatch::withoutDispatching(
-                        fn (): array => $this->perform($user->fresh() ?? $user, $startedAt),
-                    );
+                    try {
+                        $result = PlanRecalibrationDispatch::withoutDispatching(
+                            fn (): array => $this->perform($user->fresh() ?? $user, $startedAt),
+                        );
 
-                    if ($dryRun) {
-                        DB::rollBack();
-                    } else {
-                        DB::commit();
-                        $user->forceFill(['plan_recalibration_completed_at' => Carbon::now()])->saveQuietly();
-                        if (Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id))) {
-                            $dirty = true;
-                            Cache::forget(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id));
+                        if ($dryRun) {
+                            DB::rollBack();
+                        } else {
+                            DB::commit();
+                            $user->forceFill(['plan_recalibration_completed_at' => Carbon::now()])->saveQuietly();
+                            if (Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id))) {
+                                $dirty = true;
+                                Cache::forget(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id));
+                            }
                         }
-                    }
 
-                    return $result;
-                } catch (Throwable $exception) {
-                    if (DB::transactionLevel() > 0) {
-                        DB::rollBack();
-                    }
+                        return $result;
+                    } catch (Throwable $exception) {
+                        if (DB::transactionLevel() > 0) {
+                            DB::rollBack();
+                        }
 
-                    throw $exception;
-                }
+                        throw $exception;
+                    }
+                }, lockTtlSeconds: $lockTtlSeconds);
             });
 
         $lateDirty = ! $dryRun && Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id));
@@ -126,7 +128,7 @@ final readonly class PlanRecalibrationService
 
         $snapshots = $this->weeklyAggregator->rebuildFor($user);
         $sessions = $this->rewriteAndRegradeHistory($user);
-        $this->periodizer->regenerate($user);
+        $this->periodizer->regenerateWithinLock($user);
 
         $staleNarrations = Analysis::query()
             ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)

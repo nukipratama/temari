@@ -7,6 +7,8 @@ namespace App\Jobs\AI;
 use App\Actions\AI\KickoffMonthlyRecaps;
 use App\Actions\AI\KickoffWeeklyRecaps;
 use App\Actions\AI\RequestTodaysBriefing;
+use App\Enums\PlanRegenerationReason;
+use App\Jobs\Run\RegeneratePlanJob;
 use App\Jobs\Strava\HydrateBacklogForUserJob;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -16,6 +18,7 @@ use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Carbon;
@@ -74,7 +77,14 @@ class KickoffRecapsJob implements ShouldQueue
         $this->kickoffTrendReads($analysis, $user, $history);
 
         if (PlannedSession::query()->where('user_id', $user->id)->exists()) {
-            $periodizer->regenerate($user);
+            try {
+                $periodizer->regenerate($user);
+            } catch (LockTimeoutException) {
+                RegeneratePlanJob::dispatch($user->id, PlanRegenerationReason::Onboarding)->afterCommit();
+
+                return;
+            }
+
             $planNarration->requestForFirstWeek($user, Carbon::today());
         }
     }
