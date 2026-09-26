@@ -19,19 +19,21 @@ use Laravel\Pulse\Livewire\Card;
  */
 class NotificationDeliveryHealth extends Card
 {
-    private const int RECENT_FAILURES = 20;
+    private const int RECENT_ISSUES = 20;
 
     public function render(): Renderable
     {
         $channels = $this->perChannelOutcomes();
 
-        $recentFailures = DeliveryRow::query()
-            ->where('status', NotificationDeliveryStatus::Failed)
+        $recentIssues = DeliveryRow::query()
+            ->whereIn('status', [NotificationDeliveryStatus::Failed->value, NotificationDeliveryStatus::Abandoned->value])
             ->orderByDesc('settled_at')
-            ->limit(self::RECENT_FAILURES)
-            ->get(['analysis_id', 'channel', 'error', 'settled_at']);
+            ->limit(self::RECENT_ISSUES)
+            ->get(['analysis_id', 'channel', 'status', 'error', 'settled_at']);
 
         $failed = (int) collect($channels)->sum('failed');
+        $abandoned = (int) collect($channels)->sum('abandoned');
+        $hasIssues = $failed + $abandoned > 0;
 
         return View::make('livewire.pulse.notification-delivery-health', [
             'cols' => $this->cols,
@@ -41,15 +43,16 @@ class NotificationDeliveryHealth extends Card
                 ['label' => 'sent', 'count' => (int) collect($channels)->sum('sent'), 'tone' => 'neutral'],
                 ['label' => 'in flight', 'count' => (int) collect($channels)->sum('pending'), 'tone' => 'neutral'],
                 ['label' => 'failed', 'count' => $failed, 'tone' => $failed > 0 ? 'alert' : 'neutral'],
+                ['label' => 'abandoned', 'count' => $abandoned, 'tone' => $abandoned > 0 ? 'alert' : 'neutral'],
             ],
             'channels' => $channels,
-            'recentFailures' => $recentFailures,
-            'severity' => $failed > 0 ? 'alert' : 'ok',
+            'recentIssues' => $recentIssues,
+            'severity' => $hasIssues ? 'alert' : 'ok',
         ]);
     }
 
     /**
-     * @return list<array{channel: string, sent: int, pending: int, failed: int}>
+     * @return list<array{channel: string, sent: int, pending: int, failed: int, abandoned: int}>
      */
     private function perChannelOutcomes(): array
     {
@@ -58,6 +61,7 @@ class NotificationDeliveryHealth extends Card
             ->selectRaw('SUM(status = ?) AS sent', [NotificationDeliveryStatus::Sent->value])
             ->selectRaw('SUM(status = ?) AS pending', [NotificationDeliveryStatus::Pending->value])
             ->selectRaw('SUM(status = ?) AS failed', [NotificationDeliveryStatus::Failed->value])
+            ->selectRaw('SUM(status = ?) AS abandoned', [NotificationDeliveryStatus::Abandoned->value])
             ->groupBy('channel')
             ->orderBy('channel')
             ->get();
@@ -67,6 +71,7 @@ class NotificationDeliveryHealth extends Card
             'sent' => (int) $row->getAttribute('sent'),
             'pending' => (int) $row->getAttribute('pending'),
             'failed' => (int) $row->getAttribute('failed'),
+            'abandoned' => (int) $row->getAttribute('abandoned'),
         ])->all());
     }
 }

@@ -7,6 +7,7 @@ namespace App\Services\Notifications;
 use App\Enums\NotificationDeliveryStatus;
 use App\Models\NotificationDelivery;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -20,85 +21,163 @@ class NotificationDeliveryClaim
 {
     private const int ERROR_LIMIT = 1000;
 
+    private const int STALE_AFTER_MINUTES = 15;
+
     /**
      * Claim the delivery before sending. insertOrIgnore is atomic on the unique
-     * (analysis_id, channel) pair, so a racing retry that already claimed it gets
-     * 0 rows. A row left `failed` by an earlier attempt is taken over instead —
-     * the conditional update is equally atomic — so a retry genuinely resends
-     * rather than being deduped against a send that never landed.
+     * (analysis_id, channel) pair. A failed or re-armed row is taken over with a
+     * conditional version update, so only one retry receives the new fence.
      */
-    public function claim(int $analysisId, string $channel): bool
+    public function claim(int $analysisId, string $channel): ?int
     {
         $inserted = NotificationDelivery::query()->insertOrIgnore([
             'analysis_id' => $analysisId,
             'channel' => $channel,
             'status' => NotificationDeliveryStatus::Pending->value,
             'created_at' => now(),
+            'claimed_at' => now(),
+            'claim_version' => 1,
         ]) !== 0;
 
         if ($inserted) {
+            return 1;
+        }
+
+        $row = $this->rowFor($analysisId, $channel)->first();
+        if ($row === null) {
+            return null;
+        }
+
+        $version = $row->claim_version + 1;
+        $updated = $this->rowFor($analysisId, $channel)
+            ->where('claim_version', $row->claim_version)
+            ->where(function (Builder $claimable): void {
+                $claimable
+                    ->where('status', NotificationDeliveryStatus::Failed->value)
+                    ->orWhere(function (Builder $rearmed): void {
+                        $rearmed
+                            ->where('status', NotificationDeliveryStatus::Pending->value)
+                            ->whereNull('claimed_at');
+                    });
+            })
+            ->update([
+                'status' => NotificationDeliveryStatus::Pending->value,
+                'error' => null,
+                'created_at' => now(),
+                'claimed_at' => now(),
+                'claim_version' => $version,
+                'settled_at' => null,
+            ]);
+
+        return $updated === 0 ? null : $version;
+    }
+
+    public function markSent(int $analysisId, string $channel, int $claimVersion): bool
+    {
+        return $this->rowFor($analysisId, $channel)
+            ->where('status', NotificationDeliveryStatus::Pending->value)
+            ->where('claim_version', $claimVersion)
+            ->update([
+                'status' => NotificationDeliveryStatus::Sent->value,
+                'error' => null,
+                'claimed_at' => null,
+                'settled_at' => now(),
+            ]) !== 0;
+    }
+
+    public function markFailed(int $analysisId, string $channel, int $claimVersion, string $error): bool
+    {
+        return $this->rowFor($analysisId, $channel)
+            ->where('status', NotificationDeliveryStatus::Pending->value)
+            ->where('claim_version', $claimVersion)
+            ->update([
+                'status' => NotificationDeliveryStatus::Failed->value,
+                'error' => Str::limit($error, self::ERROR_LIMIT),
+                'claimed_at' => null,
+                'settled_at' => now(),
+            ]) !== 0;
+    }
+
+    public function recordForcedSent(int $analysisId, string $channel): bool
+    {
+        if (NotificationDelivery::query()->insertOrIgnore([
+            'analysis_id' => $analysisId,
+            'channel' => $channel,
+            'status' => NotificationDeliveryStatus::Sent->value,
+            'created_at' => now(),
+            'claim_version' => 1,
+            'settled_at' => now(),
+        ]) !== 0) {
             return true;
         }
 
         return $this->rowFor($analysisId, $channel)
-            ->where('status', NotificationDeliveryStatus::Failed)
             ->update([
-                'status' => NotificationDeliveryStatus::Pending,
+                'status' => NotificationDeliveryStatus::Sent->value,
+                'claim_version' => DB::raw('claim_version + 1'),
                 'error' => null,
-                'created_at' => now(),
-                'settled_at' => null,
+                'claimed_at' => null,
+                'settled_at' => now(),
             ]) !== 0;
     }
 
-    /** Settle a claim as delivered, creating the row for a forced send that never claimed one. */
-    public function markSent(int $analysisId, string $channel): void
+    public function recordForcedFailed(int $analysisId, string $channel, string $error): bool
     {
-        $updated = $this->rowFor($analysisId, $channel)->update([
-            'status' => NotificationDeliveryStatus::Sent,
-            'error' => null,
+        return NotificationDelivery::query()->insertOrIgnore([
+            'analysis_id' => $analysisId,
+            'channel' => $channel,
+            'status' => NotificationDeliveryStatus::Failed->value,
+            'error' => Str::limit($error, self::ERROR_LIMIT),
+            'created_at' => now(),
+            'claim_version' => 1,
             'settled_at' => now(),
-        ]);
-
-        if ($updated === 0) {
-            NotificationDelivery::query()->insertOrIgnore([
-                'analysis_id' => $analysisId,
-                'channel' => $channel,
-                'status' => NotificationDeliveryStatus::Sent->value,
-                'created_at' => now(),
-                'settled_at' => now(),
-            ]);
-        }
+        ]) !== 0;
     }
 
     /**
-     * Settle a claim as failed, which also releases it: claim() takes a failed row
-     * over, so the next attempt resends. Only a pending row is settled — a forced
-     * send that fails must not overwrite an earlier successful delivery — and a
-     * forced send with no row of its own records one so the failure is still
-     * visible.
+     * @return array{webpush_rearmed: int, telegram_abandoned: int}
      */
-    public function markFailed(int $analysisId, string $channel, string $error): void
+    public function recoverStale(): array
     {
-        $message = Str::limit($error, self::ERROR_LIMIT);
+        $cutoff = now()->subMinutes(self::STALE_AFTER_MINUTES);
+        $recovered = ['webpush_rearmed' => 0, 'telegram_abandoned' => 0];
 
-        $updated = $this->rowFor($analysisId, $channel)
-            ->where('status', NotificationDeliveryStatus::Pending)
-            ->update([
-                'status' => NotificationDeliveryStatus::Failed,
-                'error' => $message,
-                'settled_at' => now(),
-            ]);
+        NotificationDelivery::query()
+            ->where('status', NotificationDeliveryStatus::Pending->value)
+            ->whereIn('channel', ['webpush', 'telegram'])
+            ->whereNotNull('claimed_at')
+            ->where('claimed_at', '<', $cutoff)
+            ->orderBy('id')
+            ->chunkById(100, function ($rows) use ($cutoff, &$recovered): void {
+                foreach ($rows as $row) {
+                    $claim = $this->rowFor($row->analysis_id, $row->channel)
+                        ->whereKey($row->id)
+                        ->where('status', NotificationDeliveryStatus::Pending->value)
+                        ->where('claim_version', $row->claim_version)
+                        ->where('claimed_at', '<', $cutoff);
 
-        if ($updated === 0) {
-            NotificationDelivery::query()->insertOrIgnore([
-                'analysis_id' => $analysisId,
-                'channel' => $channel,
-                'status' => NotificationDeliveryStatus::Failed->value,
-                'error' => $message,
-                'created_at' => now(),
-                'settled_at' => now(),
-            ]);
-        }
+                    if ($row->channel === 'webpush') {
+                        $updated = $claim->update([
+                            'claim_version' => $row->claim_version + 1,
+                            'error' => null,
+                            'claimed_at' => null,
+                            'settled_at' => null,
+                        ]);
+                        $recovered['webpush_rearmed'] += (int) ($updated !== 0);
+                    } elseif ($row->channel === 'telegram') {
+                        $updated = $claim->update([
+                            'status' => NotificationDeliveryStatus::Abandoned->value,
+                            'claim_version' => $row->claim_version + 1,
+                            'error' => 'Delivery result is unknown after a stale claim; automatic retry was skipped to avoid a duplicate.',
+                            'claimed_at' => null,
+                            'settled_at' => now(),
+                        ]);
+                        $recovered['telegram_abandoned'] += (int) ($updated !== 0);
+                    }
+                }
+            });
+
+        return $recovered;
     }
 
     /** @return Builder<NotificationDelivery> */

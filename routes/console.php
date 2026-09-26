@@ -158,6 +158,8 @@ Schedule::command('analytics:prune')->dailyAt('02:25')->withoutOverlapping(15)->
 Schedule::command('model:prune', ['--model' => [TelegramUpdateReceipt::class]])->dailyAt('02:30')->withoutOverlapping(15)->onOneServer();
 Schedule::command('model:prune', ['--model' => [TelegramLinkTokenUse::class]])->dailyAt('02:31')->withoutOverlapping(15)->onOneServer();
 
+Schedule::command('notifications:recover-deliveries')->everyFiveMinutes()->withoutOverlapping(10)->onOneServer();
+
 // Fallback poll behind the Strava webhook. Hourly around the clock rather than
 // only across the two running peaks: the old window left a five-hour overnight
 // gap in which a missed webhook went unnoticed, and one read per connected user

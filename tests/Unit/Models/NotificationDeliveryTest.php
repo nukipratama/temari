@@ -18,6 +18,8 @@ it('casts the outcome columns', function (): void {
         'channel' => 'telegram',
         'status' => NotificationDeliveryStatus::Sent,
         'created_at' => now(),
+        'claimed_at' => '2026-08-14 08:59:00',
+        'claim_version' => '7',
         'settled_at' => '2026-08-14 09:00:00',
     ]);
 
@@ -26,6 +28,9 @@ it('casts the outcome columns', function (): void {
     expect($row->analysis_id)->toBeInt()
         ->and($row->analysis_id)->toBe($analysisId)
         ->and($row->status)->toBe(NotificationDeliveryStatus::Sent)
+        ->and($row->claimed_at)->toBeInstanceOf(Carbon::class)
+        ->and($row->claim_version)->toBeInt()
+        ->and($row->claim_version)->toBe(7)
         ->and($row->settled_at)->toBeInstanceOf(Carbon::class);
 });
 

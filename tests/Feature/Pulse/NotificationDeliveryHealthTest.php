@@ -28,7 +28,8 @@ it('renders the outcome snapshot without error', function (): void {
     Livewire::test(NotificationDeliveryHealth::class)
         ->assertOk()
         ->assertSee('sent')
-        ->assertSee('failed');
+        ->assertSee('failed')
+        ->assertSee('abandoned');
 });
 
 it('shows an ok health badge when nothing has failed', function (): void {
@@ -45,6 +46,17 @@ it('shows an alert health badge when a send failed', function (): void {
     Livewire::test(NotificationDeliveryHealth::class)
         ->assertOk()
         ->assertSee('health: alert');
+});
+
+it('shows an alert and operator details for an abandoned delivery', function (): void {
+    $row = delivery('telegram', NotificationDeliveryStatus::Abandoned, 'Automatic retry was skipped.');
+
+    Livewire::test(NotificationDeliveryHealth::class)
+        ->assertOk()
+        ->assertSee('health: alert')
+        ->assertSee('abandoned · telegram')
+        ->assertSee("analysis #{$row->analysis_id}")
+        ->assertSee('Automatic retry was skipped.');
 });
 
 it('surfaces a failed send with its channel, subject and stored error', function (): void {
@@ -65,7 +77,7 @@ it('breaks the outcomes down per channel', function (): void {
         ->assertOk()
         ->assertSee('telegram')
         ->assertSee('webpush')
-        ->assertSeeInOrder(['telegram', '1 sent', '0 in flight', '1 failed']);
+        ->assertSeeInOrder(['telegram', '1 sent', '0 in flight', '1 failed', '0 abandoned']);
 });
 
 it('counts an unsettled claim as in flight rather than delivered', function (): void {
@@ -74,5 +86,5 @@ it('counts an unsettled claim as in flight rather than delivered', function (): 
     Livewire::test(NotificationDeliveryHealth::class)
         ->assertOk()
         ->assertSee('health: ok')
-        ->assertSeeInOrder(['telegram', '0 sent', '1 in flight', '0 failed']);
+        ->assertSeeInOrder(['telegram', '0 sent', '1 in flight', '0 failed', '0 abandoned']);
 });

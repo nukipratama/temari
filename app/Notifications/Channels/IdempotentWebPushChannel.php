@@ -46,22 +46,36 @@ class IdempotentWebPushChannel
         $deliveryKey = is_int($rawKey) ? $rawKey : null;
         $force = method_exists($notification, 'forcesDelivery') && $notification->forcesDelivery();
 
-        if ($deliveryKey !== null && ! $force && ! $this->claim->claim($deliveryKey, self::CHANNEL)) {
-            return;
+        $claimVersion = null;
+        if ($deliveryKey !== null && ! $force) {
+            $claimVersion = $this->claim->claim($deliveryKey, self::CHANNEL);
+            if ($claimVersion === null) {
+                return;
+            }
         }
 
         try {
             $this->channel->send($notifiable, $notification);
         } catch (Throwable $e) {
             if ($deliveryKey !== null) {
-                $this->record(fn () => $this->claim->markFailed($deliveryKey, self::CHANNEL, $e->getMessage()), $deliveryKey);
+                $this->record(
+                    fn (): bool => $claimVersion === null
+                        ? $this->claim->recordForcedFailed($deliveryKey, self::CHANNEL, $e->getMessage())
+                        : $this->claim->markFailed($deliveryKey, self::CHANNEL, $claimVersion, $e->getMessage()),
+                    $deliveryKey,
+                );
             }
 
             throw $e;
         }
 
         if ($deliveryKey !== null) {
-            $this->record(fn () => $this->claim->markSent($deliveryKey, self::CHANNEL), $deliveryKey);
+            $this->record(
+                fn (): bool => $claimVersion === null
+                    ? $this->claim->recordForcedSent($deliveryKey, self::CHANNEL)
+                    : $this->claim->markSent($deliveryKey, self::CHANNEL, $claimVersion),
+                $deliveryKey,
+            );
         }
     }
 
