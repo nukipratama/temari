@@ -36,6 +36,10 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             return;
         }
 
+        if ($this->attempts() <= 1 && $row->status === AnalysisStatus::Processing) {
+            return;
+        }
+
         if ($this->haltForSpentRetryBudget($service, [$row])) {
             return;
         }
@@ -45,7 +49,11 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
         }
 
         $startedEarly = $service->isEarlyPassRow($row);
-        if (! $service->markProcessing($row, $this->generationToken)) {
+        if (! $service->markProcessing(
+            $row,
+            $this->generationToken,
+            allowProcessing: $this->attempts() > 1,
+        )) {
             return;
         }
 
@@ -54,45 +62,48 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
                 $row->id,
                 fn (): string => $this->generateContent($row),
             );
-            $service->markDone(
+            if ($service->markDone(
                 $row,
                 $content,
                 ServedBy::Llm,
                 fingerprint: $this->fingerprintFor($row),
                 startedEarly: $startedEarly,
                 generationToken: $this->generationToken,
-            );
-            $this->afterDone($row, $service);
+            )) {
+                $this->afterDone($row, $service);
+            }
         } catch (ObsoleteAnalysisException $e) {
             // The subject is gone for good, so the row describes nothing. Left
             // Failed it would sit in /devtools/narration as "still auto-retrying" behind a
             // Try again that can never succeed, and burn a self-heal attempt
             // every hour proving it.
-            $row->delete();
-            Log::info('narrator.row.obsolete_deleted', [
-                'kind' => $row->analysis_type->value,
-                'subject' => $row->subject_id,
-                'discriminator' => $row->discriminator,
-                'reason' => $e->getMessage(),
-            ]);
+            if ($service->deleteObsoleteRow($row, $this->generationToken)) {
+                Log::info('narrator.row.obsolete_deleted', [
+                    'kind' => $row->analysis_type->value,
+                    'subject' => $row->subject_id,
+                    'discriminator' => $row->discriminator,
+                    'reason' => $e->getMessage(),
+                ]);
+            }
         } catch (ContentFilterException) {
             // The continuity-stripped retry still content-filtered. Degrade to
             // rule-based content instead of dead-lettering: the user gets a
             // benign line, and (for chained narrators) that benign line becomes
             // the next prev_narrative, breaking the poison loop at its source.
-            $service->markDone(
+            if ($service->markDone(
                 $row,
                 app(RuleBasedNarrationFiller::class)->fillFor($row),
                 ServedBy::RuleBased,
                 ruleBasedReason: AnalysisOrigin::ContentFilter,
                 generationToken: $this->generationToken,
-            );
-            Log::info('narrator.ai.content_filter_fallback', [
-                'kind' => $row->analysis_type->value,
-                'subject' => $row->subject_id,
-            ]);
-            $this->recordContentFilterFallback($row);
-            $this->afterDone($row, $service);
+            )) {
+                Log::info('narrator.ai.content_filter_fallback', [
+                    'kind' => $row->analysis_type->value,
+                    'subject' => $row->subject_id,
+                ]);
+                $this->recordContentFilterFallback($row);
+                $this->afterDone($row, $service);
+            }
         } catch (Throwable $e) {
             $this->settleFailure(
                 $e,

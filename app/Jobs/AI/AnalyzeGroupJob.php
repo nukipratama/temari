@@ -234,15 +234,13 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 
                 return true;
             });
-        } catch (UnavailableException) {
+        } catch (Throwable $e) {
             foreach ($pending as $row) {
                 $row->refresh();
             }
 
-            return false;
-        } catch (Throwable $e) {
-            foreach ($pending as $row) {
-                $row->refresh();
+            if ($e instanceof UnavailableException) {
+                return false;
             }
 
             throw $e;

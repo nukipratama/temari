@@ -1114,7 +1114,8 @@ it('increments attempts atomically from a stale row model', function (): void {
 
     $stale = $row->fresh();
     $this->service->markProcessing($row);
-    $this->service->markProcessing($stale);
+    expect($this->service->markProcessing($stale))->toBeFalse()
+        ->and($this->service->markProcessing($stale, allowProcessing: true))->toBeTrue();
 
     $fresh = $row->fresh();
     expect($fresh->status)->toBe(AnalysisStatus::Processing)
@@ -1958,6 +1959,26 @@ it('marks a rule-based trigger as rule-based', function (): void {
     $row = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
     expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased);
+});
+
+it('does not count a rule-based fill after a newer generation takes ownership', function (): void {
+    $snap = WeeklySnapshot::factory()->create();
+    $row = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    $row->update(['generation_token' => 'older-generation']);
+    $stale = $row->fresh();
+    $row->update([
+        'status' => AnalysisStatus::Queued,
+        'generation_token' => 'newer-generation',
+    ]);
+    $ledger = app(CostCeilingLedger::class);
+    $degradedFills = $ledger->today()['degradedFills'];
+
+    $this->service->degradeToRuleBased($stale, 'older-generation');
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($row->fresh()->generation_token)->toBe('newer-generation')
+        ->and($row->fresh()->content)->toBeNull()
+        ->and($ledger->today()['degradedFills'])->toBe($degradedFills);
 });
 
 // ── rule_based_reason: why (not merely that) a row was served rule-based ──

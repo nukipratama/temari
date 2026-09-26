@@ -259,11 +259,19 @@ class AnalysisService
             : $query->where('generation_token', $generationToken);
     }
 
-    public function markProcessing(Analysis $row, ?string $generationToken = null): bool
-    {
+    public function markProcessing(
+        Analysis $row,
+        ?string $generationToken = null,
+        bool $allowProcessing = false,
+    ): bool {
         $generationToken ??= $row->generation_token;
+        $eligibleStatuses = [AnalysisStatus::Pending, AnalysisStatus::Queued, AnalysisStatus::Failed];
+        if ($allowProcessing) {
+            $eligibleStatuses[] = AnalysisStatus::Processing;
+        }
+
         $updated = $this->generationQuery($row, $generationToken)
-            ->where('status', '!=', AnalysisStatus::Done)
+            ->whereIn('status', $eligibleStatuses)
             ->update([
                 'status' => AnalysisStatus::Processing,
                 'attempts' => DB::raw('attempts + 1'),
@@ -418,6 +426,20 @@ class AnalysisService
             }
 
             return true;
+        });
+    }
+
+    public function deleteObsoleteRow(Analysis $row, ?string $generationToken = null): bool
+    {
+        $generationToken ??= $row->generation_token;
+
+        return DB::transaction(function () use ($row, $generationToken): bool {
+            $current = $this->generationQuery($row, $generationToken)
+                ->where('status', AnalysisStatus::Processing)
+                ->lockForUpdate()
+                ->first();
+
+            return $current?->delete() ?? false;
         });
     }
 
@@ -802,20 +824,17 @@ class AnalysisService
             return;
         }
 
+        $attributes = [
+            'status' => AnalysisStatus::Pending,
+            'error' => null,
+            ...($this->origin->current() === AnalysisOrigin::User ? ['attempts' => 0] : []),
+        ];
         $updated = $this->generationQuery($row, $row->generation_token)
             ->where('status', AnalysisStatus::Done)
-            ->update([
-                'status' => AnalysisStatus::Pending,
-                'error' => null,
-                ...($this->origin->current() === AnalysisOrigin::User ? ['attempts' => 0] : []),
-            ]);
+            ->update($attributes);
 
         if ($updated === 1) {
-            $row->forceFill([
-                'status' => AnalysisStatus::Pending,
-                'error' => null,
-                ...($this->origin->current() === AnalysisOrigin::User ? ['attempts' => 0] : []),
-            ])->syncOriginal();
+            $row->forceFill($attributes)->syncOriginal();
         }
     }
 
@@ -1065,19 +1084,21 @@ class AnalysisService
             return;
         }
 
-        $this->fillRuleBased($row, AnalysisOrigin::Capped, $generationToken ?? $row->generation_token);
-        $this->ceilingLedger->recordDegradedFill();
+        if ($this->fillRuleBased($row, AnalysisOrigin::Capped, $generationToken ?? $row->generation_token)) {
+            $this->ceilingLedger->recordDegradedFill();
+        }
     }
 
     private function fillRuleBased(
         Analysis $row,
         ?AnalysisOrigin $reason = null,
         ?string $generationToken = null,
-    ): void {
+    ): bool {
+        $markedDone = false;
         $generationToken ??= $row->generation_token;
 
-        $this->withoutDispatching(function () use ($row, $reason, $generationToken): void {
-            $this->markDone(
+        $this->withoutDispatching(function () use ($row, $reason, $generationToken, &$markedDone): void {
+            $markedDone = $this->markDone(
                 $row,
                 app(RuleBasedNarrationFiller::class)->fillFor($row),
                 ServedBy::RuleBased,
@@ -1085,6 +1106,8 @@ class AnalysisService
                 generationToken: $generationToken,
             );
         });
+
+        return $markedDone;
     }
 
     /**

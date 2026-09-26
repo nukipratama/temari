@@ -24,7 +24,7 @@ configured. It bypasses `ChannelRouter` and the channel mutes on purpose
 | Alert | Fires from | Dedupe |
 |---|---|---|
 | Evening spend digest | [SpendDigestCommand](../../app/Console/Commands/AI/SpendDigestCommand.php#L17), scheduled daily at 21:00 in [routes/console.php](../../routes/console.php#L142) | None needed — the scheduler runs it once |
-| Per-athlete ceiling trip | [`AnalysisService::ceilingExceeded()`](../../app/Services/AI/AnalysisService.php#L1095) | `Cache::add` on a date-and-athlete key: once per athlete per day, not once per gated dispatch |
+| Per-athlete ceiling trip | [`AnalysisService::ceilingExceeded()`](../../app/Services/AI/AnalysisService.php#L1185) | `Cache::add` on a date-and-athlete key: once per athlete per day, not once per gated dispatch |
 | App-wide ceiling at 80% | same gate, on the *under*-ceiling branch | `Cache::add` on one global key, 1h cooldown |
 | Strava 15-minute budget under 10% | [`SyncOrchestrator::logSync()`](../../app/Services/Run/Ingest/SyncOrchestrator.php#L196) | `Cache::add` on a **global** key naming the quarter-hour window: once per window, and the next window may warn again |
 

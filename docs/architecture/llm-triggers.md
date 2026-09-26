@@ -307,10 +307,10 @@ an attempt.
 
 **The cost ceiling is the exception in three ways.** It does not pause: a `pending` row is filled
 from the rule-based filler and marked `Done` by
-[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L1062), so a capped day is not a
+[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L1082), so a capped day is not a
 day of empty blocks. A `Failed` row is explicitly excluded and stays failed, keeping its dead-letter
 visibility. And a *manual* trigger past the ceiling is refused with a 409 rather than degraded,
-because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L973) asks with the budget
+because [`generationPaused()`](../../app/Services/AI/AnalysisService.php#L993) asks with the budget
 included while auto-dispatch asks without it. Two ceilings reach that behaviour through the same
 path — the per-athlete slice and the app-wide total above it, which gates callers holding no
 athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
@@ -320,7 +320,7 @@ Three more limits:
 
 - **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L120) filters the AI kickoff commands
   and every `SelfHealer` sweep, and
-  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L924) serves a demo user's
+  [`shouldServeRuleBased()`](../../app/Services/AI/AnalysisService.php#L944) serves a demo user's
   manual trigger from the filler *before* any pause check — so the public demo spends nothing while
   still feeling live. See [[demo-triggers-served-rule-based]].
 - **The backfill age gate**, [84 days](../../config/ai.php#L43). The only limit that gates automatic
