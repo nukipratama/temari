@@ -55,7 +55,7 @@ export default function Home({
                 {!hasRuns ? (
                     <EmptyRunsState />
                 ) : (
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
                         <TodaySession
                             briefing={briefing}
                             today={todayPlan}

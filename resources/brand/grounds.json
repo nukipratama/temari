@@ -414,20 +414,6 @@
                 "leaf-ink"
             ]
         },
-        "muted/0.4": {
-            "over": {
-                "resources/js/components/home/TodaySession.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/home/TodaySession.test.tsx": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "foreground",
-                "text-2"
-            ]
-        },
         "muted/0.5": {
             "over": {
                 "resources/js/components/ui/button.tsx": [

@@ -260,7 +260,10 @@ describe('Home', () => {
         renderHome(trend(), weekPlan);
 
         await waitFor(() => {
-            expect(screen.getByText('35.5 of 32.0')).toBeInTheDocument();
+            expect(
+                screen.getByText('35.5', { selector: '.text-stat' }),
+            ).toBeInTheDocument();
+            expect(screen.getByText('/ 32.0 km')).toBeInTheDocument();
         });
         expect(screen.getByText('280')).toBeInTheDocument();
         expect(screen.queryByText('Pumped')).not.toBeInTheDocument();
