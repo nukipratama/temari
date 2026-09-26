@@ -7,8 +7,11 @@ use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\StravaConnection;
+use App\Models\StravaGrantToken;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Enums\StravaGrantEventType;
+use App\Services\Strava\StravaGrantLedger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,10 +20,27 @@ use Illuminate\Support\Facades\Http;
 uses(RefreshDatabase::class);
 
 it('deletes the account, revokes Strava, logs the user out and redirects to login', function (): void {
-    Http::fake(['https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'revoked-token'])]);
+    Http::fake([
+        'https://www.strava.com/oauth/token' => Http::response([
+            'access_token' => 'release-access',
+            'refresh_token' => 'release-refresh',
+            'expires_at' => now()->addHours(6)->timestamp,
+        ]),
+        'https://www.strava.com/oauth/deauthorize' => Http::response([]),
+    ]);
 
     $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['access_token' => 'live-access']);
+    $connection = StravaConnection::factory()->for($user)->create([
+        'access_token' => 'live-access',
+        'refresh_token' => 'live-refresh',
+    ]);
+    app(StravaGrantLedger::class)->recordGrant(
+        $connection->strava_athlete_id,
+        $user->id,
+        $connection->credential_version,
+        $connection->refresh_token,
+        StravaGrantEventType::Granted,
+    );
 
     $this->actingAs($user)->delete('/account')
         ->assertRedirect(route('login'))
@@ -31,8 +51,11 @@ it('deletes the account, revokes Strava, logs the user out and redirects to logi
     expect(User::query()->whereKey($user->id)->exists())->toBeFalse()
         ->and(StravaSyncLog::query()->where('user_id', $user->id)->where('status', 'deleted')->exists())->toBeTrue();
 
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/token'
+        && $request['refresh_token'] === 'live-refresh');
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
-        && $request['access_token'] === 'live-access');
+        && $request['access_token'] === 'release-access');
+    expect(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->exists())->toBeFalse();
 
     $this->assertGuest();
 });

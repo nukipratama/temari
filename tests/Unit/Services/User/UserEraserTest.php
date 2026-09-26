@@ -7,9 +7,12 @@ use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
+use App\Enums\StravaGrantEventType;
+use App\Models\StravaGrantToken;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\Strava\StravaGrantLedger;
 use App\Services\User\UserEraser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -21,8 +24,26 @@ use Illuminate\Support\Facades\Http;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    Http::fake();
+    Http::fake([
+        'https://www.strava.com/oauth/token' => Http::response([
+            'access_token' => 'fresh-access',
+            'refresh_token' => 'fresh-refresh',
+            'expires_at' => Carbon::now()->addHours(6)->timestamp,
+        ]),
+        'https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'revoked-token']),
+    ]);
 });
+
+function mirrorGrant(StravaConnection $connection): void
+{
+    app(StravaGrantLedger::class)->recordGrant(
+        $connection->strava_athlete_id,
+        $connection->user_id,
+        $connection->credential_version,
+        $connection->refresh_token,
+        StravaGrantEventType::Granted,
+    );
+}
 
 /**
  * One ai_analyses row for every subject shape the table carries, so a change to
@@ -190,30 +211,43 @@ it('leaves another user cost history unstamped', function (): void {
     expect(TokenUsage::query()->where('user_id', $bystander->id)->sole()->user_name)->toBeNull();
 });
 
-it('hands the athlete grant back to Strava so the deleted account stops counting against the app cap', function (): void {
+it('refreshes the mirrored token before releasing the deleted account grant', function (): void {
     $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create([
+    $connection = StravaConnection::factory()->for($user)->create([
         'access_token' => 'live-access',
+        'refresh_token' => 'live-refresh',
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
+    mirrorGrant($connection);
 
     app(UserEraser::class)->erase($user);
 
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
-        && $request['access_token'] === 'live-access');
+        && $request['access_token'] === 'fresh-access');
+    expect(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->exists())->toBeFalse();
 });
 
 it('deletes the account anyway when Strava refuses the deauthorize', function (): void {
-    Http::fake(['https://www.strava.com/oauth/deauthorize' => fn () => throw new ConnectionException('Strava unreachable')]);
+    Http::fake([
+        'https://www.strava.com/oauth/token' => Http::response([
+            'access_token' => 'fresh-access',
+            'refresh_token' => 'fresh-refresh',
+            'expires_at' => Carbon::now()->addHours(6)->timestamp,
+        ]),
+        'https://www.strava.com/oauth/deauthorize' => fn () => throw new ConnectionException('Strava unreachable'),
+    ]);
 
     $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create([
+    $connection = StravaConnection::factory()->for($user)->create([
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
+    mirrorGrant($connection);
 
     app(UserEraser::class)->erase($user);
 
-    expect(User::query()->whereKey($user->id)->exists())->toBeFalse();
+    expect(User::query()->whereKey($user->id)->exists())->toBeFalse()
+        ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->sole()->refresh_token)->toBe('fresh-refresh')
+        ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->sole()->user_id)->toBe($user->id);
 });
 
 it('skips the deauthorize for a connection Strava has already revoked', function (): void {

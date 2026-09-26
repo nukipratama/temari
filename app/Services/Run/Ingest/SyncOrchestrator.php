@@ -87,7 +87,7 @@ class SyncOrchestrator
             // revoke so sync stops picking this connection every hour instead of
             // crashing the scheduled command (parity with the SyncActivitiesJob
             // token-refresh-failure path).
-            $revoked = $connection->markRevoked(expectedCredentialVersion: $credentialVersion);
+            $revoked = $connection->markRevoked(expectedCredentialVersion: $credentialVersion, stravaRejected: true);
             if ($revoked) {
                 Pulse::record('strava_revoked', 'api_401')->count();
             }

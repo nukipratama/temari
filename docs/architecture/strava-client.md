@@ -27,7 +27,7 @@ Every read is issued against [`StravaClient::apiBaseUrl()`](app/Services/Strava/
 
 ## The request gauntlet
 
-Every call goes through [`StravaClient::get()`](app/Services/Strava/StravaClient.php#L48), which runs four guards in a fixed order before the HTTP call and one router after it:
+Every call goes through [`StravaClient::get()`](app/Services/Strava/StravaClient.php#L64), which runs four guards in a fixed order before the HTTP call and one router after it:
 
 1. **Breaker gate** — bail out fast if the circuit is [open](app/Services/Strava/StravaClient.php#L51) (throws `StravaCircuitOpenException`, no HTTP call made).
 2. **Token freshness** — [`refreshIfExpired()`](app/Services/Strava/StravaClient.php#L73) rotates an expiring access token (see below).
@@ -37,12 +37,12 @@ Every call goes through [`StravaClient::get()`](app/Services/Strava/StravaClient
 
 ## Error routing — the load-bearing distinction
 
-The whole design hinges on classifying *why* a call failed, because each cause wants a different reaction. [`get()`](app/Services/Strava/StravaClient.php#L48) routes the response status:
+The whole design hinges on classifying *why* a call failed, because each cause wants a different reaction. [`get()`](app/Services/Strava/StravaClient.php#L64) routes the response status:
 
 | Upstream signal | Throws | Touches breaker? | Caller reaction |
 | --- | --- | --- | --- |
 | `401` | [`StravaConnectionRevokedException`](app/Services/Strava/StravaClient.php#L91) | no | revoke the connection |
-| `429` | [`StravaRateLimitedException`](app/Services/Strava/StravaClient.php#L97) (seeded with `Retry-After`) | no | back off, Strava is up |
+| `429` | [`StravaRateLimitedException`](app/Services/Strava/StravaClient.php#L116) (seeded with `Retry-After`) | no | back off, Strava is up |
 | `5xx` | re-throws after [`recordFailure()`](app/Services/Strava/StravaClient.php#L91) | **yes** | back off, may open breaker |
 | timeout / connection error | re-throws after [`recordFailure()`](app/Services/Strava/StravaClient.php#L83) | **yes** | back off, may open breaker |
 | `2xx` (or non-5xx 4xx like 404) | returns | clears via [`recordSuccess()`](app/Services/Strava/StravaClient.php#L115) | proceed |
@@ -65,11 +65,11 @@ Threshold and cooldown are tunable `app_config` keys with code defaults in [AppC
 
 ## Global rate-limit buckets
 
-[`guardRateLimit()`](app/Services/Strava/StravaClient.php#L369) checks two Laravel `RateLimiter` buckets (a short 15-min window and a daily one) before hitting both. The keys from [`rateLimitKey()`](app/Services/Strava/StravaClient.php#L419) carry **no `user_id`** — the budget is app-wide because Strava meters per OAuth client, not per athlete (the [[strava-circuit-breaker-rate-limit]] ADR is the rationale). Exhaustion records a `strava_rate_limited` Pulse event and throws `StravaRateLimitedException`.
+[`guardRateLimit()`](app/Services/Strava/StravaClient.php#L385) checks two Laravel `RateLimiter` buckets (a short 15-min window and a daily one) before hitting both. The keys from [`rateLimitKey()`](app/Services/Strava/StravaClient.php#L435) carry **no `user_id`** — the budget is app-wide because Strava meters per OAuth client, not per athlete (the [[strava-circuit-breaker-rate-limit]] ADR is the rationale). Exhaustion records a `strava_rate_limited` Pulse event and throws `StravaRateLimitedException`.
 
 ### The live-ingest reserve
 
-One pool, but **two ceilings against it**. Every read carries a [StravaReadPriority](app/Enums/StravaReadPriority.php#L13), defaulting to `Live`; a `Background` read is refused once a bucket reaches [`backgroundCeilings()`](app/Services/Strava/StravaClient.php#L406) — 75% of the 15-minute max (150), and the daily max less the flat `strava.live_read_floor` (2,000 - 400 = 1,600) — while `Live` may spend the whole 200 / 2,000. Since the counter is shared, background reads left today are that 1,600 minus whatever live ingest has already spent. Only browsing-driven hydration ([DetailHydrator](app/Services/Run/Ingest/DetailHydrator.php#L42)) is `Background`; webhook push, fallback poll, ingest drain, resync and doctor all stay `Live`. The keys are untouched by this: the reserve is a threshold, not a second bucket. Rationale and the rejected alternatives are in [[live-ingest-read-reserve]], and the daily bucket's move from a percentage to a floor in [[backfill-borrows-the-live-reserve]].
+One pool, but **two ceilings against it**. Every read carries a [StravaReadPriority](app/Enums/StravaReadPriority.php#L13), defaulting to `Live`; a `Background` read is refused once a bucket reaches [`backgroundCeilings()`](app/Services/Strava/StravaClient.php#L422) — 75% of the 15-minute max (150), and the daily max less the flat `strava.live_read_floor` (2,000 - 400 = 1,600) — while `Live` may spend the whole 200 / 2,000. Since the counter is shared, background reads left today are that 1,600 minus whatever live ingest has already spent. Only browsing-driven hydration ([DetailHydrator](app/Services/Run/Ingest/DetailHydrator.php#L42)) is `Background`; webhook push, fallback poll, ingest drain, resync and doctor all stay `Live`. The keys are untouched by this: the reserve is a threshold, not a second bucket. Rationale and the rejected alternatives are in [[live-ingest-read-reserve]], and the daily bucket's move from a percentage to a floor is in [[backfill-borrows-the-live-reserve]].
 
 A refused background read is **deferred, not dropped** — [IngestActivityJob](app/Jobs/Strava/IngestActivityJob.php#L89)'s `ThrottlesExceptions` releases it with backoff, on a [throttle key of its own tier](app/Enums/StravaReadPriority.php#L27) so a backed-off browsing burst can't release live ingest jobs alongside it.
 
@@ -127,7 +127,7 @@ The ceilings are **this app's own Read allocation, 200 per 15 min and 2,000 per 
 
 [`refreshIfExpired()`](app/Services/Strava/StravaClient.php#L287) on the client (returning a refreshed [StravaConnection](app/Models/StravaConnection.php)) rotates an access token that's within the [refresh buffer](app/Services/Strava/StravaClient.php#L25) of expiry. It takes a [`strava-refresh:{id}` lock](app/Services/Strava/StravaClient.php#L153), then **re-reads inside the lock** before refreshing — because Strava rotates the `refresh_token` on every exchange, two concurrent workers refreshing the same connection would mutually invalidate each other's new token. This lock is intentionally **per-connection**, unlike the global rate buckets and global breaker.
 
-Refresh failures classify just like reads: a [`400 invalid_grant`](app/Services/Strava/StravaClient.php#L339) is permanent deauthorization (`StravaTokenRefreshFailedException` → revoke), while `401` / `429` / `5xx` / connection errors are [transient](app/Services/Strava/StravaClient.php#L203) (`StravaTokenRefreshTransientException` → release & back off). Revoking a healthy connection over a momentary blip would purge its un-ingested stubs — see [`markRevoked()`](app/Models/StravaConnection.php#L93), which cascades-deletes that user's pending stubs.
+Refresh failures classify just like reads: any token-refresh `400` is a permanent rejection ([`requestRefreshedTokens()`](app/Services/Strava/StravaClient.php#L331) → `StravaTokenRefreshFailedException` → revoke), while `401` / `429` / `5xx` / connection errors during sync are [transient](app/Services/Strava/StravaClient.php#L203) (`StravaTokenRefreshTransientException` → release & back off). Revoking a healthy connection over a momentary blip would purge its un-ingested stubs — see [`markRevoked()`](app/Models/StravaConnection.php#L93), which cascades-deletes that user's pending stubs.
 
 ## Diagnosing & resetting a wedged breaker
 

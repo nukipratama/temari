@@ -5,9 +5,15 @@ declare(strict_types=1);
 use App\Jobs\AI\KickoffRecapsJob;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Jobs\Strava\SyncZonesJob;
+use App\Enums\StravaGrantEventType;
 use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
+use App\Models\StravaGrantEvent;
+use App\Models\StravaGrantToken;
 use App\Models\User;
+use App\Services\Strava\StravaGrantLedger;
+use App\Services\Strava\StravaGrantReleaseResult;
+use App\Enums\StravaGrantReleaseStatus;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use App\Support\DataUseStatement;
@@ -209,6 +215,8 @@ it('creates a new user from the strava callback and logs them in', function (): 
 
     $connection = StravaConnection::where('strava_athlete_id', 987654)->firstOrFail();
     $user = $connection->user;
+    $grant = StravaGrantToken::query()->where('strava_athlete_id', 987654)->sole();
+    $event = StravaGrantEvent::query()->where('strava_athlete_id', 987654)->sole();
 
     expect($connection->strava_athlete_id)->toBe(987654)
         ->and(Carbon::now()->addSeconds(21600)->diffInSeconds($connection->token_expires_at, true))
@@ -219,7 +227,11 @@ it('creates a new user from the strava callback and logs them in', function (): 
         ->and($user->avatar_url)->toBe('https://strava.test/avatar.png')
         ->and($connection->access_token)->toBe('access-token-xyz')
         ->and($connection->refresh_token)->toBe('refresh-token-xyz')
-        ->and($connection->scopes)->toBe('read,activity:read_all,profile:read_all');
+        ->and($connection->scopes)->toBe('read,activity:read_all,profile:read_all')
+        ->and($connection->credential_version)->toBe(0)
+        ->and($grant->refresh_token)->toBe('refresh-token-xyz')
+        ->and($grant->credential_version)->toBe(0)
+        ->and($event->event)->toBe(StravaGrantEventType::Granted);
 
     // First connect kicks off a full-history backfill (no single-activity scope),
     // with the one-shot recap kickoff chained behind it.
@@ -230,9 +242,16 @@ it('creates a new user from the strava callback and logs them in', function (): 
     Bus::assertChained([SyncActivitiesJob::class, KickoffRecapsJob::class]);
 });
 
-it('refuses a new athlete during maintenance, writes nothing and hands the grant back to Strava', function (): void {
+it('records a maintenance refusal and hands the grant back to Strava', function (): void {
     Http::preventStrayRequests();
-    Http::fake(['https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'access-token-xyz'])]);
+    Http::fake([
+        'https://www.strava.com/oauth/token' => Http::response([
+            'access_token' => 'access-token-xyz',
+            'refresh_token' => 'rotated-refresh-token',
+            'expires_at' => Carbon::now()->addHours(6)->timestamp,
+        ]),
+        'https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'revoked-token']),
+    ]);
     Log::spy();
     app()->maintenanceMode()->activate([]);
 
@@ -251,7 +270,10 @@ it('refuses a new athlete during maintenance, writes nothing and hands the grant
 
     $this->assertGuest();
     expect(User::count())->toBe(0)
-        ->and(StravaConnection::count())->toBe(0);
+        ->and(StravaConnection::count())->toBe(0)
+        ->and(StravaGrantToken::query()->where('strava_athlete_id', 987654)->exists())->toBeFalse()
+        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 987654)->orderBy('id')->get()->map(fn (StravaGrantEvent $event) => $event->event)->all())
+        ->toBe([StravaGrantEventType::RefusedInMaintenance, StravaGrantEventType::Released]);
     Http::assertSent(fn (HttpRequest $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
         && $request['access_token'] === 'access-token-xyz');
     Log::shouldHaveReceived('info')->with('strava.registration.refused_during_maintenance', ['athlete_id' => '987654', 'deauthorized' => true]);
@@ -259,6 +281,36 @@ it('refuses a new athlete during maintenance, writes nothing and hands the grant
 
     // The redirect lands the refused guest on the maintenance page.
     $this->get(route('dashboard'))->assertServiceUnavailable()->assertSee('back in a bit');
+});
+
+it('keeps a maintenance-refused grant when Strava refuses release', function (): void {
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://www.strava.com/oauth/token' => Http::response([
+            'access_token' => 'access-token-xyz',
+            'refresh_token' => 'rotated-refresh-token',
+            'expires_at' => Carbon::now()->addHours(6)->timestamp,
+        ]),
+        'https://www.strava.com/oauth/deauthorize' => Http::response([], 503),
+    ]);
+    app()->maintenanceMode()->activate([]);
+
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'access-token-xyz';
+    $stravaUser->refreshToken = 'refresh-token-xyz';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('987654');
+    $stravaUser->shouldReceive('getName')->andReturn('Ada Lovelace');
+    $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/avatar.png');
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->get(route('auth.strava.callback'))->assertRedirect(route('dashboard'));
+
+    expect(StravaGrantToken::query()->where('strava_athlete_id', 987654)->sole()->refresh_token)
+        ->toBe('rotated-refresh-token')
+        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 987654)->orderBy('id')->get()->map(fn (StravaGrantEvent $event) => $event->event)->all())
+        ->toBe([StravaGrantEventType::RefusedInMaintenance, StravaGrantEventType::ReleaseFailed]);
 });
 
 it('signs a returning athlete in during maintenance', function (): void {
@@ -367,6 +419,10 @@ it('updates an existing user on subsequent strava callbacks', function (): void 
         ->and($existingUser->stravaConnection->refresh_token)->toBe('new-refresh')
         ->and($existingUser->stravaConnection->credential_version)->toBe(1)
         ->and($existingUser->stravaConnection->revoked_at)->toBeNull();
+
+    expect(StravaGrantToken::query()->where('strava_athlete_id', 987654)->sole()->refresh_token)->toBe('new-refresh')
+        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 987654)->orderBy('id')->get()->map(fn (StravaGrantEvent $event) => $event->event)->all())
+        ->toBe([StravaGrantEventType::Reconnected]);
 
     // Re-login on an existing connection must NOT re-trigger a backfill.
     Bus::assertNotDispatched(SyncActivitiesJob::class);
@@ -486,15 +542,63 @@ it('reactivates a revoked connection and dispatches one incremental sync', funct
         ->assertRedirect(route('dashboard'));
 
     $connection->refresh();
+    $grant = StravaGrantToken::query()->where('strava_athlete_id', 987654)->sole();
     expect($connection->isRevoked())->toBeFalse()
         ->and($connection->credential_version)->toBe(5)
         ->and($connection->access_token)->toBe('reactivated-access')
-        ->and($connection->refresh_token)->toBe('reactivated-refresh');
+        ->and($connection->refresh_token)->toBe('reactivated-refresh')
+        ->and($grant->credential_version)->toBe(5)
+        ->and($grant->refresh_token)->toBe('reactivated-refresh');
 
     Bus::assertDispatchedTimes(SyncActivitiesJob::class, 1);
     Bus::assertDispatched(SyncActivitiesJob::class, fn (SyncActivitiesJob $job): bool => $job->userId === $existingUser->id);
     Bus::assertDispatched(SyncZonesJob::class, fn (SyncZonesJob $job): bool => $job->userId === $existingUser->id);
     Bus::assertNotDispatched(KickoffRecapsJob::class);
+});
+
+it('advances the grant version when an athlete reconnects after account deletion', function (): void {
+    $oldUser = User::factory()->create();
+    $oldConnection = StravaConnection::factory()->for($oldUser)->create([
+        'strava_athlete_id' => 876543,
+        'credential_version' => 8,
+    ]);
+    app(StravaGrantLedger::class)->recordGrant(
+        876543,
+        $oldUser->id,
+        8,
+        'old-refresh',
+        StravaGrantEventType::Granted,
+    );
+    app(StravaGrantLedger::class)->recordReleaseOutcome(
+        StravaGrantToken::query()->where('strava_athlete_id', 876543)->sole(),
+        new StravaGrantReleaseResult(StravaGrantReleaseStatus::Released),
+        forced: false,
+    );
+    $oldUser->delete();
+
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'new-access';
+    $stravaUser->refreshToken = 'new-refresh';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn('876543');
+    $stravaUser->shouldReceive('getName')->andReturn('Reconnected Runner');
+    $stravaUser->shouldReceive('getEmail')->andReturn('reconnected@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/new.png');
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->get(route('auth.strava.callback'))->assertRedirect(route('onboarding.show'));
+
+    $connection = StravaConnection::query()->where('strava_athlete_id', 876543)->sole();
+    $events = StravaGrantEvent::query()->where('strava_athlete_id', 876543)->orderBy('id')->get();
+
+    expect($connection->credential_version)->toBe(9)
+        ->and(StravaGrantToken::query()->where('strava_athlete_id', 876543)->sole()->refresh_token)->toBe('new-refresh')
+        ->and($events->map(fn (StravaGrantEvent $event) => [$event->user_id, $event->credential_version, $event->event])->all())
+        ->toBe([
+            [$oldUser->id, 8, StravaGrantEventType::Granted],
+            [$oldUser->id, 8, StravaGrantEventType::Released],
+            [$connection->user_id, 9, StravaGrantEventType::Reconnected],
+        ]);
 });
 
 it('redirects back to login when strava returns an error', function (): void {

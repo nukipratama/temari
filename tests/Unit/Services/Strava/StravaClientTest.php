@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Enums\StravaReadPriority;
 use App\Enums\StravaReadSource;
+use App\Enums\StravaGrantReleaseStatus;
 use App\Models\Analytics\StravaRead;
 use App\Models\StravaConnection;
+use App\Models\StravaGrantToken;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
@@ -20,7 +22,6 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class);
@@ -70,6 +71,9 @@ it('refreshes the token when it has already expired', function (): void {
     expect($result->access_token)->toBe('fresh-access')
         ->and($result->refresh_token)->toBe('fresh-refresh')
         ->and($result->token_expires_at->timestamp)->toBe($expiresAt->timestamp);
+
+    expect(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->sole()->refresh_token)
+        ->toBe('fresh-refresh');
 
     Http::assertSent(fn ($request) => $request->url() === 'https://www.strava.com/oauth/token'
         && $request['client_id'] === 'test-client-id'
@@ -156,9 +160,9 @@ it('skips the refresh POST when another worker already refreshed under the lock'
     Http::assertNothingSent();
 });
 
-it('throws a permanent refresh exception only on a 400 invalid_grant', function (): void {
+it('throws a permanent refresh exception for any 400 token response', function (array $response): void {
     Http::fake([
-        'strava.com/oauth/token' => Http::response(['message' => 'Bad refresh token'], 400),
+        'strava.com/oauth/token' => Http::response($response, 400),
     ]);
 
     $connection = StravaConnection::factory()->create([
@@ -167,7 +171,15 @@ it('throws a permanent refresh exception only on a 400 invalid_grant', function 
 
     expect(fn () => new StravaClient()->refreshIfExpired($connection))
         ->toThrow(StravaTokenRefreshFailedException::class);
-});
+})->with([
+    'OAuth invalid_grant' => [['error' => 'invalid_grant']],
+    'Strava bad refresh token' => [['message' => 'Bad refresh token']],
+    'message and errors body' => [[
+        'message' => 'Bad Request',
+        'errors' => [['resource' => 'RefreshToken', 'field' => 'refresh_token', 'code' => 'invalid']],
+    ]],
+    'other 400 body' => [['error' => 'invalid_client']],
+]);
 
 it('throws a transient refresh exception on a non-400 refresh failure', function (int $status): void {
     Http::fake([
@@ -198,6 +210,24 @@ it('throws a transient refresh exception when the token endpoint times out', fun
 
     expect(fn () => new StravaClient()->refreshIfExpired($connection))
         ->toThrow(StravaTokenRefreshTransientException::class);
+});
+
+it('returns the connection instance if it is deleted during token refresh', function (): void {
+    $connection = StravaConnection::factory()->create([
+        'token_expires_at' => Carbon::now()->subMinute(),
+    ]);
+
+    Http::fake(function () use ($connection) {
+        StravaConnection::query()->whereKey($connection->id)->delete();
+
+        return Http::response([
+            'access_token' => 'fresh-access',
+            'refresh_token' => 'fresh-refresh',
+            'expires_at' => Carbon::now()->addHours(6)->timestamp,
+        ]);
+    });
+
+    expect(new StravaClient()->refreshIfExpired($connection))->toBe($connection);
 });
 
 it('makes authenticated GET requests to the Strava API', function (): void {
@@ -718,27 +748,7 @@ it('floors background headroom at zero once live reads pass the reserve', functi
     expect(new StravaClient()->backgroundHeadroom()['15min'])->toBe(0);
 });
 
-it('releases the athlete grant on Strava and reports acceptance', function (): void {
-    Http::fake(['https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'revoked-token'])]);
-    Log::spy();
-
-    $connection = StravaConnection::factory()->create([
-        'access_token' => 'live-access',
-        'token_expires_at' => Carbon::now()->addHours(5),
-    ]);
-
-    expect(new StravaClient()->deauthorize($connection))->toBeTrue();
-
-    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
-        && $request->method() === 'POST'
-        && $request['access_token'] === 'live-access');
-    // The only signal a caller (or an operator reading the log later) has
-    // that Strava actually accepted the release, since a silent success
-    // otherwise reads identically to nobody having called this at all.
-    Log::shouldHaveReceived('info')->once()->with('strava deauthorize accepted', ['user_id' => $connection->user_id]);
-});
-
-it('refreshes an expired token before deauthorizing, so the grant is actually released', function (): void {
+it('refreshes the mirrored token before deauthorizing the grant', function (): void {
     Http::fake([
         'https://www.strava.com/oauth/token' => Http::response([
             'access_token' => 'fresh-access',
@@ -748,24 +758,63 @@ it('refreshes an expired token before deauthorizing, so the grant is actually re
         'https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'revoked-token']),
     ]);
 
-    $connection = StravaConnection::factory()->create([
-        'access_token' => 'stale-access',
-        'token_expires_at' => Carbon::now()->subHour(),
+    $grant = StravaGrantToken::query()->create([
+        'strava_athlete_id' => 12345,
+        'credential_version' => 4,
+        'refresh_token' => 'stale-refresh',
     ]);
 
-    expect(new StravaClient()->deauthorize($connection))->toBeTrue();
+    expect(new StravaClient()->deauthorizeGrantToken($grant)->status)->toBe(StravaGrantReleaseStatus::Released)
+        ->and($grant->refresh()->refresh_token)->toBe('fresh-refresh');
 
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/token'
+        && $request['refresh_token'] === 'stale-refresh');
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
         && $request['access_token'] === 'fresh-access');
 });
 
-it('reports a refused deauthorize rather than throwing', function (): void {
-    Http::fake(['https://www.strava.com/oauth/deauthorize' => Http::response('nope', 401)]);
+it('treats a 401 or invalid_grant while releasing as an already-free grant', function (array $response, int $status): void {
+    Http::fake(['https://www.strava.com/oauth/token' => Http::response($response, $status)]);
 
-    $connection = StravaConnection::factory()->create([
-        'access_token' => 'live-access',
-        'token_expires_at' => Carbon::now()->addHours(5),
+    $grant = StravaGrantToken::query()->create([
+        'strava_athlete_id' => 12345,
+        'credential_version' => 4,
+        'refresh_token' => 'dead-refresh',
     ]);
 
-    expect(new StravaClient()->deauthorize($connection))->toBeFalse();
+    expect(new StravaClient()->deauthorizeGrantToken($grant)->status)->toBe(StravaGrantReleaseStatus::Rejected);
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize');
+})->with([
+    'unauthorized' => [[], 401],
+    'invalid grant' => [['error' => 'invalid_grant'], 400],
+]);
+
+it('does not release a newer grant after an old refresh response arrives', function (): void {
+    $grant = StravaGrantToken::query()->create([
+        'strava_athlete_id' => 12345,
+        'credential_version' => 4,
+        'refresh_token' => 'old-refresh',
+    ]);
+
+    Http::fake(function (Request $request) use ($grant) {
+        StravaGrantToken::query()->where('strava_athlete_id', $grant->strava_athlete_id)->firstOrFail()->update([
+            'credential_version' => 5,
+            'refresh_token' => 'oauth-refresh',
+        ]);
+
+        return Http::response([
+            'access_token' => 'stale-access',
+            'refresh_token' => 'stale-refresh',
+            'expires_at' => Carbon::now()->addHours(6)->timestamp,
+        ]);
+    });
+
+    $result = new StravaClient()->deauthorizeGrantToken($grant);
+    $refreshedGrant = $grant->fresh();
+
+    expect($result->status)->toBe(StravaGrantReleaseStatus::Stale)
+        ->and($refreshedGrant->credential_version)->toBe(5)
+        ->and($refreshedGrant->refresh_token)->toBe('oauth-refresh');
+
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize');
 });

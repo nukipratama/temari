@@ -18,7 +18,7 @@ The operational mechanics of talking to Strava live in [[strava-client]]; this n
 
 ## The endpoints we actually call
 
-Every read goes through [`StravaClient::get()`](app/Services/Strava/StravaClient.php#L48), so the call sites are enumerable:
+Every read goes through [`StravaClient::get()`](app/Services/Strava/StravaClient.php#L64), so the call sites are enumerable:
 
 | Endpoint | Call site |
 | --- | --- |

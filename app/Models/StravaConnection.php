@@ -5,16 +5,17 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Scope;
-use Illuminate\Support\Carbon;
 use App\Notifications\StravaDisconnectedNotification;
+use App\Services\Strava\StravaGrantLedger;
 use App\Support\SharedPropCacheKey;
 use Database\Factories\StravaConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Override;
 
@@ -94,13 +95,16 @@ class StravaConnection extends Model
     }
 
     /**
-     * The one place a Strava grant dies, so it is also the one place the athlete
-     * is told, once per revocation rather than once per failing call.
+     * The one place a Strava connection is locally revoked, so it is also the
+     * one place the athlete is told, once per revocation rather than per failure.
      * `$notify` is false only for an account deletion, whose cascade takes the
      * inbox row with it anyway.
      */
-    public function markRevoked(bool $notify = true, ?int $expectedCredentialVersion = null): bool
-    {
+    public function markRevoked(
+        bool $notify = true,
+        ?int $expectedCredentialVersion = null,
+        bool $stravaRejected = false,
+    ): bool {
         if ($this->revoked_at !== null) {
             return false;
         }
@@ -108,7 +112,7 @@ class StravaConnection extends Model
         $revokedAt = Carbon::now();
 
         // Serialize this claim with reconnects so an older API failure cannot revoke new credentials.
-        $connection = static::query()->getConnection()->transaction(function () use ($expectedCredentialVersion, $revokedAt): ?self {
+        $connection = static::query()->getConnection()->transaction(function () use ($expectedCredentialVersion, $revokedAt, $stravaRejected): ?self {
             $connection = static::query()
                 ->whereKey($this->getKey())
                 ->whereNull('revoked_at')
@@ -121,6 +125,14 @@ class StravaConnection extends Model
             }
 
             $connection->update(['revoked_at' => $revokedAt]);
+
+            if ($stravaRejected) {
+                app(StravaGrantLedger::class)->recordRejected(
+                    $connection->strava_athlete_id,
+                    $connection->user_id,
+                    $connection->credential_version,
+                );
+            }
 
             // Purge un-ingested stubs; the drain skips revoked connections, and
             // withStubs bypasses the analyzed-only scope. Keep it atomic so a

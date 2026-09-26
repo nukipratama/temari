@@ -8,9 +8,11 @@ use App\Http\Controllers\Controller;
 use App\Jobs\AI\KickoffRecapsJob;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Jobs\Strava\SyncZonesJob;
+use App\Enums\StravaGrantEventType;
 use App\Models\StravaConnection;
 use App\Models\User;
-use App\Services\Strava\StravaClient;
+use App\Services\Strava\StravaGrantLedger;
+use App\Services\Strava\StravaGrantReleaseService;
 use App\Support\LocalRedirectPath;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +32,12 @@ use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse
 class StravaAuthController extends Controller
 {
     private const array SCOPES = ['read', 'activity:read_all', 'profile:read_all'];
+
+    public function __construct(
+        private readonly StravaGrantLedger $grantLedger,
+        private readonly StravaGrantReleaseService $grantReleases,
+    ) {
+    }
 
     public function redirect(Request $request): SymfonyRedirectResponse
     {
@@ -170,13 +178,24 @@ class StravaAuthController extends Controller
                 $connection = StravaConnection::query()->lockForUpdate()->findOrFail($connection->id);
                 $hadZoneScope = $connection->hasZoneScope();
                 $wasRevoked = $connection->isRevoked();
+                $credentialVersion = $this->grantLedger->nextCredentialVersion(
+                    $connection->strava_athlete_id,
+                    $connection->credential_version,
+                );
                 $user = $connection->user;
                 $user->fill($userAttributes)->save();
                 $connection->fill([
                     ...$connectionAttributes,
                     'revoked_at' => null,
-                    'credential_version' => $connection->credential_version + 1,
+                    'credential_version' => $credentialVersion,
                 ])->save();
+                $this->grantLedger->recordGrant(
+                    $connection->strava_athlete_id,
+                    $user->id,
+                    $credentialVersion,
+                    $connection->refresh_token,
+                    StravaGrantEventType::Reconnected,
+                );
 
                 $zoneScopeNewlyGranted = ! $hadZoneScope && $connection->hasZoneScope();
 
@@ -185,28 +204,53 @@ class StravaAuthController extends Controller
         }
 
         if (app()->isDownForMaintenance()) {
-            $this->refuseNewAthlete($stravaUser, $connectionAttributes);
+            $athleteId = (int) $stravaUser->getId();
+            $credentialVersion = $this->grantLedger->nextCredentialVersion($athleteId);
+            $this->refuseNewAthlete($stravaUser, $connectionAttributes, $credentialVersion);
 
             return null;
         }
 
-        $user = User::create($userAttributes);
-        $user->stravaConnection()->create([
-            'strava_athlete_id' => $stravaUser->getId(),
-            ...$connectionAttributes,
-        ]);
+        $athleteId = (int) $stravaUser->getId();
+        $isReconnect = $this->grantLedger->hasHistory($athleteId);
+        [$user] = DB::transaction(function () use ($athleteId, $userAttributes, $connectionAttributes, $isReconnect): array {
+            $credentialVersion = $this->grantLedger->nextCredentialVersion($athleteId);
+            $user = User::create($userAttributes);
+            $connection = $user->stravaConnection()->create([
+                'strava_athlete_id' => $athleteId,
+                'credential_version' => $credentialVersion,
+                ...$connectionAttributes,
+            ]);
+            $this->grantLedger->recordGrant(
+                $athleteId,
+                $user->id,
+                $credentialVersion,
+                $connection->refresh_token,
+                $isReconnect ? StravaGrantEventType::Reconnected : StravaGrantEventType::Granted,
+            );
+
+            return [$user];
+        });
 
         return [$user, true, false, false, str_contains($scopes, 'profile:read_all')];
     }
 
     /** @param array<string, mixed> $connectionAttributes */
-    private function refuseNewAthlete(SocialiteUser $stravaUser, array $connectionAttributes): void
+    private function refuseNewAthlete(SocialiteUser $stravaUser, array $connectionAttributes, int $credentialVersion): void
     {
-        $deauthorized = app(StravaClient::class)->deauthorize(new StravaConnection($connectionAttributes));
+        $athleteId = (int) $stravaUser->getId();
+        $this->grantLedger->recordGrant(
+            $athleteId,
+            null,
+            $credentialVersion,
+            (string) $connectionAttributes['refresh_token'],
+            StravaGrantEventType::RefusedInMaintenance,
+        );
+        $result = $this->grantReleases->release($athleteId, expectedCredentialVersion: $credentialVersion);
 
         Log::info('strava.registration.refused_during_maintenance', [
             'athlete_id' => $stravaUser->getId(),
-            'deauthorized' => $deauthorized,
+            'deauthorized' => $result?->freedSlot() ?? false,
         ]);
     }
 }

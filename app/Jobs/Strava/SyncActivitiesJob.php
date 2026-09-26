@@ -81,7 +81,7 @@ class SyncActivitiesJob implements ShouldQueue
                 return;
             }
 
-            if (! $connection->markRevoked(expectedCredentialVersion: $credentialVersion)) {
+            if (! $connection->markRevoked(expectedCredentialVersion: $credentialVersion, stravaRejected: true)) {
                 Log::info('strava-sync ignored a stale API 401 after credentials changed', [
                     'user_id' => $user->id,
                 ]);
@@ -115,7 +115,7 @@ class SyncActivitiesJob implements ShouldQueue
                 return;
             }
 
-            if (! $connection->markRevoked(expectedCredentialVersion: $credentialVersion)) {
+            if (! $connection->markRevoked(expectedCredentialVersion: $credentialVersion, stravaRejected: true)) {
                 Log::info('strava-sync ignored a stale refresh failure after credentials changed', [
                     'user_id' => $user->id,
                 ]);

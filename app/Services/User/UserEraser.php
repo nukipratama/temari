@@ -9,11 +9,12 @@ use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
+use App\Models\StravaGrantToken;
 use App\Models\Scopes\KnownAnalysisTypeScope;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
-use App\Services\Strava\StravaClient;
+use App\Services\Strava\StravaGrantReleaseService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -39,7 +40,7 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class UserEraser
 {
-    public function __construct(private StravaClient $stravaClient)
+    public function __construct(private StravaGrantReleaseService $grantReleases)
     {
     }
 
@@ -60,7 +61,7 @@ final readonly class UserEraser
         'persona_summary_user',
     ];
 
-    public function erase(User $user): void
+    public function erase(User $user, bool $stravaGrantAlreadyAttempted = false): void
     {
         $id = $user->id;
 
@@ -69,7 +70,9 @@ final readonly class UserEraser
         // means a failed delete leaves a snapshot on a user who still exists,
         // which is invisible — the report prefers live identity over it.
         $this->snapshotIdentityOntoUsage($user);
-        $this->releaseStravaGrant($user);
+        if (! $stravaGrantAlreadyAttempted) {
+            $this->releaseStravaGrant($user);
+        }
 
         DB::transaction(function () use ($id, $user): void {
             // Resolved inside the transaction rather than reused from any
@@ -98,13 +101,12 @@ final readonly class UserEraser
      *
      * Best effort, and it cannot be anything else — someone who asked to be
      * deleted is not left undeleted because Strava is unreachable, which is
-     * why {@see StravaClient::deauthorize()} reports rather than throws.
+     * why {@see StravaGrantReleaseService::release()} reports rather than throws.
      *
      * Public so a caller that wants to tell the operator whether Strava took
      * it (e.g. {@see \App\Console\Commands\Strava\RemoveAthleteCommand}) can
-     * call this directly instead of re-implementing the release: calling it
-     * again from {@see self::erase()} right after is a no-op, since the
-     * connection is already revoked by then.
+     * call this directly instead of re-implementing the release. That caller
+     * then tells {@see self::erase()} the release was already attempted.
      *
      * @return bool|null Whether Strava accepted the deauthorize, or null when
      *                    there was no live grant to release.
@@ -112,15 +114,33 @@ final readonly class UserEraser
     public function releaseStravaGrant(User $user): ?bool
     {
         $connection = $user->stravaConnection;
+        $grant = StravaGrantToken::query()->where('user_id', $user->id)->first();
 
-        if ($connection === null || $connection->isRevoked()) {
+        if ($connection === null && $grant === null) {
             return null;
         }
 
-        $released = $this->stravaClient->deauthorize($connection);
-        $connection->markRevoked(notify: false);
+        if ($connection !== null) {
+            $connection->markRevoked(
+                notify: false,
+                expectedCredentialVersion: $connection->credential_version,
+            );
+        }
 
-        return $released;
+        if ($grant === null) {
+            return null;
+        }
+
+        $credentialVersion = $connection === null
+            ? $grant->credential_version
+            : $connection->credential_version;
+
+        $result = $this->grantReleases->release(
+            $grant->strava_athlete_id,
+            expectedCredentialVersion: $credentialVersion,
+        );
+
+        return $result?->freedSlot();
     }
 
     /**

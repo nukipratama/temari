@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Console\Commands\ScheduleHeartbeatCommand;
+use App\Jobs\Strava\RetryOrphanedStravaGrantReleasesJob;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 
@@ -61,6 +62,17 @@ it('schedules the analytics-connection retention prune', function (): void {
     $event = scheduledEvent('analytics:prune');
 
     expect($event)->not->toBeNull('analytics:prune is not scheduled');
+});
+
+it('schedules daily retries for orphaned Strava grants', function (): void {
+    $event = collect(app(Schedule::class)->events())->first(
+        fn (Event $event): bool => $event->getSummaryForDisplay() === RetryOrphanedStravaGrantReleasesJob::class,
+    );
+
+    expect($event)->not->toBeNull('orphaned Strava grant retries are not scheduled')
+        ->and($event->expression)->toBe('40 2 * * *')
+        ->and($event->withoutOverlapping)->toBeTrue()
+        ->and($event->onOneServer)->toBeTrue();
 });
 
 /**

@@ -7,6 +7,7 @@ namespace App\Console\Commands\Strava;
 use App\Console\Commands\Concerns\ConfirmsPermanentRemoval;
 use App\Models\Activity;
 use App\Models\AI\TokenUsage;
+use App\Models\StravaGrantToken;
 use App\Models\User;
 use App\Services\User\UserEraser;
 use Illuminate\Console\Attributes\Description;
@@ -40,7 +41,7 @@ class RemoveAthleteCommand extends Command
         }
 
         $connection = $user->stravaConnection;
-        $liveGrant = $connection !== null && ! $connection->isRevoked() ? $connection : null;
+        $liveGrant = StravaGrantToken::query()->where('user_id', $user->id)->first();
 
         $activityCount = Activity::query()->where('user_id', $id)->count();
         $tokenUsageCount = TokenUsage::query()->where('user_id', $id)->count();
@@ -61,15 +62,15 @@ class RemoveAthleteCommand extends Command
         }
 
         // Called here rather than left to erase() alone so the operator is
-        // told whether Strava took it; erase() then meets a revoked
-        // connection and skips its own best-effort release.
+        // told whether Strava took it. Do not immediately retry a failed
+        // request while deleting the account.
         match ($this->eraser->releaseStravaGrant($user)) {
             null => $this->info("User {$id} holds no live Strava grant, so there was nothing to release."),
             true => $this->info("Released user {$id} on Strava."),
             false => $this->warn("Strava did not accept the deauthorize for user {$id}. Check the log, and free the slot from Strava's settings if it is still held."),
         };
 
-        $this->eraser->erase($user);
+        $this->eraser->erase($user, stravaGrantAlreadyAttempted: true);
 
         $this->info("Removed user {$id} and all owned data. ".$this->tokenUsageKeptMessage($tokenUsageCount));
 

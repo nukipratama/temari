@@ -40,7 +40,7 @@ class SyncZonesCommand extends Command
                 // Same as SyncZonesJob: a 401 or a rejected refresh means the athlete
                 // deauthorized us. Revoke so this stops being retried every month and
                 // the UI stops showing a stale "connected" state.
-                $revoked = $connection?->markRevoked(expectedCredentialVersion: $credentialVersion) ?? false;
+                $revoked = $connection?->markRevoked(expectedCredentialVersion: $credentialVersion, stravaRejected: true) ?? false;
 
                 $this->warn($revoked
                     ? "user {$user->id}: connection revoked — {$e->getMessage()}"
