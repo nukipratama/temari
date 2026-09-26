@@ -98,6 +98,7 @@ class PlannedSession extends Model
 {
     /** @use HasFactory<PlannedSessionFactory> */
     use HasFactory;
+
     public const array WORKOUT_TRANSFER_FIELDS = [
         'session_type',
         'skipped',
