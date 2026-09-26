@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\PlanRegenerationReason;
 use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\PlanRegenerationService;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Support\TrainingDisclaimer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -50,7 +53,7 @@ class PlanController extends Controller
         ]);
     }
 
-    public function regenerate(Request $request, Periodizer $periodizer, PlanNarrationRequester $narrationRequester): RedirectResponse
+    public function regenerate(Request $request, PlanNarrationRequester $narrationRequester, PlanRegenerationService $regeneration): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -59,9 +62,9 @@ class PlanController extends Controller
             return back()->with('info', "Temari's still catching up on the last replan. Give it a little longer.");
         }
 
-        $periodizer->regenerate($user);
-        $narrationRequester->requestForCurrentWeek($user, Carbon::today());
-        $narrationRequester->startRegenerateCooldown($user);
+        if (! $regeneration->regenerateForRequest($user, PlanRegenerationReason::Manual)) {
+            return back()->with('info', 'The plan is updating right now. Temari will replan it as soon as the current update finishes.');
+        }
 
         return back()->with('success', "Temari's replanned the weeks ahead against where you are now.");
     }
@@ -77,45 +80,69 @@ class PlanController extends Controller
      * periodizer materializes all seven days of every week, so every in-horizon
      * target is occupied.
      */
-    public function update(UpdatePlannedSessionRequest $request, PlannedSession $plannedSession, PlanNarrationRequester $narrationRequester): RedirectResponse
-    {
+    public function update(
+        UpdatePlannedSessionRequest $request,
+        PlannedSession $plannedSession,
+        Periodizer $periodizer,
+        PlanNarrationRequester $narrationRequester,
+    ): RedirectResponse {
         $this->authorizeOwner($request, $plannedSession);
 
+        /** @var User $user */
+        $user = $request->user();
         $attributes = $request->validated();
         if (! array_key_exists('pinned', $attributes)) {
             $attributes['pinned'] = true;
         }
 
         $today = Carbon::today();
-        $touchedSessions = [$plannedSession];
 
-        if (isset($attributes['date']) && ! $plannedSession->date->isAfter($today)) {
-            throw ValidationException::withMessages(['date' => 'only a day still ahead can be moved.']);
+        try {
+            [$session, $occupant, $touchedSessions] = $periodizer->withRegenerationLock(
+                $user,
+                function () use ($user, $plannedSession, $attributes, $today): array {
+                    return DB::transaction(function () use ($user, $plannedSession, $attributes, $today): array {
+                        $session = PlannedSession::query()
+                            ->where('user_id', $user->id)
+                            ->whereDate('date', $plannedSession->date->toDateString())
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($session === null || $session->id !== $plannedSession->id) {
+                            abort(409, 'This plan changed while you were editing. Reload and try again.');
+                        }
+
+                        if (isset($attributes['date']) && ! $session->date->isAfter($today)) {
+                            throw ValidationException::withMessages(['date' => 'only a day still ahead can be moved.']);
+                        }
+
+                        $occupant = $this->occupantOfMoveTarget($session, $attributes['date'] ?? null);
+                        if ($occupant !== null && $occupant->session_type !== SessionType::Rest) {
+                            throw ValidationException::withMessages(['date' => 'a session can only move onto a rest day.']);
+                        }
+
+                        $touchedSessions = [$session];
+                        if ($occupant !== null) {
+                            $touchedSessions[] = $occupant;
+                            $this->swapSessions($session, $occupant);
+                            unset($attributes['date']);
+                        }
+
+                        $session->update($attributes);
+
+                        return [$session, $occupant, $touchedSessions];
+                    });
+                },
+                Periodizer::REQUEST_LOCK_WAIT_SECONDS,
+            );
+        } catch (LockTimeoutException) {
+            return back()->with('info', 'The plan is updating right now. Reload and try your edit again.');
         }
 
-        $occupant = $this->occupantOfMoveTarget($plannedSession, $attributes['date'] ?? null);
-        if ($occupant !== null && $occupant->session_type !== SessionType::Rest) {
-            throw ValidationException::withMessages(['date' => 'a session can only move onto a rest day.']);
-        }
-
-        if ($occupant !== null) {
-            $touchedSessions[] = $occupant;
-            $this->swapSessions($plannedSession, $occupant);
-            unset($attributes['date']);
-        }
-
-        $plannedSession->update($attributes);
-
-        // Keep the day's narration in sync with the edit — otherwise it keeps
-        // describing whatever was prescribed before the skip/block/move. Only
-        // within the current week (the only window day narration is ever
-        // requested for), and only once the day already has a run credited on
-        // it: an edit almost always touches a day still ahead, which has no
-        // read to keep in sync in the first place (#939: "no run, no section").
-        if ($occupant !== null || $plannedSession->wasChanged(['session_type', 'skipped', 'date'])) {
-            foreach ($touchedSessions as $session) {
-                if ($session->status->isCredited() && $narrationRequester->isWithinCurrentWeek($session->date, $today)) {
-                    $narrationRequester->requestDayNarration($session->user_id, $session->date);
+        if ($occupant !== null || $session->wasChanged(['session_type', 'skipped', 'date'])) {
+            foreach ($touchedSessions as $touchedSession) {
+                if ($touchedSession->status->isCredited() && $narrationRequester->isWithinCurrentWeek($touchedSession->date, $today)) {
+                    $narrationRequester->requestDayNarration($touchedSession->user_id, $touchedSession->date);
                 }
             }
         }
@@ -132,6 +159,7 @@ class PlanController extends Controller
         return PlannedSession::query()
             ->where('user_id', $plannedSession->user_id)
             ->whereDate('date', $toDate)
+            ->lockForUpdate()
             ->first();
     }
 
@@ -141,13 +169,11 @@ class PlanController extends Controller
      */
     private function swapSessions(PlannedSession $from, PlannedSession $to): void
     {
-        DB::transaction(function () use ($from, $to): void {
-            $fromWorkout = $from->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
-            $toWorkout = $to->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
+        $fromWorkout = $from->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
+        $toWorkout = $to->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
 
-            $to->update([...$fromWorkout, 'pinned' => true]);
-            $from->update([...$toWorkout, 'pinned' => true]);
-        });
+        $to->update([...$fromWorkout, 'pinned' => true]);
+        $from->update([...$toWorkout, 'pinned' => true]);
     }
 
     private function authorizeOwner(Request $request, PlannedSession $plannedSession): void

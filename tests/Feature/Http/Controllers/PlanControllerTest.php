@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Enums\PlanRegenerationReason;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\IntentVerdict;
-use App\Enums\PaceBand;
 use App\Enums\SessionType;
+use App\Http\Controllers\PlanController;
+use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
-use App\Jobs\Run\ReconcilePlanJob;
+use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\Feedback;
 use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -19,16 +20,18 @@ use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanPageAssembler;
-use App\Services\Run\Plan\PlanReconciliationService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(RefreshDatabase::class);
 
@@ -379,67 +382,79 @@ it('rolls back both rows when a session swap fails after its first write', funct
         ->and($rest->fresh()->getAttributes())->toBe($restBefore);
 });
 
-it('preserves a controller move that lands while a queued reconciliation selects rows to delete', function (): void {
-    Bus::fake();
-    $user = User::factory()->create(['last_seen_at' => Carbon::today()->subDays(8)]);
+it('rejects a session edit when regeneration replaced its bound row', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'pinned' => false,
+    ]);
+    $staleSession = clone $session;
+
+    app(Periodizer::class)->regenerate($user);
+
+    $request = Mockery::mock(UpdatePlannedSessionRequest::class)->makePartial();
+    $request->shouldReceive('validated')->once()->andReturn([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+    ]);
+    $request->setUserResolver(fn (): User => $user);
+    $this->withoutExceptionHandling();
+
+    expect(fn () => app(PlanController::class)->update(
+        $request,
+        $staleSession,
+        app(Periodizer::class),
+        app(PlanNarrationRequester::class),
+    ))->toThrow(HttpException::class, 'This plan changed while you were editing. Reload and try again.');
+
+    expect(PlannedSession::query()
+        ->where('user_id', $user->id)
+        ->whereDate('date', Carbon::today()->addDay()->toDateString())
+        ->value('id'))->not->toBe($session->id);
+});
+
+it('does not report a session edit as saved while regeneration holds the per-user lock', function (): void {
+    Carbon::setTestNow();
+    $user = User::factory()->create();
     $source = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDay()->toDateString(),
         'session_type' => SessionType::Tempo,
-        'prescribed_hard_minutes' => 20,
-        'prescribed_pace_band' => PaceBand::Threshold,
-        'prescribed_pace_sec_per_km' => 330,
-        'pinned' => false,
     ]);
     $destination = PlannedSession::factory()->for($user)->rest()->create([
         'date' => Carbon::today()->addDays(2)->toDateString(),
-        'pinned' => false,
     ]);
-    $feedback = Feedback::factory()->for($user)->onPlanDay($source->id)->create();
-    $clamped = PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->addDays(3)->toDateString(),
-        'clamped_km' => 3.6,
-        'rest_clamped_at' => Carbon::today(),
-    ]);
-    $user->forceFill(['plan_reconciliation_pending_from' => Carbon::yesterday()])->saveQuietly();
-    $selectedForDelete = false;
+    $lock = Cache::lock("plan-reconciliation:{$user->id}", 3600);
+    expect($lock->get())->toBeTrue();
 
-    DB::connection()->beforeExecuting(function (string $sql) use (&$selectedForDelete, $user, $source, $destination): void {
-        $sql = strtolower($sql);
-        if ($selectedForDelete || ! str_starts_with(trim($sql), 'delete from `planned_sessions`')) {
-            return;
-        }
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$source->id}", ['date' => $destination->date->toDateString()])
+        ->assertRedirect()
+        ->assertSessionHas('info');
 
-        $selectedForDelete = true;
-        $this->actingAs($user)
-            ->patch("/plan/sessions/{$source->id}", ['date' => $destination->date->toDateString()])
-            ->assertRedirect();
-    });
+    $lock->release();
+    expect($source->fresh()->session_type)->toBe(SessionType::Tempo)
+        ->and($destination->fresh()->session_type)->toBe(SessionType::Rest);
+});
 
-    new ReconcilePlanJob($user->id)->handle(app(PlanReconciliationService::class));
+it('queues a manual regeneration when the per-user lock stays busy', function (): void {
+    Carbon::setTestNow();
+    Bus::fake();
+    $user = User::factory()->create();
+    $lock = Cache::lock("plan-reconciliation:{$user->id}", 3600);
+    expect($lock->get())->toBeTrue();
 
-    $refreshedClamp = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $clamped->date->toDateString())->firstOrFail();
-    expect($selectedForDelete)->toBeTrue()
-        ->and($source->fresh()->session_type)->toBe(SessionType::Rest)
-        ->and($source->fresh()->pinned)->toBeTrue()
-        ->and($destination->fresh()->session_type)->toBe(SessionType::Tempo)
-        ->and($destination->fresh()->prescribed_hard_minutes)->toBe(20)
-        ->and($destination->fresh()->pinned)->toBeTrue()
-        ->and($feedback->fresh())->not->toBeNull()
-        ->and($refreshedClamp->clamped_km)->toBe(3.6)
-        ->and($refreshedClamp->rest_clamped_at)->not->toBeNull()
-        ->and($user->fresh()->plan_reconciliation_pending_from)->toBeNull();
+    $this->actingAs($user)
+        ->post('/plan/regenerate')
+        ->assertRedirect()
+        ->assertSessionHas('info');
 
-    $hardDates = PlannedSession::query()
-        ->where('user_id', $user->id)
-        ->whereBetween('date', [Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(), Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString()])
-        ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval])
-        ->where('prescribed_hard_minutes', '>', 0)
-        ->orderBy('date')
-        ->pluck('date');
-
-    for ($index = 1; $index < $hardDates->count(); $index++) {
-        expect(Carbon::parse($hardDates[$index])->diffInDays(Carbon::parse($hardDates[$index - 1])))->toBeGreaterThanOrEqual(2);
-    }
+    $lock->release();
+    Bus::assertDispatched(
+        RegeneratePlanJob::class,
+        fn (RegeneratePlanJob $job): bool =>
+        $job->userId === $user->id && $job->reason === PlanRegenerationReason::Manual,
+    );
+    expect(app(PlanNarrationRequester::class)->regenerateCooldownRemaining($user))->not->toBeNull();
 });
 
 it('clamps today\'s session against the readiness ceiling without mutating the stored row', function (): void {

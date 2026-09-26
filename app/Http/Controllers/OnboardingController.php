@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\AI\RequestTodaysBriefing;
+use App\Enums\PlanRegenerationReason;
 use App\Http\Requests\CompleteOnboardingRequest;
 use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
-use App\Services\AI\PlanNarrationRequester;
-use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\PlanRegenerationService;
 use App\Services\Telegram\TelegramLinkToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -52,8 +51,7 @@ class OnboardingController extends Controller
 
     public function store(
         CompleteOnboardingRequest $request,
-        Periodizer $periodizer,
-        PlanNarrationRequester $narrationRequester,
+        PlanRegenerationService $regeneration,
         RequestTodaysBriefing $briefing,
     ): RedirectResponse {
         /** @var User $user */
@@ -104,19 +102,17 @@ class OnboardingController extends Controller
         // Strava's backfill may still be running, so a first week can be sized
         // from TrainingBaseline's cold-start seeds; Monday's regeneration
         // re-sizes it against the real history.
-        $periodizer->regenerate($user);
+        $planReady = $regeneration->regenerateForRequest($user, PlanRegenerationReason::Onboarding);
 
-        // Whoever finishes second narrates. If the backfill already landed,
-        // that is this request; if it has not, KickoffRecapsJob narrates once
-        // it does, and finds the plan written just above.
-        if ($user->refresh()->backfilled_at !== null) {
-            $narrationRequester->requestForFirstWeek($user, Carbon::today());
-        }
-
+        // Regeneration narrates if backfill has landed; otherwise KickoffRecapsJob
+        // narrates after backfill completes and sees the plan written above.
         // Today's briefing would otherwise wait for the 00:01 kickoff, so a
         // signup after midnight met an empty Today card for the rest of the day.
         $briefing->atSignup($user);
 
-        return redirect()->route('dashboard')->with('success', 'You\'re all set. Let\'s see how you\'ve been running.');
+        return redirect()->route('dashboard')->with(
+            $planReady ? 'success' : 'info',
+            $planReady ? 'You\'re all set. Let\'s see how you\'ve been running.' : 'You\'re all set. Temari\'s building your plan now.',
+        );
     }
 }

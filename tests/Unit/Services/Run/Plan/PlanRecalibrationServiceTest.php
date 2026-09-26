@@ -13,8 +13,11 @@ use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Run\Plan\PlanRecalibrationService;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
@@ -52,6 +55,30 @@ it('recomputes stored streams, rebuilds the plan, and marks old plan narration s
         ->and($user->fresh()->plan_recalibration_completed_at)->not->toBeNull();
 
     Queue::assertNothingPushed();
+});
+
+it('holds the plan regeneration lock through the recalibration transaction commit', function (): void {
+    $user = User::factory()->create();
+    $sawNarrationUpdate = false;
+    $lockWasHeld = false;
+
+    DB::listen(function (QueryExecuted $query) use ($user, &$sawNarrationUpdate, &$lockWasHeld): void {
+        if ($sawNarrationUpdate || ! str_contains(strtolower($query->sql), 'stale_at')) {
+            return;
+        }
+
+        $sawNarrationUpdate = true;
+        $lock = Cache::lock("plan-reconciliation:{$user->id}", 3600);
+        $lockWasHeld = ! $lock->get();
+        if (! $lockWasHeld) {
+            $lock->release();
+        }
+    });
+
+    app(PlanRecalibrationService::class)->recalibrate($user);
+
+    expect($sawNarrationUpdate)->toBeTrue()
+        ->and($lockWasHeld)->toBeTrue();
 });
 
 it('does not auto-reconcile max HR while rebuilding under the current profile', function (): void {

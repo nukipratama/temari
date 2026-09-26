@@ -6,14 +6,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreRaceGoalRequest;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Enums\PlanRegenerationReason;
 use App\Models\RaceGoal;
 use App\Models\User;
-use App\Services\AI\PlanNarrationRequester;
-use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\PlanRegenerationService;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -46,8 +45,7 @@ class RaceController extends Controller
      */
     public function store(
         StoreRaceGoalRequest $request,
-        Periodizer $periodizer,
-        PlanNarrationRequester $narrationRequester,
+        PlanRegenerationService $regeneration,
         ResolveActiveRaceAction $activeRace,
     ): RedirectResponse {
         /** @var User $user */
@@ -80,12 +78,8 @@ class RaceController extends Controller
         // week's quality work changes with it. Waiting for Monday would have
         // trained the athlete against an arc their own goal had superseded,
         // while the message below said otherwise.
-        $periodizer->regenerate($user);
-
-        if ($user->is_demo) {
-            $narrationRequester->ensureDemoFilled($user, Carbon::today());
-        } else {
-            $narrationRequester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
+        if (! $regeneration->regenerateForRequest($user, PlanRegenerationReason::Settings)) {
+            return back()->with('info', 'Your race is saved. The plan update is queued.');
         }
 
         return back()->with('success', 'Your race is set. Temari will keep the plan honest against it.');
@@ -103,8 +97,7 @@ class RaceController extends Controller
      */
     public function destroy(
         Request $request,
-        Periodizer $periodizer,
-        PlanNarrationRequester $narrationRequester,
+        PlanRegenerationService $regeneration,
         ResolveActiveRaceAction $activeRace,
     ): RedirectResponse {
         /** @var User $user */
@@ -124,12 +117,8 @@ class RaceController extends Controller
 
         // Same reasoning as store(): the plan's whole structure hangs off
         // whether a race is active, so it is rebuilt now rather than on Monday.
-        $periodizer->regenerate($user);
-
-        if ($user->is_demo) {
-            $narrationRequester->ensureDemoFilled($user, Carbon::today());
-        } else {
-            $narrationRequester->requestForCurrentWeekUnlessCoolingDown($user, Carbon::today());
+        if (! $regeneration->regenerateForRequest($user, PlanRegenerationReason::Settings)) {
+            return back()->with('info', 'Race cleared. The plan update is queued.');
         }
 
         return back()->with('success', 'Race cleared. Temari\'s back to building around your own running.');

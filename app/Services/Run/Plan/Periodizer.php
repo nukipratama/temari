@@ -14,6 +14,7 @@ use App\Models\Feedback;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
+use Closure;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -57,6 +58,8 @@ final readonly class Periodizer
 
     private const int REGENERATION_LOCK_WAIT_SECONDS = 30;
 
+    public const int REQUEST_LOCK_WAIT_SECONDS = 2;
+
     /**
      * How many weeks ahead get materialized as rows. A race-oriented arc may
      * resolve to fewer weeks — it ends with race week, and nothing after race
@@ -73,16 +76,24 @@ final readonly class Periodizer
     ) {
     }
 
-    public function regenerate(User $user, ?Carbon $today = null): void
+    public function regenerate(
+        User $user,
+        ?Carbon $today = null,
+        int $lockWaitSeconds = self::REGENERATION_LOCK_WAIT_SECONDS,
+    ): void {
+        $this->withRegenerationLock($user, function () use ($user, $today): void {
+            $this->regenerateWithinLock($user, $today);
+        }, $lockWaitSeconds);
+    }
+
+    public function regenerateWithinLock(User $user, ?Carbon $today = null): void
     {
-        $this->withRegenerationLock($user->id, function () use ($user, $today): void {
-            $this->persist($user, $this->gatherer->forUser($user, $today ?? Carbon::today()));
-        });
+        $this->persist($user, $this->gatherer->forUser($user, $today ?? Carbon::today()));
     }
 
     public function regenerateIfChanged(User $user, ?Carbon $today = null): bool
     {
-        return $this->withRegenerationLock($user->id, function () use ($user, $today): bool {
+        return $this->withRegenerationLock($user, function () use ($user, $today): bool {
             $today ??= Carbon::today();
             $inputs = $this->gatherer->forUser($user, $today);
             $adaptation = PlanAdaptation::query()
@@ -274,10 +285,15 @@ final readonly class Periodizer
         });
     }
 
-    private function withRegenerationLock(int $userId, callable $callback): mixed
+    /**
+     * @template T
+     * @param Closure(): T $callback
+     * @return T
+     */
+    public function withRegenerationLock(User $user, Closure $callback, int $waitSeconds = self::REGENERATION_LOCK_WAIT_SECONDS): mixed
     {
-        return Cache::lock("plan-reconciliation:{$userId}", self::REGENERATION_LOCK_SECONDS)
-            ->block(self::REGENERATION_LOCK_WAIT_SECONDS, $callback);
+        return Cache::lock("plan-reconciliation:{$user->id}", self::REGENERATION_LOCK_SECONDS)
+            ->block($waitSeconds, $callback);
     }
 
     /** @return Collection<int, PlannedSession> */

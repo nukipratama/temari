@@ -18,8 +18,12 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\PlanInputsGatherer;
+use App\Services\Run\Plan\SeasonService;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\PlanAdapter;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -118,6 +122,7 @@ it('never overwrites a pinned row', function (): void {
 it('keeps a session pinned after input gathering and rebuilds the week around it', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
+    Season::factory()->for($user)->create(['anchor_weekly_volume_km' => 30.0]);
     $session = PlannedSession::factory()->for($user)->rest()->create([
         'date' => Carbon::today()->addDays(2)->toDateString(),
         'pinned' => false,
@@ -125,25 +130,26 @@ it('keeps a session pinned after input gathering and rebuilds the week around it
     $feedback = Feedback::factory()->for($user)->onPlanDay($session->id)->create();
     $injected = false;
 
-    DB::listen(function (QueryExecuted $query) use (&$injected, $session): void {
-        $sql = strtolower($query->sql);
-        if ($injected
-            || ! str_contains($sql, 'from `planned_sessions`')
-            || ! str_contains($sql, '`status` != ?')
-            || ! str_contains($sql, '`date` < ?')
-            || str_contains($sql, 'for update')) {
-            return;
+    $vdotEstimator = Mockery::mock(VdotEstimator::class)->makePartial();
+    $vdotEstimator->shouldReceive('estimate')->andReturnUsing(function (User $user, ?Carbon $asOf) use (&$injected, $session): ?array {
+        if (! $injected) {
+            $injected = true;
+            $session->update([
+                'session_type' => SessionType::Tempo,
+                'prescribed_hard_minutes' => 20,
+                'prescribed_pace_band' => PaceBand::Threshold,
+                'prescribed_pace_sec_per_km' => 330,
+                'pinned' => true,
+            ]);
         }
 
-        $injected = true;
-        $session->update([
-            'session_type' => SessionType::Tempo,
-            'prescribed_hard_minutes' => 20,
-            'prescribed_pace_band' => PaceBand::Threshold,
-            'prescribed_pace_sec_per_km' => 330,
-            'pinned' => true,
-        ]);
+        return null;
     });
+    app()->instance(VdotEstimator::class, $vdotEstimator);
+    app()->forgetInstance(TrainingBaseline::class);
+    app()->forgetInstance(SeasonService::class);
+    app()->forgetInstance(PlanInputsGatherer::class);
+    app()->forgetInstance(Periodizer::class);
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
@@ -158,7 +164,6 @@ it('keeps a session pinned after input gathering and rebuilds the week around it
         ->where('user_id', $user->id)
         ->whereBetween('date', [Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(), Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString()])
         ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval])
-        ->where('prescribed_hard_minutes', '>', 0)
         ->orderBy('date')
         ->pluck('date');
 
