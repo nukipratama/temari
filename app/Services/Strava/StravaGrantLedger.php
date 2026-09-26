@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Strava;
 
+use stdClass;
 use Illuminate\Support\Collection;
 use App\Enums\StravaGrantEventType;
 use App\Enums\StravaGrantReleaseStatus;
@@ -219,7 +220,7 @@ final class StravaGrantLedger
         });
     }
 
-    /** @return Collection<int, \stdClass> */
+    /** @return Collection<int, stdClass> */
     public function holderRows(): Collection
     {
         $grantedAt = DB::table('strava_grant_events as grant_events')
