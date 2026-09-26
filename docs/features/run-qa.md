@@ -101,7 +101,9 @@ the run page, directly under the promoted Past You band ([[run-detail]]).
 Because answers land later, it is not a request/response form:
 [useRunQuestions](../../resources/js/hooks/useRunQuestions.ts) appends the
 `201` row in its `queued` state, polls `index()` while anything is unsettled,
-and stops after a bounded number of polls into a "still working" state with a
+merges each read into the thread by row id (skipping a read older than one
+already applied), so a slow read can never erase a just-asked question or take
+a settled answer back to pending, and stops after a bounded number of polls into a "still working" state with a
 manual re-check, so a stuck answer degrades into a visible wait rather than an
 endless spinner or a lie.
 
