@@ -51,6 +51,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 
     final public function handle(AnalysisService $service): void
     {
+        $this->onGroupHandleStarted();
         $this->applyOrigin();
 
         $rows = $service->upsertGroupRows(
@@ -116,7 +117,29 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 
         try {
             $fingerprint = $this->fingerprintFor($subject);
-            if ($this->finalizePending($pending, $service, $this->generateAll($subject), ServedBy::Llm, $fingerprint)) {
+            $persistGenerated = function (AnalysisType $type, string $content) use ($pending, $service, $fingerprint): void {
+                $key = $type->value;
+                $row = $pending->get($key);
+
+                if (! $row instanceof Analysis || ! $service->markDone(
+                    $row,
+                    $content,
+                    ServedBy::Llm,
+                    fingerprint: $fingerprint,
+                    startedEarly: $this->startedEarlyByType[$key] ?? false,
+                    generationToken: $this->generationToken,
+                )) {
+                    throw new UnavailableException('Narration group no longer owns this row');
+                }
+            };
+
+            if ($this->finalizePending(
+                $pending,
+                $service,
+                $this->generateAll($subject, $persistGenerated),
+                ServedBy::Llm,
+                $fingerprint,
+            )) {
                 $this->afterGroupDone($service);
             }
         } catch (ContentFilterException) {
@@ -142,7 +165,11 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
                 $e,
                 $pending,
                 markFailed: fn () => $this->failPending($pending, $service, $e->getMessage()),
-                markRequeued: fn () => $pending->each(fn (Analysis $row) => $service->markQueued($row, $this->generationToken)),
+                markRequeued: fn () => $pending->each(function (Analysis $row) use ($service): void {
+                    if ($row->status !== AnalysisStatus::Done) {
+                        $service->markQueued($row, $this->generationToken);
+                    }
+                }),
             );
         }
     }
@@ -172,7 +199,9 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
     private function failPending(Collection $pending, AnalysisService $service, string $reason): void
     {
         foreach ($pending as $row) {
-            $service->markFailed($row, $reason, $this->generationToken);
+            if ($row->status !== AnalysisStatus::Done) {
+                $service->markFailed($row, $reason, $this->generationToken);
+            }
         }
     }
 
@@ -218,10 +247,15 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
     ): bool {
         try {
             return DB::transaction(function () use ($pending, $payload, $service, $fingerprint, $servedBy, $ruleBasedReason): bool {
-                foreach ($pending as $key => $row) {
+                foreach ($payload as $key => $content) {
+                    $row = $pending->get($key);
+                    if (! $row instanceof Analysis || $row->status === AnalysisStatus::Done) {
+                        continue;
+                    }
+
                     if (! $service->markDone(
                         $row,
-                        $payload[$key],
+                        $content,
                         $servedBy,
                         fingerprint: $fingerprint,
                         ruleBasedReason: $ruleBasedReason,
@@ -232,7 +266,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
                     }
                 }
 
-                return true;
+                return $pending->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done);
             });
         } catch (Throwable $e) {
             foreach ($pending as $row) {
@@ -245,6 +279,10 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 
             throw $e;
         }
+    }
+
+    protected function onGroupHandleStarted(): void
+    {
     }
 
     /**
@@ -282,7 +320,8 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
     abstract protected function resolveSubject(int $id): mixed;
 
     /**
+     * @param  Closure(AnalysisType, string): void  $persistGenerated
      * @return array<string, string> keyed by AnalysisType value
      */
-    abstract protected function generateAll(mixed $subject): array;
+    abstract protected function generateAll(mixed $subject, Closure $persistGenerated): array;
 }

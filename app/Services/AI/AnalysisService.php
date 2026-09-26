@@ -883,12 +883,7 @@ class AnalysisService
         }
     }
 
-    /**
-     * Send a row back to Pending without touching `attempts`, used by the
-     * analyze jobs when generation is paused mid-flight: the row rests Pending
-     * for the empty state and ai:self-heal re-dispatches it later, but its
-     * self-heal budget is preserved (this was not a real LLM attempt).
-     */
+    /** Send a row back to Pending when a paused or stale in-flight run resumes later. */
     public function revertToPending(Analysis $row, ?string $generationToken = null): void
     {
         $generationToken ??= $row->generation_token;
@@ -896,8 +891,31 @@ class AnalysisService
             'status' => AnalysisStatus::Pending,
             'queued_at' => null,
         ];
-        if ($this->generationQuery($row, $generationToken)->update($attributes) === 1) {
+        if ($this->generationQuery($row, $generationToken)
+            ->where('status', '!=', AnalysisStatus::Done)
+            ->update($attributes) === 1) {
             $row->forceFill($attributes)->syncOriginal();
+        }
+    }
+
+    /** Refund an attempt only when speech is deferred before its narrator starts. */
+    public function revertToPendingWithoutAttempt(Analysis $row, ?string $generationToken = null): void
+    {
+        $generationToken ??= $row->generation_token;
+        $updated = $this->generationQuery($row, $generationToken)
+            ->where('status', AnalysisStatus::Processing)
+            ->update([
+                'status' => AnalysisStatus::Pending,
+                'queued_at' => null,
+                'attempts' => DB::raw('CASE WHEN attempts > 0 THEN attempts - 1 ELSE 0 END'),
+            ]) === 1;
+
+        if ($updated) {
+            $row->forceFill([
+                'status' => AnalysisStatus::Pending,
+                'queued_at' => null,
+                'attempts' => max(0, $row->attempts - 1),
+            ])->syncOriginal();
         }
     }
 

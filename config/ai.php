@@ -19,8 +19,8 @@ return [
         // worker timeout, and a worker kill mid-request bills the step and
         // leaves the block empty. The run stops at a step boundary instead, so
         // the relation that must hold is
-        // deadline_seconds + azure_openai.timeout < the supervisor's timeout —
-        // asserted by tests/Unit/Architecture/AgentDeadlineFitsWorkerTest.php.
+        // deadline_seconds + azure_openai.timeout + activity safety margin <
+        // the supervisor timeout, asserted by AgentDeadlineFitsWorkerTest.
         'deadline_seconds' => (int) env('AI_AGENT_DEADLINE_SECONDS', 240),
     ],
 

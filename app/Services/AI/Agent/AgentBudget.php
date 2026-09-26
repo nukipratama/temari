@@ -59,13 +59,19 @@ final class AgentBudget
 
     /**
      * @param  int|null  $maxSteps  Per-narrator step ceiling; null takes the global default.
+     * @param  int|null  $deadlineCeilingSeconds  Optional shorter ceiling for a caller sharing a larger job deadline.
      */
-    public static function fromConfig(?int $maxSteps = null): self
+    public static function fromConfig(?int $maxSteps = null, ?int $deadlineCeilingSeconds = null): self
     {
+        $deadlineSeconds = (int) config('ai.agent.deadline_seconds');
+        if ($deadlineCeilingSeconds !== null) {
+            $deadlineSeconds = min($deadlineSeconds, max(1, $deadlineCeilingSeconds));
+        }
+
         return new self(
             $maxSteps ?? (int) config('ai.agent.max_steps'),
             (int) config('ai.agent.max_tokens'),
-            (int) config('ai.agent.deadline_seconds'),
+            $deadlineSeconds,
         );
     }
 

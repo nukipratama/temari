@@ -97,7 +97,7 @@ What remains is a **rule-based producer**: the demo's content, and a cheaper sta
 
 That class is deliberately shallower than the narrator it stands in for: it answers only what a single `ActivityDetail` can, with no rolling pace average over the user's history and no VDOT-derived easy-pace nudge. It is a demo stand-in, not a second implementation to keep in sync.
 
-No failure path falls back to the filler: a paused or failing block stays `Pending` / `Failed` instead. Besides the demo seed below and the real-athlete fills in *Beyond the demo*, it runs at the content-filter break in [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php#L44) / [AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php#L78), where a continuity-stripped retry that still trips Azure's output filter degrades to a benign line rather than dead-lettering. That benign line becomes the next `prev_narrative`, which is what breaks the poison loop.
+No failure path falls back to the filler: a paused or failing block stays `Pending` / `Failed` instead. Besides the demo seed below and the real-athlete fills in *Beyond the demo*, it runs at the content-filter break in [AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php#L44) / [AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php#L145), where a continuity-stripped retry that still trips Azure's output filter degrades to a benign line rather than dead-lettering. That benign line becomes the next `prev_narrative`, which is what breaks the poison loop.
 
 ### The demo seed path
 

@@ -32,6 +32,9 @@ use Closure;
  * `2 * (tools + 1)` or the retry answers with no readings at all. Only worth
  * setting where that lands *below* the default.
  *
+ * `deadlineSeconds` null = use the global `ai.agent.deadline_seconds` default.
+ * Pass a shorter value when this call shares a larger job-wide deadline.
+ *
  * `validator` null = the required keys are the whole contract. Supplying one
  * lets a narrator reject a structurally valid answer on its own terms: it
  * receives the decoded payload and returns null to accept, or the corrective
@@ -49,6 +52,7 @@ final readonly class ChatCallOptions
         public ?AgentToolbox $toolbox = null,
         public ?int $maxSteps = null,
         public ?Closure $validator = null,
+        public ?int $deadlineSeconds = null,
     ) {
     }
 }

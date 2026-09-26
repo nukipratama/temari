@@ -106,6 +106,17 @@ it('reads the deadline from config', function (): void {
         ->and($budget->exhaustedReason())->toBeNull();
 });
 
+it('caps a narrator deadline to the time left in its parent job', function (): void {
+    Carbon::setTestNow('2026-09-09 06:00:00');
+    config()->set('ai.agent.deadline_seconds', 30);
+
+    $budget = AgentBudget::fromConfig(deadlineCeilingSeconds: 12);
+
+    Carbon::setTestNow(Carbon::now()->addSeconds(12));
+
+    expect($budget->deadlinePassed())->toBeTrue();
+});
+
 it('accumulates the tool trace in call order, truncating the arguments summary', function (): void {
     $budget = new AgentBudget(maxSteps: 5, maxTokens: 1000);
 
