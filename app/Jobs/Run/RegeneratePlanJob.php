@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Run;
 
+use DateTimeInterface;
 use App\Enums\PlanRegenerationReason;
 use App\Models\User;
 use App\Services\Run\Plan\Periodizer;
@@ -16,8 +17,6 @@ use Illuminate\Foundation\Queue\Queueable;
 final class RegeneratePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;
-
-    public int $tries = 3;
 
     /** @var array<int, int> */
     public array $backoff = [30, 120];
@@ -35,6 +34,11 @@ final class RegeneratePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQu
     public function uniqueId(): string
     {
         return "{$this->userId}:{$this->reason->value}";
+    }
+
+    public function retryUntil(): DateTimeInterface
+    {
+        return now()->addMinutes(10);
     }
 
     public function handle(Periodizer $periodizer, PlanRegenerationService $regeneration): void

@@ -54,7 +54,7 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class Periodizer
 {
-    private const int REGENERATION_LOCK_SECONDS = 3600;
+    private const int REGENERATION_LOCK_SECONDS = 150;
 
     private const int REGENERATION_LOCK_WAIT_SECONDS = 30;
 
@@ -290,9 +290,13 @@ final readonly class Periodizer
      * @param Closure(): T $callback
      * @return T
      */
-    public function withRegenerationLock(User $user, Closure $callback, int $waitSeconds = self::REGENERATION_LOCK_WAIT_SECONDS): mixed
-    {
-        return Cache::lock("plan-reconciliation:{$user->id}", self::REGENERATION_LOCK_SECONDS)
+    public function withRegenerationLock(
+        User $user,
+        Closure $callback,
+        int $waitSeconds = self::REGENERATION_LOCK_WAIT_SECONDS,
+        int $lockTtlSeconds = self::REGENERATION_LOCK_SECONDS,
+    ): mixed {
+        return Cache::lock("plan-reconciliation:{$user->id}", $lockTtlSeconds)
             ->block($waitSeconds, $callback);
     }
 

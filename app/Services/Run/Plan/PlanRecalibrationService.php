@@ -85,7 +85,7 @@ final readonly class PlanRecalibrationService
 
                     throw $exception;
                 }
-            }));
+            }, lockTtlSeconds: $lockTtlSeconds));
 
         $lateDirty = ! $dryRun && Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id));
         if ($dirty || $lateDirty) {

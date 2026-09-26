@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use DateTimeInterface;
 use App\Enums\PlanRegenerationReason;
 use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\User;
@@ -24,7 +25,7 @@ it('releases for retry when the regeneration lock is busy', function (): void {
     $lock->shouldReceive('block')->once()->andThrow(new LockTimeoutException());
     Cache::shouldReceive('lock')
         ->once()
-        ->with("plan-reconciliation:{$user->id}", 3600)
+        ->with("plan-reconciliation:{$user->id}", 150)
         ->andReturn($lock);
 
     $job = new RegeneratePlanJob($user->id, PlanRegenerationReason::Manual)
@@ -33,4 +34,14 @@ it('releases for retry when the regeneration lock is busy', function (): void {
     $job->handle(app(Periodizer::class), app(PlanRegenerationService::class));
 
     $job->assertReleased(10);
+});
+
+it('uses a time-bounded retry window instead of an attempt cap', function (): void {
+    $job = new RegeneratePlanJob(42, PlanRegenerationReason::Settings);
+    $retryUntil = $job->retryUntil();
+
+    expect($retryUntil)->toBeInstanceOf(DateTimeInterface::class)
+        ->and($retryUntil->getTimestamp())->toBeGreaterThanOrEqual(now()->addMinutes(9)->getTimestamp())
+        ->and($retryUntil->getTimestamp())->toBeLessThanOrEqual(now()->addMinutes(10)->getTimestamp())
+        ->and(property_exists($job, 'tries') ? $job->tries : null)->toBeNull();
 });
