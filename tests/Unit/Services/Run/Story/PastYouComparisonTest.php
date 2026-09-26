@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\ComparisonMetric;
+use App\Enums\Effort;
 use App\Enums\IngestState;
 use App\Enums\TrendDirection;
 use App\Services\Run\Story\ComparableRun;
@@ -176,4 +177,30 @@ it('serializes both sides of the pair alongside the deltas', function (): void {
     ])
         ->and($comparison->toArray()['current']['activity_id'])->toBe(2)
         ->and($comparison->toArray()['past']['activity_id'])->toBe(1);
+});
+
+it('stamps each side\'s effort from the map keyed by activity id', function (): void {
+    $comparison = PastYouComparison::between(
+        comparisonRun('2026-06-15', 420.0, 152.0, 2),
+        comparisonRun('2026-02-15', 435.0, 160.0, 1),
+        0.9,
+    );
+
+    $array = $comparison->toArray([2 => Effort::Hard, 1 => Effort::Easy]);
+
+    expect($array['current']['effort'])->toBe('hard')
+        ->and($array['past']['effort'])->toBe('easy');
+});
+
+it('leaves effort null for an activity id missing from the map', function (): void {
+    $comparison = PastYouComparison::between(
+        comparisonRun('2026-06-15', 420.0, 152.0, 2),
+        comparisonRun('2026-02-15', 435.0, 160.0, 1),
+        0.9,
+    );
+
+    $array = $comparison->toArray();
+
+    expect($array['current']['effort'])->toBeNull()
+        ->and($array['past']['effort'])->toBeNull();
 });

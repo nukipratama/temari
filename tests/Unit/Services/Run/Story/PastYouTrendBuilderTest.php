@@ -302,6 +302,25 @@ it('never pairs a single-run planned tempo date with a single-run easy date', fu
     expect(buildTrend($user)->comparisons)->toBe([]);
 });
 
+it('resolves each side of a comparison\'s effort from its matched planned session', function (): void {
+    $user = User::factory()->create();
+    $past = trendRun($user, 100, 4_400);
+    $current = trendRun($user, 3, 4_250);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $past->start_date_local->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $current->start_date_local->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+
+    $comparison = app(PastYouTrendBuilder::class)->payload($user)['comparisons'][0];
+
+    expect($comparison['current']['effort'])->toBe('easy')
+        ->and($comparison['past']['effort'])->toBe('easy');
+});
+
 it('ignores and invalidates cache for excused planned session types', function (): void {
     foreach ([
         ['skipped' => true],

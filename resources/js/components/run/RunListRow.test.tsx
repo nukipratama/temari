@@ -149,4 +149,14 @@ describe('RunListRow', () => {
             document.querySelector('[aria-label$="card"]'),
         ).not.toBeInTheDocument();
     });
+
+    it("colors the row's leading-edge stripe by effort", () => {
+        render(<RunListRow detail={detail({ effort: 'hard' })} />);
+        expect(screen.getByRole('link')).toHaveClass('border-ember');
+    });
+
+    it('falls back to the unknown stripe when the detail carries no effort', () => {
+        render(<RunListRow detail={detail({ effort: undefined })} />);
+        expect(screen.getByRole('link')).toHaveClass('border-border');
+    });
 });

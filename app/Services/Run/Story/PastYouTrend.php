@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Enums\Effort;
 use App\Enums\TrendVerdict;
 
 /**
@@ -41,16 +42,17 @@ final readonly class PastYouTrend
     }
 
     /**
+     * @param  array<int, Effort>  $efforts  Keyed by activity id, from {@see \App\Services\Run\Metrics\RunEffort::forDetails}.
      * @return array<string, mixed>
      */
-    public function toArray(): array
+    public function toArray(array $efforts = []): array
     {
         return [
             'verdict' => $this->verdict->value,
             'window_days' => $this->windowDays,
             'comparison_count' => count($this->comparisons),
             'comparisons' => array_map(
-                static fn (PastYouComparison $comparison): array => $comparison->toArray(),
+                static fn (PastYouComparison $comparison): array => $comparison->toArray($efforts),
                 $this->comparisons,
             ),
             'mean_pace_delta_sec' => $this->meanPaceDeltaSec,

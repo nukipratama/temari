@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Enums\Effort;
 use App\Enums\IngestState;
 use App\Enums\SessionType;
 use App\Services\Run\Metrics\DistanceFormatter;
@@ -92,9 +93,9 @@ final readonly class ComparableRun
     }
 
     /**
-     * @return array{activity_id: int, date: string, km: float, pace_sec_per_km: float, average_heartrate: float|null, elevation_gain_m: float|null, ingest_state: string}
+     * @return array{activity_id: int, date: string, km: float, pace_sec_per_km: float, average_heartrate: float|null, elevation_gain_m: float|null, ingest_state: string, effort: string|null}
      */
-    public function toArray(): array
+    public function toArray(?Effort $effort = null): array
     {
         return [
             'activity_id' => $this->activityId,
@@ -104,6 +105,7 @@ final readonly class ComparableRun
             'average_heartrate' => $this->averageHeartrate === null ? null : round($this->averageHeartrate, 1),
             'elevation_gain_m' => $this->elevationGainM === null ? null : round($this->elevationGainM, 1),
             'ingest_state' => $this->ingestState->value,
+            'effort' => $effort?->value,
         ];
     }
 }

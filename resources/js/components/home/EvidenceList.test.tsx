@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { PastYouComparison, PastYouTrend } from '@/types/inertia';
+import type { Effort, PastYouComparison, PastYouTrend } from '@/types/inertia';
 
 import EvidenceList from './EvidenceList';
 
@@ -11,6 +11,7 @@ function pair(
     hrDelta: number | null,
     direction: PastYouComparison['direction'],
     metric: PastYouComparison['metric'] = 'pace',
+    effort: Effort | null = null,
 ): PastYouComparison {
     return {
         direction,
@@ -28,6 +29,7 @@ function pair(
             average_heartrate: 152,
             elevation_gain_m: 40,
             ingest_state: 'summary',
+            effort,
         },
         past: {
             activity_id: activityId + 100,
@@ -37,6 +39,7 @@ function pair(
             average_heartrate: 158,
             elevation_gain_m: 40,
             ingest_state: 'summary',
+            effort: null,
         },
     };
 }
@@ -110,6 +113,16 @@ describe('EvidenceList', () => {
         const { container } = render(<EvidenceList trend={trend([])} />);
 
         expect(container).toBeEmptyDOMElement();
+    });
+
+    it("colors the row's leading-edge stripe by the recent run's effort", () => {
+        render(
+            <EvidenceList
+                trend={trend([pair(2, 12, -6, 'better', 'pace', 'hard')])}
+            />,
+        );
+
+        expect(screen.getByRole('link')).toHaveClass('border-ember');
     });
 
     it('describes the whole row to assistive tech', () => {

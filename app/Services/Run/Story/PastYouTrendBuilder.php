@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Enums\Effort;
 use App\Enums\TrendDirection;
 use App\Enums\TrendVerdict;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Metrics\PaceConsistency;
+use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\PlannedSessionTypes;
@@ -75,7 +77,11 @@ class PastYouTrendBuilder
         return Cache::remember(
             self::cacheKey($user->id, $day),
             Carbon::tomorrow(),
-            fn (): array => $this->build($user, $asOf)->toArray(),
+            function () use ($user, $asOf): array {
+                $trend = $this->build($user, $asOf);
+
+                return $trend->toArray($this->effortsFor($user->id, $trend->comparisons));
+            },
         );
     }
 
@@ -93,6 +99,34 @@ class PastYouTrendBuilder
     public static function clearCacheForUserId(int $userId): void
     {
         Cache::forget(self::cacheKey($userId, Carbon::today()->toDateString()));
+    }
+
+    /**
+     * Effort per activity on both sides of the shown comparisons — at most
+     * {@see self::MAX_COMPARISONS} pairs, so this is a targeted lookup rather
+     * than a scan of the whole comparison window.
+     *
+     * @param  list<PastYouComparison>  $comparisons
+     * @return array<int, Effort>
+     */
+    private function effortsFor(int $userId, array $comparisons): array
+    {
+        if ($comparisons === []) {
+            return [];
+        }
+
+        $activityIds = [];
+        foreach ($comparisons as $comparison) {
+            $activityIds[] = $comparison->current->activityId;
+            $activityIds[] = $comparison->past->activityId;
+        }
+
+        $details = ActivityDetail::query()
+            ->select(['id', 'activity_id', 'start_date_local', 'elapsed_time', 'workout_type', 'stream_summary'])
+            ->whereIn('activity_id', array_unique($activityIds))
+            ->get();
+
+        return RunEffort::forDetails($userId, $details);
     }
 
     public function build(User $user, ?Carbon $asOf = null): PastYouTrend

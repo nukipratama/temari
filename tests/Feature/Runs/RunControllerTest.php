@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\SessionType;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
@@ -286,6 +288,33 @@ it('still runs the past-you match and the relative-effort baseline on a full run
         ->assertInertia(fn (Assert $page) => $page
             ->component('Runs/Show')
             ->where('pastYou', null));
+});
+
+it('carries the viewed run\'s effort on the past-you match', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000,
+        'moving_time' => 3_600,
+        'elapsed_time' => 3_600,
+        'start_date_local' => Carbon::today(),
+    ]);
+    $past = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($past)->create([
+        'distance' => 10_000,
+        'moving_time' => 3_600,
+        'elapsed_time' => 3_600,
+        'start_date_local' => Carbon::today()->subDays(30),
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pastYou.effort', 'easy'));
 });
 
 it('runs no story-line queries when only the run insights are requested', function (): void {

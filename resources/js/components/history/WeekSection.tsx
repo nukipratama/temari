@@ -3,6 +3,7 @@ import { memo } from 'react';
 import type { Mood, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 import RunListRow, { type RunNote } from '@/components/run/RunListRow';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { useCountUp } from '@/hooks/useCountUp';
 import { formStatusLabel } from '@/lib/formStatus';
 import { dominantMood } from '@/lib/mood';
@@ -47,12 +48,12 @@ const WeekSection = memo(function WeekSection({
     );
 
     return (
-        <div className="mb-5.5">
+        <div>
             <div className="mb-2.5 flex items-baseline justify-between px-0.5">
-                <div className="font-serif text-base font-semibold text-foreground">
+                <Eyebrow token="small" className="text-foreground">
                     {bucket.label}
-                </div>
-                <div className="font-mono text-[0.75rem] leading-[1.2] text-text-3">
+                </Eyebrow>
+                <div className="font-mono text-[0.75rem] leading-[1.2] tabular-nums text-text-3">
                     {Math.round(countedRunCount)} run
                     {Math.round(countedRunCount) === 1 ? '' : 's'} ·{' '}
                     {countedTotalKm.toFixed(1)} km ·{' '}
@@ -79,7 +80,7 @@ const WeekSection = memo(function WeekSection({
                 />
             )}
 
-            <div className="overflow-hidden rounded-md border border-border-strong bg-card shadow-e1">
+            <div className="divide-y divide-dashed divide-border">
                 {bucket.runs.map((activity) => (
                     <RunListRow
                         key={activity.id}
