@@ -6,7 +6,7 @@ import { AskedRanResult, ChangeRow } from '@/components/plan/DeltaPair';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { renderNarration } from '@/components/temari/Citation';
 import MascotWatermark from '@/components/temari/MascotWatermark';
-import { writingPose } from '@/components/temari/TemariMascot';
+import { type MascotPose, writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
@@ -226,11 +226,13 @@ export default function TodaySession({
         briefing.firstRead ||
         (voice.status !== 'pending' &&
             !(voice.status === 'done' && voice.content === null));
+    const pose: MascotPose =
+        today?.session_type === 'rest' ? 'sleepy' : briefing.mood;
 
     return (
         <section className="relative isolate overflow-hidden">
             <MascotWatermark
-                pose={writingPose(briefing.mood, voice)}
+                pose={writingPose(pose, voice)}
                 className="-top-18 -right-14"
             />
             <Eyebrow token="micro" className="text-icon-accent">

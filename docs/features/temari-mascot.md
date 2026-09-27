@@ -25,7 +25,7 @@ ground and sky.
 ## System dependencies
 
 - **Design tokens.** Arcs and features resolve to `--color-*` tokens in [[design-tokens]]: the outer arc on `horizon`, the inner on the mood's `-ink` tier (blazing keeps the vivid gold), features on `foreground`.
-- **Vibe & mood.** A run `Mood` picks the pose on run surfaces; the daily vibe does on Today and Profile, via `moodForVibe`. See [[vibe-and-mood]].
+- **Vibe & mood.** A run `Mood` picks the pose on run surfaces; the daily vibe does on Today and Profile, via `moodForVibe` — except a planned rest day on Today, which always poses `sleepy` regardless of vibe. See [[vibe-and-mood]].
 - **AI pipeline.** A card whose narration is `queued`/`processing` switches its mascot to `thinking` (`writingPose`). See [[ai-pipeline]].
 - **Voice.** What Temari says follows [[voice-and-tone]].
 

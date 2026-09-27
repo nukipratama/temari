@@ -107,6 +107,31 @@ describe('TodaySession', () => {
         expect(screen.queryByTestId('mascot-peek-clearance')).toBeNull();
     });
 
+    it('poses sleepy on a planned rest day regardless of the daily mood', () => {
+        const { container } = render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    session_type: 'rest',
+                    distance_km: 0,
+                    segments: [],
+                })}
+            />,
+        );
+        const mascot = container.querySelector('svg[data-mascot]');
+
+        expect(mascot?.getAttribute('data-mascot')).toBe('sleepy');
+    });
+
+    it('keeps the daily mood pose when there is no plan or the day is not rest', () => {
+        const { container } = render(
+            <TodaySession briefing={briefing('Easy 6k.')} today={day()} />,
+        );
+        const mascot = container.querySelector('svg[data-mascot]');
+
+        expect(mascot?.getAttribute('data-mascot')).toBe('blazing');
+    });
+
     it('sets the session straight on the section, with no box nested inside', () => {
         const { container } = render(
             <TodaySession briefing={briefing('Easy 6k.')} today={day()} />,
