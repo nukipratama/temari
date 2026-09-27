@@ -415,7 +415,7 @@ it('renders no duel when the matched past run has not been hydrated yet', functi
             ->where('pastYou.duel', null));
 });
 
-it('plays the bib stamp the first time a record-holding run is opened', function (): void {
+it('plays the bib stamp animation the first time a record-holding run is opened', function (): void {
     $user = User::factory()->create();
     $longer = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($longer)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
@@ -427,12 +427,13 @@ it('plays the bib stamp the first time a record-holding run is opened', function
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('prBib.label', '10K')
-            ->where('prBib.value_sec', 2400));
+            ->where('prBib.value_sec', 2400)
+            ->where('prBib.animate', true));
 
     expect(RecordStamp::query()->where('user_id', $user->id)->where('record_key', '10km')->exists())->toBeTrue();
 });
 
-it('never replays the bib stamp on a later view of the same record', function (): void {
+it('keeps showing the bib stamp on a later view of the same record, but static', function (): void {
     $user = User::factory()->create();
     $longer = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($longer)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
@@ -445,7 +446,8 @@ it('never replays the bib stamp on a later view of the same record', function ()
     $this->actingAs($user)->get("/activities/{$activity->id}")
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('prBib', null));
+            ->where('prBib.label', '10K')
+            ->where('prBib.animate', false));
 });
 
 it('ships no bib stamp for a run that holds no tracked record', function (): void {
@@ -459,6 +461,28 @@ it('ships no bib stamp for a run that holds no tracked record', function (): voi
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('prBib', null));
+});
+
+it("does not let another user's already-claimed stamp suppress this account's animation", function (): void {
+    $userA = User::factory()->create();
+    $longerA = Activity::factory()->for($userA)->analyzed()->create();
+    ActivityDetail::factory()->for($longerA)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
+    $activityA = Activity::factory()->for($userA)->analyzed()->create();
+    ActivityDetail::factory()->for($activityA)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
+    PersonalRecord::factory()->forActivity($activityA)->create(['category' => '10km']);
+    $this->actingAs($userA)->get("/activities/{$activityA->id}");
+
+    $userB = User::factory()->create();
+    $longerB = Activity::factory()->for($userB)->analyzed()->create();
+    ActivityDetail::factory()->for($longerB)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
+    $activityB = Activity::factory()->for($userB)->analyzed()->create();
+    ActivityDetail::factory()->for($activityB)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
+    PersonalRecord::factory()->forActivity($activityB)->create(['category' => '10km']);
+
+    $this->actingAs($userB)->get("/activities/{$activityB->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('prBib.animate', true));
 });
 
 it('runs no story-line queries when only the run insights are requested', function (): void {

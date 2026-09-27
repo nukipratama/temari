@@ -27,11 +27,11 @@ it('stamps a run that currently holds a tracked distance PR', function (): void 
 
     $bib = $this->resolver->resolve($activity, $detail);
 
-    expect($bib)->toBe(['label' => '10K', 'value_sec' => 2400.0, 'distance_m' => null])
+    expect($bib)->toBe(['label' => '10K', 'value_sec' => 2400.0, 'distance_m' => null, 'animate' => true])
         ->and(RecordStamp::query()->where('user_id', $user->id)->where('record_key', '10km')->exists())->toBeTrue();
 });
 
-it('never re-stamps the same record once seen', function (): void {
+it('animates on the first view, then shows the same badge statically on later views', function (): void {
     $user = User::factory()->create();
     $decoy = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($decoy)->create(['distance' => 30_000]);
@@ -39,8 +39,32 @@ it('never re-stamps the same record once seen', function (): void {
     $detail = ActivityDetail::factory()->for($activity)->create(['distance' => 10_000]);
     PersonalRecord::factory()->forActivity($activity)->create(['category' => '10km']);
 
-    expect($this->resolver->resolve($activity, $detail))->not->toBeNull()
-        ->and($this->resolver->resolve($activity, $detail))->toBeNull();
+    $first = $this->resolver->resolve($activity, $detail);
+    $second = $this->resolver->resolve($activity, $detail);
+
+    expect($first['animate'])->toBeTrue()
+        ->and($second)->not->toBeNull()
+        ->and($second['label'])->toBe('10K')
+        ->and($second['animate'])->toBeFalse();
+});
+
+it("does not let one user's claimed stamp suppress another user's animation", function (): void {
+    $userA = User::factory()->create();
+    $decoyA = Activity::factory()->for($userA)->create();
+    ActivityDetail::factory()->for($decoyA)->create(['distance' => 30_000]);
+    $activityA = Activity::factory()->for($userA)->create();
+    $detailA = ActivityDetail::factory()->for($activityA)->create(['distance' => 10_000]);
+    PersonalRecord::factory()->forActivity($activityA)->create(['category' => '10km']);
+    $this->resolver->resolve($activityA, $detailA);
+
+    $userB = User::factory()->create();
+    $decoyB = Activity::factory()->for($userB)->create();
+    ActivityDetail::factory()->for($decoyB)->create(['distance' => 30_000]);
+    $activityB = Activity::factory()->for($userB)->create();
+    $detailB = ActivityDetail::factory()->for($activityB)->create(['distance' => 10_000]);
+    PersonalRecord::factory()->forActivity($activityB)->create(['category' => '10km']);
+
+    expect($this->resolver->resolve($activityB, $detailB)['animate'])->toBeTrue();
 });
 
 it('does not stamp a run that no longer holds the record', function (): void {
@@ -64,7 +88,7 @@ it('stamps a new longest run', function (): void {
 
     $bib = $this->resolver->resolve($longest, $longestDetail);
 
-    expect($bib)->toBe(['label' => 'Longest Run', 'value_sec' => null, 'distance_m' => 21_100.0]);
+    expect($bib)->toBe(['label' => 'Longest Run', 'value_sec' => null, 'distance_m' => 21_100.0, 'animate' => true]);
 });
 
 it('does not stamp a run shorter than the account\'s longest', function (): void {

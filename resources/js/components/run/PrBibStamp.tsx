@@ -7,6 +7,8 @@ export interface PrBib {
     label: string;
     value_sec: number | null;
     distance_m: number | null;
+    /** True only on the render that just claimed this record's one-time animation. */
+    animate: boolean;
 }
 
 function valueLabel(bib: PrBib): string {
@@ -20,12 +22,11 @@ function valueLabel(bib: PrBib): string {
 }
 
 /**
- * The one-time race-bib stamp on a run that currently holds a tracked
- * record: punches in on mount via a plain CSS animation
- * (`prefers-reduced-motion` shows it static), then stays as a plain badge.
- * `bib` is only ever non-null on the one render that resolved an unseen
- * record server-side, so the vibrate-on-mount effect fires at most once per
- * record, ever.
+ * The race-bib badge on a run that currently holds a tracked record: shown
+ * on every view, permanently. Only the render that resolved `animate: true`
+ * plays the punch-in CSS animation (`prefers-reduced-motion` shows it static
+ * either way) and the guarded vibrate-on-mount buzz — every later view, on
+ * any device, renders the same badge but static.
  */
 export default function PrBibStamp({
     bib,
@@ -34,7 +35,7 @@ export default function PrBibStamp({
     const vibratedRef = useRef(false);
 
     useEffect(() => {
-        if (bib === null || vibratedRef.current) {
+        if (bib === null || !bib.animate || vibratedRef.current) {
             return;
         }
         vibratedRef.current = true;
@@ -51,6 +52,7 @@ export default function PrBibStamp({
         <div
             className={cn(
                 'pr-bib-stamp inline-flex w-fit items-center gap-1.5 rounded-sm bg-horizon px-2.5 py-1 font-mono text-label-micro font-bold uppercase tracking-wide text-sky',
+                bib.animate && 'pr-bib-stamp-animate',
                 className,
             )}
         >

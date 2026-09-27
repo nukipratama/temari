@@ -10,20 +10,22 @@ use App\Models\PersonalRecord;
 use App\Models\RecordStamp;
 
 /**
- * The run hero's one-time "PR bib" stamp: whether the viewed run currently
- * holds one of the tracked records, and whether that record's stamp has
- * already played for this account.
+ * The run hero's "PR bib" stamp: whether the viewed run currently holds one
+ * of the tracked records, and whether this is the render that gets to play
+ * the stamp's punch-in animation.
  *
  * Tracked records are the 5K/10K/half/full bests plus the account's longest
  * run — not the best-effort pace windows or the 1 km/15 km distances
- * {@see PersonalRecord} also tracks. Marking a record "seen" happens here, on
- * render: the first request that finds an unseen, currently-held record wins
- * the {@see RecordStamp} row (unique on user+record), so a refresh or a
- * second device never replays it.
+ * {@see PersonalRecord} also tracks. The badge itself is permanent: a run
+ * that holds a record shows it on every view. Only the *animation* is
+ * one-time — marked here, on render: the first request that finds an unseen,
+ * currently-held record wins the {@see RecordStamp} row (unique on
+ * user+record) and gets `animate: true`; every later view, on any device,
+ * still shows the same badge but statically.
  */
 class PrBibResolver
 {
-    /** Priority order: the rarer record wins the stamp when a run holds more than one. */
+    /** Priority order: the rarer record wins the badge when a run holds more than one. */
     private const array TRACKED_CATEGORIES = [
         'marathon' => 'FM',
         'half_marathon' => 'HM',
@@ -34,26 +36,27 @@ class PrBibResolver
     private const string LONGEST_RUN_KEY = 'longest_run';
 
     /**
-     * @return array{label: string, value_sec: float|null, distance_m: float|null}|null
+     * @return array{label: string, value_sec: float|null, distance_m: float|null, animate: bool}|null
      */
     public function resolve(Activity $activity, ActivityDetail $detail): ?array
     {
-        foreach ($this->candidates($activity, $detail) as $candidate) {
-            $stamp = RecordStamp::query()->firstOrCreate(
-                ['user_id' => $activity->user_id, 'record_key' => $candidate['key']],
-                ['seen_at' => now()],
-            );
-
-            if ($stamp->wasRecentlyCreated) {
-                return [
-                    'label' => $candidate['label'],
-                    'value_sec' => $candidate['value_sec'] ?? null,
-                    'distance_m' => $candidate['distance_m'] ?? null,
-                ];
-            }
+        $candidates = $this->candidates($activity, $detail);
+        if ($candidates === []) {
+            return null;
         }
 
-        return null;
+        $candidate = $candidates[0];
+        $stamp = RecordStamp::query()->firstOrCreate(
+            ['user_id' => $activity->user_id, 'record_key' => $candidate['key']],
+            ['seen_at' => now()],
+        );
+
+        return [
+            'label' => $candidate['label'],
+            'value_sec' => $candidate['value_sec'] ?? null,
+            'distance_m' => $candidate['distance_m'] ?? null,
+            'animate' => $stamp->wasRecentlyCreated,
+        ];
     }
 
     /**
