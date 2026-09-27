@@ -81,9 +81,6 @@ class RunController extends Controller
             $activity->id,
         );
 
-        // Memoized like $loadAnalyses above: `detail` and `pastYou` each need
-        // this run's own effort, but neither should pay for a second
-        // RunEffort::forDetails() call when a full load resolves both.
         $viewedEffort = null;
         $effortFor = function () use ($user, $activity, $detail, &$viewedEffort): Effort {
             return $viewedEffort ??= RunEffort::forDetails($user->id, collect([$detail]))[$activity->id] ?? Effort::Unknown;
@@ -93,9 +90,7 @@ class RunController extends Controller
             // `activity` is already hydrated for the 404 guards above, so a
             // closure would defer nothing.
             'activity' => $activity,
-            // Unlike `activity`, closured: stamping the relative-effort
-            // baseline onto `detail.effort` is deferrable work, and a poll
-            // reloading only the insight props must not pay for it.
+            // Closured so a poll reloading only the insight props skips the effort lookup.
             'detail' => function () use ($detail, $effortFor): ActivityDetail {
                 $detail->setAttribute('effort', $effortFor()->value);
 
