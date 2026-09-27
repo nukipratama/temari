@@ -148,7 +148,8 @@ Popovers, sheets and modals keep `surface-elev` + `shadow-e2`…`e4`
 - Whitespace and dashed lanes do the structuring; boxes are the exception.
 - Lime is scarce: the CTA, the active nav item, "earned" states, the today marker,
   and the ring around Temari's read on Profile only.
-- The Login hero's sky→horizon glow is the one sanctioned atmospheric.
+- Two atmospherics are sanctioned: the Login hero's sky→horizon glow, and the soft
+  lime halo behind Temari on Onboarding's "you're connected" step, an earned moment.
 - The share card art is exempt from these rules (see the card-art exemption in design-tokens.md).
 
 ### Page Pattern
