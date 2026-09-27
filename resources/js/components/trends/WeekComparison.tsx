@@ -4,6 +4,7 @@ import type {
     WeekComparison as WeekComparisonPayload,
 } from '@/types/inertia';
 
+import MetricExplainer from '@/components/MetricExplainer';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import {
@@ -36,11 +37,43 @@ function FormChip({ status }: Readonly<{ status: FormStatus }>) {
     );
 }
 
-const TRIMP_MEANING = 'heart rate and time, added up over seven days.';
+/** Plain-primary-label + jargon-behind-a-ⓘ for the three side-by-side cost
+ *  tiles (voice-and-tone's jargon-accessibility tier). */
+function TileLabel({
+    plain,
+    metricKey,
+}: Readonly<{ plain: string; metricKey: 'trimp' | 'monotony' | 'strain' }>) {
+    return (
+        <>
+            {plain}
+            <MetricExplainer metricKey={metricKey} size="xs" />
+        </>
+    );
+}
+
+/** "452 over your last 7 days. a steady week for you sits around 400 to
+ *  500." — the number plus the athlete's own normal range, when there's
+ *  enough history to size one (#1296). */
+function trimpMeaning(
+    weeklyTrimp: number | null,
+    range: { low: number; high: number } | null,
+): string {
+    if (weeklyTrimp === null) {
+        return 'heart rate and time, added up over your last 7 days.';
+    }
+
+    const value = Math.round(weeklyTrimp);
+    if (range === null) {
+        return `${value} over your last 7 days: heart rate and time, added up.`;
+    }
+
+    return `${value} over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
+}
+
 const MONOTONY_MEANING =
-    'how same-y the week was. every run at one effort pushes it up.';
+    "how varied your training's been. every run at the same effort pushes this up, so mix in an easy day to bring it down.";
 const STRAIN_MEANING =
-    "the week's effort multiplied by how same-y it was, the total cost carried.";
+    "the week's effort multiplied by how varied it was, the total cost you're carrying.";
 
 /** Lowercase, matching UI chrome's own register — "wednesday", not "Wednesday". */
 function todayWeekday(): string {
@@ -141,18 +174,26 @@ export default function WeekComparison({
                         <Stat
                             className={TILE}
                             size="sm"
-                            label="weekly TRIMP"
+                            label={<TileLabel plain="load" metricKey="trimp" />}
                             value={
                                 load.weekly_trimp !== null
                                     ? String(Math.round(load.weekly_trimp))
                                     : '—'
                             }
-                            sub={TRIMP_MEANING}
+                            sub={trimpMeaning(
+                                load.weekly_trimp,
+                                load.weekly_trimp_range,
+                            )}
                         />
                         <Stat
                             className={TILE}
                             size="sm"
-                            label="monotony"
+                            label={
+                                <TileLabel
+                                    plain="sameness"
+                                    metricKey="monotony"
+                                />
+                            }
                             value={
                                 load.monotony !== null
                                     ? load.monotony.toFixed(1)
@@ -163,7 +204,12 @@ export default function WeekComparison({
                         <Stat
                             className={TILE}
                             size="sm"
-                            label="strain"
+                            label={
+                                <TileLabel
+                                    plain="total cost"
+                                    metricKey="strain"
+                                />
+                            }
                             value={
                                 load.strain !== null
                                     ? String(Math.round(load.strain))

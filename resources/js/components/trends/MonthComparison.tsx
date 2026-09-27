@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import MetricExplainer from '@/components/MetricExplainer';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { ctlDaysAgo, ctlNow, ctlPeak } from '@/lib/trends';
 
@@ -10,7 +11,7 @@ import FitnessPanel, {
 import { Stat, StatDelta } from './Stat';
 
 const CTL_MEANING =
-    'your training load averaged over six weeks. up means the load you absorb is growing.';
+    "fitness builds slowly from six weeks of training. climbing means you're able to handle more without breaking down.";
 const DAYS_AGO = 30;
 const CLIMB_THRESHOLD = 2;
 
@@ -60,7 +61,12 @@ export default function MonthComparison({
             </div>
             <hr className="my-4 border-dashed border-border" />
             <Stat
-                label="fitness now"
+                label={
+                    <>
+                        fitness now
+                        <MetricExplainer metricKey="ctl" size="xs" />
+                    </>
+                }
                 value={now !== null ? now.toFixed(1) : '—'}
                 delta={delta !== null ? <StatDelta value={delta} /> : undefined}
                 sub={

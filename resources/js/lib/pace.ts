@@ -229,7 +229,7 @@ export function formatWeekdayDayId(date: Date): string {
     );
 }
 
-const ID_MONTH_SHORT = [
+export const ID_MONTH_SHORT = [
     'jan',
     'feb',
     'mar',

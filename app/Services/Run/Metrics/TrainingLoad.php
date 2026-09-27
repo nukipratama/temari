@@ -101,6 +101,7 @@ class TrainingLoad
 
         return [
             'weekly_trimp' => $weeklyTrimp === null ? null : round($weeklyTrimp, 1),
+            'weekly_trimp_range' => $this->typicalWeeklyTrimpRange($dailyTrimp, $runDays, $weekAnchor),
             'atl_7d' => round($atl, 1),
             'ctl_42d' => round($ctl, 1),
             'form' => $form,
@@ -108,6 +109,59 @@ class TrainingLoad
             'monotony' => $monotony,
             'strain' => $strain,
         ];
+    }
+
+    /**
+     * The athlete's own "steady week" range for weekly TRIMP — the 25th to
+     * 75th percentile across the last $weeks trailing 7-day windows (each
+     * reusing {@see weekStats}), so Trends can read "a steady week for you
+     * sits around 400 to 500" instead of the raw number alone. Null when
+     * fewer than two of those windows are scorable.
+     *
+     * @param  array<string, float>  $dailyTrimp  scored days only
+     * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
+     * @return array{low: float, high: float}|null
+     */
+    private function typicalWeeklyTrimpRange(array $dailyTrimp, array $runDays, Carbon $asOf, int $weeks = 8): ?array
+    {
+        $weeklyTotals = [];
+        for ($i = 0; $i < $weeks; $i++) {
+            [$weekly] = $this->weekStats($dailyTrimp, $runDays, $asOf->copy()->subDays($i * 7));
+            if ($weekly !== null) {
+                $weeklyTotals[] = $weekly;
+            }
+        }
+
+        if (count($weeklyTotals) < 2) {
+            return null;
+        }
+
+        sort($weeklyTotals);
+
+        return [
+            'low' => round($this->percentile($weeklyTotals, 25.0), -1),
+            'high' => round($this->percentile($weeklyTotals, 75.0), -1),
+        ];
+    }
+
+    /**
+     * Linear-interpolated percentile of a sorted list.
+     *
+     * @param  list<float>  $sorted
+     */
+    private function percentile(array $sorted, float $p): float
+    {
+        $count = count($sorted);
+        $index = ($p / 100) * ($count - 1);
+        $lower = (int) floor($index);
+        $upper = (int) ceil($index);
+        if ($lower === $upper) {
+            return $sorted[$lower];
+        }
+
+        $fraction = $index - $lower;
+
+        return $sorted[$lower] + $fraction * ($sorted[$upper] - $sorted[$lower]);
     }
 
     /**

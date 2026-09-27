@@ -33,6 +33,7 @@ const LOAD: TrainingLoad = {
     ctl_42d: 42,
     atl_7d: 44.5,
     weekly_trimp: 320,
+    weekly_trimp_range: { low: 280, high: 360 },
     monotony: 1.2,
     strain: 384,
 };

@@ -316,6 +316,10 @@ export interface TrainingLoad {
     ctl_42d: number;
     atl_7d: number;
     weekly_trimp: number | null;
+    /** The athlete's own "steady week" range for weekly TRIMP, the 25th to
+     *  75th percentile over the trailing 8 weeks. Null with too little
+     *  history to size a range. */
+    weekly_trimp_range: { low: number; high: number } | null;
     monotony: number | null;
     strain: number | null;
 }

@@ -22,6 +22,7 @@ function load(overrides: Partial<TrainingLoad> = {}): TrainingLoad {
         ctl_42d: 42.8,
         atl_7d: 61.3,
         weekly_trimp: 246,
+        weekly_trimp_range: { low: 200, high: 300 },
         monotony: 1.9,
         strain: 467,
         ...overrides,
@@ -73,17 +74,34 @@ describe('WeekComparison', () => {
         expect(screen.getByText(/legs are carrying it/)).toBeInTheDocument();
     });
 
-    it('states weekly TRIMP, monotony and strain, each with its own meaning line', () => {
+    it('states load, sameness and total cost, each with a plain label and its own meaning line', () => {
         render(<WeekComparison weekComparison={payload()} load={load()} />);
 
-        expect(screen.getByText('weekly TRIMP')).toBeInTheDocument();
+        expect(screen.getByText('load')).toBeInTheDocument();
         expect(screen.getByText('246')).toBeInTheDocument();
-        expect(screen.getByText('monotony')).toBeInTheDocument();
+        expect(screen.getByText('sameness')).toBeInTheDocument();
         expect(screen.getByText('1.9')).toBeInTheDocument();
-        expect(screen.getByText('strain')).toBeInTheDocument();
+        expect(screen.getByText('total cost')).toBeInTheDocument();
         expect(screen.getByText('467')).toBeInTheDocument();
         expect(
-            screen.getByText(/heart rate and time, added up/),
+            screen.getByText(
+                /246 over your last 7 days\. a steady week for you sits around 200 to 300\./,
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it("falls back to a plain gloss when there's no baseline range yet", () => {
+        render(
+            <WeekComparison
+                weekComparison={payload()}
+                load={load({ weekly_trimp_range: null })}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                /246 over your last 7 days: heart rate and time, added up\./,
+            ),
         ).toBeInTheDocument();
     });
 
@@ -93,6 +111,6 @@ describe('WeekComparison', () => {
         expect(
             screen.getByText(/not enough training history yet/),
         ).toBeInTheDocument();
-        expect(screen.queryByText('weekly TRIMP')).not.toBeInTheDocument();
+        expect(screen.queryByText('load')).not.toBeInTheDocument();
     });
 });

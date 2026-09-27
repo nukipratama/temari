@@ -182,6 +182,57 @@ it('computes a CTL independent of how many lead-in days the map carries', functi
         ->and($windowed['ctl_42d'])->toBeLessThan($full['ctl_42d'] - 15.0);
 });
 
+it('reports a steady weekly_trimp_range when weekly load never varies', function (): void {
+    $user = User::factory()->create();
+    // 8 weeks (56 days) of steady 80 TRIMP/day → every trailing week totals 560.
+    for ($i = 0; $i < 56; $i++) {
+        seedTrimpDay($user, 80.0, 55 - $i);
+    }
+
+    $summary = $this->load->summary($user);
+
+    expect($summary['weekly_trimp_range'])->toBe(['low' => 560.0, 'high' => 560.0]);
+});
+
+it('reports the 25th-75th percentile of the trailing 8 weekly totals', function (): void {
+    $asOf = Carbon::today();
+
+    // 8 non-overlapping weeks, weekly totals 140..1120 in steps of 140 (each
+    // exactly divisible by 7, so the seeded daily figure has no float drift).
+    $map = [];
+    for ($week = 0; $week < 8; $week++) {
+        $weekTotal = ($week + 1) * 140;
+        for ($day = 0; $day < 7; $day++) {
+            $date = $asOf->copy()->subDays($week * 7 + $day)->toDateString();
+            $map[$date] = $weekTotal / 7;
+        }
+    }
+
+    $summary = $this->load->summaryFromDailyMap($map, runDaysOf($map), $asOf);
+
+    expect($summary['weekly_trimp_range'])->toBe(['low' => 390.0, 'high' => 880.0]);
+});
+
+it('returns a null weekly_trimp_range with fewer than two scorable weeks', function (): void {
+    $user = User::factory()->create();
+    // Day 0 is the only scored day. The other 7 non-overlapping weekly
+    // windows each carry an HR-less run (in runDays but not dailyTrimp), so
+    // weekStats reports them null rather than a false zero — only one
+    // scorable week exists, short of the two a range needs.
+    seedTrimpDay($user, 80.0, 0);
+    for ($i = 1; $i < 8; $i++) {
+        $activity = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'trimp_edwards' => null,
+            'start_date_local' => Carbon::today()->subDays($i * 7),
+        ]);
+    }
+
+    $summary = $this->load->summary($user);
+
+    expect($summary['weekly_trimp_range'])->toBeNull();
+});
+
 it('zero-fills gap days between sparse activities', function (): void {
     // A 100-TRIMP day followed by 30 rest days: CTL decays across the gap but
     // never resets, so the rest day reduces fatigue (ATL) faster than fitness.

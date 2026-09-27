@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
 interface StatProps {
-    label: string;
+    /** Usually a plain string; a jargon label pairs it with an inline
+     *  MetricExplainer instead. */
+    label: ReactNode;
     value: string;
     /** Rendered next to the value — {@link StatDelta} or a plain string. */
     delta?: ReactNode;
