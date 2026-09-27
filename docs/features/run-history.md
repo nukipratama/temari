@@ -92,8 +92,8 @@ visit carrying `?weeks=` two higher, and the server ships exactly that many week
 sections (decision P3 of the prototype-parity program). Each [WeekSection](../../resources/js/components/history/WeekSection.tsx)
 renders a plain mono meta line (runs / km / TRIMP), then the week's
 [RecapCard](../../resources/js/components/history/RecapCard.tsx) (mood-ringed
-Temari, narration, a tappable `WeeklyStatLine` — load/strain, fatigue/ATL,
-variety/monotony, drift/decoupling), then the runs via
+Temari, narration, a tappable `WeeklyStatLine` — fatigue/ATL,
+variety/monotony, drift/decoupling, form/readiness word), then the runs via
 [RunListRow](../../resources/js/components/run/RunListRow.tsx). The stat line
 itself lives in [WeeklyStatLine](../../resources/js/components/history/WeeklyStatLine.tsx),
 shared with the Calendar's week disclosure below. Tapping a metric word

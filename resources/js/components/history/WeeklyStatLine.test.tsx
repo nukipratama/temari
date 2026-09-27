@@ -43,10 +43,6 @@ describe('WeeklyStatLine', () => {
         render(<WeeklyStatLine snapshot={snapshot()} />);
 
         expect(
-            screen.getByRole('button', { name: 'load' }),
-        ).toBeInTheDocument();
-        expect(screen.getByText('486')).toBeInTheDocument();
-        expect(
             screen.getByRole('button', { name: 'fatigue' }),
         ).toBeInTheDocument();
         expect(screen.getByText('73.6')).toBeInTheDocument();
@@ -58,6 +54,18 @@ describe('WeeklyStatLine', () => {
             screen.getByRole('button', { name: 'drift' }),
         ).toBeInTheDocument();
         expect(screen.getByText('3.2%')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'form' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('balanced')).toBeInTheDocument();
+    });
+
+    it('never shows load/TRIMP: the week header already carries it', () => {
+        render(<WeeklyStatLine snapshot={snapshot()} />);
+
+        expect(
+            screen.queryByRole('button', { name: 'load' }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders nothing when the snapshot carries no metrics', () => {
@@ -67,7 +75,7 @@ describe('WeeklyStatLine', () => {
                     atl_7d: null,
                     monotony: null,
                     avg_decoupling: null,
-                    strain: null,
+                    form_status: null,
                 })}
             />,
         );
@@ -76,10 +84,10 @@ describe('WeeklyStatLine', () => {
     });
 
     it('omits a metric whose value is unknown rather than showing a zero', () => {
-        render(<WeeklyStatLine snapshot={snapshot({ strain: null })} />);
+        render(<WeeklyStatLine snapshot={snapshot({ form_status: null })} />);
 
         expect(
-            screen.queryByRole('button', { name: 'load' }),
+            screen.queryByRole('button', { name: 'form' }),
         ).not.toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'fatigue' }),
@@ -137,14 +145,63 @@ describe('WeeklyStatLine', () => {
         expect(screen.queryByText(/drift 9.4%:/)).not.toBeInTheDocument();
     });
 
-    it('does not flag load and fatigue, which have no alarm threshold', () => {
+    it('does not flag fatigue, which has no alarm threshold', () => {
         render(<WeeklyStatLine snapshot={snapshot()} />);
 
-        expect(screen.getByRole('button', { name: 'load' })).not.toHaveClass(
-            'text-ember-ink',
-        );
         expect(screen.getByRole('button', { name: 'fatigue' })).not.toHaveClass(
             'text-ember-ink',
         );
+    });
+
+    it.each([
+        ['fresh', 'fresh'],
+        ['optimal', 'balanced'],
+        ['fatigued', 'tired'],
+        ['overreaching', 'overreaching'],
+    ] as const)('shows the form-status word for %s as "%s"', (status, word) => {
+        const { unmount } = render(
+            <WeeklyStatLine snapshot={snapshot({ form_status: status })} />,
+        );
+        expect(screen.getByText(word)).toBeInTheDocument();
+        unmount();
+    });
+
+    it('flags an overreaching form status in ember, open by default with its meaning', () => {
+        render(
+            <WeeklyStatLine
+                snapshot={snapshot({ form_status: 'overreaching' })}
+            />,
+        );
+
+        const form = screen.getByRole('button', { name: 'form' });
+        expect(form).toHaveClass('text-ember-ink');
+        expect(form).toHaveAttribute('aria-expanded', 'true');
+        expect(
+            screen.getByText(/piled well past your six-week average/),
+        ).toBeInTheDocument();
+    });
+
+    it('does not flag a non-overreaching form status', () => {
+        render(
+            <WeeklyStatLine snapshot={snapshot({ form_status: 'fresh' })} />,
+        );
+
+        const form = screen.getByRole('button', { name: 'form' });
+        expect(form).not.toHaveClass('text-ember-ink');
+        expect(form).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('reveals its plain meaning when the form word is tapped', () => {
+        render(
+            <WeeklyStatLine snapshot={snapshot({ form_status: 'fresh' })} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'form' }));
+
+        expect(
+            screen.getByText(
+                /the last week has been lighter than your six-week average/,
+            ),
+        ).toBeInTheDocument();
     });
 });
