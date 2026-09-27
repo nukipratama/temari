@@ -97,8 +97,7 @@ export default function MetricExplainer({
     }, [open]);
 
     const iconSize = size === 'xs' ? 12 : 14;
-    // The visual box stays 24px while the invisible hit area expands to 44px.
-    // Negative margins keep the glyph's original footprint so labels do not reflow.
+    // Negative margins preserve the label row's original footprint.
     const buttonClass = cn(
         "relative focus-ring pressable inline-flex h-6 w-6 items-center justify-center rounded-full text-text-3 transition hover:bg-muted hover:text-foreground before:absolute before:-inset-2.5 before:content-['']",
         size === 'xs' ? '-m-1' : '-m-0.5',
