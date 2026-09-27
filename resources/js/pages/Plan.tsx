@@ -20,6 +20,7 @@ import { SkeletonRows, SkeletonStats } from '@/components/ui/Skeleton';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
+import { readPlanSelectedDay } from '@/lib/navigationMemory';
 import {
     formatDurationHMS,
     formatNaiveMonthDayId,
@@ -91,6 +92,7 @@ export default function Plan({
     const [regenerating, setRegenerating] = useState(false);
     const today = todayLocalIso();
     const [focusDay] = useState(requestedDay);
+    const [selectedDay] = useState(() => focusDay ?? readPlanSelectedDay());
     const regenerateCooldown = useCooldownCountdown(regenerateCooldownSeconds);
     const regenerateCooling = regenerateCooldown > 0;
 
@@ -248,6 +250,7 @@ export default function Plan({
                                     weekFocus={adaptation}
                                     dayNarration={planNarration.days}
                                     focusDay={focusDay}
+                                    selectedDay={selectedDay}
                                     onMove={moveSession}
                                     onSkip={skipSession}
                                 />

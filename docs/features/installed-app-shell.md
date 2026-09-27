@@ -3,11 +3,13 @@ title: Installed app shell
 description: What makes Temari feel native once it is on the iOS Home Screen — edge-to-edge status bar, launch image, top bar with back button, touch feel
 tags: [feature, pwa]
 status: living
-reviewed: 2026-09-06
+reviewed: 2026-09-28
 code_refs:
   - resources/views/app.blade.php
   - public/manifest.webmanifest
   - resources/js/components/MobileTopBar.tsx
+  - resources/js/components/MobileBottomNav.tsx
+  - resources/js/lib/navigationMemory.ts
   - resources/js/hooks/useBodyScrollLock.ts
   - resources/css/app.css
   - scripts/build-splash-screens.php
@@ -146,9 +148,10 @@ detail onto the back-chevron treatment.
 
 Two details worth keeping:
 
-- **Back is a real `<Link href>`, never `history.back()`.** A notification deep
-  link opens `/activities/{id}` cold with nothing behind it, and `history.back()`
-  would strand the user or exit the app.
+- **Back is a real `<Link href>`, never `history.back()`.** An in-app run visit
+  returns to its recorded internal route and scroll position. A notification
+  or direct deep link opens `/activities/{id}` cold, so Back keeps the fixed
+  History destination.
 - **One back affordance, at every width.** The bar is no longer `lg:hidden`, so
   the in-page `BackLink` that used to cover desktop on pushed pages is gone —
   the topbar chevron is the only way out, on every viewport.
@@ -263,8 +266,13 @@ Three things carry it, and all three are invisible on a desktop browser:
   overlapping overlays cannot unlock early. Applied to the modals, and to the
   history filter only below `lg`, where it is a sheet rather than a popover.
 
-Tapping the tab you are already on scrolls to top instead of issuing a fresh
-visit ([MobileBottomNav.tsx](resources/js/components/MobileBottomNav.tsx)).
+Tapping the active tab while scrolled moves to the top. At the top, it resets to
+the tab's default: Plan clears its selected day, History's list clears filters,
+and the calendar returns to the current month.
+
+Tab routes and scroll positions, plus Plan's selected day, are remembered in
+`sessionStorage` while the app stays open. A new app bootstrap starts with fresh
+saved state; explicit query URLs still open their requested view.
 
 A tap on any *other* tab lights that tab at once. The highlight used to be
 derived from `usePage().component` alone, so it did not move until the server

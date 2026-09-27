@@ -2,10 +2,18 @@ import type { router as inertiaRouter } from '@inertiajs/react';
 
 import type { ContextualOrigin, TabId } from '@/lib/nav';
 
-import { isTabId, navTabFor } from '@/lib/navRoutes';
+import { isTabId, navTabFor, TAB_IDS } from '@/lib/navRoutes';
 
 const ORIGIN_KEY = 'temari:navigation:origin';
 const ORIGIN_CHANGE_EVENT = 'temari:navigation:origin-change';
+const TAB_STATE_KEY = 'temari:navigation:tabs';
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+export interface TabMemory {
+    href: string;
+    scrollY: number;
+    selectedDay?: string;
+}
 
 export interface NavigationPage {
     component: string;
@@ -48,6 +56,63 @@ function tabId(value: unknown): TabId | null {
     return isTabId(value) ? value : null;
 }
 
+function readTabStates(): Partial<Record<TabId, TabMemory>> {
+    const stored = window.sessionStorage.getItem(TAB_STATE_KEY);
+    if (stored === null) return {};
+
+    try {
+        const value: unknown = JSON.parse(stored);
+        if (typeof value !== 'object' || value === null) return {};
+
+        const states: Partial<Record<TabId, TabMemory>> = {};
+        for (const tab of TAB_IDS) {
+            const candidate = (value as Record<string, unknown>)[tab];
+            if (typeof candidate !== 'object' || candidate === null) continue;
+
+            const memory = candidate as {
+                href?: unknown;
+                scrollY?: unknown;
+                selectedDay?: unknown;
+            };
+            const href =
+                typeof memory.href === 'string'
+                    ? internalHref(memory.href)
+                    : null;
+            if (
+                href === null ||
+                typeof memory.scrollY !== 'number' ||
+                !Number.isFinite(memory.scrollY) ||
+                memory.scrollY < 0
+            ) {
+                continue;
+            }
+
+            states[tab] = {
+                href,
+                scrollY: memory.scrollY,
+                ...(tab === 'plan' &&
+                typeof memory.selectedDay === 'string' &&
+                ISO_DATE.test(memory.selectedDay)
+                    ? { selectedDay: memory.selectedDay }
+                    : {}),
+            };
+        }
+
+        return states;
+    } catch {
+        return {};
+    }
+}
+
+function writeTabStates(states: Partial<Record<TabId, TabMemory>>): void {
+    if (Object.keys(states).length === 0) {
+        window.sessionStorage.removeItem(TAB_STATE_KEY);
+        return;
+    }
+
+    window.sessionStorage.setItem(TAB_STATE_KEY, JSON.stringify(states));
+}
+
 export function subscribeToContextualOrigin(listener: () => void): () => void {
     window.addEventListener(ORIGIN_CHANGE_EVENT, listener);
     return () => window.removeEventListener(ORIGIN_CHANGE_EVENT, listener);
@@ -61,6 +126,76 @@ export function contextualOriginSnapshot(): string | null {
 
 function notifyContextualOriginChange(): void {
     window.dispatchEvent(new Event(ORIGIN_CHANGE_EVENT));
+}
+
+export function readTabMemory(tab: TabId): TabMemory | null {
+    return readTabStates()[tab] ?? null;
+}
+
+export function writeTabMemory(tab: TabId, memory: TabMemory): void {
+    const href = internalHref(memory.href);
+    if (
+        href === null ||
+        !Number.isFinite(memory.scrollY) ||
+        memory.scrollY < 0
+    ) {
+        clearTabMemory(tab);
+        return;
+    }
+
+    const states = readTabStates();
+    states[tab] = {
+        href,
+        scrollY: memory.scrollY,
+        ...(tab === 'plan' &&
+        memory.selectedDay !== undefined &&
+        ISO_DATE.test(memory.selectedDay)
+            ? { selectedDay: memory.selectedDay }
+            : {}),
+    };
+    writeTabStates(states);
+}
+
+export function rememberTabLocation(
+    tab: TabId,
+    href: string,
+    scrollY: number,
+): void {
+    const existing = readTabMemory(tab);
+    writeTabMemory(tab, {
+        href,
+        scrollY,
+        ...(tab === 'plan' && existing?.selectedDay !== undefined
+            ? { selectedDay: existing.selectedDay }
+            : {}),
+    });
+}
+
+export function readPlanSelectedDay(): string | null {
+    return readTabMemory('plan')?.selectedDay ?? null;
+}
+
+export function rememberPlanSelectedDay(selectedDay: string): void {
+    if (!ISO_DATE.test(selectedDay)) return;
+
+    const existing = readTabMemory('plan');
+    writeTabMemory('plan', {
+        href: existing?.href ?? '/plan',
+        scrollY: existing?.scrollY ?? 0,
+        selectedDay,
+    });
+}
+
+export function clearTabMemory(tab: TabId): void {
+    const states = readTabStates();
+    delete states[tab];
+    writeTabStates(states);
+}
+
+export function clearNavigationMemory(): void {
+    window.sessionStorage.removeItem(ORIGIN_KEY);
+    window.sessionStorage.removeItem(TAB_STATE_KEY);
+    notifyContextualOriginChange();
 }
 
 export function readContextualOrigin(): ContextualOrigin | null {
@@ -122,8 +257,7 @@ export function startContextualBackSession(
     initialPage: NavigationPage,
     router: typeof inertiaRouter,
 ): void {
-    window.sessionStorage.removeItem(ORIGIN_KEY);
-    notifyContextualOriginChange();
+    clearNavigationMemory();
 
     let currentPage = initialPage;
     let currentIdentity = identityFor(initialPage);
@@ -167,6 +301,10 @@ export function startContextualBackSession(
 
         pendingScrollRestore = null;
         const tab = navTabFor(currentPage.component);
+        if (tab !== null && href !== null) {
+            rememberTabLocation(tab, href, window.scrollY);
+        }
+
         pendingOrigin =
             tab !== null && target !== null && href !== null
                 ? {
@@ -186,7 +324,7 @@ export function startContextualBackSession(
         currentIdentity = nextIdentity;
 
         if (identityChanged) {
-            writeContextualOrigin(null);
+            clearNavigationMemory();
         } else if (
             page.component === 'Runs/Show' &&
             pendingOrigin !== null &&
@@ -203,6 +341,11 @@ export function startContextualBackSession(
                 origin.tab === tab
             ) {
                 restoreScroll(pageHref, origin.scrollY);
+            } else if (tab !== null) {
+                const memory = readTabMemory(tab);
+                if (memory !== null && memory.href === pageHref) {
+                    restoreScroll(pageHref, memory.scrollY);
+                }
             }
             writeContextualOrigin(null);
         } else if (page.component !== 'Runs/Show') {

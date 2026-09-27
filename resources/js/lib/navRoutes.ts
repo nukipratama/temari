@@ -1,6 +1,6 @@
-export type TabId = 'today' | 'plan' | 'trends' | 'history';
+export const TAB_IDS = ['today', 'plan', 'trends', 'history'] as const;
 
-export const TAB_IDS: readonly TabId[] = ['today', 'plan', 'trends', 'history'];
+export type TabId = (typeof TAB_IDS)[number];
 
 const NAV_SCREENS: Readonly<Record<string, TabId>> = {
     Home: 'today',

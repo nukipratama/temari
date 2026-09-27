@@ -67,6 +67,24 @@ const BACK_TARGETS: Readonly<Record<string, BackTarget>> = {
     'Settings/Index': { href: '/profile', label: 'Profile' },
 };
 
+/** The default tab destination, resetting a calendar to the current month. */
+export function defaultTabHrefFor(
+    tab: TabId,
+    currentHref: string,
+    now = new Date(),
+): string {
+    const query = currentHref.split('?')[1]?.split('#')[0] ?? '';
+    if (
+        tab === 'history' &&
+        new URLSearchParams(query).get('view') === 'calendar'
+    ) {
+        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        return `/history?view=calendar&month=${month}`;
+    }
+
+    return ITEMS.find((item) => item.id === tab)?.href ?? '/';
+}
+
 /**
  * Where a pushed screen's back chevron goes, or null on a bottom-nav screen.
  * A fixed parent, not `history.back()`: a deep link from a notification or a

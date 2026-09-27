@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
-import { backTargetFor, ITEMS, navTabFor } from './nav';
+import { backTargetFor, defaultTabHrefFor, ITEMS, navTabFor } from './nav';
 
 describe('nav', () => {
     it('has 4 top-level items', () => {
@@ -44,6 +44,24 @@ describe('nav', () => {
             expect(navTabFor('Inbox')).toBeNull();
             expect(navTabFor('Profile')).toBeNull();
             expect(navTabFor('Settings/Index')).toBeNull();
+        });
+    });
+
+    describe('defaultTabHrefFor', () => {
+        it('resets the calendar to the current month', () => {
+            expect(
+                defaultTabHrefFor(
+                    'history',
+                    '/history?view=calendar&month=2026-06',
+                    new Date(2026, 8, 28),
+                ),
+            ).toBe('/history?view=calendar&month=2026-09');
+        });
+
+        it('returns the tab home route for other tab states', () => {
+            expect(defaultTabHrefFor('plan', '/plan?day=2026-06-16')).toBe(
+                '/plan',
+            );
         });
     });
 
