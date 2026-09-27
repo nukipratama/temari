@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Geo;
 
-use App\Services\Geo\NominatimRateSlotUnavailable;
+use App\Services\Geo\Exceptions\NominatimRateSlotUnavailableException;
 use App\Services\Geo\ResolvedLocation;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -54,7 +54,7 @@ class ReverseGeocodeAction
     {
         $lock = Cache::lock(self::RATE_SLOT_LOCK_KEY, self::RATE_SLOT_LOCK_SECONDS);
         if (! $lock->get()) {
-            throw new NominatimRateSlotUnavailable();
+            throw new NominatimRateSlotUnavailableException();
         }
 
         $requestStartedAt = null;
@@ -62,7 +62,7 @@ class ReverseGeocodeAction
             $now = (int) Carbon::now()->format('Uu');
             $nextAllowedAt = (int) Cache::get(self::NEXT_RATE_SLOT_KEY, 0);
             if ($nextAllowedAt > $now) {
-                throw new NominatimRateSlotUnavailable();
+                throw new NominatimRateSlotUnavailableException();
             }
 
             Cache::put(

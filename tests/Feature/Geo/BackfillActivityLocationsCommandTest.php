@@ -55,7 +55,7 @@ it('skips already-resolved details and those without coords', function (): void 
     Queue::assertPushed(ResolveActivityLocationJob::class, 1);
 });
 
-it('stagger dispatches one second apart', function (): void {
+it('staggers resolve dispatches one second apart', function (): void {
     Queue::fake();
     $this->freezeTime();
 

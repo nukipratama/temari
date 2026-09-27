@@ -6,7 +6,7 @@ namespace App\Jobs\Geo;
 
 use App\Actions\Geo\ReverseGeocodeAction;
 use App\Models\ActivityDetail;
-use App\Services\Geo\NominatimRateSlotUnavailable;
+use App\Services\Geo\Exceptions\NominatimRateSlotUnavailableException;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -50,7 +50,7 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
 
         try {
             $resolved = $resolver($detail->start_lat, $detail->start_lng);
-        } catch (NominatimRateSlotUnavailable) {
+        } catch (NominatimRateSlotUnavailableException) {
             $this->release(2);
 
             return;

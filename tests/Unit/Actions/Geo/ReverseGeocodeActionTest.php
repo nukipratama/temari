@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Geo\ReverseGeocodeAction;
-use App\Services\Geo\NominatimRateSlotUnavailable;
+use App\Services\Geo\Exceptions\NominatimRateSlotUnavailableException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -91,7 +91,7 @@ it('paces uncached requests at least one second apart', function (): void {
     $resolver = new ReverseGeocodeAction();
     $resolver(-6.24, 106.81);
     expect(fn () => $resolver(-7.25, 112.75))
-        ->toThrow(NominatimRateSlotUnavailable::class);
+        ->toThrow(NominatimRateSlotUnavailableException::class);
     Carbon::setTestNow(Carbon::now()->addSecond());
     $resolver(-7.25, 112.75);
 
