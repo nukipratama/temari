@@ -229,6 +229,7 @@ describe('Runs/Show', () => {
                 past_activity_id: 99,
                 past_name: null,
                 effort: 'easy',
+                duel: null,
             },
         });
         // The hero and the provenance footer still render; the rest would only
@@ -257,6 +258,7 @@ describe('Runs/Show', () => {
                 past_activity_id: 99,
                 past_name: null,
                 effort: 'easy',
+                duel: null,
             },
         });
         expect(screen.getByText('You vs past you')).toBeInTheDocument();

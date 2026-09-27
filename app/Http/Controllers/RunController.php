@@ -17,6 +17,7 @@ use App\Services\Run\Ingest\DetailHydrator;
 use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\CardPresenter;
+use App\Services\Run\Story\PastYouDuelBuilder;
 use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
 use Illuminate\Database\Eloquent\Collection;
@@ -41,7 +42,7 @@ class RunController extends Controller
      */
     private const int LOCATION_DISPATCH_GUARD_SECONDS = 600;
 
-    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, CardPresenter $cards, DetailHydrator $hydrator): Response
+    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, CardPresenter $cards, DetailHydrator $hydrator, PastYouDuelBuilder $duelBuilder): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -116,11 +117,15 @@ class RunController extends Controller
             'isChainHead' => fn (): bool => Activity::latestIdForUser($user->id) === $activity->id,
             'speechAnalysis' => fn (): array => $payloadFor(AnalysisType::PostRunSpeech),
             'runInsight' => fn (): array => $payloadFor(AnalysisType::RunInsight),
-            'pastYou' => function () use ($matcher, $hydrator, $activity, $detail, $effortFor): ?array {
+            'pastYou' => function () use ($matcher, $hydrator, $activity, $detail, $effortFor, $duelBuilder): ?array {
                 $match = $matcher->findMatchContext($activity, $detail);
                 if ($match !== null) {
                     $hydrator->hydrate($match['past_activity_id']);
                     $match['effort'] = $effortFor()->value;
+                    $pastDetail = ActivityDetail::query()
+                        ->where('activity_id', $match['past_activity_id'])
+                        ->first();
+                    $match['duel'] = $pastDetail === null ? null : $duelBuilder->build($detail, $pastDetail);
                 }
 
                 return $match;
