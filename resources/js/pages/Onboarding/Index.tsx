@@ -30,7 +30,6 @@ import TemariMascot from '@/components/temari/TemariMascot';
 import Chip from '@/components/ui/Chip';
 import DateField from '@/components/ui/DateField';
 import { Icon, IconComponent, TelegramIcon } from '@/components/ui/Icon';
-import LegacyCard from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
@@ -144,8 +143,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 const FACE_GLOW =
     'radial-gradient(circle, color-mix(in oklab, var(--color-horizon) 55%, transparent) 0%, color-mix(in oklab, var(--color-horizon) 24%, transparent) 42%, transparent 70%)';
-const PACE_GLOW =
-    'radial-gradient(circle, color-mix(in oklab, var(--color-horizon) 45%, transparent) 0%, color-mix(in oklab, var(--color-horizon) 18%, transparent) 45%, transparent 70%)';
 
 const FIELD_LABEL = 'text-label-micro text-text-2';
 
@@ -346,10 +343,10 @@ export default function OnboardingIndex({
                         <div className="relative flex items-center justify-center">
                             <div
                                 aria-hidden
-                                className="pointer-events-none absolute size-60 rounded-full blur-[34px]"
+                                className="pointer-events-none absolute size-44 rounded-full blur-[28px]"
                                 style={{ background: FACE_GLOW }}
                             />
-                            <TemariMascot pose="blazing" size={72} drawIn />
+                            <TemariMascot pose="blazing" size={96} drawIn />
                         </div>
                         <PageHero
                             size="quote-lg"
@@ -360,7 +357,7 @@ export default function OnboardingIndex({
                             <em className="text-icon-accent">{firstName}.</em>
                         </PageHero>
 
-                        <LegacyCard className="flex w-full flex-col gap-4 text-left">
+                        <div className="flex w-full flex-col divide-y divide-dashed divide-border text-left [&>*]:py-3 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
                             {WHAT_LANDS.map((item) => (
                                 <div
                                     key={item.text}
@@ -378,7 +375,7 @@ export default function OnboardingIndex({
                                     </span>
                                 </div>
                             ))}
-                        </LegacyCard>
+                        </div>
 
                         <PillButton
                             tone="horizon"
@@ -581,12 +578,7 @@ export default function OnboardingIndex({
                             later from Plan.
                         </p>
 
-                        <div className="relative mt-6 mb-4 flex items-center gap-4 overflow-hidden rounded-md border border-border-strong bg-card p-4 shadow-e1">
-                            <div
-                                aria-hidden
-                                className="pointer-events-none absolute -top-8 -left-8 size-35 rounded-full blur-[28px]"
-                                style={{ background: PACE_GLOW }}
-                            />
+                        <div className="mt-6 mb-4 flex items-center gap-4">
                             <div className="relative flex-none">
                                 <svg
                                     width={76}
@@ -618,7 +610,7 @@ export default function OnboardingIndex({
                                     <TemariMascot size={36} faceOnly />
                                 </div>
                             </div>
-                            <div className="relative min-w-0 flex-1">
+                            <div className="min-w-0 flex-1">
                                 <span className="text-label-micro text-text-3">
                                     required pace
                                 </span>
@@ -629,7 +621,7 @@ export default function OnboardingIndex({
                         </div>
 
                         <form onSubmit={submitGoal}>
-                            <LegacyCard className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-4">
                                 <div>
                                     <label
                                         htmlFor="onboarding_race_name"
@@ -740,7 +732,7 @@ export default function OnboardingIndex({
                                         }
                                     />
                                 </div>
-                            </LegacyCard>
+                            </div>
 
                             <div className="mt-4 flex flex-wrap gap-2">
                                 <PillButton
@@ -789,7 +781,7 @@ export default function OnboardingIndex({
                             slip, and a word if Strava quietly stops syncing.
                         </p>
 
-                        <LegacyCard className="mt-6 flex flex-col">
+                        <div className="mt-6 flex flex-col divide-y divide-dashed divide-border">
                             {telegramConnectUrl !== null && (
                                 <SettingsRow
                                     icon={TelegramIcon}
@@ -800,7 +792,7 @@ export default function OnboardingIndex({
                                 />
                             )}
                             <PushNotificationToggle />
-                        </LegacyCard>
+                        </div>
 
                         <p className="mt-3 font-sans text-xs leading-relaxed text-text-3">
                             you can wire either of these up later from settings.

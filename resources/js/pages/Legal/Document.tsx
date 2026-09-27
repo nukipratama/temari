@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { Fragment, type ReactNode } from 'react';
 
+import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import { bareLayout } from '@/layouts/BareShell';
 
@@ -85,25 +86,31 @@ export default function LegalDocument({
                         {linkify(intro)}
                     </p>
 
-                    {sections.map((section) => (
-                        <section key={section.heading} className="mt-10">
-                            <h2 className="font-serif text-headline-sm text-foreground">
-                                {section.heading}
-                            </h2>
-                            {section.paragraphs.map((paragraph) => (
-                                <p
-                                    key={paragraph}
-                                    className="mt-3 font-sans text-sm leading-relaxed text-foreground"
+                    <div className="mt-10 flex flex-col divide-y divide-dashed divide-border [&>*]:pt-10 [&>*:first-child]:pt-0">
+                        {sections.map((section) => (
+                            <section key={section.heading}>
+                                <Eyebrow
+                                    token="small"
+                                    as="h2"
+                                    className="text-foreground"
                                 >
-                                    {linkify(paragraph)}
-                                </p>
-                            ))}
-                        </section>
-                    ))}
+                                    {section.heading}
+                                </Eyebrow>
+                                {section.paragraphs.map((paragraph) => (
+                                    <p
+                                        key={paragraph}
+                                        className="mt-3 font-sans text-sm leading-relaxed text-foreground"
+                                    >
+                                        {linkify(paragraph)}
+                                    </p>
+                                ))}
+                            </section>
+                        ))}
+                    </div>
 
                     <nav
                         aria-label="Other documents"
-                        className="mt-12 border-t border-border pt-6"
+                        className="mt-12 border-t border-dashed border-border pt-6"
                     >
                         <ul className="flex flex-wrap gap-x-6 gap-y-2">
                             {DOCUMENTS.filter(
