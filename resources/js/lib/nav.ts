@@ -7,7 +7,12 @@ import {
 
 import type { IconComponent } from '@/components/ui/Icon';
 
-export type TabId = 'today' | 'plan' | 'trends' | 'history';
+import { navTabFor } from '@/lib/navRoutes';
+
+import type { TabId } from '@/lib/navRoutes';
+
+export { navTabFor } from '@/lib/navRoutes';
+export type { TabId } from '@/lib/navRoutes';
 
 export interface NavItem {
     id: TabId;
@@ -54,17 +59,6 @@ export const ITEMS: ReadonlyArray<NavItem> = [
     },
 ];
 
-// Keyed by Inertia page component rather than URL prefix: Race is a sub-page of
-// Plan and lights the plan tab, which a path prefix cannot express without
-// also claiming every other /race-adjacent route.
-const NAV_SCREENS: Readonly<Record<string, TabId>> = {
-    Home: 'today',
-    Plan: 'plan',
-    Race: 'plan',
-    Trends: 'trends',
-    History: 'history',
-};
-
 const TODAY: BackTarget = { href: '/', label: 'Today' };
 
 const BACK_TARGETS: Readonly<Record<string, BackTarget>> = {
@@ -73,11 +67,6 @@ const BACK_TARGETS: Readonly<Record<string, BackTarget>> = {
     Profile: TODAY,
     'Settings/Index': { href: '/profile', label: 'Profile' },
 };
-
-/** The bottom-nav tab a page lights, or null when it is a pushed screen. */
-export function navTabFor(component: string): TabId | null {
-    return NAV_SCREENS[component] ?? null;
-}
 
 /**
  * Where a pushed screen's back chevron goes, or null on a bottom-nav screen.

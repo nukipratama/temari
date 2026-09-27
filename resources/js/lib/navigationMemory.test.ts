@@ -57,7 +57,7 @@ describe('navigationMemory', () => {
             scrollY: 300,
             tab: 'plan',
         });
-        startContextualBackSession(PLAN_PAGE);
+        startContextualBackSession(PLAN_PAGE, router);
 
         expect(readContextualOrigin()).toBeNull();
     });
@@ -65,7 +65,7 @@ describe('navigationMemory', () => {
     it('captures the internal route and scroll when a tab opens a run', () => {
         window.history.replaceState({}, '', PLAN_PAGE.url);
         window.scrollY = 312;
-        startContextualBackSession(PLAN_PAGE);
+        startContextualBackSession(PLAN_PAGE, router);
 
         fireBefore('/activities/42');
         fireNavigate({
@@ -82,7 +82,7 @@ describe('navigationMemory', () => {
     });
 
     it('does not capture an external target', () => {
-        startContextualBackSession(PLAN_PAGE);
+        startContextualBackSession(PLAN_PAGE, router);
 
         fireBefore('https://example.com/activities/42');
         fireNavigate({
@@ -95,7 +95,7 @@ describe('navigationMemory', () => {
     });
 
     it('clears contextual state when the signed-in identity changes', () => {
-        startContextualBackSession(PLAN_PAGE);
+        startContextualBackSession(PLAN_PAGE, router);
         writeContextualOrigin({
             href: '/plan',
             scrollY: 300,
@@ -124,7 +124,7 @@ describe('navigationMemory', () => {
             component: 'Runs/Show',
             url: '/activities/42',
             props: { auth: { user: { id: 7 } } },
-        });
+        }, router);
         writeContextualOrigin({
             href: '/plan?day=2026-06-16',
             scrollY: 312,

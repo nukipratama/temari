@@ -84,7 +84,7 @@ void createInertiaApp({
         return module.default;
     },
     setup({ el, App, props }) {
-        startContextualBackSession(props.initialPage);
+        startContextualBackSession(props.initialPage, router);
         createRoot(el).render(
             <ErrorBoundary>
                 <App {...props} />

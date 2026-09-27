@@ -1,8 +1,8 @@
-import { router } from '@inertiajs/react';
+import type { router as inertiaRouter } from '@inertiajs/react';
 
 import type { ContextualOrigin, TabId } from '@/lib/nav';
 
-import { ITEMS, navTabFor } from '@/lib/nav';
+import { isTabId, navTabFor } from '@/lib/navRoutes';
 
 const ORIGIN_KEY = 'temari:navigation:origin';
 
@@ -44,7 +44,7 @@ function identityFor(page: NavigationPage): string | null {
 }
 
 function tabId(value: unknown): TabId | null {
-    return ITEMS.find((item) => item.id === value)?.id ?? null;
+    return isTabId(value) ? value : null;
 }
 
 export function readContextualOrigin(): ContextualOrigin | null {
@@ -105,7 +105,10 @@ function restoreScroll(scrollY: number): void {
     });
 }
 
-export function startContextualBackSession(initialPage: NavigationPage): void {
+export function startContextualBackSession(
+    initialPage: NavigationPage,
+    router: typeof inertiaRouter,
+): void {
     window.sessionStorage.removeItem(ORIGIN_KEY);
 
     let currentPage = initialPage;
