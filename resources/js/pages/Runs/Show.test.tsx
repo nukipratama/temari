@@ -161,6 +161,7 @@ function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
             moodFallback="chill"
             isChainHead
             pastYou={null}
+            prBib={null}
             {...overrides}
         />,
     );

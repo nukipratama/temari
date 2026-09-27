@@ -14,6 +14,7 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\DetailHydrator;
+use App\Services\Run\Metrics\PrBibResolver;
 use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\CardPresenter;
@@ -42,7 +43,7 @@ class RunController extends Controller
      */
     private const int LOCATION_DISPATCH_GUARD_SECONDS = 600;
 
-    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, CardPresenter $cards, DetailHydrator $hydrator, PastYouDuelBuilder $duelBuilder): Response
+    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, CardPresenter $cards, DetailHydrator $hydrator, PastYouDuelBuilder $duelBuilder, PrBibResolver $prBib): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -130,6 +131,7 @@ class RunController extends Controller
 
                 return $match;
             },
+            'prBib' => fn (): ?array => $prBib->resolve($activity, $detail),
         ]);
     }
 

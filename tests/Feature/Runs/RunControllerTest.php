@@ -6,7 +6,9 @@ use App\Enums\SessionType;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
+use App\Models\RecordStamp;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
@@ -411,6 +413,52 @@ it('renders no duel when the matched past run has not been hydrated yet', functi
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('pastYou.duel', null));
+});
+
+it('plays the bib stamp the first time a record-holding run is opened', function (): void {
+    $user = User::factory()->create();
+    $longer = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($longer)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
+    PersonalRecord::factory()->forActivity($activity)->create(['category' => '10km', 'value_sec' => 2400]);
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('prBib.label', '10K')
+            ->where('prBib.value_sec', 2400));
+
+    expect(RecordStamp::query()->where('user_id', $user->id)->where('record_key', '10km')->exists())->toBeTrue();
+});
+
+it('never replays the bib stamp on a later view of the same record', function (): void {
+    $user = User::factory()->create();
+    $longer = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($longer)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
+    PersonalRecord::factory()->forActivity($activity)->create(['category' => '10km']);
+
+    $this->actingAs($user)->get("/activities/{$activity->id}");
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('prBib', null));
+});
+
+it('ships no bib stamp for a run that holds no tracked record', function (): void {
+    $user = User::factory()->create();
+    $longer = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($longer)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('prBib', null));
 });
 
 it('runs no story-line queries when only the run insights are requested', function (): void {

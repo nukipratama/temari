@@ -123,4 +123,16 @@ describe('RunHero', () => {
         expect(screen.getByText(/24°/)).toBeInTheDocument();
         expect(screen.getByText('Senayan')).toBeInTheDocument();
     });
+
+    it('shows no bib stamp when the run holds no unseen record', () => {
+        renderHero({ prBib: null });
+        expect(screen.queryByText(/· PR ·/)).not.toBeInTheDocument();
+    });
+
+    it('shows the bib stamp when the run just resolved an unseen record', () => {
+        renderHero({
+            prBib: { label: '10K', value_sec: 3521, distance_m: null },
+        });
+        expect(screen.getByText('10K · PR · 58:41')).toBeInTheDocument();
+    });
 });
