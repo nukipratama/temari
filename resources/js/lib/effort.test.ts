@@ -2,19 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { Effort } from '@/types/inertia';
 
-import { EFFORT_EDGE_CLASS, EFFORT_LABEL, EFFORT_STRIPE_CLASS } from './effort';
+import { EFFORT_EDGE_CLASS, EFFORT_STRIPE_CLASS } from './effort';
 
 const ALL_EFFORTS: Effort[] = ['easy', 'steady', 'hard', 'rest', 'unknown'];
 
 describe('effort', () => {
-    describe('EFFORT_LABEL', () => {
-        it('labels every effort exactly once', () => {
-            expect(Object.keys(EFFORT_LABEL).sort()).toEqual(
-                [...ALL_EFFORTS].sort(),
-            );
-        });
-    });
-
     describe('EFFORT_STRIPE_CLASS', () => {
         it('colors each effort per MASTER.md: easy leaf, steady citrus, hard ember', () => {
             expect(EFFORT_STRIPE_CLASS.easy).toContain('border-leaf');

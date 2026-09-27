@@ -1,13 +1,5 @@
 import type { Effort } from '@/types/inertia';
 
-export const EFFORT_LABEL: Record<Effort, string> = {
-    easy: 'easy',
-    steady: 'steady',
-    hard: 'hard',
-    rest: 'rest',
-    unknown: 'unknown',
-};
-
 /**
  * The 3px leading-edge stripe MASTER.md gives every run row, keyed by
  * effort (design-system/temari/MASTER.md § Effort colors). Square corners,
