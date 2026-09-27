@@ -27,6 +27,17 @@ function print(url = 'blob:print'): Print {
     };
 }
 
+function stubMatchMedia(matches: boolean) {
+    vi.stubGlobal(
+        'matchMedia',
+        vi.fn(() => ({
+            matches,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+        })),
+    );
+}
+
 const card: ShareCardTarget = {
     name: 'Counter Kick',
     facts: makeCardFacts(),
@@ -173,6 +184,24 @@ describe('ShareCardModal', () => {
             'true',
         );
     });
+
+    it.each([false, true])(
+        'keeps the carousel transition in the motion-safe path (%s)',
+        async (prefersReducedMotion) => {
+            stubMatchMedia(prefersReducedMotion);
+            await openModal();
+            const stage = screen.getByRole('group', { name: 'print style' });
+            const rack = stage.firstElementChild as HTMLDivElement;
+
+            expect(
+                window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+            ).toBe(prefersReducedMotion);
+            expect(rack).toHaveClass(
+                'motion-safe:transition-transform',
+                'motion-safe:duration-300',
+            );
+        },
+    );
 
     it('does not treat vertical or diagonal-dominant movement as a swipe', async () => {
         await openModal();
