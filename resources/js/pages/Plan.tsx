@@ -25,6 +25,7 @@ import {
     formatNaiveMonthDayId,
     todayLocalIso,
 } from '@/lib/pace';
+import { laneStack } from '@/lib/variants';
 
 interface SeasonSummary {
     starts_at: string;
@@ -223,7 +224,7 @@ export default function Plan({
                                 className="mt-6"
                             />
                         ) : (
-                            <div className="mt-6 flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
+                            <div className={cn('mt-6', laneStack)}>
                                 <SeasonHeaderCard
                                     weekIndex={season.week_index}
                                     totalWeeks={season.total_weeks}
