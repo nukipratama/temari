@@ -75,7 +75,7 @@ function renderStrip(overrides: Partial<Parameters<typeof WeekStrip>[0]> = {}) {
 }
 
 describe('WeekStrip', () => {
-    it('draws seven tiles, Monday to Sunday, each with its day, km and one word', () => {
+    it('draws seven tiles, Monday to Sunday, each labelled with its day, km and one word', () => {
         const { tabs } = renderStrip();
 
         expect(tabs.map((tab) => tab.getAttribute('aria-label'))).toEqual([
@@ -87,7 +87,7 @@ describe('WeekStrip', () => {
             'Sat, 6.0 km, skipped',
             'Sun, 14.0 km, long',
         ]);
-        expect(tabs[3]).toHaveTextContent('—');
+        expect(tabs[3]).toHaveTextContent('rest');
     });
 
     it('marks today, a missed day, a done day, rest and a planned day apart', () => {
@@ -203,12 +203,15 @@ describe('WeekStrip', () => {
         expect(onSelect).not.toHaveBeenCalled();
     });
 
-    it('shows the short form of a still-ahead session type on its tile, the full word in its label', () => {
+    it('shows a still-ahead session type as its icon in the effort color, not a word, with the full word kept in the label', () => {
         const { tabs } = renderStrip({
             days: [day({ session_type: 'interval', status: 'planned' })],
         });
 
-        expect(tabs[0]).toHaveTextContent('reps');
+        expect(tabs[0].querySelector('[data-icon="Flame"]')).toHaveClass(
+            'text-ember-ink',
+        );
+        expect(tabs[0]).not.toHaveTextContent('interval');
         expect(tabs[0]).toHaveAttribute(
             'aria-label',
             expect.stringContaining('interval'),
@@ -238,6 +241,13 @@ describe('WeekStrip', () => {
             'aria-label',
             expect.stringContaining('skipped'),
         );
+    });
+
+    it('lays tiles out as a borderless column, matching the day cell shared with Home', () => {
+        const { tabs } = renderStrip();
+
+        expect(tabs[0].className).not.toContain('border-border');
+        expect(tabs[0].className).not.toContain('bg-card');
     });
 
     it("colors every tile's edge by its session-type effort, not by status", () => {

@@ -1,17 +1,17 @@
 import { Link } from '@inertiajs/react';
-import { Bed, ChevronRight, Feather, Flag, Flame } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 import type { WeekPlan, WeekPlanDay, WeeklySnapshot } from '@/types/inertia';
 
+import { DAY_CELL_CLASS, DayCellBody } from '@/components/plan/DayCell';
 import { ChangeRow } from '@/components/plan/DeltaPair';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon, IconComponent } from '@/components/ui/Icon';
+import { Icon } from '@/components/ui/Icon';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
-import { EFFORT_EDGE_CLASS, sessionTypeEffort } from '@/lib/effort';
-import { formatKm, parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
-import { dayStatusGlyph, deltaDirection, ranHot } from '@/lib/plan';
+import { formatKm, todayLocalIso } from '@/lib/pace';
+import { deltaDirection, ranHot, weekdayLabel } from '@/lib/plan';
 
 const PHASE_LABEL: Record<string, string> = {
     base: 'base',
@@ -31,28 +31,8 @@ const STATUS_LABEL: Record<string, string> = {
     skip: 'skipped',
 };
 
-/** Same shape-per-intensity vocabulary as the frozen prototype's TodayScreen:
- *  quality/hard days read as a flame, easy/long days as a feather, rest as a
- *  bed, and the goal race as the chequered flag it is. This is the day's
- *  `session_type`, independent of how it went. */
-const TYPE_ICON: Record<string, IconComponent> = {
-    tempo: Flame,
-    interval: Flame,
-    easy: Feather,
-    long: Feather,
-    rest: Bed,
-    race: Flag,
-};
-
 const kmFigure = (km: number | null): string =>
     formatKm(km === null ? null : km * 1000, 1);
-
-function weekdayAbbr(iso: string): string {
-    const date = parseNaiveLocalDate(iso);
-    return date === null
-        ? ''
-        : date.toLocaleDateString('en-US', { weekday: 'short' });
-}
 
 /** Native-tooltip + accessible detail for a day cell: status, the 0-100
  *  compliance score when one exists, and whether a rest day got run anyway. */
@@ -91,63 +71,17 @@ function DayCell({
     isToday,
     hasElapsed,
 }: Readonly<{ day: WeekPlanDay; isToday: boolean; hasElapsed: boolean }>) {
-    const isRest = day.session_type === 'rest';
-    const ran = hasElapsed && day.actual_km !== null;
-    const glyph = dayStatusGlyph(day);
-    const effort = sessionTypeEffort(day.session_type);
-
     return (
         <li title={dayDetail(day)}>
             <Link
                 href={`/plan?day=${day.date}`}
-                aria-label={`${weekdayAbbr(day.date)} · ${dayDetail(day)}`}
+                aria-label={`${weekdayLabel(day.date)} · ${dayDetail(day)}`}
                 className={cn(
-                    'focus-ring relative flex flex-col items-center gap-0.5 overflow-hidden rounded-lg py-1.5 transition-colors hover:bg-muted',
+                    DAY_CELL_CLASS,
                     isToday && 'ring-[1.5px] ring-inset ring-icon-accent',
                 )}
             >
-                {glyph !== null && (
-                    <Icon
-                        icon={glyph}
-                        width={8}
-                        height={8}
-                        className="absolute top-1 right-1 text-foreground"
-                        aria-hidden
-                    />
-                )}
-                <span className="text-label-micro text-foreground">
-                    {weekdayAbbr(day.date)}
-                </span>
-                <Icon
-                    icon={TYPE_ICON[day.session_type] ?? Flame}
-                    width={13}
-                    height={13}
-                    className="text-foreground"
-                    aria-hidden
-                />
-                {ran ? (
-                    <>
-                        <span className="text-meta font-bold tabular-nums text-foreground">
-                            {kmFigure(day.actual_km)} km
-                        </span>
-                        {!isRest && (
-                            <span className="text-meta leading-none text-text-2">
-                                of {kmFigure(day.distance_km)}
-                            </span>
-                        )}
-                    </>
-                ) : (
-                    <span className="text-meta text-foreground">
-                        {isRest ? 'rest' : `${kmFigure(day.distance_km)} km`}
-                    </span>
-                )}
-                <span
-                    aria-hidden
-                    className={cn(
-                        'absolute inset-x-0 bottom-0',
-                        EFFORT_EDGE_CLASS[effort],
-                    )}
-                />
+                <DayCellBody day={day} hasElapsed={hasElapsed} />
             </Link>
         </li>
     );

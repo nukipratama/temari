@@ -4,11 +4,10 @@ import { useRef } from 'react';
 
 import type { PlanDay } from '@/lib/plan';
 
-import { Icon } from '@/components/ui/Icon';
+import { DAY_CELL_CLASS, DayCellBody } from '@/components/plan/DayCell';
 import { cn } from '@/lib/cn';
-import { EFFORT_EDGE_CLASS, sessionTypeEffort } from '@/lib/effort';
 import { formatKm } from '@/lib/pace';
-import { dayStatusGlyph, weekdayLabel } from '@/lib/plan';
+import { weekdayLabel } from '@/lib/plan';
 
 type TileState = 'today' | 'missed' | 'done' | 'rest' | 'planned';
 
@@ -51,10 +50,6 @@ function tileWord(day: PlanDay): string {
     }
     return day.session_type;
 }
-
-const SHORT_WORD: Record<string, string> = {
-    interval: 'reps',
-};
 
 function tileKm(day: PlanDay): string | null {
     const km =
@@ -116,11 +111,8 @@ export default function WeekStrip({
                 const state = tileState(day, today);
                 const km = tileKm(day);
                 const word = tileWord(day);
-                const glyph = dayStatusGlyph(day);
-                const visibleWord = glyph !== null ? null : word;
                 const selected = day.date === selectedDate;
                 const isToday = state === 'today';
-                const effort = sessionTypeEffort(day.session_type);
 
                 return (
                     <button
@@ -146,7 +138,8 @@ export default function WeekStrip({
                         onClick={() => onSelect(day.date)}
                         onKeyDown={(event) => onKeyDown(event, index)}
                         className={cn(
-                            'focus-ring relative flex min-w-0 flex-col items-center gap-1 overflow-hidden rounded-sm border border-border bg-card py-2 text-foreground',
+                            DAY_CELL_CLASS,
+                            'min-w-0',
                             selected &&
                                 (isToday
                                     ? 'ring-2 ring-icon-accent ring-offset-1 ring-offset-card'
@@ -156,33 +149,7 @@ export default function WeekStrip({
                                 'ring-[1.5px] ring-inset ring-icon-accent',
                         )}
                     >
-                        <span className="text-label-micro">
-                            {weekdayLabel(day.date)}
-                        </span>
-                        <span className="font-mono text-xs font-bold tabular-nums">
-                            {km ?? '—'}
-                        </span>
-                        {glyph !== null ? (
-                            <Icon
-                                icon={glyph}
-                                width={11}
-                                height={11}
-                                aria-hidden
-                            />
-                        ) : (
-                            visibleWord !== null && (
-                                <span className="text-meta w-full truncate text-center leading-none text-text-2">
-                                    {SHORT_WORD[visibleWord] ?? visibleWord}
-                                </span>
-                            )
-                        )}
-                        <span
-                            aria-hidden
-                            className={cn(
-                                'absolute inset-x-0 bottom-0',
-                                EFFORT_EDGE_CLASS[effort],
-                            )}
-                        />
+                        <DayCellBody day={day} hasElapsed={day.date <= today} />
                     </button>
                 );
             })}
