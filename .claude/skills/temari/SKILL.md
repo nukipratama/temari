@@ -77,7 +77,6 @@ Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 - `mood-{blazing,easy,wobbly,gassed,overloaded,chill}` (each with a pastel `-bg` cell tint and an `-ink` label variant) — calendar cells + mood badges.
 - `rarity-{common,uncommon,rare,epic,legendary}` (each with an `-ink` label variant) — card rarity.
 - semantic hues `leaf` / `leaf-deep` / `leaf-ink`, `ember` / `ember-deep` / `ember-ink`, `citrus` / `citrus-ink`, `stone` (`-deep` fills a dark CTA, `-ink` carries the label; `citrus` fills no CTA and has no `-deep`).
-- `strava-orange` / `strava-orange-hover` — reserved, never themed (see below).
 
 `citrus` (`#c9971f`) is reserved for PR / legendary celebrations only.
 
@@ -111,12 +110,16 @@ Tailwind's neutral defaults), and padding names a role (`.pad-chip` / `.pad-pane
 off-scale radii; `/devtools/design` renders the whole set plus a live contrast audit read out of
 the shipped CSS.
 
-### Strava brand mark — hands off
+### Strava brand mark
 
-The "Connect with Strava" button (and any Strava brand mark) is never restyled. Strava brand
-orange `#FC4C02` / hover `#E34402` are reserved via `--color-strava-orange` tokens. Within any card
-that **displays the Strava brand mark**, keep other warm accents off it: switch the local context
-to neutral (`surface-sunken` + `ink`) so the brand mark gets breathing room. Strava can revoke API access for brand-guideline violations.
+Every Strava (and Telegram) connect/reconnect button uses the standard pill
+(`PillButton` / `pillButtonVariants` in
+[variants.ts](../../../resources/js/lib/variants.ts)), with the vendor logo kept as the icon —
+the button chrome itself is themed like any other pill, and the dedicated `strava-orange` tokens
+are retired. Within any card that **displays the Strava brand mark**, keep other warm accents off
+it: switch the local context to neutral (`surface-sunken` + `ink`) so the brand mark gets
+breathing room. Strava can revoke API access for brand-guideline violations, a risk the owner
+accepted knowingly when the buttons moved onto the pill (#1271).
 
 ### CTA contrast rule (WCAG)
 

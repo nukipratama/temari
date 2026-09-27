@@ -97,9 +97,7 @@
         "rarity-uncommon",
         "sky",
         "sky-2",
-        "sky-deep",
-        "strava-orange",
-        "strava-orange-hover"
+        "sky-deep"
     ],
     "__tint": "Heaviest bg-<family>/<alpha> tint a component paints under text-<family>-ink. Composited over the darkest paper, it is the real ground that chip prints on. Derived from resources/js; DesignTokenContrastTest fails when this drifts from the source.",
     "tint": {

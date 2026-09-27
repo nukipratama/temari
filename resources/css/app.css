@@ -121,9 +121,9 @@
        resources/brand/apply-pewter.mjs, which reuses build-directions.mjs's
        palette() (do not hand-tune a single member); do not re-run it against
        a different direction without re-checking every mirror file (see
-       DesignTokenMirrorsTest). leaf/ember/citrus/rarity/mood/strava-orange
-       are held constant across every direction on purpose — not brand,
-       loot/effort colours — only their `-ink` members move with ground. */
+       DesignTokenMirrorsTest). leaf/ember/citrus/rarity/mood are held
+       constant across every direction on purpose — not brand, loot/effort
+       colours — only their `-ink` members move with ground. */
 
     /* Sky — structure, hero panels, dark surfaces. Pewter: cold near-black. */
     --color-sky: #171f28;
@@ -207,10 +207,6 @@
     --color-rarity-epic-ink: #8543c4;
     --color-rarity-legendary: #f5a623;
     --color-rarity-legendary-ink: #865b13;
-
-    /* Strava brand (untouched, never themed). */
-    --color-strava-orange: #fc4c02;
-    --color-strava-orange-hover: #e34402;
 
     /* ─── Ground-reactive semantic layer ──────────────────────────────
        Two-ground token model (F2). Every token below is redeclared, literal

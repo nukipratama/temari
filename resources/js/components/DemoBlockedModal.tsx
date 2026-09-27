@@ -33,7 +33,7 @@ export default function DemoBlockedModal({
             }
             primaryLabel="Connect Strava"
             primaryIcon={StravaIcon}
-            primaryClassName="bg-strava-orange text-white hover:bg-strava-orange-hover"
+            primaryClassName="bg-card border-[1.5px] border-border text-text-2 hover:border-foreground/40 hover:text-foreground"
             onPrimary={() => router.post('/logout')}
         />
     );

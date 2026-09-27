@@ -147,7 +147,7 @@ export default function Profile({
                             stravaSync?.state === 'revoked' ? (
                                 <a
                                     href="/auth/strava/redirect?from=/profile"
-                                    className="focus-ring inline-flex items-center gap-1.5 rounded-full bg-strava-orange px-3 py-1 text-label-micro text-white transition hover:bg-strava-orange-hover"
+                                    className="focus-ring inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-label-micro text-text-2 transition hover:border-foreground/40 hover:text-foreground"
                                 >
                                     <Icon
                                         icon={StravaIcon}
