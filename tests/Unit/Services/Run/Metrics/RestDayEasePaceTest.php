@@ -13,15 +13,18 @@ uses(RefreshDatabase::class);
 
 $asOf = fn (): Carbon => Carbon::parse('2026-06-15 08:00:00');
 
-/** One run (activity + detail) at the given pace, on the given day. */
+/** One run (activity + detail) at the given elapsed-time pace, on the given day. */
 function easePaceRun(User $user, Carbon $day, float $distanceM, float $secPerKm): void
 {
+    $seconds = (int) round($secPerKm * $distanceM / 1000);
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => $day->copy()->setTime(7, 0),
         'distance' => $distanceM,
-        'moving_time' => (int) round($secPerKm * $distanceM / 1000),
-        'elapsed_time' => (int) round($secPerKm * $distanceM / 1000),
+        // Deliberately different from elapsed_time: proves classification and
+        // the pace math both run on elapsed time, never moving time.
+        'moving_time' => $seconds - 60,
+        'elapsed_time' => $seconds,
     ]);
 }
 
@@ -113,6 +116,25 @@ it('excludes runs outside the easy pace band from both sides', function () use (
 
     expect(app(RestDayEasePace::class)->forUser($user, $asOf()))->toBe([
         'deltaSecPerKm' => 12.0,
+        'direction' => 'quicker',
+    ]);
+});
+
+it('returns null when the gap is under the display threshold', function () use ($asOf): void {
+    $user = User::factory()->create();
+    seedEaseSamples($user, $asOf(), 5, 400.0, 5, 404.0);
+
+    expect(app(RestDayEasePace::class)->forUser($user, $asOf()))
+        ->toBeNull()
+        ->and(RestDayEasePace::MIN_DELTA_SEC_PER_KM)->toBe(5.0);
+});
+
+it('shows the gap once it reaches the display threshold', function () use ($asOf): void {
+    $user = User::factory()->create();
+    seedEaseSamples($user, $asOf(), 5, 400.0, 5, 405.0);
+
+    expect(app(RestDayEasePace::class)->forUser($user, $asOf()))->toBe([
+        'deltaSecPerKm' => 5.0,
         'direction' => 'quicker',
     ]);
 });

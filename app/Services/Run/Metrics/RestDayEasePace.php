@@ -21,6 +21,9 @@ class RestDayEasePace
 
     public const int MIN_SAMPLES = 5;
 
+    /** Below this gap, the two sides are the same pace for display purposes. */
+    public const float MIN_DELTA_SEC_PER_KM = 5.0;
+
     public function __construct(
         private readonly PastYouMatcher $matcher,
     ) {
@@ -61,6 +64,10 @@ class RestDayEasePace
         $meanOthers = array_sum($others) / count($others);
         $deltaSec = $meanOthers - $meanAfterRest;
 
+        if (abs($deltaSec) < self::MIN_DELTA_SEC_PER_KM) {
+            return null;
+        }
+
         return [
             'deltaSecPerKm' => round(abs($deltaSec), 1),
             'direction' => $deltaSec > 0 ? 'quicker' : 'slower',
@@ -94,8 +101,10 @@ class RestDayEasePace
     }
 
     /**
-     * Easy-band pace (sec/km, distance over moving time) for every run in the
-     * window, keyed by calendar day.
+     * Easy-band pace for every run in the window, keyed by calendar day. On
+     * elapsed time, matching {@see ActivityDetail::paceSecPerKm()} and the
+     * elapsed-time convention {@see PastYouMatcher}'s band edges were
+     * calibrated against — moving time would misclassify a run with stops.
      *
      * @return array<string, list<float>>
      */
@@ -107,7 +116,7 @@ class RestDayEasePace
                 ->select([
                     'activity_details.start_date_local',
                     'activity_details.distance',
-                    'activity_details.moving_time',
+                    'activity_details.elapsed_time',
                 ]),
         )
             ->where('activities.user_id', $userId)
@@ -119,11 +128,11 @@ class RestDayEasePace
 
         $byDate = [];
         foreach ($rows as $row) {
-            if ($row->distance === null || $row->moving_time === null) {
+            if ($row->distance === null || $row->elapsed_time === null) {
                 continue;
             }
 
-            $pace = PaceCalculator::secPerKm((float) $row->distance, (int) $row->moving_time);
+            $pace = PaceCalculator::secPerKm((float) $row->distance, (int) $row->elapsed_time);
             if ($pace === null || $this->matcher->paceBand($pace) !== PastYouMatcher::BAND_EASY) {
                 continue;
             }
