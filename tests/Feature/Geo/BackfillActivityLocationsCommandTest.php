@@ -55,7 +55,7 @@ it('skips already-resolved details and those without coords', function (): void 
     Queue::assertPushed(ResolveActivityLocationJob::class, 1);
 });
 
-it('staggers the resolve dispatches so they pace ~1/sec instead of bursting', function (): void {
+it('stagger dispatches one second apart', function (): void {
     Queue::fake();
     $this->freezeTime();
 
@@ -70,8 +70,6 @@ it('staggers the resolve dispatches so they pace ~1/sec instead of bursting', fu
 
     $this->artisan('geo:backfill-locations')->assertSuccessful();
 
-    // The WithoutOverlapping lock only serializes; the staggered delay is what
-    // actually spaces the requests. Each successive dispatch is one second later.
     $delays = Queue::pushed(ResolveActivityLocationJob::class)
         ->map(fn ($job): int => (int) round(now()->diffInSeconds($job->delay)))
         ->sort()

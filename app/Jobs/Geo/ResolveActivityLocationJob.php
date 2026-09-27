@@ -6,26 +6,17 @@ namespace App\Jobs\Geo;
 
 use App\Actions\Geo\ReverseGeocodeAction;
 use App\Models\ActivityDetail;
+use App\Services\Geo\NominatimRateSlotUnavailable;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Carbon;
 
 class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
-    /**
-     * The WithoutOverlapping lock caps this at 1 job/sec cluster-wide, and
-     * ReverseGeocodeAction swallows every request exception into a null return
-     * rather than throwing — so a fixed $tries counts lock-contention releases
-     * against the same tiny budget as real failures. A bulk backfill queues
-     * far more than a couple of jobs behind the lock, so retry on a time
-     * window instead: it survives the queue backlog and still self-heals via
-     * the hourly geo:backfill-locations catch-up if it ever runs out.
-     */
     private const int RETRY_WINDOW_MINUTES = 20;
 
     public int $uniqueFor = self::RETRY_WINDOW_MINUTES * 60;
@@ -44,18 +35,6 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
         return now()->addMinutes(self::RETRY_WINDOW_MINUTES);
     }
 
-    /**
-     * @return array<int, object>
-     */
-    public function middleware(): array
-    {
-        return [
-            new WithoutOverlapping('geo:nominatim:reverse')
-                ->releaseAfter(2)
-                ->expireAfter(20),
-        ];
-    }
-
     public function handle(ReverseGeocodeAction $resolver): void
     {
         $detail = ActivityDetail::query()->find($this->activityDetailId);
@@ -69,7 +48,13 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $resolved = $resolver($detail->start_lat, $detail->start_lng);
+        try {
+            $resolved = $resolver($detail->start_lat, $detail->start_lng);
+        } catch (NominatimRateSlotUnavailable) {
+            $this->release(2);
+
+            return;
+        }
 
         // Only stamp resolved_at on a real hit. A null is a transient Nominatim
         // miss (rate limit / timeout / empty body): leaving resolved_at null keeps
