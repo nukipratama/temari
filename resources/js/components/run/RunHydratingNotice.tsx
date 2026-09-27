@@ -57,7 +57,7 @@ export default function RunHydratingNotice({
     return (
         <div
             role="status"
-            className="flex items-start gap-3 rounded-md border border-border-strong bg-card p-4 shadow-e1"
+            className="flex items-start gap-3 rounded-sm bg-secondary p-4"
         >
             <Icon
                 icon={stoppedPolling ? Clock : Download}

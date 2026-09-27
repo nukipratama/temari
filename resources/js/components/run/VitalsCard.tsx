@@ -5,7 +5,6 @@ import type { ActivityDetail, StreamSummary } from '@/types/inertia';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import { showsDecoupling, showsGrade } from '@/lib/anchors';
 import { cn } from '@/lib/cn';
 
@@ -143,8 +142,8 @@ export default function VitalsCard({
     }
 
     return (
-        <Card as="section" padding="hero" className={className}>
-            <Eyebrow token="micro" tone="ink-2" className="mb-3.5">
+        <section className={className}>
+            <Eyebrow token="small" tone="ink-2" className="mb-3.5">
                 Vitals
             </Eyebrow>
 
@@ -204,7 +203,7 @@ export default function VitalsCard({
                                     ? undefined
                                     : `anchor-metric-${tile.metric}`
                             }
-                            className="rounded-sm bg-muted p-2.5 text-center"
+                            className="rounded-sm bg-secondary p-2.5 text-center"
                         >
                             <Icon
                                 icon={tile.icon}
@@ -227,7 +226,7 @@ export default function VitalsCard({
             {decoupling !== null && (
                 <Decoupling value={decoupling} detail={detail} />
             )}
-        </Card>
+        </section>
     );
 }
 

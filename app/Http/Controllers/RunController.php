@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\Effort;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\StoryLine;
@@ -80,11 +81,21 @@ class RunController extends Controller
             $activity->id,
         );
 
+        $viewedEffort = null;
+        $effortFor = function () use ($user, $activity, $detail, &$viewedEffort): Effort {
+            return $viewedEffort ??= RunEffort::forDetails($user->id, collect([$detail]))[$activity->id] ?? Effort::Unknown;
+        };
+
         return Inertia::render('Runs/Show', [
-            // `activity` and `detail` are already hydrated for the 404 guards
-            // above, so a closure would defer nothing.
+            // `activity` is already hydrated for the 404 guards above, so a
+            // closure would defer nothing.
             'activity' => $activity,
-            'detail' => $detail,
+            // Closured so a poll reloading only the insight props skips the effort lookup.
+            'detail' => function () use ($detail, $effortFor): ActivityDetail {
+                $detail->setAttribute('effort', $effortFor()->value);
+
+                return $detail;
+            },
             // True only when this view queued the deeper fetch, so the notice
             // promising "it fills itself in" is never shown to a run nothing is
             // coming for (demo data, a revoked connection, an already-detailed row).
@@ -105,12 +116,11 @@ class RunController extends Controller
             'isChainHead' => fn (): bool => Activity::latestIdForUser($user->id) === $activity->id,
             'speechAnalysis' => fn (): array => $payloadFor(AnalysisType::PostRunSpeech),
             'runInsight' => fn (): array => $payloadFor(AnalysisType::RunInsight),
-            'pastYou' => function () use ($matcher, $hydrator, $activity, $detail, $user): ?array {
+            'pastYou' => function () use ($matcher, $hydrator, $activity, $detail, $effortFor): ?array {
                 $match = $matcher->findMatchContext($activity, $detail);
                 if ($match !== null) {
                     $hydrator->hydrate($match['past_activity_id']);
-                    $effort = RunEffort::forDetails($user->id, collect([$detail]))[$activity->id] ?? Effort::Unknown;
-                    $match['effort'] = $effort->value;
+                    $match['effort'] = $effortFor()->value;
                 }
 
                 return $match;

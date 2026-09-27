@@ -15,7 +15,6 @@ import TemariMascot, { writingPose } from '@/components/temari/TemariMascot';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import { triggerAnalysis } from '@/hooks/useAnalysisTrigger';
 import {
     cooldownAriaLabel,
@@ -213,22 +212,22 @@ export default function RunLenses({
 
     return (
         <section className={className}>
-            <header className="mb-3 flex items-center gap-3">
+            <header className="flex items-center gap-3">
                 <TemariMascot
                     pose={writingPose(mood, story, insight)}
                     size={40}
                 />
                 <div className="min-w-0 flex-1">
-                    <h2 className="font-serif text-quote-md italic text-foreground">
+                    <Eyebrow as="h3" token="small" tone="ink-2">
                         What Temari says
-                    </h2>
-                    <p className="mt-0.5 font-sans text-xs text-text-3">
+                    </Eyebrow>
+                    <p className="mt-0.5 text-sm text-text-2">
                         The story of this run, and what stood out.
                     </p>
                 </div>
             </header>
 
-            <Card tone="narration" padding="hero">
+            <div className="mt-3">
                 <LensLabel icon={MessageCircle}>
                     This run&apos;s story
                 </LensLabel>
@@ -244,11 +243,7 @@ export default function RunLenses({
                 />
 
                 {showInsight && (
-                    <>
-                        <div
-                            aria-hidden
-                            className="my-3.5 h-px bg-border-strong"
-                        />
+                    <div className="mt-3.5 border-t border-dashed border-border pt-3.5">
                         <LensLabel icon={Lightbulb}>What stood out</LensLabel>
                         <AnalysisStatus
                             analysis={insight}
@@ -260,7 +255,7 @@ export default function RunLenses({
                                 <ClaimList text={text} drawn={drawnAnchors} />
                             )}
                         />
-                    </>
+                    </div>
                 )}
 
                 {/* Regenerate is head-only (chained kind); historical runs
@@ -288,7 +283,7 @@ export default function RunLenses({
                         </button>
                     </div>
                 )}
-            </Card>
+            </div>
         </section>
     );
 }

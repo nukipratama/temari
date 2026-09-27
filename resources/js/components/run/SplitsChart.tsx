@@ -5,7 +5,6 @@ import type { StreamSummaryPartial, StreamSummaryPerKm } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 import { formatKm, formatPace } from '@/lib/pace';
 import { computeBarWidth, paceScale, paceSecOf } from '@/lib/splits';
@@ -122,8 +121,8 @@ export default function SplitsChart({
     }
 
     return (
-        <Card as="section" padding="hero" className={className}>
-            <Eyebrow token="micro" tone="ink-2">
+        <section className={className}>
+            <Eyebrow token="small" tone="ink-2">
                 Splits per km
             </Eyebrow>
             <p className="mb-1.5 mt-0.5 font-sans text-xs text-text-3">
@@ -235,7 +234,7 @@ export default function SplitsChart({
                     </span>
                 </div>
             )}
-        </Card>
+        </section>
     );
 }
 

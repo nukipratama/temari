@@ -37,8 +37,8 @@ describe('LapsCarousel', () => {
     it('picks the fastest lap out, and only that one', () => {
         render(<LapsCarousel laps={laps} />);
         const cards = screen.getAllByRole('listitem');
-        expect(cards[1]).toHaveClass('bg-horizon/10');
-        expect(cards[0]).toHaveClass('bg-card');
+        expect(cards[1]).toHaveClass('ring-icon-accent');
+        expect(cards[0]).not.toHaveClass('ring-icon-accent');
     });
 
     it('shows heart rate and cadence per lap', () => {
@@ -73,7 +73,9 @@ describe('LapsCarousel', () => {
                 ]}
             />,
         );
-        expect(screen.getByRole('listitem')).toHaveClass('bg-card');
+        expect(screen.getByRole('listitem')).not.toHaveClass(
+            'ring-icon-accent',
+        );
     });
 
     it('scrolls sideways rather than paging', () => {

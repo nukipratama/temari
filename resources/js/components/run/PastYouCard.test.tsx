@@ -24,11 +24,11 @@ describe('PastYouCard', () => {
         expect(container).toBeEmptyDOMElement();
     });
 
-    it("colors the card's leading-edge stripe by the viewed run's effort", () => {
-        render(<PastYouCard match={match({ effort: 'hard' })} />);
-        expect(document.querySelector('span[aria-hidden]')).toHaveClass(
-            'border-ember',
+    it("colors the section's leading-edge stripe by the viewed run's effort", () => {
+        const { container } = render(
+            <PastYouCard match={match({ effort: 'hard' })} />,
         );
+        expect(container.firstChild).toHaveClass('border-ember');
     });
 
     it('leads with the pace delta and names the run it beat', () => {
