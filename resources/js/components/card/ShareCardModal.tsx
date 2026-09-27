@@ -299,6 +299,10 @@ export default function ShareCardModal({
                         if (event.key === 'ArrowRight') step(1);
                     }}
                     onTouchStart={(event) => {
+                        if (event.touches.length > 1) {
+                            swipeStartRef.current = null;
+                            return;
+                        }
                         if (swipeStartRef.current !== null) return;
                         const touch = event.touches[0];
                         if (touch) {

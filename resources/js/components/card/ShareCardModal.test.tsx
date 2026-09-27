@@ -197,7 +197,7 @@ describe('ShareCardModal', () => {
         ).toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('ignores a second finger and resets a cancelled swipe', async () => {
+    it('abandons a swipe when a second finger joins and resets cancellation', async () => {
         await openModal();
         const stage = screen.getByRole('group', { name: 'print style' });
         const first = { identifier: 1, clientX: 200, clientY: 100 };
@@ -205,20 +205,19 @@ describe('ShareCardModal', () => {
 
         fireEvent.touchStart(stage, { touches: [first] });
         fireEvent.touchStart(stage, { touches: [first, second] });
-        fireEvent.touchEnd(stage, { changedTouches: [second] });
+        fireEvent.touchEnd(stage, {
+            touches: [second],
+            changedTouches: [{ identifier: 1, clientX: 100, clientY: 105 }],
+        });
 
         expect(
             screen.getByRole('button', { name: 'broadsheet' }),
         ).toHaveAttribute('aria-pressed', 'true');
 
-        fireEvent.touchEnd(stage, {
-            changedTouches: [{ identifier: 1, clientX: 100, clientY: 105 }],
-        });
-
-        expect(screen.getByRole('button', { name: 'ticket' })).toHaveAttribute(
-            'aria-pressed',
-            'true',
-        );
+        fireEvent.touchEnd(stage, { touches: [], changedTouches: [second] });
+        expect(
+            screen.getByRole('button', { name: 'broadsheet' }),
+        ).toHaveAttribute('aria-pressed', 'true');
 
         fireEvent.touchStart(stage, {
             touches: [{ identifier: 3, clientX: 200, clientY: 100 }],
@@ -228,10 +227,9 @@ describe('ShareCardModal', () => {
             changedTouches: [{ identifier: 3, clientX: 100, clientY: 100 }],
         });
 
-        expect(screen.getByRole('button', { name: 'ticket' })).toHaveAttribute(
-            'aria-pressed',
-            'true',
-        );
+        expect(
+            screen.getByRole('button', { name: 'broadsheet' }),
+        ).toHaveAttribute('aria-pressed', 'true');
 
         fireEvent.touchStart(stage, {
             touches: [{ identifier: 4, clientX: 200, clientY: 100 }],
@@ -240,9 +238,10 @@ describe('ShareCardModal', () => {
             changedTouches: [{ identifier: 4, clientX: 100, clientY: 105 }],
         });
 
-        expect(
-            screen.getByRole('button', { name: 'topo plate' }),
-        ).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'ticket' })).toHaveAttribute(
+            'aria-pressed',
+            'true',
+        );
     });
 
     it('offers a retry when a print cannot be made', async () => {
