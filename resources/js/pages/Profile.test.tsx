@@ -216,6 +216,7 @@ describe('Profile', () => {
                         category: '5km',
                         weeks: ['2026-04-13', '2026-04-20', '2026-04-27'],
                         times_sec: [1800, 1770, 1751],
+                        activity_ids: [101, 102, 103],
                         goal_sec: 1740,
                     },
                 }}

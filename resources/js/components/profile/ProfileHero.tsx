@@ -10,7 +10,6 @@ import { writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import Skeleton from '@/components/ui/Skeleton';
-import { SCROLL_FADE_MASK, useScrollFade } from '@/hooks/useScrollFade';
 import { formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 
@@ -21,16 +20,43 @@ export interface HeroStat {
 }
 
 /**
+ * Temari's read on the athlete, split into the sentence that leads and the
+ * rest. A single-sentence narration renders as the lead alone, matching
+ * Today's `SessionVoice`.
+ */
+function leadSentence(text: string): readonly [string, string] {
+    const match = /^(.+?[.!?])\s+(.*)$/s.exec(text);
+    return match ? [match[1], match[2]] : [text, ''];
+}
+
+function ProfileVoice({ text }: Readonly<{ text: string }>) {
+    const [lead, body] = leadSentence(stripEdgeQuotes(text));
+
+    if (lead === '') {
+        return null;
+    }
+
+    return (
+        <>
+            <p className="font-serif text-headline-sm text-foreground italic">
+                {renderBold(lead)}
+            </p>
+            {body !== '' && (
+                <p className="narration mt-2.5">{renderBold(body)}</p>
+            )}
+        </>
+    );
+}
+
+/**
  * "What Temari says about you": Temari posed to today's vibe, her read on
- * the athlete, where their training time went, and the lifetime numbers
- * behind it. A card-toned panel with a horizon halo, as the prototype draws
- * it — not one of the app's sky-gradient heroes. The thin inset lime ring
- * marks it as Temari's read, not a bordered card.
+ * the athlete, and the lifetime numbers behind it. Modeled on Today's
+ * session section (`TodaySession.tsx`) rather than drawn as a bordered
+ * card — no ring, no panel toning.
  */
 export default function ProfileHero({
     mood,
     firstRunAt,
-    memberSince,
     voice,
     timeInZone,
     stats,
@@ -38,99 +64,42 @@ export default function ProfileHero({
 }: Readonly<{
     mood: Mood;
     firstRunAt: string | null;
-    memberSince: string | null;
     voice?: AnalysisPayload;
     timeInZone: TimeInZone | null | undefined;
     stats: ReadonlyArray<HeroStat>;
     action?: ReactNode;
 }>) {
-    const statRail = useScrollFade<HTMLDivElement>();
-
     return (
-        <section className="relative isolate overflow-hidden rounded-panel bg-card p-5 ring-1 ring-inset ring-horizon/35">
-            <span
-                aria-hidden
-                className="pointer-events-none absolute -right-14 -top-14 size-[220px] rounded-full"
-                style={{
-                    background:
-                        'radial-gradient(circle, color-mix(in oklab, var(--color-horizon) 22%, transparent) 0%, transparent 70%)',
-                }}
-            />
-
+        <section className="relative isolate overflow-hidden">
             <MascotWatermark
                 pose={writingPose(mood, voice)}
                 className="-top-20 -right-14 min-[900px]:-top-16 min-[900px]:right-56"
             />
 
-            <header className="relative flex items-center gap-3.5">
-                <div className="min-w-0">
-                    <Eyebrow token="micro" tone="horizon-ink">
-                        ★ What temari says about you
-                    </Eyebrow>
-                    {firstRunAt && (
-                        <p className="mt-1.5 text-label-micro text-text-2">
-                            Est. {formatShortDateId(firstRunAt)}
-                        </p>
-                    )}
-                </div>
-                {/* Reflow #9: the prototype reveals this block at 900px and draws
-                    nothing in its place below, where the "Est." line above already
-                    carries a date. */}
-                {memberSince && (
-                    <div className="ml-auto hidden flex-none text-right min-[900px]:block">
-                        <Eyebrow token="micro" tone="ink-3">
-                            With temari since
-                        </Eyebrow>
-                        <p className="mt-1 font-serif text-headline-sm text-foreground">
-                            {formatShortDateId(memberSince)}
-                        </p>
-                    </div>
-                )}
-            </header>
+            <Eyebrow token="micro" tone="horizon-ink">
+                what temari says about you
+                {firstRunAt && ` · est. ${formatShortDateId(firstRunAt)}`}
+            </Eyebrow>
 
             {voice && (
-                <div className="relative mt-4">
+                <div className="mt-3">
                     <AnalysisStatus
                         analysis={voice}
                         inertiaReloadProps={['profileVoice']}
-                        renderContent={(text) => (
-                            <p className="narration">
-                                {renderBold(stripEdgeQuotes(text))}
-                            </p>
-                        )}
+                        renderContent={(text) => <ProfileVoice text={text} />}
                     />
                 </div>
             )}
 
-            {action && <div className="relative mt-4">{action}</div>}
+            {action && <div className="mt-4">{action}</div>}
 
-            {timeInZone === undefined ? (
-                <div className="relative mt-5">
-                    <Skeleton className="h-[52px] w-full rounded-lg" />
-                </div>
-            ) : (
-                timeInZone && (
-                    <div className="relative mt-5">
-                        <TimeInZoneBar zones={timeInZone} />
-                    </div>
-                )
-            )}
-
-            <div className="relative -mx-5 mt-5 border-t border-border-strong" />
+            <div className="mt-5 border-t border-dashed border-border" />
             {stats.length > 0 ? (
-                <div
-                    ref={statRail.ref}
-                    style={{
-                        maskImage: statRail.faded
-                            ? SCROLL_FADE_MASK
-                            : undefined,
-                    }}
-                    className="relative -mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 pt-3.5 scrollbar-thin-fine"
-                >
+                <div className="mt-3.5 grid grid-cols-3 gap-2">
                     {stats.map((stat) => (
                         <div
                             key={stat.label}
-                            className="grow shrink-0 basis-[108px] min-w-fit rounded-sm bg-secondary px-2.5 py-3 text-center"
+                            className="rounded-sm bg-secondary px-2.5 py-3 text-center"
                         >
                             <Icon
                                 icon={stat.icon}
@@ -149,10 +118,22 @@ export default function ProfileHero({
                     ))}
                 </div>
             ) : (
-                <p className="relative mt-3.5 text-sm text-text-2">
+                <p className="mt-3.5 text-sm text-text-2">
                     no runs yet. sync your first one and your numbers show up
                     here.
                 </p>
+            )}
+
+            {timeInZone === undefined ? (
+                <div className="mt-6 border-t border-dashed border-border pt-6">
+                    <Skeleton className="h-[52px] w-full rounded-lg" />
+                </div>
+            ) : (
+                timeInZone && (
+                    <div className="mt-6 border-t border-dashed border-border pt-6">
+                        <TimeInZoneBar zones={timeInZone} />
+                    </div>
+                )
             )}
         </section>
     );

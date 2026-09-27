@@ -26,7 +26,6 @@ function renderHero(
         <ProfileHero
             mood="easy"
             firstRunAt="2026-06-12"
-            memberSince="2026-06-12"
             timeInZone={null}
             stats={STATS}
             {...overrides}
@@ -43,33 +42,23 @@ describe('ProfileHero', () => {
         expect(mascot?.getAttribute('width')).toBe('200');
     });
 
-    it('renders the eyebrow, the est. date and every stat tile', () => {
+    it('renders the eyebrow with the merged est. date and every stat tile', () => {
         renderHero();
 
         expect(
-            screen.getByText('★ What temari says about you'),
+            screen.getByText('what temari says about you · est. 12 jun 2026'),
         ).toBeInTheDocument();
-        expect(screen.getByText('Est. 12 jun 2026')).toBeInTheDocument();
         expect(screen.getByText('284.6')).toBeInTheDocument();
         expect(screen.getByText('Total runs')).toBeInTheDocument();
     });
 
-    it('omits the est. line when the athlete has no first run yet', () => {
+    it('omits the est. suffix when the athlete has no first run yet', () => {
         renderHero({ firstRunAt: null });
 
-        expect(screen.queryByText(/^Est\./)).not.toBeInTheDocument();
-    });
-
-    it('renders the join-date block, which CSS reveals only at 900px', () => {
-        renderHero();
-
-        expect(screen.getByText('With temari since')).toBeInTheDocument();
-    });
-
-    it('omits the join-date block when member_since is missing', () => {
-        renderHero({ memberSince: null });
-
-        expect(screen.queryByText('With temari since')).not.toBeInTheDocument();
+        expect(
+            screen.getByText('what temari says about you'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/est\./)).not.toBeInTheDocument();
     });
 
     it('renders the zone bar only when zone time exists', () => {
@@ -126,6 +115,28 @@ describe('ProfileHero', () => {
         expect(
             screen.getByText(/You keep showing up on the hard days/),
         ).toBeInTheDocument();
+    });
+
+    it('splits a multi-sentence narration into a serif lead and sans prose', () => {
+        const { container } = renderHero({
+            voice: {
+                id: 3,
+                status: 'done',
+                content:
+                    'You keep showing up on the hard days. That adds up more than any single fast one.',
+                type: 'profile_voice',
+                subject_type: 'profile_voice_user',
+                subject_id: 1,
+                discriminator: '2026-W24',
+            },
+        });
+
+        expect(container.querySelector('.font-serif.italic')?.textContent).toBe(
+            'You keep showing up on the hard days.',
+        );
+        expect(container.querySelector('.narration')?.textContent).toBe(
+            'That adds up more than any single fast one.',
+        );
     });
 
     it('renders a caller-supplied action', () => {

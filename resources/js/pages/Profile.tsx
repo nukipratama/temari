@@ -139,7 +139,6 @@ export default function Profile({
                     <ProfileHero
                         mood={mood}
                         firstRunAt={identity.first_run_at}
-                        memberSince={identity.member_since}
                         voice={profileVoice}
                         timeInZone={timeInZone}
                         stats={heroStats}

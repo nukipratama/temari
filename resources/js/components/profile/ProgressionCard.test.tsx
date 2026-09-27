@@ -12,12 +12,14 @@ const BY_CATEGORY = {
         category: '5km',
         weeks: ['2026-04-13', '2026-04-20', '2026-04-27'],
         times_sec: [1800, 1770, 1751],
+        activity_ids: [101, 102, 103],
         goal_sec: 1740,
     },
     '10km': {
         category: '10km',
         weeks: ['2026-04-13', '2026-04-20', '2026-04-27'],
         times_sec: [3800, 3770, 3751],
+        activity_ids: [201, 202, 203],
         goal_sec: null,
     },
 };

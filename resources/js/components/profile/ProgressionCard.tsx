@@ -12,6 +12,7 @@ export interface ProgressionSeries {
     category: string;
     weeks: string[];
     times_sec: Array<number | null>;
+    activity_ids: Array<number | null>;
     goal_sec: number | null;
 }
 
@@ -98,6 +99,7 @@ export default function ProgressionCard({
                 key={selected}
                 weeks={series.weeks}
                 timesSec={series.times_sec}
+                activityIds={series.activity_ids}
             />
         </section>
     );
