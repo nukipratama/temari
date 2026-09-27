@@ -5,6 +5,7 @@ import type { ContextualOrigin, TabId } from '@/lib/nav';
 import { isTabId, navTabFor } from '@/lib/navRoutes';
 
 const ORIGIN_KEY = 'temari:navigation:origin';
+const ORIGIN_CHANGE_EVENT = 'temari:navigation:origin-change';
 
 export interface NavigationPage {
     component: string;
@@ -47,6 +48,21 @@ function tabId(value: unknown): TabId | null {
     return isTabId(value) ? value : null;
 }
 
+export function subscribeToContextualOrigin(listener: () => void): () => void {
+    window.addEventListener(ORIGIN_CHANGE_EVENT, listener);
+    return () => window.removeEventListener(ORIGIN_CHANGE_EVENT, listener);
+}
+
+export function contextualOriginSnapshot(): string | null {
+    return typeof window === 'undefined'
+        ? null
+        : window.sessionStorage.getItem(ORIGIN_KEY);
+}
+
+function notifyContextualOriginChange(): void {
+    window.dispatchEvent(new Event(ORIGIN_CHANGE_EVENT));
+}
+
 export function readContextualOrigin(): ContextualOrigin | null {
     const stored = window.sessionStorage.getItem(ORIGIN_KEY);
     if (stored === null) return null;
@@ -79,6 +95,7 @@ export function readContextualOrigin(): ContextualOrigin | null {
 export function writeContextualOrigin(origin: ContextualOrigin | null): void {
     if (origin === null) {
         window.sessionStorage.removeItem(ORIGIN_KEY);
+        notifyContextualOriginChange();
         return;
     }
 
@@ -90,6 +107,7 @@ export function writeContextualOrigin(origin: ContextualOrigin | null): void {
         origin.scrollY < 0
     ) {
         window.sessionStorage.removeItem(ORIGIN_KEY);
+        notifyContextualOriginChange();
         return;
     }
 
@@ -97,12 +115,7 @@ export function writeContextualOrigin(origin: ContextualOrigin | null): void {
         ORIGIN_KEY,
         JSON.stringify({ ...origin, href }),
     );
-}
-
-function restoreScroll(scrollY: number): void {
-    window.requestAnimationFrame(() => {
-        window.scrollTo({ top: scrollY, behavior: 'auto' });
-    });
+    notifyContextualOriginChange();
 }
 
 export function startContextualBackSession(
@@ -110,16 +123,50 @@ export function startContextualBackSession(
     router: typeof inertiaRouter,
 ): void {
     window.sessionStorage.removeItem(ORIGIN_KEY);
+    notifyContextualOriginChange();
 
     let currentPage = initialPage;
     let currentIdentity = identityFor(initialPage);
     let pendingOrigin: PendingOrigin | null = null;
+    let pendingScrollRestore: { href: string; scrollY: number } | null = null;
+
+    function restoreScroll(href: string, scrollY: number): void {
+        const pending = { href, scrollY };
+        pendingScrollRestore = pending;
+
+        window.requestAnimationFrame(() => {
+            if (
+                pendingScrollRestore !== pending ||
+                internalHref(currentPage.url) !== href
+            ) {
+                return;
+            }
+
+            window.scrollTo({ top: scrollY, behavior: 'auto' });
+            const maxScroll = Math.max(
+                0,
+                Math.max(
+                    document.documentElement.scrollHeight,
+                    document.body.scrollHeight,
+                ) - window.innerHeight,
+            );
+            if (scrollY <= maxScroll) pendingScrollRestore = null;
+        });
+    }
 
     router.on('before', (event) => {
-        const tab = navTabFor(currentPage.component);
         const target = internalHref(event.detail.visit.url);
         const href = internalHref(currentPage.url);
+        const location = internalHref(window.location.href);
+        if (
+            event.detail.visit.only?.length &&
+            (target === href || target === location)
+        ) {
+            return;
+        }
 
+        pendingScrollRestore = null;
+        const tab = navTabFor(currentPage.component);
         pendingOrigin =
             tab !== null && target !== null && href !== null
                 ? {
@@ -133,9 +180,13 @@ export function startContextualBackSession(
         const page = event.detail.page as NavigationPage;
         const nextIdentity = identityFor(page);
         const pageHref = internalHref(page.url);
+        pendingScrollRestore = null;
+        const identityChanged = nextIdentity !== currentIdentity;
+        currentPage = page;
+        currentIdentity = nextIdentity;
 
-        if (nextIdentity !== currentIdentity) {
-            window.sessionStorage.removeItem(ORIGIN_KEY);
+        if (identityChanged) {
+            writeContextualOrigin(null);
         } else if (
             page.component === 'Runs/Show' &&
             pendingOrigin !== null &&
@@ -151,15 +202,24 @@ export function startContextualBackSession(
                 origin.href === pageHref &&
                 origin.tab === tab
             ) {
-                restoreScroll(origin.scrollY);
+                restoreScroll(pageHref, origin.scrollY);
             }
-            window.sessionStorage.removeItem(ORIGIN_KEY);
+            writeContextualOrigin(null);
         } else if (page.component !== 'Runs/Show') {
-            window.sessionStorage.removeItem(ORIGIN_KEY);
+            writeContextualOrigin(null);
         }
 
         pendingOrigin = null;
-        currentPage = page;
-        currentIdentity = nextIdentity;
+    });
+
+    router.on('finish', (event) => {
+        if (!event.detail.visit.only?.length || pendingScrollRestore === null) {
+            return;
+        }
+
+        restoreScroll(
+            pendingScrollRestore.href,
+            pendingScrollRestore.scrollY,
+        );
     });
 }

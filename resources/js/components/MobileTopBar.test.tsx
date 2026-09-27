@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { writeContextualOrigin } from '@/lib/navigationMemory';
@@ -108,6 +108,29 @@ describe('MobileTopBar', () => {
         });
         setMockPage({}, '/activities/123', 'Runs/Show');
         render(<MobileTopBar />);
+
+        expect(screen.getByLabelText('Back to Plan')).toHaveAttribute(
+            'href',
+            '/plan?day=2026-06-16',
+        );
+    });
+
+    it('updates its Back link when an in-app origin arrives after the page swap', () => {
+        setMockPage({}, '/activities/123', 'Runs/Show');
+        render(<MobileTopBar />);
+
+        expect(screen.getByLabelText('Back to History')).toHaveAttribute(
+            'href',
+            '/history',
+        );
+
+        act(() =>
+            writeContextualOrigin({
+                href: '/plan?day=2026-06-16',
+                scrollY: 312,
+                tab: 'plan',
+            }),
+        );
 
         expect(screen.getByLabelText('Back to Plan')).toHaveAttribute(
             'href',

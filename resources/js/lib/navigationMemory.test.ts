@@ -11,7 +11,7 @@ import {
     writeContextualOrigin,
 } from './navigationMemory';
 
-function eventHandler(name: 'before' | 'navigate') {
+function eventHandler(name: 'before' | 'navigate' | 'finish') {
     const call = vi
         .mocked(router.on)
         .mock.calls.find(([event]) => event === name);
@@ -30,6 +30,12 @@ function fireNavigate(page: NavigationPage) {
     eventHandler('navigate')({
         detail: { page },
     } as GlobalEvent<'navigate'>);
+}
+
+function fireFinish(only: string[]) {
+    eventHandler('finish')({
+        detail: { visit: { only } },
+    } as GlobalEvent<'finish'>);
 }
 
 const PLAN_PAGE: NavigationPage = {
@@ -142,6 +148,44 @@ describe('navigationMemory', () => {
 
         expect(scrollTo).toHaveBeenCalledWith({ top: 312, behavior: 'auto' });
         expect(readContextualOrigin()).toBeNull();
+    });
+
+    it('retries contextual scroll restoration after deferred page content loads', () => {
+        const scrollTo = vi.fn();
+        vi.stubGlobal('scrollTo', scrollTo);
+        vi.stubGlobal(
+            'requestAnimationFrame',
+            (callback: FrameRequestCallback) => {
+                callback(0);
+                return 1;
+            },
+        );
+        startContextualBackSession(
+            {
+                component: 'Runs/Show',
+                url: '/activities/42',
+                props: { auth: { user: { id: 7 } } },
+            },
+            router,
+        );
+        writeContextualOrigin({
+            href: '/history?weeks=12',
+            scrollY: 460,
+            tab: 'history',
+        });
+
+        fireNavigate({
+            component: 'History',
+            url: '/history?weeks=12',
+            props: { auth: { user: { id: 7 } } },
+        });
+        fireFinish(['runs']);
+
+        expect(scrollTo).toHaveBeenCalledTimes(2);
+        expect(scrollTo).toHaveBeenLastCalledWith({
+            top: 460,
+            behavior: 'auto',
+        });
     });
 
     it('rejects an external saved destination', () => {

@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Settings } from 'lucide-react';
+import { useSyncExternalStore } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
@@ -9,7 +10,11 @@ import { Icon } from '@/components/ui/Icon';
 import UserAvatarLink from '@/components/UserAvatarLink';
 import { cn } from '@/lib/cn';
 import { backTargetFor } from '@/lib/nav';
-import { readContextualOrigin } from '@/lib/navigationMemory';
+import {
+    contextualOriginSnapshot,
+    readContextualOrigin,
+    subscribeToContextualOrigin,
+} from '@/lib/navigationMemory';
 
 // A shared chip backdrop for the icon-only buttons — muted is the exact
 // ground-reactive equivalent of the bar's old fixed cream-deep background (see
@@ -51,6 +56,11 @@ const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();
     const user = page.props.auth.user;
+    useSyncExternalStore(
+        subscribeToContextualOrigin,
+        contextualOriginSnapshot,
+        () => null,
+    );
     const back = backTargetFor(page.component, readContextualOrigin());
 
     return (
