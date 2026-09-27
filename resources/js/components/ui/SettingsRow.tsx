@@ -64,7 +64,10 @@ export default function SettingsRow({
                     icon={icon}
                     width={20}
                     height={20}
-                    className={isDanger ? 'text-ember-ink' : 'text-text-3'}
+                    className={cn(
+                        'shrink-0',
+                        isDanger ? 'text-ember-ink' : 'text-text-3',
+                    )}
                     aria-hidden
                 />
                 <span className="flex flex-col">

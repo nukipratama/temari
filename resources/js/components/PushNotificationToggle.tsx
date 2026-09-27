@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react';
-import { Bell, BellOff, BellRing, Smartphone } from 'lucide-react';
+import { Bell, BellRing, Smartphone } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
@@ -7,7 +7,7 @@ import type { SharedProps } from '@/types/inertia';
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
-import PillButton from '@/components/ui/PillButton';
+import SettingsDisconnectLink from '@/components/ui/SettingsDisconnectLink';
 import SettingsRow from '@/components/ui/SettingsRow';
 import Toggle from '@/components/ui/Switch';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
@@ -227,14 +227,10 @@ function PushAction({
             );
         case 'subscribed':
             return (
-                <PillButton
-                    tone="outline"
+                <SettingsDisconnectLink
                     disabled={busy}
                     onClick={onUnsubscribe}
-                >
-                    <Icon icon={BellOff} width={14} height={14} aria-hidden />
-                    Turn off
-                </PillButton>
+                />
             );
         case 'ready':
             return (

@@ -69,36 +69,39 @@ describe('InboxRow', () => {
         expect(screen.queryByLabelText('Unread')).not.toBeInTheDocument();
     });
 
-    it('offers no action for a row with nothing to open', () => {
+    it('offers no link for a row with nothing to open', () => {
         renderRow();
 
-        expect(screen.queryByText('Open')).not.toBeInTheDocument();
+        expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
 
     it('opens the deep link and reports it read', async () => {
         const { onOpen } = renderRow({
             kind: 'weekly_recap',
             url: '/activities?week=2026-08-09',
+            title: 'Your run is in',
         });
 
-        const link = screen.getByRole('link', { name: /open/i });
+        const link = screen.getByRole('link', { name: 'Your run is in' });
         expect(link).toHaveAttribute('href', '/activities?week=2026-08-09');
 
         await userEvent.click(link);
         expect(onOpen).toHaveBeenCalledTimes(1);
     });
 
-    it('makes the whole row tappable, reporting it read like the pill does', async () => {
-        const { onOpen, container } = renderRow({
+    it('makes the whole row the accessible link, not just a visible pill', async () => {
+        const { onOpen } = renderRow({
             kind: 'streak_reminder',
             url: '/profile',
+            title: 'Streak alert',
         });
 
-        const overlay = container.querySelector('a[aria-hidden="true"]');
-        expect(overlay).toHaveAttribute('href', '/profile');
-        expect(overlay).toHaveAttribute('tabindex', '-1');
+        const link = screen.getByRole('link', { name: 'Streak alert' });
+        expect(link).toHaveAttribute('href', '/profile');
+        expect(link).not.toHaveAttribute('aria-hidden');
+        expect(link).not.toHaveAttribute('tabindex', '-1');
 
-        await userEvent.click(overlay!);
+        await userEvent.click(link);
         expect(onOpen).toHaveBeenCalledTimes(1);
     });
 

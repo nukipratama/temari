@@ -1,6 +1,5 @@
 import { Link } from '@inertiajs/react';
 import {
-    ArrowRight,
     Bell,
     Calendar,
     CalendarDays,
@@ -16,7 +15,6 @@ import type { InboxItem, NotificationKind } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
-import PillLink from '@/components/ui/PillLink';
 import { cn } from '@/lib/cn';
 import {
     formatAbsoluteId,
@@ -103,15 +101,11 @@ export default function InboxRow({
             )}
         >
             {item.url && (
-                /* A pointer affordance only: the visible "open" pill below is the
-                   accessible control, so this overlay stays out of the a11y tree
-                   rather than reading the row's target twice. */
                 <Link
                     href={item.url}
                     onClick={() => onOpen(item)}
-                    aria-hidden
-                    tabIndex={-1}
-                    className="absolute inset-0 z-10 rounded-md"
+                    aria-label={item.title}
+                    className="focus-ring absolute inset-0 z-10 rounded-md"
                 />
             )}
 
@@ -169,24 +163,6 @@ export default function InboxRow({
                         <p className="mt-1.5 line-clamp-3 font-sans text-sm leading-relaxed text-text-2">
                             {item.body}
                         </p>
-                    )}
-
-                    {item.url && (
-                        <div className="relative z-20 mt-2.5 flex w-fit flex-wrap items-center gap-2">
-                            <PillLink
-                                href={item.url}
-                                tone="outline"
-                                size="sm"
-                                onClick={() => onOpen(item)}
-                            >
-                                open
-                                <Icon
-                                    icon={ArrowRight}
-                                    className="size-3"
-                                    aria-hidden
-                                />
-                            </PillLink>
-                        </div>
                     )}
                 </div>
 

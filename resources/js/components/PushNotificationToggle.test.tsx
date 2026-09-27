@@ -78,26 +78,26 @@ it('shows the OS-settings hint when permission is denied', async () => {
     expect(await screen.findByText(/blocked/i)).toBeInTheDocument();
 });
 
-it('offers only the off switch when already subscribed', async () => {
+it('offers only the disconnect link when already subscribed', async () => {
     vi.mocked(webPush.currentSubscription).mockResolvedValue(
         {} as PushSubscription,
     );
     render(<PushNotificationToggle />);
     expect(
-        await screen.findByRole('button', { name: /Turn off/ }),
+        await screen.findByRole('button', { name: /Disconnect/ }),
     ).toBeInTheDocument();
     expect(
         screen.queryByRole('button', { name: /Send test notification/ }),
     ).not.toBeInTheDocument();
 });
 
-it('unsubscribes and returns to the ready state when Turn off is clicked', async () => {
+it('unsubscribes and returns to the ready state when disconnect is clicked', async () => {
     vi.mocked(webPush.currentSubscription).mockResolvedValue(
         {} as PushSubscription,
     );
     render(<PushNotificationToggle />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Turn off/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Disconnect/ }));
 
     await waitFor(() => expect(webPush.unsubscribe).toHaveBeenCalled());
     expect(
