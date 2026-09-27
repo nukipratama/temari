@@ -153,4 +153,25 @@ describe('SendNotificationButton', () => {
             screen.getByRole('button', { name: 'send notification' }),
         ).not.toBeDisabled();
     });
+
+    it('uses the shared 44px pressable icon target when reachable', () => {
+        render(<SendNotificationButton url="/activities/99/send" />);
+        expect(
+            screen.getByRole('button', { name: 'send notification' }),
+        ).toHaveClass('min-h-11', 'min-w-11', 'pressable');
+    });
+
+    it('uses the shared 44px pressable icon target when unreachable', () => {
+        render(
+            <SendNotificationButton
+                url="/activities/99/send"
+                reachable={false}
+            />,
+        );
+        expect(
+            screen.getByRole('button', {
+                name: 'turn on notifications to send',
+            }),
+        ).toHaveClass('min-h-11', 'min-w-11', 'pressable');
+    });
 });

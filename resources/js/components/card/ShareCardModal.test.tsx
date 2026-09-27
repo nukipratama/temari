@@ -122,6 +122,22 @@ describe('ShareCardModal', () => {
         );
     });
 
+    it('gives the close and shape controls shared hit targets and press feedback', async () => {
+        await openModal();
+
+        expect(screen.getByRole('button', { name: 'close' })).toHaveClass(
+            'min-h-11',
+            'min-w-11',
+            'pressable',
+        );
+        expect(screen.getByRole('button', { name: 'story' })).toHaveClass(
+            'pressable',
+        );
+        expect(screen.getByRole('button', { name: 'feed' })).toHaveClass(
+            'pressable',
+        );
+    });
+
     it('walks the rack with the arrow keys', async () => {
         await openModal();
         const stage = screen.getByRole('group', { name: 'print style' });

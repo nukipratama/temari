@@ -29,6 +29,7 @@ import {
     type CardStyle,
 } from '@/lib/card/types';
 import { cn } from '@/lib/cn';
+import { iconButtonVariants } from '@/lib/variants';
 
 /** What the page hands the modal: the run, its facts, and the share copy. */
 export interface ShareCardTarget {
@@ -249,7 +250,10 @@ export default function ShareCardModal({
                         type="button"
                         onClick={onClose}
                         aria-label="close"
-                        className="focus-ring grid size-8 flex-none place-items-center rounded-full border border-border text-text-2"
+                        className={cn(
+                            iconButtonVariants(),
+                            'flex-none border border-border',
+                        )}
                     >
                         <Icon icon={X} width={15} aria-hidden />
                     </button>
@@ -268,7 +272,7 @@ export default function ShareCardModal({
                             onClick={() => setAspect(option)}
                             aria-pressed={aspect === option}
                             className={cn(
-                                'focus-ring flex flex-1 items-center justify-center gap-[7px] rounded-full py-2 text-[0.8125rem] font-semibold transition',
+                                'pressable focus-ring flex flex-1 items-center justify-center gap-[7px] rounded-full py-2 text-[0.8125rem] font-semibold transition',
                                 aspect === option
                                     ? 'bg-card text-foreground shadow-e1'
                                     : 'text-text-3',

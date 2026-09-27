@@ -10,7 +10,9 @@ import {
 } from '@/hooks/useCooldownCountdown';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { usePendingPost } from '@/hooks/usePendingPost';
+import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
+import { iconButtonVariants } from '@/lib/variants';
 
 /**
  * The manual "send notification" control on the weekly and monthly recap cards:
@@ -31,8 +33,10 @@ import { formatDurationHMS } from '@/lib/pace';
  * real user and the shared demo account (the demo-write modal only guards the
  * actual channel writes in Settings, not this discovery surface).
  */
-const BUTTON_CLASS =
-    'focus-ring flex size-6 flex-none items-center justify-center rounded-full bg-muted text-icon-accent transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60';
+const BUTTON_CLASS = cn(
+    iconButtonVariants(),
+    'flex-none bg-muted text-icon-accent hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60',
+);
 
 export default function SendNotificationButton({
     url,

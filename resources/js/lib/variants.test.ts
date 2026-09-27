@@ -161,6 +161,10 @@ describe('iconButtonVariants', () => {
         }
     });
 
+    it('carries the shared press feedback', () => {
+        expect(tokens(iconButtonVariants())).toContain('pressable');
+    });
+
     it('flips to the cream-on-sky treatment via onSky', () => {
         const cls = tokens(iconButtonVariants({ onSky: true }));
         expect(cls).toContain('text-cream/80');

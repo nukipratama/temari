@@ -95,17 +95,31 @@ describe('MetricExplainer', () => {
         );
     });
 
-    // WCAG 2.5.8: the box is 24px at both sizes, negative margins keep the
-    // glyph's original footprint so no label row reflows.
+    // WCAG 2.5.8: the visual box stays 24px at both sizes, while its pseudo
+    // element expands the hit target without changing the label row.
     it.each([
         ['xs', '-m-1'],
         ['sm', '-m-0.5'],
-    ] as const)('gives the %s trigger a 24px target box', (size, pullIn) => {
-        render(<MetricExplainer metricKey="ctl" size={size} />);
-        expect(
-            screen.getByRole('button', { name: 'Explain fitness' }),
-        ).toHaveClass('h-6', 'w-6', pullIn);
-    });
+    ] as const)(
+        'keeps the %s trigger compact with a larger press target',
+        (size, pullIn) => {
+            render(<MetricExplainer metricKey="ctl" size={size} />);
+            const trigger = screen.getByRole('button', {
+                name: 'Explain fitness',
+            });
+            expect(trigger).toHaveClass(
+                'h-6',
+                'w-6',
+                pullIn,
+                'relative',
+                'before:absolute',
+                'before:-inset-2.5',
+                "before:content-['']",
+                'pressable',
+            );
+            expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+        },
+    );
 
     describe('viewport-edge alignment', () => {
         const originalGetBoundingClientRect =

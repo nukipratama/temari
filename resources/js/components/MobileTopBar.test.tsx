@@ -89,9 +89,9 @@ describe('MobileTopBar', () => {
     it('points back at a real url rather than relying on history', () => {
         setMockPage({}, '/activities/123', 'Runs/Show');
         render(<MobileTopBar />);
-        expect(
-            screen.getByLabelText('Back to History').getAttribute('href'),
-        ).toBe('/history');
+        const back = screen.getByLabelText('Back to History');
+        expect(back.getAttribute('href')).toBe('/history');
+        expect(back).toHaveClass('min-h-11', 'min-w-11', 'pressable');
     });
 
     it('shows the avatar link to Profile when a user is signed in', () => {
