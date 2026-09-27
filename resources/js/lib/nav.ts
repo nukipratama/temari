@@ -6,10 +6,9 @@ import {
 } from 'lucide-react';
 
 import type { IconComponent } from '@/components/ui/Icon';
+import type { TabId } from '@/lib/navRoutes';
 
 import { navTabFor } from '@/lib/navRoutes';
-
-import type { TabId } from '@/lib/navRoutes';
 
 export { navTabFor } from '@/lib/navRoutes';
 export type { TabId } from '@/lib/navRoutes';
