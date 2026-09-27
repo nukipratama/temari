@@ -12,10 +12,8 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\LifetimeStats;
-use App\Support\Cooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -555,23 +553,7 @@ it('passes the MonthlyRecap analysis for the viewed month as the monthlyRecap pr
         ->assertJsonPath('props.monthlyRecap.status', 'done')
         ->assertJsonPath('props.monthlyRecap.content', 'May was dense and you held the rhythm.')
         ->assertJsonPath('props.monthlyRecap.type', AnalysisType::MonthlyRecap->value)
-        ->assertJsonPath('props.monthlyRecap.discriminator', '2026-05')
-        ->assertJsonPath('props.monthlyRecap.notification_retry_after_seconds', null);
-});
-
-it('surfaces the monthly recap Telegram cooldown when a send is on cooldown', function (): void {
-    $user = User::factory()->create();
-    $recap = Analysis::factory()->done('May was dense.')->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::MonthlyRecap,
-        'discriminator' => '2026-05',
-    ]);
-    RateLimiter::hit(Cooldown::notificationKey($recap->id), Cooldown::WINDOW_SECONDS);
-
-    $this->actingAs($user)
-        ->get('/history?view=calendar&month=2026-05', inertiaPartialHeaders($this->actingAs($user), '/history?view=calendar&month=2026-05', 'History', 'monthlyRecap'))
-        ->assertJsonPath('props.monthlyRecap.notification_retry_after_seconds', fn (mixed $s): bool => is_int($s) && $s > 0);
+        ->assertJsonPath('props.monthlyRecap.discriminator', '2026-05');
 });
 
 it('only matches the recap row for the viewed month, not another month', function (): void {
@@ -647,24 +629,6 @@ it('reports webPushSubscribed false when push is muted but still subscribed', fu
         ->assertInertia(fn (Assert $page) => $page->where('webPushSubscribed', false));
 
     expect($user->fresh()->pushSubscriptions()->count())->toBe(1);
-});
-
-it('surfaces the weekly recap Telegram cooldown on the snapshot payload', function (): void {
-    $user = User::factory()->create();
-    $snapshot = WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->toDateString(),
-    ]);
-    $recap = Analysis::factory()->done('This week, 28 km.')->create([
-        'analysis_type' => AnalysisType::WeeklyRecap,
-        'subject_type' => WeeklySnapshot::class,
-        'subject_id' => $snapshot->id,
-        'discriminator' => null,
-    ]);
-    RateLimiter::hit(Cooldown::notificationKey($recap->id), Cooldown::WINDOW_SECONDS);
-
-    $this->actingAs($user)
-        ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'weeklySnapshots'))
-        ->assertJsonPath('props.weeklySnapshots.0.notification_retry_after_seconds', fn (mixed $s): bool => is_int($s) && $s > 0);
 });
 
 it('does not resolve the run payload on a partial reload that only wants snapshots', function (): void {

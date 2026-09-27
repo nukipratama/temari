@@ -76,19 +76,6 @@ it('toPayload exposes explicit narration staleness', function (): void {
         ->and($payload['stale_at'])->toBe($staleAt->toIso8601String());
 });
 
-it('notificationCooldownRemaining is null for a missing or not-Done payload', function (): void {
-    expect(Analysis::notificationCooldownRemaining(['id' => null, 'status' => 'done']))->toBeNull()
-        ->and(Analysis::notificationCooldownRemaining(['id' => 7, 'status' => 'pending']))->toBeNull();
-});
-
-it('notificationCooldownRemaining reflects an active send window for a Done payload', function (): void {
-    RateLimiter::hit(Cooldown::notificationKey(7), Cooldown::WINDOW_SECONDS);
-
-    expect(Analysis::notificationCooldownRemaining(['id' => 7, 'status' => 'done']))
-        ->toBeGreaterThan(0)
-        ->toBeLessThanOrEqual(Cooldown::WINDOW_SECONDS);
-});
-
 it('toPayload returns retry_after_seconds null when row is null', function (): void {
     $payload = Analysis::toPayload(null, AnalysisType::BriefingMascotVoice, 'briefing_user_day', 1, '2026-05-20');
     expect($payload['retry_after_seconds'])->toBeNull();

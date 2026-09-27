@@ -22,8 +22,6 @@ export { dominantMoodOf, type CalendarCell } from './useCalendar';
 /** The monthly recap payload plus the chain-head flag the controller adds. */
 export type MonthlyRecap = AnalysisPayload & {
     is_chain_head: boolean;
-    /** Remaining Telegram-send cooldown for this month's recap, or null. */
-    notification_retry_after_seconds: number | null;
 };
 
 interface LifetimeStats {
@@ -109,11 +107,6 @@ export default function Calendar({
                                     isChainHead={monthlyRecap.is_chain_head}
                                     size="month"
                                     inertiaReloadProps={['monthlyRecap']}
-                                    notification={{
-                                        url: `/recaps/monthly/${month}/send`,
-                                        retryAfterSeconds:
-                                            monthlyRecap.notification_retry_after_seconds,
-                                    }}
                                     className="mb-2.5"
                                 />
                             )}

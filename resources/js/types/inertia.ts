@@ -560,6 +560,4 @@ export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
     /** True for the latest completed week, the only chain link that may regenerate. */
     is_chain_head: boolean;
     recap_analysis: AnalysisPayload;
-    /** Remaining Telegram-send cooldown for this week's recap, or null. */
-    notification_retry_after_seconds: number | null;
 }

@@ -98,8 +98,6 @@
         "Tests\\Feature\\NarrationOverviewControllerTest": 1.0326,
         "Tests\\Feature\\NoLlmOnPageLoadTest": 0.167,
         "Tests\\Feature\\Notifications\\InboxFanOutTest": 0.2494,
-        "Tests\\Feature\\Notifications\\SendMonthlyRecapNotificationControllerTest": 0.1405,
-        "Tests\\Feature\\Notifications\\SendWeeklyRecapNotificationControllerTest": 0.1187,
         "Tests\\Feature\\Onboarding\\FreshAccountSmokeTest": 3.6099,
         "Tests\\Feature\\Plan\\AnchoredArcTest": 3.5035,
         "Tests\\Feature\\Plan\\LongRunReachesRaceDistanceTest": 3.2329,
