@@ -9,6 +9,7 @@ import { Icon } from '@/components/ui/Icon';
 import UserAvatarLink from '@/components/UserAvatarLink';
 import { cn } from '@/lib/cn';
 import { backTargetFor } from '@/lib/nav';
+import { readContextualOrigin } from '@/lib/navigationMemory';
 
 // A shared chip backdrop for the icon-only buttons — muted is the exact
 // ground-reactive equivalent of the bar's old fixed cream-deep background (see
@@ -50,7 +51,7 @@ const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();
     const user = page.props.auth.user;
-    const back = backTargetFor(page.component);
+    const back = backTargetFor(page.component, readContextualOrigin());
 
     return (
         <header

@@ -21,6 +21,12 @@ export interface BackTarget {
     label: string;
 }
 
+export interface ContextualOrigin {
+    href: string;
+    scrollY: number;
+    tab: TabId;
+}
+
 export const ITEMS: ReadonlyArray<NavItem> = [
     {
         id: 'today',
@@ -78,9 +84,22 @@ export function navTabFor(component: string): TabId | null {
  * A fixed parent, not `history.back()`: a deep link from a notification or a
  * shared URL opens these cold with nothing behind them.
  */
-export function backTargetFor(component: string): BackTarget | null {
+export function backTargetFor(
+    component: string,
+    origin: ContextualOrigin | null = null,
+): BackTarget | null {
     if (navTabFor(component) !== null) {
         return null;
+    }
+
+    if (component === 'Runs/Show' && origin !== null) {
+        const item = ITEMS.find((candidate) => candidate.id === origin.tab);
+        if (item !== undefined) {
+            return {
+                href: origin.href,
+                label: item.label,
+            };
+        }
     }
 
     return BACK_TARGETS[component] ?? TODAY;
