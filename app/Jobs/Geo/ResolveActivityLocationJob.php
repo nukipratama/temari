@@ -56,7 +56,7 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        // Only stamp resolved_at on a real hit; unresolved results stay eligible for catch-up.
+        // Keep the row unresolved so catch-up can retry after its cached outcome expires.
         if ($resolved === null) {
             return;
         }
