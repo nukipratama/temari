@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Enums\SessionType;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Metrics\RestDayEasePace;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Story\BriefingComposer;
 use App\Services\Run\Story\BriefingResult;
@@ -30,6 +33,7 @@ class DashboardController extends Controller
         PastYouTrendBuilder $pastYouTrend,
         CurrentWeekPlanBuilder $weekPlanBuilder,
         ResolveTrailingWeeksAction $trailingWeeks,
+        RestDayEasePace $restDayEasePace,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -43,7 +47,7 @@ class DashboardController extends Controller
         // Lazy, not deferred: a closure only skips work on a partial reload
         // that doesn't name it (Inertia's `useAnalysisTrigger` poll), and still
         // runs on first paint.
-        return Inertia::render('Home', [
+        $props = [
             'briefing' => fn (): BriefingResult => $briefingComposer->compose($user, $today),
             'snapshot' => function () use ($user, $today, $trailingWeeks): ?WeeklySnapshot {
                 $weekEnding = $today->copy()->endOfWeek(Carbon::SUNDAY)->toDateString();
@@ -54,7 +58,20 @@ class DashboardController extends Controller
             'hasRuns' => fn (): bool => ActivityDetail::query()->forUser($user->id)->exists(),
             'pastYouTrend' => fn (): array => $pastYouTrend->payload($user, $today),
             'weekPlan' => fn (): ?array => $weekPlanBuilder->forUser($user, $today),
-        ]);
+        ];
+
+        // Only a planned rest day pays for this: every other day skips both
+        // the query and the deferred round-trip.
+        $todaySessionType = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->where('date', $today->toDateString())
+            ->first()
+            ?->session_type;
+        if ($todaySessionType === SessionType::Rest) {
+            $props['restDayEasePace'] = Inertia::defer(fn (): ?array => $restDayEasePace->forUser($user, $today));
+        }
+
+        return Inertia::render('Home', $props);
     }
 
     private function resolveGreeting(User $user, Temari $temari, string $vibeState, Carbon $today): StoryLine

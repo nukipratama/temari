@@ -419,6 +419,59 @@ describe('TodaySession', () => {
         expect(screen.getByText('rest')).toBeInTheDocument();
     });
 
+    it("states the rest-day ease pace fact when it's shipped", () => {
+        const { container } = render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    session_type: 'rest',
+                    distance_km: 0,
+                    segments: [],
+                })}
+                restDayEasePace={{ deltaSecPerKm: 12, direction: 'quicker' }}
+            />,
+        );
+
+        expect(
+            screen.getByText(/your easy runs after a rest day go/),
+        ).toBeInTheDocument();
+        expect(screen.getByText('0:12/km')).toHaveClass('font-mono');
+        expect(container).toHaveTextContent(
+            'your easy runs after a rest day go 0:12/km quicker',
+        );
+    });
+
+    it('says nothing about rest-day ease pace when the stat is null', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    session_type: 'rest',
+                    distance_km: 0,
+                    segments: [],
+                })}
+            />,
+        );
+
+        expect(
+            screen.queryByText(/your easy runs after a rest day go/),
+        ).not.toBeInTheDocument();
+    });
+
+    it('never shows the rest-day ease pace fact on a training day', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day()}
+                restDayEasePace={{ deltaSecPerKm: 12, direction: 'quicker' }}
+            />,
+        );
+
+        expect(
+            screen.queryByText(/your easy runs after a rest day go/),
+        ).not.toBeInTheDocument();
+    });
+
     /**
      * #940: the prescribed pace used to sit right after "km run", reading as
      * the run's own pace. Once the day is credited it shows on its own line,

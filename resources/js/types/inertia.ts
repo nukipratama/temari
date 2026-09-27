@@ -145,6 +145,12 @@ export interface AnalysisPayload {
     unread_while_away?: boolean;
 }
 
+/** Home's rest-day fact — see `App\Services\Run\Metrics\RestDayEasePace`. */
+export interface RestDayEasePace {
+    deltaSecPerKm: number;
+    direction: 'quicker' | 'slower';
+}
+
 export interface BriefingResult {
     vibeState: string;
     mascotVoice: AnalysisPayload;

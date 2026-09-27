@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import type {
     BriefingResult,
     PastYouTrend,
+    RestDayEasePace,
     WeekPlan,
     WeeklySnapshot,
 } from '@/types/inertia';
@@ -26,6 +27,8 @@ interface HomeProps {
     hasRuns: boolean;
     pastYouTrend?: PastYouTrend | null;
     weekPlan?: WeekPlan | null;
+    /** Only shipped, deferred, on a planned rest day. */
+    restDayEasePace?: RestDayEasePace | null;
 }
 
 /**
@@ -40,6 +43,7 @@ export default function Home({
     hasRuns,
     pastYouTrend = null,
     weekPlan = null,
+    restDayEasePace = null,
 }: Readonly<HomeProps>) {
     const todayIso = todayLocalIso();
     const todayPlan =
@@ -60,6 +64,7 @@ export default function Home({
                         <TodaySession
                             briefing={briefing}
                             today={todayPlan}
+                            restDayEasePace={restDayEasePace}
                             drawnAnchors={drawnHomeAnchors(weekPlan)}
                         />
 
