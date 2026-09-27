@@ -24,6 +24,8 @@ import {
     SkeletonStats,
 } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
+import { cn } from '@/lib/cn';
+import { laneStack } from '@/lib/variants';
 
 interface TrendsProps {
     ctlTrend?: FitnessTrendPoint[];
@@ -68,7 +70,7 @@ export default function Trends({
                     </em>
                 </PageHero>
 
-                <div className="mt-6 flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
+                <div className={cn('mt-6', laneStack)}>
                     <Deferred data="narration" fallback={<SkeletonProse />}>
                         {() => <NarrationCard analysis={narration!} />}
                     </Deferred>
