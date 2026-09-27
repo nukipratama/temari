@@ -143,8 +143,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 const FACE_GLOW =
     'radial-gradient(circle, color-mix(in oklab, var(--color-horizon) 55%, transparent) 0%, color-mix(in oklab, var(--color-horizon) 24%, transparent) 42%, transparent 70%)';
-const PACE_GLOW =
-    'radial-gradient(circle, color-mix(in oklab, var(--color-horizon) 45%, transparent) 0%, color-mix(in oklab, var(--color-horizon) 18%, transparent) 45%, transparent 70%)';
 
 const FIELD_LABEL = 'text-label-micro text-text-2';
 
@@ -580,12 +578,7 @@ export default function OnboardingIndex({
                             later from Plan.
                         </p>
 
-                        <div className="relative mt-6 mb-4 flex items-center gap-4">
-                            <div
-                                aria-hidden
-                                className="pointer-events-none absolute -top-8 -left-8 size-35 rounded-full blur-[28px]"
-                                style={{ background: PACE_GLOW }}
-                            />
+                        <div className="mt-6 mb-4 flex items-center gap-4">
                             <div className="relative flex-none">
                                 <svg
                                     width={76}
@@ -617,7 +610,7 @@ export default function OnboardingIndex({
                                     <TemariMascot size={36} faceOnly />
                                 </div>
                             </div>
-                            <div className="relative min-w-0 flex-1">
+                            <div className="min-w-0 flex-1">
                                 <span className="text-label-micro text-text-3">
                                     required pace
                                 </span>
