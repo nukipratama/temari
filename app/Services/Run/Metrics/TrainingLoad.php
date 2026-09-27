@@ -98,16 +98,96 @@ class TrainingLoad
         [$atl, $ctl] = $this->rollLoads($dailyTrimp, $loadDate);
         $form = round($ctl - $atl, 1);
         [$weeklyTrimp, $monotony, $strain] = $this->weekStats($dailyTrimp, $runDays, $weekAnchor, $windowDays);
+        $ranges = $this->typicalWeeklyRanges($dailyTrimp, $runDays, $weekAnchor);
 
         return [
             'weekly_trimp' => $weeklyTrimp === null ? null : round($weeklyTrimp, 1),
+            'weekly_trimp_range' => $ranges['weekly_trimp_range'],
             'atl_7d' => round($atl, 1),
             'ctl_42d' => round($ctl, 1),
             'form' => $form,
             'form_status' => $this->formStatus($form, $ctl),
             'monotony' => $monotony,
+            'monotony_range' => $ranges['monotony_range'],
             'strain' => $strain,
+            'strain_range' => $ranges['strain_range'],
         ];
+    }
+
+    /**
+     * The athlete's own "steady week" range for weekly TRIMP, monotony and
+     * strain — the 25th to 75th percentile across the last $weeks trailing
+     * 7-day windows, each reusing the one {@see weekStats} call, so Trends
+     * can read "a steady week for you sits around 400 to 500" instead of the
+     * raw number alone, for every one of the three (#1296). A window's three
+     * figures are null together (see weekStats), so one filtered pass covers
+     * all three. Null per figure when fewer than two windows are scorable.
+     *
+     * @param  array<string, float>  $dailyTrimp  scored days only
+     * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
+     * @return array{weekly_trimp_range: array{low: float, high: float}|null, monotony_range: array{low: float, high: float}|null, strain_range: array{low: float, high: float}|null}
+     */
+    private function typicalWeeklyRanges(array $dailyTrimp, array $runDays, Carbon $asOf, int $weeks = 8): array
+    {
+        $trimpTotals = [];
+        $monotonyTotals = [];
+        $strainTotals = [];
+        for ($i = 0; $i < $weeks; $i++) {
+            [$weekly, $monotony, $strain] = $this->weekStats($dailyTrimp, $runDays, $asOf->copy()->subDays($i * 7));
+            if ($weekly !== null && $monotony !== null && $strain !== null) {
+                $trimpTotals[] = $weekly;
+                $monotonyTotals[] = $monotony;
+                $strainTotals[] = $strain;
+            }
+        }
+
+        return [
+            'weekly_trimp_range' => $this->percentileRange($trimpTotals, -1),
+            'monotony_range' => $this->percentileRange($monotonyTotals, 1),
+            'strain_range' => $this->percentileRange($strainTotals, -1),
+        ];
+    }
+
+    /**
+     * The 25th-75th percentile of a list, rounded to $precision (PHP `round`
+     * semantics: negative rounds to a power of ten). Null below two values,
+     * since a range needs at least two points to bound.
+     *
+     * @param  list<float>  $values
+     * @return array{low: float, high: float}|null
+     */
+    private function percentileRange(array $values, int $precision): ?array
+    {
+        if (count($values) < 2) {
+            return null;
+        }
+
+        sort($values);
+
+        return [
+            'low' => round($this->percentile($values, 25.0), $precision),
+            'high' => round($this->percentile($values, 75.0), $precision),
+        ];
+    }
+
+    /**
+     * Linear-interpolated percentile of a sorted list.
+     *
+     * @param  list<float>  $sorted
+     */
+    private function percentile(array $sorted, float $p): float
+    {
+        $count = count($sorted);
+        $index = ($p / 100) * ($count - 1);
+        $lower = (int) floor($index);
+        $upper = (int) ceil($index);
+        if ($lower === $upper) {
+            return $sorted[$lower];
+        }
+
+        $fraction = $index - $lower;
+
+        return $sorted[$lower] + $fraction * ($sorted[$upper] - $sorted[$lower]);
     }
 
     /**

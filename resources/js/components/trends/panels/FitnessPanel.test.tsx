@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { createElement, useImperativeHandle, type Ref } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -14,17 +14,8 @@ type ChartData = {
 
 type ChartOptionsLike = {
     scales?: { x?: { display?: boolean; ticks?: { maxTicksLimit?: number } } };
-    plugins?: {
-        tooltip?: {
-            callbacks?: {
-                title?: (items: Array<{ dataIndex: number }>) => string;
-                label?: (item: {
-                    dataset: { label?: string };
-                    parsed: { y: number };
-                }) => string;
-            };
-        };
-    };
+    plugins?: { tooltip?: { enabled?: boolean } };
+    onHover?: (event: unknown, elements: Array<{ index: number }>) => void;
 };
 type ChartPluginLike = { id: string };
 
@@ -76,27 +67,53 @@ describe('FitnessPanel', () => {
         expect(screen.queryByTestId('line-chart')).not.toBeInTheDocument();
     });
 
-    it('draws the full 365-day series as one fitness line, never sliced by a range', async () => {
+    it('draws the trailing 3M (90 days) by default out of a longer history', async () => {
         render(<FitnessPanel trend={pointsOverDays(365)} />);
 
         expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
         expect(lastData!.datasets).toHaveLength(1);
         expect(lastData!.datasets[0].label).toBe('fitness');
+        expect(lastData!.datasets[0].data).toHaveLength(90);
+    });
+
+    it('re-slices the chart when a range chip is picked', async () => {
+        render(<FitnessPanel trend={pointsOverDays(365)} />);
+        await screen.findByTestId('line-chart');
+
+        fireEvent.click(screen.getByRole('button', { name: '1M' }));
+        expect(lastData!.datasets[0].data).toHaveLength(30);
+
+        fireEvent.click(screen.getByRole('button', { name: '1Y' }));
         expect(lastData!.datasets[0].data).toHaveLength(365);
     });
 
-    it('names the series and the date in the tooltip, not a raw value', async () => {
+    it('disables the default tooltip box in favour of the scrub readout', async () => {
         render(<FitnessPanel trend={pointsOverDays(30)} />);
 
         expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
-        const callbacks = lastOptions!.plugins!.tooltip!.callbacks!;
-        expect(callbacks.title!([{ dataIndex: 0 }])).toBe('jan 1');
+        expect(lastOptions!.plugins!.tooltip!.enabled).toBe(false);
+    });
+
+    it('shows a headline with the value now and the change since the range start', async () => {
+        render(<FitnessPanel trend={pointsOverDays(90)} />);
+
+        expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
+        expect(screen.getByText('49')).toBeInTheDocument();
+        expect(screen.getByText('+9')).toBeInTheDocument();
+        expect(screen.getByText(/since jan/)).toBeInTheDocument();
+    });
+
+    it('swaps the headline for a per-day readout while scrubbing', async () => {
+        render(<FitnessPanel trend={pointsOverDays(30)} />);
+        await screen.findByTestId('line-chart');
+
+        act(() => {
+            lastOptions!.onHover!({}, [{ index: 5 }]);
+        });
+
         expect(
-            callbacks.label!({
-                dataset: { label: 'fitness' },
-                parsed: { y: 41.234 },
-            }),
-        ).toBe('fitness: 41');
+            await screen.findByText(/jan 6 · fitness 41/),
+        ).toBeInTheDocument();
     });
 
     it('draws the deload marker plugin when a deload date falls inside the trend', async () => {

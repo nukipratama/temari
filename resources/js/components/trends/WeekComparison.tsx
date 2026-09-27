@@ -4,6 +4,7 @@ import type {
     WeekComparison as WeekComparisonPayload,
 } from '@/types/inertia';
 
+import MetricExplainer from '@/components/MetricExplainer';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import {
@@ -36,11 +37,67 @@ function FormChip({ status }: Readonly<{ status: FormStatus }>) {
     );
 }
 
-const TRIMP_MEANING = 'heart rate and time, added up over seven days.';
-const MONOTONY_MEANING =
-    'how same-y the week was. every run at one effort pushes it up.';
-const STRAIN_MEANING =
-    "the week's effort multiplied by how same-y it was, the total cost carried.";
+/** Plain-primary-label + jargon-behind-a-ⓘ for the three side-by-side cost
+ *  tiles (voice-and-tone's jargon-accessibility tier). */
+function TileLabel({
+    plain,
+    metricKey,
+}: Readonly<{ plain: string; metricKey: 'trimp' | 'monotony' | 'strain' }>) {
+    return (
+        <>
+            {plain}
+            <MetricExplainer metricKey={metricKey} size="xs" />
+        </>
+    );
+}
+
+type WeeklyRange = { low: number; high: number } | null;
+
+/** "452 over your last 7 days. a steady week for you sits around 400 to
+ *  500." — the number plus the athlete's own normal range, when there's
+ *  enough history to size one (#1296). */
+function trimpMeaning(weeklyTrimp: number | null, range: WeeklyRange): string {
+    if (weeklyTrimp === null) {
+        return 'heart rate and time, added up over your last 7 days.';
+    }
+
+    const value = Math.round(weeklyTrimp);
+    if (range === null) {
+        return `${value} over your last 7 days: heart rate and time, added up.`;
+    }
+
+    return `${value} over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
+}
+
+/** Same shape as {@link trimpMeaning}: the number plus the athlete's own
+ *  normal range for how varied the week was (#1296). */
+function monotonyMeaning(monotony: number | null, range: WeeklyRange): string {
+    if (monotony === null) {
+        return "how varied your training's been. every run at the same effort pushes this up, so mix in an easy day to bring it down.";
+    }
+
+    const value = monotony.toFixed(1);
+    if (range === null) {
+        return `${value} over your last 7 days: how varied your training's been.`;
+    }
+
+    return `${value} over your last 7 days. a steady week for you sits around ${range.low.toFixed(1)} to ${range.high.toFixed(1)}.`;
+}
+
+/** Same shape as {@link trimpMeaning}: the number plus the athlete's own
+ *  normal range for the week's total cost (#1296). */
+function strainMeaning(strain: number | null, range: WeeklyRange): string {
+    if (strain === null) {
+        return "the week's effort multiplied by how varied it was, the total cost you're carrying.";
+    }
+
+    const value = Math.round(strain);
+    if (range === null) {
+        return `${value} over your last 7 days: the week's effort multiplied by how varied it was.`;
+    }
+
+    return `${value} over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
+}
 
 /** Lowercase, matching UI chrome's own register — "wednesday", not "Wednesday". */
 function todayWeekday(): string {
@@ -141,35 +198,51 @@ export default function WeekComparison({
                         <Stat
                             className={TILE}
                             size="sm"
-                            label="weekly TRIMP"
+                            label={<TileLabel plain="load" metricKey="trimp" />}
                             value={
                                 load.weekly_trimp !== null
                                     ? String(Math.round(load.weekly_trimp))
                                     : '—'
                             }
-                            sub={TRIMP_MEANING}
+                            sub={trimpMeaning(
+                                load.weekly_trimp,
+                                load.weekly_trimp_range,
+                            )}
                         />
                         <Stat
                             className={TILE}
                             size="sm"
-                            label="monotony"
+                            label={
+                                <TileLabel
+                                    plain="sameness"
+                                    metricKey="monotony"
+                                />
+                            }
                             value={
                                 load.monotony !== null
                                     ? load.monotony.toFixed(1)
                                     : '—'
                             }
-                            sub={MONOTONY_MEANING}
+                            sub={monotonyMeaning(
+                                load.monotony,
+                                load.monotony_range,
+                            )}
                         />
                         <Stat
                             className={TILE}
                             size="sm"
-                            label="strain"
+                            label={
+                                <TileLabel
+                                    plain="total cost"
+                                    metricKey="strain"
+                                />
+                            }
                             value={
                                 load.strain !== null
                                     ? String(Math.round(load.strain))
                                     : '—'
                             }
-                            sub={STRAIN_MEANING}
+                            sub={strainMeaning(load.strain, load.strain_range)}
                         />
                     </div>
                 </div>

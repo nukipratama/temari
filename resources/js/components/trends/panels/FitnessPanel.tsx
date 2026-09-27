@@ -1,14 +1,18 @@
-import type { Plugin, TooltipItem } from 'chart.js';
+import type { ActiveElement, ChartEvent, Plugin } from 'chart.js';
 
-import { Suspense, useMemo } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 
 import type { FormStatus } from '@/types/inertia';
 
 import Skeleton from '@/components/ui/Skeleton';
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
+import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
-import { formatNaiveMonthDayId } from '@/lib/pace';
+import { ID_MONTH_SHORT, formatNaiveMonthDayId } from '@/lib/pace';
+import { outlineChipVariants } from '@/lib/variants';
+
+import { StatDelta } from '../Stat';
 
 // Chart.js core + its scale/element registration live inside this lazy
 // module, mirroring CtlTrendChart/ProgressionChart so nothing chart-related
@@ -118,7 +122,9 @@ function deloadMarkerPlugin(indices: number[], color: string): Plugin<'line'> {
 }
 
 /** Shades the trailing `days` of the plot area, so "a month ago" reads as a
- *  place on the line rather than an abstract number. */
+ *  place on the line rather than an abstract number. Skipped once the
+ *  visible window is no wider than the shade itself — nothing left to
+ *  contrast it against. */
 function highlightPlugin(
     days: number,
     total: number,
@@ -127,7 +133,7 @@ function highlightPlugin(
     return {
         id: 'trendHighlight',
         beforeDatasetsDraw(chart) {
-            if (days <= 0 || total === 0) return;
+            if (days <= 0 || total === 0 || days >= total) return;
             const { ctx, chartArea, scales } = chart;
             const xScale = scales.x;
             if (!xScale || !chartArea) return;
@@ -147,13 +153,49 @@ function highlightPlugin(
     };
 }
 
+/** Draws the scrub cursor: a vertical line at the hovered/dragged index, so
+ *  the readout above the chart always has a place on the line to point at. */
+function cursorPlugin(index: number | null, color: string): Plugin<'line'> {
+    return {
+        id: 'trendCursor',
+        afterDatasetsDraw(chart) {
+            if (index === null) return;
+            const { ctx, chartArea, scales } = chart;
+            const xScale = scales.x;
+            if (!xScale || !chartArea) return;
+
+            const x = xScale.getPixelForValue(index);
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x, chartArea.top);
+            ctx.lineTo(x, chartArea.bottom);
+            ctx.stroke();
+            ctx.restore();
+        },
+    };
+}
+
+type RangeKey = '1M' | '3M' | '1Y';
+
+const RANGE_DAYS: Record<RangeKey, number> = { '1M': 30, '3M': 90, '1Y': 365 };
+const RANGE_KEYS: RangeKey[] = ['1M', '3M', '1Y'];
+
+/** "jul" — the short month a date falls in, for the headline's "since jul". */
+function monthShort(iso: string): string {
+    const month = Number(iso.slice(5, 7)) - 1;
+    return ID_MONTH_SHORT[month] ?? '';
+}
+
 /**
- * The fitness line "vs a month ago" owns: one CTL series over the last 365
- * days with a categorical form band beneath it, the trailing window shaded,
- * and the deload marker kept. No ATL line, no stat tiles, no badge chips —
- * those moved to the comparison cards around it, or off the page entirely
- * (#967). Chart.js stays; the band is a plain flex strip rather than a
- * second dataset, since a categorical read has no business being a line.
+ * The fitness line "vs a month ago" owns: one CTL series with a categorical
+ * form band beneath it, a range chip (1M/3M/1Y, default 3M) choosing how
+ * much of the 365-day history is drawn, a headline reading the value now and
+ * the change since the range's start, and a scrub cursor (hover or touch
+ * drag) that swaps the headline for a per-day readout. No ATL line, no stat
+ * tiles, no badge chips — those live in the comparison cards around it, or
+ * off the page entirely (#967, #1296).
  */
 export default function FitnessPanel({
     trend,
@@ -164,30 +206,45 @@ export default function FitnessPanel({
     const isDark = useIsDarkGround();
     const ground = isDark ? CHART_GROUND.dark : CHART_GROUND.light;
 
+    const [range, setRange] = useState<RangeKey>('3M');
+    const [cursorIndex, setCursorIndex] = useState<number | null>(null);
+
+    const visible = useMemo(
+        () => trend.slice(-RANGE_DAYS[range]),
+        [trend, range],
+    );
+
     const deloadIndices = useMemo(() => {
         const deload = new Set(annotations.deload);
         const indices: number[] = [];
-        trend.forEach((point, index) => {
+        visible.forEach((point, index) => {
             if (deload.has(point.date)) indices.push(index);
         });
         return indices;
-    }, [trend, annotations]);
+    }, [visible, annotations]);
 
     const chartPlugins = useMemo(
         () => [
             deloadMarkerPlugin(deloadIndices, PALETTE.stone),
             highlightPlugin(
                 highlightDays,
-                trend.length,
+                visible.length,
                 `${PALETTE.horizon}22`,
             ),
+            cursorPlugin(cursorIndex, ground.border),
         ],
-        [deloadIndices, highlightDays, trend.length],
+        [
+            deloadIndices,
+            highlightDays,
+            visible.length,
+            cursorIndex,
+            ground.border,
+        ],
     );
 
     const labels = useMemo(
-        () => trend.map((p) => formatNaiveMonthDayId(p.date)),
-        [trend],
+        () => visible.map((p) => formatNaiveMonthDayId(p.date)),
+        [visible],
     );
 
     const data = useMemo(
@@ -196,7 +253,7 @@ export default function FitnessPanel({
             datasets: [
                 {
                     label: 'fitness',
-                    data: trend.map((p) => p.ctl),
+                    data: visible.map((p) => p.ctl),
                     borderColor: ground.line,
                     backgroundColor: 'transparent',
                     borderWidth: 2,
@@ -206,7 +263,7 @@ export default function FitnessPanel({
                 },
             ],
         }),
-        [trend, labels, ground.line],
+        [visible, labels, ground.line],
     );
 
     const options = useMemo(
@@ -214,20 +271,13 @@ export default function FitnessPanel({
             responsive: true,
             maintainAspectRatio: false,
             animation: { duration: 900, easing: 'easeOutQuart' as const },
+            interaction: { mode: 'index' as const, intersect: false },
+            onHover: (_event: ChartEvent, elements: ActiveElement[]): void => {
+                setCursorIndex(elements.length > 0 ? elements[0].index : null);
+            },
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        title: (items: TooltipItem<'line'>[]): string => {
-                            const point = trend[items[0]?.dataIndex ?? -1];
-                            return point
-                                ? formatNaiveMonthDayId(point.date)
-                                : '';
-                        },
-                        label: (item: TooltipItem<'line'>): string =>
-                            `fitness: ${Math.round(item.parsed.y ?? 0)}`,
-                    },
-                },
+                tooltip: { enabled: false },
             },
             scales: {
                 x: {
@@ -252,10 +302,10 @@ export default function FitnessPanel({
                 },
             },
         }),
-        [ground, trend],
+        [ground],
     );
 
-    const runs = useMemo(() => bandRuns(trend), [trend]);
+    const runs = useMemo(() => bandRuns(visible), [visible]);
     const bucketsPresent = useMemo(
         () => Array.from(new Set(runs.map((r) => r.bucket))),
         [runs],
@@ -269,14 +319,63 @@ export default function FitnessPanel({
         );
     }
 
-    const latest = trend[trend.length - 1];
+    const latest = visible[visible.length - 1];
+    const rangeStart = visible[0];
+    const activePoint = cursorIndex !== null ? visible[cursorIndex] : null;
+    const delta = rangeStart ? latest.ctl - rangeStart.ctl : null;
 
     return (
         <div className={className}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                {activePoint ? (
+                    <p className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                        {formatNaiveMonthDayId(activePoint.date)} · fitness{' '}
+                        {Math.round(activePoint.ctl)}
+                    </p>
+                ) : (
+                    <p className="flex items-baseline gap-2 font-mono tabular-nums text-foreground">
+                        <span className="text-stat-sm font-bold">
+                            {Math.round(latest.ctl)}
+                        </span>
+                        {delta !== null && (
+                            <StatDelta value={Math.round(delta)} decimals={0} />
+                        )}
+                        {rangeStart && (
+                            <span className="text-xs font-normal text-text-3">
+                                since {monthShort(rangeStart.date)}
+                            </span>
+                        )}
+                    </p>
+                )}
+                <div
+                    className="flex gap-1.5"
+                    role="group"
+                    aria-label="chart range"
+                >
+                    {RANGE_KEYS.map((key) => (
+                        <button
+                            key={key}
+                            type="button"
+                            onClick={() => {
+                                setRange(key);
+                                setCursorIndex(null);
+                            }}
+                            className={cn(
+                                outlineChipVariants({
+                                    selected: range === key,
+                                }),
+                            )}
+                        >
+                            {key}
+                        </button>
+                    ))}
+                </div>
+            </div>
             <div
                 role="img"
-                aria-label={`Fitness over ${trend.length} days, now at ${latest.ctl.toFixed(1)}.`}
-                className="h-[168px]"
+                aria-label={`Fitness over ${visible.length} days, now at ${latest.ctl.toFixed(1)}.`}
+                className="mt-2 h-[168px]"
+                style={{ touchAction: 'pan-y' }}
             >
                 <Suspense
                     fallback={<Skeleton className="h-full w-full rounded-lg" />}
@@ -305,8 +404,8 @@ export default function FitnessPanel({
             </div>
             <div className="mt-2.5 flex flex-wrap items-end justify-between gap-3">
                 <p className="max-w-[34ch] text-xs leading-relaxed text-text-2">
-                    the line is fitness. the strip under it is how you were
-                    holding up.
+                    the line is your fitness. the strip under it shows how you
+                    were holding up along the way.
                 </p>
                 <div className="flex flex-wrap gap-3 text-label-micro text-text-2">
                     {bucketsPresent.map((bucket) => (

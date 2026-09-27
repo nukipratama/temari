@@ -22,8 +22,11 @@ function load(overrides: Partial<TrainingLoad> = {}): TrainingLoad {
         ctl_42d: 42.8,
         atl_7d: 61.3,
         weekly_trimp: 246,
+        weekly_trimp_range: { low: 200, high: 300 },
         monotony: 1.9,
+        monotony_range: { low: 1.4, high: 2.2 },
         strain: 467,
+        strain_range: { low: 350, high: 550 },
         ...overrides,
     };
 }
@@ -73,17 +76,58 @@ describe('WeekComparison', () => {
         expect(screen.getByText(/legs are carrying it/)).toBeInTheDocument();
     });
 
-    it('states weekly TRIMP, monotony and strain, each with its own meaning line', () => {
+    it('states load, sameness and total cost, each with a plain label and its own normal-range meaning line', () => {
         render(<WeekComparison weekComparison={payload()} load={load()} />);
 
-        expect(screen.getByText('weekly TRIMP')).toBeInTheDocument();
+        expect(screen.getByText('load')).toBeInTheDocument();
         expect(screen.getByText('246')).toBeInTheDocument();
-        expect(screen.getByText('monotony')).toBeInTheDocument();
+        expect(screen.getByText('sameness')).toBeInTheDocument();
         expect(screen.getByText('1.9')).toBeInTheDocument();
-        expect(screen.getByText('strain')).toBeInTheDocument();
+        expect(screen.getByText('total cost')).toBeInTheDocument();
         expect(screen.getByText('467')).toBeInTheDocument();
         expect(
-            screen.getByText(/heart rate and time, added up/),
+            screen.getByText(
+                /246 over your last 7 days\. a steady week for you sits around 200 to 300\./,
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /1\.9 over your last 7 days\. a steady week for you sits around 1\.4 to 2\.2\./,
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /467 over your last 7 days\. a steady week for you sits around 350 to 550\./,
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it("falls back to a plain gloss for each of the three when there's no baseline range yet", () => {
+        render(
+            <WeekComparison
+                weekComparison={payload()}
+                load={load({
+                    weekly_trimp_range: null,
+                    monotony_range: null,
+                    strain_range: null,
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                /246 over your last 7 days: heart rate and time, added up\./,
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /1\.9 over your last 7 days: how varied your training's been\./,
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /467 over your last 7 days: the week's effort multiplied by how varied it was\./,
+            ),
         ).toBeInTheDocument();
     });
 
@@ -93,6 +137,6 @@ describe('WeekComparison', () => {
         expect(
             screen.getByText(/not enough training history yet/),
         ).toBeInTheDocument();
-        expect(screen.queryByText('weekly TRIMP')).not.toBeInTheDocument();
+        expect(screen.queryByText('load')).not.toBeInTheDocument();
     });
 });

@@ -36,7 +36,7 @@ export const METRIC_GLOSSARY = {
     trimp: {
         acronym: 'TRIMP',
         label: 'TRIMP',
-        body: 'the effort score for a single run, combining duration and heart rate. the longer or harder it is, the higher the score. the line below compares this session to your average effort over the last 28 days, so you know if it was heavier or lighter than usual.',
+        body: 'the effort score for a run, combining duration and heart rate. the longer or harder it is, the higher the score.',
     },
     monotony: {
         label: 'monotony',

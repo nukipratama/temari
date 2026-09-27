@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import MetricExplainer from './MetricExplainer';
 
@@ -105,5 +105,102 @@ describe('MetricExplainer', () => {
         expect(
             screen.getByRole('button', { name: 'Explain fitness' }),
         ).toHaveClass('h-6', 'w-6', pullIn);
+    });
+
+    describe('viewport-edge alignment', () => {
+        const originalGetBoundingClientRect =
+            Element.prototype.getBoundingClientRect;
+        const originalInnerWidth = window.innerWidth;
+
+        afterEach(() => {
+            Element.prototype.getBoundingClientRect =
+                originalGetBoundingClientRect;
+            window.innerWidth = originalInnerWidth;
+        });
+
+        // The alignment correction measures the popover's OWN rendered rect
+        // (not the trigger's) — see MetricExplainer.tsx's correctedAlign.
+        function stubPopoverRect(left: number, width = 256): void {
+            Element.prototype.getBoundingClientRect = vi.fn().mockReturnValue({
+                left,
+                right: left + width,
+                width,
+                top: 0,
+                bottom: 0,
+                height: 0,
+                x: left,
+                y: 0,
+                toJSON: () => ({}),
+            });
+        }
+
+        it('stays centered when its own rendered rect already fits the viewport', () => {
+            window.innerWidth = 1024;
+            stubPopoverRect(400);
+            render(<MetricExplainer metricKey="ctl" />);
+
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Explain fitness' }),
+            );
+
+            expect(screen.getByRole('dialog')).toHaveAttribute(
+                'data-align',
+                'center',
+            );
+        });
+
+        it('flips to the left edge when the centered rect overflows the left of the viewport', () => {
+            window.innerWidth = 1024;
+            stubPopoverRect(-60);
+            render(<MetricExplainer metricKey="ctl" />);
+
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Explain fitness' }),
+            );
+
+            expect(screen.getByRole('dialog')).toHaveAttribute(
+                'data-align',
+                'left',
+            );
+        });
+
+        it('flips to the right edge when the centered rect overflows the right of the viewport', () => {
+            window.innerWidth = 400;
+            stubPopoverRect(300);
+            render(<MetricExplainer metricKey="ctl" />);
+
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Explain fitness' }),
+            );
+
+            expect(screen.getByRole('dialog')).toHaveAttribute(
+                'data-align',
+                'right',
+            );
+        });
+
+        it('resets to center on a fresh open after a previous correction', () => {
+            window.innerWidth = 1024;
+            stubPopoverRect(-60);
+            render(<MetricExplainer metricKey="ctl" />);
+            const trigger = screen.getByRole('button', {
+                name: 'Explain fitness',
+            });
+
+            fireEvent.click(trigger);
+            expect(screen.getByRole('dialog')).toHaveAttribute(
+                'data-align',
+                'left',
+            );
+
+            fireEvent.click(trigger);
+            stubPopoverRect(400);
+            fireEvent.click(trigger);
+
+            expect(screen.getByRole('dialog')).toHaveAttribute(
+                'data-align',
+                'center',
+            );
+        });
     });
 });
