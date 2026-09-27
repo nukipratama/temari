@@ -12,6 +12,20 @@ import { activityUrl } from '@/lib/routes';
 
 type Relation = 'faster' | 'slower' | 'same' | 'higher' | 'lower';
 
+export interface PastYouDuelGap {
+    km: number;
+    gap_sec: number;
+    label: string;
+}
+
+export interface PastYouDuel {
+    gaps: PastYouDuelGap[];
+    net_gap_sec: number;
+    net_label: string;
+    compared_km: number;
+    footnote: string | null;
+}
+
 export interface PastYouMatch {
     days_ago: number;
     pace: { seconds_per_km: number; relation: 'faster' | 'slower' | 'same' };
@@ -23,6 +37,23 @@ export interface PastYouMatch {
     past_name: string | null;
     /** The viewed run's own effort — this row's leading-edge stripe, per MASTER.md. */
     effort: Effort;
+    /** UI-only km-by-km duel; null until both runs' splits are hydrated. */
+    duel: PastYouDuel | null;
+}
+
+/** Widest gap a bar visually maxes out at, so one bad km doesn't blow the scale for the rest. */
+const GAP_BAR_CAP_SEC = 30;
+
+function gapBarPct(gapSec: number): number {
+    return (Math.min(Math.abs(gapSec), GAP_BAR_CAP_SEC) / GAP_BAR_CAP_SEC) * 50;
+}
+
+function gapToneClass(gapSec: number): string {
+    if (gapSec === 0) {
+        return 'text-text-2';
+    }
+
+    return gapSec < 0 ? 'text-leaf-ink' : 'text-ember-ink';
 }
 
 /** `same` reads as neutral; otherwise `betterWhen` is the relation that tones green. */
@@ -115,7 +146,78 @@ export default function PastYouCard({
                     />
                 )}
             </dl>
+
+            {match.duel !== null && <DuelSection duel={match.duel} />}
         </section>
+    );
+}
+
+function DuelSection({ duel }: Readonly<{ duel: PastYouDuel }>) {
+    return (
+        <div className="mt-4 border-t border-dashed border-border pt-3">
+            <Eyebrow token="small" tone="ink-2">
+                Km by km
+            </Eyebrow>
+            <ul className="mt-2 space-y-1.5">
+                {duel.gaps.map((gap) => (
+                    <li key={gap.km} className="flex items-center gap-2">
+                        <span className="w-4 shrink-0 font-mono text-label-micro text-text-3">
+                            {gap.km}
+                        </span>
+                        <div className="relative h-2 flex-1">
+                            <div
+                                className="absolute inset-y-0 left-1/2 w-px bg-border-strong"
+                                aria-hidden
+                            />
+                            {gap.gap_sec < 0 && (
+                                <div
+                                    className="absolute inset-y-0 left-1/2 rounded-r-sm bg-leaf"
+                                    style={{
+                                        width: `${gapBarPct(gap.gap_sec)}%`,
+                                    }}
+                                    aria-hidden
+                                />
+                            )}
+                            {gap.gap_sec > 0 && (
+                                <div
+                                    className="absolute inset-y-0 right-1/2 rounded-l-sm bg-ember"
+                                    style={{
+                                        width: `${gapBarPct(gap.gap_sec)}%`,
+                                    }}
+                                    aria-hidden
+                                />
+                            )}
+                        </div>
+                        <span
+                            className={cn(
+                                'w-12 shrink-0 text-right font-mono text-xs font-bold tabular-nums',
+                                gapToneClass(gap.gap_sec),
+                            )}
+                        >
+                            {gap.label}
+                        </span>
+                    </li>
+                ))}
+            </ul>
+            <p className="mt-2 flex items-center justify-between">
+                <span className="font-sans text-label-micro text-text-3">
+                    Net over {duel.compared_km} km
+                </span>
+                <span
+                    className={cn(
+                        'font-mono text-xs font-bold tabular-nums',
+                        gapToneClass(duel.net_gap_sec),
+                    )}
+                >
+                    {duel.net_label}
+                </span>
+            </p>
+            {duel.footnote !== null && (
+                <p className="mt-1 font-sans text-label-micro text-text-3">
+                    {duel.footnote}
+                </p>
+            )}
+        </div>
     );
 }
 

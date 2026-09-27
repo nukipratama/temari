@@ -14,6 +14,23 @@ function match(overrides: Partial<PastYouMatch> = {}): PastYouMatch {
         past_activity_id: 42,
         past_name: 'Morning easy',
         effort: 'easy',
+        duel: null,
+        ...overrides,
+    };
+}
+
+function duel(
+    overrides: Partial<PastYouMatch['duel']> = {},
+): NonNullable<PastYouMatch['duel']> {
+    return {
+        gaps: [
+            { km: 1, gap_sec: -6, label: '−0:06' },
+            { km: 2, gap_sec: 9, label: '+0:09' },
+        ],
+        net_gap_sec: 3,
+        net_label: '+0:03',
+        compared_km: 2,
+        footnote: null,
         ...overrides,
     };
 }
@@ -151,5 +168,49 @@ describe('PastYouCard', () => {
         expect(screen.getByText('43')).toBeInTheDocument();
         expect(screen.getByText('sec/km slower')).toBeInTheDocument();
         expect(screen.getByText('16 bpm lower')).toHaveClass('text-leaf-ink');
+    });
+
+    it('renders no duel section when the past run has no comparable splits', () => {
+        render(<PastYouCard match={match({ duel: null })} />);
+        expect(screen.queryByText('Km by km')).not.toBeInTheDocument();
+    });
+
+    it('renders a signed gap per compared km, tinting ahead leaf and behind ember', () => {
+        render(<PastYouCard match={match({ duel: duel() })} />);
+        expect(screen.getByText('Km by km')).toBeInTheDocument();
+        expect(screen.getByText('−0:06')).toHaveClass('text-leaf-ink');
+        expect(screen.getByText('+0:09')).toHaveClass('text-ember-ink');
+    });
+
+    it('shows the net gap and the compared distance in the footer', () => {
+        render(<PastYouCard match={match({ duel: duel() })} />);
+        expect(screen.getByText('Net over 2 km')).toBeInTheDocument();
+        expect(screen.getByText('+0:03')).toHaveClass('text-ember-ink');
+    });
+
+    it('reads "even" neutrally for a dead-even km', () => {
+        render(
+            <PastYouCard
+                match={match({
+                    duel: duel({
+                        gaps: [{ km: 1, gap_sec: 0, label: 'even' }],
+                    }),
+                })}
+            />,
+        );
+        expect(screen.getByText('even')).toHaveClass('text-text-2');
+    });
+
+    it('shows the remainder footnote when the runs cover different distances', () => {
+        render(
+            <PastYouCard
+                match={match({
+                    duel: duel({ footnote: "+0.4 km past you didn't run" }),
+                })}
+            />,
+        );
+        expect(
+            screen.getByText("+0.4 km past you didn't run"),
+        ).toBeInTheDocument();
     });
 });

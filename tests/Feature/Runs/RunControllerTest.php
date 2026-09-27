@@ -338,6 +338,81 @@ it('carries the viewed run\'s effort on the past-you match', function (): void {
             ->where('pastYou.effort', 'easy'));
 });
 
+it('builds the km-by-km duel once both runs have splits', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 2_000,
+        'moving_time' => 490,
+        'elapsed_time' => 490,
+        'start_date_local' => Carbon::today(),
+        'total_elevation_gain' => 20,
+        'weather_temp_c' => 25,
+        'splits_metric' => [
+            ['split' => 1, 'distance' => 1000.0, 'elapsed_time' => 240.0],
+            ['split' => 2, 'distance' => 1000.0, 'elapsed_time' => 250.0],
+        ],
+    ]);
+    $past = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($past)->create([
+        'distance' => 2_000,
+        'moving_time' => 487,
+        'elapsed_time' => 487,
+        'start_date_local' => Carbon::today()->subDays(30),
+        'total_elevation_gain' => 20,
+        'weather_temp_c' => 25,
+        'splits_metric' => [
+            ['split' => 1, 'distance' => 1000.0, 'elapsed_time' => 246.0],
+            ['split' => 2, 'distance' => 1000.0, 'elapsed_time' => 241.0],
+        ],
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pastYou.duel.compared_km', 2)
+            ->where('pastYou.duel.net_gap_sec', 3));
+});
+
+it('renders no duel when the matched past run has not been hydrated yet', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000,
+        'moving_time' => 3_600,
+        'elapsed_time' => 3_600,
+        'start_date_local' => Carbon::today(),
+        'total_elevation_gain' => 20,
+        'weather_temp_c' => 25,
+        'splits_metric' => [
+            ['split' => 1, 'distance' => 1000.0, 'elapsed_time' => 360.0],
+        ],
+    ]);
+    $past = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($past)->create([
+        'distance' => 10_000,
+        'moving_time' => 3_600,
+        'elapsed_time' => 3_600,
+        'start_date_local' => Carbon::today()->subDays(30),
+        'total_elevation_gain' => 20,
+        'weather_temp_c' => 25,
+        'splits_metric' => null,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pastYou.duel', null));
+});
+
 it('runs no story-line queries when only the run insights are requested', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
