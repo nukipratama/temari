@@ -18,7 +18,7 @@ import {
     type WeekRow,
 } from '@/pages/Activities/useCalendar';
 
-import WeeklyStatusChips from './WeeklyStatusChips';
+import WeeklyStatLine from './WeeklyStatLine';
 
 const CELL_BASE =
     'relative flex min-h-8 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xs border border-border-strong bg-card py-1.5 font-mono text-[0.59375rem] leading-[1.2] font-bold text-foreground';
@@ -69,8 +69,8 @@ export default function CalendarWeekRow({
                             </p>
                         )}
                     />
-                    <div className="mt-1.75 flex flex-wrap gap-1.5">
-                        <WeeklyStatusChips snapshot={snapshot} tone="card" />
+                    <div className="mt-1.75 flex flex-wrap items-start gap-1.5">
+                        <WeeklyStatLine snapshot={snapshot} />
                         {week.rarity && (
                             <span
                                 className={cn(

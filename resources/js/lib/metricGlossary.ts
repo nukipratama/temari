@@ -1,8 +1,8 @@
 /**
  * Beginner-friendly explanations for every sport-science term surfaced
  * across the app. Each entry is a 1-2 sentence explanation keyed by a
- * stable slug. Components opt in via `<MetricExplainer metricKey="ctl" />`
- * next to the label they want to demystify.
+ * stable slug, for any surface that wants to demystify a term on tap
+ * (e.g. `WeeklyStatLine`'s tappable metric words).
  *
  * Voice matches the Temari persona: casual, warm, contractions fine,
  * common running terms stay English, obscure ones get explained, no

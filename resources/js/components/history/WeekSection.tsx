@@ -10,7 +10,7 @@ import { dominantMood } from '@/lib/mood';
 import { type WeekBucket } from '@/pages/Activities/weekBuckets';
 
 import RecapCard from './RecapCard';
-import WeeklyStatusChips from './WeeklyStatusChips';
+import WeeklyStatLine from './WeeklyStatLine';
 
 interface WeekSectionProps {
     bucket: WeekBucket;
@@ -70,7 +70,7 @@ const WeekSection = memo(function WeekSection({
                     fallback={ruleBasedFallback(snapshot)}
                     awaitingSchedule={snapshot.is_current_week}
                     isChainHead={snapshot.is_chain_head}
-                    chips={<WeeklyStatusChips snapshot={snapshot} />}
+                    chips={<WeeklyStatLine snapshot={snapshot} />}
                     notification={{
                         url: `/recaps/weekly/${snapshot.id}/send`,
                         retryAfterSeconds:

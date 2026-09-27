@@ -153,33 +153,7 @@ describe('WeekSection', () => {
         expect(screen.queryByText(/1 runs/)).not.toBeInTheDocument();
     });
 
-    it('renders the form-status chip label for every FormStatus value', () => {
-        const labels: Record<string, string> = {
-            fresh: 'feeling fresh',
-            optimal: 'right on track',
-            fatigued: 'getting tired',
-            overreaching: 'overreaching',
-        };
-        for (const status of [
-            'fresh',
-            'optimal',
-            'fatigued',
-            'overreaching',
-        ] as const) {
-            const { unmount } = render(
-                <WeekSection
-                    bucket={bucket()}
-                    snapshot={snapshot({ form_status: status })}
-                    notes={{}}
-                    moods={{}}
-                />,
-            );
-            expect(screen.getByText(labels[status])).toBeInTheDocument();
-            unmount();
-        }
-    });
-
-    it('renders no metric chips when the snapshot carries no metrics', () => {
+    it('renders no metric stat line when the snapshot carries no metrics', () => {
         render(
             <WeekSection
                 bucket={bucket()}
@@ -190,20 +164,27 @@ describe('WeekSection', () => {
                     form_status: null,
                     avg_decoupling: null,
                     monotony: null,
+                    strain: null,
                 })}
                 notes={{}}
                 moods={{}}
             />,
         );
 
-        expect(screen.queryByText(/Monotony/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/Drift/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/Fatigue/)).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'variety' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'drift' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'fatigue' }),
+        ).not.toBeInTheDocument();
     });
 
-    // The alert-tone thresholds themselves belong to WeeklyStatusChips; this
+    // The alert-tone thresholds themselves belong to WeeklyStatLine; this
     // only pins that the section keeps handing it the week's numbers.
-    it('renders the metric chips past the alarm thresholds', () => {
+    it('renders the stat line metrics past the alarm thresholds', () => {
         render(
             <WeekSection
                 bucket={bucket()}
@@ -213,8 +194,8 @@ describe('WeekSection', () => {
             />,
         );
 
-        expect(screen.getByText('Monotony 2.10')).toBeInTheDocument();
-        expect(screen.getByText('Drift 9.4%')).toBeInTheDocument();
+        expect(screen.getByText('2.10')).toBeInTheDocument();
+        expect(screen.getByText('9.4%')).toBeInTheDocument();
     });
 
     describe('weekly recap notification', () => {
