@@ -51,6 +51,8 @@ class TrainingLoad
      */
     private const int SUMMARY_CACHE_SECONDS = 300;
 
+    private const int SUMMARY_CACHE_VERSION = 2;
+
     /**
      * @param  int  $windowDays  the trailing window `weekly_trimp`/monotony/strain
      *                           are computed over. ATL/CTL/form are EWMA time
@@ -60,7 +62,7 @@ class TrainingLoad
     public function summary(User $user, ?Carbon $asOf = null, int $windowDays = 7): ?array
     {
         $today = ($asOf ?? Carbon::today())->copy()->startOfDay();
-        $cacheKey = "training-load:{$user->id}:{$today->toDateString()}:{$windowDays}";
+        $cacheKey = self::summaryCacheKey($user->id, $today->toDateString(), $windowDays);
 
         if (array_key_exists($cacheKey, $this->summaryMemo)) {
             return $this->summaryMemo[$cacheKey];
@@ -228,6 +230,12 @@ class TrainingLoad
         return ['trimp' => $trimp, 'runDays' => $runDays];
     }
 
+    /** Bump SUMMARY_CACHE_VERSION whenever the summary payload's shape changes. */
+    public static function summaryCacheKey(int $userId, string $date, int $windowDays): string
+    {
+        return 'training-load:v'.self::SUMMARY_CACHE_VERSION.":{$userId}:{$date}:{$windowDays}";
+    }
+
     /**
      * Bust the summary cache for a user so the next dashboard load sees fresh
      * ATL/CTL values. Called after activity ingest or deletion.
@@ -235,7 +243,7 @@ class TrainingLoad
     public static function clearSummaryCache(User $user, int $windowDays = 7): void
     {
         $today = Carbon::today()->toDateString();
-        $cacheKey = "training-load:{$user->id}:{$today}:{$windowDays}";
+        $cacheKey = self::summaryCacheKey($user->id, $today, $windowDays);
         Cache::forget($cacheKey);
 
         $instance = app(self::class);
