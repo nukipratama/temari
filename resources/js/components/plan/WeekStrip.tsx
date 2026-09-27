@@ -52,15 +52,6 @@ function tileWord(day: PlanDay): string {
     return day.session_type;
 }
 
-/**
- * The tile's visible word — dropped once the day has a status glyph to show
- * instead. A still-ahead day keeps its word, since it has no status yet, only
- * a session type.
- */
-function tileVisibleWord(day: PlanDay): string | null {
-    return dayStatusGlyph(day) !== null ? null : tileWord(day);
-}
-
 const SHORT_WORD: Record<string, string> = {
     interval: 'reps',
 };
@@ -125,8 +116,8 @@ export default function WeekStrip({
                 const state = tileState(day, today);
                 const km = tileKm(day);
                 const word = tileWord(day);
-                const visibleWord = tileVisibleWord(day);
                 const glyph = dayStatusGlyph(day);
+                const visibleWord = glyph !== null ? null : word;
                 const selected = day.date === selectedDate;
                 const isToday = state === 'today';
                 const effort = sessionTypeEffort(day.session_type);

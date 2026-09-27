@@ -250,6 +250,7 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     // A day excused before it passes is still `planned` server-side until
     // plan:score-compliance runs the next morning; the headline says "skipped" now.
     let status: string = day.skipped ? 'skip' : day.status;
+    const glyph = dayStatusGlyph(day);
     if (status === 'overreached' && ranHot(day)) {
         status = 'hot';
     }
@@ -299,12 +300,8 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
                     title={STATUS_MEANING[status]}
                     className="mt-1 flex items-center gap-1 text-label-micro text-text-2"
                 >
-                    {dayStatusGlyph(day) !== null && (
-                        <Icon
-                            icon={dayStatusGlyph(day)!}
-                            className="size-3"
-                            aria-hidden
-                        />
+                    {glyph !== null && (
+                        <Icon icon={glyph} className="size-3" aria-hidden />
                     )}
                     {STATUS_LABEL[status]}
                     {day.compliance_score != null &&
