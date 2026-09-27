@@ -13,6 +13,7 @@ import TimeInZoneBar from '@/components/profile/TimeInZoneBar';
 import AskAboutRun from '@/components/run/AskAboutRun';
 import LapsCarousel from '@/components/run/LapsCarousel';
 import PastYouCard, { type PastYouMatch } from '@/components/run/PastYouCard';
+import { type PrBib } from '@/components/run/PrBibStamp';
 import RunHero from '@/components/run/RunHero';
 import RunHydratingNotice from '@/components/run/RunHydratingNotice';
 import RunLenses from '@/components/run/RunLenses';
@@ -52,6 +53,7 @@ interface ShowProps {
     /** This run is the head of the per-activity narration chain (latest run). */
     isChainHead: boolean;
     pastYou: PastYouMatch | null;
+    prBib: PrBib | null;
 }
 
 export default function RunsShow({
@@ -65,6 +67,7 @@ export default function RunsShow({
     moodFallback,
     isChainHead,
     pastYou,
+    prBib,
 }: Readonly<ShowProps>) {
     const [shareOpen, setShareOpen] = useState(false);
     const {
@@ -115,6 +118,7 @@ export default function RunsShow({
                         onShare={
                             shareData ? () => setShareOpen(true) : undefined
                         }
+                        prBib={prBib}
                     />
 
                     {detailed && <PastYouCard match={pastYou} />}

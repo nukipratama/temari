@@ -10,6 +10,7 @@ import {
 import type { ActivityDetail, Mood } from '@/types/inertia';
 
 import MapWeatherPanel from '@/components/run/MapWeatherPanel';
+import PrBibStamp, { type PrBib } from '@/components/run/PrBibStamp';
 import MascotWatermark from '@/components/temari/MascotWatermark';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
@@ -30,6 +31,8 @@ interface RunHeroProps {
     trimp: number | null;
     /** Opens the share-card popup. Omitted when this run has no card to share. */
     onShare?: () => void;
+    /** Non-null only on the one view that plays the record's bib stamp. */
+    prBib?: PrBib | null;
 }
 
 function display(
@@ -54,6 +57,7 @@ export default function RunHero({
     hr,
     trimp,
     onShare,
+    prBib = null,
 }: Readonly<RunHeroProps>) {
     const distanceKm = useCountUp(
         detail.distance != null ? detail.distance / 1000 : 0,
@@ -106,6 +110,9 @@ export default function RunHero({
                         {detail.name ?? 'run'}
                     </h1>
                     <MoodChip mood={mood} className="mt-1.5" />
+                    {prBib !== null && (
+                        <PrBibStamp bib={prBib} className="mt-1.5" />
+                    )}
                 </div>
                 {onShare && (
                     <button

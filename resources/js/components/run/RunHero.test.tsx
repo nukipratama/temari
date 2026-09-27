@@ -123,4 +123,35 @@ describe('RunHero', () => {
         expect(screen.getByText(/24°/)).toBeInTheDocument();
         expect(screen.getByText('Senayan')).toBeInTheDocument();
     });
+
+    it('shows no bib stamp when the run holds no tracked record', () => {
+        renderHero({ prBib: null });
+        expect(screen.queryByText(/· PR ·/)).not.toBeInTheDocument();
+    });
+
+    it('shows the bib stamp on the run that first claims the animation', () => {
+        renderHero({
+            prBib: {
+                label: '10K',
+                value_sec: 3521,
+                distance_m: null,
+                record_key: '10km',
+                animate: true,
+            },
+        });
+        expect(screen.getByText('10K · PR · 58:41')).toBeInTheDocument();
+    });
+
+    it('still shows the bib stamp, statically, on a later view of the same record', () => {
+        renderHero({
+            prBib: {
+                label: '10K',
+                value_sec: 3521,
+                distance_m: null,
+                record_key: '10km',
+                animate: false,
+            },
+        });
+        expect(screen.getByText('10K · PR · 58:41')).toBeInTheDocument();
+    });
 });

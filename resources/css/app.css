@@ -689,6 +689,29 @@ body {
     animation-delay: var(--reveal-delay, 0s);
 }
 
+@keyframes pr-bib-punch {
+    0% {
+        transform: scale(1.6) rotate(-10deg);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(0.92) rotate(2deg);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1) rotate(-3deg);
+        opacity: 1;
+    }
+}
+
+.pr-bib-stamp {
+    transform: rotate(-3deg);
+}
+
+.pr-bib-stamp-animate {
+    animation: pr-bib-punch 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
 @keyframes mascot-spin {
     to {
         transform: rotate(360deg);
@@ -733,6 +756,10 @@ body {
 
     .mascot-spin,
     .mascot-spin-reverse {
+        animation: none;
+    }
+
+    .pr-bib-stamp-animate {
         animation: none;
     }
 
