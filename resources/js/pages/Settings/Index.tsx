@@ -36,6 +36,7 @@ import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
+import { laneStack } from '@/lib/variants';
 
 import {
     useNotificationPrefs,
@@ -129,7 +130,7 @@ export default function Settings({
                     </PageHero>
                 </header>
 
-                <div className="flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
+                <div className={laneStack}>
                     <section>
                         <SectionLabel>Appearance</SectionLabel>
                         <div className="mt-3">

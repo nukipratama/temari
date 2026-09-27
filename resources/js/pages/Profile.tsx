@@ -24,7 +24,9 @@ import PageHero from '@/components/ui/PageHero';
 import { SkeletonChart, SkeletonRows } from '@/components/ui/Skeleton';
 import UserAvatar from '@/components/UserAvatar';
 import { appLayout } from '@/layouts/appLayout';
+import { cn } from '@/lib/cn';
 import { formatPace } from '@/lib/pace';
+import { laneStack } from '@/lib/variants';
 
 interface IdentityPayload {
     name: string;
@@ -133,7 +135,7 @@ export default function Profile({
                     />
                 </header>
 
-                <div className="mt-6 flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
+                <div className={cn('mt-6', laneStack)}>
                     <ProfileHero
                         mood={mood}
                         firstRunAt={identity.first_run_at}
