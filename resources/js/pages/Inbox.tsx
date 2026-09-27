@@ -34,6 +34,12 @@ function sendRead(id: number): Promise<void> {
         .catch(() => undefined);
 }
 
+function sendReadAll(): Promise<void> {
+    return postJson('/api/notifications/read-all')
+        .then(() => router.reload({ only: ['unreadNotifications'] }))
+        .catch(() => undefined);
+}
+
 export default function Inbox({
     notifications = [],
     shown,
@@ -70,6 +76,14 @@ export default function Inbox({
         void sendRead(item.id);
     };
 
+    const markAllRead = () => {
+        setReadIds(
+            (previous) =>
+                new Set([...previous, ...notifications.map((item) => item.id)]),
+        );
+        void sendReadAll();
+    };
+
     useEffect(() => {
         if (focusId === null) {
             return;
@@ -87,7 +101,24 @@ export default function Inbox({
             <Head title="Inbox" />
             <PageContainer>
                 <PageHero
-                    eyebrow={unread > 0 ? `Inbox · ${unread} unread` : 'Inbox'}
+                    eyebrow={
+                        <div className="mb-3.5 flex items-baseline justify-between gap-3">
+                            <Eyebrow token="hero" tone="ink-2">
+                                {unread > 0
+                                    ? `Inbox · ${unread} unread`
+                                    : 'Inbox'}
+                            </Eyebrow>
+                            {unread > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={markAllRead}
+                                    className="focus-ring shrink-0 rounded font-mono text-xs font-semibold text-text-3 transition hover:text-foreground"
+                                >
+                                    mark all read
+                                </button>
+                            )}
+                        </div>
+                    }
                     size="quote-lg"
                     italic
                 >

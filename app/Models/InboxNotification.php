@@ -102,6 +102,21 @@ class InboxNotification extends Model
     }
 
     /**
+     * Marks every unread row for the user read in one query. Bulk updates skip
+     * model events, so the shared unread-count cache is busted explicitly here,
+     * same as {@see self::record()}.
+     */
+    public static function markAllReadFor(User $user): void
+    {
+        self::query()
+            ->where('user_id', $user->id)
+            ->unread()
+            ->update(['read_at' => Carbon::now()]);
+
+        SharedPropCacheKey::UnreadNotifications->forget($user->id);
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo

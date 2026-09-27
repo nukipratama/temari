@@ -99,13 +99,50 @@ describe('Inbox', () => {
         expect(screen.getByText('Inbox')).toBeInTheDocument();
     });
 
+    it('offers mark all read only when something is unread', () => {
+        setMockPage({ unreadNotifications: 0 }, '/inbox');
+        renderInbox([item({ read_at: '2026-08-13T08:00:00+07:00' })]);
+
+        expect(
+            screen.queryByRole('button', { name: 'mark all read' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('marks every loaded row read and hits the bulk endpoint', async () => {
+        const fetchMock = okFetch();
+        setMockPage({ unreadNotifications: 2 }, '/inbox');
+        renderInbox([
+            item({ id: 5, url: '/activities/5' }),
+            item({ id: 6, url: '/activities/6' }),
+        ]);
+
+        await userEvent.click(
+            screen.getByRole('button', { name: 'mark all read' }),
+        );
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/api/notifications/read-all',
+            expect.objectContaining({ method: 'POST' }),
+        );
+        await waitFor(() =>
+            expect(screen.queryByLabelText('Unread')).not.toBeInTheDocument(),
+        );
+        await waitFor(() =>
+            expect(router.reload).toHaveBeenCalledWith({
+                only: ['unreadNotifications'],
+            }),
+        );
+    });
+
     it('marks a row read when its deep link is opened and refreshes the bell count', async () => {
         const fetchMock = okFetch();
         renderInbox([item({ id: 4, url: '/activities/42' })]);
 
         expect(screen.getByLabelText('Unread')).toBeInTheDocument();
 
-        await userEvent.click(screen.getByRole('link', { name: /open/i }));
+        await userEvent.click(
+            screen.getByRole('link', { name: 'Your run is in' }),
+        );
 
         expect(fetchMock).toHaveBeenCalledWith(
             '/api/notifications/4/read',
@@ -131,7 +168,9 @@ describe('Inbox', () => {
             }),
         ]);
 
-        await userEvent.click(screen.getByRole('link', { name: /open/i }));
+        await userEvent.click(
+            screen.getByRole('link', { name: 'Your run is in' }),
+        );
 
         expect(fetchMock).not.toHaveBeenCalled();
     });

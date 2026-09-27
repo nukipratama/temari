@@ -5,7 +5,6 @@ import {
     LoaderCircle,
     LogOut,
     Send,
-    Unlink,
     UserX,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
@@ -25,6 +24,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import SectionLabel from '@/components/ui/SectionLabel';
+import SettingsDisconnectLink from '@/components/ui/SettingsDisconnectLink';
 import SettingsRow from '@/components/ui/SettingsRow';
 import Toggle from '@/components/ui/Switch';
 import {
@@ -493,8 +493,7 @@ function TelegramPanel({
                 }
             />
             <div className="-mt-1 pl-11">
-                <button
-                    type="button"
+                <SettingsDisconnectLink
                     onClick={() =>
                         guard(() =>
                             router.delete('/profile/telegram', {
@@ -502,11 +501,7 @@ function TelegramPanel({
                             }),
                         )
                     }
-                    className="focus-ring inline-flex shrink-0 items-center gap-1 rounded text-label-small text-text-3 transition hover:text-ember-ink"
-                >
-                    <Icon icon={Unlink} width={13} height={13} aria-hidden />
-                    Disconnect
-                </button>
+                />
             </div>
             <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
         </>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Api\RunQuestionController;
+use App\Http\Controllers\Api\NotificationReadAllController;
 use App\Http\Controllers\Api\NotificationReadController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
@@ -178,6 +179,9 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::post('/api/notifications/{notification}/read', NotificationReadController::class)
         ->whereNumber('notification')
         ->name('api.notifications.read');
+
+    Route::post('/api/notifications/read-all', NotificationReadAllController::class)
+        ->name('api.notifications.read-all');
 
     Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
         ->whereNumber('subjectId')

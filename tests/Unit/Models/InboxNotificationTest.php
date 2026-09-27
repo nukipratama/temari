@@ -102,6 +102,28 @@ it('busts the unread-count shared prop on write and on read', function (): void 
     expect(Cache::get($key))->toBeNull();
 });
 
+it('marks every unread row for the user read in one call', function (): void {
+    $user = User::factory()->create();
+    $rows = InboxNotification::factory()->for($user)->count(2)->create();
+    $other = InboxNotification::factory()->create();
+
+    InboxNotification::markAllReadFor($user);
+
+    $rows->each(fn (InboxNotification $row) => expect($row->fresh()->read_at)->not->toBeNull());
+    expect($other->fresh()->read_at)->toBeNull();
+});
+
+it('busts the unread-count shared prop on mark-all-read', function (): void {
+    $user = User::factory()->create();
+    InboxNotification::factory()->for($user)->create();
+    $key = SharedPropCacheKey::UnreadNotifications->key($user->id);
+
+    Cache::put($key, 99, 300);
+    InboxNotification::markAllReadFor($user);
+
+    expect(Cache::get($key))->toBeNull();
+});
+
 it('exposes the inbox on the user, newest first', function (): void {
     $user = User::factory()->create();
     $older = InboxNotification::factory()->for($user)->create(['created_at' => now()->subDay()]);

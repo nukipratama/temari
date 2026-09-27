@@ -111,10 +111,9 @@ is what keeps an old account's inbox usable without deciding how long a record l
 `PP3` cut both celebration replays: the card-reveal modal and its `api.cards.*` endpoints, and the
 accessory-unlock takeover. Rows are now a record and a deep link, nothing more. Every row's only
 action is the link into the page the notification was about, which is the same URL its web push
-already carried — drawn as an "open" pill and, so a thumb does not have to find it, as a
-full-bleed overlay over the row itself ([InboxRow](../../resources/js/components/inbox/InboxRow.tsx#L92)).
-The overlay is pointer-only (`aria-hidden`, not focusable): the pill stays the one accessible
-control rather than the row's target being announced twice. Both mark the row read.
+already carried — a full-bleed overlay over the row itself is the row's one accessible link
+([InboxRow](../../resources/js/components/inbox/InboxRow.tsx#L104)), named for the row's title
+rather than a separate visible "open" affordance. It marks the row read on click.
 
 **Every kind carries that link.** It is whatever the producing notification put in
 `payload['url']` — the controller computes nothing — and a test send used to put nothing there, so a
@@ -151,8 +150,12 @@ Reading is per-row and idempotent: opening a deep link or replaying a celebratio
 [NotificationReadController](../../app/Http/Controllers/Api/NotificationReadController.php#L19),
 which is scoped through the user's own relation. The page marks the row read optimistically and
 reloads only `unreadNotifications`, which is what the bell in
-[MobileTopBar](../../resources/js/components/MobileTopBar.tsx) renders. There is no "mark all read": the unread count is a count of things not looked at, and a
-button that lies about that is worse than a count that stays high.
+[MobileTopBar](../../resources/js/components/MobileTopBar.tsx) renders. A "mark all read" control in
+the page header, shown only while something is unread, POSTs to
+[NotificationReadAllController](../../app/Http/Controllers/Api/NotificationReadAllController.php#L18)
+instead, which marks every unread row for that user in one query
+([InboxNotification::markAllReadFor](../../app/Models/InboxNotification.php#L109)) and reloads the
+same `unreadNotifications` prop.
 
 The same prop puts a dot on the Today tab
 ([MobileBottomNav](../../resources/js/components/MobileBottomNav.tsx#L60)). On mobile the bell sits
@@ -162,7 +165,7 @@ announced: the bell is the labelled, actionable control, and this tab does not o
 is a reason to look up, not a second way in. It carries the *unread dot's* own token rather than the
 bell badge's: `ember-deep` is a fixed-identity fill built to sit under `text-cream`, and bare on the
 pill it falls under 3:1 on the dark ground, while `icon-accent` — what
-[InboxRow](../../resources/js/components/inbox/InboxRow.tsx#L182) already dots an unread row with —
+[InboxRow](../../resources/js/components/inbox/InboxRow.tsx#L171) already dots an unread row with —
 is ground-reactive. A ring keeps it off the lime the active tab tints its own icon with.
 
 `/inbox?item={id}` is the per-row deep link. The controller widens the window far enough to contain
