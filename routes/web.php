@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AnalysisController;
 use App\Http\Controllers\Api\RunQuestionController;
 use App\Http\Controllers\Api\NotificationReadAllController;
 use App\Http\Controllers\Api\NotificationReadController;
+use App\Http\Controllers\Api\RecordStampController;
 use App\Http\Controllers\Auth\DemoAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
@@ -182,6 +183,9 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
     Route::post('/api/notifications/read-all', NotificationReadAllController::class)
         ->name('api.notifications.read-all');
+
+    Route::post('/api/record-stamps', RecordStampController::class)
+        ->name('api.record-stamps.store');
 
     Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
         ->whereNumber('subjectId')

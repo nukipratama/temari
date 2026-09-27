@@ -1,10 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { postJson } from '@/lib/http';
+
 import PrBibStamp, { type PrBib } from './PrBibStamp';
+
+vi.mock('@/lib/http', () => ({
+    postJson: vi.fn().mockResolvedValue(new Response()),
+}));
 
 afterEach(() => {
     vi.restoreAllMocks();
+    vi.mocked(postJson).mockClear();
 });
 
 function bib(overrides: Partial<PrBib> = {}): PrBib {
@@ -12,6 +19,7 @@ function bib(overrides: Partial<PrBib> = {}): PrBib {
         label: '10K',
         value_sec: 3521,
         distance_m: null,
+        record_key: '10km',
         animate: false,
         ...overrides,
     };
@@ -35,6 +43,7 @@ describe('PrBibStamp', () => {
                     label: 'Longest Run',
                     value_sec: null,
                     distance_m: 21_100,
+                    record_key: 'longest_run',
                 })}
             />,
         );
@@ -87,5 +96,20 @@ describe('PrBibStamp', () => {
         expect(() =>
             render(<PrBibStamp bib={bib({ animate: true })} />),
         ).not.toThrow();
+    });
+
+    it('claims the stamp with one POST once the animation plays', () => {
+        render(<PrBibStamp bib={bib({ animate: true, record_key: '10km' })} />);
+
+        expect(postJson).toHaveBeenCalledTimes(1);
+        expect(postJson).toHaveBeenCalledWith('/api/record-stamps', {
+            record_key: '10km',
+        });
+    });
+
+    it('never POSTs on a static (already-seen) view', () => {
+        render(<PrBibStamp bib={bib({ animate: false })} />);
+
+        expect(postJson).not.toHaveBeenCalled();
     });
 });

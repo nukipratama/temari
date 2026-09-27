@@ -135,6 +135,7 @@ describe('RunHero', () => {
                 label: '10K',
                 value_sec: 3521,
                 distance_m: null,
+                record_key: '10km',
                 animate: true,
             },
         });
@@ -147,6 +148,7 @@ describe('RunHero', () => {
                 label: '10K',
                 value_sec: 3521,
                 distance_m: null,
+                record_key: '10km',
                 animate: false,
             },
         });

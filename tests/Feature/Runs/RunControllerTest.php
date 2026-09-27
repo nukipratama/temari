@@ -415,7 +415,7 @@ it('renders no duel when the matched past run has not been hydrated yet', functi
             ->where('pastYou.duel', null));
 });
 
-it('plays the bib stamp animation the first time a record-holding run is opened', function (): void {
+it('offers the bib stamp animation the first time a record-holding run is opened, without claiming it itself', function (): void {
     $user = User::factory()->create();
     $longer = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($longer)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
@@ -428,12 +428,14 @@ it('plays the bib stamp animation the first time a record-holding run is opened'
         ->assertInertia(fn (Assert $page) => $page
             ->where('prBib.label', '10K')
             ->where('prBib.value_sec', 2400)
+            ->where('prBib.record_key', '10km')
             ->where('prBib.animate', true));
 
-    expect(RecordStamp::query()->where('user_id', $user->id)->where('record_key', '10km')->exists())->toBeTrue();
+    // A GET must not change its own payload: rendering never claims the stamp.
+    expect(RecordStamp::query()->where('user_id', $user->id)->where('record_key', '10km')->exists())->toBeFalse();
 });
 
-it('keeps showing the bib stamp on a later view of the same record, but static', function (): void {
+it('keeps showing the bib stamp on a later view of the same record, but static, once the stamp is claimed', function (): void {
     $user = User::factory()->create();
     $longer = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($longer)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
@@ -441,7 +443,7 @@ it('keeps showing the bib stamp on a later view of the same record, but static',
     ActivityDetail::factory()->for($activity)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
     PersonalRecord::factory()->forActivity($activity)->create(['category' => '10km']);
 
-    $this->actingAs($user)->get("/activities/{$activity->id}");
+    RecordStamp::query()->create(['user_id' => $user->id, 'record_key' => '10km', 'seen_at' => now()]);
 
     $this->actingAs($user)->get("/activities/{$activity->id}")
         ->assertSuccessful()
@@ -470,7 +472,7 @@ it("does not let another user's already-claimed stamp suppress this account's an
     $activityA = Activity::factory()->for($userA)->analyzed()->create();
     ActivityDetail::factory()->for($activityA)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
     PersonalRecord::factory()->forActivity($activityA)->create(['category' => '10km']);
-    $this->actingAs($userA)->get("/activities/{$activityA->id}");
+    RecordStamp::query()->create(['user_id' => $userA->id, 'record_key' => '10km', 'seen_at' => now()]);
 
     $userB = User::factory()->create();
     $longerB = Activity::factory()->for($userB)->analyzed()->create();
