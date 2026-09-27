@@ -120,11 +120,14 @@ describe('navigationMemory', () => {
                 return 1;
             },
         );
-        startContextualBackSession({
-            component: 'Runs/Show',
-            url: '/activities/42',
-            props: { auth: { user: { id: 7 } } },
-        }, router);
+        startContextualBackSession(
+            {
+                component: 'Runs/Show',
+                url: '/activities/42',
+                props: { auth: { user: { id: 7 } } },
+            },
+            router,
+        );
         writeContextualOrigin({
             href: '/plan?day=2026-06-16',
             scrollY: 312,
