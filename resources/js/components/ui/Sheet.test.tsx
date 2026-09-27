@@ -30,17 +30,6 @@ function drag(distance: number) {
     fireEvent.pointerUp(grip, { clientY: 400 + distance, pointerId: 1 });
 }
 
-function stubMatchMedia(matches: boolean) {
-    vi.stubGlobal(
-        'matchMedia',
-        vi.fn(() => ({
-            matches,
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-        })),
-    );
-}
-
 describe('Sheet', () => {
     it('renders its title and body when open', () => {
         render(<Harness />);
@@ -51,22 +40,18 @@ describe('Sheet', () => {
         expect(screen.getByText('sheet body')).toBeInTheDocument();
     });
 
-    it.each([false, true])(
-        'keeps the sheet transition in the motion-safe path (%s)',
-        (prefersReducedMotion) => {
-            stubMatchMedia(prefersReducedMotion);
-            render(<Harness />);
+    it('only applies sheet transitions in the motion-safe path', () => {
+        render(<Harness />);
 
-            expect(
-                window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-            ).toBe(prefersReducedMotion);
-            expect(screen.getByRole('dialog')).toHaveClass(
-                'motion-safe:transition-transform',
-                'motion-safe:duration-200',
-                'motion-safe:ease-out',
-            );
-        },
-    );
+        expect(screen.getByRole('dialog')).toHaveClass(
+            'motion-safe:transition-transform',
+            'motion-safe:duration-200',
+            'motion-safe:ease-out',
+        );
+        expect(screen.getByRole('dialog')).not.toHaveClass(
+            'transition-transform',
+        );
+    });
 
     it('stays out of the document when closed', () => {
         render(
