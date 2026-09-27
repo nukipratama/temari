@@ -292,6 +292,52 @@ it('ships a real weekPlan when the user has a plan for the current week', functi
     Carbon::setTestNow();
 });
 
+it('does not ship restDayEasePace on a day that is not a planned rest day', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->missing('restDayEasePace'));
+
+    Carbon::setTestNow();
+});
+
+it('does not ship restDayEasePace when today has no planned session at all', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->missing('restDayEasePace'));
+});
+
+it('defers restDayEasePace on a planned rest day, resolving only on the named partial reload', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Rest,
+    ]);
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->missing('restDayEasePace'));
+
+    $response = $this->actingAs($user)->get(
+        '/',
+        inertiaPartialHeaders($this->actingAs($user), '/', 'Home', 'restDayEasePace'),
+    )->assertSuccessful();
+
+    $response->assertJsonPath('component', 'Home');
+    $response->assertJsonPath('props.restDayEasePace', null);
+
+    Carbon::setTestNow();
+});
+
 it('ships the Past You verdict as its own outcome when history is too thin', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
@@ -376,7 +422,9 @@ it('paints Home inside its query budget', function (): void {
     // fixture now carries the real previous Sunday, so that branch's read runs.
     // 18: a pinned today no longer skips the readiness check, so its
     // hydration-backlog read runs here as it does for any other today.
-    expect($queries)->toBeLessThanOrEqual(18);
+    // 19: the controller reads today's own session_type once to decide
+    // whether restDayEasePace's deferred prop is worth adding at all.
+    expect($queries)->toBeLessThanOrEqual(19);
 
     Carbon::setTestNow();
 });

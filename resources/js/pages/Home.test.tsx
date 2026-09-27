@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
     BriefingResult,
@@ -299,5 +299,31 @@ describe('Home', () => {
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
         expect(screen.queryByText('No plan yet.')).not.toBeInTheDocument();
+    });
+
+    it("passes restDayEasePace through to today's session on a rest day", () => {
+        vi.setSystemTime(new Date('2026-06-08T09:00:00'));
+
+        const restDayPlan: WeekPlan = {
+            ...weekPlan,
+            days: [{ ...weekPlan.days[0], session_type: 'rest' }],
+        };
+
+        render(
+            <Home
+                briefing={briefing}
+                snapshot={snapshot}
+                hasRuns
+                pastYouTrend={trend()}
+                weekPlan={restDayPlan}
+                restDayEasePace={{ deltaSecPerKm: 12, direction: 'quicker' }}
+            />,
+        );
+
+        expect(
+            screen.getByText(/your easy runs after a rest day go/),
+        ).toBeInTheDocument();
+
+        vi.useRealTimers();
     });
 });

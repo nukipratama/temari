@@ -1,6 +1,10 @@
 import { ArrowDown } from 'lucide-react';
 
-import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
+import type {
+    BriefingResult,
+    RestDayEasePace,
+    WeekPlanDay,
+} from '@/types/inertia';
 
 import { AskedRanResult, ChangeRow } from '@/components/plan/DeltaPair';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
@@ -10,6 +14,7 @@ import { type MascotPose, writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+import { formatPace } from '@/lib/pace';
 import {
     clampSummary,
     easedFromDelta,
@@ -79,7 +84,10 @@ function SessionVoice({
  * recorded stays a marked modification beside the prescription. See
  * `docs/decisions/the-eased-session-leads.md`.
  */
-function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
+function TodayPrescription({
+    day,
+    restDayEasePace,
+}: Readonly<{ day: WeekPlanDay; restDayEasePace: RestDayEasePace | null }>) {
     const judged = judgedDayResult(day);
     const pace = judged === null ? paceLabel(day) : null;
     const sessionDelta = day.eased_from
@@ -118,6 +126,15 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
             >
                 {parts.join(' · ')}
             </p>
+            {day.session_type === 'rest' && restDayEasePace !== null && (
+                <p className="mt-1 text-xs leading-relaxed text-text-2">
+                    your easy runs after a rest day go{' '}
+                    <span className="font-mono text-foreground">
+                        {`${formatPace(restDayEasePace.deltaSecPerKm)}/km`}
+                    </span>{' '}
+                    {restDayEasePace.direction}
+                </p>
+            )}
             {shape && (
                 <p className="mt-1 text-xs leading-relaxed text-text-2">
                     {shape}
@@ -213,11 +230,14 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
 export default function TodaySession({
     briefing,
     today = null,
+    restDayEasePace = null,
     drawnAnchors = new Set<string>(),
 }: Readonly<{
     briefing: BriefingResult;
     /** Today's row of `weekPlan.days`, null when no plan covers today. */
     today?: WeekPlanDay | null;
+    /** Deferred; only ever set alongside a rest-day `today`. */
+    restDayEasePace?: RestDayEasePace | null;
     /** From {@link drawnHomeAnchors} — which citations this page can honour. */
     drawnAnchors?: ReadonlySet<string>;
 }>) {
@@ -238,7 +258,12 @@ export default function TodaySession({
             <Eyebrow token="micro" className="text-icon-accent">
                 Today
             </Eyebrow>
-            {today !== null && <TodayPrescription day={today} />}
+            {today !== null && (
+                <TodayPrescription
+                    day={today}
+                    restDayEasePace={restDayEasePace}
+                />
+            )}
             {showsVoice && (
                 <div className="mt-3">
                     <AnalysisStatus
