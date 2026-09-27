@@ -18,7 +18,7 @@ code_refs:
   - resources/js/components/history/HistoryNav.tsx
   - resources/js/components/history/RecapCard.tsx
   - resources/js/components/history/WeekSection.tsx
-  - resources/js/components/history/WeeklyStatusChips.tsx
+  - resources/js/components/history/WeeklyStatLine.tsx
   - resources/js/components/history/CalendarWeekRow.tsx
   - resources/js/components/history/InlineNote.tsx
 ---
@@ -92,11 +92,15 @@ visit carrying `?weeks=` two higher, and the server ships exactly that many week
 sections (decision P3 of the prototype-parity program). Each [WeekSection](../../resources/js/components/history/WeekSection.tsx)
 renders a plain mono meta line (runs / km / TRIMP), then the week's
 [RecapCard](../../resources/js/components/history/RecapCard.tsx) (mood-ringed
-Temari, narration, `WeeklyStatusChips` — Fatigue/ATL, Monotony, Drift/
-decoupling, Fitness/CTL, Readiness/form), then the runs via
-[RunListRow](../../resources/js/components/run/RunListRow.tsx). The chips
-themselves live in [WeeklyStatusChips](../../resources/js/components/history/WeeklyStatusChips.tsx),
-shared with the Calendar's week disclosure below.
+Temari, narration, a tappable `WeeklyStatLine` — fatigue/ATL,
+variety/monotony, drift/decoupling, form/readiness word), then the runs via
+[RunListRow](../../resources/js/components/run/RunListRow.tsx). The stat line
+itself lives in [WeeklyStatLine](../../resources/js/components/history/WeeklyStatLine.tsx),
+shared with the Calendar's week disclosure below. Tapping a metric word
+reveals a plain explanation inline (no popover, so nothing gets clipped by
+`RecapCard`'s `overflow-hidden`); a metric past its alarm threshold opens by
+default with a deterministic, rule-based read instead of the general
+explanation.
 
 The data comes from `HistoryController`'s list branch in
 [HistoryController.php](../../app/Http/Controllers/HistoryController.php). It
@@ -162,7 +166,7 @@ no rule-based fallback for monthly recaps.
 row, and it is ported: the calendar branch ships the grid's own
 `weeklySnapshots` (bounded to `gridStart`..`gridEnd`, so an old month does not
 get the newest weeks), and pressing a week reveals its recap through
-`AnalysisStatus`, the shared `WeeklyStatusChips`, and — the one Card surface
+`AnalysisStatus`, the shared `WeeklyStatLine`, and — the one Card surface
 this screen keeps (decision P12) — a badge for the week's **rarest** earned
 card, tinted by rarity. A week with no snapshot leaves the button disabled and
 dimmed. The badge lives here and nowhere else on the screen; it is not a day-cell

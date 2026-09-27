@@ -211,7 +211,9 @@ describe('Activities/Feed', () => {
         );
         expect(screen.getAllByTestId('run-row').length).toBe(2);
         expect(screen.getByText(/A consistent week/)).toBeInTheDocument();
-        expect(screen.getByText(/right on track/)).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'fatigue' }),
+        ).toBeInTheDocument();
     });
 
     it('renders an orphans bucket when a run has no start_date_local', () => {

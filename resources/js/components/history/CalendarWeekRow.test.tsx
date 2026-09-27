@@ -199,7 +199,9 @@ describe('CalendarWeekRow', () => {
         expect(
             screen.getByText(/Steady week, one strong effort/),
         ).toBeInTheDocument();
-        expect(screen.getByText(/Fitness 42.0/)).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'fatigue' }),
+        ).toBeInTheDocument();
     });
 
     // P12: the one Card surface History keeps, and it lives here — inside the
