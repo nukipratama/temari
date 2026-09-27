@@ -343,10 +343,10 @@ export default function OnboardingIndex({
                         <div className="relative flex items-center justify-center">
                             <div
                                 aria-hidden
-                                className="pointer-events-none absolute size-60 rounded-full blur-[34px]"
+                                className="pointer-events-none absolute size-44 rounded-full blur-[28px]"
                                 style={{ background: FACE_GLOW }}
                             />
-                            <TemariMascot pose="blazing" size={72} drawIn />
+                            <TemariMascot pose="blazing" size={96} drawIn />
                         </div>
                         <PageHero
                             size="quote-lg"
