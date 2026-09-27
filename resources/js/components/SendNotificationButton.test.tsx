@@ -154,24 +154,24 @@ describe('SendNotificationButton', () => {
         ).not.toBeDisabled();
     });
 
-    it('uses the shared 44px pressable icon target when reachable', () => {
-        render(<SendNotificationButton url="/activities/99/send" />);
-        expect(
-            screen.getByRole('button', { name: 'send notification' }),
-        ).toHaveClass('min-h-11', 'min-w-11', 'pressable');
-    });
-
-    it('uses the shared 44px pressable icon target when unreachable', () => {
-        render(
-            <SendNotificationButton
-                url="/activities/99/send"
-                reachable={false}
-            />,
-        );
-        expect(
-            screen.getByRole('button', {
-                name: 'turn on notifications to send',
-            }),
-        ).toHaveClass('min-h-11', 'min-w-11', 'pressable');
-    });
+    it.each([
+        { state: 'reachable', props: {}, label: 'send notification' },
+        {
+            state: 'unreachable',
+            props: { reachable: false },
+            label: 'turn on notifications to send',
+        },
+    ] as const)(
+        'uses the shared 44px pressable icon target when $state',
+        ({ props, label }) => {
+            render(
+                <SendNotificationButton url="/activities/99/send" {...props} />,
+            );
+            expect(screen.getByRole('button', { name: label })).toHaveClass(
+                'min-h-11',
+                'min-w-11',
+                'pressable',
+            );
+        },
+    );
 });
