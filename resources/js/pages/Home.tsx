@@ -18,6 +18,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { drawnHomeAnchors } from '@/lib/anchors';
 import { todayLocalIso } from '@/lib/pace';
+import { laneStack } from '@/lib/variants';
 
 interface HomeProps {
     briefing: BriefingResult;
@@ -55,7 +56,7 @@ export default function Home({
                 {!hasRuns ? (
                     <EmptyRunsState />
                 ) : (
-                    <div className="flex flex-col gap-4">
+                    <div className={laneStack}>
                         <TodaySession
                             briefing={briefing}
                             today={todayPlan}

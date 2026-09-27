@@ -7,7 +7,6 @@ import { ChangeRow } from '@/components/plan/DeltaPair';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
 import { formatKm, parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
@@ -55,9 +54,6 @@ const STATUS_TONE: Record<string, string> = {
     skip: 'text-text-3',
 };
 
-const RING_SIZE = 60;
-const RING_STROKE = 6;
-
 const kmFigure = (km: number | null): string =>
     formatKm(km === null ? null : km * 1000, 1);
 
@@ -88,69 +84,14 @@ function dayDetail(day: WeekPlanDay): string {
     return parts.join(' · ');
 }
 
-/** The prototype's `ProgressRing`: an arc for credited/total with the same
- *  figure reading out at its centre. */
-function ProgressRing({
-    credited,
-    total,
-}: Readonly<{ credited: number; total: number }>) {
-    const radius = (RING_SIZE - RING_STROKE) / 2;
-    const circumference = 2 * Math.PI * radius;
-    const ratio = total > 0 ? Math.min(1, Math.max(0, credited / total)) : 0;
-    const tweenedRatio = useCountUp(ratio);
-    const tweenedCredited = useCountUp(credited);
-
-    return (
-        <div
-            className="relative flex-none"
-            style={{ width: RING_SIZE, height: RING_SIZE }}
-        >
-            <svg
-                width={RING_SIZE}
-                height={RING_SIZE}
-                viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
-                className="-rotate-90"
-                aria-hidden
-            >
-                <circle
-                    cx={RING_SIZE / 2}
-                    cy={RING_SIZE / 2}
-                    r={radius}
-                    fill="none"
-                    strokeWidth={RING_STROKE}
-                    className="stroke-border"
-                />
-                <circle
-                    cx={RING_SIZE / 2}
-                    cy={RING_SIZE / 2}
-                    r={radius}
-                    fill="none"
-                    strokeWidth={RING_STROKE}
-                    strokeLinecap="round"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={circumference * (1 - tweenedRatio)}
-                    className="stroke-icon-accent"
-                />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center font-mono text-[0.6875rem] font-extrabold tabular-nums text-foreground">
-                {Math.round(tweenedCredited)}/{total}
-            </span>
-        </div>
-    );
-}
-
-function PlanFigure({
-    value,
+function StatTile({
     label,
-}: Readonly<{ value: string; label: string }>) {
+    value,
+}: Readonly<{ label: string; value: string }>) {
     return (
-        <div>
-            <b className="block font-mono text-[0.9375rem] font-extrabold tabular-nums text-foreground">
-                {value}
-            </b>
-            <span className="font-mono text-[0.5625rem] uppercase tracking-[0.05em] text-foreground">
-                {label}
-            </span>
+        <div className="rounded-sm bg-secondary px-3 py-2.5">
+            <dt className="text-label-micro text-text-3">{label}</dt>
+            <dd className="text-stat-sm mt-1">{value}</dd>
         </div>
     );
 }
@@ -215,10 +156,9 @@ function DayCell({
 }
 
 /**
- * "This week's plan" — the week at a glance, on the prototype's `PlanCard`
- * shape: phase badge, a credited/total ring beside the week's actual km
- * against its planned km and its TRIMP, a seven-day grid, and a link into
- * Plan. Today's own session is stated once, on `TodaySession`, beside the
+ * "This week's plan" — the week at a glance: phase badge, the week's actual km
+ * against its planned km as the hero number, credited sessions and TRIMP as
+ * tiles, a seven-day grid, and a link into Plan. Today's own session is stated once, on `TodaySession`, beside the
  * voice describing it. Plan fields are exactly
  * `CurrentWeekPlanBuilder::forUser()`'s shape, the same computation Plan's own
  * week rows use, so nothing shown here can drift from Plan; the actuals are
@@ -234,14 +174,15 @@ export default function WeekPlanWidget({
     const plannedTweened = useCountUp(weekPlan.planned_km_this_week);
     const trimpTweened = useCountUp(snapshot?.weekly_trimp ?? 0);
 
-    const kmValue = `${actualKm === 0 ? '0' : actualTweened.toFixed(1)} of ${plannedTweened.toFixed(1)}`;
+    const creditedTweened = useCountUp(weekPlan.credited_this_week);
+    const actualValue = actualKm === 0 ? '0' : actualTweened.toFixed(1);
     const trimpValue =
         snapshot?.weekly_trimp != null
             ? Math.round(trimpTweened).toString()
             : '—';
 
     return (
-        <Card as="section">
+        <section>
             <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
                 <Eyebrow token="micro" className="text-foreground">
                     this week&apos;s plan
@@ -251,36 +192,33 @@ export default function WeekPlanWidget({
                 </Chip>
             </div>
 
-            <div className="mb-3.5 grid grid-cols-3 items-center">
-                <div className="flex flex-col items-center gap-1 text-center">
-                    <ProgressRing
-                        credited={weekPlan.credited_this_week}
-                        total={weekPlan.sessions_this_week}
-                    />
-                    <span className="font-mono text-[0.5625rem] uppercase tracking-[0.05em] text-foreground">
-                        sessions
-                    </span>
-                </div>
-                <div className="flex flex-col items-center text-center">
-                    <PlanFigure value={kmValue} label="km" />
-                    {weekPlan.planned_km_eased_from !== null && (
-                        <ChangeRow
-                            className="font-mono text-[0.5625rem] text-text-2"
-                            label="km"
-                            from={weekPlan.planned_km_eased_from.toFixed(1)}
-                            to={weekPlan.planned_km_this_week.toFixed(1)}
-                            direction={deltaDirection(
-                                weekPlan.planned_km_eased_from,
-                                weekPlan.planned_km_this_week,
-                            )}
-                            tag="eased"
-                        />
+            <p className="flex flex-wrap items-baseline gap-x-1.5">
+                <span className="text-stat">{actualValue}</span>
+                <span className="text-meta">
+                    / {plannedTweened.toFixed(1)} km
+                </span>
+            </p>
+            {weekPlan.planned_km_eased_from !== null && (
+                <ChangeRow
+                    className="mt-1 font-mono text-label-micro text-text-2"
+                    label="km"
+                    from={weekPlan.planned_km_eased_from.toFixed(1)}
+                    to={weekPlan.planned_km_this_week.toFixed(1)}
+                    direction={deltaDirection(
+                        weekPlan.planned_km_eased_from,
+                        weekPlan.planned_km_this_week,
                     )}
-                </div>
-                <div className="flex flex-col items-center text-center">
-                    <PlanFigure value={trimpValue} label="trimp" />
-                </div>
-            </div>
+                    tag="eased"
+                />
+            )}
+
+            <dl className="mt-3 mb-3.5 grid grid-cols-2 gap-2">
+                <StatTile
+                    label="sessions"
+                    value={`${Math.round(creditedTweened)}/${weekPlan.sessions_this_week}`}
+                />
+                <StatTile label="trimp" value={trimpValue} />
+            </dl>
 
             <ul className="mb-3.5 grid grid-cols-7 gap-1">
                 {weekPlan.days.map((day) => (
@@ -306,6 +244,6 @@ export default function WeekPlanWidget({
                     aria-hidden
                 />
             </Link>
-        </Card>
+        </section>
     );
 }

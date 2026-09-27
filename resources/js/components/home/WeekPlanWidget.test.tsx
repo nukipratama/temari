@@ -90,6 +90,13 @@ const MON_TO_SUN = [
     '2026-01-11',
 ];
 
+function expectWeekKm(actual: string, planned: string) {
+    expect(
+        screen.getByText(actual, { selector: '.text-stat' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(`/ ${planned} km`)).toBeInTheDocument();
+}
+
 describe('WeekPlanWidget', () => {
     it("reads the week's sessions, actual against planned km, trimp and phase", async () => {
         const days = MON_TO_SUN.map((date) => day({ date, id: date.length }));
@@ -97,11 +104,10 @@ describe('WeekPlanWidget', () => {
 
         await waitFor(() => {
             expect(screen.getByText('2/5')).toBeInTheDocument();
-            expect(screen.getByText('18.2 of 32.0')).toBeInTheDocument();
+            expectWeekKm('18.2', '32.0');
             expect(screen.getByText('214')).toBeInTheDocument();
         });
         expect(screen.getByText('sessions')).toBeInTheDocument();
-        expect(screen.getByText('km')).toBeInTheDocument();
         expect(screen.getByText('trimp')).toBeInTheDocument();
         expect(screen.getByText('build')).toBeInTheDocument();
     });
@@ -119,10 +125,9 @@ describe('WeekPlanWidget', () => {
         );
 
         await waitFor(() => {
-            expect(screen.getByText('18.2 of 24.6')).toBeInTheDocument();
+            expectWeekKm('18.2', '24.6');
         });
-        // "km" labels both the ring's own PlanFigure caption and the delta row.
-        expect(screen.getAllByText('km')).toHaveLength(2);
+        expect(screen.getByText('km')).toBeInTheDocument();
         expect(screen.getByText('26.9')).toBeInTheDocument();
         expect(screen.getByText('24.6')).toBeInTheDocument();
         expect(screen.getByText('eased')).toBeInTheDocument();
@@ -133,7 +138,7 @@ describe('WeekPlanWidget', () => {
         render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
 
         await waitFor(() => {
-            expect(screen.getByText('18.2 of 32.0')).toBeInTheDocument();
+            expectWeekKm('18.2', '32.0');
         });
         expect(screen.queryByText(/eased from/)).not.toBeInTheDocument();
     });
@@ -148,7 +153,7 @@ describe('WeekPlanWidget', () => {
         );
 
         await waitFor(() => {
-            expect(screen.getByText('0 of 32.0')).toBeInTheDocument();
+            expectWeekKm('0', '32.0');
         });
         expect(screen.getByText('—')).toBeInTheDocument();
     });
@@ -158,7 +163,7 @@ describe('WeekPlanWidget', () => {
         render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={null} />);
 
         await waitFor(() => {
-            expect(screen.getByText('0 of 32.0')).toBeInTheDocument();
+            expectWeekKm('0', '32.0');
         });
         expect(screen.getByText('—')).toBeInTheDocument();
     });
@@ -321,18 +326,17 @@ describe('WeekPlanWidget', () => {
         );
     });
 
-    it('lays out the ring, km and trimp figures as three sibling columns', async () => {
+    it('leads with the week km as the hero number and tiles sessions beside trimp', async () => {
         const days = MON_TO_SUN.map((date) => day({ date }));
         render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
 
         await waitFor(() => {
-            expect(screen.getByText('18.2 of 32.0')).toBeInTheDocument();
+            expectWeekKm('18.2', '32.0');
         });
-        const statsRow = screen.getByText('sessions').closest('.grid');
-        expect(statsRow).toHaveClass('grid-cols-3');
-        expect(statsRow?.children).toHaveLength(3);
-        expect(statsRow?.contains(screen.getByText('km'))).toBe(true);
-        expect(statsRow?.contains(screen.getByText('trimp'))).toBe(true);
+        const tiles = screen.getByText('sessions').closest('dl');
+        expect(tiles).toHaveClass('grid-cols-2');
+        expect(tiles?.children).toHaveLength(2);
+        expect(tiles?.contains(screen.getByText('trimp'))).toBe(true);
     });
 
     it('renders one cell per day and rings today', () => {
