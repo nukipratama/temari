@@ -148,8 +148,12 @@ describe('ShareCardModal', () => {
         await openModal();
         const stage = screen.getByRole('group', { name: 'print style' });
 
-        fireEvent.touchStart(stage, { touches: [{ clientX: 200 }] });
-        fireEvent.touchEnd(stage, { changedTouches: [{ clientX: 100 }] });
+        fireEvent.touchStart(stage, {
+            touches: [{ identifier: 1, clientX: 200, clientY: 100 }],
+        });
+        fireEvent.touchEnd(stage, {
+            changedTouches: [{ identifier: 1, clientX: 100, clientY: 105 }],
+        });
 
         expect(screen.getByRole('button', { name: 'ticket' })).toHaveAttribute(
             'aria-pressed',
@@ -157,8 +161,82 @@ describe('ShareCardModal', () => {
         );
 
         // A nudge too small to be a swipe leaves the rack where it was.
-        fireEvent.touchStart(stage, { touches: [{ clientX: 200 }] });
-        fireEvent.touchEnd(stage, { changedTouches: [{ clientX: 190 }] });
+        fireEvent.touchStart(stage, {
+            touches: [{ identifier: 2, clientX: 200, clientY: 100 }],
+        });
+        fireEvent.touchEnd(stage, {
+            changedTouches: [{ identifier: 2, clientX: 190, clientY: 100 }],
+        });
+
+        expect(screen.getByRole('button', { name: 'ticket' })).toHaveAttribute(
+            'aria-pressed',
+            'true',
+        );
+    });
+
+    it('does not treat vertical or diagonal-dominant movement as a swipe', async () => {
+        await openModal();
+        const stage = screen.getByRole('group', { name: 'print style' });
+
+        fireEvent.touchStart(stage, {
+            touches: [{ identifier: 1, clientX: 200, clientY: 100 }],
+        });
+        fireEvent.touchEnd(stage, {
+            changedTouches: [{ identifier: 1, clientX: 155, clientY: 300 }],
+        });
+
+        fireEvent.touchStart(stage, {
+            touches: [{ identifier: 2, clientX: 200, clientY: 100 }],
+        });
+        fireEvent.touchEnd(stage, {
+            changedTouches: [{ identifier: 2, clientX: 99, clientY: 201 }],
+        });
+
+        expect(
+            screen.getByRole('button', { name: 'broadsheet' }),
+        ).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('abandons a swipe when a second finger joins and resets cancellation', async () => {
+        await openModal();
+        const stage = screen.getByRole('group', { name: 'print style' });
+        const first = { identifier: 1, clientX: 200, clientY: 100 };
+        const second = { identifier: 2, clientX: 100, clientY: 100 };
+
+        fireEvent.touchStart(stage, { touches: [first] });
+        fireEvent.touchStart(stage, { touches: [first, second] });
+        fireEvent.touchEnd(stage, {
+            touches: [second],
+            changedTouches: [{ identifier: 1, clientX: 100, clientY: 105 }],
+        });
+
+        expect(
+            screen.getByRole('button', { name: 'broadsheet' }),
+        ).toHaveAttribute('aria-pressed', 'true');
+
+        fireEvent.touchEnd(stage, { touches: [], changedTouches: [second] });
+        expect(
+            screen.getByRole('button', { name: 'broadsheet' }),
+        ).toHaveAttribute('aria-pressed', 'true');
+
+        fireEvent.touchStart(stage, {
+            touches: [{ identifier: 3, clientX: 200, clientY: 100 }],
+        });
+        fireEvent.touchCancel(stage);
+        fireEvent.touchEnd(stage, {
+            changedTouches: [{ identifier: 3, clientX: 100, clientY: 100 }],
+        });
+
+        expect(
+            screen.getByRole('button', { name: 'broadsheet' }),
+        ).toHaveAttribute('aria-pressed', 'true');
+
+        fireEvent.touchStart(stage, {
+            touches: [{ identifier: 4, clientX: 200, clientY: 100 }],
+        });
+        fireEvent.touchEnd(stage, {
+            changedTouches: [{ identifier: 4, clientX: 100, clientY: 105 }],
+        });
 
         expect(screen.getByRole('button', { name: 'ticket' })).toHaveAttribute(
             'aria-pressed',
