@@ -6,8 +6,10 @@ import type { PlanSessionSegment } from '@/types/inertia';
 import type { PlanDay, SeasonSummaryWeek } from './plan';
 
 import {
+    dayStatusGlyph,
     SESSION_TYPE_ICON,
     SESSION_TYPE_LABEL,
+    STATUS_GLYPH,
     clampSummary,
     complianceTally,
     computeAdherence,
@@ -760,5 +762,46 @@ describe('prescriptionWhy', () => {
                 }),
             ),
         ).toBe('kept easy. too close to another hard day.');
+    });
+});
+
+describe('dayStatusGlyph', () => {
+    it('shows no glyph for an upcoming, still-planned day', () => {
+        expect(dayStatusGlyph(planDay({ status: 'planned' }))).toBeNull();
+    });
+
+    it('shows no glyph for a rest day kept as rest', () => {
+        expect(
+            dayStatusGlyph(
+                planDay({ session_type: 'rest', status: 'planned' }),
+            ),
+        ).toBeNull();
+    });
+
+    it('grades a rest day run anyway like any other graded day', () => {
+        expect(
+            dayStatusGlyph(
+                planDay({
+                    session_type: 'rest',
+                    status: 'done',
+                    ran_anyway: true,
+                }),
+            ),
+        ).toBe(STATUS_GLYPH.done);
+    });
+
+    it('reads an excused upcoming day as skipped ahead of its server-side status', () => {
+        expect(
+            dayStatusGlyph(planDay({ status: 'planned', skipped: true })),
+        ).toBe(STATUS_GLYPH.skip);
+    });
+
+    it.each([
+        ['done', STATUS_GLYPH.done],
+        ['partial', STATUS_GLYPH.partial],
+        ['missed', STATUS_GLYPH.missed],
+        ['overreached', STATUS_GLYPH.overreached],
+    ] as const)('maps status %s to its glyph', (status, glyph) => {
+        expect(dayStatusGlyph(planDay({ status }))).toBe(glyph);
     });
 });

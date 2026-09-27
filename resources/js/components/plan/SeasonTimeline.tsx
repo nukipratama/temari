@@ -5,6 +5,7 @@ import type { AnalysisPayload } from '@/types/inertia';
 
 import WeeksList from '@/components/plan/WeeksList';
 import WeekView from '@/components/plan/WeekView';
+import { laneStack } from '@/lib/variants';
 
 /**
  * The season's weeks: one week laid out open, this week by default, above a
@@ -63,7 +64,7 @@ export default function SeasonTimeline({
     };
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className={laneStack}>
             <div ref={viewRef} className="scroll-mt-4">
                 <WeekView
                     key={shown.week_start}

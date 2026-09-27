@@ -419,6 +419,24 @@ describe('TodaySession', () => {
         expect(screen.getByText('ran 6.4 km · 6:20/km')).toBeInTheDocument();
     });
 
+    /** #1269: once today has a run logged but hasn't been graded yet, the
+     *  hero number is what was run, with the plan's ask beside it as the label. */
+    it('leads with the ran km once today has a run but is not yet judged', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    session_type: 'long',
+                    distance_km: 15,
+                    actual_km: 12.3,
+                })}
+            />,
+        );
+
+        expectSession('12.3', 'long run · 6:00/km');
+        expect(screen.getByText('/ 15 km planned')).toBeInTheDocument();
+    });
+
     it('draws no prescription when no plan covers today', () => {
         const { container } = render(
             <TodaySession briefing={briefing('Easy 6k.')} />,

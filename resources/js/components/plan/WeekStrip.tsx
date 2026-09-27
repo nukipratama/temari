@@ -4,9 +4,11 @@ import { useRef } from 'react';
 
 import type { PlanDay } from '@/lib/plan';
 
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+import { EFFORT_EDGE_CLASS, sessionTypeEffort } from '@/lib/effort';
 import { formatKm } from '@/lib/pace';
-import { weekdayLabel } from '@/lib/plan';
+import { dayStatusGlyph, weekdayLabel } from '@/lib/plan';
 
 type TileState = 'today' | 'missed' | 'done' | 'rest' | 'planned';
 
@@ -37,18 +39,20 @@ function tileWord(day: PlanDay): string {
     if (day.skipped || day.status === 'skip') {
         return 'skipped';
     }
-    if (day.status === 'missed' || day.status === 'partial') {
+    if (
+        day.status === 'missed' ||
+        day.status === 'partial' ||
+        day.status === 'overreached'
+    ) {
         return day.status;
     }
-    if (day.status === 'done' || day.status === 'overreached') {
+    if (day.status === 'done') {
         return 'done';
     }
     return day.session_type;
 }
 
 const SHORT_WORD: Record<string, string> = {
-    skipped: 'skip',
-    partial: 'short',
     interval: 'reps',
 };
 
@@ -61,19 +65,6 @@ function tileKm(day: PlanDay): string | null {
 
     return km === null ? null : formatKm(km * 1000, 1);
 }
-
-const TILE_TONE: Record<TileState, string> = {
-    today: 'border-horizon bg-horizon text-sky',
-    missed: 'border-ember-ink bg-card text-foreground',
-    done: 'border-transparent bg-leaf/18 text-leaf-ink',
-    rest: 'border-transparent bg-muted text-text-3',
-    planned: 'border-border-strong bg-card text-foreground',
-};
-
-const WORD_TONE: Partial<Record<TileState, string>> = {
-    missed: 'text-ember-ink',
-    planned: 'text-text-2',
-};
 
 /**
  * The week as seven labelled tiles, Monday to Sunday: the weekday, the km
@@ -125,7 +116,11 @@ export default function WeekStrip({
                 const state = tileState(day, today);
                 const km = tileKm(day);
                 const word = tileWord(day);
+                const glyph = dayStatusGlyph(day);
+                const visibleWord = glyph !== null ? null : word;
                 const selected = day.date === selectedDate;
+                const isToday = state === 'today';
+                const effort = sessionTypeEffort(day.session_type);
 
                 return (
                     <button
@@ -151,10 +146,14 @@ export default function WeekStrip({
                         onClick={() => onSelect(day.date)}
                         onKeyDown={(event) => onKeyDown(event, index)}
                         className={cn(
-                            'focus-ring flex min-w-0 flex-col items-center gap-1 rounded-sm border py-2',
-                            TILE_TONE[state],
+                            'focus-ring relative flex min-w-0 flex-col items-center gap-1 overflow-hidden rounded-sm border border-border bg-card py-2 text-foreground',
                             selected &&
-                                'ring-2 ring-foreground ring-offset-1 ring-offset-card',
+                                (isToday
+                                    ? 'ring-2 ring-icon-accent ring-offset-1 ring-offset-card'
+                                    : 'ring-2 ring-foreground ring-offset-1 ring-offset-card'),
+                            !selected &&
+                                isToday &&
+                                'ring-[1.5px] ring-inset ring-icon-accent',
                         )}
                     >
                         <span className="text-label-micro">
@@ -163,14 +162,27 @@ export default function WeekStrip({
                         <span className="font-mono text-xs font-bold tabular-nums">
                             {km ?? '—'}
                         </span>
+                        {glyph !== null ? (
+                            <Icon
+                                icon={glyph}
+                                width={11}
+                                height={11}
+                                aria-hidden
+                            />
+                        ) : (
+                            visibleWord !== null && (
+                                <span className="text-meta w-full truncate text-center leading-none text-text-2">
+                                    {SHORT_WORD[visibleWord] ?? visibleWord}
+                                </span>
+                            )
+                        )}
                         <span
+                            aria-hidden
                             className={cn(
-                                'w-full truncate text-center font-mono text-[0.625rem] leading-none tracking-tight',
-                                WORD_TONE[state],
+                                'absolute inset-x-0 bottom-0',
+                                EFFORT_EDGE_CLASS[effort],
                             )}
-                        >
-                            {SHORT_WORD[word] ?? word}
-                        </span>
+                        />
                     </button>
                 );
             })}

@@ -89,6 +89,7 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
         ? paceEaseDelta(day.pace_eased_from, day)
         : null;
     const heroKm = day.session_type !== 'rest' && judged === null;
+    const ranUnjudged = heroKm && day.actual_km !== null;
     const parts = [SESSION_TYPE_LABEL[day.session_type] ?? day.session_type];
     if (heroKm && pace !== null) {
         parts.push(pace);
@@ -100,9 +101,13 @@ function TodayPrescription({ day }: Readonly<{ day: WeekPlanDay }>) {
     return (
         <div id="anchor-session-today" className="mt-2">
             {heroKm && (
-                <p className="flex items-baseline gap-1.5">
-                    <span className="text-stat">{day.distance_km}</span>
-                    <span className="text-meta">km</span>
+                <p className="flex flex-wrap items-baseline gap-x-1.5">
+                    <span className="text-stat">
+                        {ranUnjudged ? day.actual_km : day.distance_km}
+                    </span>
+                    <span className="text-meta">
+                        {ranUnjudged ? `/ ${day.distance_km} km planned` : 'km'}
+                    </span>
                 </p>
             )}
             <p

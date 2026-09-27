@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { Effort } from '@/types/inertia';
 
-import { EFFORT_EDGE_CLASS, EFFORT_STRIPE_CLASS } from './effort';
+import {
+    EFFORT_EDGE_CLASS,
+    EFFORT_STRIPE_CLASS,
+    sessionTypeEffort,
+} from './effort';
 
 const ALL_EFFORTS: Effort[] = ['easy', 'steady', 'hard', 'rest', 'unknown'];
 
@@ -48,6 +52,21 @@ describe('effort', () => {
                 expect(EFFORT_EDGE_CLASS[effort]).not.toMatch(/\bbg-/);
                 expect(EFFORT_EDGE_CLASS[effort]).not.toMatch(/rounded/);
             }
+        });
+    });
+
+    describe('sessionTypeEffort', () => {
+        it('maps each session type per MASTER.md: easy leaf, long/tempo citrus, interval/race ember, rest achromatic', () => {
+            expect(sessionTypeEffort('easy')).toBe('easy');
+            expect(sessionTypeEffort('long')).toBe('steady');
+            expect(sessionTypeEffort('tempo')).toBe('steady');
+            expect(sessionTypeEffort('interval')).toBe('hard');
+            expect(sessionTypeEffort('race')).toBe('hard');
+            expect(sessionTypeEffort('rest')).toBe('rest');
+        });
+
+        it('falls back to unknown for an unrecognized session type', () => {
+            expect(sessionTypeEffort('something-new')).toBe('unknown');
         });
     });
 });

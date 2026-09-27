@@ -13,7 +13,6 @@ import WeekStrip from '@/components/plan/WeekStrip';
 import FlagWrong from '@/components/temari/FlagWrong';
 import Chip from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
-import { cn } from '@/lib/cn';
 import { formatNaiveMonthDayId } from '@/lib/pace';
 import {
     complianceTally,
@@ -23,7 +22,6 @@ import {
     weekdayLabel,
     weekRangeLabel,
 } from '@/lib/plan';
-import { cardVariants } from '@/lib/variants';
 
 function initialDate(
     days: PlanDay[],
@@ -122,17 +120,9 @@ export default function WeekView({
     const adherence = computeAdherence(days);
 
     return (
-        <section
-            aria-label={`week ${weekNumber}`}
-            className={cn(
-                cardVariants({ padding: 'none' }),
-                week.type === 'current'
-                    ? 'border-icon-accent'
-                    : 'border-border-strong',
-            )}
-        >
+        <section aria-label={`week ${weekNumber}`}>
             {onBack && (
-                <div className="px-4 pt-3">
+                <div className="pb-3">
                     <button
                         type="button"
                         onClick={onBack}
@@ -143,7 +133,7 @@ export default function WeekView({
                     </button>
                 </div>
             )}
-            <div className="flex items-center gap-3 px-4 py-3">
+            <div className="flex items-center gap-3">
                 <span className="w-16 flex-none text-label-micro text-text-2">
                     Week {weekNumber}
                 </span>
@@ -178,7 +168,7 @@ export default function WeekView({
                     </span>
                 </span>
             </div>
-            <div className="flex flex-col gap-3 px-4 pb-4">
+            <div className="mt-3 flex flex-col gap-3">
                 {tally !== '' && (
                     <p className="text-xs text-text-2">
                         {tally}
@@ -211,7 +201,7 @@ export default function WeekView({
                         role="tabpanel"
                         id={panelId}
                         aria-labelledby={tabId(selected.date)}
-                        className="border-t border-border-strong pt-3"
+                        className="border-t border-dashed border-border pt-3"
                     >
                         <div className="flex items-start gap-2">
                             <div className="min-w-0 flex-1">

@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import {
     clampSummary,
+    dayStatusGlyph,
     deltaDirection,
     easedFromDelta,
     judgedDayResult,
@@ -33,7 +34,6 @@ import {
     sessionPurpose,
     STATUS_LABEL,
     STATUS_MEANING,
-    STATUS_TONE,
     volumeAdjustedFrom,
     weekdayLabel,
 } from '@/lib/plan';
@@ -250,6 +250,7 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     // A day excused before it passes is still `planned` server-side until
     // plan:score-compliance runs the next morning; the headline says "skipped" now.
     let status: string = day.skipped ? 'skip' : day.status;
+    const glyph = dayStatusGlyph(day);
     if (status === 'overreached' && ranHot(day)) {
         status = 'hot';
     }
@@ -297,11 +298,11 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
             {!isRest && STATUS_LABEL[status] && (
                 <span
                     title={STATUS_MEANING[status]}
-                    className={cn(
-                        'mt-1 block text-label-micro',
-                        STATUS_TONE[status] ?? 'text-text-3',
-                    )}
+                    className="mt-1 flex items-center gap-1 text-label-micro text-text-2"
                 >
+                    {glyph !== null && (
+                        <Icon icon={glyph} className="size-3" aria-hidden />
+                    )}
                     {STATUS_LABEL[status]}
                     {day.compliance_score != null &&
                         ` · ${complianceLabel(day)}`}

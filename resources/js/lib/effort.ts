@@ -27,3 +27,28 @@ export const EFFORT_EDGE_CLASS: Record<Effort, string> = {
     rest: 'border-b-[3px] border-dashed border-border',
     unknown: 'border-b-[3px] border-solid border-border',
 };
+
+/**
+ * A plan day's effort, read off its `session_type` (design-system/temari/MASTER.md
+ * § Effort colors: easy → leaf, long/tempo → citrus, interval/race → ember,
+ * rest stays achromatic). The one place session type maps to an effort — the
+ * week strip and plan-widget day cells feed this into
+ * {@link EFFORT_STRIPE_CLASS}/{@link EFFORT_EDGE_CLASS} rather than keeping a
+ * second color table of their own.
+ */
+export function sessionTypeEffort(sessionType: string): Effort {
+    switch (sessionType) {
+        case 'easy':
+            return 'easy';
+        case 'long':
+        case 'tempo':
+            return 'steady';
+        case 'interval':
+        case 'race':
+            return 'hard';
+        case 'rest':
+            return 'rest';
+        default:
+            return 'unknown';
+    }
+}

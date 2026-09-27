@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import type { PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 
 import Chip from '@/components/ui/Chip';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import {
@@ -11,7 +12,6 @@ import {
     phaseGroupKey,
     weekRangeLabel,
 } from '@/lib/plan';
-import { cardVariants } from '@/lib/variants';
 
 function weekKm(week: SeasonSummaryWeek): string {
     if (week.type !== 'history') {
@@ -40,77 +40,80 @@ export default function WeeksList({
     onShow: (weekStart: string) => void;
 }>) {
     return (
-        <ol
-            aria-label="season weeks"
-            className={cn(
-                cardVariants({ padding: 'none' }),
-                'divide-y divide-border border-border-strong',
-            )}
-        >
-            {weeks.map((week, index) => {
-                const detail = detailByWeekStart[week.week_start] ?? null;
-                const adherence =
-                    week.type === 'history' && detail !== null
-                        ? computeAdherence(detail.days)
-                        : null;
-                const shown = week.week_start === shownWeekStart;
+        <div>
+            <Eyebrow token="small" className="mb-2.5 text-foreground">
+                season weeks
+            </Eyebrow>
+            <ol
+                aria-label="season weeks"
+                className="divide-y divide-dashed divide-border"
+            >
+                {weeks.map((week, index) => {
+                    const detail = detailByWeekStart[week.week_start] ?? null;
+                    const adherence =
+                        week.type === 'history' && detail !== null
+                            ? computeAdherence(detail.days)
+                            : null;
+                    const shown = week.week_start === shownWeekStart;
 
-                const content = (
-                    <>
-                        <span className="w-16 flex-none text-label-micro text-text-2">
-                            Week {index + 1}
-                        </span>
-                        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                            <span className="text-sm font-semibold text-foreground">
-                                {weekRangeLabel(week.week_start)}
+                    const content = (
+                        <>
+                            <span className="w-16 flex-none text-label-micro text-text-2">
+                                Week {index + 1}
                             </span>
-                            <Chip>
-                                {PHASE_LABEL[phaseGroupKey(week)] ?? week.phase}
-                            </Chip>
-                            {week.type === 'current' && (
-                                <span className="text-label-micro text-horizon-ink">
-                                    this week
+                            <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                                <span className="text-sm font-semibold text-foreground">
+                                    {weekRangeLabel(week.week_start)}
                                 </span>
-                            )}
-                        </span>
-                        <span className="flex-none text-right font-mono text-xs tabular-nums text-text-2">
-                            {weekKm(week)}
-                            {adherence != null && (
-                                <span className="block">{adherence}%</span>
-                            )}
-                        </span>
-                    </>
-                );
-
-                return (
-                    <li key={week.week_start}>
-                        {detail === null ? (
-                            <div className="flex items-center gap-3 py-2.5 pr-11 pl-4">
-                                {content}
-                            </div>
-                        ) : (
-                            <button
-                                type="button"
-                                aria-pressed={shown}
-                                onClick={() => onShow(week.week_start)}
-                                className={cn(
-                                    'focus-ring flex w-full items-center gap-3 border-l-2 py-2.5 pr-4 pl-3.5 text-left transition-colors hover:bg-muted',
-                                    shown
-                                        ? 'border-icon-accent'
-                                        : 'border-transparent',
+                                <Chip>
+                                    {PHASE_LABEL[phaseGroupKey(week)] ??
+                                        week.phase}
+                                </Chip>
+                                {week.type === 'current' && (
+                                    <span className="text-label-micro text-horizon-ink">
+                                        this week
+                                    </span>
                                 )}
-                            >
-                                {content}
-                                <Icon
-                                    icon={ChevronRight}
-                                    className="size-4 flex-none text-text-2"
-                                    aria-hidden
-                                />
-                            </button>
-                        )}
-                    </li>
-                );
-            })}
-        </ol>
+                            </span>
+                            <span className="flex-none text-right font-mono text-xs tabular-nums text-text-2">
+                                {weekKm(week)}
+                                {adherence != null && (
+                                    <span className="block">{adherence}%</span>
+                                )}
+                            </span>
+                        </>
+                    );
+
+                    return (
+                        <li key={week.week_start}>
+                            {detail === null ? (
+                                <div className="flex items-center gap-3 py-2.5 pr-11 pl-4">
+                                    {content}
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    aria-pressed={shown}
+                                    onClick={() => onShow(week.week_start)}
+                                    className={cn(
+                                        'focus-ring flex w-full items-center gap-3 border-l-2 py-2.5 pr-4 pl-3.5 text-left transition-colors hover:bg-muted',
+                                        shown
+                                            ? 'border-icon-accent'
+                                            : 'border-transparent',
+                                    )}
+                                >
+                                    {content}
+                                    <Icon
+                                        icon={ChevronRight}
+                                        className="size-4 flex-none text-text-2"
+                                        aria-hidden
+                                    />
+                                </button>
+                            )}
+                        </li>
+                    );
+                })}
+            </ol>
+        </div>
     );
 }

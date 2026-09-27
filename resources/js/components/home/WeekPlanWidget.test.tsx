@@ -191,7 +191,7 @@ describe('WeekPlanWidget', () => {
         ).toBeInTheDocument();
     });
 
-    it('colors overreached distinctly from a plain done day', () => {
+    it('tells overreached apart from a plain done day by glyph, never by color', () => {
         const days = MON_TO_SUN.map((date, i) =>
             day({
                 date,
@@ -203,12 +203,14 @@ describe('WeekPlanWidget', () => {
             <WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />,
         );
 
-        const overreachedIcon = container.querySelector(
-            '[title^="Overreached"] [data-icon]',
-        );
-        const doneIcon = container.querySelector('[title^="Done"] [data-icon]');
-        expect(overreachedIcon).toHaveClass('text-horizon-ink');
-        expect(doneIcon).toHaveClass('text-leaf-ink');
+        expect(
+            container.querySelector(
+                '[title^="Overreached"] [data-icon="ArrowUp"]',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            container.querySelector('[title^="Done"] [data-icon="Check"]'),
+        ).toBeInTheDocument();
     });
 
     it("shows a run-anyway rest day's actual distance, the way the prototype's wednesday cell does", () => {
@@ -231,8 +233,8 @@ describe('WeekPlanWidget', () => {
 
         expect(screen.getByText('4.2 km')).toBeInTheDocument();
         expect(
-            container.querySelector('[title^="Done"] [data-icon]'),
-        ).toHaveClass('text-leaf-ink');
+            container.querySelector('[title^="Done"] [data-icon="Check"]'),
+        ).toBeInTheDocument();
     });
 
     it("exposes each day's status and compliance score as an accessible title", () => {
@@ -258,11 +260,16 @@ describe('WeekPlanWidget', () => {
                 ? day({ date, status: 'done', actual_km: 9.4 })
                 : day({ date }),
         );
-        render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
+        const { container } = render(
+            <WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />,
+        );
 
-        expect(screen.getByText('9.4 km')).toHaveClass('text-leaf-ink');
+        expect(screen.getByText('9.4 km')).toBeInTheDocument();
         expect(screen.getByText('of 8.0')).toBeInTheDocument();
         expect(screen.getAllByText('8.0 km')).toHaveLength(6);
+        expect(
+            container.querySelector('[title^="Done"] [data-icon="Check"]'),
+        ).toBeInTheDocument();
     });
 
     it('leaves a run rest day showing the actual alone, with nothing to be "of"', () => {
@@ -337,6 +344,25 @@ describe('WeekPlanWidget', () => {
         expect(tiles).toHaveClass('grid-cols-2');
         expect(tiles?.children).toHaveLength(2);
         expect(tiles?.contains(screen.getByText('trimp'))).toBe(true);
+    });
+
+    it("colors each day cell's edge by its session-type effort", () => {
+        const days = MON_TO_SUN.map((date, i) =>
+            day({
+                date,
+                session_type: (['tempo', 'easy', 'rest', 'long'][i % 4] ??
+                    'easy') as string,
+            }),
+        );
+        const { container } = render(
+            <WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />,
+        );
+
+        expect(container.querySelector('.border-citrus')).not.toBeNull();
+        expect(container.querySelector('.border-leaf')).not.toBeNull();
+        expect(
+            container.querySelector('.border-dashed.border-border'),
+        ).not.toBeNull();
     });
 
     it('renders one cell per day and rings today', () => {
