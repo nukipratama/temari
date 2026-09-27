@@ -111,13 +111,7 @@ export default function MetricExplainer({
         >
             <button
                 type="button"
-                onClick={() => {
-                    setOpen((v) => {
-                        const next = !v;
-                        if (!next) setAlign('center');
-                        return next;
-                    });
-                }}
+                onClick={() => (open ? close() : setOpen(true))}
                 aria-label={`Explain ${entry.label}`}
                 aria-expanded={open}
                 aria-controls={open ? popoverId : undefined}
