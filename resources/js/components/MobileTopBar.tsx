@@ -9,6 +9,7 @@ import { Icon } from '@/components/ui/Icon';
 import UserAvatarLink from '@/components/UserAvatarLink';
 import { cn } from '@/lib/cn';
 import { backTargetFor } from '@/lib/nav';
+import { iconButtonVariants } from '@/lib/variants';
 
 // A shared chip backdrop for the icon-only buttons — muted is the exact
 // ground-reactive equivalent of the bar's old fixed cream-deep background (see
@@ -64,7 +65,8 @@ export default function MobileTopBar() {
                     aria-label={`Back to ${back.label}`}
                     className={cn(
                         CHIP,
-                        'pressable focus-ring size-9 text-foreground',
+                        iconButtonVariants(),
+                        'text-foreground',
                     )}
                 >
                     <Icon icon={ArrowLeft} width={18} height={18} aria-hidden />
