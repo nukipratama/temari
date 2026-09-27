@@ -26,7 +26,7 @@ class ProgressionSeriesBuilder
     private const float DISTANCE_TOLERANCE = 0.05;
 
     /**
-     * @return array{category:string, weeks:array<int,string>, times_sec:array<int,int>, goal_sec:int|null}|null
+     * @return array{category:string, weeks:array<int,string>, times_sec:array<int,int>, activity_ids:array<int,int|null>, goal_sec:int|null}|null
      */
     public function build(User $user, PersonalRecord $featured, ?int $goalSec): ?array
     {
@@ -42,7 +42,7 @@ class ProgressionSeriesBuilder
      *
      * @param  list<PersonalRecord>  $records
      * @param  callable(PersonalRecord): (int|null)  $goalResolver
-     * @return array<string, array{category:string, weeks:array<int,string>, times_sec:array<int,int>, goal_sec:int|null}>
+     * @return array<string, array{category:string, weeks:array<int,string>, times_sec:array<int,int>, activity_ids:array<int,int|null>, goal_sec:int|null}>
      */
     public function buildMany(User $user, array $records, callable $goalResolver): array
     {
@@ -77,7 +77,7 @@ class ProgressionSeriesBuilder
             ->whereNotNull('elapsed_time')
             ->where('elapsed_time', '>', 0)
             ->where('start_date_local', '>=', $since)
-            ->select(['start_date_local', 'elapsed_time', 'distance'])
+            ->select(['activity_id', 'start_date_local', 'elapsed_time', 'distance'])
             ->orderBy('start_date_local')
             ->get();
 
@@ -94,7 +94,8 @@ class ProgressionSeriesBuilder
             $out[$category->value] = [
                 'category' => $category->value,
                 'weeks' => array_keys($bestByWeek),
-                'times_sec' => array_values($bestByWeek),
+                'times_sec' => array_map(fn (array $row): int => $row['time'], array_values($bestByWeek)),
+                'activity_ids' => array_map(fn (array $row): ?int => $row['activity_id'], array_values($bestByWeek)),
                 'goal_sec' => $goalResolver($band['record']),
             ];
         }
@@ -113,23 +114,26 @@ class ProgressionSeriesBuilder
      * series, so we leave the scaled trend untouched rather than stamp the PR
      * time onto a different, more recent week that never actually ran it.
      *
-     * @param  array<string, int>  $bestByWeek
+     * @param  array<string, array{time:int, activity_id:int|null}>  $bestByWeek
      */
     private function snapBestToRecord(array &$bestByWeek, PersonalRecord $record): void
     {
         $recordWeek = Carbon::parse($record->set_at)->startOfWeek(Carbon::MONDAY)->toDateString();
         if (isset($bestByWeek[$recordWeek])) {
-            $bestByWeek[$recordWeek] = (int) round($record->value_sec);
+            $bestByWeek[$recordWeek] = [
+                'time' => (int) round($record->value_sec),
+                'activity_id' => $record->activity_id,
+            ];
         }
     }
 
     /**
      * @param  Collection<int, ActivityDetail>  $rows
-     * @return array<string, int>
+     * @return array<string, array{time:int, activity_id:int|null}>
      */
     private function bestTimePerWeek(Collection $rows, float $target): array
     {
-        /** @var array<string, int> $bestByWeek */
+        /** @var array<string, array{time:int, activity_id:int|null}> $bestByWeek */
         $bestByWeek = [];
         foreach ($rows as $row) {
             if ($row->start_date_local === null) {
@@ -139,8 +143,8 @@ class ProgressionSeriesBuilder
             // Scale the elapsed_time to the exact target distance so weeks with
             // a 9.7km run and a 10.2km run compare apples-to-apples.
             $scaled = (int) round((int) $row->elapsed_time * ($target / (float) $row->distance));
-            if (! isset($bestByWeek[$weekKey]) || $scaled < $bestByWeek[$weekKey]) {
-                $bestByWeek[$weekKey] = $scaled;
+            if (! isset($bestByWeek[$weekKey]) || $scaled < $bestByWeek[$weekKey]['time']) {
+                $bestByWeek[$weekKey] = ['time' => $scaled, 'activity_id' => $row->activity_id];
             }
         }
 

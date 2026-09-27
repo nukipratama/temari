@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Link } from '@inertiajs/react';
+import {
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+    type KeyboardEvent as ReactKeyboardEvent,
+    type PointerEvent as ReactPointerEvent,
+} from 'react';
 
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import { formatDurationHMS, formatNaiveMonthDayId } from '@/lib/pace';
@@ -13,31 +21,40 @@ interface Point {
     label: string;
     time: number;
     pr: boolean;
+    activityId: number | null;
 }
-
-type Tip = Point;
 
 /**
  * Best time per week for one distance, as the prototype draws it: a filled
- * polyline with a fatter marker on the PR, each point tappable for a tooltip.
- * Y is inverted — a faster time sits higher — and X is spaced by real elapsed
- * days, so an uneven gap between two attempts is not flattened into progress.
+ * polyline with a fatter marker on the PR. Y is inverted — a faster time
+ * sits higher — and X is spaced by real elapsed days, so an uneven gap
+ * between two attempts is not flattened into progress.
+ *
+ * A pointer drag (touch) or hover (mouse) scrubs a readout across the line,
+ * snapping to the nearest week; arrow keys move between weeks from the
+ * keyboard. `touch-pan-y` keeps vertical page scroll working on mobile —
+ * only a horizontal-ish gesture is claimed as a scrub.
  */
 export default function JourneyChart({
     weeks,
     timesSec,
+    activityIds = [],
 }: Readonly<{
     weeks: ReadonlyArray<string>;
     timesSec: ReadonlyArray<number | null>;
+    activityIds?: ReadonlyArray<number | null>;
 }>) {
     const chartRef = useRef<HTMLDivElement>(null);
     const tipRef = useRef<HTMLDivElement>(null);
-    const [tip, setTip] = useState<Tip | null>(null);
+    const draggingRef = useRef(false);
+    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+    const points = buildPoints(weeks, timesSec, activityIds);
 
     useEffect(() => {
         function close(event: MouseEvent) {
             if (!chartRef.current?.contains(event.target as Node)) {
-                setTip(null);
+                setSelectedIndex(null);
             }
         }
         document.addEventListener('click', close);
@@ -45,49 +62,118 @@ export default function JourneyChart({
     }, []);
 
     useLayoutEffect(() => {
-        if (!tip || !tipRef.current || !chartRef.current) return;
+        if (selectedIndex === null || !tipRef.current || !chartRef.current) {
+            return;
+        }
+        const point = points[selectedIndex];
         const halfTip = tipRef.current.offsetWidth / 2;
+        const containerWidth = chartRef.current.clientWidth || VIEW_W;
+        const rawX =
+            ((point.x + VIEW_PAD_X) / (VIEW_W + VIEW_PAD_X * 2)) *
+            containerWidth;
         const clamped = Math.min(
-            Math.max(tip.x, halfTip + 4),
-            chartRef.current.clientWidth - halfTip - 4,
+            Math.max(rawX, halfTip + 4),
+            containerWidth - halfTip - 4,
         );
         tipRef.current.style.left = `${clamped}px`;
-    }, [tip]);
+    }, [selectedIndex, points]);
 
-    const points = buildPoints(weeks, timesSec);
     if (points.length === 0) {
         return (
             <EmptyPanel title="Not enough runs at this distance yet to draw a journey line." />
         );
     }
 
-    function toggle(point: Point) {
-        setTip((prev) =>
-            prev?.label === point.label
-                ? null
-                : {
-                      x:
-                          ((point.x + VIEW_PAD_X) / (VIEW_W + VIEW_PAD_X * 2)) *
-                          (chartRef.current?.clientWidth ?? VIEW_W),
-                      y: (point.y / VIEW_H) * VIEW_H,
-                      label: point.label,
-                      time: point.time,
-                      pr: point.pr,
-                  },
-        );
+    function nearestIndexFromClientX(clientX: number): number {
+        const rect = chartRef.current?.getBoundingClientRect();
+        const width = rect?.width || VIEW_W;
+        const left = rect?.left ?? 0;
+        const ratio = (clientX - left) / width;
+        const viewX = ratio * (VIEW_W + VIEW_PAD_X * 2) - VIEW_PAD_X;
+
+        let closest = 0;
+        let closestDistance = Infinity;
+        points.forEach((point, index) => {
+            const distance = Math.abs(point.x - viewX);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closest = index;
+            }
+        });
+        return closest;
+    }
+
+    function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+        // Pointer capture retargets the click that follows to the capturing
+        // element, which would swallow a tap on the readout's "open run"
+        // link. Let a press starting on the link through untouched.
+        if ((event.target as HTMLElement).closest('a')) {
+            return;
+        }
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        draggingRef.current = true;
+        setSelectedIndex(nearestIndexFromClientX(event.clientX));
+    }
+
+    function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+        if (event.pointerType !== 'mouse' && !draggingRef.current) {
+            return;
+        }
+        setSelectedIndex(nearestIndexFromClientX(event.clientX));
+    }
+
+    function endDrag() {
+        draggingRef.current = false;
+    }
+
+    function handleKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+        if (event.key === 'Escape') {
+            setSelectedIndex(null);
+            return;
+        }
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+            return;
+        }
+        event.preventDefault();
+        setSelectedIndex((prev) => {
+            const base = prev ?? points.length - 1;
+            const next = event.key === 'ArrowLeft' ? base - 1 : base + 1;
+            return Math.min(Math.max(next, 0), points.length - 1);
+        });
     }
 
     const path = points.map((p) => `${p.x},${p.y}`).join(' ');
     const summary = `From ${formatDurationHMS(points[0].time)} on ${points[0].label} to ${formatDurationHMS(points.at(-1)!.time)} on ${points.at(-1)!.label}.`;
+    const selected = selectedIndex !== null ? points[selectedIndex] : null;
 
     return (
-        <div ref={chartRef} className="relative mt-3.5">
+        <div
+            ref={chartRef}
+            className="focus-ring relative mt-3.5 touch-pan-y"
+            tabIndex={0}
+            role="slider"
+            aria-label="Best time journey. Drag, hover or use the arrow keys to scrub between weeks."
+            aria-valuemin={0}
+            aria-valuemax={points.length - 1}
+            aria-valuenow={selectedIndex ?? points.length - 1}
+            aria-valuetext={
+                selected
+                    ? `${selected.label}: ${formatDurationHMS(selected.time)}${selected.pr ? ', personal record' : ''}`
+                    : undefined
+            }
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            onKeyDown={handleKeyDown}
+        >
             <span className="sr-only">{`Best time journey. ${summary}`}</span>
             <svg
                 viewBox={`-${VIEW_PAD_X} 0 ${VIEW_W + VIEW_PAD_X * 2} ${VIEW_H}`}
                 width="100%"
                 height={VIEW_H}
                 preserveAspectRatio="none"
+                aria-hidden
             >
                 <defs>
                     <linearGradient
@@ -121,50 +207,48 @@ export default function JourneyChart({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                 />
-                {points.map((point) => (
-                    <g
+                {selected && (
+                    <line
+                        x1={selected.x}
+                        x2={selected.x}
+                        y1="0"
+                        y2={VIEW_H}
+                        stroke="var(--color-border-strong)"
+                        strokeWidth="1"
+                        strokeDasharray="2 2"
+                    />
+                )}
+                {points.map((point, index) => (
+                    <circle
                         key={point.label}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`${point.label}: ${formatDurationHMS(point.time)}${point.pr ? ', personal record' : ''}`}
-                        className="group focus-ring cursor-pointer"
-                        onClick={() => toggle(point)}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                toggle(point);
-                            }
-                        }}
-                    >
-                        <circle
-                            cx={point.x}
-                            cy={point.y}
-                            r="10"
-                            fill="transparent"
-                        />
-                        <circle
-                            cx={point.x}
-                            cy={point.y}
-                            r={point.pr ? 5 : 2.5}
-                            fill={
-                                point.pr
-                                    ? 'var(--color-horizon)'
-                                    : 'var(--color-horizon-ink)'
-                            }
-                            stroke={point.pr ? 'var(--color-card)' : undefined}
-                            strokeWidth={point.pr ? 2 : undefined}
-                            className="origin-center transition-transform [transform-box:fill-box] group-hover:scale-150 group-focus:scale-150"
-                        />
-                    </g>
+                        cx={point.x}
+                        cy={point.y}
+                        r={point.pr || index === selectedIndex ? 5 : 2.5}
+                        fill={
+                            point.pr
+                                ? 'var(--color-horizon)'
+                                : 'var(--color-horizon-ink)'
+                        }
+                        stroke={point.pr ? 'var(--color-card)' : undefined}
+                        strokeWidth={point.pr ? 2 : undefined}
+                    />
                 ))}
             </svg>
-            {tip && (
+            {selected && (
                 <div
                     ref={tipRef}
                     className="pointer-events-none absolute -translate-x-1/2 -translate-y-[130%] rounded-sm bg-sky px-2 py-1 font-mono text-[0.625rem] font-bold whitespace-nowrap text-cream shadow-e2"
-                    style={{ left: tip.x, top: tip.y }}
+                    style={{ top: selected.y }}
                 >
-                    {`${tip.label}${tip.pr ? ' · PR' : ''} · ${formatDurationHMS(tip.time)}`}
+                    <span>{`${selected.label}${selected.pr ? ' · PR' : ''} · ${formatDurationHMS(selected.time)}`}</span>
+                    {selected.activityId !== null && (
+                        <Link
+                            href={`/activities/${selected.activityId}`}
+                            className="pointer-events-auto ml-1 underline"
+                        >
+                            open run →
+                        </Link>
+                    )}
                 </div>
             )}
         </div>
@@ -178,11 +262,22 @@ export default function JourneyChart({
 function buildPoints(
     weeks: ReadonlyArray<string>,
     timesSec: ReadonlyArray<number | null>,
+    activityIds: ReadonlyArray<number | null>,
 ): Point[] {
     const recorded = weeks
-        .map((week, index) => ({ week, time: timesSec[index] }))
+        .map((week, index) => ({
+            week,
+            time: timesSec[index],
+            activityId: activityIds[index] ?? null,
+        }))
         .filter(
-            (row): row is { week: string; time: number } => row.time != null,
+            (
+                row,
+            ): row is {
+                week: string;
+                time: number;
+                activityId: number | null;
+            } => row.time != null,
         );
 
     if (recorded.length === 0) return [];
@@ -210,5 +305,6 @@ function buildPoints(
         label: formatNaiveMonthDayId(row.week),
         time: row.time,
         pr: row.week === best.week,
+        activityId: row.activityId,
     }));
 }

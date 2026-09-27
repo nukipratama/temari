@@ -50,6 +50,7 @@ it('builds the weekly-best series scaled to the target distance', function (): v
     ['user' => $user, 'featured' => $featured] = progressionFixture('10km', 2400);
 
     // Two runs in different ISO weeks, each within the +/-5% bucket of 10km.
+    $activityIds = [];
     foreach ([['2026-04-12', 9_900, 2_500], ['2026-05-04', 10_100, 2_450]] as [$date, $dist, $et]) {
         $a = Activity::factory()->for($user)->analyzed()->create();
         ActivityDetail::factory()->for($a)->create([
@@ -57,6 +58,7 @@ it('builds the weekly-best series scaled to the target distance', function (): v
             'elapsed_time' => $et,
             'start_date_local' => Carbon::parse($date.' 07:00:00'),
         ]);
+        $activityIds[] = $a->id;
     }
 
     $series = new ProgressionSeriesBuilder()->build($user, $featured, 2_400);
@@ -65,10 +67,26 @@ it('builds the weekly-best series scaled to the target distance', function (): v
         ->and($series['category'])->toBe('10km')
         ->and($series['weeks'])->toHaveCount(2)
         ->and($series['times_sec'])->toHaveCount(2)
+        ->and($series['activity_ids'])->toBe($activityIds)
         ->and($series['goal_sec'])->toBe(2_400);
 
     // First week: 2500s over 9.9km scaled to 10km = round(2500 * 10000/9900).
     expect($series['times_sec'][0])->toBe((int) round(2_500 * (10_000 / 9_900)));
+});
+
+it('snaps the activity id to the record when the best time is snapped', function (): void {
+    ['user' => $user, 'featured' => $featured] = progressionFixture('10km', 2_400, '2026-05-04 07:00:00');
+
+    $a = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($a)->create([
+        'distance' => 10_100,
+        'elapsed_time' => 2_450,
+        'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
+    ]);
+
+    $series = new ProgressionSeriesBuilder()->build($user, $featured, 2_400);
+
+    expect($series['activity_ids'])->toBe([$featured->activity_id]);
 });
 
 it('snaps the series best to the authoritative PR time so the chart matches the hero', function (): void {
