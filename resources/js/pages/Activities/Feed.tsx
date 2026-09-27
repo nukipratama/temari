@@ -24,7 +24,9 @@ import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
+import { cn } from '@/lib/cn';
 import { revealDelay } from '@/lib/styles';
+import { laneStack } from '@/lib/variants';
 
 import {
     groupByWeek,
@@ -100,7 +102,7 @@ export default function RunsIndex({
                         hasRuns ? (
                             <div
                                 key={weekFilter ?? 'all'}
-                                className="mt-8 flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0"
+                                className={cn('mt-8', laneStack)}
                             >
                                 {rangeAutoWidened && (
                                     <RangeWidenedNote
