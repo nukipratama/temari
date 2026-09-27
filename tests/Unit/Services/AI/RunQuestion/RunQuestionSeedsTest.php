@@ -32,16 +32,29 @@ it('offers only the baseline on a summary-state run with no streams', function (
 });
 
 it('offers the drift question only once the drift clears the noise floor', function (): void {
-    expect(RunQuestionSeeds::for(runSeedDetail(['hr_drift_bpm' => 2.0])))
+    expect(RunQuestionSeeds::for(runSeedDetail([
+        'drift_metric_version' => 2,
+        'steady_effort_hr_drift_bpm' => 2.0,
+    ])))
         ->not->toContain(RunQuestionTopic::HrDrift);
 
-    expect(RunQuestionSeeds::for(runSeedDetail(['hr_drift_bpm' => 6.4])))
+    expect(RunQuestionSeeds::for(runSeedDetail([
+        'drift_metric_version' => 2,
+        'steady_effort_hr_drift_bpm' => 6.4,
+    ])))
         ->toContain(RunQuestionTopic::HrDrift);
+    expect(RunQuestionSeeds::for(runSeedDetail(['hr_drift_bpm' => 6.4])))
+        ->not->toContain(RunQuestionTopic::HrDrift);
 });
 
 it('offers decoupling whenever the run carries the reading at all, zero included', function (): void {
-    expect(RunQuestionSeeds::for(runSeedDetail(['decoupling_pct' => 0.0])))
+    expect(RunQuestionSeeds::for(runSeedDetail([
+        'drift_metric_version' => 2,
+        'steady_effort_decoupling_pct' => 0.0,
+    ])))
         ->toContain(RunQuestionTopic::Decoupling);
+    expect(RunQuestionSeeds::for(runSeedDetail(['decoupling_pct' => 12.0])))
+        ->not->toContain(RunQuestionTopic::Decoupling);
 });
 
 it('offers the negative-split question only when the run actually had one', function (): void {
@@ -76,8 +89,9 @@ it('offers the heat question only on a hot run', function (): void {
 
 it('caps the suggestions so they stay suggestions', function (): void {
     $everything = runSeedDetail([
-        'hr_drift_bpm' => 8.0,
-        'decoupling_pct' => 12.0,
+        'drift_metric_version' => 2,
+        'steady_effort_hr_drift_bpm' => 8.0,
+        'steady_effort_decoupling_pct' => 12.0,
         'negative_split' => true,
         'cadence_drop_spm' => 5.0,
         'per_km' => [['km' => 1, 'pace' => '5:30'], ['km' => 2, 'pace' => '5:40'], ['km' => 3, 'pace' => '5:50']],
@@ -89,7 +103,7 @@ it('caps the suggestions so they stay suggestions', function (): void {
 });
 
 it('matches a question back to the suggestion it came from, punctuation and case aside', function (): void {
-    $detail = runSeedDetail(['hr_drift_bpm' => 6.4]);
+    $detail = runSeedDetail(['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4]);
 
     expect(RunQuestionSeeds::match('Why did my heart rate drift up', $detail))
         ->toBe(RunQuestionTopic::HrDrift);

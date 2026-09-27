@@ -143,7 +143,7 @@ it('no longer counts a PR set 15 days ago as recent', function (): void {
     expect(app(Vibe::class)->current($user))->not->toBe(Vibe::PUMPED);
 });
 
-it('averages decoupling_pct across recent runs to drive the vibe', function (): void {
+it('averages version 2 decoupling across recent runs to drive the vibe', function (): void {
     $user = User::factory()->create();
 
     for ($i = 0; $i < 80; $i++) {
@@ -151,14 +151,29 @@ it('averages decoupling_pct across recent runs to drive the vibe', function (): 
         ActivityDetail::factory()->for($activity)->create([
             'trimp_edwards' => 50.0,
             'start_date_local' => Carbon::today()->subDays(79 - $i),
-            // Mix rows with/without decoupling_pct to exercise the isset guard.
+            // Mix version 2 readings with versionless rows that carry no verdict.
             'stream_summary' => $i % 2 === 0
-                ? ['decoupling_pct' => -2.0]
+                ? ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => -2.0]
                 : ['time_in_zone_min' => ['Z2' => 30]],
         ]);
     }
 
     expect(app(Vibe::class)->current($user))->toBe(Vibe::BOUNCY);
+});
+
+it('does not use versionless whole-run values in the vibe', function (): void {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 80; $i++) {
+        $activity = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'trimp_edwards' => 50.0,
+            'start_date_local' => Carbon::today()->subDays(79 - $i),
+            'stream_summary' => ['decoupling_pct' => -2.0],
+        ]);
+    }
+
+    expect(app(Vibe::class)->current($user))->not->toBe(Vibe::BOUNCY);
 });
 
 // DashboardController resolves today's vibe in the method body and BriefingComposer

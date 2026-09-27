@@ -10,7 +10,8 @@ function runAnchorSummary(array $overrides = []): StreamSummary
     return StreamSummary::fromArray(array_merge([
         'per_km' => [['km' => 1], ['km' => 2], ['km' => 3]],
         'time_in_zone_pct' => ['Z2' => 100],
-        'decoupling_pct' => 3.1,
+        'drift_metric_version' => 2,
+        'steady_effort_decoupling_pct' => 3.1,
     ], $overrides));
 }
 
@@ -59,12 +60,19 @@ it('resolves every metric the run measured', function (string $metric, array $ov
 
     expect($resolver->resolves("metric:{$metric}", runAnchorSummary($overrides)))->toBeTrue();
 })->with([
-    ['hr_drift', ['hr_drift_bpm' => 4.0]],
+    ['hr_drift', ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 4.0]],
     ['cadence_drop', ['cadence_drop_spm' => 2.0]],
     ['pace_variability', ['pace_variability_sec' => 11.0]],
     ['grade', ['max_grade_pct' => 6.0]],
     ['gap_pace', ['gap_pace' => '5:30']],
 ]);
+
+it('does not resolve versionless historical drift as a current narration anchor', function (): void {
+    expect(new RunAnchorResolver()->resolves(
+        'metric:decoupling',
+        runAnchorSummary(['drift_metric_version' => null, 'steady_effort_decoupling_pct' => null, 'decoupling_pct' => 14.0]),
+    ))->toBeFalse();
+});
 
 /**
  * A computed false is a real reading — the run was measured and did not

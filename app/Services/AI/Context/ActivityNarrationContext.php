@@ -20,7 +20,7 @@ final readonly class ActivityNarrationContext
 {
     public function __construct(
         public ?float $distanceMeters,
-        /** Cardiac drift over the run, or null when it carries no reading. */
+        /** Version 2 cardiac drift in the longest comparable steady segment. */
         public ?float $decouplingPct,
         /** Whether the second half was faster, or null when there are no splits. */
         public ?bool $negativeSplit,
@@ -47,7 +47,7 @@ final readonly class ActivityNarrationContext
 
         return new self(
             distanceMeters: $detail?->distance,
-            decouplingPct: $summary->decouplingPct(),
+            decouplingPct: $summary->steadyEffortDecouplingPct(),
             negativeSplit: $summary->negativeSplit(),
             zonePct: $summary->zonePct(),
             weatherTempC: $detail?->weather_temp_c,

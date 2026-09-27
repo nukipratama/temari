@@ -151,6 +151,21 @@ it('separates a decoupling reading of zero from no reading at all', function ():
         ->and(StreamSummary::fromArray(['decoupling_pct' => null])->hasDecouplingPct())->toBeFalse();
 });
 
+it('reads version 2 drift only from an explicitly versioned steady-segment summary', function (): void {
+    $summary = StreamSummary::fromArray([
+        'drift_metric_version' => 2,
+        'steady_effort_decoupling_pct' => 0.0,
+        'steady_effort_hr_drift_bpm' => 4.5,
+    ]);
+
+    expect($summary->driftMetricVersion())->toBe(2)
+        ->and($summary->hasSteadyEffortDecouplingPct())->toBeTrue()
+        ->and($summary->steadyEffortDecouplingPct())->toBe(0.0)
+        ->and($summary->steadyEffortHrDriftBpm())->toBe(4.5)
+        ->and(StreamSummary::fromArray(['steady_effort_decoupling_pct' => 14.0])->steadyEffortDecouplingPct())->toBeNull()
+        ->and(StreamSummary::fromArray(['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => null])->hasSteadyEffortDecouplingPct())->toBeFalse();
+});
+
 it('reads the cadence distribution and falls back to an empty band table', function (mixed $value): void {
     expect(StreamSummary::fromArray(['cadence_distribution_pct' => ['<165' => 12.0]])->cadenceDistributionPct())
         ->toBe(['<165' => 12.0])

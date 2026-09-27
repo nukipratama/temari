@@ -173,6 +173,26 @@ final readonly class StreamSummary
         return isset($this->data['decoupling_pct']);
     }
 
+    public function driftMetricVersion(): ?int
+    {
+        return $this->int('drift_metric_version');
+    }
+
+    public function steadyEffortDecouplingPct(): ?float
+    {
+        return $this->driftMetricVersion() === 2 ? $this->float('steady_effort_decoupling_pct') : null;
+    }
+
+    public function hasSteadyEffortDecouplingPct(): bool
+    {
+        return $this->steadyEffortDecouplingPct() !== null;
+    }
+
+    public function steadyEffortHrDriftBpm(): ?float
+    {
+        return $this->driftMetricVersion() === 2 ? $this->float('steady_effort_hr_drift_bpm') : null;
+    }
+
     /**
      * Share of time below / within / above the step-rate band, keyed by band.
      *

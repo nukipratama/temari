@@ -17,8 +17,8 @@ it('returns no claims for a run with no notable stream data', function (): void 
 // ── decoupling ───────────────────────────────────────────────────────
 
 it('blames the heat rather than the aerobic base when a hot run decouples', function (): void {
-    $hot = detailWith(['stream_summary' => ['decoupling_pct' => 14.2], 'weather_temp_c' => 33]);
-    $mild = detailWith(['stream_summary' => ['decoupling_pct' => 14.2], 'weather_temp_c' => 24]);
+    $hot = detailWith(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 14.2], 'weather_temp_c' => 33]);
+    $mild = detailWith(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 14.2], 'weather_temp_c' => 24]);
 
     expect(RuleBasedRunInsights::claims($hot)[0])
         ->toMatchArray(['anchor' => 'metric:decoupling', 'value' => '+14.2%'])
@@ -29,10 +29,14 @@ it('blames the heat rather than the aerobic base when a hot run decouples', func
 // 8.4% sits inside the band ordinary runs occupy, so it reads as normal rather
 // than as the aerobic base slipping.
 it('calls moderate decoupling normal and stays silent below the floor', function (): void {
-    expect(RuleBasedRunInsights::claims(detailWith(['stream_summary' => ['decoupling_pct' => 8.4]]))[0]['text'])
+    expect(RuleBasedRunInsights::claims(detailWith(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 8.4]]))[0]['text'])
         ->toContain('normal range')
-        ->and(RuleBasedRunInsights::claims(detailWith(['stream_summary' => ['decoupling_pct' => 1.1]]))[0]['text'])
+        ->and(RuleBasedRunInsights::claims(detailWith(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 1.1]]))[0]['text'])
         ->toContain('held up well');
+});
+
+it('does not turn a versionless historical figure into a new drift claim', function (): void {
+    expect(RuleBasedRunInsights::claims(detailWith(['stream_summary' => ['decoupling_pct' => 14.2]])))->toBe([]);
 });
 
 // ── split direction ──────────────────────────────────────────────────
@@ -113,7 +117,8 @@ it('claims notable pace variability via metric:pace_variability', function (): v
 
 it('caps claims at 3 even when every candidate signal is present', function (): void {
     $detail = detailWith(['stream_summary' => [
-        'decoupling_pct' => 8.0,
+        'drift_metric_version' => 2,
+        'steady_effort_decoupling_pct' => 8.0,
         'negative_split' => true,
         'max_grade_pct' => 12.0,
         'time_in_zone_pct' => ['Z2' => 90.0],
@@ -124,7 +129,7 @@ it('caps claims at 3 even when every candidate signal is present', function (): 
 });
 
 it('every claim carries the anchor/text/value/delta shape', function (): void {
-    $detail = detailWith(['stream_summary' => ['decoupling_pct' => 8.0]]);
+    $detail = detailWith(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 8.0]]);
 
     expect(RuleBasedRunInsights::claims($detail)[0])
         ->toHaveKeys(['anchor', 'text', 'value', 'delta']);

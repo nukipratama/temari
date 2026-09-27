@@ -20,6 +20,25 @@ function defaultZones(): array
     ];
 }
 
+/** @return list<array<string, float|int|null>> */
+function segmentDriftSplits(array $paces, array $hearts, array $elevationDifferences = []): array
+{
+    $splits = [];
+    foreach ($paces as $index => $pace) {
+        $splits[] = [
+            'split' => $index + 1,
+            'distance' => 1000.0,
+            'elapsed_time' => $pace,
+            'moving_time' => $pace,
+            'average_speed' => 1000 / $pace,
+            'average_heartrate' => $hearts[$index] ?? null,
+            'elevation_difference' => $elevationDifferences[$index] ?? 0.0,
+        ];
+    }
+
+    return $splits;
+}
+
 it('classifies seconds by HR zone and returns min + pct', function (): void {
     // 600s split across 4 HR bands: 180s @130(Z1), 180s @148(Z2), 180s @162(Z3), 60s @175(Z4).
     $time = [];
@@ -96,6 +115,132 @@ it('returns no zone summary when streams are missing HR', function (): void {
     );
 
     expect($summary)->not->toHaveKey('time_in_zone_min');
+});
+
+it('measures v2 drift inside the steady segment and ignores a fast finish', function (): void {
+    $steadyPaces = array_fill(0, 8, 420);
+    $steadyHearts = [140, 140, 140, 140, 154, 154, 154, 154];
+    $steady = $this->analysis->compute(
+        [],
+        defaultZones(),
+        segmentDriftSplits($steadyPaces, $steadyHearts),
+        170,
+    );
+    $fastFinish = $this->analysis->compute(
+        [],
+        defaultZones(),
+        segmentDriftSplits([...$steadyPaces, 360], [...$steadyHearts, 180]),
+        170,
+    );
+
+    expect($fastFinish['drift_metric_version'])->toBe(2)
+        ->and($fastFinish['steady_effort_decoupling_pct'])->toEqualWithDelta($steady['steady_effort_decoupling_pct'], 0.01)
+        ->and($fastFinish['steady_effort_hr_drift_bpm'])->toEqualWithDelta($steady['steady_effort_hr_drift_bpm'], 0.01)
+        ->and($fastFinish['hr_drift_bpm'])->toBe(40.0)
+        ->and($steady['hr_drift_bpm'])->toBe(14.0);
+});
+
+it('does not let a stride-like pace surge enter the selected steady segment', function (): void {
+    $summary = $this->analysis->compute(
+        [],
+        defaultZones(),
+        segmentDriftSplits(
+            [420, 420, 420, 420, 330, 420, 420, 420, 420],
+            [140, 140, 140, 140, 180, 150, 150, 150, 150],
+        ),
+        170,
+    );
+
+    expect($summary['steady_effort_decoupling_pct'])->toBe(0.0)
+        ->and($summary['steady_effort_hr_drift_bpm'])->toBe(0.0);
+});
+
+it('withholds v2 drift for interval splits without a comparable steady segment', function (): void {
+    $summary = $this->analysis->compute(
+        [],
+        defaultZones(),
+        segmentDriftSplits(
+            [420, 300, 510, 300, 510, 300, 510, 300, 510],
+            [140, 150, 145, 155, 145, 160, 150, 165, 155],
+        ),
+        170,
+    );
+
+    expect($summary['drift_metric_version'])->toBe(2)
+        ->and($summary['steady_effort_decoupling_pct'])->toBeNull()
+        ->and($summary['steady_effort_hr_drift_bpm'])->toBeNull();
+});
+
+it('excludes the first ten percent of moving time from a long warm-up', function (): void {
+    $summary = $this->analysis->compute(
+        [],
+        defaultZones(),
+        segmentDriftSplits(
+            [300, 300, 600, 600, ...array_fill(0, 8, 600)],
+            [120, 125, 140, 140, ...array_fill(0, 8, 154)],
+        ),
+        170,
+    );
+
+    expect($summary['steady_effort_hr_drift_bpm'])->toBe(2.8);
+});
+
+it('withholds v2 drift when a short run has less than twenty steady minutes', function (): void {
+    $summary = $this->analysis->compute(
+        [],
+        defaultZones(),
+        segmentDriftSplits([360, 360, 360], [140, 145, 150]),
+        170,
+    );
+
+    expect($summary['steady_effort_decoupling_pct'])->toBeNull()
+        ->and($summary['steady_effort_hr_drift_bpm'])->toBeNull();
+});
+
+it('withholds v2 drift when a steady segment has an HR gap', function (): void {
+    $summary = $this->analysis->compute(
+        [],
+        defaultZones(),
+        segmentDriftSplits(
+            array_fill(0, 7, 420),
+            [140, 140, null, 145, 150, 150, 150],
+        ),
+        170,
+    );
+
+    expect($summary['steady_effort_decoupling_pct'])->toBeNull()
+        ->and($summary['steady_effort_hr_drift_bpm'])->toBeNull();
+});
+
+it('uses the longest segment with complete readings when a longer segment has an HR gap', function (): void {
+    $summary = $this->analysis->compute(
+        [],
+        defaultZones(),
+        segmentDriftSplits(
+            [420, 420, 420, 420, 420, 480, 480, 480, 480],
+            [140, 140, 140, null, 154, 140, 140, 152, 152],
+        ),
+        170,
+    );
+
+    expect($summary['steady_effort_hr_drift_bpm'])->toBe(12.0)
+        ->and($summary['steady_effort_decoupling_pct'])->toBeGreaterThan(0);
+});
+
+it('uses grade-adjusted pace to keep an even downhill segment steady', function (): void {
+    $summary = $this->analysis->compute(
+        [],
+        defaultZones(),
+        segmentDriftSplits(
+            [420, 420, 420, 420, 320, 320, 320, 320],
+            array_fill(0, 8, 145),
+            [0, 0, 0, 0, -50, -50, -50, -50],
+        ),
+        170,
+    );
+
+    expect($summary['steady_effort_decoupling_pct'])->toEqualWithDelta(0.0, 0.1)
+        ->and($summary['steady_effort_hr_drift_bpm'])->toBe(0.0);
 });
 
 it('detects a stop when velocity drops below 0.5 m/s', function (): void {

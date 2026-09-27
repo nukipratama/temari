@@ -37,7 +37,7 @@ final class EffortContextTool extends ActivityTool
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
-        $decouplingPct = $this->summary()->decouplingPct();
+        $decouplingPct = $this->summary()->steadyEffortDecouplingPct();
 
         return [
             'session_intent' => SessionIntent::forDetail($this->detail),

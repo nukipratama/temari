@@ -25,7 +25,7 @@ final class HrZonesTool extends ActivityTool
         $summary = $this->summary();
         $zonePct = $summary->zonePct();
         $hardZoneShare = $summary->hardZoneShare();
-        $hrDriftBpm = $summary->hrDriftBpm();
+        $hrDriftBpm = $summary->steadyEffortHrDriftBpm();
 
         return [
             'zone_pct' => $zonePct,

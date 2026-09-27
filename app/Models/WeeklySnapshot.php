@@ -29,6 +29,7 @@ use Override;
  * @property float|null $form
  * @property string|null $form_status
  * @property float|null $avg_decoupling
+ * @property float|null $avg_decoupling_v2
  * @property float|null $monotony
  * @property float|null $strain
  * @property-read User $user
@@ -45,6 +46,7 @@ use Override;
     'form',
     'form_status',
     'avg_decoupling',
+    'avg_decoupling_v2',
     'monotony',
     'strain',
 ])]
@@ -187,6 +189,7 @@ class WeeklySnapshot extends Model
             'ctl_42d' => 'float',
             'form' => 'float',
             'avg_decoupling' => 'float',
+            'avg_decoupling_v2' => 'float',
             'monotony' => 'float',
             'strain' => 'float',
         ];

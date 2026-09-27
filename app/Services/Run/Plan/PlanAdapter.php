@@ -390,9 +390,13 @@ final readonly class PlanAdapter
      */
     private static function ranHarderThanWritten(SessionType $type, StreamSummary $summary, ?float $easyShareLine, ?float $decouplingPctLine): bool
     {
+        $decouplingPct = $summary->steadyEffortDecouplingPct();
+
         return match ($type) {
             SessionType::Easy => $easyShareLine !== null && $summary->hardZoneShare() / 100 > $easyShareLine,
-            SessionType::Long, SessionType::Tempo, SessionType::Interval => $decouplingPctLine !== null && ($summary->decouplingPct() ?? 0.0) > $decouplingPctLine,
+            SessionType::Long, SessionType::Tempo, SessionType::Interval => $decouplingPctLine !== null
+                && $decouplingPct !== null
+                && $decouplingPct > $decouplingPctLine,
             SessionType::Rest, SessionType::Race => false,
         };
     }

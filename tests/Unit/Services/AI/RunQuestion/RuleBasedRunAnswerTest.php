@@ -26,7 +26,7 @@ function answerDetail(array $streamSummary = [], array $attributes = []): Activi
 
 it('answers the drift question with the run own drift figure', function (): void {
     $answer = RuleBasedRunAnswer::for(
-        answerDetail(['hr_drift_bpm' => 6.4]),
+        answerDetail(['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4]),
         RunQuestionTopic::HrDrift->question(),
     );
 
@@ -35,7 +35,10 @@ it('answers the drift question with the run own drift figure', function (): void
 
 it('reads a high decoupling on a hot day as heat rather than lost fitness', function (): void {
     $answer = RuleBasedRunAnswer::for(
-        answerDetail(['decoupling_pct' => 14.2], ['weather_temp_c' => 33]),
+        answerDetail([
+            'drift_metric_version' => 2,
+            'steady_effort_decoupling_pct' => 14.2,
+        ], ['weather_temp_c' => 33]),
         RunQuestionTopic::Decoupling->question(),
     );
 
@@ -100,7 +103,7 @@ it('never invents a number when the run carries none', function (): void {
 });
 
 it('is deterministic, so re-asking returns the same answer', function (): void {
-    $detail = answerDetail(['hr_drift_bpm' => 6.4]);
+    $detail = answerDetail(['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4]);
     $question = RunQuestionTopic::HrDrift->question();
 
     expect(RuleBasedRunAnswer::for($detail, $question))

@@ -108,7 +108,7 @@ class Temari
     {
         $summary = StreamSummary::fromArray($detail->streamSummary());
         $hardShare = $summary->hardZoneShare();
-        $decoupling = $summary->decouplingPct() ?? 0.0;
+        $decoupling = $summary->steadyEffortDecouplingPct();
         $hotWeather = (int) ($detail->weather_temp_c ?? 0) >= 31;
         $negativeSplit = $summary->negativeSplit() === true;
         $hardSession = $hardShare >= 80.0;
@@ -118,14 +118,14 @@ class Temari
             $hasPr => self::MOOD_NYALA,
             // A hard session finished under control (strong negative split, HR held
             // together): a genuine win, not a grind.
-            $hardSession && $negativeSplit && $decoupling <= DecouplingBands::CONTROLLED => self::MOOD_NYALA,
+            $hardSession && $negativeSplit && $decoupling !== null && $decoupling <= DecouplingBands::CONTROLLED => self::MOOD_NYALA,
             // An intended-hard session (tagged race/workout, or inferred tempo) runs
             // HR/decoupling hot on purpose — that's the work, not weakness. A strong
             // finish is a quality win (blazing); an uncontrolled grind is honest overreach
             // (overloaded), never the tired 'gassed'.
-            $intendedHard && $decoupling > DecouplingBands::HIGH => $negativeSplit ? self::MOOD_NYALA : self::MOOD_MUMET,
+            $intendedHard && $decoupling !== null && $decoupling > DecouplingBands::HIGH => $negativeSplit ? self::MOOD_NYALA : self::MOOD_MUMET,
             // HR drifted well past pace on a run that wasn't meant to be hard.
-            $decoupling > DecouplingBands::HIGH => self::MOOD_LEMES,
+            $decoupling !== null && $decoupling > DecouplingBands::HIGH => self::MOOD_LEMES,
             $hotWeather => self::MOOD_OLENG,
             // A hard grind that never settled into a controlled finish.
             $hardSession && ! $negativeSplit => self::MOOD_MUMET,

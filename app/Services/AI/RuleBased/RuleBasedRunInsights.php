@@ -62,7 +62,7 @@ final class RuleBasedRunInsights
      */
     private static function appendDecouplingClaim(ActivityDetail $detail, StreamSummary $summary, array &$claims): void
     {
-        $decoupling = $summary->decouplingPct();
+        $decoupling = $summary->steadyEffortDecouplingPct();
         if ($decoupling === null) {
             return;
         }

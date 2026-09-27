@@ -3,7 +3,7 @@ title: Training-Load Metrics Engine
 description: How per-run TRIMP rolls up into CTL/ATL fitness, fatigue, form, strain and monotony, and how weekly snapshots stay correct when a backdated run arrives
 tags: [architecture, run]
 status: living
-reviewed: 2026-07-07
+reviewed: 2026-09-28
 code_refs:
   - app/Services/Run/Metrics/TrainingLoad.php
   - app/Services/Run/Metrics/WeeklyAggregator.php
@@ -43,7 +43,7 @@ The remaining two numbers describe the *distribution* of load across the last 7 
 
 [WeeklyAggregator](app/Services/Run/Metrics/WeeklyAggregator.php) persists the engine's output one row per ISO week into [WeeklySnapshot](app/Models/WeeklySnapshot.php) (week keyed by its Sunday `week_ending`; see [[data-model]]). Each week is an idempotent **upsert** keyed by `(user_id, week_ending)` in [upsertWeek](app/Services/Run/Metrics/WeeklyAggregator.php#L172), which slices that week's runs for the volume columns and asks [TrainingLoad](app/Services/Run/Metrics/TrainingLoad.php) for the load columns.
 
-The `avg_decoupling` column is the one non-load figure on the row, averaged across the week's runs that carry a reading ([averageDecoupling](app/Services/Run/Metrics/WeeklyAggregator.php)). It needs **at least two** such runs: a mean over one run is that run, and everything reading the column — the plan, the history chips, the recap narrator — reads it as a statement about the week. One long run that came apart is a fact about that Sunday. Below two contributing runs the column is `null`, which is already the "no signal" value here, per [[unscored-load-is-null-not-zero]].
+The `avg_decoupling` column remains the legacy whole-run average for historical display. The separate `avg_decoupling_v2` column averages version 2 steady-segment readings ([averageSegmentDecoupling](app/Services/Run/Metrics/WeeklyAggregator.php)); it needs **at least two** measured runs, since a one-run mean only describes that run. The recap narrator uses this version 2 column, and it stays `null` when fewer than two runs carry a comparable segment. Neither column is backfilled from new calculations.
 
 Two subtleties:
 

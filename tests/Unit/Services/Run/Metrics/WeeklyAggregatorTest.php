@@ -68,7 +68,7 @@ it('aggregates distance, runs, and avg decoupling per week', function (): void {
     $user = User::factory()->create();
     $weekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
-    foreach ([['distance' => 6000, 'dec' => 2.0], ['distance' => 10000, 'dec' => 5.0]] as $cfg) {
+    foreach ([['distance' => 6000, 'dec' => 2.0, 'dec_v2' => 6.0], ['distance' => 10000, 'dec' => 5.0, 'dec_v2' => 10.0]] as $cfg) {
         $activity = Activity::factory()->for($user)->analyzed()->create();
         ActivityDetail::factory()->for($activity)->create([
             'distance' => $cfg['distance'],
@@ -76,7 +76,11 @@ it('aggregates distance, runs, and avg decoupling per week', function (): void {
             'elapsed_time' => 1800,
             'trimp_edwards' => 50.0,
             'start_date_local' => $weekEnding->copy()->subDays(2),
-            'stream_summary' => ['decoupling_pct' => $cfg['dec']],
+            'stream_summary' => [
+                'decoupling_pct' => $cfg['dec'],
+                'drift_metric_version' => 2,
+                'steady_effort_decoupling_pct' => $cfg['dec_v2'],
+            ],
         ]);
     }
 
@@ -88,7 +92,8 @@ it('aggregates distance, runs, and avg decoupling per week', function (): void {
 
     expect($snapshot->distance_km)->toBe(16.0)
         ->and($snapshot->runs)->toBe(2)
-        ->and($snapshot->avg_decoupling)->toBe(3.5);
+        ->and($snapshot->avg_decoupling)->toBe(3.5)
+        ->and($snapshot->avg_decoupling_v2)->toBe(8.0);
 });
 
 it('writes null avg_decoupling when no runs in the week have decoupling_pct', function (): void {
@@ -128,7 +133,32 @@ it('writes no weekly decoupling average when a single run is all there is to ave
 
     $snapshot = WeeklySnapshot::query()->where('user_id', $user->id)->latest('week_ending')->firstOrFail();
     expect($snapshot->runs)->toBe(1)
-        ->and($snapshot->avg_decoupling)->toBeNull();
+        ->and($snapshot->avg_decoupling)->toBeNull()
+        ->and($snapshot->avg_decoupling_v2)->toBeNull();
+});
+
+it('does not mix versionless history into the version 2 weekly average', function (): void {
+    $user = User::factory()->create();
+    foreach ([
+        ['decoupling_pct' => 18.0],
+        ['decoupling_pct' => 9.0, 'drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 4.0],
+    ] as $streamSummary) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => 5000,
+            'moving_time' => 1800,
+            'elapsed_time' => 1800,
+            'trimp_edwards' => 50.0,
+            'start_date_local' => Carbon::today(),
+            'stream_summary' => $streamSummary,
+        ]);
+    }
+
+    $this->aggregator->rebuildFor($user);
+
+    $snapshot = WeeklySnapshot::query()->where('user_id', $user->id)->latest('week_ending')->firstOrFail();
+    expect($snapshot->avg_decoupling)->toBe(13.5)
+        ->and($snapshot->avg_decoupling_v2)->toBeNull();
 });
 
 it('leaves load unknown, not zero, when no run scored a TRIMP', function (): void {

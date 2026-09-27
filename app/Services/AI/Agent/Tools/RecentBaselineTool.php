@@ -28,9 +28,10 @@ final class RecentBaselineTool extends UserTool
 
     public function description(): string
     {
-        return "The user's average over the last 28 days (pace, HR, decoupling). Call this when you "
-            .'want to say something is faster/slower/harder than usual. avg_decoupling carries its '
-            .'own relation (up/down/flat) alongside the pct -- there is no sign to read yourself. If '
+        return "The user's average over the last 28 days (pace, HR, and version 2 steady-segment decoupling). Call this when you "
+            .'want to say something is faster/slower/harder than usual. '
+            .'avg_decoupling is null when no recent run has a comparable steady segment. When present, it '
+            .'carries its own relation (up/down/flat) alongside the pct -- there is no sign to read yourself. If '
             .'recent_baseline_28d is missing, their history\'s still too thin.';
     }
 
