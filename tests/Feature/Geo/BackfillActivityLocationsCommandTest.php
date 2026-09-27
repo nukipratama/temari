@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Actions\Geo\ReverseGeocodeAction;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -94,6 +97,42 @@ it('honors the --limit option', function (): void {
     $this->artisan('geo:backfill-locations', ['--limit' => 2])->assertSuccessful();
 
     Queue::assertPushed(ResolveActivityLocationJob::class, 2);
+});
+
+it('skips active transient failures without starving later rows past the limit', function (): void {
+    Queue::fake();
+    $this->freezeTime();
+    Cache::flush();
+    Http::fake([
+        'nominatim.openstreetmap.org/*' => Http::response('rate limited', 429),
+    ]);
+
+    $activities = Activity::factory()->count(401)->create();
+    $resolver = new ReverseGeocodeAction();
+    foreach ($activities->take(201)->values() as $index => $activity) {
+        $lat = -6.0 - ($index / 1000);
+        ActivityDetail::factory()->for($activity)->create([
+            'start_lat' => $lat,
+            'start_lng' => 106.0,
+            'location_resolved_at' => null,
+        ]);
+        $resolver($lat, 106.0);
+        $this->travel(1)->seconds();
+    }
+
+    $eligibleIds = $activities->skip(201)->map(fn (Activity $activity): int => ActivityDetail::factory()->for($activity)->create([
+        'start_lat' => -8.0,
+        'start_lng' => 106.0,
+        'location_resolved_at' => null,
+    ])->id)->values()->all();
+
+    $this->artisan('geo:backfill-locations')->assertSuccessful();
+
+    $queuedIds = Queue::pushed(ResolveActivityLocationJob::class)
+        ->map(fn (ResolveActivityLocationJob $job): int => $job->activityDetailId)
+        ->all();
+    expect($queuedIds)->toBe($eligibleIds);
+    Http::assertSentCount(201);
 });
 
 it('backfills start_lat/start_lng from summary_polyline when coords are null', function (): void {

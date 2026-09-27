@@ -56,10 +56,7 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        // Only stamp resolved_at on a real hit. A null is a transient Nominatim
-        // miss (rate limit / timeout / empty body): leaving resolved_at null keeps
-        // the row eligible for the geo:backfill-locations catch-up instead of
-        // marking it permanently resolved with no name.
+        // Only stamp resolved_at on a real hit; unresolved results stay eligible for catch-up.
         if ($resolved === null) {
             return;
         }
