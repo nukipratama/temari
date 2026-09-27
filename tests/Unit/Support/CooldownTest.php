@@ -38,10 +38,6 @@ it('clears once the window is released', function (): void {
     expect($cooldown->remaining())->toBeNull();
 });
 
-it('builds a per-analysis telegram key', function (): void {
-    expect(Cooldown::notificationKey(42))->toBe('notification-send:42');
-});
-
 it('attempt starts the window and returns true when not already active', function (): void {
     $cooldown = new Cooldown('probe');
 
@@ -78,19 +74,16 @@ it('honours a per-instance window rather than the shared default', function (): 
 });
 
 /**
- * These three are separate on purpose and the ordering is the point. The default
- * window guards a paid LLM re-narration; the notification window guards a
- * duplicate buzz for a narration that already exists; the test window guards
+ * These are separate on purpose and the ordering is the point. The default
+ * window guards a paid LLM re-narration; the test window guards
  * nothing and exists only so setup-time iteration stays quick. Collapsing them
  * back into one constant would silently retune whichever guard was not being
  * thought about.
  */
 it('keeps the AI re-narration guard longest, since it is the one that costs money', function (): void {
     expect(Cooldown::WINDOW_SECONDS)->toBe(900)
-        ->and(Cooldown::NOTIFICATION_WINDOW_SECONDS)->toBe(300)
         ->and(Cooldown::TEST_WINDOW_SECONDS)->toBe(60)
-        ->and(Cooldown::NOTIFICATION_WINDOW_SECONDS)->toBeLessThan(Cooldown::WINDOW_SECONDS)
-        ->and(Cooldown::TEST_WINDOW_SECONDS)->toBeLessThan(Cooldown::NOTIFICATION_WINDOW_SECONDS);
+        ->and(Cooldown::TEST_WINDOW_SECONDS)->toBeLessThan(Cooldown::WINDOW_SECONDS);
 });
 
 it('remainingMany reports exactly what remaining() reports for each key', function (): void {

@@ -38,7 +38,6 @@ function recapSnapshot(
             subject_id: id,
             discriminator: null,
         },
-        notification_retry_after_seconds: null,
     };
 }
 
@@ -199,7 +198,6 @@ describe('Activities/Feed', () => {
                     subject_id: 1,
                     discriminator: null,
                 },
-                notification_retry_after_seconds: null,
             },
         ];
         render(

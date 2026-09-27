@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Console\Commands\Concerns\ConfirmsPermanentRemoval;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
-use App\Http\Controllers\Notifications\Concerns\PushesAnalysisNotification;
 use App\Jobs\Telegram\Concerns\RevokesConnectionOnPermanentFailure;
 use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Concerns\RechecksRouteAtDelivery;
@@ -75,7 +74,6 @@ it('has a test class for every concrete app class', function (): void {
         SumsPulseTotals::class,         // trait, exercised via AiPipelineHealthTest + StravaHealthTest
         ReadsPreviousActivityNarrative::class, // trait, exercised via PostRunSpeechNarratorTest + RunInsightNarratorTest
         ReadsPreviousDailyNarrative::class, // trait, exercised via the BriefingMascotVoice cases in NarratorsCoverageTest
-        PushesAnalysisNotification::class, // trait, exercised via the three Send*NotificationControllerTest suites
         RevokesConnectionOnPermanentFailure::class, // trait, exercised via TelegramChannelTest
         ConfirmsPermanentRemoval::class, // trait, exercised via RemoveAthleteCommandTest + UserRemoveCommandTest
         AppendsUnreadBadge::class, // trait, exercised via the five push-notification test suites
