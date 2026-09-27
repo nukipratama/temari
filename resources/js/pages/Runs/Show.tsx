@@ -22,9 +22,11 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { drawnRunAnchors } from '@/lib/anchors';
+import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
 import { formatAbsoluteId } from '@/lib/pace';
 import { zonePctFromDetail } from '@/lib/runcard';
+import { laneStack } from '@/lib/variants';
 
 import { useRunShow, type RunCardDetail } from './useRunShow';
 
@@ -102,7 +104,7 @@ export default function RunsShow({
                     </div>
                 )}
 
-                <div className="mt-6 flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
+                <div className={cn('mt-6', laneStack)}>
                     <RunHero
                         detail={detail}
                         mood={mood}
