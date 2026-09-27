@@ -29,6 +29,19 @@ export const EFFORT_EDGE_CLASS: Record<Effort, string> = {
 };
 
 /**
+ * The same effort colors as {@link EFFORT_EDGE_CLASS}, as a label/icon color
+ * (`-ink` tier — design-tokens.md's fill/text split, never the fill itself).
+ * Rest and unknown stay the neutral foreground, matching their achromatic edge.
+ */
+export const EFFORT_ICON_CLASS: Record<Effort, string> = {
+    easy: 'text-leaf-ink',
+    steady: 'text-citrus-ink',
+    hard: 'text-ember-ink',
+    rest: 'text-foreground',
+    unknown: 'text-foreground',
+};
+
+/**
  * A plan day's effort, read off its `session_type` (design-system/temari/MASTER.md
  * § Effort colors: easy → leaf, long/tempo → citrus, interval/race → ember,
  * rest stays achromatic). The one place session type maps to an effort — the
