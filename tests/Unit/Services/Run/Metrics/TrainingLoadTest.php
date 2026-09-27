@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
@@ -557,6 +558,14 @@ it('clearSummaryCache forces the next summary() to recompute within the same sco
     TrainingLoad::clearSummaryCache($user);
 
     expect($this->load->summary($user))->not->toBeNull();
+});
+
+it('ignores a summary an earlier build cached under the unversioned key', function (): void {
+    $user = User::factory()->create();
+    seedTrimpDay($user, 80.0, 0);
+    Cache::put("training-load:{$user->id}:".Carbon::today()->toDateString().':7', ['atl_7d' => 1.0]);
+
+    expect($this->load->summary($user))->toHaveKey('weekly_trimp_range');
 });
 
 it('keeps distinct memo entries per user, date and window so they do not collide', function (): void {
