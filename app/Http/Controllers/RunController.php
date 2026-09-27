@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\Effort;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
@@ -12,6 +13,7 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\DetailHydrator;
+use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\CardPresenter;
 use App\Services\Run\Story\PastYouMatcher;
@@ -103,10 +105,12 @@ class RunController extends Controller
             'isChainHead' => fn (): bool => Activity::latestIdForUser($user->id) === $activity->id,
             'speechAnalysis' => fn (): array => $payloadFor(AnalysisType::PostRunSpeech),
             'runInsight' => fn (): array => $payloadFor(AnalysisType::RunInsight),
-            'pastYou' => function () use ($matcher, $hydrator, $activity, $detail): ?array {
+            'pastYou' => function () use ($matcher, $hydrator, $activity, $detail, $user): ?array {
                 $match = $matcher->findMatchContext($activity, $detail);
                 if ($match !== null) {
                     $hydrator->hydrate($match['past_activity_id']);
+                    $effort = RunEffort::forDetails($user->id, collect([$detail]))[$activity->id] ?? Effort::Unknown;
+                    $match['effort'] = $effort->value;
                 }
 
                 return $match;

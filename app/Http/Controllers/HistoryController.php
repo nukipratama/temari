@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Run\BuildCalendarCellsAction;
+use App\Enums\Effort;
 use App\Http\Requests\FeedFilterRequest;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -14,6 +15,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\FeedQuery;
 use App\Services\Run\LifetimeStats;
+use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\PostRunNoteReader;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -72,9 +74,10 @@ class HistoryController extends Controller
         // Memoized — three props share this query set.
         /** @var Collection<int, Activity>|null $loadedRuns */
         $loadedRuns = null;
-        $loadRuns = function () use ($runsQuery, &$loadedRuns): Collection {
+        $loadRuns = function () use ($runsQuery, &$loadedRuns, $user): Collection {
             if ($loadedRuns === null) {
                 $loadedRuns = $runsQuery->get();
+                $this->attachEfforts($loadedRuns, $user->id);
             }
 
             return $loadedRuns;
@@ -114,6 +117,27 @@ class HistoryController extends Controller
                 $currentWeekEnding,
             )),
         ];
+    }
+
+    /**
+     * Resolves each row's effort once for the whole page batch and stamps it
+     * onto its `detail`, so `RunListRow` never recomputes it per row. The
+     * `stream_summary` column FeedQuery selects to make this possible is
+     * heavy (measured ~2.7KB average, ~9.9KB max per row on seeded demo
+     * data) and only needed server-side, so it's hidden again once the
+     * effort is resolved rather than shipped to the client unused.
+     *
+     * @param  Collection<int, Activity>  $runs
+     */
+    private function attachEfforts(Collection $runs, int $userId): void
+    {
+        $details = $runs->map(fn (Activity $activity): ?ActivityDetail => $activity->detail)->filter();
+        $efforts = RunEffort::forDetails($userId, $details);
+
+        foreach ($details as $detail) {
+            $detail->setAttribute('effort', ($efforts[$detail->activity_id] ?? Effort::Unknown)->value);
+            $detail->makeHidden('stream_summary');
+        }
     }
 
     /**

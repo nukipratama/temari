@@ -6,6 +6,7 @@ import type { ActivityDetail, Mood, RunCard } from '@/types/inertia';
 
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+import { EFFORT_STRIPE_CLASS } from '@/lib/effort';
 import { MOOD_FILL } from '@/lib/mood';
 import {
     formatDurationHMS,
@@ -47,11 +48,15 @@ function RunListRow({
             : null;
     const knownMood: Mood | null = note?.mood ?? mood ?? null;
     const startTime = formatNaiveTimeId(detail.start_date_local);
+    const stripeClass = EFFORT_STRIPE_CLASS[detail.effort ?? 'unknown'];
 
     return (
         <Link
             href={activityUrl(detail)}
-            className="pressable block border-b border-border-strong p-3.5 text-sm transition last:border-b-0 hover:bg-background"
+            className={cn(
+                'pressable block p-3.5 text-sm transition hover:bg-background',
+                stripeClass,
+            )}
         >
             <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-1.5">
@@ -67,7 +72,7 @@ function RunListRow({
                     <span className="truncate text-[0.8125rem] leading-[1.2] font-bold text-foreground">
                         {detail.name ?? 'Run'}
                     </span>
-                    <span className="flex-none font-mono text-[0.8125rem] leading-[1.2] font-bold text-foreground">
+                    <span className="flex-none font-mono text-[0.8125rem] leading-[1.2] font-bold text-foreground tabular-nums">
                         · {km} km
                     </span>
                     {runCard && (
@@ -88,7 +93,7 @@ function RunListRow({
                     {startTime && ` · ${startTime}`}
                 </span>
             </div>
-            <div className="mt-1.25 flex items-baseline gap-1.75 font-mono">
+            <div className="mt-1.25 flex items-baseline gap-1.75 font-mono tabular-nums">
                 <b className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
                     {formatDurationHMS(detail.elapsed_time)}
                 </b>

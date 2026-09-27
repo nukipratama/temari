@@ -25,6 +25,7 @@ function run(
         average_heartrate: hr,
         elevation_gain_m: 40,
         ingest_state: 'summary',
+        effort: null,
     };
 }
 

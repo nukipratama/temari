@@ -3,6 +3,7 @@
 import type {
     AnalysisStatus,
     AnalysisType,
+    Effort,
     NotificationKind,
     PlannedSessionStatus,
     Rarity,
@@ -11,6 +12,7 @@ import type {
 export type {
     AnalysisStatus,
     AnalysisType,
+    Effort,
     NotificationKind,
     PlannedSessionStatus,
     Rarity,
@@ -260,6 +262,8 @@ export interface ActivityDetail {
     weather_rain_is_forecast?: boolean | null;
     summary_polyline?: string | null;
     stream_summary?: StreamSummary | null;
+    /** Attached server-side by whichever controller resolves `RunEffort` for the page batch; absent where it hasn't. */
+    effort?: Effort | null;
     activity?: Activity;
 }
 
@@ -340,6 +344,7 @@ export interface ComparableRun {
     average_heartrate: number | null;
     elevation_gain_m: number | null;
     ingest_state: 'summary' | 'detailed';
+    effort: Effort | null;
 }
 
 /** One matched pair, as `PastYouComparison::toArray()` ships it. */

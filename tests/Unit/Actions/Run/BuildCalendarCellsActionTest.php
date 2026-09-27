@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
@@ -36,7 +37,7 @@ beforeEach(function (): void {
 });
 
 /**
- * @return array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null}|null
+ * @return array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null, effort: string|null}|null
  */
 function cellOn(array $cells, string $date): ?array
 {
@@ -97,14 +98,56 @@ it('links a single-run day to its activity and attaches the mood', function (): 
         ->and($cell['pace_sec_per_km'])->toBe(300.0); // 1500s / 5km
 });
 
-it('emits null metrics for empty days', function (): void {
+it('emits null metrics and no effort bar for a day with no run and no plan', function (): void {
     $cells = ($this->buildCells)($this->user);
     $cell = cellOn($cells, '2026-05-20');
 
     expect($cell['distance_km'])->toBeNull()
         ->and($cell['avg_hr'])->toBeNull()
         ->and($cell['mood'])->toBeNull()
-        ->and($cell['activity_id'])->toBeNull();
+        ->and($cell['activity_id'])->toBeNull()
+        ->and($cell['effort'])->toBeNull();
+});
+
+it("picks the day's hardest run for a multi-run day's effort", function (): void {
+    $activity = Activity::factory()->for($this->user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::create(2026, 5, 15, 6),
+        'elapsed_time' => 1_800,
+        'workout_type' => null, // no tag, no stream -> unknown
+    ]);
+
+    $hard = Activity::factory()->for($this->user)->analyzed()->create();
+    ActivityDetail::factory()->for($hard)->create([
+        'start_date_local' => Carbon::create(2026, 5, 15, 18),
+        'elapsed_time' => 1_800,
+        'workout_type' => 1, // Strava race tag -> hard
+    ]);
+
+    $cells = ($this->buildCells)($this->user);
+
+    expect(cellOn($cells, '2026-05-15')['effort'])->toBe('hard');
+});
+
+it('gives an unexcused planned rest day with no run the rest effort', function (): void {
+    PlannedSession::factory()->for($this->user)->rest()->create([
+        'date' => Carbon::create(2026, 5, 20),
+    ]);
+
+    $cells = ($this->buildCells)($this->user);
+
+    expect(cellOn($cells, '2026-05-20')['effort'])->toBe('rest');
+});
+
+it('withholds the rest effort for an excused rest day', function (): void {
+    PlannedSession::factory()->for($this->user)->rest()->create([
+        'date' => Carbon::create(2026, 5, 20),
+        'skipped' => true,
+    ]);
+
+    $cells = ($this->buildCells)($this->user);
+
+    expect(cellOn($cells, '2026-05-20')['effort'])->toBeNull();
 });
 
 it('ignores un-analyzed activities and other users', function (): void {

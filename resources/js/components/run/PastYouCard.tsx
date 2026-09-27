@@ -1,10 +1,13 @@
 import { Link } from '@inertiajs/react';
 import { ArrowRight } from 'lucide-react';
 
+import type { Effort } from '@/types/inertia';
+
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import Card from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
+import { EFFORT_STRIPE_CLASS } from '@/lib/effort';
 import { formatDuration } from '@/lib/pace';
 import { activityUrl } from '@/lib/routes';
 
@@ -19,6 +22,8 @@ export interface PastYouMatch {
     past_km: number;
     past_activity_id: number;
     past_name: string | null;
+    /** The viewed run's own effort — this row's leading-edge stripe, per MASTER.md. */
+    effort: Effort;
 }
 
 /** `same` reads as neutral; otherwise `betterWhen` is the relation that tones green. */
@@ -53,7 +58,14 @@ export default function PastYouCard({
     const evenPace = pace.relation === 'same';
 
     return (
-        <Card as="section" padding="hero" className={className}>
+        <Card as="section" padding="hero" className={cn('relative', className)}>
+            <span
+                aria-hidden
+                className={cn(
+                    'absolute inset-y-0 left-0',
+                    EFFORT_STRIPE_CLASS[match.effort],
+                )}
+            />
             <Eyebrow token="micro" tone="ink-2">
                 You vs past you
             </Eyebrow>

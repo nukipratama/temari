@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Effort;
 use App\Enums\IngestState;
 use App\Services\Run\Story\ComparableRun;
 
@@ -78,5 +79,12 @@ it('serializes the ingest state so a summary-sourced comparison is visible', fun
         'average_heartrate' => 155.0,
         'elevation_gain_m' => 120.0,
         'ingest_state' => 'summary',
+        'effort' => null,
     ]);
+});
+
+it('serializes the effort passed in for the run\'s comparison row', function (): void {
+    $run = ComparableRun::fromRow(comparableRow());
+
+    expect($run->toArray(Effort::Hard)['effort'])->toBe('hard');
 });

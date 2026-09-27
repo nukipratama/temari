@@ -1,5 +1,6 @@
 import type {
     ComparisonMetric,
+    Effort,
     PastYouComparison,
     PastYouTrend,
     TrendDirection,
@@ -24,6 +25,8 @@ export interface EvidenceRow {
     hr: EvidenceReading | null;
     delta: string;
     direction: TrendDirection;
+    /** The recent run's own effort — the row's leading-edge stripe, per MASTER.md. */
+    effort: Effort | null;
 }
 
 /** Positive `pace_delta_sec` means the recent run was faster, so the clock went down. */
@@ -74,6 +77,7 @@ export function evidenceRows(trend: PastYouTrend): EvidenceRow[] {
         hr: heartRates(comparison),
         delta: deltaLabel(comparison),
         direction: comparison.direction,
+        effort: comparison.current.effort,
     }));
 }
 

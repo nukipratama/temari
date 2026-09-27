@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import type { Mood, Rarity } from '@/types/inertia';
+import type { Effort, Mood, Rarity } from '@/types/inertia';
 
 import { dominantMood as pickDominantMood } from '@/lib/mood';
 import { RARITY_ORDER } from '@/lib/runcard';
@@ -18,6 +18,8 @@ export interface CalendarCell {
     /** The day's rarest earned card, when one was earned. */
     rarity: Rarity | null;
     activity_id: number | null;
+    /** Hardest run of the day; a planned rest day with no run; null with neither. */
+    effort: Effort | null;
 }
 
 export interface WeekRow {
