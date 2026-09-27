@@ -16,7 +16,6 @@ import { useExitTransition } from '@/hooks/useExitTransition';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import { HR_ZONE_LABELS } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
-import { cardVariants } from '@/lib/variants';
 
 const SAVED_FLASH_MS = 2000;
 const NOTICE_EXIT_MS = 320;
@@ -229,9 +228,7 @@ export default function HrZonesDisclosure({
     };
 
     return (
-        <div
-            className={cn(cardVariants({ padding: 'none' }), 'overflow-hidden')}
-        >
+        <div>
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}

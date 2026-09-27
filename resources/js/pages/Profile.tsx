@@ -19,13 +19,14 @@ import RaceCard from '@/components/profile/RaceCard';
 import SeasonCard from '@/components/profile/SeasonCard';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, StravaIcon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import { SkeletonChart, SkeletonRows } from '@/components/ui/Skeleton';
 import UserAvatar from '@/components/UserAvatar';
 import { appLayout } from '@/layouts/appLayout';
+import { cn } from '@/lib/cn';
 import { formatPace } from '@/lib/pace';
+import { laneStack } from '@/lib/variants';
 
 interface IdentityPayload {
     name: string;
@@ -134,7 +135,7 @@ export default function Profile({
                     />
                 </header>
 
-                <div>
+                <div className={cn('mt-6', laneStack)}>
                     <ProfileHero
                         mood={mood}
                         firstRunAt={identity.first_run_at}
@@ -159,70 +160,50 @@ export default function Profile({
                             ) : undefined
                         }
                     />
-                </div>
 
-                <div className="mt-4">
                     <RaceCard race={activeRace ?? null} />
-                </div>
 
-                <Deferred
-                    data={['season', 'seasonWeeks']}
-                    fallback={
-                        <Card as="section" className="mt-4">
-                            <SkeletonRows count={2} />
-                        </Card>
-                    }
-                >
-                    {() => (
-                        <div className="mt-4">
+                    <Deferred
+                        data={['season', 'seasonWeeks']}
+                        fallback={<SkeletonRows count={2} />}
+                    >
+                        {() => (
                             <SeasonCard
                                 season={season ?? null}
                                 weeks={seasonWeeks ?? []}
                             />
-                        </div>
-                    )}
-                </Deferred>
+                        )}
+                    </Deferred>
 
-                <Deferred
-                    data="fitness"
-                    fallback={
-                        <Card as="section" className="mt-4">
-                            <SkeletonRows count={2} />
-                        </Card>
-                    }
-                >
-                    {() =>
-                        fitness?.training_paces ? (
-                            <div className="mt-4">
+                    <Deferred
+                        data="fitness"
+                        fallback={<SkeletonRows count={2} />}
+                    >
+                        {() =>
+                            fitness?.training_paces ? (
                                 <PaceTargetsCard
                                     paces={fitness.training_paces}
                                     source={fitness.vdot_source}
                                     weekSessions={fitness.week_sessions}
                                 />
-                            </div>
-                        ) : null
-                    }
-                </Deferred>
+                            ) : null
+                        }
+                    </Deferred>
 
-                <Deferred
-                    data="progressionByCategory"
-                    fallback={
-                        <Card as="section" className="mt-4">
-                            <SkeletonChart />
-                        </Card>
-                    }
-                >
-                    {() =>
-                        progressionByCategory &&
-                        Object.keys(progressionByCategory).length > 0 ? (
-                            <div className="mt-4">
+                    <Deferred
+                        data="progressionByCategory"
+                        fallback={<SkeletonChart />}
+                    >
+                        {() =>
+                            progressionByCategory &&
+                            Object.keys(progressionByCategory).length > 0 ? (
                                 <ProgressionCard
                                     byCategory={progressionByCategory}
                                 />
-                            </div>
-                        ) : null
-                    }
-                </Deferred>
+                            ) : null
+                        }
+                    </Deferred>
+                </div>
             </PageContainer>
         </>
     );

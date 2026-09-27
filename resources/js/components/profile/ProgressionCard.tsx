@@ -3,7 +3,6 @@ import { useState } from 'react';
 import JourneyChart from '@/components/profile/JourneyChart';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
-import LegacyCard from '@/components/ui/LegacyCard';
 import { useCountUp } from '@/hooks/useCountUp';
 import { formatDurationHMS } from '@/lib/pace';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
@@ -48,7 +47,7 @@ export default function ProgressionCard({
     const deltaCount = useCountUp(delta);
 
     return (
-        <LegacyCard as="section">
+        <section>
             {tabs.length > 1 && (
                 <div
                     className="mb-3.5 flex flex-wrap gap-1.5"
@@ -75,15 +74,13 @@ export default function ProgressionCard({
             <Eyebrow token="micro" tone="ink-3">
                 {`Journey · ${label}`}
             </Eyebrow>
-            <p className="mt-1 font-serif text-headline-sm text-foreground">
-                Then{' '}
-                <em className="italic">
-                    {formatDurationHMS(Math.round(worstCount))}
-                </em>
-                , now{' '}
-                <em className="italic text-horizon-ink">
+            <p className="mt-1 flex items-baseline gap-1.5">
+                <span className="text-stat">
                     {formatDurationHMS(Math.round(bestCount))}
-                </em>
+                </span>
+                <span className="text-meta">
+                    from {formatDurationHMS(Math.round(worstCount))}
+                </span>
             </p>
             {delta > 0 && (
                 <p className="mt-2 text-sm leading-relaxed text-text-2">
@@ -102,6 +99,6 @@ export default function ProgressionCard({
                 weeks={series.weeks}
                 timesSec={series.times_sec}
             />
-        </LegacyCard>
+        </section>
     );
 }

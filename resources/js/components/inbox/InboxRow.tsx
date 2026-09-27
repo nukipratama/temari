@@ -16,7 +16,6 @@ import type { InboxItem, NotificationKind } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import PillLink from '@/components/ui/PillLink';
 import { cn } from '@/lib/cn';
 import {
@@ -97,12 +96,10 @@ export default function InboxRow({
     const stats = statsFor(item);
 
     return (
-        <Card
-            as="article"
+        <article
             className={cn(
-                'relative scroll-mt-24 transition',
-                !read && 'border-horizon bg-horizon/[0.07]',
-                focused && 'ring-2 ring-horizon',
+                'relative scroll-mt-24 py-3.5 transition',
+                focused && 'rounded-md ring-2 ring-horizon',
             )}
         >
             {item.url && (
@@ -157,7 +154,7 @@ export default function InboxRow({
                             {stats.map((stat) => (
                                 <span
                                     key={stat.label}
-                                    className="inline-flex items-baseline gap-1 rounded-full bg-muted px-2 py-1 font-mono text-xs font-bold tabular-nums text-foreground"
+                                    className="inline-flex items-baseline gap-1 rounded-sm bg-secondary px-2 py-1 font-mono text-xs font-bold tabular-nums text-foreground"
                                 >
                                     {stat.value}
                                     <span className="text-label-micro text-text-3">
@@ -201,6 +198,6 @@ export default function InboxRow({
                     />
                 )}
             </div>
-        </Card>
+        </article>
     );
 }

@@ -1,6 +1,5 @@
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
-import LegacyCard from '@/components/ui/LegacyCard';
 import { cn } from '@/lib/cn';
 import { formatNaiveMonthDayId, formatPace } from '@/lib/pace';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
@@ -151,7 +150,7 @@ export default function PaceTargetsCard({
     const accentKey = todaysPaceKey(weekSessions);
 
     return (
-        <LegacyCard as="section">
+        <section>
             <Eyebrow token="micro" tone="ink-3">
                 Training · pace targets · per km
             </Eyebrow>
@@ -212,6 +211,6 @@ export default function PaceTargetsCard({
                     ))}
                 </div>
             )}
-        </LegacyCard>
+        </section>
     );
 }
