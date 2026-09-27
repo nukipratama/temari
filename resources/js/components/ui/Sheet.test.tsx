@@ -40,6 +40,19 @@ describe('Sheet', () => {
         expect(screen.getByText('sheet body')).toBeInTheDocument();
     });
 
+    it('only applies sheet transitions in the motion-safe path', () => {
+        render(<Harness />);
+
+        expect(screen.getByRole('dialog')).toHaveClass(
+            'motion-safe:transition-transform',
+            'motion-safe:duration-200',
+            'motion-safe:ease-out',
+        );
+        expect(screen.getByRole('dialog')).not.toHaveClass(
+            'transition-transform',
+        );
+    });
+
     it('stays out of the document when closed', () => {
         render(
             <Sheet open={false} onOpenChange={vi.fn()} title="something off?">

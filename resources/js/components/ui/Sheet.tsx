@@ -50,7 +50,7 @@ export default function Sheet({
                     className={cn(
                         'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[85svh] w-full max-w-lg flex-col overflow-y-auto rounded-t-4xl bg-popover text-foreground shadow-e3',
                         'px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]',
-                        'transition-transform duration-200 ease-out data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full',
+                        'motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full',
                     )}
                     style={
                         dragY === null

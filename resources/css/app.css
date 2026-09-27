@@ -908,7 +908,7 @@ body {
        fix and gives up the movement: the popup is positioned against this
        element, so pressing it must not move it. */
     .pressable[aria-haspopup] {
-        @apply active:opacity-100 motion-safe:active:scale-100;
+        @apply motion-safe:active:scale-100;
     }
     /* ─── Typography role utilities ──────────────────────────────────
        Each role bundles font + size + color so call sites name a role

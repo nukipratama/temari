@@ -145,7 +145,7 @@ export const toggleButtonVariants = cva(
  * arrows, modal dismiss). `onSky` flips it to the cream-on-dark treatment.
  */
 export const iconButtonVariants = cva(
-    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition text-text-2 hover:bg-muted hover:text-foreground focus-ring',
+    'pressable inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition text-text-2 hover:bg-muted hover:text-foreground focus-ring',
     {
         variants: {
             size: {
