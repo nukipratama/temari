@@ -110,7 +110,9 @@ describe('Trends', () => {
 
         render(<Trends {...BASE_PROPS} ctlTrend={yearOfTrend()} />);
 
-        expect(screen.getByText('vs race day')).toBeInTheDocument();
+        expect(
+            screen.getByText(/vs race day · \d+ days out/),
+        ).toBeInTheDocument();
         expect(screen.queryByText('vs your own year')).not.toBeInTheDocument();
     });
 

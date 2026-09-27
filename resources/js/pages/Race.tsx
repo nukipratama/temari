@@ -73,7 +73,7 @@ export default function Race({ race, projection }: Readonly<RaceProps>) {
                             projection={projection}
                             className="mt-4"
                         />
-                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-dashed border-border pt-3">
                             <button
                                 type="button"
                                 aria-expanded={editing}

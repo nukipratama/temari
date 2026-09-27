@@ -7,7 +7,6 @@ import type { RaceProjection } from '@/components/race/RaceDuel';
 import DateField from '@/components/ui/DateField';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
 import {
@@ -101,7 +100,12 @@ export default function RaceGoalForm({
     };
 
     return (
-        <Card className={className}>
+        <div
+            className={cn(
+                'border-t border-dashed border-border pt-4',
+                className,
+            )}
+        >
             <Eyebrow token="micro" tone="ink-2">
                 {race ? 'edit your race' : 'set your race'}
             </Eyebrow>
@@ -249,6 +253,6 @@ export default function RaceGoalForm({
                     {processing ? 'saving…' : race ? 'update race' : 'set race'}
                 </PillButton>
             </form>
-        </Card>
+        </div>
     );
 }

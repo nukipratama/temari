@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import Card from '@/components/ui/LegacyCard';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { ctlDaysAgo, ctlNow, ctlPeak } from '@/lib/trends';
 
 import FitnessPanel, {
@@ -29,7 +29,11 @@ interface MonthComparisonProps {
 /**
  * "vs a month ago" owns the fitness chart: fitness-now and a-month-ago are
  * read off the same 365-day series the chart plots, so the card and the
- * line can never disagree (direction A, #967).
+ * line can never disagree (direction A, #967). Fitness now is the
+ * section's hero number; best-this-year is a plain secondary reading below
+ * it, not paired side-by-side with anything, so it stays a Stat rather than
+ * a tile (MASTER.md's tile rule only fires once two numbers sit side by
+ * side).
  */
 export default function MonthComparison({
     trend,
@@ -43,50 +47,46 @@ export default function MonthComparison({
 
     return (
         <section className={className}>
-            <h2 className="font-serif text-headline-sm text-foreground">
+            <Eyebrow as="h2" token="small" tone="ink-2">
                 vs a month ago
-            </h2>
+            </Eyebrow>
             <p className="mt-1 text-xs text-text-3">{CTL_MEANING}</p>
-            <Card className="mt-2.5">
+            <div className="mt-3">
                 <FitnessPanel
                     trend={trend}
                     annotations={annotations}
                     highlightDays={DAYS_AGO}
                 />
-                <hr className="my-4 border-border" />
-                <div className="grid grid-cols-2 gap-3">
-                    <Stat
-                        label="fitness now"
-                        value={now !== null ? now.toFixed(1) : '—'}
-                        delta={
-                            delta !== null ? (
-                                <StatDelta value={delta} />
-                            ) : undefined
-                        }
-                        sub={
-                            monthAgo !== null
-                                ? `${monthAgo.toFixed(1)} a month ago · ${trendWord(delta ?? 0)}`
-                                : undefined
-                        }
-                    />
-                    <Stat
-                        label="best this year"
-                        value={peak !== null ? peak.toFixed(1) : '—'}
-                        delta={
-                            now !== null && peak !== null ? (
-                                <StatDelta value={now - peak} />
-                            ) : undefined
-                        }
-                        sub={
-                            now !== null && peak !== null
-                                ? now >= peak
-                                    ? 'today is the high point'
-                                    : 'where today sits against it'
-                                : undefined
-                        }
-                    />
-                </div>
-            </Card>
+            </div>
+            <hr className="my-4 border-dashed border-border" />
+            <Stat
+                label="fitness now"
+                value={now !== null ? now.toFixed(1) : '—'}
+                delta={delta !== null ? <StatDelta value={delta} /> : undefined}
+                sub={
+                    monthAgo !== null
+                        ? `${monthAgo.toFixed(1)} a month ago · ${trendWord(delta ?? 0)}`
+                        : undefined
+                }
+            />
+            <Stat
+                className="mt-3"
+                size="sm"
+                label="best this year"
+                value={peak !== null ? peak.toFixed(1) : '—'}
+                delta={
+                    now !== null && peak !== null ? (
+                        <StatDelta value={now - peak} />
+                    ) : undefined
+                }
+                sub={
+                    now !== null && peak !== null
+                        ? now >= peak
+                            ? 'today is the high point'
+                            : 'where today sits against it'
+                        : undefined
+                }
+            />
         </section>
     );
 }

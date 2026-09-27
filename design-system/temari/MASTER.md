@@ -67,8 +67,10 @@ Three faces, one job each. No fourth face.
 - **Section headings are mono uppercase eyebrows** (`.text-label-small`), never Fraunces. The serif
   stays reserved for Temari's voice lines and page titles.
 - A voice line is at most two lines of what Temari says. Anything longer is prose, and prose is sans.
-- **Hero number:** each section may lead with one number set large in mono (`.text-stat` and up).
-  Its unit and target sit beside it at label size in `text-text-3`: `32.3 / 27.9 km`.
+- **Hero number:** each section leads with **one** number set large in mono (`.text-stat` and up).
+  Its unit and target sit beside it at label size in `text-text-3`: `32.3 / 27.9 km`. Every other
+  number in the section is a plain stat line beneath the hero; tiles are for secondary numbers
+  only, and only once two or more of them sit side by side (see Stat tiles).
 - A number never wraps. If a hero number and its target do not fit one line at 375px, drop the
   target to its own label line rather than shrinking the number.
 
@@ -98,6 +100,8 @@ sheets and modals.
 
 - Two or more side-by-side numbers go in tiles: `bg-secondary`, `rounded-sm`, no border, no shadow.
 - A tile holds one eyebrow and one number. Tiles are the only filled blocks inside a section.
+- A lone secondary number is a plain stat line, never a single tile. A section's hero number is
+  never tiled either — it sits large and untiled above whatever follows.
 
 ### Run rows
 
