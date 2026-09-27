@@ -36,7 +36,9 @@ function load(overrides: Partial<TrainingLoad> = {}): TrainingLoad {
         weekly_trimp: 246,
         weekly_trimp_range: { low: 200, high: 300 },
         monotony: 1.9,
+        monotony_range: { low: 1.4, high: 2.2 },
         strain: 467,
+        strain_range: { low: 350, high: 550 },
         ...overrides,
     };
 }

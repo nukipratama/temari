@@ -51,13 +51,12 @@ function TileLabel({
     );
 }
 
+type WeeklyRange = { low: number; high: number } | null;
+
 /** "452 over your last 7 days. a steady week for you sits around 400 to
  *  500." — the number plus the athlete's own normal range, when there's
  *  enough history to size one (#1296). */
-function trimpMeaning(
-    weeklyTrimp: number | null,
-    range: { low: number; high: number } | null,
-): string {
+function trimpMeaning(weeklyTrimp: number | null, range: WeeklyRange): string {
     if (weeklyTrimp === null) {
         return 'heart rate and time, added up over your last 7 days.';
     }
@@ -70,10 +69,35 @@ function trimpMeaning(
     return `${value} over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
 }
 
-const MONOTONY_MEANING =
-    "how varied your training's been. every run at the same effort pushes this up, so mix in an easy day to bring it down.";
-const STRAIN_MEANING =
-    "the week's effort multiplied by how varied it was, the total cost you're carrying.";
+/** Same shape as {@link trimpMeaning}: the number plus the athlete's own
+ *  normal range for how varied the week was (#1296). */
+function monotonyMeaning(monotony: number | null, range: WeeklyRange): string {
+    if (monotony === null) {
+        return "how varied your training's been. every run at the same effort pushes this up, so mix in an easy day to bring it down.";
+    }
+
+    const value = monotony.toFixed(1);
+    if (range === null) {
+        return `${value} over your last 7 days: how varied your training's been.`;
+    }
+
+    return `${value} over your last 7 days. a steady week for you sits around ${range.low.toFixed(1)} to ${range.high.toFixed(1)}.`;
+}
+
+/** Same shape as {@link trimpMeaning}: the number plus the athlete's own
+ *  normal range for the week's total cost (#1296). */
+function strainMeaning(strain: number | null, range: WeeklyRange): string {
+    if (strain === null) {
+        return "the week's effort multiplied by how varied it was, the total cost you're carrying.";
+    }
+
+    const value = Math.round(strain);
+    if (range === null) {
+        return `${value} over your last 7 days: the week's effort multiplied by how varied it was.`;
+    }
+
+    return `${value} over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
+}
 
 /** Lowercase, matching UI chrome's own register — "wednesday", not "Wednesday". */
 function todayWeekday(): string {
@@ -199,7 +223,10 @@ export default function WeekComparison({
                                     ? load.monotony.toFixed(1)
                                     : '—'
                             }
-                            sub={MONOTONY_MEANING}
+                            sub={monotonyMeaning(
+                                load.monotony,
+                                load.monotony_range,
+                            )}
                         />
                         <Stat
                             className={TILE}
@@ -215,7 +242,7 @@ export default function WeekComparison({
                                     ? String(Math.round(load.strain))
                                     : '—'
                             }
-                            sub={STRAIN_MEANING}
+                            sub={strainMeaning(load.strain, load.strain_range)}
                         />
                     </div>
                 </div>

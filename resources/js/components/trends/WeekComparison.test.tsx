@@ -24,7 +24,9 @@ function load(overrides: Partial<TrainingLoad> = {}): TrainingLoad {
         weekly_trimp: 246,
         weekly_trimp_range: { low: 200, high: 300 },
         monotony: 1.9,
+        monotony_range: { low: 1.4, high: 2.2 },
         strain: 467,
+        strain_range: { low: 350, high: 550 },
         ...overrides,
     };
 }
@@ -74,7 +76,7 @@ describe('WeekComparison', () => {
         expect(screen.getByText(/legs are carrying it/)).toBeInTheDocument();
     });
 
-    it('states load, sameness and total cost, each with a plain label and its own meaning line', () => {
+    it('states load, sameness and total cost, each with a plain label and its own normal-range meaning line', () => {
         render(<WeekComparison weekComparison={payload()} load={load()} />);
 
         expect(screen.getByText('load')).toBeInTheDocument();
@@ -88,19 +90,43 @@ describe('WeekComparison', () => {
                 /246 over your last 7 days\. a steady week for you sits around 200 to 300\./,
             ),
         ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /1\.9 over your last 7 days\. a steady week for you sits around 1\.4 to 2\.2\./,
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /467 over your last 7 days\. a steady week for you sits around 350 to 550\./,
+            ),
+        ).toBeInTheDocument();
     });
 
-    it("falls back to a plain gloss when there's no baseline range yet", () => {
+    it("falls back to a plain gloss for each of the three when there's no baseline range yet", () => {
         render(
             <WeekComparison
                 weekComparison={payload()}
-                load={load({ weekly_trimp_range: null })}
+                load={load({
+                    weekly_trimp_range: null,
+                    monotony_range: null,
+                    strain_range: null,
+                })}
             />,
         );
 
         expect(
             screen.getByText(
                 /246 over your last 7 days: heart rate and time, added up\./,
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /1\.9 over your last 7 days: how varied your training's been\./,
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /467 over your last 7 days: the week's effort multiplied by how varied it was\./,
             ),
         ).toBeInTheDocument();
     });

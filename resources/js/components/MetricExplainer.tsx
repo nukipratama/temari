@@ -1,5 +1,5 @@
 import { CircleQuestionMark, Lightbulb } from 'lucide-react';
-import { useCallback, useId, useRef, useState } from 'react';
+import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
 
 import { Icon } from '@/components/ui/Icon';
 import { useExitTransition } from '@/hooks/useExitTransition';
@@ -20,6 +20,32 @@ interface MetricExplainerProps {
     className?: string;
 }
 
+type PopoverAlign = 'center' | 'left' | 'right';
+
+// Matches the page's own gutter — the popover should never touch the edge.
+const EDGE_MARGIN = 16;
+
+const ALIGN_CLASS: Record<PopoverAlign, string> = {
+    center: 'left-1/2 -translate-x-1/2',
+    left: 'left-0',
+    right: 'right-0',
+};
+
+/** Flips the popover off center-under-trigger when its own rendered rect
+ *  already overflows the viewport — measured after the (still-centered)
+ *  first paint, rather than predicted from the trigger's position, since
+ *  the popover centers on its own containing block, not the viewport. A
+ *  trigger near either edge of the page (a narrow tile column, a
+ *  left-aligned label) otherwise clips the popover off-screen. */
+function correctedAlign(
+    popoverRect: DOMRect,
+    viewportWidth: number,
+): PopoverAlign | null {
+    if (popoverRect.left < EDGE_MARGIN) return 'left';
+    if (popoverRect.right > viewportWidth - EDGE_MARGIN) return 'right';
+    return null;
+}
+
 /**
  * Inline `(?)` trigger button + floating popover with a 1-2 sentence
  * explanation pulled from {@link METRIC_GLOSSARY}. Use next
@@ -35,13 +61,40 @@ export default function MetricExplainer({
 }: Readonly<MetricExplainerProps>) {
     const entry: MetricGlossaryEntry = METRIC_GLOSSARY[metricKey];
     const [open, setOpen] = useState(false);
+    const [align, setAlign] = useState<PopoverAlign>('center');
     const containerRef = useRef<HTMLSpanElement>(null);
+    const popoverRef = useRef<HTMLDivElement>(null);
     const popoverId = useId();
 
-    const close = useCallback(() => setOpen(false), []);
+    // Resets to center on close (not on open) so a stale left/right
+    // correction from a previous position (the trigger can move between
+    // opens, e.g. a range chip reflowing the layout) is already gone by the
+    // time the next open's measurement effect below reads the DOM — doing
+    // the reset at open time instead would race that same-commit measurement
+    // against a class update that hasn't painted yet. Done in the close
+    // handlers themselves (not an effect keyed on `open`), since resetting
+    // one piece of state in reaction to another is exactly what an event
+    // handler is for.
+    const close = useCallback(() => {
+        setOpen(false);
+        setAlign('center');
+    }, []);
     usePopover(open, containerRef, close);
 
     const { rendered, closing } = useExitTransition(open, EXIT_MS);
+
+    // Measures the popover's own rect once it has painted centered, and
+    // flips it exactly once if that overflows — no correction loop, since
+    // `left`/`right` both pin to the trigger's own edge rather than a second
+    // viewport-relative computation that could overflow again.
+    useLayoutEffect(() => {
+        if (!open || !popoverRef.current) return;
+        const corrected = correctedAlign(
+            popoverRef.current.getBoundingClientRect(),
+            window.innerWidth,
+        );
+        if (corrected !== null) setAlign(corrected);
+    }, [open]);
 
     const iconSize = size === 'xs' ? 12 : 14;
     // The box is 24px (WCAG 2.5.8) while negative margins keep the glyph's
@@ -58,7 +111,13 @@ export default function MetricExplainer({
         >
             <button
                 type="button"
-                onClick={() => setOpen((v) => !v)}
+                onClick={() => {
+                    setOpen((v) => {
+                        const next = !v;
+                        if (!next) setAlign('center');
+                        return next;
+                    });
+                }}
                 aria-label={`Explain ${entry.label}`}
                 aria-expanded={open}
                 aria-controls={open ? popoverId : undefined}
@@ -74,11 +133,16 @@ export default function MetricExplainer({
 
             {rendered && (
                 <div
+                    ref={popoverRef}
                     id={popoverId}
                     role="dialog"
                     aria-label={entry.label}
                     data-closing={closing ? '' : undefined}
-                    className="popover-reveal absolute left-1/2 top-full z-30 mt-2 w-64 max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-leaf/40 bg-popover text-left normal-case shadow-e2 ring-1 ring-leaf/15"
+                    data-align={align}
+                    className={cn(
+                        'popover-reveal absolute top-full z-30 mt-2 w-64 max-w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-leaf/40 bg-popover text-left normal-case shadow-e2 ring-1 ring-leaf/15',
+                        ALIGN_CLASS[align],
+                    )}
                 >
                     <div
                         aria-hidden

@@ -19,7 +19,7 @@ code_refs:
 
 Edwards TRIMP needs heart-rate minutes per zone, so a run without an HR stream scores nothing. Under [[summary-first-ingest]] that is the *normal* state of a freshly connected athlete: their entire history arrives summary-only and carries no `trimp_edwards` at all.
 
-[weekStats](app/Services/Run/Metrics/TrainingLoad.php#L381) only ever saw the daily TRIMP map, which by construction contains scored days and nothing else. Two very different weeks therefore arrived at it looking identical — an empty map slice — and both left as `0.0` for `weekly_trimp`, `monotony` and `strain`:
+[weekStats](app/Services/Run/Metrics/TrainingLoad.php#L407) only ever saw the daily TRIMP map, which by construction contains scored days and nothing else. Two very different weeks therefore arrived at it looking identical — an empty map slice — and both left as `0.0` for `weekly_trimp`, `monotony` and `strain`:
 
 - a **rest week**, where nobody ran, and zero is the truth;
 - an **unscored week**, where they ran and we simply have no reading.
@@ -30,7 +30,7 @@ Edwards TRIMP needs heart-rate minutes per zone, so a run without an HR stream s
 
 **Carry the run days beside the TRIMP, and let the three week-window fields be null.**
 
-[loadDailyHistory](app/Services/Run/Metrics/TrainingLoad.php#L176) returns both maps from one query (a day whose runs all lack TRIMP sums to SQL `NULL`, so it lands in `runDays` and not in `trimp`), and [dailyHistory](app/Services/Run/Metrics/WeeklyAggregator.php#L239) derives the same pair from the detail set it has already loaded. One source each, so the two maps cannot drift apart.
+[loadDailyHistory](app/Services/Run/Metrics/TrainingLoad.php#L202) returns both maps from one query (a day whose runs all lack TRIMP sums to SQL `NULL`, so it lands in `runDays` and not in `trimp`), and [dailyHistory](app/Services/Run/Metrics/WeeklyAggregator.php#L239) derives the same pair from the detail set it has already loaded. One source each, so the two maps cannot drift apart.
 
 `weekStats` then answers three ways rather than two: no runs in the window is `0.0`, runs but nothing scored is `null`, anything scored is the number.
 

@@ -35,7 +35,9 @@ const LOAD: TrainingLoad = {
     weekly_trimp: 320,
     weekly_trimp_range: { low: 280, high: 360 },
     monotony: 1.2,
+    monotony_range: { low: 1.0, high: 1.6 },
     strain: 384,
+    strain_range: { low: 300, high: 460 },
 };
 
 const NO_ANNOTATIONS: FitnessChartAnnotations = { deload: [], race: [] };
