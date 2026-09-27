@@ -54,9 +54,12 @@ class ReverseGeocodeAction
         return $outcome instanceof ResolvedLocation ? $outcome : null;
     }
 
-    public function hasTransientFailure(float $lat, float $lng): bool
+    public function shouldSkipBackfill(float $lat, float $lng): bool
     {
-        return Cache::get($this->cacheKey($lat, $lng)) === ReverseGeocodeOutcome::TransientFailure;
+        return in_array(Cache::get($this->cacheKey($lat, $lng)), [
+            ReverseGeocodeOutcome::NoAddress,
+            ReverseGeocodeOutcome::TransientFailure,
+        ], true);
     }
 
     private function fetchWithRateSlot(float $lat, float $lng): ResolvedLocation|ReverseGeocodeOutcome
@@ -111,7 +114,7 @@ class ReverseGeocodeAction
                     'format' => 'jsonv2',
                     'zoom' => 14, // suburb level — gives kecamatan + kota
                     'addressdetails' => 1,
-            ]);
+                ]);
 
             if (! $response->ok()) {
                 return ReverseGeocodeOutcome::TransientFailure;

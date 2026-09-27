@@ -75,7 +75,7 @@ class BackfillActivityLocationsCommand extends Command
             if (
                 $detail->start_lat === null
                 || $detail->start_lng === null
-                || $resolver->hasTransientFailure($detail->start_lat, $detail->start_lng)
+                || $resolver->shouldSkipBackfill($detail->start_lat, $detail->start_lng)
             ) {
                 continue;
             }

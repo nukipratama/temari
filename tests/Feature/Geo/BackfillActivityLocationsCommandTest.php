@@ -99,17 +99,24 @@ it('honors the --limit option', function (): void {
     Queue::assertPushed(ResolveActivityLocationJob::class, 2);
 });
 
-it('skips active transient failures without starving later rows past the limit', function (): void {
+it('skips cached failures and no-address results without starving later rows past the limit', function (): void {
     Queue::fake();
     $this->freezeTime();
     Cache::flush();
+    $requestCount = 0;
     Http::fake([
-        'nominatim.openstreetmap.org/*' => Http::response('rate limited', 429),
+        'nominatim.openstreetmap.org/*' => function () use (&$requestCount) {
+            $requestCount++;
+
+            return $requestCount <= 201
+                ? Http::response('rate limited', 429)
+                : Http::response(['address' => []]);
+        },
     ]);
 
-    $activities = Activity::factory()->count(401)->create();
+    $activities = Activity::factory()->count(602)->create();
     $resolver = new ReverseGeocodeAction();
-    foreach ($activities->take(201)->values() as $index => $activity) {
+    foreach ($activities->take(402)->values() as $index => $activity) {
         $lat = -6.0 - ($index / 1000);
         ActivityDetail::factory()->for($activity)->create([
             'start_lat' => $lat,
@@ -120,7 +127,7 @@ it('skips active transient failures without starving later rows past the limit',
         $this->travel(1)->seconds();
     }
 
-    $eligibleIds = $activities->skip(201)->map(fn (Activity $activity): int => ActivityDetail::factory()->for($activity)->create([
+    $eligibleIds = $activities->skip(402)->map(fn (Activity $activity): int => ActivityDetail::factory()->for($activity)->create([
         'start_lat' => -8.0,
         'start_lng' => 106.0,
         'location_resolved_at' => null,
@@ -132,7 +139,7 @@ it('skips active transient failures without starving later rows past the limit',
         ->map(fn (ResolveActivityLocationJob $job): int => $job->activityDetailId)
         ->all();
     expect($queuedIds)->toBe($eligibleIds);
-    Http::assertSentCount(201);
+    Http::assertSentCount(402);
 });
 
 it('backfills start_lat/start_lng from summary_polyline when coords are null', function (): void {
