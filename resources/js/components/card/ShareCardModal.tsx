@@ -337,7 +337,7 @@ export default function ShareCardModal({
                     className="focus-ring relative h-[var(--print-h)] overflow-hidden"
                 >
                     <div
-                        className="absolute left-1/2 top-0 flex gap-[18px] transition-transform duration-300"
+                        className="absolute left-1/2 top-0 flex gap-[18px] motion-safe:transition-transform motion-safe:duration-300"
                         style={{
                             transform: `translateX(calc(-0.5 * var(--print-w) - ${index} * (var(--print-w) + 18px)))`,
                         }}

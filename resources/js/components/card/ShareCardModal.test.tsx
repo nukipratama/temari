@@ -174,6 +174,18 @@ describe('ShareCardModal', () => {
         );
     });
 
+    it('only applies carousel transitions in the motion-safe path', async () => {
+        await openModal();
+        const stage = screen.getByRole('group', { name: 'print style' });
+        const rack = stage.firstElementChild as HTMLDivElement;
+
+        expect(rack).toHaveClass(
+            'motion-safe:transition-transform',
+            'motion-safe:duration-300',
+        );
+        expect(rack).not.toHaveClass('transition-transform');
+    });
+
     it('does not treat vertical or diagonal-dominant movement as a swipe', async () => {
         await openModal();
         const stage = screen.getByRole('group', { name: 'print style' });
