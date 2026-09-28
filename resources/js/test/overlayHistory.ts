@@ -1,8 +1,12 @@
 import { act } from '@testing-library/react';
 
-/** Lets a pending popstate/Inertia handler run before assertions. */
+/** Lets queued history traversals, and any Back their popstate handlers trigger, run before assertions. */
 export async function settle() {
-    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+    await act(async () => {
+        for (let hop = 0; hop < 8; hop++) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+    });
 }
 
 /** Simulates the browser/Android Back gesture. */
