@@ -1,10 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { Check } from 'lucide-react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import TemariNudgeModal from './TemariNudgeModal';
 
-const baseProps = {
+const props = {
+    onClose: vi.fn(),
     title: 'Nudge title',
     body: 'A friendly message.',
     primaryLabel: 'Do it',
@@ -12,100 +13,32 @@ const baseProps = {
     onPrimary: vi.fn(),
 };
 
+afterEach(async () => {
+    cleanup();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+});
+
 describe('TemariNudgeModal', () => {
-    it('renders nothing when closed', () => {
+    it('loads nothing until it is first opened', () => {
         const { container } = render(
-            <TemariNudgeModal open={false} onClose={vi.fn()} {...baseProps} />,
+            <TemariNudgeModal open={false} {...props} />,
         );
-        expect(container.firstChild).toBeNull();
+
+        expect(container).toBeEmptyDOMElement();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
-    it('renders the title, body, primary CTA, and default dismiss label', () => {
-        render(<TemariNudgeModal open onClose={vi.fn()} {...baseProps} />);
-        expect(screen.getByText('Nudge title')).toBeInTheDocument();
-        expect(screen.getByText('A friendly message.')).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'Do it' }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'Not now' }),
-        ).toBeInTheDocument();
-    });
-
-    it('takes the pose its caller asks for, neutral by default', () => {
+    it('loads the dialog on its first open and closes it again', async () => {
         const { rerender } = render(
-            <TemariNudgeModal open onClose={vi.fn()} {...baseProps} />,
-        );
-        expect(document.querySelector('svg[data-mascot]')).toHaveAttribute(
-            'data-mascot',
-            'neutral',
+            <TemariNudgeModal open={false} {...props} />,
         );
 
-        rerender(
-            <TemariNudgeModal
-                open
-                onClose={vi.fn()}
-                {...baseProps}
-                pose="concerned"
-            />,
-        );
-        expect(document.querySelector('svg[data-mascot]')).toHaveAttribute(
-            'data-mascot',
-            'concerned',
-        );
-    });
-
-    it('draws Temari in with the one-shot trace', () => {
-        render(<TemariNudgeModal open onClose={vi.fn()} {...baseProps} />);
-        const mascot = document.querySelector('svg[data-mascot]');
-
-        expect(mascot).toHaveAttribute('width', '72');
-        expect(mascot?.querySelector('.draw-in')).not.toBeNull();
-    });
-
-    it('wires the dialog to the title via aria-labelledby', () => {
-        render(<TemariNudgeModal open onClose={vi.fn()} {...baseProps} />);
-        const dialog = screen.getByRole('dialog');
-        expect(dialog).toHaveAttribute('aria-modal', 'true');
-        expect(dialog).toHaveAttribute('aria-labelledby', 'temari-nudge-title');
-        expect(document.getElementById('temari-nudge-title')).toHaveTextContent(
-            'Nudge title',
-        );
-    });
-
-    it('honors a custom secondary label', () => {
-        render(
-            <TemariNudgeModal
-                open
-                onClose={vi.fn()}
-                {...baseProps}
-                secondaryLabel="Cancel"
-            />,
-        );
+        rerender(<TemariNudgeModal open {...props} />);
         expect(
-            screen.getByRole('button', { name: 'Cancel' }),
+            await screen.findByRole('dialog', { name: 'Nudge title' }),
         ).toBeInTheDocument();
-    });
 
-    it('calls onPrimary when the primary CTA is clicked', () => {
-        const onPrimary = vi.fn();
-        render(
-            <TemariNudgeModal
-                open
-                onClose={vi.fn()}
-                {...baseProps}
-                onPrimary={onPrimary}
-            />,
-        );
-        fireEvent.click(screen.getByRole('button', { name: 'Do it' }));
-        expect(onPrimary).toHaveBeenCalledOnce();
-    });
-
-    it('calls onClose from both the dismiss CTA and the top-left close button', () => {
-        const onClose = vi.fn();
-        render(<TemariNudgeModal open onClose={onClose} {...baseProps} />);
-        fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
-        fireEvent.click(screen.getByLabelText('Close'));
-        expect(onClose).toHaveBeenCalledTimes(2);
+        rerender(<TemariNudgeModal open={false} {...props} />);
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 });

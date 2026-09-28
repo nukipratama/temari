@@ -1,132 +1,30 @@
-import { X } from 'lucide-react';
-import { useRef, type ReactNode } from 'react';
+import { Suspense, useState } from 'react';
 
-import TemariMascot, {
-    type MascotPose,
-} from '@/components/temari/TemariMascot';
-import { Icon, IconComponent } from '@/components/ui/Icon';
-import PillButton from '@/components/ui/PillButton';
-import { useExitTransition } from '@/hooks/useExitTransition';
-import { useModal } from '@/hooks/useModal';
-import { cn } from '@/lib/cn';
-import { iconButtonVariants } from '@/lib/variants';
+import { lazyIsland } from '@/lib/lazyIsland';
 
-const EXIT_MS = 300;
+import type { TemariNudgeModalProps } from './TemariNudgeDialog';
 
-interface TemariNudgeModalProps {
-    open: boolean;
-    onClose: () => void;
-    title: string;
-    body: ReactNode;
-    /** Primary CTA. */
-    primaryLabel: string;
-    /** Iconify icon name shown before the primary label. */
-    primaryIcon: IconComponent;
-    /** Extra classes merged onto the primary CTA (e.g. a brand color override). */
-    primaryClassName?: string;
-    onPrimary: () => void;
-    /** Secondary dismiss label; defaults to a soft "Not now". */
-    secondaryLabel?: string;
-    /** Temari's pose; `concerned` for a destructive confirmation. */
-    pose?: MascotPose;
-}
+const TemariNudgeDialog = lazyIsland(() => import('./TemariNudgeDialog'));
 
 /**
- * The shared shell for Temari's soft "front door" modals: a calm nudge (not a
- * celebration) with a title, a short body, and a primary + dismiss CTA. Backs
- * {@see DemoBlockedModal} so the framer shell and focus trap live in one
- * place.
+ * Temari's soft "front door" modal: a calm nudge (not a celebration) with a
+ * title, a short body, and a primary + dismiss CTA. Backs
+ * {@see DemoBlockedModal} and the destructive confirmations. The dialog and
+ * Base UI under it load on the first open, so the pages that offer one keep
+ * them off their first paint; once loaded it stays mounted to animate out.
  */
-export default function TemariNudgeModal({
-    open,
-    onClose,
-    title,
-    body,
-    primaryLabel,
-    primaryIcon,
-    primaryClassName,
-    onPrimary,
-    secondaryLabel = 'Not now',
-    pose = 'neutral',
-}: Readonly<TemariNudgeModalProps>) {
-    const panelRef = useRef<HTMLDivElement>(null);
+export default function TemariNudgeModal(
+    props: Readonly<TemariNudgeModalProps>,
+) {
+    const [asked, setAsked] = useState(props.open);
 
-    useModal(open, panelRef, onClose);
-
-    const { rendered, closing } = useExitTransition(open, EXIT_MS);
-
-    if (!rendered) {
-        return null;
+    if (props.open && !asked) {
+        setAsked(true);
     }
 
-    return (
-        <div
-            data-closing={closing ? '' : undefined}
-            className="backdrop-reveal fixed inset-0 z-[51] flex items-center justify-center p-4"
-            style={{
-                background: 'rgba(0,0,0,0.5)',
-                backdropFilter: 'blur(6px)',
-            }}
-        >
-            <div
-                data-closing={closing ? '' : undefined}
-                ref={panelRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="temari-nudge-title"
-                className="panel-reveal flex w-full max-w-sm flex-col overflow-hidden rounded-xl bg-card shadow-e4"
-            >
-                <div className="flex justify-start px-3 pt-3">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        aria-label="Close"
-                        className={iconButtonVariants({ size: 'sm' })}
-                    >
-                        <Icon icon={X} width={16} height={16} />
-                    </button>
-                </div>
-
-                <div className="flex flex-col items-center gap-4 px-6 pb-6 pt-1 text-center">
-                    <TemariMascot pose={pose} size={72} drawIn />
-                    <h2
-                        id="temari-nudge-title"
-                        className="font-serif text-2xl tracking-tight text-foreground"
-                    >
-                        {title}
-                    </h2>
-                    <p className="font-sans text-sm leading-relaxed text-text-2">
-                        {body}
-                    </p>
-                </div>
-
-                <div className="flex flex-col gap-2 border-t border-border bg-card px-5 py-4">
-                    <PillButton
-                        tone="sky"
-                        onClick={onPrimary}
-                        className={cn(
-                            'w-full justify-center py-3.5 font-semibold',
-                            primaryClassName,
-                        )}
-                    >
-                        <Icon
-                            icon={primaryIcon}
-                            width={16}
-                            height={16}
-                            aria-hidden
-                        />
-                        {primaryLabel}
-                    </PillButton>
-                    <PillButton
-                        tone="ghost"
-                        onClick={onClose}
-                        className="w-full justify-center"
-                    >
-                        <Icon icon={X} width={16} height={16} aria-hidden />
-                        {secondaryLabel}
-                    </PillButton>
-                </div>
-            </div>
-        </div>
-    );
+    return asked ? (
+        <Suspense fallback={null}>
+            <TemariNudgeDialog {...props} />
+        </Suspense>
+    ) : null;
 }

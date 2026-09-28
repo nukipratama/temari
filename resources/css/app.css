@@ -606,7 +606,8 @@ body {
    `animation-direction: reverse`: reversing an animation that has already
    finished only re-resolves its fill state, so the element would blink out
    instead of playing. `useExitTransition` holds `data-closing` on for the
-   matching window before unmounting. */
+   matching window before unmounting; Base UI does the same with
+   `data-ending-style`. */
 @keyframes reveal-up-out {
     to {
         opacity: 0;
@@ -644,12 +645,14 @@ body {
 }
 
 .fade-in[data-closing],
-.backdrop-reveal[data-closing] {
+.backdrop-reveal[data-closing],
+.backdrop-reveal[data-ending-style] {
     animation-name: reveal-fade-out;
     animation-delay: 0s;
 }
 
-.panel-reveal[data-closing] {
+.panel-reveal[data-closing],
+.panel-reveal[data-ending-style] {
     animation-name: panel-reveal-out;
 }
 
@@ -741,6 +744,7 @@ body {
 
     .reveal[data-closing],
     .panel-reveal[data-closing],
+    .panel-reveal[data-ending-style],
     .popover-reveal[data-closing] {
         animation-name: reveal-fade-out;
     }

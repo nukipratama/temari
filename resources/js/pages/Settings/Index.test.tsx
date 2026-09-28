@@ -280,7 +280,7 @@ describe('Settings', () => {
         ).not.toBeDisabled();
     });
 
-    it('opens the demo-blocked modal instead of patching when a demo user flips a toggle', () => {
+    it('opens the demo-blocked modal instead of patching when a demo user flips a toggle', async () => {
         setMockPage({
             auth: { user: makeUser({ is_demo: true }) },
             flash: {},
@@ -295,7 +295,7 @@ describe('Settings', () => {
         expect(router.patch).not.toHaveBeenCalled();
         expect(toggle).toHaveAttribute('aria-checked', 'false');
         expect(
-            screen.getByText("Telegram's taking a break for now"),
+            await screen.findByText("Telegram's taking a break for now"),
         ).toBeInTheDocument();
     });
 
@@ -322,13 +322,13 @@ describe('Settings', () => {
         expect(screen.getByText('log out')).toBeInTheDocument();
     });
 
-    it('opens a confirmation before deleting the account', () => {
+    it('opens a confirmation before deleting the account', async () => {
         vi.mocked(router.delete).mockReset();
         render(<Settings />);
 
         fireEvent.click(screen.getByText('delete account'));
         expect(
-            screen.getByText('sure you want to delete your account?'),
+            await screen.findByText('sure you want to delete your account?'),
         ).toBeInTheDocument();
         expect(
             document.querySelector('[role="dialog"] svg[data-mascot]'),
@@ -337,13 +337,15 @@ describe('Settings', () => {
         expect(router.delete).not.toHaveBeenCalled();
     });
 
-    it('deletes the account via DELETE /account when confirmed', () => {
+    it('deletes the account via DELETE /account when confirmed', async () => {
         vi.mocked(router.delete).mockReset();
         render(<Settings />);
 
         fireEvent.click(screen.getByText('delete account'));
         fireEvent.click(
-            screen.getByRole('button', { name: /yes, delete my account/ }),
+            await screen.findByRole('button', {
+                name: /yes, delete my account/,
+            }),
         );
 
         expect(router.delete).toHaveBeenCalledWith('/account');
@@ -355,7 +357,7 @@ describe('Settings', () => {
 
         fireEvent.click(screen.getByText('delete account'));
         expect(
-            screen.getByText('sure you want to delete your account?'),
+            await screen.findByText('sure you want to delete your account?'),
         ).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Not now' }));

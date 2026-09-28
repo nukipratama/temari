@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+    act,
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Print } from '@/lib/card/print';
@@ -35,7 +42,7 @@ const card: ShareCardTarget = {
 };
 
 async function openModal(target: ShareCardTarget = card) {
-    render(<ShareCardModal card={target} onClose={vi.fn()} />);
+    render(<ShareCardModal open card={target} onClose={vi.fn()} />);
     await waitFor(() =>
         expect(screen.getAllByRole('img').length).toBeGreaterThan(0),
     );
@@ -48,7 +55,9 @@ beforeEach(() => {
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 });
 
-afterEach(() => {
+afterEach(async () => {
+    cleanup();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
     vi.restoreAllMocks();
     for (const key of ['share', 'canShare', 'clipboard'] as const) {
         Object.defineProperty(navigator, key, {
@@ -61,7 +70,7 @@ afterEach(() => {
 describe('ShareCardModal', () => {
     it('renders nothing without a card', () => {
         const { container } = render(
-            <ShareCardModal card={null} onClose={vi.fn()} />,
+            <ShareCardModal open card={null} onClose={vi.fn()} />,
         );
 
         expect(container).toBeEmptyDOMElement();
@@ -274,7 +283,7 @@ describe('ShareCardModal', () => {
 
     it('offers a retry when a print cannot be made', async () => {
         renderPrint.mockRejectedValue(new Error('boom'));
-        render(<ShareCardModal card={card} onClose={vi.fn()} />);
+        render(<ShareCardModal open card={card} onClose={vi.fn()} />);
 
         await waitFor(() =>
             expect(
@@ -419,10 +428,32 @@ describe('ShareCardModal', () => {
 
     it('closes on the close button', async () => {
         const onClose = vi.fn();
-        render(<ShareCardModal card={card} onClose={onClose} />);
+        render(<ShareCardModal open card={card} onClose={onClose} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'close' }));
 
         expect(onClose).toHaveBeenCalled();
+    });
+
+    it('closes on Back without leaving the run', async () => {
+        window.history.pushState({ page: 'run' }, '');
+        const onClose = vi.fn();
+        const pageSawBack = vi.fn();
+        window.addEventListener('popstate', pageSawBack);
+        render(<ShareCardModal open card={card} onClose={onClose} />);
+
+        window.history.back();
+        await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+
+        expect(pageSawBack).not.toHaveBeenCalled();
+        window.removeEventListener('popstate', pageSawBack);
+    });
+
+    it('is a modal dialog named for what it does', () => {
+        render(<ShareCardModal open card={card} onClose={vi.fn()} />);
+
+        expect(
+            screen.getByRole('dialog', { name: 'share this run' }),
+        ).toHaveAttribute('aria-modal', 'true');
     });
 });

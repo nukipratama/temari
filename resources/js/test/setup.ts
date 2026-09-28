@@ -1,7 +1,10 @@
 import '@testing-library/jest-dom/vitest';
+import { router } from '@inertiajs/react';
 import { cleanup } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { afterEach, beforeEach, vi } from 'vitest';
+
+import { installOverlayHistory } from '@/hooks/useOverlayHistory';
 
 // jsdom ships no matchMedia. Anything asking the environment about itself
 // (display-mode for the installed-app checks, pointer coarseness, reduced
@@ -291,3 +294,6 @@ vi.mock('@/components/ui/Icon', () => {
         },
     };
 });
+
+// Ahead of any listener a test adds, as app.tsx installs it ahead of Inertia's.
+installOverlayHistory(router);

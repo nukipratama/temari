@@ -122,7 +122,7 @@ Two renderers stay deliberately local rather than folding into `FlashNotice`: [t
 - **`resources/js/pages/`** — one file (or subdir) per Inertia render name; the only files Inertia mounts.
 - **`resources/js/components/`** — shared chrome at the root (nav, avatars, brand mark, error boundary), then **per-domain subfolders** (`aiusage/`, `card/`, `collection/`, `dashboard/`, `history/`, `home/`, `inbox/`, `onboarding/`, `plan/`, `profile/`, `race/`, `run/`, `settings/`, `temari/`, `trends/`) plus a generic `ui/` kit. Reuse before adding.
 - **`resources/js/lib/`** — pure helpers (pace/format, polyline projection, mood, chart theme, the `postJson` fetch helper for non-Inertia JSON POSTs at [`postJson`](resources/js/lib/http.ts#L17), and two typed link builders in `routes.ts` — [`activityUrl`](resources/js/lib/routes.ts#L4), and [`analysisTriggerUrl`](resources/js/lib/routes.ts#L16), which guards the analysis subject-id/row-id mixup).
-- **`resources/js/hooks/`** — reusable hooks (`useAnalysisTrigger`, `useFocusTrap`, `useSystemTheme`, …).
+- **`resources/js/hooks/`** — reusable hooks (`useAnalysisTrigger`, `useOverlayHistory`, `useSystemTheme`, …).
 - **`resources/js/types/`** — `inertia.ts` is the hand-written shared contract; [`generated.ts`](resources/js/types/generated.ts#L1) is auto-generated from the backend PHP enums by `php artisan typescript:enums` (CI fails if stale), re-exported through `inertia.ts`.
 
 The 1:1 `*.test.tsx` convention (every component/lib file has a sibling test) is a project rule — see the `temari` skill.

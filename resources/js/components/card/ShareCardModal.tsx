@@ -8,7 +8,7 @@ import {
     Share,
     X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { Print } from '@/lib/card/print';
 
@@ -17,8 +17,8 @@ import {
     type PrintState,
 } from '@/components/card/useCardPrints';
 import { Icon, type IconComponent } from '@/components/ui/Icon';
+import Overlay from '@/components/ui/Overlay';
 import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
-import { useModal } from '@/hooks/useModal';
 import { hasFact } from '@/lib/card/facts';
 import {
     ALL_FACTS,
@@ -79,9 +79,14 @@ const FACT_CHIPS: Array<{
  * any progress at all.
  */
 export default function ShareCardModal({
+    open,
     card,
     onClose,
-}: Readonly<{ card: ShareCardTarget | null; onClose: () => void }>) {
+}: Readonly<{
+    open: boolean;
+    card: ShareCardTarget | null;
+    onClose: () => void;
+}>) {
     const [style, setStyle] = useState<CardStyle>('broadsheet');
     const [aspect, setAspect] = useState<CardAspect>('story');
     const [facts, setFacts] = useState<CardOptions>(ALL_FACTS);
@@ -89,9 +94,6 @@ export default function ShareCardModal({
         tone: 'ok' | 'err';
         text: string;
     } | null>(null);
-    const panelRef = useRef<HTMLDivElement>(null);
-
-    useModal(card !== null, panelRef, onClose);
 
     const payload = card?.facts ?? null;
     const chips = useMemo(
@@ -208,215 +210,211 @@ export default function ShareCardModal({
     const ready = print !== null;
 
     return (
-        <div
-            className="backdrop-reveal fixed inset-0 z-[50]"
-            style={{
-                background: 'rgba(0,0,0,0.5)',
-                backdropFilter: 'blur(6px)',
+        <Overlay
+            open={open}
+            onOpenChange={(open) => {
+                if (!open) onClose();
             }}
+            backdropProps={{
+                className: 'backdrop-reveal fixed inset-0 z-[50]',
+                style: {
+                    background: 'rgba(0,0,0,0.5)',
+                    backdropFilter: 'blur(6px)',
+                },
+            }}
+            aria-label="share this run"
+            className={cn(
+                'panel-reveal fixed inset-x-0 bottom-0 z-[51] flex max-h-[96dvh] flex-col overflow-y-auto rounded-t-2xl bg-card pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-2 text-card-foreground shadow-e4',
+                'min-[900px]:inset-x-auto min-[900px]:bottom-auto min-[900px]:left-1/2 min-[900px]:top-1/2 min-[900px]:w-[480px] min-[900px]:max-h-[94dvh] min-[900px]:-translate-x-1/2 min-[900px]:-translate-y-1/2 min-[900px]:rounded-2xl min-[900px]:pb-5 min-[900px]:pt-0',
+                aspect === 'story'
+                    ? '[--print-h:372px] min-[900px]:[--print-h:486px]'
+                    : '[--print-h:268px] min-[900px]:[--print-h:360px]',
+            )}
+            style={
+                {
+                    '--print-w':
+                        aspect === 'story'
+                            ? 'calc(var(--print-h) * 1080 / 1920)'
+                            : 'var(--print-h)',
+                } as React.CSSProperties
+            }
         >
-            <div
-                ref={panelRef}
-                role="dialog"
-                aria-modal="true"
-                aria-label="share this run"
-                className={cn(
-                    'panel-reveal fixed inset-x-0 bottom-0 z-[51] flex max-h-[96dvh] flex-col overflow-y-auto rounded-t-2xl bg-card pb-3.5 text-card-foreground shadow-e4',
-                    'min-[900px]:inset-x-auto min-[900px]:bottom-auto min-[900px]:left-1/2 min-[900px]:top-1/2 min-[900px]:w-[480px] min-[900px]:max-h-[94dvh] min-[900px]:-translate-x-1/2 min-[900px]:-translate-y-1/2 min-[900px]:rounded-2xl min-[900px]:pb-5',
-                    aspect === 'story'
-                        ? '[--print-h:372px] min-[900px]:[--print-h:486px]'
-                        : '[--print-h:268px] min-[900px]:[--print-h:360px]',
-                )}
-                style={
-                    {
-                        '--print-w':
-                            aspect === 'story'
-                                ? 'calc(var(--print-h) * 1080 / 1920)'
-                                : 'var(--print-h)',
-                    } as React.CSSProperties
-                }
-            >
-                <div className="mx-auto mt-2 h-1 w-9 rounded-full bg-border min-[900px]:hidden" />
-
-                <div className="flex items-center gap-2.5 px-[18px] pb-1.5 pt-2.5 min-[900px]:px-[22px] min-[900px]:pb-2 min-[900px]:pt-4">
-                    <div className="flex-1">
-                        <div className="text-label-micro text-text-3">
-                            share
-                        </div>
-                        <div className="font-serif text-xl italic leading-tight tracking-tight">
-                            {card.name}
-                        </div>
+            <div className="flex items-center gap-2.5 px-[18px] pb-1.5 pt-2.5 min-[900px]:px-[22px] min-[900px]:pb-2 min-[900px]:pt-4">
+                <div className="flex-1">
+                    <div className="text-label-micro text-text-3">share</div>
+                    <div className="font-serif text-xl italic leading-tight tracking-tight">
+                        {card.name}
                     </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        aria-label="close"
-                        className={cn(
-                            iconButtonVariants(),
-                            'flex-none border border-border',
-                        )}
-                    >
-                        <Icon icon={X} width={15} aria-hidden />
-                    </button>
                 </div>
-
-                {/* Shape — above the print, so the toggle never moves under a thumb. */}
-                <div
-                    role="group"
-                    aria-label="shape"
-                    className="mx-[18px] mb-3.5 mt-1 flex gap-0.5 rounded-full bg-muted p-0.5 min-[900px]:mx-[22px]"
+                <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="close"
+                    className={cn(
+                        iconButtonVariants(),
+                        'flex-none border border-border',
+                    )}
                 >
-                    {CARD_ASPECTS.map((option) => (
-                        <button
-                            key={option}
-                            type="button"
-                            onClick={() => setAspect(option)}
-                            aria-pressed={aspect === option}
-                            className={cn(
-                                'pressable focus-ring flex flex-1 items-center justify-center gap-[7px] rounded-full py-2 text-[0.8125rem] font-semibold transition',
-                                aspect === option
-                                    ? 'bg-card text-foreground shadow-e1'
-                                    : 'text-text-3',
-                            )}
-                        >
-                            <span
-                                aria-hidden
-                                className={cn(
-                                    'rounded-[2px] border-[1.5px] border-current opacity-85',
-                                    option === 'story'
-                                        ? 'h-[17px] w-[11px]'
-                                        : 'size-[15px]',
-                                )}
-                            />
-                            {option}
-                        </button>
-                    ))}
-                </div>
-
-                {/* The prints, racked side by side and clipped by the stage, so
-                    the neighbours bleed off the sheet instead of widening it. */}
-                <div
-                    role="group"
-                    aria-label="print style"
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                        if (event.key === 'ArrowLeft') step(-1);
-                        if (event.key === 'ArrowRight') step(1);
-                    }}
-                    {...touchHandlers}
-                    className="focus-ring relative h-[var(--print-h)] touch-pan-y overflow-hidden"
-                >
-                    <div
-                        className="absolute left-1/2 top-0 flex gap-[18px] motion-safe:transition-transform motion-safe:duration-300"
-                        style={{
-                            transform: `translateX(calc(-0.5 * var(--print-w) - ${index} * (var(--print-w) + 18px)))`,
-                        }}
-                    >
-                        {CARD_STYLES.map((each) => (
-                            <PrintSlot
-                                key={each}
-                                label={STYLE_LABELS[each]}
-                                state={states[each]}
-                                current={each === style}
-                                story={aspect === 'story'}
-                                onRetry={retry}
-                            />
-                        ))}
-                    </div>
-                </div>
-
-                {aspect === 'story' && (
-                    <p className="mx-[18px] mt-2.5 text-center text-label-micro text-text-3 min-[900px]:mx-[22px]">
-                        shaded bands = what story apps cover
-                    </p>
-                )}
-
-                {/* Style switcher — all three named, no suggested default. */}
-                <div className="mx-[18px] mt-3.5 flex gap-1.5 rounded-full bg-muted p-[3px] min-[900px]:mx-[22px]">
-                    {CARD_STYLES.map((each) => (
-                        <button
-                            key={each}
-                            type="button"
-                            onClick={() => setStyle(each)}
-                            aria-pressed={style === each}
-                            className={cn(
-                                'focus-ring flex-1 rounded-full px-1 py-2 text-[0.78125rem] font-semibold transition',
-                                style === each
-                                    ? 'bg-card text-foreground shadow-e1'
-                                    : 'text-text-3',
-                            )}
-                        >
-                            {STYLE_LABELS[each]}
-                        </button>
-                    ))}
-                </div>
-
-                {chips.length > 0 && (
-                    <div className="mx-[18px] mt-3.5 flex flex-wrap justify-center gap-[7px] min-[900px]:mx-[22px]">
-                        {chips.map(({ key, label, icon }) => (
-                            <button
-                                key={key}
-                                type="button"
-                                onClick={() =>
-                                    setFacts((prev) => ({
-                                        ...prev,
-                                        [key]: !prev[key],
-                                    }))
-                                }
-                                aria-pressed={facts[key]}
-                                className={cn(
-                                    'focus-ring inline-flex items-center gap-1.5 rounded-full border py-1.5 pl-2.5 pr-3 text-[0.78125rem] transition',
-                                    facts[key]
-                                        ? 'border-foreground bg-secondary font-semibold text-foreground'
-                                        : 'border-border font-medium text-text-3',
-                                )}
-                            >
-                                <Icon icon={icon} width={14} aria-hidden />
-                                {label}
-                            </button>
-                        ))}
-                    </div>
-                )}
-
-                {/* Three equal actions: the print is the thing, not the sharing. */}
-                <div className="mx-[18px] mt-4 grid grid-cols-3 gap-2 min-[900px]:mx-[22px]">
-                    <ActionTile
-                        icon={Share}
-                        label="share"
-                        primary
-                        disabled={!ready}
-                        onClick={handleShare}
-                    />
-                    <ActionTile
-                        icon={Copy}
-                        label="copy"
-                        disabled={!ready}
-                        onClick={handleCopy}
-                    />
-                    <ActionTile
-                        icon={Download}
-                        label="download"
-                        disabled={!ready}
-                        onClick={handleDownload}
-                    />
-                </div>
-
-                {status !== null && (
-                    <p
-                        role="status"
-                        aria-live="polite"
-                        className={cn(
-                            'mt-2.5 text-center font-sans text-xs',
-                            status.tone === 'ok'
-                                ? 'text-leaf-ink'
-                                : 'text-ember-ink',
-                        )}
-                    >
-                        {status.text}
-                    </p>
-                )}
+                    <Icon icon={X} width={15} aria-hidden />
+                </button>
             </div>
-        </div>
+
+            {/* Shape — above the print, so the toggle never moves under a thumb. */}
+            <div
+                role="group"
+                aria-label="shape"
+                className="mx-[18px] mb-3.5 mt-1 flex gap-0.5 rounded-full bg-muted p-0.5 min-[900px]:mx-[22px]"
+            >
+                {CARD_ASPECTS.map((option) => (
+                    <button
+                        key={option}
+                        type="button"
+                        onClick={() => setAspect(option)}
+                        aria-pressed={aspect === option}
+                        className={cn(
+                            'pressable focus-ring flex flex-1 items-center justify-center gap-[7px] rounded-full py-2 text-[0.8125rem] font-semibold transition',
+                            aspect === option
+                                ? 'bg-card text-foreground shadow-e1'
+                                : 'text-text-3',
+                        )}
+                    >
+                        <span
+                            aria-hidden
+                            className={cn(
+                                'rounded-[2px] border-[1.5px] border-current opacity-85',
+                                option === 'story'
+                                    ? 'h-[17px] w-[11px]'
+                                    : 'size-[15px]',
+                            )}
+                        />
+                        {option}
+                    </button>
+                ))}
+            </div>
+
+            {/* The prints, racked side by side and clipped by the stage, so
+                    the neighbours bleed off the sheet instead of widening it. */}
+            <div
+                role="group"
+                aria-label="print style"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                    if (event.key === 'ArrowLeft') step(-1);
+                    if (event.key === 'ArrowRight') step(1);
+                }}
+                {...touchHandlers}
+                className="focus-ring relative h-[var(--print-h)] touch-pan-y overflow-hidden"
+            >
+                <div
+                    className="absolute left-1/2 top-0 flex gap-[18px] motion-safe:transition-transform motion-safe:duration-300"
+                    style={{
+                        transform: `translateX(calc(-0.5 * var(--print-w) - ${index} * (var(--print-w) + 18px)))`,
+                    }}
+                >
+                    {CARD_STYLES.map((each) => (
+                        <PrintSlot
+                            key={each}
+                            label={STYLE_LABELS[each]}
+                            state={states[each]}
+                            current={each === style}
+                            story={aspect === 'story'}
+                            onRetry={retry}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {aspect === 'story' && (
+                <p className="mx-[18px] mt-2.5 text-center text-label-micro text-text-3 min-[900px]:mx-[22px]">
+                    shaded bands = what story apps cover
+                </p>
+            )}
+
+            {/* Style switcher — all three named, no suggested default. */}
+            <div className="mx-[18px] mt-3.5 flex gap-1.5 rounded-full bg-muted p-[3px] min-[900px]:mx-[22px]">
+                {CARD_STYLES.map((each) => (
+                    <button
+                        key={each}
+                        type="button"
+                        onClick={() => setStyle(each)}
+                        aria-pressed={style === each}
+                        className={cn(
+                            'focus-ring flex-1 rounded-full px-1 py-2 text-[0.78125rem] font-semibold transition',
+                            style === each
+                                ? 'bg-card text-foreground shadow-e1'
+                                : 'text-text-3',
+                        )}
+                    >
+                        {STYLE_LABELS[each]}
+                    </button>
+                ))}
+            </div>
+
+            {chips.length > 0 && (
+                <div className="mx-[18px] mt-3.5 flex flex-wrap justify-center gap-[7px] min-[900px]:mx-[22px]">
+                    {chips.map(({ key, label, icon }) => (
+                        <button
+                            key={key}
+                            type="button"
+                            onClick={() =>
+                                setFacts((prev) => ({
+                                    ...prev,
+                                    [key]: !prev[key],
+                                }))
+                            }
+                            aria-pressed={facts[key]}
+                            className={cn(
+                                'focus-ring inline-flex items-center gap-1.5 rounded-full border py-1.5 pl-2.5 pr-3 text-[0.78125rem] transition',
+                                facts[key]
+                                    ? 'border-foreground bg-secondary font-semibold text-foreground'
+                                    : 'border-border font-medium text-text-3',
+                            )}
+                        >
+                            <Icon icon={icon} width={14} aria-hidden />
+                            {label}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Three equal actions: the print is the thing, not the sharing. */}
+            <div className="mx-[18px] mt-4 grid grid-cols-3 gap-2 min-[900px]:mx-[22px]">
+                <ActionTile
+                    icon={Share}
+                    label="share"
+                    primary
+                    disabled={!ready}
+                    onClick={handleShare}
+                />
+                <ActionTile
+                    icon={Copy}
+                    label="copy"
+                    disabled={!ready}
+                    onClick={handleCopy}
+                />
+                <ActionTile
+                    icon={Download}
+                    label="download"
+                    disabled={!ready}
+                    onClick={handleDownload}
+                />
+            </div>
+
+            {status !== null && (
+                <p
+                    role="status"
+                    aria-live="polite"
+                    className={cn(
+                        'mt-2.5 text-center font-sans text-xs',
+                        status.tone === 'ok'
+                            ? 'text-leaf-ink'
+                            : 'text-ember-ink',
+                    )}
+                >
+                    {status.text}
+                </p>
+            )}
+        </Overlay>
     );
 }
 
