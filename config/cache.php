@@ -39,7 +39,8 @@ return [
 
         'array' => [
             'driver' => 'array',
-            'serialize' => false,
+            // On in tests so the array store applies serializable_classes like the real stores.
+            'serialize' => env('CACHE_ARRAY_SERIALIZE', false),
         ],
 
         'database' => [

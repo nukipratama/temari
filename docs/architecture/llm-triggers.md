@@ -614,7 +614,10 @@ all of them one-offs worth knowing before the day:
   7 days of it narrate automatically on ingest, exactly as a first-time backfill's do, and the rest
   hydrates in full and narrates on demand, one run at a time ([[history-narrates-on-demand]]).
 - **The backfill is staggered, not bursty.** `ai.backfill_stagger_seconds` spaces successive cascades
-  6 minutes apart per user, so a large re-sync spreads over hours rather than firehosing Azure.
+  6 minutes apart per user, so a large re-sync spreads over hours rather than firehosing Azure. The
+  reserved slot is cached as a Unix timestamp, not a Carbon instance — every serializing cache store
+  (redis/database/file) unserializes through `config('cache.serializable_classes')`'s allow-list, which
+  Carbon isn't in ([StaggerBackfillAction](app/Actions/AI/StaggerBackfillAction.php)).
 - **The daily cost ceiling still applies.** If the narratable slice of the re-sync exceeds it, the
   remainder is filled rule-based and marked `Done` rather than left empty — and it will not
   re-narrate itself later.

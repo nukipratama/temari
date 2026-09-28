@@ -72,3 +72,13 @@ it('falls back to delay 0 on a lock timeout rather than blocking the caller', fu
 
     expect(staggerBackfill()(1))->toBe(0);
 });
+
+it('reads a slot Redis hands back as a numeric string', function (): void {
+    config(['ai.backfill_stagger_seconds' => 100]);
+    Carbon::setTestNow('2026-05-18 12:00:00');
+    Cache::put('ai.backfill.next-slot:1', (string) Carbon::now()->addSeconds(100)->getTimestamp(), 3600);
+
+    expect(staggerBackfill()(1))->toBe(100);
+
+    Carbon::setTestNow();
+});
