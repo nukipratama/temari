@@ -10,7 +10,8 @@ code_refs:
   - resources/js/components/MobileTopBar.tsx
   - resources/js/components/MobileBottomNav.tsx
   - resources/js/lib/navigationMemory.ts
-  - resources/js/hooks/useBodyScrollLock.ts
+  - resources/js/components/ui/Overlay.tsx
+  - resources/js/hooks/useOverlayHistory.ts
   - resources/css/app.css
   - scripts/build-splash-screens.php
   - resources/brand/build-og.mjs
@@ -261,10 +262,17 @@ Three things carry it, and all three are invisible on a desktop browser:
 - **16px form controls.** Safari force-zooms the page on focusing any control
   under 16px and does not zoom back out. Scoped to `(pointer: coarse)` so
   desktop keeps its denser type. This is load-bearing, not a style choice.
-- **Scroll lock behind overlays.**
-  [useBodyScrollLock](resources/js/hooks/useBodyScrollLock.ts), refcounted so
-  overlapping overlays cannot unlock early. Applied to the modals, and to the
-  history filter only below `lg`, where it is a sheet rather than a popover.
+- **Overlays.** Every app overlay rests on
+  [Overlay](resources/js/components/ui/Overlay.tsx), Base UI's modal Dialog,
+  which owns the focus trap and return, the scroll lock, stacking and the
+  Escape/outside-press dismissals.
+  [useOverlayHistory](resources/js/hooks/useOverlayHistory.ts) gives each open
+  overlay one history entry, so Android/browser Back closes only the topmost
+  overlay and never reaches Inertia or the contextual back. Closing by button,
+  Escape or backdrop pops that entry again, and a visit that does not preserve
+  state pops every entry before the new page is pushed. Only
+  [Sheet](resources/js/components/ui/Sheet.tsx) has a drag grip, and a draft
+  lives in its caller's state, so dismissal never asks to discard it.
 
 Tapping the active tab while scrolled moves to the top. At the top, it resets to
 the tab's default: Plan clears its selected day, History's list clears filters,

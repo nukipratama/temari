@@ -71,7 +71,9 @@ shared image has no ground to follow. Only the popup's own chrome is ground-reac
 ## The popup
 
 [ShareCardModal](../../resources/js/components/card/ShareCardModal.tsx) is a bottom sheet at phone
-width and a centred 480px dialog from 900px up. The story/feed toggle sits above the print; the
+width and a centred 480px dialog from 900px up, on the shared
+[Overlay](../../resources/js/components/ui/Overlay.tsx), so Back closes it. It draws no grip, since
+only a real drag-to-dismiss sheet may. The story/feed toggle sits above the print; the
 three prints sit side by side in a clipped carousel with their neighbours peeking, swipeable and
 walkable with the arrow keys; a segmented strip under them names the styles; icon chips toggle the
 optional facts, and a chip for a fact the run lacks is hidden rather than disabled. Three equal

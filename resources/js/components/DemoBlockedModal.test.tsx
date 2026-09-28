@@ -12,8 +12,9 @@ describe('DemoBlockedModal', () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it('renders the title, body, and both CTAs when open', () => {
+    it('renders the title, body, and both CTAs when open', async () => {
         render(<DemoBlockedModal open onClose={vi.fn()} />);
+        await screen.findByRole('dialog');
         expect(
             screen.getByText("Telegram's taking a break for now"),
         ).toBeInTheDocument();
@@ -26,33 +27,35 @@ describe('DemoBlockedModal', () => {
         ).toBeInTheDocument();
     });
 
-    it('exposes the dialog role wired to the title via aria-labelledby', () => {
+    it('is a modal dialog named by its title', async () => {
         render(<DemoBlockedModal open onClose={vi.fn()} />);
-        const dialog = screen.getByRole('dialog');
+        await screen.findByRole('dialog');
+        const dialog = screen.getByRole('dialog', {
+            name: "Telegram's taking a break for now",
+        });
         expect(dialog).toHaveAttribute('aria-modal', 'true');
-        expect(dialog).toHaveAttribute('aria-labelledby', 'temari-nudge-title');
-        expect(document.getElementById('temari-nudge-title')).toHaveTextContent(
-            "Telegram's taking a break for now",
-        );
     });
 
-    it('posts to /logout when the primary CTA is clicked', () => {
+    it('posts to /logout when the primary CTA is clicked', async () => {
         vi.mocked(router.post).mockReset();
         render(<DemoBlockedModal open onClose={vi.fn()} />);
+        await screen.findByRole('dialog');
         fireEvent.click(screen.getByRole('button', { name: 'Connect Strava' }));
         expect(router.post).toHaveBeenCalledWith('/logout');
     });
 
-    it('calls onClose when the dismiss CTA is clicked', () => {
+    it('calls onClose when the dismiss CTA is clicked', async () => {
         const onClose = vi.fn();
         render(<DemoBlockedModal open onClose={onClose} />);
+        await screen.findByRole('dialog');
         fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
         expect(onClose).toHaveBeenCalledOnce();
     });
 
-    it('calls onClose when the top-left close button is clicked', () => {
+    it('calls onClose when the top-left close button is clicked', async () => {
         const onClose = vi.fn();
         render(<DemoBlockedModal open onClose={onClose} />);
+        await screen.findByRole('dialog');
         fireEvent.click(screen.getByLabelText('Close'));
         expect(onClose).toHaveBeenCalledOnce();
     });

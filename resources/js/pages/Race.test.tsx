@@ -157,12 +157,12 @@ describe('Race', () => {
         expect(screen.getByText('1:40 behind')).toBeInTheDocument();
     });
 
-    it('asks through a concerned Temari before clearing the race', () => {
+    it('asks through a concerned Temari before clearing the race', async () => {
         render(<Race race={RACE} projection={PROJECTION} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'clear race' }));
 
-        const dialog = screen.getByRole('dialog');
+        const dialog = await screen.findByRole('dialog');
         expect(
             within(dialog).getByText('clear Jakarta 10K?'),
         ).toBeInTheDocument();
@@ -181,7 +181,7 @@ describe('Race', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'clear race' }));
         fireEvent.click(
-            within(screen.getByRole('dialog')).getByRole('button', {
+            within(await screen.findByRole('dialog')).getByRole('button', {
                 name: 'keep it',
             }),
         );
@@ -193,12 +193,12 @@ describe('Race', () => {
         remove.mockRestore();
     });
 
-    it('clears through to the race endpoint once confirmed', () => {
+    it('clears through to the race endpoint once confirmed', async () => {
         const remove = vi.spyOn(router, 'delete').mockImplementation(() => {});
         render(<Race race={{ ...RACE, name: null }} projection={PROJECTION} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'clear race' }));
-        const dialog = screen.getByRole('dialog');
+        const dialog = await screen.findByRole('dialog');
         expect(
             within(dialog).getByText('clear your race?'),
         ).toBeInTheDocument();

@@ -1,6 +1,13 @@
 import { router } from '@inertiajs/react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+    act,
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
@@ -36,9 +43,41 @@ function lastPostOptions() {
     return call[2] as { onSuccess?: () => void };
 }
 
+async function settle() {
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+}
+
 describe('FlagWrong', () => {
     beforeEach(() => {
         vi.mocked(router.post).mockReset();
+    });
+
+    afterEach(async () => {
+        cleanup();
+        await settle();
+    });
+
+    it('keeps a half-written flag through Back and shows it on reopen', async () => {
+        window.history.pushState({ page: 'plan' }, '');
+        renderFlag();
+        await openSheet();
+        fireEvent.click(screen.getByRole('button', { name: 'wrong pace' }));
+        fireEvent.change(screen.getByLabelText('anything to add?'), {
+            target: { value: 'felt way off' },
+        });
+
+        window.history.back();
+        await waitFor(() =>
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+        );
+        await openSheet();
+
+        expect(screen.getByLabelText('anything to add?')).toHaveValue(
+            'felt way off',
+        );
+        expect(
+            screen.getByRole('button', { name: 'wrong pace' }),
+        ).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('shows one icon-only control and no sheet', () => {
