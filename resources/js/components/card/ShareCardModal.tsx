@@ -17,6 +17,7 @@ import {
     type PrintState,
 } from '@/components/card/useCardPrints';
 import { Icon, type IconComponent } from '@/components/ui/Icon';
+import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { useModal } from '@/hooks/useModal';
 import { hasFact } from '@/lib/card/facts';
 import {
@@ -89,11 +90,6 @@ export default function ShareCardModal({
         text: string;
     } | null>(null);
     const panelRef = useRef<HTMLDivElement>(null);
-    const swipeStartRef = useRef<{
-        identifier: number;
-        x: number;
-        y: number;
-    } | null>(null);
 
     useModal(card !== null, panelRef, onClose);
 
@@ -115,16 +111,21 @@ export default function ShareCardModal({
         return () => globalThis.clearTimeout(id);
     }, [status]);
 
-    if (card === null) return null;
-
-    const current = states[style];
-    const print = current.print;
     const index = CARD_STYLES.indexOf(style);
 
     const step = (delta: number) => {
         const next = index + delta;
         if (next >= 0 && next < CARD_STYLES.length) setStyle(CARD_STYLES[next]);
     };
+
+    const touchHandlers = useHorizontalSwipe((direction) =>
+        step(direction === 'left' ? 1 : -1),
+    );
+
+    if (card === null) return null;
+
+    const current = states[style];
+    const print = current.print;
 
     const fileName = `${card.name.replace(/[^\w-]+/g, '-').toLowerCase()}-${style}.png`;
 
@@ -302,43 +303,8 @@ export default function ShareCardModal({
                         if (event.key === 'ArrowLeft') step(-1);
                         if (event.key === 'ArrowRight') step(1);
                     }}
-                    onTouchStart={(event) => {
-                        if (event.touches.length > 1) {
-                            swipeStartRef.current = null;
-                            return;
-                        }
-                        if (swipeStartRef.current !== null) return;
-                        const touch = event.touches[0];
-                        if (touch) {
-                            swipeStartRef.current = {
-                                identifier: touch.identifier,
-                                x: touch.clientX,
-                                y: touch.clientY,
-                            };
-                        }
-                    }}
-                    onTouchEnd={(event) => {
-                        const start = swipeStartRef.current;
-                        if (start === null) return;
-                        const touch = Array.from(event.changedTouches).find(
-                            (changedTouch) =>
-                                changedTouch.identifier === start.identifier,
-                        );
-                        if (!touch) return;
-                        swipeStartRef.current = null;
-                        const deltaX = touch.clientX - start.x;
-                        const deltaY = touch.clientY - start.y;
-                        if (
-                            Math.abs(deltaX) > 40 &&
-                            Math.abs(deltaX) > Math.abs(deltaY)
-                        ) {
-                            step(deltaX < 0 ? 1 : -1);
-                        }
-                    }}
-                    onTouchCancel={() => {
-                        swipeStartRef.current = null;
-                    }}
-                    className="focus-ring relative h-[var(--print-h)] overflow-hidden"
+                    {...touchHandlers}
+                    className="focus-ring relative h-[var(--print-h)] touch-pan-y overflow-hidden"
                 >
                     <div
                         className="absolute left-1/2 top-0 flex gap-[18px] motion-safe:transition-transform motion-safe:duration-300"
