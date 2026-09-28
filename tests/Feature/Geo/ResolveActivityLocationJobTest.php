@@ -7,7 +7,8 @@ use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\ActivityDetail;
 use App\Services\Geo\ResolvedLocation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
@@ -89,9 +90,19 @@ it('is a no-op when the detail row was deleted before the job ran', function ():
     expect(true)->toBeTrue();
 });
 
-it('declares a WithoutOverlapping middleware on the geo:nominatim:reverse key', function (): void {
-    $job = new ResolveActivityLocationJob(1);
-    $middleware = $job->middleware();
-    expect($middleware)->not->toBeEmpty();
-    expect($middleware[0])->toBeInstanceOf(WithoutOverlapping::class);
+it('releases when the shared Nominatim request slot is unavailable', function (): void {
+    Cache::flush();
+    $detail = ActivityDetail::factory()->create([
+        'start_lat' => -6.24,
+        'start_lng' => 106.81,
+        'location_resolved_at' => null,
+    ]);
+    Cache::lock('geo:nominatim:request-slot-lock', 20)->get();
+    Http::fake();
+
+    $job = new ResolveActivityLocationJob($detail->id)->withFakeQueueInteractions();
+    $job->handle(new ReverseGeocodeAction());
+
+    $job->assertReleased(2);
+    Http::assertNothingSent();
 });

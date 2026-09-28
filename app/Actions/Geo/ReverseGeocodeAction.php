@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Actions\Geo;
 
+use App\Services\Geo\Exceptions\NominatimRateSlotUnavailableException;
 use App\Services\Geo\ResolvedLocation;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-// Nominatim TOS: 1 req/sec rate limit is enforced upstream by
-// ResolveActivityLocationJob's WithoutOverlapping lock, not here.
 class ReverseGeocodeAction
 {
     private const string URL = 'https://nominatim.openstreetmap.org/reverse';
@@ -19,6 +19,16 @@ class ReverseGeocodeAction
     private const int TIMEOUT_SECONDS = 6;
 
     private const int CACHE_TTL = 2_592_000; // 30 days
+
+    private const string RATE_SLOT_LOCK_KEY = 'geo:nominatim:request-slot-lock';
+
+    private const string NEXT_RATE_SLOT_KEY = 'geo:nominatim:next-request-at';
+
+    private const int RATE_SLOT_INTERVAL_MICROSECONDS = 1_000_000;
+
+    private const int RATE_SLOT_LOCK_SECONDS = 20;
+
+    private const int RATE_SLOT_CACHE_SECONDS = 10;
 
     public function __invoke(float $lat, float $lng): ?ResolvedLocation
     {
@@ -34,10 +44,48 @@ class ReverseGeocodeAction
             return $cached;
         }
 
-        $resolved = $this->fetchUncached($lat, $lng);
+        $resolved = $this->fetchWithRateSlot($lat, $lng);
         Cache::put($cacheKey, $resolved ?? false, self::CACHE_TTL);
 
         return $resolved;
+    }
+
+    private function fetchWithRateSlot(float $lat, float $lng): ?ResolvedLocation
+    {
+        $lock = Cache::lock(self::RATE_SLOT_LOCK_KEY, self::RATE_SLOT_LOCK_SECONDS);
+        if (! $lock->get()) {
+            throw new NominatimRateSlotUnavailableException();
+        }
+
+        $requestStartedAt = null;
+        try {
+            $now = (int) Carbon::now()->format('Uu');
+            $nextAllowedAt = (int) Cache::get(self::NEXT_RATE_SLOT_KEY, 0);
+            if ($nextAllowedAt > $now) {
+                throw new NominatimRateSlotUnavailableException();
+            }
+
+            Cache::put(
+                self::NEXT_RATE_SLOT_KEY,
+                $now + self::RATE_SLOT_INTERVAL_MICROSECONDS,
+                self::RATE_SLOT_CACHE_SECONDS,
+            );
+            $requestStartedAt = $now;
+
+            return $this->fetchUncached($lat, $lng);
+        } finally {
+            try {
+                if ($requestStartedAt !== null) {
+                    Cache::put(
+                        self::NEXT_RATE_SLOT_KEY,
+                        (int) Carbon::now()->format('Uu') + self::RATE_SLOT_INTERVAL_MICROSECONDS,
+                        self::RATE_SLOT_CACHE_SECONDS,
+                    );
+                }
+            } finally {
+                $lock->release();
+            }
+        }
     }
 
     private function fetchUncached(float $lat, float $lng): ?ResolvedLocation

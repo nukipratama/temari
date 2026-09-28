@@ -1,11 +1,12 @@
 ---
 title: Reverse Geocoding (start point → place name)
-description: How a run's GPS start point becomes a human place name — async Nominatim resolve, 1 req/sec lock, 30-day grid cache with miss sentinels, transient-vs-permanent error handling, hourly backfill
+description: How a run's GPS start point becomes a human place name — async Nominatim resolve, atomic 1 req/sec request slot, 30-day grid cache with miss sentinels, hourly backfill
 tags: [architecture, geo]
 status: living
-reviewed: 2026-08-03
+reviewed: 2026-09-28
 code_refs:
   - app/Actions/Geo/ReverseGeocodeAction.php
+  - app/Services/Geo/Exceptions/NominatimRateSlotUnavailableException.php
   - app/Services/Geo/ResolvedLocation.php
   - app/Jobs/Geo/ResolveActivityLocationJob.php
   - app/Console/Commands/Geo/BackfillActivityLocationsCommand.php
@@ -16,30 +17,29 @@ code_refs:
 
 # Reverse Geocoding (start point → place name)
 
-Turns a run's start coordinate into a display string like *"Kebayoran Baru, Jakarta Selatan, DKI Jakarta, Indonesia"*. The resolve is asynchronous and best-effort: it never blocks ingest, never throws into the pipeline, and degrades to "no location" silently. The resolved text lives on the run's detail row and is read by the UI wherever a run shows its sense of place.
+Turns a run's start coordinate into a display string like *"Kebayoran Baru, Jakarta Selatan, DKI Jakarta, Indonesia"*. The resolve is asynchronous and best-effort: ingest only enqueues the job; if the shared request slot is unavailable, the action throws [`NominatimRateSlotUnavailableException`](app/Services/Geo/Exceptions/NominatimRateSlotUnavailableException.php) and the job releases itself for retry. Provider failures degrade to "no location" without blocking ingest. The resolved text lives on the run's detail row and is read by the UI wherever a run shows its sense of place.
 
 > Citations link to the **file** (the CI guard verifies paths, never line numbers — lines rot); the `L<n>` in the link text is the spot to jump to as of `reviewed`.
 
 ## The resolver
 
-[`ReverseGeocodeAction::__invoke`](app/Actions/Geo/ReverseGeocodeAction.php#L23) is the only public surface. Given a lat/lng it returns a [`ResolvedLocation` DTO](app/Services/Geo/ResolvedLocation.php#L13) (display `name` + uppercased ISO alpha-2 `country`) or `null`.
+[`ReverseGeocodeAction::__invoke`](app/Actions/Geo/ReverseGeocodeAction.php#L33) is the only public surface. Given a lat/lng it returns a [`ResolvedLocation` DTO](app/Services/Geo/ResolvedLocation.php#L13) (display `name` + uppercased ISO alpha-2 `country`) or `null`; it throws [`NominatimRateSlotUnavailableException`](app/Services/Geo/Exceptions/NominatimRateSlotUnavailableException.php) when no request slot is available.
 
-- **Caching + grid keying.** The cache key snaps coords to a coarse grid so adjacent points along a route collapse to one entry — see the `sprintf` precision in [`cacheKey`](app/Actions/Geo/ReverseGeocodeAction.php#L124) and the TTL constant at the [`Cache::put` in `__invoke`](app/Actions/Geo/ReverseGeocodeAction.php#L38). (Constants rot; read the lines.)
-- **Miss sentinels.** `Cache::remember` can't memoize a `null`, so a miss is stored as the sentinel `false` and short-circuited on the next call — [the read/branch at the top of `__invoke`](app/Actions/Geo/ReverseGeocodeAction.php#L29). This stops a coord that genuinely has no address from re-hitting Nominatim every time.
-- **Zoom level.** The request asks Nominatim for a suburb-level result so the address carries kecamatan + kota rather than a street or a whole province — see the `zoom` query param in [`fetchUncached`](app/Actions/Geo/ReverseGeocodeAction.php#L55).
-- **Indonesian field preference.** Nominatim's address keys vary by country, so [`formatAddress`](app/Actions/Geo/ReverseGeocodeAction.php#L83) tries Indonesia-likely keys first and falls back to the global ones, taking the first hit per rank via [`firstFilled`](app/Actions/Geo/ReverseGeocodeAction.php#L112). The result is assembled coarse→fine into the comma-joined display name.
-- **No throw-out.** Any HTTP/JSON failure is swallowed to `null` and logged at info level, never re-raised — the `try/catch` in [`fetchUncached`](app/Actions/Geo/ReverseGeocodeAction.php#L43). A polite `User-Agent` and `Accept-Language: en` are sent per Nominatim TOS ([headers](app/Actions/Geo/ReverseGeocodeAction.php#L46)).
-
-Note the rate limit is **not** enforced here — see the job below.
+- **Caching + grid keying.** The cache key snaps coords to a coarse grid so adjacent points along a route collapse to one entry — see the `sprintf` precision in [`cacheKey`](app/Actions/Geo/ReverseGeocodeAction.php#L172) and the TTL constant at the [`Cache::put` in `__invoke`](app/Actions/Geo/ReverseGeocodeAction.php#L48). (Constants rot; read the lines.)
+- **Miss sentinels.** `Cache::remember` can't memoize a `null`, so a miss is stored as the sentinel `false` and short-circuited on the next call — [the read/branch at the top of `__invoke`](app/Actions/Geo/ReverseGeocodeAction.php#L39). This stops a coord that genuinely has no address from re-hitting Nominatim every time.
+- **Request pacing.** Before an uncached lookup, the action claims a shared cache lock, compares the next allowed request time, and holds the lock through the provider call. The next slot opens one second after that call returns; cached results bypass the gate.
+- **Zoom level.** The request asks Nominatim for a suburb-level result so the address carries kecamatan + kota rather than a street or a whole province — see the `zoom` query param in [`fetchUncached`](app/Actions/Geo/ReverseGeocodeAction.php#L103).
+- **Indonesian field preference.** Nominatim's address keys vary by country, so [`formatAddress`](app/Actions/Geo/ReverseGeocodeAction.php#L131) tries Indonesia-likely keys first and falls back to the global ones, taking the first hit per rank via [`firstFilled`](app/Actions/Geo/ReverseGeocodeAction.php#L160). The result is assembled coarse→fine into the comma-joined display name.
+- **No throw-out.** HTTP/JSON failures are swallowed to `null` and logged at info level by the `try/catch` in [`fetchUncached`](app/Actions/Geo/ReverseGeocodeAction.php#L91). The rate-slot exception is raised before that provider call and handled by the queue job ([the deferral](app/Jobs/Geo/ResolveActivityLocationJob.php#L53)). A polite `User-Agent` and `Accept-Language: en` are sent per Nominatim TOS ([headers](app/Actions/Geo/ReverseGeocodeAction.php#L94)).
 
 ## The job
 
-[`ResolveActivityLocationJob`](app/Jobs/Geo/ResolveActivityLocationJob.php#L15) runs the resolver off the queue, keyed to one `ActivityDetail` row.
+[`ResolveActivityLocationJob`](app/Jobs/Geo/ResolveActivityLocationJob.php#L16) runs the resolver off the queue, keyed to one `ActivityDetail` row.
 
-- **1 req/sec, app-wide.** Nominatim's TOS caps callers at one request per second. The job serializes *every* resolve through a single global [`WithoutOverlapping` lock](app/Jobs/Geo/ResolveActivityLocationJob.php#L40) (one named key for all rows, not per-row), so concurrent workers can't stampede the endpoint.
-- **Idempotency + uniqueness.** `ShouldBeUnique` keyed on the detail id ([`uniqueId`](app/Jobs/Geo/ResolveActivityLocationJob.php#L29)) dedupes queued copies, and the handler early-exits if the row is already stamped ([`handle`](app/Jobs/Geo/ResolveActivityLocationJob.php#L49)). Mind the scope: Laravel frees that lock when the job *finishes*, so it dedupes concurrent copies but not a caller that re-dispatches after each attempt has completed. Together with the transient-miss rule below — a miss finishes *without* stamping — that is why the read-path dispatcher needs a guard of its own.
-- **No-coords case is terminal.** A treadmill / manual run with no start coords is stamped resolved-with-no-name so the backfill stops reconsidering it — [the null-coords branch](app/Jobs/Geo/ResolveActivityLocationJob.php#L53).
-- **Transient vs permanent.** This is the crux: on a real hit the job writes `location_name` / `location_country` and stamps `location_resolved_at`; on a `null` (rate-limit / timeout / empty body) it **returns without stamping**, leaving the row eligible for the catch-up sweep — [the null-resolve guard](app/Jobs/Geo/ResolveActivityLocationJob.php#L65). With only `$tries = 2` ([retry config](app/Jobs/Geo/ResolveActivityLocationJob.php#L19)), durable recovery is the backfill's job, not the retry's.
+- **Rate-slot deferral.** When another worker owns the request lock or the next slot has not opened, the action throws [`NominatimRateSlotUnavailableException`](app/Services/Geo/Exceptions/NominatimRateSlotUnavailableException.php); the job releases itself for two seconds. This retry is bounded by the job's 20-minute `retryUntil` window.
+- **Idempotency + uniqueness.** `ShouldBeUnique` keyed on the detail id ([`uniqueId`](app/Jobs/Geo/ResolveActivityLocationJob.php#L28)) dedupes queued copies, and the handler early-exits if the row is already stamped ([`handle`](app/Jobs/Geo/ResolveActivityLocationJob.php#L38)). Mind the scope: Laravel frees that lock when the job *finishes*, so it dedupes concurrent copies but not a caller that re-dispatches after each attempt has completed. Together with the unresolved-result rule below — a miss finishes *without* stamping — that is why the read-path dispatcher needs a guard of its own.
+- **No-coords case is terminal.** A treadmill / manual run with no start coords is stamped resolved-with-no-name so the backfill stops reconsidering it — [the null-coords branch](app/Jobs/Geo/ResolveActivityLocationJob.php#L45).
+- **Unresolved results.** On a `null`, the job returns without stamping, leaving the row eligible for the catch-up sweep — [the null-resolve guard](app/Jobs/Geo/ResolveActivityLocationJob.php#L63). The resolver currently caches null outcomes with the same 30-day sentinel as other misses.
 
 ## Where it's dispatched
 

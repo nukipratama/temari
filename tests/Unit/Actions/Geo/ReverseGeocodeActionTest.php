@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Actions\Geo\ReverseGeocodeAction;
+use App\Services\Geo\Exceptions\NominatimRateSlotUnavailableException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -56,7 +58,7 @@ it('returns null when the API throws', function (): void {
     expect(new ReverseGeocodeAction()(-6.2, 106.8))->toBeNull();
 });
 
-it('caches consecutive calls for the same coords (rounded to ~110m)', function (): void {
+it('returns cached locations without claiming another request slot', function (): void {
     Http::fake([
         'nominatim.openstreetmap.org/*' => Http::response([
             'address' => ['city' => 'Bogor', 'country' => 'Indonesia', 'country_code' => 'id'],
@@ -64,10 +66,37 @@ it('caches consecutive calls for the same coords (rounded to ~110m)', function (
     ]);
 
     $resolver = new ReverseGeocodeAction();
-    $resolver(-6.595, 106.8155);
-    $resolver(-6.5951, 106.8156);
+    $first = $resolver(-6.595, 106.8155);
+    $lock = Cache::lock('geo:nominatim:request-slot-lock', 20);
+    expect($lock->get())->toBeTrue();
+    $second = $resolver(-6.5951, 106.8156);
 
+    expect($second)->toEqual($first);
     Http::assertSentCount(1);
+});
+
+it('paces uncached requests at least one second apart', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-09-01 12:00:00.500000'));
+    $requestTimes = [];
+    Http::fake([
+        'nominatim.openstreetmap.org/*' => function () use (&$requestTimes) {
+            $requestTimes[] = Carbon::now();
+
+            return Http::response([
+                'address' => ['city' => 'Bogor', 'country' => 'Indonesia', 'country_code' => 'id'],
+            ]);
+        },
+    ]);
+
+    $resolver = new ReverseGeocodeAction();
+    $resolver(-6.24, 106.81);
+    expect(fn () => $resolver(-7.25, 112.75))
+        ->toThrow(NominatimRateSlotUnavailableException::class);
+    Carbon::setTestNow(Carbon::now()->addSecond());
+    $resolver(-7.25, 112.75);
+
+    expect($requestTimes)->toHaveCount(2)
+        ->and($requestTimes[0]->diffInMicroseconds($requestTimes[1]))->toBeGreaterThanOrEqual(1_000_000);
 });
 
 it('caches miss sentinels so a known-bad coord pair does not retry Nominatim', function (): void {
