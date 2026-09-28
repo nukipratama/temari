@@ -5,6 +5,7 @@ import { useCallback, useRef } from 'react';
 export type HorizontalSwipeDirection = 'left' | 'right';
 
 const EDGE_GUTTER = 32;
+const SWIPE_THRESHOLD = 40;
 
 export function useHorizontalSwipe(
     onSwipe: (direction: HorizontalSwipeDirection) => void,
@@ -54,7 +55,10 @@ export function useHorizontalSwipe(
             startRef.current = null;
             const deltaX = touch.clientX - start.x;
             const deltaY = touch.clientY - start.y;
-            if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY)) {
+            if (
+                Math.abs(deltaX) > SWIPE_THRESHOLD &&
+                Math.abs(deltaX) > Math.abs(deltaY)
+            ) {
                 onSwipe(deltaX < 0 ? 'left' : 'right');
             }
         },

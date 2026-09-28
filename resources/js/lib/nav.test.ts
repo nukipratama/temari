@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
-import { backTargetFor, ITEMS, navTabFor } from './nav';
+import { backTargetFor, defaultTabHrefFor, ITEMS, navTabFor } from './nav';
 
 describe('nav', () => {
     it('has 4 top-level items', () => {
@@ -47,6 +47,24 @@ describe('nav', () => {
         });
     });
 
+    describe('defaultTabHrefFor', () => {
+        it('resets the calendar to the current month', () => {
+            expect(
+                defaultTabHrefFor(
+                    'history',
+                    '/history?view=calendar&month=2026-06',
+                    new Date(2026, 8, 28),
+                ),
+            ).toBe('/history?view=calendar&month=2026-09');
+        });
+
+        it('returns the tab home route for other tab states', () => {
+            expect(defaultTabHrefFor('plan', '/plan?day=2026-06-16')).toBe(
+                '/plan',
+            );
+        });
+    });
+
     describe('backTargetFor', () => {
         it('gives no back target to a bottom-nav screen', () => {
             expect(backTargetFor('Home')).toBeNull();
@@ -69,6 +87,19 @@ describe('nav', () => {
             expect(backTargetFor('Settings/Index')).toEqual({
                 href: '/profile',
                 label: 'Profile',
+            });
+        });
+
+        it('uses an in-app origin for run details when one is available', () => {
+            expect(
+                backTargetFor('Runs/Show', {
+                    href: '/plan?day=2026-06-16',
+                    scrollY: 312,
+                    tab: 'plan',
+                }),
+            ).toEqual({
+                href: '/plan?day=2026-06-16',
+                label: 'Plan',
             });
         });
 

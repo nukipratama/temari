@@ -6,6 +6,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlanDay, SeasonSummaryWeek } from '@/lib/plan';
 
+import {
+    clearNavigationMemory,
+    rememberPlanSelectedDay,
+} from '@/lib/navigationMemory';
 import { setMockDeferred } from '@/test/setup';
 
 import Plan from './Plan';
@@ -113,6 +117,7 @@ function renderPlan(overrides: Partial<ComponentProps<typeof Plan>> = {}) {
 describe('Plan', () => {
     afterEach(() => {
         window.history.replaceState({}, '', '/plan');
+        clearNavigationMemory();
     });
 
     it('leads with the eyebrow, headline and a one-line race summary', () => {
@@ -235,6 +240,20 @@ describe('Plan', () => {
             'aria-selected',
             'true',
         );
+    });
+
+    it('restores the selected day saved in this tab session', () => {
+        const scrollIntoView = vi.fn();
+        Element.prototype.scrollIntoView = scrollIntoView;
+        rememberPlanSelectedDay('2026-06-19');
+
+        renderPlan();
+
+        expect(screen.getByRole('tab', { name: 'Fri, rest' })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
+        expect(scrollIntoView).not.toHaveBeenCalled();
     });
 
     it('scrolls to the day the home week card asked for', () => {

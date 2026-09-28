@@ -2,8 +2,13 @@ import type { GlobalEvent } from '@inertiajs/core';
 
 import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+    readPlanSelectedDay,
+    readTabMemory,
+    writeTabMemory,
+} from '@/lib/navigationMemory';
 import { setMockPage } from '@/test/setup';
 
 import MobileBottomNav from './MobileBottomNav';
@@ -27,6 +32,14 @@ function fireFinish() {
 describe('MobileBottomNav', () => {
     beforeEach(() => {
         vi.mocked(router.on).mockClear();
+        vi.mocked(router.visit).mockClear();
+        window.sessionStorage.clear();
+        window.scrollY = 0;
+    });
+
+    afterEach(() => {
+        window.sessionStorage.clear();
+        window.scrollY = 0;
     });
 
     it('renders all four primary tabs with their labels', () => {
@@ -67,6 +80,20 @@ describe('MobileBottomNav', () => {
         );
     });
 
+    it('uses the saved route for the inactive tab', () => {
+        writeTabMemory('history', {
+            href: '/history?view=calendar&month=2026-06',
+            scrollY: 440,
+        });
+        setMockPage({}, '/', 'Home');
+        render(<MobileBottomNav />);
+
+        expect(screen.getByText('History').closest('a')).toHaveAttribute(
+            'href',
+            '/history?view=calendar&month=2026-06',
+        );
+    });
+
     // The floating pill grows and gets a lime gradient fill for the active
     // tab (per the prototype's AppBottomNav); inactive tabs stay a plain
     // muted tone rather than the old bar's on-sky treatment.
@@ -93,6 +120,7 @@ describe('MobileBottomNav', () => {
             vi.fn(() => ({ matches: false })),
         );
         setMockPage({}, '/history', 'History');
+        window.scrollY = 180;
         render(<MobileBottomNav />);
 
         const link = screen.getByText('History').closest('a')!;
@@ -104,6 +132,8 @@ describe('MobileBottomNav', () => {
 
         expect(event.defaultPrevented).toBe(true);
         expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+        expect(router.visit).not.toHaveBeenCalled();
+        expect(readTabMemory('history')?.scrollY).toBe(0);
     });
 
     it('leaves an inactive tab to navigate normally', () => {
@@ -136,6 +166,7 @@ describe('MobileBottomNav', () => {
             })),
         );
         setMockPage({}, '/history', 'History');
+        window.scrollY = 180;
         render(<MobileBottomNav />);
 
         screen
@@ -146,6 +177,43 @@ describe('MobileBottomNav', () => {
             );
 
         expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'auto' });
+    });
+
+    it('resets the active calendar tab to the current month when already at top', () => {
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        writeTabMemory('history', {
+            href: '/history?view=calendar&month=2026-06',
+            scrollY: 240,
+        });
+        setMockPage({}, '/history?view=calendar&month=2026-06', 'History');
+        render(<MobileBottomNav />);
+
+        fireEvent.click(screen.getByText('History').closest('a')!);
+
+        expect(router.visit).toHaveBeenCalledWith(
+            `/history?view=calendar&month=${currentMonth}`,
+            { replace: true, preserveState: false },
+        );
+        expect(readTabMemory('history')).toBeNull();
+    });
+
+    it('resets a selected Plan day when its active tab is tapped at top', () => {
+        writeTabMemory('plan', {
+            href: '/plan',
+            scrollY: 0,
+            selectedDay: '2026-06-16',
+        });
+        setMockPage({}, '/plan', 'Plan');
+        render(<MobileBottomNav />);
+
+        fireEvent.click(screen.getByText('Plan').closest('a')!);
+
+        expect(router.visit).toHaveBeenCalledWith('/plan', {
+            replace: true,
+            preserveState: false,
+        });
+        expect(readPlanSelectedDay()).toBeNull();
     });
 
     it('lights the plan tab on Race, a sub-page of Plan', () => {

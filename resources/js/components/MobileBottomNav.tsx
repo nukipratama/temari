@@ -7,7 +7,13 @@ import type { TabId } from '@/lib/nav';
 import type { SharedProps } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
-import { ITEMS, navTabFor } from '@/lib/nav';
+import { defaultTabHrefFor, ITEMS, navTabFor } from '@/lib/nav';
+import {
+    clearTabMemory,
+    readPlanSelectedDay,
+    readTabMemory,
+    rememberTabLocation,
+} from '@/lib/navigationMemory';
 
 // Tapping the active tab scrolls to top instead of a full Inertia round-trip to the same page.
 function scrollToTop(event: MouseEvent<Element>) {
@@ -16,6 +22,29 @@ function scrollToTop(event: MouseEvent<Element>) {
         '(prefers-reduced-motion: reduce)',
     ).matches;
     window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+}
+
+function handleActiveTabClick(
+    event: MouseEvent<Element>,
+    tab: TabId,
+    currentUrl: string,
+) {
+    if (window.scrollY > 0) {
+        rememberTabLocation(tab, currentUrl, 0);
+        scrollToTop(event);
+        return;
+    }
+
+    event.preventDefault();
+    const href = defaultTabHrefFor(tab, currentUrl);
+    const needsReset =
+        currentUrl !== href ||
+        (tab === 'plan' && readPlanSelectedDay() !== null);
+
+    if (needsReset) {
+        router.visit(href, { replace: true, preserveState: false });
+        clearTabMemory(tab);
+    }
 }
 
 /**
@@ -45,7 +74,7 @@ function scrollToTop(event: MouseEvent<Element>) {
  * tab tints its own icon with.
  */
 export default function MobileBottomNav() {
-    const { component, props } = usePage<SharedProps>();
+    const { component, props, url } = usePage<SharedProps>();
     const current = navTabFor(component);
     const hasUnread = (props.unreadNotifications ?? 0) > 0;
     const [pending, setPending] = useState<TabId | null>(null);
@@ -85,11 +114,16 @@ export default function MobileBottomNav() {
                     return (
                         <Link
                             key={item.id}
-                            href={item.href}
+                            href={readTabMemory(item.id)?.href ?? item.href}
                             aria-current={isCurrent ? 'page' : undefined}
                             onClick={
                                 isCurrent
-                                    ? scrollToTop
+                                    ? (event) =>
+                                          handleActiveTabClick(
+                                              event,
+                                              item.id,
+                                              url,
+                                          )
                                     : () => {
                                           inFlightRef.current += 1;
                                           setPending(item.id);
