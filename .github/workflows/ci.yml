@@ -29,7 +29,7 @@ jobs:
   # the target; a hardcoded base saw the whole epic diff and never filtered
   # anything. A push runs everything, having no base to diff against.
   changes:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-26.04-arm
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -101,7 +101,7 @@ jobs:
   # block the PR through ci-gate. Skipped on a main push: there is no base to diff.
   dependency-review:
     if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-26.04-arm
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -128,7 +128,7 @@ jobs:
   ci-gate:
     needs: [changes, backend, frontend, build, secret-scan, repo-guards, dependency-review]
     if: always()
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-26.04-arm
     steps:
       - name: Require upstream jobs to have succeeded (or cleanly skipped)
         run: |
