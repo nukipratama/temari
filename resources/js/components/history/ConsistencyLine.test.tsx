@@ -39,7 +39,7 @@ describe('ConsistencyLine', () => {
         expect(screen.getByText(/1 run ·/)).toBeInTheDocument();
     });
 
-    it('never ends a wrap segment on a dangling middle dot', () => {
+    it('never starts or ends a wrap group on a dangling dot', () => {
         const { container } = render(
             <ConsistencyLine
                 stats={{
@@ -51,9 +51,12 @@ describe('ConsistencyLine', () => {
                 }}
             />,
         );
-        const spans = container.querySelectorAll('span');
-        for (const span of spans) {
-            expect(span.textContent?.trim().endsWith('·')).toBe(false);
+        const groups = container.querySelectorAll('span.whitespace-nowrap');
+        expect(groups).toHaveLength(2);
+        for (const group of groups) {
+            const text = group.textContent?.trim() ?? '';
+            expect(text.startsWith('·')).toBe(false);
+            expect(text.endsWith('·')).toBe(false);
         }
     });
 });

@@ -3,9 +3,9 @@ import { type Consistency } from '@/pages/Activities/calendarBars';
 
 /**
  * The header's consistency line, e.g. "22 runs · 194 km · ran 21/30 days ·
- * longest streak 10". Split into two `whitespace-nowrap` halves joined by a
- * breakable space, so a narrow viewport wraps between phrases rather than
- * mid-phrase, and neither half can end on a dangling `·`.
+ * longest streak 10". Split into two `whitespace-nowrap` groups, stacked
+ * below `sm` and joined inline by a `·` separator from `sm` up, so a narrow
+ * viewport wraps between phrases rather than on a dangling `·`.
  */
 export default function ConsistencyLine({
     stats,
@@ -18,12 +18,13 @@ export default function ConsistencyLine({
                 className,
             )}
         >
-            <span className="whitespace-nowrap">
+            <span className="block whitespace-nowrap sm:inline">
                 {stats.runs} run{stats.runs === 1 ? '' : 's'} ·{' '}
                 {Math.round(stats.km)} km
-            </span>{' '}
-            <span className="whitespace-nowrap">
-                · ran {stats.ranDays}/{stats.daysInMonth} days · longest streak{' '}
+            </span>
+            <span className="hidden sm:inline"> · </span>
+            <span className="block whitespace-nowrap sm:inline">
+                ran {stats.ranDays}/{stats.daysInMonth} days · longest streak{' '}
                 {stats.longestStreak}
             </span>
         </p>

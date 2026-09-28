@@ -56,6 +56,9 @@ const MONTH_RELOAD_PROPS = [
     'monthlyRecap',
 ];
 
+const calendarMonthUrl = (month: string): string =>
+    `/history?view=calendar&month=${month}`;
+
 export default function Calendar({
     cells = [],
     monthLabel,
@@ -82,7 +85,7 @@ export default function Calendar({
 
     const touchHandlers = useHorizontalSwipe((direction) => {
         router.visit(
-            `/history?view=calendar&month=${direction === 'left' ? nextMonth : prevMonth}`,
+            calendarMonthUrl(direction === 'left' ? nextMonth : prevMonth),
             { only: MONTH_RELOAD_PROPS, preserveScroll: true },
         );
     });
@@ -195,7 +198,7 @@ function NavButton({
 }: Readonly<{ month: string; icon: IconComponent; label: string }>) {
     return (
         <Link
-            href={`/history?view=calendar&month=${month}`}
+            href={calendarMonthUrl(month)}
             only={MONTH_RELOAD_PROPS}
             aria-label={label}
             preserveScroll
