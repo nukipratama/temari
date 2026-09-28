@@ -1,2 +1,2 @@
 self-hosted-runner:
-  labels: [homelab]
+  labels: [homelab, ubuntu-26.04, ubuntu-26.04-arm]

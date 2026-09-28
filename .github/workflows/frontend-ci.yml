@@ -12,7 +12,7 @@ env:
 jobs:
   tests:
     name: tests (shard ${{ matrix.shard }}/3)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     strategy:
       fail-fast: false
       matrix:
@@ -64,7 +64,7 @@ jobs:
     name: coverage (merged)
     needs: tests
     if: github.event_name == 'pull_request' && needs.tests.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -101,7 +101,7 @@ jobs:
 
   static-analysis:
     name: static analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -120,7 +120,7 @@ jobs:
     name: gate
     needs: [tests, coverage, static-analysis]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     steps:
       - name: Require all frontend checks
         run: |

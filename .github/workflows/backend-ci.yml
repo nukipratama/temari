@@ -13,7 +13,7 @@ env:
 jobs:
   tests:
     name: tests (shard ${{ matrix.shard }}/3)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     strategy:
       fail-fast: false
       matrix:
@@ -105,7 +105,7 @@ jobs:
     name: coverage (merged)
     needs: tests
     if: github.event_name == 'pull_request' && needs.tests.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -164,7 +164,7 @@ jobs:
 
   static-analysis:
     name: static analysis (${{ matrix.tool }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     strategy:
       fail-fast: false
       matrix:
@@ -184,16 +184,15 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
         with:
           path: .phpstan-cache
-          key: phpstan-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}
-          restore-keys: phpstan-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+          key: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}
+          restore-keys: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-
 
       - name: Cache Rector analyser cache
         if: matrix.tool == 'rector'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
         with:
           path: .rector-cache
-          key: rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}
-          restore-keys: rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-
+          key: rector-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}
 
       - name: Pint (code style)
         if: matrix.tool == 'pint'
@@ -211,7 +210,7 @@ jobs:
     name: gate
     needs: [tests, coverage, static-analysis]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     steps:
       - name: Require all backend checks
         run: |

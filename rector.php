@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Rector\Caching\ValueObject\Storage\FileCacheStorage;
 use Rector\Config\RectorConfig;
 use Rector\Set\ValueObject\LevelSetList;
 use RectorLaravel\Rector\MethodCall\ContainerBindConcreteWithClosureOnlyRector;
@@ -20,5 +21,5 @@ return RectorConfig::configure()
         // Misfires on closures that return a decorator graph, not a concrete.
         ContainerBindConcreteWithClosureOnlyRector::class,
     ])
-    ->withCache(cacheDirectory: __DIR__.'/.rector-cache')
+    ->withCache(cacheDirectory: __DIR__.'/.rector-cache', cacheClass: FileCacheStorage::class)
     ->withImportNames(removeUnusedImports: true);
