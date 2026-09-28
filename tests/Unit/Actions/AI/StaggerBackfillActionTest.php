@@ -73,12 +73,6 @@ it('falls back to delay 0 on a lock timeout rather than blocking the caller', fu
     expect(staggerBackfill()(1))->toBe(0);
 });
 
-/**
- * The suite's array store round-trips through serialization (see phpunit.xml
- * CACHE_ARRAY_SERIALIZE), same as every real store (redis/database/file), so
- * a stagger slot cached as a mutable Carbon rather than a scalar would come
- * back as __PHP_Incomplete_Class here too, and reset to an immediate slot.
- */
 it('survives a serializing cache store', function (): void {
     config(['ai.backfill_stagger_seconds' => 100]);
     Carbon::setTestNow('2026-05-18 12:00:00');
@@ -87,6 +81,16 @@ it('survives a serializing cache store', function (): void {
     expect($stagger(1))->toBe(0)
         ->and($stagger(1))->toBe(100)
         ->and($stagger(2))->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('reads a slot Redis hands back as a numeric string', function (): void {
+    config(['ai.backfill_stagger_seconds' => 100]);
+    Carbon::setTestNow('2026-05-18 12:00:00');
+    Cache::put('ai.backfill.next-slot:1', (string) Carbon::now()->addSeconds(100)->getTimestamp(), 3600);
+
+    expect(staggerBackfill()(1))->toBe(100);
 
     Carbon::setTestNow();
 });

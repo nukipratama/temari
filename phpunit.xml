@@ -23,10 +23,7 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <!-- Round-trips the array store through serialization, same as every
-             real store (redis/database/file): only classes in
-             config('cache.serializable_classes') survive unserialize(), so a
-             test that caches a disallowed object comes back broken here too. -->
+        <!-- A cached object outside cache.serializable_classes breaks here as it would on Redis. -->
         <env name="CACHE_ARRAY_SERIALIZE" value="true"/>
         <env name="DB_CONNECTION" value="mysql"/>
         <!-- DB_HOST/DB_DATABASE/DB_ANALYTICS_DATABASE/REDIS_HOST come from

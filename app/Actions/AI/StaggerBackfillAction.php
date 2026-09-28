@@ -57,9 +57,7 @@ class StaggerBackfillAction
      * current slot, take it (or now if none/expired), and advance the stored
      * slot by the stagger window.
      *
-     * The slot is cached as a Unix timestamp, never a Carbon instance: only
-     * classes listed in config('cache.serializable_classes') survive a
-     * serializing store's round trip, and Carbon isn't one of them.
+     * The slot is cached as a Unix timestamp; Redis hands it back as a numeric string.
      *
      * @return array{0: int, 1: CarbonInterface}  the delay in seconds and the reserved slot
      */
@@ -69,7 +67,7 @@ class StaggerBackfillAction
         $now = Carbon::now();
 
         $cached = Cache::get($key);
-        $slotAt = (is_int($cached) && $cached > $now->getTimestamp()) ? Carbon::createFromTimestamp($cached) : $now->copy();
+        $slotAt = (is_numeric($cached) && (int) $cached > $now->getTimestamp()) ? Carbon::createFromTimestamp((int) $cached) : $now->copy();
         $delaySec = (int) $now->diffInSeconds($slotAt, absolute: true);
 
         Cache::put($key, $slotAt->copy()->addSeconds($staggerSec)->getTimestamp(), $now->copy()->addHours(self::SLOT_CACHE_TTL_HOURS));
