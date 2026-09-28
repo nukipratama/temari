@@ -182,6 +182,10 @@ describe('MobileBottomNav', () => {
     it('resets the active calendar tab to the current month when already at top', () => {
         const now = new Date();
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        writeTabMemory('history', {
+            href: '/history?view=calendar&month=2026-06',
+            scrollY: 240,
+        });
         setMockPage({}, '/history?view=calendar&month=2026-06', 'History');
         render(<MobileBottomNav />);
 
@@ -191,6 +195,7 @@ describe('MobileBottomNav', () => {
             `/history?view=calendar&month=${currentMonth}`,
             { replace: true, preserveState: false },
         );
+        expect(readTabMemory('history')).toBeNull();
     });
 
     it('resets a selected Plan day when its active tab is tapped at top', () => {

@@ -42,7 +42,6 @@ function handleActiveTabClick(
         (tab === 'plan' && readPlanSelectedDay() !== null);
 
     if (needsReset) {
-        clearTabMemory(tab);
         router.visit(href, { replace: true, preserveState: false });
         clearTabMemory(tab);
     }
