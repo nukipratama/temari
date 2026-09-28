@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Settings } from 'lucide-react';
+import { useSyncExternalStore } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
@@ -9,6 +10,11 @@ import { Icon } from '@/components/ui/Icon';
 import UserAvatarLink from '@/components/UserAvatarLink';
 import { cn } from '@/lib/cn';
 import { backTargetFor } from '@/lib/nav';
+import {
+    contextualOriginSnapshot,
+    readContextualOrigin,
+    subscribeToContextualOrigin,
+} from '@/lib/navigationMemory';
 import { iconButtonVariants } from '@/lib/variants';
 
 // A shared chip backdrop for the icon-only buttons — muted is the exact
@@ -51,7 +57,12 @@ const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();
     const user = page.props.auth.user;
-    const back = backTargetFor(page.component);
+    useSyncExternalStore(
+        subscribeToContextualOrigin,
+        contextualOriginSnapshot,
+        () => null,
+    );
+    const back = backTargetFor(page.component, readContextualOrigin());
 
     return (
         <header

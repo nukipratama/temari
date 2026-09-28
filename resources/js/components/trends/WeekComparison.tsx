@@ -13,6 +13,7 @@ import {
     formStatusTone,
     formStatusWord,
 } from '@/lib/formStatus';
+import { ID_MONTH_SHORT, formatShortDateId } from '@/lib/pace';
 
 import { Stat, StatDelta } from './Stat';
 
@@ -99,11 +100,26 @@ function strainMeaning(strain: number | null, range: WeeklyRange): string {
     return `${value} over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
 }
 
-/** Lowercase, matching UI chrome's own register — "wednesday", not "Wednesday". */
-function todayWeekday(): string {
-    return new Date()
-        .toLocaleDateString('en-US', { weekday: 'long' })
-        .toLowerCase();
+function dateParts(iso: string): { day: number; month: string; year: string } {
+    const [year, month, day] = iso.split('-');
+
+    return { day: Number(day), month: ID_MONTH_SHORT[Number(month) - 1], year };
+}
+
+function dateRangeLabel(
+    range: WeekComparisonPayload['date_ranges']['this_week'],
+): string {
+    if (range.start === range.end) return formatShortDateId(range.end);
+
+    const start = dateParts(range.start);
+    const end = dateParts(range.end);
+
+    if (start.year !== end.year)
+        return `${formatShortDateId(range.start)}–${formatShortDateId(range.end)}`;
+    if (start.month === end.month)
+        return `${start.day}–${end.day} ${end.month} ${end.year}`;
+
+    return `${start.day} ${start.month}–${end.day} ${end.month} ${end.year}`;
 }
 
 interface WeekComparisonProps {
@@ -123,9 +139,13 @@ export default function WeekComparison({
     load,
     className,
 }: Readonly<WeekComparisonProps>) {
-    const weekday = todayWeekday();
-    const { this_week_km, last_week_km, this_week_runs, last_week_runs } =
-        weekComparison;
+    const {
+        this_week_km,
+        last_week_km,
+        this_week_runs,
+        last_week_runs,
+        date_ranges,
+    } = weekComparison;
 
     return (
         <section className={className}>
@@ -133,7 +153,8 @@ export default function WeekComparison({
                 vs last week
             </Eyebrow>
             <p className="mt-1 text-xs text-text-3">
-                through {weekday}, so it&apos;s the same slice of both weeks.
+                this week · {dateRangeLabel(date_ranges.this_week)}, last week ·{' '}
+                {dateRangeLabel(date_ranges.last_week)}
             </p>
             <Stat
                 className="mt-3"
@@ -149,7 +170,7 @@ export default function WeekComparison({
                 }
                 sub={
                     last_week_km !== null
-                        ? `${last_week_km.toFixed(1)} km by ${weekday} last week`
+                        ? `${last_week_km.toFixed(1)} km last week`
                         : undefined
                 }
             />
@@ -168,7 +189,7 @@ export default function WeekComparison({
                 }
                 sub={
                     last_week_runs !== null
-                        ? `${last_week_runs} by ${weekday} last week`
+                        ? `${last_week_runs} last week`
                         : undefined
                 }
             />
@@ -183,7 +204,7 @@ export default function WeekComparison({
                 <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap items-center gap-2.5">
                         <span className="text-label-micro text-text-3">
-                            form
+                            form as of {formatShortDateId(date_ranges.load.end)}
                         </span>
                         <FormChip status={load.form_status} />
                         <span className="font-mono text-xs text-text-3">
@@ -194,6 +215,9 @@ export default function WeekComparison({
                         {formStatusMeaning(load.form_status)}
                     </p>
                     <hr className="border-dashed border-border" />
+                    <p className="text-xs text-text-3">
+                        last 7 days · {dateRangeLabel(date_ranges.load)}
+                    </p>
                     <div className="grid grid-cols-3 gap-2">
                         <Stat
                             className={TILE}

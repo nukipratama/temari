@@ -6,8 +6,12 @@ import {
 } from 'lucide-react';
 
 import type { IconComponent } from '@/components/ui/Icon';
+import type { TabId } from '@/lib/navRoutes';
 
-export type TabId = 'today' | 'plan' | 'trends' | 'history';
+import { navTabFor } from '@/lib/navRoutes';
+
+export { navTabFor } from '@/lib/navRoutes';
+export type { TabId } from '@/lib/navRoutes';
 
 export interface NavItem {
     id: TabId;
@@ -19,6 +23,12 @@ export interface NavItem {
 export interface BackTarget {
     href: string;
     label: string;
+}
+
+export interface ContextualOrigin {
+    href: string;
+    scrollY: number;
+    tab: TabId;
 }
 
 export const ITEMS: ReadonlyArray<NavItem> = [
@@ -48,17 +58,6 @@ export const ITEMS: ReadonlyArray<NavItem> = [
     },
 ];
 
-// Keyed by Inertia page component rather than URL prefix: Race is a sub-page of
-// Plan and lights the plan tab, which a path prefix cannot express without
-// also claiming every other /race-adjacent route.
-const NAV_SCREENS: Readonly<Record<string, TabId>> = {
-    Home: 'today',
-    Plan: 'plan',
-    Race: 'plan',
-    Trends: 'trends',
-    History: 'history',
-};
-
 const TODAY: BackTarget = { href: '/', label: 'Today' };
 
 const BACK_TARGETS: Readonly<Record<string, BackTarget>> = {
@@ -68,9 +67,22 @@ const BACK_TARGETS: Readonly<Record<string, BackTarget>> = {
     'Settings/Index': { href: '/profile', label: 'Profile' },
 };
 
-/** The bottom-nav tab a page lights, or null when it is a pushed screen. */
-export function navTabFor(component: string): TabId | null {
-    return NAV_SCREENS[component] ?? null;
+/** The default tab destination, resetting a calendar to the current month. */
+export function defaultTabHrefFor(
+    tab: TabId,
+    currentHref: string,
+    now = new Date(),
+): string {
+    const query = currentHref.split('?')[1]?.split('#')[0] ?? '';
+    if (
+        tab === 'history' &&
+        new URLSearchParams(query).get('view') === 'calendar'
+    ) {
+        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        return `/history?view=calendar&month=${month}`;
+    }
+
+    return ITEMS.find((item) => item.id === tab)?.href ?? '/';
 }
 
 /**
@@ -78,9 +90,22 @@ export function navTabFor(component: string): TabId | null {
  * A fixed parent, not `history.back()`: a deep link from a notification or a
  * shared URL opens these cold with nothing behind them.
  */
-export function backTargetFor(component: string): BackTarget | null {
+export function backTargetFor(
+    component: string,
+    origin: ContextualOrigin | null = null,
+): BackTarget | null {
     if (navTabFor(component) !== null) {
         return null;
+    }
+
+    if (component === 'Runs/Show' && origin !== null) {
+        const item = ITEMS.find((candidate) => candidate.id === origin.tab);
+        if (item !== undefined) {
+            return {
+                href: origin.href,
+                label: item.label,
+            };
+        }
     }
 
     return BACK_TARGETS[component] ?? TODAY;

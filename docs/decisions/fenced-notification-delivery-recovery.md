@@ -21,6 +21,8 @@ code_refs:
 
 **Status:** Accepted (2026-09-26)
 
+> **Fact update, 2026-09-28.** The decision and its reasoning stand unchanged. The manual **Send notification** control named below was removed from the weekly and monthly recaps. It only ever resent the signed-in athlete's own recap, so it was never an operator path for someone else's message. An `Abandoned` Telegram delivery now has no manual resend; the in-app inbox still holds the narration.
+
 ## Context
 
 A worker can stop after claiming a notification but before it records the provider result. The database then cannot tell whether the provider accepted the send. Releasing every stale claim risks a visible Telegram duplicate; retaining every claim can lose a web push.

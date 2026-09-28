@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Geo\ResolvedLocation;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -130,6 +131,7 @@ return [
     'serializable_classes' => [
         CarbonImmutable::class,
         Collection::class,
+        ResolvedLocation::class,
         stdClass::class,
     ],
 

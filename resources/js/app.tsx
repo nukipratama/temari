@@ -10,6 +10,7 @@ import {
     unreadCountFromProps,
 } from '@/lib/appBadge';
 import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
+import { startContextualBackSession } from '@/lib/navigationMemory';
 import { registerServiceWorker } from '@/lib/registerServiceWorker';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'Temari';
@@ -83,6 +84,7 @@ void createInertiaApp({
         return module.default;
     },
     setup({ el, App, props }) {
+        startContextualBackSession(props.initialPage, router);
         createRoot(el).render(
             <ErrorBoundary>
                 <App {...props} />

@@ -335,14 +335,17 @@ export interface TrainingLoad {
     strain_range: { low: number; high: number } | null;
 }
 
-/** `TrendsController::weekComparison()` — the gain half of "vs last week":
- *  km and runs this week against last week, through the same weekday. Any
- *  field is null when there's no prior-week baseline to compare against. */
+/** `TrendsController::weekComparison()` — calendar volume and trailing load windows for Trends. */
 export interface WeekComparison {
     this_week_km: number | null;
     last_week_km: number | null;
     this_week_runs: number | null;
     last_week_runs: number | null;
+    date_ranges: {
+        this_week: { start: string; end: string };
+        last_week: { start: string; end: string };
+        load: { start: string; end: string };
+    };
 }
 
 export type TrendVerdict =
@@ -566,6 +569,4 @@ export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
     /** True for the latest completed week, the only chain link that may regenerate. */
     is_chain_head: boolean;
     recap_analysis: AnalysisPayload;
-    /** Remaining Telegram-send cooldown for this week's recap, or null. */
-    notification_retry_after_seconds: number | null;
 }

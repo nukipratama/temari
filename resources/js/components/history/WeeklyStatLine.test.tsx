@@ -34,7 +34,6 @@ function snapshot(
             subject_id: 1,
             discriminator: null,
         },
-        notification_retry_after_seconds: null,
         ...overrides,
     };
 }

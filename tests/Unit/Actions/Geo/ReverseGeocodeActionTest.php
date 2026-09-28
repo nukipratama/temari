@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Actions\Geo\ReverseGeocodeAction;
+use App\Services\Geo\Exceptions\NominatimRateSlotUnavailableException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -56,7 +58,7 @@ it('returns null when the API throws', function (): void {
     expect(new ReverseGeocodeAction()(-6.2, 106.8))->toBeNull();
 });
 
-it('caches consecutive calls for the same coords (rounded to ~110m)', function (): void {
+it('returns cached locations without claiming another request slot', function (): void {
     Http::fake([
         'nominatim.openstreetmap.org/*' => Http::response([
             'address' => ['city' => 'Bogor', 'country' => 'Indonesia', 'country_code' => 'id'],
@@ -64,13 +66,59 @@ it('caches consecutive calls for the same coords (rounded to ~110m)', function (
     ]);
 
     $resolver = new ReverseGeocodeAction();
-    $resolver(-6.595, 106.8155);
-    $resolver(-6.5951, 106.8156);
+    $first = $resolver(-6.595, 106.8155);
+    $lock = Cache::lock('geo:nominatim:request-slot-lock', 20);
+    expect($lock->get())->toBeTrue();
+    $second = $resolver(-6.5951, 106.8156);
+
+    expect($second)->toEqual($first);
+    Http::assertSentCount(1);
+});
+
+it('keeps cached locations in a serialized cache store', function (): void {
+    config([
+        'cache.default' => 'array',
+        'cache.stores.array.serialize' => true,
+    ]);
+    Cache::forgetDriver('array');
+    Http::fake([
+        'nominatim.openstreetmap.org/*' => Http::response([
+            'address' => ['city' => 'Bogor', 'country' => 'Indonesia', 'country_code' => 'id'],
+        ]),
+    ]);
+
+    $resolver = new ReverseGeocodeAction();
+    expect($resolver(-6.24, 106.81)?->name)->toBe('Bogor, Indonesia')
+        ->and($resolver(-6.24, 106.81)?->name)->toBe('Bogor, Indonesia');
 
     Http::assertSentCount(1);
 });
 
-it('caches miss sentinels so a known-bad coord pair does not retry Nominatim', function (): void {
+it('paces uncached requests at least one second apart', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-09-01 12:00:00.500000'));
+    $requestTimes = [];
+    Http::fake([
+        'nominatim.openstreetmap.org/*' => function () use (&$requestTimes) {
+            $requestTimes[] = Carbon::now();
+
+            return Http::response([
+                'address' => ['city' => 'Bogor', 'country' => 'Indonesia', 'country_code' => 'id'],
+            ]);
+        },
+    ]);
+
+    $resolver = new ReverseGeocodeAction();
+    $resolver(-6.24, 106.81);
+    expect(fn () => $resolver(-7.25, 112.75))
+        ->toThrow(NominatimRateSlotUnavailableException::class);
+    Carbon::setTestNow(Carbon::now()->addSecond());
+    $resolver(-7.25, 112.75);
+
+    expect($requestTimes)->toHaveCount(2)
+        ->and($requestTimes[0]->diffInMicroseconds($requestTimes[1]))->toBeGreaterThanOrEqual(1_000_000);
+});
+
+it('caches an empty address so the same grid does not retry Nominatim', function (): void {
     Http::fake([
         'nominatim.openstreetmap.org/*' => Http::response(['address' => []]),
     ]);
@@ -82,10 +130,35 @@ it('caches miss sentinels so a known-bad coord pair does not retry Nominatim', f
     Http::assertSentCount(1);
 });
 
-it('returns null when there are no usable address fields', function (): void {
+it('retries a transient failure after its ten-minute cache expires', function (): void {
+    $this->freezeTime();
+    Http::fakeSequence('nominatim.openstreetmap.org/*')
+        ->push('rate limited', 429)
+        ->push([
+            'address' => ['city' => 'Bogor', 'country' => 'Indonesia', 'country_code' => 'id'],
+        ]);
+
+    $resolver = new ReverseGeocodeAction();
+    expect($resolver(-6.2, 106.8))->toBeNull();
+    expect($resolver->shouldSkipBackfill(-6.2, 106.8))->toBeTrue();
+    expect($resolver(-6.2, 106.8))->toBeNull();
+    Http::assertSentCount(1);
+
+    $this->travel(601)->seconds();
+
+    expect($resolver(-6.2, 106.8)?->name)->toBe('Bogor, Indonesia');
+    expect($resolver->shouldSkipBackfill(-6.2, 106.8))->toBeFalse();
+    Http::assertSentCount(2);
+});
+
+it('ignores the old cache key version', function (): void {
+    Cache::put('geo:nominatim:-6.200:106.800', false, 2_592_000);
     Http::fake([
-        'nominatim.openstreetmap.org/*' => Http::response(['address' => []]),
+        'nominatim.openstreetmap.org/*' => Http::response([
+            'address' => ['city' => 'Bogor', 'country' => 'Indonesia', 'country_code' => 'id'],
+        ]),
     ]);
 
-    expect(new ReverseGeocodeAction()(0.0, 0.0))->toBeNull();
+    expect((new ReverseGeocodeAction())(-6.2, 106.8)?->name)->toBe('Bogor, Indonesia');
+    Http::assertSentCount(1);
 });

@@ -58,7 +58,11 @@ jargon-accessibility rule in [[voice-and-tone]].
 `weekComparison` (km/runs) comes from `BriefingContext::forUser()` — the same context builder
 `WeekStateTool` feeds the briefing narrator, reused here rather than a new query.
 `load` is one [TrainingLoad::summary()](app/Services/Run/Metrics/TrainingLoad.php) call at the
-7-day window, not one entry per range. See [[training-load-metrics]].
+7-day window, not one entry per range. The comparison labels carry the current Monday-to-today
+slice and the prior week's matching weekdays; the load tiles carry their trailing seven calendar
+dates. The form value is labelled with its as-of date. All three windows share the controller's
+app-local `today`, and the calendar slice uses the same Sunday-ending week boundaries as
+`BriefingContext`. See [[training-load-metrics]].
 
 ## vs a month ago
 

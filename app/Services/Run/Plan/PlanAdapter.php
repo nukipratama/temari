@@ -351,7 +351,7 @@ final readonly class PlanAdapter
             ->forUser($user->id)
             ->whereNotNull('start_date_local')
             ->whereBetween('start_date_local', [$previousStart->copy()->startOfDay(), $previousEnd->copy()->endOfDay()])
-            ->get(['id', 'start_date_local', 'stream_summary']);
+            ->get(['activity_details.id', 'start_date_local', 'stream_summary']);
 
         $ragged = [];
         $egregiousEasy = [];

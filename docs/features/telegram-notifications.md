@@ -15,9 +15,6 @@ code_refs:
   - app/Notifications/Channels/TelegramChannel.php
   - app/Notifications/StreakReminderNotification.php
   - app/Notifications/TestNotification.php
-  - app/Http/Controllers/Notifications/Concerns/PushesAnalysisNotification.php
-  - app/Http/Controllers/Notifications/SendWeeklyRecapNotificationController.php
-  - app/Http/Controllers/Notifications/SendMonthlyRecapNotificationController.php
   - app/Console/Commands/AI/DailyBriefingCommand.php
   - app/Console/Commands/Gamification/StreakRemindCommand.php
   - app/Http/Controllers/Telegram/TelegramWebhookController.php
@@ -27,9 +24,6 @@ code_refs:
   - app/Console/Commands/Telegram/ListenCommand.php
   - app/Http/Controllers/SettingsController.php
   - resources/js/pages/Settings/Index.tsx
-  - resources/js/components/SendNotificationButton.tsx
-  - resources/js/components/EnableNotificationsModal.tsx
-  - resources/js/hooks/useNotificationsReachable.ts
   - routes/web.php
 ---
 
@@ -37,7 +31,7 @@ code_refs:
 
 The first outbound channel: Temari pushes the most "alive" narration to the user's Telegram so the companion feels present without them opening the app. Three events notify, all keyed off the same chokepoint that finalizes any narration ([[ai-pipeline]]): the **post-run speech** (minutes after a Strava activity syncs), the **weekly recap** (Monday morning), and the **monthly recap** (start of the next month). Each is an independent opt-in toggle; adding another event is one entry in [NotifiableAnalysisTypes](../../app/Services/Telegram/NotifiableAnalysisTypes.php). A fourth push, the **streak reminder** (Saturday 18:00, see [[streak-reminders]]), goes out over the same channels but isn't narration-keyed and has no toggle of its own: it piggybacks `weekly_recap`.
 
-The weekly / monthly recap types also have a manual **"Send notification"** push: a per-page button ([SendNotificationButton](../../resources/js/components/SendNotificationButton.tsx)) on the weekly recap (Feed) and monthly recap (Calendar) pages. The run detail page had one too; `PP3` cut it (P28) with its `activities.send` route and `SendActivityNotificationController`, so a post-run story now only ever pushes automatically. It is deliberately **channel-neutral** — the force-push fans out to every channel the user has wired *and has not muted*, plus the always-on in-app inbox ([[inbox-is-an-always-on-channel]]), so the button never names one. It is gated on the narration being Done and on the user being reachable at all: `telegramConnected || webPushSubscribed`, both shared Inertia props ([NotificationProps](../../app/Services/Inertia/NotificationProps.php)) combined by the [useNotificationsReachable](../../resources/js/hooks/useNotificationsReachable.ts) hook. A user with neither wired still sees the pill, muted; tapping it opens [EnableNotificationsModal](../../resources/js/components/EnableNotificationsModal.tsx), which points at Settings rather than pushing one channel. Each controller (`SendWeeklyRecapNotificationController`, `SendMonthlyRecapNotificationController`) shares its force-dispatch body via the [PushesAnalysisNotification](../../app/Http/Controllers/Notifications/Concerns/PushesAnalysisNotification.php) trait: `force: true`, so it bypasses the master-switch opt-in and the once-only delivery guard and can be re-sent — bounded by a 5-minute per-analysis [Cooldown](../../app/Support/Cooldown.php) the button renders as a disabled countdown. That window is deliberately **not** the same constant as the AI re-narration guard, which is 15 minutes because every re-fire there is a paid LLM call; a re-send costs nothing and only has to spare the recipient a duplicate buzz. "Send test notification" gets its own 60-second window, since it is a setup-time tool pressed while someone is iterating on a channel that is not working yet. The daily briefing has no manual push button; it only fires automatically, once per day per user (the `Analysis` row is upserted per date-keyed discriminator, so `markDone()` fires at most once for that day's row).
+No narration has a manual push button. The run detail page's was cut first (P28), and the weekly (Feed) and monthly (Calendar) recap buttons followed, since the athlete is already reading the recap on the page that offered to send it. Every narration push is automatic, and the in-app inbox ([[inbox-is-an-always-on-channel]]) always keeps a copy. "Send test notification" has a 60-second [Cooldown](../../app/Support/Cooldown.php), since it is a setup-time tool pressed while someone is iterating on a channel that is not working yet. The daily briefing fires once per day per user (the `Analysis` row is upserted per date-keyed discriminator, so `markDone()` fires at most once for that day's row).
 
 ## Setup (one-time, out of band)
 

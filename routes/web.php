@@ -32,8 +32,6 @@ use App\Http\Controllers\RunnerZonesController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Http\Controllers\Strava\SyncController;
-use App\Http\Controllers\Notifications\SendMonthlyRecapNotificationController;
-use App\Http\Controllers\Notifications\SendWeeklyRecapNotificationController;
 use App\Http\Controllers\Telegram\TelegramConnectionController;
 use App\Http\Controllers\Telegram\TelegramWebhookController;
 use App\Http\Controllers\WebPush\PushSubscriptionController;
@@ -120,12 +118,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/activities/{activity}', [RunController::class, 'show'])
         ->middleware('inertia-etag')
         ->name('activities.show');
-    Route::post('/recaps/weekly/{snapshot}/send', SendWeeklyRecapNotificationController::class)
-        ->middleware('block-demo-telegram')
-        ->name('recaps.weekly.send');
-    Route::post('/recaps/monthly/{month}/send', SendMonthlyRecapNotificationController::class)
-        ->middleware('block-demo-telegram')
-        ->name('recaps.monthly.send');
 
     Route::get('/trends', TrendsController::class)->name('trends');
 

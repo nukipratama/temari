@@ -11,6 +11,11 @@ function payload(overrides: Partial<Payload> = {}): Payload {
         last_week_km: 22.1,
         this_week_runs: 3,
         last_week_runs: 4,
+        date_ranges: {
+            this_week: { start: '2026-05-11', end: '2026-05-14' },
+            last_week: { start: '2026-05-04', end: '2026-05-07' },
+            load: { start: '2026-05-08', end: '2026-05-14' },
+        },
         ...overrides,
     };
 }
@@ -32,13 +37,68 @@ function load(overrides: Partial<TrainingLoad> = {}): TrainingLoad {
 }
 
 describe('WeekComparison', () => {
-    it('labels the section and states the weekday scope', () => {
+    it('labels both calendar slices and the rolling load window with date ranges', () => {
         render(<WeekComparison weekComparison={payload()} load={load()} />);
 
         expect(screen.getByText('vs last week')).toBeInTheDocument();
         expect(
-            screen.getByText(/so it.?s the same slice of both weeks/),
+            screen.getByText(
+                'this week · 11–14 may 2026, last week · 4–7 may 2026',
+            ),
         ).toBeInTheDocument();
+        expect(
+            screen.getByText('last 7 days · 8–14 may 2026'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('form as of 14 may 2026')).toBeInTheDocument();
+    });
+
+    it('shows a one-day window once', () => {
+        render(
+            <WeekComparison
+                weekComparison={payload({
+                    date_ranges: {
+                        this_week: { start: '2026-09-28', end: '2026-09-28' },
+                        last_week: { start: '2026-09-21', end: '2026-09-21' },
+                        load: { start: '2026-09-22', end: '2026-09-28' },
+                    },
+                })}
+                load={load()}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                'this week · 28 sep 2026, last week · 21 sep 2026',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('last 7 days · 22–28 sep 2026'),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps both years explicit when the load range crosses new year', () => {
+        render(
+            <WeekComparison
+                weekComparison={payload({
+                    date_ranges: {
+                        this_week: { start: '2026-12-28', end: '2027-01-03' },
+                        last_week: { start: '2026-12-21', end: '2026-12-27' },
+                        load: { start: '2026-12-28', end: '2027-01-03' },
+                    },
+                })}
+                load={load()}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                'this week · 28 dec 2026–3 jan 2027, last week · 21–27 dec 2026',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('last 7 days · 28 dec 2026–3 jan 2027'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('form as of 3 jan 2027')).toBeInTheDocument();
     });
 
     it("states this week's km and runs with a delta against last week", () => {

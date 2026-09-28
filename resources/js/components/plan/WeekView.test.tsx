@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PlanDay, SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
+import {
+    clearNavigationMemory,
+    readPlanSelectedDay,
+} from '@/lib/navigationMemory';
+
 import WeekView from './WeekView';
 
 const TODAY = '2026-06-17';
@@ -132,6 +137,7 @@ const selectedTab = () =>
 describe('WeekView', () => {
     afterEach(() => {
         vi.restoreAllMocks();
+        clearNavigationMemory();
     });
 
     it('heads the week with its number, dates, target, sessions and adherence', () => {
@@ -251,6 +257,60 @@ describe('WeekView', () => {
         expect(selectedTab()).toHaveAttribute('aria-controls', panel.id);
     });
 
+    it('changes the selected day when the panel is swiped horizontally', () => {
+        renderWeek();
+        const panel = screen.getByRole('tabpanel');
+
+        fireEvent.touchStart(panel, {
+            touches: [{ identifier: 1, clientX: 200, clientY: 100 }],
+        });
+        fireEvent.touchEnd(panel, {
+            changedTouches: [{ identifier: 1, clientX: 100, clientY: 105 }],
+        });
+
+        expect(selectedTab()).toHaveAttribute(
+            'aria-label',
+            'Thu, 8.0 km, tempo',
+        );
+        expect(panel).toHaveTextContent('Thu · jun 18');
+        expect(readPlanSelectedDay()).toBe('2026-06-18');
+    });
+
+    it('does not wrap before Monday', () => {
+        renderWeek({ focusDay: '2026-06-15' });
+        const panel = screen.getByRole('tabpanel');
+
+        fireEvent.touchStart(panel, {
+            touches: [{ identifier: 1, clientX: 100, clientY: 100 }],
+        });
+        fireEvent.touchEnd(panel, {
+            changedTouches: [{ identifier: 1, clientX: 200, clientY: 100 }],
+        });
+
+        expect(selectedTab()).toHaveAttribute(
+            'aria-label',
+            'Mon, 6.0 km, done',
+        );
+    });
+
+    it('does not wrap past Sunday', () => {
+        const sunday = day({ id: 7, date: '2026-06-21' });
+        renderWeek({ days: [...WEEK, sunday], focusDay: sunday.date });
+        const panel = screen.getByRole('tabpanel');
+
+        fireEvent.touchStart(panel, {
+            touches: [{ identifier: 2, clientX: 200, clientY: 100 }],
+        });
+        fireEvent.touchEnd(panel, {
+            changedTouches: [{ identifier: 2, clientX: 100, clientY: 100 }],
+        });
+
+        expect(selectedTab()).toHaveAttribute(
+            'aria-label',
+            'Sun, 6.0 km, easy',
+        );
+    });
+
     it('opens on the day /plan?day= asked for and scrolls the panel into view', () => {
         const scrollIntoView = vi.fn();
         Element.prototype.scrollIntoView = scrollIntoView;
@@ -262,6 +322,26 @@ describe('WeekView', () => {
             'Tue, 7.0 km, missed',
         );
         expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' });
+    });
+
+    it('restores a saved selected day without changing the scroll position', () => {
+        const scrollIntoView = vi.fn();
+        Element.prototype.scrollIntoView = scrollIntoView;
+
+        renderWeek({ selectedDay: '2026-06-16' });
+
+        expect(selectedTab()).toHaveAttribute(
+            'aria-label',
+            'Tue, 7.0 km, missed',
+        );
+        expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it('remembers the selected day for this session', () => {
+        renderWeek();
+        fireEvent.click(screen.getByRole('tab', { name: /^Tue/ }));
+
+        expect(readPlanSelectedDay()).toBe('2026-06-16');
     });
 
     it('keeps today and stays put when the day asked for is in another week', () => {

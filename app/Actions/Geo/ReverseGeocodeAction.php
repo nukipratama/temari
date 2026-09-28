@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Actions\Geo;
 
+use App\Services\Geo\Exceptions\NominatimRateSlotUnavailableException;
 use App\Services\Geo\ResolvedLocation;
+use App\Services\Geo\ReverseGeocodeOutcome;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-// Nominatim TOS: 1 req/sec rate limit is enforced upstream by
-// ResolveActivityLocationJob's WithoutOverlapping lock, not here.
 class ReverseGeocodeAction
 {
     private const string URL = 'https://nominatim.openstreetmap.org/reverse';
@@ -20,27 +21,86 @@ class ReverseGeocodeAction
 
     private const int CACHE_TTL = 2_592_000; // 30 days
 
+    private const string RATE_SLOT_LOCK_KEY = 'geo:nominatim:request-slot-lock';
+
+    private const string NEXT_RATE_SLOT_KEY = 'geo:nominatim:next-request-at';
+
+    private const int RATE_SLOT_INTERVAL_MICROSECONDS = 1_000_000;
+
+    private const int RATE_SLOT_LOCK_SECONDS = 20;
+
+    private const int RATE_SLOT_CACHE_SECONDS = 10;
+
+    private const int TRANSIENT_FAILURE_CACHE_TTL = 600;
+
     public function __invoke(float $lat, float $lng): ?ResolvedLocation
     {
         $cacheKey = $this->cacheKey($lat, $lng);
 
-        // Sentinel-cache misses (false) so we don't re-hit Nominatim for
-        // coords that returned nothing — Cache::remember drops null values.
-        $cached = Cache::get($cacheKey, '__miss__');
-        if ($cached === false) {
-            return null;
-        }
+        $cached = Cache::get($cacheKey);
         if ($cached instanceof ResolvedLocation) {
             return $cached;
         }
+        if ($cached instanceof ReverseGeocodeOutcome) {
+            return null;
+        }
 
-        $resolved = $this->fetchUncached($lat, $lng);
-        Cache::put($cacheKey, $resolved ?? false, self::CACHE_TTL);
+        $outcome = $this->fetchWithRateSlot($lat, $lng);
+        $ttl = $outcome === ReverseGeocodeOutcome::TransientFailure
+            ? self::TRANSIENT_FAILURE_CACHE_TTL
+            : self::CACHE_TTL;
+        Cache::put($cacheKey, $outcome, $ttl);
 
-        return $resolved;
+        return $outcome instanceof ResolvedLocation ? $outcome : null;
     }
 
-    private function fetchUncached(float $lat, float $lng): ?ResolvedLocation
+    public function shouldSkipBackfill(float $lat, float $lng): bool
+    {
+        return in_array(Cache::get($this->cacheKey($lat, $lng)), [
+            ReverseGeocodeOutcome::NoAddress,
+            ReverseGeocodeOutcome::TransientFailure,
+        ], true);
+    }
+
+    private function fetchWithRateSlot(float $lat, float $lng): ResolvedLocation|ReverseGeocodeOutcome
+    {
+        $lock = Cache::lock(self::RATE_SLOT_LOCK_KEY, self::RATE_SLOT_LOCK_SECONDS);
+        if (! $lock->get()) {
+            throw new NominatimRateSlotUnavailableException();
+        }
+
+        $requestStartedAt = null;
+        try {
+            $now = (int) Carbon::now()->format('Uu');
+            $nextAllowedAt = (int) Cache::get(self::NEXT_RATE_SLOT_KEY, 0);
+            if ($nextAllowedAt > $now) {
+                throw new NominatimRateSlotUnavailableException();
+            }
+
+            Cache::put(
+                self::NEXT_RATE_SLOT_KEY,
+                $now + self::RATE_SLOT_INTERVAL_MICROSECONDS,
+                self::RATE_SLOT_CACHE_SECONDS,
+            );
+            $requestStartedAt = $now;
+
+            return $this->fetchUncached($lat, $lng);
+        } finally {
+            try {
+                if ($requestStartedAt !== null) {
+                    Cache::put(
+                        self::NEXT_RATE_SLOT_KEY,
+                        (int) Carbon::now()->format('Uu') + self::RATE_SLOT_INTERVAL_MICROSECONDS,
+                        self::RATE_SLOT_CACHE_SECONDS,
+                    );
+                }
+            } finally {
+                $lock->release();
+            }
+        }
+    }
+
+    private function fetchUncached(float $lat, float $lng): ResolvedLocation|ReverseGeocodeOutcome
     {
         try {
             $response = Http::withHeaders([
@@ -57,15 +117,15 @@ class ReverseGeocodeAction
                 ]);
 
             if (! $response->ok()) {
-                return null;
+                return ReverseGeocodeOutcome::TransientFailure;
             }
 
             $payload = $response->json();
             if (! is_array($payload) || ! is_array($payload['address'] ?? null)) {
-                return null;
+                return ReverseGeocodeOutcome::TransientFailure;
             }
 
-            return $this->formatAddress($payload['address']);
+            return $this->formatAddress($payload['address']) ?? ReverseGeocodeOutcome::NoAddress;
         } catch (Throwable $e) {
             Log::info('nominatim resolve failed', [
                 'lat' => $lat,
@@ -73,7 +133,7 @@ class ReverseGeocodeAction
                 'error' => $e->getMessage(),
             ]);
 
-            return null;
+            return ReverseGeocodeOutcome::TransientFailure;
         }
     }
 
@@ -125,7 +185,7 @@ class ReverseGeocodeAction
     {
         // ~110m grid — caches adjacent coords together so a small route
         // jitter doesn't blow the cache.
-        return sprintf('geo:nominatim:%.3f:%.3f', $lat, $lng);
+        return sprintf('geo:nominatim:v2:%.3f:%.3f', $lat, $lng);
     }
 
     private function userAgent(): string

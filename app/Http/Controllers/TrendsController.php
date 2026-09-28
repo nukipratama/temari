@@ -49,17 +49,42 @@ class TrendsController extends Controller
      * query: it already computes this exact comparison for the daily
      * briefing's tool context.
      *
-     * @return array{this_week_km: float|null, last_week_km: float|null, this_week_runs: int|null, last_week_runs: int|null}
+     * @return array{
+     *     this_week_km: float|null,
+     *     last_week_km: float|null,
+     *     this_week_runs: int|null,
+     *     last_week_runs: int|null,
+     *     date_ranges: array{
+     *         this_week: array{start: string, end: string},
+     *         last_week: array{start: string, end: string},
+     *         load: array{start: string, end: string}
+     *     }
+     * }
      */
     private function weekComparison(User $user, Carbon $today): array
     {
         $context = BriefingContext::forUser($user, $today);
+        $weekRanges = BriefingContext::weekToDateRanges($today);
 
         return [
             'this_week_km' => $context->thisWeekKm,
             'last_week_km' => $context->lastWeekKm,
             'this_week_runs' => $context->thisWeekRuns,
             'last_week_runs' => $context->lastWeekRuns,
+            'date_ranges' => [
+                'this_week' => [
+                    'start' => $weekRanges['this_week_start']->toDateString(),
+                    'end' => $today->toDateString(),
+                ],
+                'last_week' => [
+                    'start' => $weekRanges['last_week_start']->toDateString(),
+                    'end' => $weekRanges['last_week_through']->toDateString(),
+                ],
+                'load' => [
+                    'start' => $today->copy()->subDays(6)->toDateString(),
+                    'end' => $today->toDateString(),
+                ],
+            ],
         ];
     }
 

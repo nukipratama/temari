@@ -358,22 +358,4 @@ class Analysis extends Model
 
         return $cooldowns[self::cooldownKey($row->analysis_type, $row->subject_id, $row->discriminator)] ?? null;
     }
-
-    /**
-     * Remaining manual-send cooldown for a {@see self::toPayload()} array, or
-     * null when there is no row or it is not Done (only a Done row is ever
-     * pushed, so only it can cool). Surfaced next to the manual "Send
-     * notification" button so it renders a disabled countdown.
-     *
-     * @param  array<string, mixed>  $payload
-     */
-    public static function notificationCooldownRemaining(array $payload): ?int
-    {
-        $id = $payload['id'] ?? null;
-        if (! is_int($id) || ($payload['status'] ?? null) !== AnalysisStatus::Done->value) {
-            return null;
-        }
-
-        return new Cooldown(Cooldown::notificationKey($id), Cooldown::NOTIFICATION_WINDOW_SECONDS)->remaining();
-    }
 }
