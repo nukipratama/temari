@@ -55,7 +55,7 @@ interface PlanProps {
     seasonAdherencePct?: number | null;
     adaptation?: PlanAdaptation | null;
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
-    disclaimerHeadline: string;
+    disclaimerLine: string;
     planNarration?: PlanNarration;
     /** Seconds left before Regenerate may run again, or null when it's free to click. */
     regenerateCooldownSeconds?: number | null;
@@ -84,7 +84,7 @@ export default function Plan({
     seasonSummary = [],
     seasonAdherencePct = null,
     adaptation = null,
-    disclaimerHeadline,
+    disclaimerLine,
     planNarration = PLAN_NARRATION_DEFAULT,
     regenerateCooldownSeconds = null,
     planRecalibration,
@@ -260,12 +260,12 @@ export default function Plan({
                 </Deferred>
 
                 <footer className="mt-8 border-t border-border pt-3 text-xs text-text-3">
-                    {disclaimerHeadline} ·{' '}
+                    {disclaimerLine}{' '}
                     <Link
                         href="/training-disclaimer"
                         className="focus-ring text-text-2 underline underline-offset-2 hover:text-foreground"
                     >
-                        read more
+                        the full disclaimer
                     </Link>
                 </footer>
             </PageContainer>

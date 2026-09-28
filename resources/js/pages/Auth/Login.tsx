@@ -344,7 +344,7 @@ function DataUseDisclosure({
     dataUse,
     trainingDisclaimer,
 }: Readonly<Pick<LoginProps, 'dataUse' | 'trainingDisclaimer'>>) {
-    const [open, setOpen] = useState(true);
+    const [open, setOpen] = useState(false);
     const panelId = useId();
 
     if (!dataUse && !trainingDisclaimer) {
@@ -358,9 +358,14 @@ function DataUseDisclosure({
                 aria-expanded={open}
                 aria-controls={panelId}
                 onClick={() => setOpen((wasOpen) => !wasOpen)}
-                className="focus-ring group flex w-full items-center justify-between px-3.5 py-3.5 text-left text-xs leading-tight font-bold text-foreground"
+                className="focus-ring group flex w-full items-center justify-between gap-2 px-3.5 py-3.5 text-left text-xs leading-tight text-text-2"
             >
-                the fine print
+                <span>
+                    read-only · only you see it · delete anytime ·{' '}
+                    <span className="font-bold text-foreground underline underline-offset-2">
+                        details
+                    </span>
+                </span>
                 <Icon
                     icon={ChevronDown}
                     width={18}

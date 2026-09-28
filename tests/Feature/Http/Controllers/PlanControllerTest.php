@@ -24,6 +24,7 @@ use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanPageAssembler;
+use App\Support\TrainingDisclaimer;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -54,7 +55,7 @@ it('paints the shell with the plan body deferred', function (): void {
             ->has('race')
             ->has('sessionsPerWeek')
             ->has('season')
-            ->has('disclaimerHeadline')
+            ->where('disclaimerLine', TrainingDisclaimer::SHORT)
             ->missing('disclaimer')
             ->missing('weeks')
             ->missing('seasonSummary')

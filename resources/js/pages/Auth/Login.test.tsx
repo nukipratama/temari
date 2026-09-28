@@ -16,7 +16,9 @@ const DISCLAIMER = {
 };
 
 function disclosurePanel() {
-    const trigger = screen.getByRole('button', { name: /the fine print/ });
+    const trigger = screen.getByRole('button', {
+        name: /read-only · only you see it · delete anytime/,
+    });
     return document.getElementById(trigger.getAttribute('aria-controls') ?? '');
 }
 
@@ -155,11 +157,14 @@ describe('Login', () => {
         );
         expect(screen.getByText(DISCLAIMER.text)).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /read the whole disclaimer/ }),
+            screen.getByRole('link', {
+                name: /read the whole disclaimer/,
+                hidden: true,
+            }),
         ).toHaveAttribute('href', '/training-disclaimer');
     });
 
-    it('keeps the fine-print disclosure open by default, and lets it be collapsed', async () => {
+    it('keeps the data-use disclosure collapsed behind its one-line summary, and opens it on tap', async () => {
         const userEvent = (await import('@testing-library/user-event')).default;
         render(
             <Login
@@ -169,20 +174,22 @@ describe('Login', () => {
             />,
         );
 
-        const trigger = screen.getByRole('button', { name: /the fine print/ });
-        expect(trigger).toHaveAttribute('aria-expanded', 'true');
-        expect(screen.getByText(DATA_USE.points[0])).toBeVisible();
+        const trigger = screen.getByRole('button', {
+            name: /read-only · only you see it · delete anytime/,
+        });
+        expect(trigger).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.getByText(DATA_USE.points[0])).not.toBeVisible();
 
         await userEvent.setup().click(trigger);
 
-        expect(trigger).toHaveAttribute('aria-expanded', 'false');
-        expect(screen.getByText(DATA_USE.points[0])).not.toBeVisible();
+        expect(trigger).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByText(DATA_USE.points[0])).toBeVisible();
     });
 
     it('omits the disclosure entirely when the server sends no copy', () => {
         render(<Login authStravaUrl="/x" />);
 
-        expect(screen.queryByText(/the fine print/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/only you see it/)).not.toBeInTheDocument();
         expect(
             screen.queryByText(/read the whole disclaimer/),
         ).not.toBeInTheDocument();

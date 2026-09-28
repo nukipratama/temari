@@ -23,8 +23,8 @@ One controller, one page component. [LegalController](../../app/Http/Controllers
 
 The wording that also appears *inside* the app lives in code, not in this note and not twice in the copy:
 
-- **Data use** — [DataUseStatement](../../app/Support/DataUseStatement.php), also rendered on Settings and the login page. `/privacy` embeds it as a section.
-- **Not medical advice** — [TrainingDisclaimer](../../app/Support/TrainingDisclaimer.php). The Plan tab renders `HEADLINE` from a server prop as a footer line linking to `/training-disclaimer` ([PlanController](../../app/Http/Controllers/PlanController.php) → [Plan.tsx](../../resources/js/pages/Plan.tsx)), `/training-disclaimer` uses `TEXT` as the intro and expands on it with `scope()`, and `/terms` quotes it as a section.
+- **Data use** — [DataUseStatement](../../app/Support/DataUseStatement.php), also rendered on Settings and inside the login page's disclosure, which stays collapsed behind a one-line summary until tapped. `/privacy` embeds it as a section.
+- **Not medical advice** — [TrainingDisclaimer](../../app/Support/TrainingDisclaimer.php). The Plan tab and the login page render the friend-voice `SHORT` line from a server prop, linking to `/training-disclaimer` ([PlanController](../../app/Http/Controllers/PlanController.php) → [Plan.tsx](../../resources/js/pages/Plan.tsx)), `/training-disclaimer` uses `TEXT` as the intro and expands on it with `scope()`, and `/terms` quotes it as a section.
 
 No user-facing copy names the AI vendor or model: the statement and `/privacy` say "a third-party AI service" (an owner decision, accepted against sub-processor naming). `LegalDocumentsTest` pins the absence.
 

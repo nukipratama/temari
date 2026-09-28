@@ -40,7 +40,7 @@ export const METRIC_GLOSSARY = {
     },
     monotony: {
         label: 'monotony',
-        body: 'how much your weekly intensity varies. above 2 means your week is too uniform and injury risk goes up. slip in an easy day to bring this number down.',
+        body: 'how much your weekly intensity varies. above 2, slip in an easy day to break the week up, since a week this uniform nudges injury risk up.',
     },
     strain: {
         label: 'strain',
@@ -115,7 +115,7 @@ export const METRIC_GLOSSARY = {
     },
     status_overreaching: {
         label: 'overreaching',
-        body: 'the load is way too much. rest for a few days before continuing, pushing through raises the risk of injury or illness.',
+        body: 'the load is way too much. rest for a few days before you carry on, since pushing through is how injury or illness sneaks in.',
     },
     vibe_vs_mood: {
         label: 'vibe vs mood',

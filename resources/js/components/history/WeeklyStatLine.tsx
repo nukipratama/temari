@@ -40,7 +40,7 @@ function buildMetrics(snapshot: WeeklySnapshotWithRecap): StatMetric[] {
             value,
             flagged,
             explanation: flagged
-                ? `variety ${value}: this week's intensity barely changed day to day, and staying this flat raises injury risk.`
+                ? `variety ${value}: slip in an easy day to break the week up, since intensity this flat nudges injury risk up.`
                 : METRIC_GLOSSARY.monotony.body,
         });
     }
