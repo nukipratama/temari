@@ -1,4 +1,5 @@
-import { router } from '@inertiajs/react';
+import type { router as inertiaRouter } from '@inertiajs/react';
+
 import { useEffect, useRef } from 'react';
 
 interface Entry {
@@ -10,6 +11,8 @@ interface Entry {
 const entries: Entry[] = [];
 let pendingPops = 0;
 let stateBeforePop: unknown = null;
+/** The page's latest history state while an overlay entry sits on top of it. */
+let pageState: unknown = null;
 
 function pop(count: number): void {
     pendingPops++;
@@ -42,8 +45,17 @@ function onPopState(event: PopStateEvent): void {
         return;
     }
     event.stopImmediatePropagation();
+    window.history.replaceState(pageState, '');
     top.close();
     popClosedEntries();
+}
+
+function closeAll(): number {
+    const open = entries.filter((entry) => !entry.closed).reverse();
+    const count = entries.length;
+    entries.length = 0;
+    open.forEach((entry) => entry.close());
+    return count;
 }
 
 function onVisitStart(event: {
@@ -54,11 +66,28 @@ function onVisitStart(event: {
         return;
     }
 
-    const open = entries.filter((entry) => !entry.closed).reverse();
-    const count = entries.length;
-    entries.length = 0;
-    pop(count);
-    open.forEach((entry) => entry.close());
+    pop(closeAll());
+}
+
+function onBeforeUpdate(event: { detail: { page: { url: string } } }): void {
+    if (entries.length === 0) {
+        return;
+    }
+
+    const next = new URL(event.detail.page.url, window.location.href);
+    const here = new URL(window.location.href);
+    next.hash = '';
+    here.hash = '';
+    if (next.href !== here.href) {
+        // Inertia pushes this page above the overlay entries, which can no longer be popped from under it.
+        closeAll();
+    }
+}
+
+function onVisitSuccess(): void {
+    if (entries.length > 0) {
+        pageState = window.history.state;
+    }
 }
 
 /**
@@ -66,9 +95,11 @@ function onVisitStart(event: {
  * registration order, and only an earlier one can keep Inertia from
  * re-rendering the page for a Back that only closed an overlay.
  */
-export function installOverlayHistory(): void {
+export function installOverlayHistory(router: typeof inertiaRouter): void {
     window.addEventListener('popstate', onPopState);
     router.on('start', onVisitStart);
+    router.on('beforeUpdate', onBeforeUpdate);
+    router.on('success', onVisitSuccess);
 }
 
 /**
@@ -90,6 +121,7 @@ export function useOverlayHistory(open: boolean, onClose: () => void): void {
         }
 
         const entry: Entry = { close: () => closeRef.current(), closed: false };
+        pageState = window.history.state;
         window.history.pushState(window.history.state, '');
         entries.push(entry);
 

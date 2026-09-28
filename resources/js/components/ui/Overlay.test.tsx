@@ -1,5 +1,4 @@
 import {
-    act,
     cleanup,
     fireEvent,
     render,
@@ -9,16 +8,9 @@ import {
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { back, settle } from '@/test/overlayHistory';
+
 import Overlay, { OverlayClose, OverlayTitle } from './Overlay';
-
-async function settle() {
-    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
-}
-
-async function back() {
-    window.history.back();
-    await settle();
-}
 
 beforeEach(() => {
     window.history.pushState({ page: 'current' }, '');

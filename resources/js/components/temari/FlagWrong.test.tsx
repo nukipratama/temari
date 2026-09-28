@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { settle } from '@/test/overlayHistory';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import FlagWrong from './FlagWrong';
@@ -41,10 +42,6 @@ function lastPostOptions() {
     const call = vi.mocked(router.post).mock.calls[0];
 
     return call[2] as { onSuccess?: () => void };
-}
-
-async function settle() {
-    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
 }
 
 describe('FlagWrong', () => {

@@ -10,6 +10,8 @@ import {
     vi,
 } from 'vitest';
 
+import { back, settle } from '@/test/overlayHistory';
+
 import { useOverlayHistory } from './useOverlayHistory';
 
 type StartHandler = (event: {
@@ -18,12 +20,20 @@ type StartHandler = (event: {
 
 const inertiaPopstate = vi.fn();
 let onVisitStart: StartHandler;
+let onBeforeUpdate: (event: { detail: { page: { url: string } } }) => void;
+let onVisitSuccess: () => void;
+
+function inertiaHandler(name: string) {
+    return vi
+        .mocked(router.on)
+        .mock.calls.find(([event]) => event === name)?.[1];
+}
 
 beforeAll(() => {
     // test/setup.ts installed the manager; this stands in for Inertia's own listener, registered after it.
-    onVisitStart = vi
-        .mocked(router.on)
-        .mock.calls.find(([event]) => event === 'start')?.[1] as StartHandler;
+    onVisitStart = inertiaHandler('start') as StartHandler;
+    onBeforeUpdate = inertiaHandler('beforeUpdate') as typeof onBeforeUpdate;
+    onVisitSuccess = inertiaHandler('success') as typeof onVisitSuccess;
     window.addEventListener('popstate', inertiaPopstate);
 });
 
@@ -37,16 +47,6 @@ afterEach(async () => {
     await settle();
     inertiaPopstate.mockClear();
 });
-
-/** Lets jsdom's queued history traversals fire their popstate. */
-async function settle() {
-    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
-}
-
-async function back() {
-    window.history.back();
-    await settle();
-}
 
 function overlay(initiallyOpen = true) {
     const onClose = vi.fn();
@@ -150,6 +150,47 @@ describe('useOverlayHistory', () => {
         expect(window.history.state).toEqual({ page: 'after' });
     });
 
+    it('keeps the page state a background reload wrote while the overlay closes on Back', async () => {
+        const sheet = overlay();
+        window.history.replaceState({ page: 'reloaded' }, '');
+        onVisitSuccess();
+
+        await back();
+
+        expect(sheet.onClose).toHaveBeenCalledOnce();
+        expect(window.history.state).toEqual({ page: 'reloaded' });
+        sheet.close();
+    });
+
+    it('leaves the pushed page in place when a state-preserving visit lands on another URL', async () => {
+        const sheet = overlay();
+
+        act(() => onBeforeUpdate({ detail: { page: { url: '/login' } } }));
+        window.history.pushState({ page: 'login' }, '', '/login');
+        sheet.unmount();
+        await settle();
+
+        expect(sheet.onClose).toHaveBeenCalledOnce();
+        expect(window.location.pathname).toBe('/login');
+        expect(window.history.state).toEqual({ page: 'login' });
+        expect(inertiaPopstate).not.toHaveBeenCalled();
+    });
+
+    it('keeps overlays open through a same-URL page update', async () => {
+        const sheet = overlay();
+
+        act(() =>
+            onBeforeUpdate({
+                detail: { page: { url: window.location.pathname } },
+            }),
+        );
+        await back();
+
+        expect(sheet.onClose).toHaveBeenCalledOnce();
+        expect(inertiaPopstate).not.toHaveBeenCalled();
+        sheet.close();
+    });
+
     it('closes every overlay and pops their entries when a visit replaces the page', async () => {
         const lower = overlay();
         const upper = overlay();
@@ -198,6 +239,8 @@ describe('useOverlayHistory', () => {
                 detail: { visit: { preserveState: false, prefetch: false } },
             }),
         );
+        onBeforeUpdate({ detail: { page: { url: '/elsewhere' } } });
+        onVisitSuccess();
         await settle();
 
         expect(inertiaPopstate).not.toHaveBeenCalled();

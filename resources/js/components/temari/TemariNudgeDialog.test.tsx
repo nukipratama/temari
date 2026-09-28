@@ -1,5 +1,4 @@
 import {
-    act,
     cleanup,
     fireEvent,
     render,
@@ -8,6 +7,8 @@ import {
 } from '@testing-library/react';
 import { Check } from 'lucide-react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { settle } from '@/test/overlayHistory';
 
 import TemariNudgeDialog from './TemariNudgeDialog';
 
@@ -18,10 +19,6 @@ const baseProps = {
     primaryIcon: Check,
     onPrimary: vi.fn(),
 };
-
-async function settle() {
-    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
-}
 
 afterEach(async () => {
     cleanup();

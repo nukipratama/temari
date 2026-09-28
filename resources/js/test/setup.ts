@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import { router } from '@inertiajs/react';
 import { cleanup } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { afterEach, beforeEach, vi } from 'vitest';
@@ -295,4 +296,4 @@ vi.mock('@/components/ui/Icon', () => {
 });
 
 // Ahead of any listener a test adds, as app.tsx installs it ahead of Inertia's.
-installOverlayHistory();
+installOverlayHistory(router);

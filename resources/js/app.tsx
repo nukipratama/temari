@@ -28,7 +28,7 @@ router.on('navigate', (event) => {
 });
 
 installGlobalErrorReporting();
-installOverlayHistory();
+installOverlayHistory(router);
 
 const pages = import.meta.glob<{ default: ComponentType }>([
     './pages/**/*.tsx',
