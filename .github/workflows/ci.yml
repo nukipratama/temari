@@ -95,6 +95,19 @@ jobs:
           MIGRATION_DIFF_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: php scripts/check-migration-safety.php --base "$MIGRATION_DIFF_BASE"
 
+  # High+ advisories in composer.lock or package-lock.json, dev scopes included,
+  # block the PR through ci-gate. Skipped on a main push: there is no base to diff.
+  dependency-review:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          fail-on-scopes: runtime, development, unknown
+
   # Suite internals live in reusable workflows so this file stays focused on
   # orchestration, deployment, and the one required branch-protection check.
   backend:
@@ -111,7 +124,7 @@ jobs:
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [changes, backend, frontend, build, secret-scan, repo-guards]
+    needs: [changes, backend, frontend, build, secret-scan, repo-guards, dependency-review]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -129,7 +142,7 @@ jobs:
           require_if_changed "${{ needs.changes.outputs.backend }}" "${{ needs.backend.result }}" backend
           require_if_changed "${{ needs.changes.outputs.frontend }}" "${{ needs.frontend.result }}" frontend
 
-          for r in "${{ needs.build.result }}"; do
+          for r in "${{ needs.build.result }}" "${{ needs.dependency-review.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
           for r in "${{ needs.secret-scan.result }}" "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do
