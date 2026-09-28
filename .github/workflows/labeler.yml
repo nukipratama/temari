@@ -1,0 +1,20 @@
+name: Labeler
+
+# Additive area labels from .github/labeler.yml, decided in #1218: a PR whose
+# diff spans multiple areas gets every matching label, and sync-labels stays
+# off so a manually-added or manually-removed label survives later pushes.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
+        with:
+          sync-labels: false

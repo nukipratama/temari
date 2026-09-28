@@ -1,0 +1,44 @@
+area:ai:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'app/Services/AI/**'
+          - 'app/Jobs/AI/**'
+
+area:plan:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'app/Services/Run/Plan/**'
+          - 'app/Actions/Run/Plan/**'
+
+area:notifs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'app/Notifications/**'
+          - 'app/Jobs/Notifications/**'
+          - 'app/Services/Notifications/**'
+          - 'app/Http/Controllers/Notifications/**'
+          - 'app/Console/Commands/Notifications/**'
+
+area:ui:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'resources/js/**'
+
+area:devops:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'docker/**'
+          - 'scripts/**'
+          - 'compose*.yaml'
+          - 'compose*.yml'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+
+php:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.php'
