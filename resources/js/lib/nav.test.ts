@@ -72,6 +72,19 @@ describe('nav', () => {
             });
         });
 
+        it('uses an in-app origin for run details when one is available', () => {
+            expect(
+                backTargetFor('Runs/Show', {
+                    href: '/plan?day=2026-06-16',
+                    scrollY: 312,
+                    tab: 'plan',
+                }),
+            ).toEqual({
+                href: '/plan?day=2026-06-16',
+                label: 'Plan',
+            });
+        });
+
         it('defaults an unlisted routed screen to pushed chrome back to Today', () => {
             expect(backTargetFor('Collection/Accessories')).toEqual({
                 href: '/',
