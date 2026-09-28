@@ -193,7 +193,6 @@ jobs:
         with:
           path: .rector-cache
           key: rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}
-          restore-keys: rector-${{ runner.os }}-php${{ env.PHP_VERSION }}-
 
       - name: Pint (code style)
         if: matrix.tool == 'pint'
