@@ -145,7 +145,7 @@ Disk cleanup rides the same job, strictly after a successful backup (cleanup ste
 
 ## Nightly dependency audit alert
 
-[.github/workflows/nightly-audit.yml](.github/workflows/nightly-audit.yml) runs `composer audit` and `npm audit` nightly on `ubuntu-latest` (no install, both read the lock files directly) and does not go through `MaintainerAlerter`/`deploy:alert` — that path only exists inside the prod app container on the homelab runner, which this workflow never touches. Instead, an `alert-on-failure` job pushes a Telegram message directly via `curl` when either audit job fails, using two repository secrets: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_MAINTAINER_CHAT_ID`.
+[.github/workflows/nightly-audit.yml](.github/workflows/nightly-audit.yml) runs `composer audit` and `npm audit` nightly on `ubuntu-26.04-arm` (no install, both read the lock files directly) and does not go through `MaintainerAlerter`/`deploy:alert` — that path only exists inside the prod app container on the homelab runner, which this workflow never touches. Instead, an `alert-on-failure` job pushes a Telegram message directly via `curl` when either audit job fails, using two repository secrets: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_MAINTAINER_CHAT_ID`.
 
 **Both secrets are set (2026-09-10).** The alert step now pushes on a red nightly audit. For whoever rotates them: the bot token is from the same Telegram bot `MaintainerAlerter` uses, and the chat id is the maintainer's own Telegram chat id.
 

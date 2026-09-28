@@ -120,7 +120,7 @@ jobs:
     name: gate
     needs: [tests, coverage, static-analysis]
     if: always()
-    runs-on: ubuntu-26.04-arm
+    runs-on: ubuntu-slim
     steps:
       - name: Require all frontend checks
         run: |

@@ -36,7 +36,7 @@ env:
 
 jobs:
   composer-audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -53,7 +53,7 @@ jobs:
   # A separate job, not a second step: one ecosystem going red must not hide
   # whether the other one is clean.
   npm-audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -79,7 +79,7 @@ jobs:
   # dump moves through a pipe, same as the prod backup step) so the homelab's
   # docker-out-of-docker quirk doesn't apply here anyway.
   restore-db-exercise:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
     timeout-minutes: 15
     env:
       FIXTURE_COMPOSE: tests/fixtures/restore-db-ci-compose.yml
@@ -230,7 +230,7 @@ jobs:
   alert-on-failure:
     needs: [composer-audit, npm-audit, restore-db-exercise]
     if: always() && (needs.composer-audit.result == 'failure' || needs.npm-audit.result == 'failure' || needs.restore-db-exercise.result == 'failure' || inputs.test_alert == true)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Push a Telegram alert
         env:
