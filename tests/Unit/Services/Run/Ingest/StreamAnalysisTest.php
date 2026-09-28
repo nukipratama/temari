@@ -155,6 +155,21 @@ it('does not let a stride-like pace surge enter the selected steady segment', fu
         ->and($summary['steady_effort_hr_drift_bpm'])->toBe(0.0);
 });
 
+it('reads a pace fade at a held heart rate as positive v2 drift', function (): void {
+    $summary = $this->analysis->compute(
+        [],
+        defaultZones(),
+        segmentDriftSplits(
+            [420, 420, 420, 420, 420, 450, 450, 450, 450],
+            array_fill(0, 9, 150),
+        ),
+        170,
+    );
+
+    expect($summary['steady_effort_decoupling_pct'])->toEqualWithDelta(7.1, 0.1)
+        ->and($summary['steady_effort_hr_drift_bpm'])->toBe(0.0);
+});
+
 it('withholds v2 drift for interval splits without a comparable steady segment', function (): void {
     $summary = $this->analysis->compute(
         [],

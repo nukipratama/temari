@@ -619,7 +619,7 @@ class StreamAnalysis
         $avgHr = $hrSeconds / $movingSeconds;
         $flatPace = $movingSeconds / ($flatEquivalentDistance / 1000);
 
-        return ['avg_hr' => $avgHr, 'ratio' => $avgHr / $flatPace];
+        return ['avg_hr' => $avgHr, 'ratio' => $avgHr * $flatPace];
     }
 
     /**
