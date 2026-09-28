@@ -20,7 +20,7 @@ final class RunQuestionSeeds
     /** Beyond this the suggestions stop being suggestions and become a menu. */
     private const int MAX_SEEDS = 4;
 
-    /** Heart rate climbing by less than this over the run is noise, not drift. */
+    /** Heart rate climbing by less than this within the steady segment is noise. */
     private const float HR_DRIFT_BPM_FLOOR = 3.0;
 
     /** Step rate sagging by less than this is normal variation. */
@@ -61,8 +61,8 @@ final class RunQuestionSeeds
     public static function detects(RunQuestionTopic $topic, ActivityDetail $detail, StreamSummary $summary): bool
     {
         return match ($topic) {
-            RunQuestionTopic::HrDrift => ($summary->hrDriftBpm() ?? 0.0) >= self::HR_DRIFT_BPM_FLOOR,
-            RunQuestionTopic::Decoupling => $summary->hasDecouplingPct(),
+            RunQuestionTopic::HrDrift => ($summary->steadyEffortHrDriftBpm() ?? 0.0) >= self::HR_DRIFT_BPM_FLOOR,
+            RunQuestionTopic::Decoupling => $summary->hasSteadyEffortDecouplingPct(),
             RunQuestionTopic::NegativeSplit => $summary->negativeSplit() === true,
             RunQuestionTopic::CadenceDrop => ($summary->cadenceDropSpm() ?? 0.0) >= self::CADENCE_DROP_SPM_FLOOR,
             RunQuestionTopic::SlowestSplit => count($summary->perKm() ?? []) >= self::MIN_SPLITS,

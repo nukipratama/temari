@@ -59,6 +59,7 @@ function snapshot(
         form: -2.5,
         form_status: 'optimal',
         avg_decoupling: 3.2,
+        avg_decoupling_v2: 3.2,
         monotony: 1.2,
         strain: 384,
         is_current_week: false,
@@ -160,7 +161,7 @@ describe('WeekSection', () => {
                     ctl_42d: null,
                     form: null,
                     form_status: null,
-                    avg_decoupling: null,
+                    avg_decoupling_v2: null,
                     monotony: null,
                     strain: null,
                 })}
@@ -186,7 +187,7 @@ describe('WeekSection', () => {
         render(
             <WeekSection
                 bucket={bucket()}
-                snapshot={snapshot({ monotony: 2.1, avg_decoupling: 9.4 })}
+                snapshot={snapshot({ monotony: 2.1, avg_decoupling_v2: 9.4 })}
                 notes={{}}
                 moods={{}}
             />,

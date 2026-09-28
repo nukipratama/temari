@@ -37,6 +37,7 @@ describe('NoPlanCard', () => {
                     form: -2.5,
                     form_status: 'optimal',
                     avg_decoupling: 3.2,
+                    avg_decoupling_v2: 3.2,
                     monotony: 1.4,
                     strain: 392,
                 }}

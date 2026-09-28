@@ -132,7 +132,7 @@ it('returns only this run thread, never another run of the same user', function 
 
 it('suggests only questions this run data can answer', function (): void {
     $user = User::factory()->create();
-    $activity = runFor($user, ['stream_summary' => ['hr_drift_bpm' => 7.2]]);
+    $activity = runFor($user, ['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 7.2]]);
 
     $suggestions = $this->actingAs($user)
         ->getJson("/api/activities/{$activity->id}/questions")
@@ -156,7 +156,7 @@ it('falls back to the comparison question on a summary-state run', function (): 
 
 it('answers the demo account from the run own numbers, dispatching nothing', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
-    $activity = runFor($demo, ['stream_summary' => ['hr_drift_bpm' => 6.4]]);
+    $activity = runFor($demo, ['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4]]);
 
     $this->actingAs($demo)
         ->postJson("/api/activities/{$activity->id}/questions", ['question' => RunQuestionTopic::HrDrift->question()])
@@ -207,7 +207,7 @@ it('answers a real question rule-based when only the cost ceiling stops it', fun
         'kind' => 'run_question', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
         'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
     ]);
-    $activity = runFor($user, ['stream_summary' => ['hr_drift_bpm' => 6.4]]);
+    $activity = runFor($user, ['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4]]);
 
     $this->actingAs($user)
         ->postJson("/api/activities/{$activity->id}/questions", ['question' => RunQuestionTopic::HrDrift->question()])

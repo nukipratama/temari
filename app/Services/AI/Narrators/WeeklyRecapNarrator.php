@@ -84,10 +84,11 @@ class WeeklyRecapNarrator
         - weekly_trimp, monotony and strain are null when no run that week carried
           heart rate. That is unknown load, not zero load and not a rest week. Tell
           the week on distance and runs instead, and never report a null as a zero.
-        - avg_decoupling: average cardiac drift. avg_decoupling.relation says up,
-          down or flat already (up = HR drifted for the same pace, endurance still
-          needs work; down = good aerobic efficiency); avg_decoupling.pct is just
-          the size of it.
+        - avg_decoupling: the version 2 average across comparable steady-effort
+          segments, not the legacy whole-run reading. It is null with fewer than
+          two measured runs, which means no verdict, not zero drift. When present,
+          avg_decoupling.relation says up, down or flat already; avg_decoupling.pct
+          is just the size of it.
 
         Good examples of the shape, not sentences to reuse:
         - "28.4 km, up from 19 last week. biggest jump you've made all year, and

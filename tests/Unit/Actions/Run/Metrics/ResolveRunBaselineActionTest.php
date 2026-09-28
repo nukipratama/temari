@@ -22,7 +22,11 @@ function baselineRun(User $user, Carbon $when, float $distance, int $movingTime,
         'elapsed_time' => $movingTime,
         'average_heartrate' => $hr,
         'trimp_edwards' => $trimp,
-        'stream_summary' => $decoupling === null ? null : ['decoupling_pct' => $decoupling],
+        'stream_summary' => $decoupling === null ? null : [
+            'decoupling_pct' => $decoupling,
+            'drift_metric_version' => 2,
+            'steady_effort_decoupling_pct' => $decoupling,
+        ],
     ]);
 
     return $activity;
@@ -95,6 +99,14 @@ it('counts runs but nulls metrics that have no data', function () use ($asOf): v
         ->and($result['avg_pace_sec_per_km'])->toBe(300)
         ->and($result['avg_hr'])->toBeNull()
         ->and($result['avg_decoupling_pct'])->toBeNull();
+});
+
+it('does not use versionless whole-run decoupling in a new baseline', function () use ($asOf): void {
+    $user = User::factory()->create();
+    $activity = baselineRun($user, $asOf()->copy()->subDays(5), 5000.0, 1500, 150.0, 12.0);
+    $activity->detail->update(['stream_summary' => ['decoupling_pct' => 12.0]]);
+
+    expect(new ResolveRunBaselineAction()($user->id, $asOf())['avg_decoupling_pct'])->toBeNull();
 });
 
 it('counts a run with zero moving_time toward runs but leaves pace null', function () use ($asOf): void {

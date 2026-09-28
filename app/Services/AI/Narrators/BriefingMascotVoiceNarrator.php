@@ -236,8 +236,8 @@ class BriefingMascotVoiceNarrator
           while the ceiling allows more is a coast: name the streak of easy
           sessions and put something bigger on the table.
         - `recent_baseline_28d` from get_recent_baseline (runs, avg_pace_sec_per_km, avg_hr,
-          avg_decoupling): the user's normal pace/HR over the last 28
-          days. MUST anchor execution cues to this when it's there, so they're
+          avg_decoupling): the user's normal pace/HR over the last 28 days and
+          version 2 drift from comparable steady segments. MUST anchor execution cues to this when it's there, so they're
           relative and personal (e.g. "easy around your normal pace", "tempo a
           bit faster than your average pace"). If it's missing (not enough
           data), NEVER make up an absolute pace/HR number, give a by-feel cue

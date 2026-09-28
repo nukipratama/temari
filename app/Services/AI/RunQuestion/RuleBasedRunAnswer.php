@@ -40,20 +40,30 @@ final class RuleBasedRunAnswer
 
     private static function hrDrift(StreamSummary $summary): string
     {
-        $drift = self::oneDecimal($summary->hrDriftBpm() ?? 0.0);
+        $value = $summary->steadyEffortHrDriftBpm();
+        if ($value === null) {
+            return 'there is no comparable steady stretch here, so this run has no reliable heart-rate drift reading.';
+        }
 
-        return "your heart rate climbed {$drift} bpm from the first half to the second while you held the pace. "
+        $drift = self::oneDecimal($value);
+
+        return "your heart rate climbed {$drift} bpm across the two halves of the longest steady stretch. "
             .'that gap is the cost of the run, and it widens on the days you started tired or ran warm.';
     }
 
     private static function decoupling(StreamSummary $summary, ActivityDetail $detail): string
     {
-        $pct = self::oneDecimal($summary->decouplingPct() ?? 0.0);
+        $value = $summary->steadyEffortDecouplingPct();
+        if ($value === null) {
+            return 'there is no comparable steady stretch here, so this run has no reliable decoupling reading.';
+        }
+
+        $pct = self::oneDecimal($value);
         $heat = ($detail->weather_temp_c ?? 0) >= 30
             ? " it was {$detail->weather_temp_c} degrees out, so a chunk of that is your body shedding heat rather than your base slipping."
             : ' cool conditions, so that one is about the base rather than the weather.';
 
-        return "decoupling came in at {$pct}%, meaning your heart rate drifted up while pace stayed flat.".$heat;
+        return "decoupling came in at {$pct}% across the longest steady stretch, meaning your heart rate rose relative to grade-adjusted pace.".$heat;
     }
 
     private static function negativeSplit(StreamSummary $summary): string

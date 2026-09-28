@@ -316,7 +316,8 @@ it('RunInsightNarrator returns the claims payload on valid JSON, dropping only t
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => [
         'per_km' => [['km' => 1, 'pace' => '6:00'], ['km' => 2, 'pace' => '5:50'], ['km' => 3, 'pace' => '5:45']],
-        'decoupling_pct' => 12.0,
+        'drift_metric_version' => 2,
+        'steady_effort_decoupling_pct' => 12.0,
     ]]);
     $caller = fakeCaller(json_encode(['claims' => [
         ['anchor' => 'split:2', 'text' => 'Km 2 was the fastest.', 'value' => '5:50/km', 'delta' => null],
@@ -446,8 +447,9 @@ it('RunInsightNarrator renders nothing when every claim in the response is inval
 it('RunInsightNarrator caps claims at 3 even when the model returns more valid ones', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => [
-        'decoupling_pct' => 6.0,
-        'hr_drift_bpm' => 5.0,
+        'drift_metric_version' => 2,
+        'steady_effort_decoupling_pct' => 6.0,
+        'steady_effort_hr_drift_bpm' => 5.0,
         'cadence_drop_spm' => 3.0,
         'pace_variability_sec' => 20.0,
     ]]);
@@ -710,12 +712,21 @@ it('WeeklyRecapNarrator omits prev_narrative when the prior week recap is not ye
 it('WeekTotalsTool reads avg_decoupling with no signed field for the week', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-17', 'avg_decoupling' => 6.4,
+        'week_ending' => '2026-05-17', 'avg_decoupling' => 12.0, 'avg_decoupling_v2' => 6.4,
     ]);
 
     $context = new WeekTotalsTool($snap)->handle([]);
 
     expect($context['avg_decoupling'])->toBe(['pct' => 6.4, 'relation' => 'up']);
+});
+
+it('does not fall back to the historical weekly average when v2 is unavailable', function (): void {
+    $user = User::factory()->create();
+    $snap = WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-17', 'avg_decoupling' => 12.0,
+    ]);
+
+    expect(new WeekTotalsTool($snap)->handle([])['avg_decoupling'])->toBeNull();
 });
 
 it('WeekTotalsTool reads form with no signed field, relation=fatigued on negative form', function (): void {

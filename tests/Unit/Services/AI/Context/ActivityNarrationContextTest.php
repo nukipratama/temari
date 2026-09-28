@@ -22,7 +22,8 @@ it('builds the shared fields from a populated detail', function (): void {
         'weather_rain_detected' => true,
         'stream_summary' => [
             'time_in_zone_pct' => ['Z1' => 10, 'Z2' => 70, 'Z3' => 20],
-            'decoupling_pct' => 5.2,
+            'drift_metric_version' => 2,
+            'steady_effort_decoupling_pct' => 5.2,
             'negative_split' => true,
         ],
     ]);

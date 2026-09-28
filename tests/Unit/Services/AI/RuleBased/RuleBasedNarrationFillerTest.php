@@ -364,7 +364,7 @@ it('reads the run-insight claims off the run itself, not a seeded variant', func
         'average_cadence' => 85.0,
         'average_heartrate' => 150.0,
         'distance' => 5000.0,
-        'stream_summary' => ['decoupling_pct' => 6.5],
+        'stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 6.5],
     ]);
 
     $expected = RuleBasedRunInsights::claims($detail->fresh());

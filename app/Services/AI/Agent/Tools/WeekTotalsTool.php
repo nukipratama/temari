@@ -32,7 +32,8 @@ final class WeekTotalsTool extends NoArgumentTool
             ."week's numbers to compare against. pace_formatted and prev_pace_formatted (mm:ss/km) "
             .'are the only forms to quote -- matches what the app shows; the _sec_per_km twins are '
             .'raw seconds, for judging size, never for quoting. form and avg_decoupling each carry '
-            .'their own relation (form: fresh/fatigued/balanced; avg_decoupling: up/down/flat) -- '
+            .'their own relation (form: fresh/fatigued/balanced; avg_decoupling is the version 2 '
+            .'steady-segment average and carries up/down/flat) -- '
             .'there is no sign to read on either, that call is already made. If prev_* is missing, '
             ."there's no comparison week yet. weekly_trimp, monotony and strain are null when no "
             .'run that week carried heart rate: the load is unknown, which is not the same as zero.';
@@ -65,9 +66,9 @@ final class WeekTotalsTool extends NoArgumentTool
             'form_status' => $this->snapshot->form_status,
             'monotony' => $this->snapshot->monotony,
             'strain' => $this->snapshot->strain,
-            'avg_decoupling' => $this->snapshot->avg_decoupling === null ? null : [
-                'pct' => abs($this->snapshot->avg_decoupling),
-                'relation' => DecouplingBands::relationFor($this->snapshot->avg_decoupling),
+            'avg_decoupling' => $this->snapshot->avg_decoupling_v2 === null ? null : [
+                'pct' => abs($this->snapshot->avg_decoupling_v2),
+                'relation' => DecouplingBands::relationFor($this->snapshot->avg_decoupling_v2),
             ],
             'prev_runs' => $previous?->runs,
             'prev_distance_km' => $previous?->distance_km,

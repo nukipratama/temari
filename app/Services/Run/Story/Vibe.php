@@ -114,7 +114,7 @@ class Vibe
             ->get(['stream_summary']);
 
         $samples = $rows
-            ->map(fn (ActivityDetail $row): ?float => StreamSummary::fromArray($row->streamSummary())->decouplingPct())
+            ->map(fn (ActivityDetail $row): ?float => StreamSummary::fromArray($row->streamSummary())->steadyEffortDecouplingPct())
             ->filter(fn (?float $decoupling): bool => $decoupling !== null);
 
         if ($samples->isEmpty()) {

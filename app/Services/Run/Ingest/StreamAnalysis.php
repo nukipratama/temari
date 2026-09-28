@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use App\Services\Run\Metrics\IntervalDetector;
 use App\Services\Run\Metrics\PaceFormatter;
 
 class StreamAnalysis
@@ -32,6 +33,12 @@ class StreamAnalysis
 
     /** Distance (m) below which the trailing "sisa" segment is discarded as noise. */
     private const float PARTIAL_SPLIT_MIN_DISTANCE_M = 100;
+
+    private const int DRIFT_METRIC_VERSION = 2;
+
+    private const int DRIFT_MIN_SEGMENT_MOVING_SEC = 1200;
+
+    private const float DRIFT_WARMUP_MOVING_TIME_FRACTION = 0.1;
 
     /**
      * Aerobic decoupling compares HR/pace drift between halves, which only
@@ -123,6 +130,8 @@ class StreamAnalysis
         );
 
         $terrainReadable = self::terrainIsReadable($summary);
+
+        $summary = array_merge($summary, $this->steadyEffortDrift($splitsMetric ?? []));
 
         if ($terrainReadable && $this->isSustainedEffort($time, $heartrate, $velocity, $grade, $summary)) {
             $summary = array_merge($summary, $this->decoupling($time, $heartrate, $velocity, $grade));
@@ -485,6 +494,161 @@ class StreamAnalysis
             $splits,
             fn (array $s): bool => (float) ($s['distance'] ?? 0) >= self::FULL_KM_MIN_DISTANCE_M,
         ));
+    }
+
+    /**
+     * Version 2 cardiac drift compares the two halves of the longest steady
+     * full-kilometre segment after the fixed warm-up exclusion.
+     *
+     * @param  array<int, array<string, mixed>>  $splits
+     * @return array{drift_metric_version: int, steady_effort_decoupling_pct: float|null, steady_effort_hr_drift_bpm: float|null}
+     */
+    private function steadyEffortDrift(array $splits): array
+    {
+        $full = $this->fullKmSplits($splits);
+        $warmupTarget = self::movingTimeSec($splits) * self::DRIFT_WARMUP_MOVING_TIME_FRACTION;
+        $warmupTime = 0.0;
+        $warmupSplits = 0;
+        foreach ($full as $split) {
+            if ($warmupSplits >= 1 && $warmupTime >= $warmupTarget) {
+                break;
+            }
+            $warmupTime += max(0.0, (float) ($split['moving_time'] ?? 0));
+            $warmupSplits++;
+        }
+
+        $segments = [];
+        $segment = [];
+        $previousPace = null;
+        foreach (array_slice($full, $warmupSplits) as $split) {
+            $pace = $this->fullKmGradeAdjustedPaceSec($split);
+            if ($pace === null) {
+                if ($segment !== []) {
+                    $segments[] = $segment;
+                    $segment = [];
+                }
+                $previousPace = null;
+
+                continue;
+            }
+            if ($previousPace !== null && abs($pace - $previousPace) >= IntervalDetector::REP_PACE_GAP_SEC) {
+                $segments[] = $segment;
+                $segment = [];
+            }
+            $segment[] = $split;
+            $previousPace = $pace;
+        }
+        if ($segment !== []) {
+            $segments[] = $segment;
+        }
+
+        $steadyStats = null;
+        $steadyMovingTime = 0.0;
+        foreach ($segments as $candidate) {
+            $candidateMovingTime = self::movingTimeSec($candidate);
+            if ($candidateMovingTime < self::DRIFT_MIN_SEGMENT_MOVING_SEC
+                || $candidateMovingTime <= $steadyMovingTime
+                || count($candidate) < 2) {
+                continue;
+            }
+
+            $half = (int) ceil(count($candidate) / 2);
+            $first = $this->driftStats(array_slice($candidate, 0, $half));
+            $second = $this->driftStats(array_slice($candidate, $half));
+            if ($first !== null && $second !== null && $first['ratio'] > 0) {
+                $steadyMovingTime = $candidateMovingTime;
+                $steadyStats = ['first' => $first, 'second' => $second];
+            }
+        }
+
+        $decoupling = null;
+        $hrDrift = null;
+        if ($steadyStats !== null) {
+            $pct = ($steadyStats['second']['ratio'] / $steadyStats['first']['ratio'] - 1) * 100;
+            if (abs($pct) <= self::DECOUPLING_IMPLAUSIBLE_PCT) {
+                $decoupling = round($pct, 1);
+                $hrDrift = round($steadyStats['second']['avg_hr'] - $steadyStats['first']['avg_hr'], 1);
+            }
+        }
+
+        return [
+            'drift_metric_version' => self::DRIFT_METRIC_VERSION,
+            'steady_effort_decoupling_pct' => $decoupling,
+            'steady_effort_hr_drift_bpm' => $hrDrift,
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $splits
+     */
+    private static function movingTimeSec(array $splits): float
+    {
+        return array_sum(array_map(
+            fn (array $split): float => max(0.0, (float) ($split['moving_time'] ?? 0)),
+            $splits,
+        ));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $splits
+     * @return array{avg_hr: float, ratio: float}|null
+     */
+    private function driftStats(array $splits): ?array
+    {
+        $hrSeconds = 0.0;
+        $movingSeconds = 0.0;
+        $flatEquivalentDistance = 0.0;
+        foreach ($splits as $split) {
+            $splitMovingTime = (float) ($split['moving_time'] ?? 0);
+            $bpm = $split['average_heartrate'] ?? null;
+            if (! is_numeric($bpm)
+                || (float) $bpm < self::HR_PLAUSIBLE_MIN_BPM
+                || (float) $bpm > self::HR_PLAUSIBLE_MAX_BPM) {
+                return null;
+            }
+
+            $gradeAdjustedPace = $this->fullKmGradeAdjustedPaceSec($split);
+            if ($gradeAdjustedPace === null) {
+                return null;
+            }
+            $splitFlatEquivalentDistance = $splitMovingTime / $gradeAdjustedPace * 1000;
+            $hrSeconds += (float) $bpm * $splitMovingTime;
+            $movingSeconds += $splitMovingTime;
+            $flatEquivalentDistance += $splitFlatEquivalentDistance;
+        }
+        if ($movingSeconds <= 0 || $flatEquivalentDistance <= 0) {
+            return null;
+        }
+
+        $avgHr = $hrSeconds / $movingSeconds;
+        $flatPace = $movingSeconds / ($flatEquivalentDistance / 1000);
+
+        return ['avg_hr' => $avgHr, 'ratio' => $avgHr * $flatPace];
+    }
+
+    /**
+     * Pace adjusted for the split's average grade, or null when the split does
+     * not have enough distance, time or elevation data for a comparable pace.
+     *
+     * @param  array<string, mixed>  $split
+     */
+    private function fullKmGradeAdjustedPaceSec(array $split): ?float
+    {
+        $distance = (float) ($split['distance'] ?? 0);
+        $moving = (float) ($split['moving_time'] ?? 0);
+        $elevationDifference = $split['elevation_difference'] ?? null;
+        if ($distance < self::FULL_KM_MIN_DISTANCE_M || $moving <= 0 || ! is_numeric($elevationDifference)) {
+            return null;
+        }
+
+        $grade = (float) $elevationDifference / $distance;
+        if (abs($grade * 100) > self::TERRAIN_UNREADABLE_GRADE_PCT) {
+            return null;
+        }
+
+        $flatEquivalentDistance = $distance * $this->gradeCostFactor($grade);
+
+        return $flatEquivalentDistance > 0 ? $moving / ($flatEquivalentDistance / 1000) : null;
     }
 
     /**

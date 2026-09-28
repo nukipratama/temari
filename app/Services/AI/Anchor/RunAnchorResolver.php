@@ -41,8 +41,8 @@ final class RunAnchorResolver
     private static function metricResolves(string $name, StreamSummary $summary): bool
     {
         return match ($name) {
-            'decoupling' => $summary->hasDecouplingPct(),
-            'hr_drift' => $summary->hrDriftBpm() !== null,
+            'decoupling' => $summary->hasSteadyEffortDecouplingPct(),
+            'hr_drift' => $summary->steadyEffortHrDriftBpm() !== null,
             'cadence_drop' => $summary->cadenceDropSpm() !== null,
             'pace_variability' => $summary->paceVariabilitySec() !== null,
             'grade' => $summary->maxGradePct() !== null,

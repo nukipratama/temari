@@ -94,14 +94,16 @@ export function showsGrade(summary: StreamSummaryish): boolean {
 /** Whether `VitalsCard` draws the decoupling readout. */
 export function showsDecoupling(summary: StreamSummaryish): boolean {
     return (
-        summary.decoupling_pct != null &&
-        Number.isFinite(Number(summary.decoupling_pct))
+        summary.steady_effort_decoupling_pct != null &&
+        Number.isFinite(Number(summary.steady_effort_decoupling_pct))
     );
 }
 
 interface StreamSummaryish {
     max_grade_pct?: unknown;
+    /** Frozen legacy field; showsDecoupling never reads it. */
     decoupling_pct?: unknown;
+    steady_effort_decoupling_pct?: unknown;
     gap_pace?: unknown;
 }
 

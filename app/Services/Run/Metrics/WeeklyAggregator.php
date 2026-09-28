@@ -199,6 +199,7 @@ class WeeklyAggregator
         $runs = $weekDetails->count();
         $elapsedTimeSec = (int) round((float) $weekDetails->sum('elapsed_time'));
         $avgDecoupling = $this->averageDecoupling($weekDetails);
+        $avgDecouplingV2 = $this->averageSegmentDecoupling($weekDetails);
 
         // For the in-progress week, measure ATL/CTL as-of today rather than the
         // future Sunday, so days that have not happened yet are not zero-filled
@@ -222,6 +223,7 @@ class WeeklyAggregator
                 'form' => $summary['form'] ?? null,
                 'form_status' => $summary['form_status'] ?? null,
                 'avg_decoupling' => $avgDecoupling,
+                'avg_decoupling_v2' => $avgDecouplingV2,
                 'monotony' => $summary['monotony'] ?? null,
                 'strain' => $summary['strain'] ?? null,
             ],
@@ -268,8 +270,28 @@ class WeeklyAggregator
      */
     private function averageDecoupling(Enumerable $details): ?float
     {
+        return self::averageDecouplingReading($details, fn (StreamSummary $summary): ?float => $summary->decouplingPct());
+    }
+
+    /**
+     * The version 2 weekly average includes only runs with a measured steady-
+     * effort segment and requires the same two-run minimum as the legacy field.
+     *
+     * @param  Enumerable<int, ActivityDetail>  $details
+     */
+    private function averageSegmentDecoupling(Enumerable $details): ?float
+    {
+        return self::averageDecouplingReading($details, fn (StreamSummary $summary): ?float => $summary->steadyEffortDecouplingPct());
+    }
+
+    /**
+     * @param  Enumerable<int, ActivityDetail>  $details
+     * @param  callable(StreamSummary): ?float  $reading
+     */
+    private static function averageDecouplingReading(Enumerable $details, callable $reading): ?float
+    {
         $values = $details
-            ->map(fn (ActivityDetail $detail): ?float => StreamSummary::fromArray($detail->stream_summary)->decouplingPct())
+            ->map(fn (ActivityDetail $detail): ?float => $reading(StreamSummary::fromArray($detail->stream_summary)))
             ->filter(fn (?float $value): bool => $value !== null);
 
         if ($values->count() < self::MIN_RUNS_FOR_AVG_DECOUPLING) {

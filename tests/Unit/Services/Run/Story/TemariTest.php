@@ -21,6 +21,14 @@ beforeEach(function (): void {
     Bus::fake();
 });
 
+function steadyDrift(float $pct): array
+{
+    return [
+        'drift_metric_version' => 2,
+        'steady_effort_decoupling_pct' => $pct,
+    ];
+}
+
 it('persists a post_run story line with mood + sigil + null speech (LLM async)', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
@@ -101,12 +109,27 @@ it('picks gassed mood when decoupling is high (>12%)', function (): void {
         'distance' => 10_000,
         'stream_summary' => [
             'time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10],
-            'decoupling_pct' => 15.0,
+            ...steadyDrift(15.0),
         ],
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
         ->toBe(Temari::MOOD_LEMES);
+});
+
+it('does not call legacy whole-run drift a gassed verdict', function (): void {
+    $activity = Activity::factory()->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 10_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10],
+            'decoupling_pct' => 15.0,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
+        ->toBe(Temari::MOOD_ADEM);
 });
 
 it('does not flag decoupling at exactly 12% as gassed (boundary is strictly above)', function (): void {
@@ -115,7 +138,7 @@ it('does not flag decoupling at exactly 12% as gassed (boundary is strictly abov
         'distance' => 10_000,
         'stream_summary' => [
             'time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10],
-            'decoupling_pct' => 12.0,
+            ...steadyDrift(12.0),
         ],
         'weather_temp_c' => 25,
     ]);
@@ -130,7 +153,7 @@ it('flags decoupling at 12.01% as gassed', function (): void {
         'distance' => 10_000,
         'stream_summary' => [
             'time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10],
-            'decoupling_pct' => 12.01,
+            ...steadyDrift(12.01),
         ],
         'weather_temp_c' => 25,
     ]);
@@ -147,7 +170,7 @@ it('reads an inferred tempo (Z3-Z4 heavy, untagged) with high decoupling + neg s
         'distance' => 8_000,
         'stream_summary' => [
             'time_in_zone_pct' => ['Z1' => 4.7, 'Z2' => 13.5, 'Z3' => 47.1, 'Z4' => 34, 'Z5' => 0.6],
-            'decoupling_pct' => 14.0,
+            ...steadyDrift(14.0),
             'negative_split' => true,
         ],
         'weather_temp_c' => 25,
@@ -164,7 +187,7 @@ it('reads a tagged workout with high decoupling and no controlled finish as over
         'workout_type' => 3, // Strava "Workout" anchor is authoritative
         'stream_summary' => [
             'time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10],
-            'decoupling_pct' => 15.0,
+            ...steadyDrift(15.0),
             'negative_split' => false,
         ],
         'weather_temp_c' => 25,
@@ -181,7 +204,7 @@ it('picks blazing for a hard session finished under control (neg split, low deco
         'stream_summary' => [
             'time_in_zone_pct' => ['Z3' => 50, 'Z4' => 35],
             'negative_split' => true,
-            'decoupling_pct' => 3.0,
+            ...steadyDrift(3.0),
         ],
     ]);
 
@@ -196,7 +219,7 @@ it('picks blazing when decoupling is exactly at the 5% control ceiling', functio
         'stream_summary' => [
             'time_in_zone_pct' => ['Z3' => 50, 'Z4' => 35],
             'negative_split' => true,
-            'decoupling_pct' => 5.0,
+            ...steadyDrift(5.0),
         ],
         'weather_temp_c' => 25,
     ]);
@@ -212,7 +235,7 @@ it('drops to easy once decoupling is just past the 5% control ceiling', function
         'stream_summary' => [
             'time_in_zone_pct' => ['Z3' => 50, 'Z4' => 35],
             'negative_split' => true,
-            'decoupling_pct' => 5.01,
+            ...steadyDrift(5.01),
         ],
         'weather_temp_c' => 25,
     ]);
@@ -228,7 +251,7 @@ it('picks easy for a hard session that was controlled but not clean enough for b
         'stream_summary' => [
             'time_in_zone_pct' => ['Z3' => 50, 'Z4' => 35],
             'negative_split' => true,
-            'decoupling_pct' => 9.0,
+            ...steadyDrift(9.0),
         ],
         'weather_temp_c' => 25,
     ]);

@@ -88,7 +88,7 @@ class ResolveRunBaselineAction
             if ($detail->trimp_edwards !== null) {
                 $trimpValues[] = (float) $detail->trimp_edwards;
             }
-            $decoupling = StreamSummary::fromArray($detail->streamSummary())->decouplingPct();
+            $decoupling = StreamSummary::fromArray($detail->streamSummary())->steadyEffortDecouplingPct();
             if ($decoupling !== null) {
                 $decouplingValues[] = $decoupling;
             }

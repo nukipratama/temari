@@ -12,7 +12,8 @@ import { cn } from '@/lib/cn';
 // RunCardFactory, Story/Temari) so the frontend softens the same runs the
 // narrators already treat as heat-affected.
 const HOT_TEMP_C = 31;
-const DECOUPLING_HIGH = 8;
+// Mirrors DecouplingBands::HIGH, the version 2 steady-effort scale (app/Services/Run/Metrics/DecouplingBands.php).
+const DECOUPLING_HIGH = 12;
 
 /** The bar's span, wide enough to hold a resting and a maximal reading. */
 const HR_SCALE_MIN = 100;
@@ -128,7 +129,7 @@ export default function VitalsCard({
     }
 
     const decoupling = showsDecoupling(summary)
-        ? Number(summary.decoupling_pct)
+        ? Number(summary.steady_effort_decoupling_pct)
         : null;
 
     if (avgHr === null && tiles.length === 0 && decoupling === null) {

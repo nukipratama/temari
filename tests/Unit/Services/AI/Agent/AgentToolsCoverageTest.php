@@ -450,7 +450,7 @@ it('reads intensity_label heavy when Z3-Z5 together cover at least half the sess
 // relation, resolved from the sign alone.
 it('reads hr_drift from the stream summary with no signed field', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
-    $d->update(['stream_summary' => ['hr_drift_bpm' => 7.5]]);
+    $d->update(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 7.5]]);
 
     expect(new HrZonesTool($a, $d->fresh())->handle([])['hr_drift'])
         ->toBe(['bpm' => 7.5, 'relation' => 'up']);
@@ -458,7 +458,7 @@ it('reads hr_drift from the stream summary with no signed field', function (): v
 
 it('reads hr_drift with relation=down when HR fell across the run', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
-    $d->update(['stream_summary' => ['hr_drift_bpm' => -7.5]]);
+    $d->update(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => -7.5]]);
 
     expect(new HrZonesTool($a, $d->fresh())->handle([])['hr_drift'])
         ->toBe(['bpm' => 7.5, 'relation' => 'down']);
@@ -570,7 +570,7 @@ it('reads relative effort with no comparison when the history is still one run d
 // band rather than inventing a new threshold.
 it('reads decoupling with no signed field, relation=up on a real drift', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
-    $d->update(['stream_summary' => ['decoupling_pct' => 14.0]]);
+    $d->update(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 14.0]]);
 
     expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['decoupling'])
         ->toBe(['pct' => 14.0, 'relation' => 'up']);
@@ -578,7 +578,7 @@ it('reads decoupling with no signed field, relation=up on a real drift', functio
 
 it('reads decoupling with relation=down when cardiac drift improved', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
-    $d->update(['stream_summary' => ['decoupling_pct' => -14.0]]);
+    $d->update(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => -14.0]]);
 
     expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['decoupling'])
         ->toBe(['pct' => 14.0, 'relation' => 'down']);
@@ -596,7 +596,11 @@ it('reads the 28-day baseline and the load state from a prior run', function ():
         'elapsed_time' => 3600,
         'average_heartrate' => 150.0,
         'trimp_edwards' => 80.0,
-        'stream_summary' => ['decoupling_pct' => 6.0, 'time_in_zone_min' => ['Z2' => 40]],
+        'stream_summary' => [
+            'drift_metric_version' => 2,
+            'steady_effort_decoupling_pct' => 6.0,
+            'time_in_zone_min' => ['Z2' => 40],
+        ],
     ]);
 
     $baseline = new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction())->handle([])['recent_baseline_28d'];
@@ -1505,9 +1509,10 @@ it('exposes no signed numeric field across every tool payload touched by the #10
         'weather_temp_c' => null,
         'average_heartrate' => 150.0, // current run: 5 km in 1500 s, 5:00/km
         'stream_summary' => [
-            'hr_drift_bpm' => -7.5,
+            'drift_metric_version' => 2,
+            'steady_effort_hr_drift_bpm' => -7.5,
             'cadence_drop_spm' => -4.0,
-            'decoupling_pct' => -14.0,
+            'steady_effort_decoupling_pct' => -14.0,
             'max_grade_pct' => -6.0,
         ],
     ]);
@@ -1516,6 +1521,7 @@ it('exposes no signed numeric field across every tool payload touched by the #10
         'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
         'form' => -8.0,
         'avg_decoupling' => -6.4,
+        'avg_decoupling_v2' => -6.4,
     ]);
 
     $payloads = [
