@@ -94,7 +94,7 @@ On pull requests, the `changes` job in [.github/workflows/ci.yml](.github/workfl
 
 ## How a deploy runs
 
-The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on the `[self-hosted, homelab]` runner, only on `push` to `main`, after `ci-gate` (lint + pest + vitest + secret-scan) **and** `build` pass. `concurrency: deploy-prod` with `cancel-in-progress: false` serializes deploys. In order:
+The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on the `[self-hosted, homelab]` runner, only on `push` to `main`, after `ci-gate` (lint + pest + vitest + secret-scan) **and** `build` pass. `concurrency: deploy-prod` with `cancel-in-progress: false` serializes deploys. Main runs are not serialized against each other (each gets its own workflow concurrency group), so a merge burst tests in parallel; GitHub keeps one pending deploy, a newer one replacing it. Once the job holds the lock, its first step compares `github.sha` with `git ls-remote origin refs/heads/main` and, when main has moved on, skips every later step as a success with "Superseded by <sha>, skipped" in the summary, so a late-finishing older commit can never roll prod back behind a newer one. In order:
 
 1. Pull `ghcr.io/<owner>/<repo>/app:<git-sha>` (token widened to `packages: read`).
 2. Tag current `:latest` → `:previous` (rollback target) — **skipped** when the just-pulled image is already what `:latest` points to, so a re-run of a deploy for a sha that's already live doesn't collapse `:previous` onto the release it's re-running (that would make a rollback roll back to itself).
