@@ -6,9 +6,15 @@ import type { CalendarCell } from './useCalendar';
 export const hasRun = (cell: CalendarCell): boolean =>
     cell.distance_km !== null && cell.distance_km > 0;
 
-/** Number of runs behind a cell; 1 for a run day whose `runs` breakdown is thin. */
+/**
+ * Number of runs behind a cell: the `runs` breakdown when present, floored at
+ * 1 for a run day whose breakdown is thin. Takes the max of the two signals
+ * so a real logged run with no (or zero) distance — summed `distance_km`
+ * misses it, `hasRun` alone would read the day as run-less — still counts,
+ * still links, and isn't dropped from the month's stats.
+ */
 export const runCount = (cell: CalendarCell): number =>
-    hasRun(cell) ? Math.max(1, cell.runs.length) : 0;
+    Math.max(hasRun(cell) ? 1 : 0, cell.runs.length);
 
 export const kmLabel = (km: number): string => km.toFixed(1);
 
