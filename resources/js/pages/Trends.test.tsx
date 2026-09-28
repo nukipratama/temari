@@ -50,6 +50,11 @@ const BASE_PROPS: ComponentProps<typeof Trends> = {
         last_week_km: 22.1,
         this_week_runs: 3,
         last_week_runs: 4,
+        date_ranges: {
+            this_week: { start: '2026-05-11', end: '2026-05-14' },
+            last_week: { start: '2026-05-04', end: '2026-05-07' },
+            load: { start: '2026-05-08', end: '2026-05-14' },
+        },
     },
     narration: NARRATION,
     chartAnnotations: NO_ANNOTATIONS,

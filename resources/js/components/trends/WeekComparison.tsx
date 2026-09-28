@@ -13,6 +13,7 @@ import {
     formStatusTone,
     formStatusWord,
 } from '@/lib/formStatus';
+import { formatShortDateId } from '@/lib/pace';
 
 import { Stat, StatDelta } from './Stat';
 
@@ -100,10 +101,20 @@ function strainMeaning(strain: number | null, range: WeeklyRange): string {
 }
 
 /** Lowercase, matching UI chrome's own register — "wednesday", not "Wednesday". */
-function todayWeekday(): string {
-    return new Date()
-        .toLocaleDateString('en-US', { weekday: 'long' })
-        .toLowerCase();
+function dateRangeLabel(
+    range: WeekComparisonPayload['date_ranges']['this_week'],
+): string {
+    const start = formatShortDateId(range.start);
+    const end = formatShortDateId(range.end);
+    const [startDay, startMonth, startYear] = start.split(' ');
+    const [endDay, endMonth, endYear] = end.split(' ');
+
+    if (range.start === range.end) return end;
+    if (startYear !== endYear) return `${start}–${end}`;
+    if (startMonth === endMonth)
+        return `${startDay}–${endDay} ${endMonth} ${endYear}`;
+
+    return `${startDay} ${startMonth}–${endDay} ${endMonth} ${endYear}`;
 }
 
 interface WeekComparisonProps {
@@ -123,9 +134,13 @@ export default function WeekComparison({
     load,
     className,
 }: Readonly<WeekComparisonProps>) {
-    const weekday = todayWeekday();
-    const { this_week_km, last_week_km, this_week_runs, last_week_runs } =
-        weekComparison;
+    const {
+        this_week_km,
+        last_week_km,
+        this_week_runs,
+        last_week_runs,
+        date_ranges,
+    } = weekComparison;
 
     return (
         <section className={className}>
@@ -133,7 +148,8 @@ export default function WeekComparison({
                 vs last week
             </Eyebrow>
             <p className="mt-1 text-xs text-text-3">
-                through {weekday}, so it&apos;s the same slice of both weeks.
+                this week · {dateRangeLabel(date_ranges.this_week)}, last week ·{' '}
+                {dateRangeLabel(date_ranges.last_week)}
             </p>
             <Stat
                 className="mt-3"
@@ -149,7 +165,7 @@ export default function WeekComparison({
                 }
                 sub={
                     last_week_km !== null
-                        ? `${last_week_km.toFixed(1)} km by ${weekday} last week`
+                        ? `${last_week_km.toFixed(1)} km last week`
                         : undefined
                 }
             />
@@ -168,7 +184,7 @@ export default function WeekComparison({
                 }
                 sub={
                     last_week_runs !== null
-                        ? `${last_week_runs} by ${weekday} last week`
+                        ? `${last_week_runs} last week`
                         : undefined
                 }
             />
@@ -183,7 +199,7 @@ export default function WeekComparison({
                 <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap items-center gap-2.5">
                         <span className="text-label-micro text-text-3">
-                            form
+                            form as of {formatShortDateId(date_ranges.load.end)}
                         </span>
                         <FormChip status={load.form_status} />
                         <span className="font-mono text-xs text-text-3">
@@ -194,6 +210,9 @@ export default function WeekComparison({
                         {formStatusMeaning(load.form_status)}
                     </p>
                     <hr className="border-dashed border-border" />
+                    <p className="text-xs text-text-3">
+                        last 7 days · {dateRangeLabel(date_ranges.load)}
+                    </p>
                     <div className="grid grid-cols-3 gap-2">
                         <Stat
                             className={TILE}

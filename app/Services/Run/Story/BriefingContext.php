@@ -69,8 +69,9 @@ final readonly class BriefingContext
     #[NoDiscard]
     public static function forUser(User $user, Carbon $asOf, ?array $load = null, bool $historyLoading = false): self
     {
-        $thisWeekEnd = $asOf->copy()->endOfWeek(Carbon::SUNDAY);
-        $lastWeekEnd = $thisWeekEnd->copy()->subWeek();
+        $weekRanges = self::weekToDateRanges($asOf);
+        $thisWeekEnd = $weekRanges['this_week_end'];
+        $lastWeekEnd = $weekRanges['last_week_end'];
 
         // A fresh connect's early pass reads null snapshots and no live load,
         // the same neutral path a brand-new account with nothing yet already
@@ -98,8 +99,12 @@ final readonly class BriefingContext
         }
 
         $recovery = RecoveryWindow::forUser($user, $asOf);
-        $lastWeekStart = $lastWeekEnd->copy()->subDays(6)->startOfDay();
-        $lastWeekToDate = self::lastWeekToDate($user, $lastWeek, $lastWeekStart, $asOf);
+        $lastWeekToDate = self::lastWeekToDate(
+            $user,
+            $lastWeek,
+            $weekRanges['last_week_start'],
+            $weekRanges['last_week_through'],
+        );
         $volumeRampPct = self::volumeRampPct($thisWeek?->distance_km, $lastWeekToDate['km']);
         $fitnessTrend = self::fitnessTrend($byDate);
 
@@ -146,6 +151,31 @@ final readonly class BriefingContext
     }
 
     /**
+     * @return array{
+     *     this_week_start: Carbon,
+     *     this_week_end: Carbon,
+     *     last_week_start: Carbon,
+     *     last_week_end: Carbon,
+     *     last_week_through: Carbon
+     * }
+     */
+    public static function weekToDateRanges(Carbon $asOf): array
+    {
+        $thisWeekEnd = $asOf->copy()->endOfWeek(Carbon::SUNDAY);
+        $lastWeekEnd = $thisWeekEnd->copy()->subWeek();
+        $thisWeekStart = $thisWeekEnd->copy()->subDays(6)->startOfDay();
+        $lastWeekStart = $lastWeekEnd->copy()->subDays(6)->startOfDay();
+
+        return [
+            'this_week_start' => $thisWeekStart,
+            'this_week_end' => $thisWeekEnd,
+            'last_week_start' => $lastWeekStart,
+            'last_week_end' => $lastWeekEnd,
+            'last_week_through' => $lastWeekStart->copy()->addDays($asOf->dayOfWeekIso - 1)->endOfDay(),
+        ];
+    }
+
+    /**
      * {@see self::forUser()} for the briefing narrator's own tools
      * (`get_week_state`, the daily voice's own context build): resolves
      * `$historyLoading` and the live load itself, so both call sites stop
@@ -167,13 +197,11 @@ final readonly class BriefingContext
      *
      * @return array{runs: int|null, km: float|null}
      */
-    private static function lastWeekToDate(User $user, ?WeeklySnapshot $lastWeek, Carbon $lastWeekStart, Carbon $asOf): array
+    private static function lastWeekToDate(User $user, ?WeeklySnapshot $lastWeek, Carbon $lastWeekStart, Carbon $throughDate): array
     {
         if ($lastWeek === null) {
             return ['runs' => null, 'km' => null];
         }
-
-        $throughDate = $lastWeekStart->copy()->addDays($asOf->dayOfWeekIso - 1)->endOfDay();
 
         $totals = Activity::analyzedJoinConstraint(
             ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),

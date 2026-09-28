@@ -115,6 +115,25 @@ it('does not compare a partial week against a full one, either in the numbers or
         ->and($ctx->toArray()['volume_ramp'])->toBe(['pct' => 0.0, 'relation' => 'flat']);
 });
 
+it('uses Sunday-ending calendar weeks for the current and matching prior ranges', function (
+    string $asOfDate,
+    string $thisWeekStart,
+    string $lastWeekStart,
+    string $lastWeekThrough,
+    string $thisWeekEnd,
+): void {
+    $ranges = BriefingContext::weekToDateRanges(Carbon::parse($asOfDate, 'Asia/Jakarta'));
+
+    expect($ranges['this_week_start']->toDateString())->toBe($thisWeekStart)
+        ->and($ranges['last_week_start']->toDateString())->toBe($lastWeekStart)
+        ->and($ranges['last_week_through']->toDateString())->toBe($lastWeekThrough)
+        ->and($ranges['this_week_end']->toDateString())->toBe($thisWeekEnd);
+})->with([
+    'Monday' => ['2026-09-28', '2026-09-28', '2026-09-21', '2026-09-21', '2026-10-04'],
+    'Sunday' => ['2026-10-04', '2026-09-28', '2026-09-21', '2026-09-27', '2026-10-04'],
+    'month and year rollover' => ['2027-01-01', '2026-12-28', '2026-12-21', '2026-12-25', '2027-01-03'],
+]);
+
 // Regression for #1009 (reopened): a raw signed volume_ramp_pct used to reach
 // the briefing narrator with no sign convention stated anywhere in the
 // prompt. `volume_ramp` now carries the magnitude and its own relation, so

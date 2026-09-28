@@ -17,6 +17,8 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
+afterEach(fn () => Carbon::setTestNow());
+
 function seedTrendsTrimpDay(User $user, float $trimp): void
 {
     $activity = Activity::factory()->for($user)->create();
@@ -71,6 +73,37 @@ it('ships the week comparison from BriefingContext, through the same weekday', f
         ->assertJsonPath('props.weekComparison.this_week_km', 18.4)
         ->assertJsonPath('props.weekComparison.this_week_runs', 3);
 });
+
+it('ships app-local Y-m-d ranges for the calendar and rolling load windows', function (
+    string $today,
+    array $dateRanges,
+): void {
+    Carbon::setTestNow(Carbon::parse($today.' 12:00:00', 'Asia/Jakarta'));
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'weekComparison'))
+        ->assertSuccessful()
+        ->assertJsonPath('props.weekComparison.date_ranges', $dateRanges)
+        ->assertJsonPath('props.weekComparison.this_week_km', null)
+        ->assertJsonPath('props.weekComparison.last_week_km', null);
+})->with([
+    'partial Monday week with empty history' => ['2026-09-28', [
+        'this_week' => ['start' => '2026-09-28', 'end' => '2026-09-28'],
+        'last_week' => ['start' => '2026-09-21', 'end' => '2026-09-21'],
+        'load' => ['start' => '2026-09-22', 'end' => '2026-09-28'],
+    ]],
+    'complete Sunday week' => ['2026-10-04', [
+        'this_week' => ['start' => '2026-09-28', 'end' => '2026-10-04'],
+        'last_week' => ['start' => '2026-09-21', 'end' => '2026-09-27'],
+        'load' => ['start' => '2026-09-28', 'end' => '2026-10-04'],
+    ]],
+    'month and year rollover' => ['2027-01-01', [
+        'this_week' => ['start' => '2026-12-28', 'end' => '2027-01-01'],
+        'last_week' => ['start' => '2026-12-21', 'end' => '2026-12-25'],
+        'load' => ['start' => '2026-12-26', 'end' => '2027-01-01'],
+    ]],
+]);
 
 it('never surfaces another user\'s week comparison', function (): void {
     $user = User::factory()->create();
