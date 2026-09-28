@@ -68,7 +68,7 @@ Route::post('/client-errors', ClientErrorController::class)
 // their Strava has to be able to read these before there is an account.
 Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
-Route::get('/ai-use', [LegalController::class, 'aiUse'])->name('legal.ai-use');
+Route::permanentRedirect('/ai-use', '/privacy#notes')->name('legal.ai-use');
 Route::get('/training-disclaimer', [LegalController::class, 'trainingDisclaimer'])->name('legal.training-disclaimer');
 
 Route::get('/', RootController::class)->middleware('onboarded')->name('dashboard');

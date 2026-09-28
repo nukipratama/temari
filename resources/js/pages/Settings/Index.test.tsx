@@ -107,7 +107,6 @@ describe('Settings', () => {
         for (const [label, href] of [
             ['terms of use', '/terms'],
             ['privacy policy', '/privacy'],
-            ['how temari uses AI', '/ai-use'],
             ['training disclaimer', '/training-disclaimer'],
         ]) {
             expect(

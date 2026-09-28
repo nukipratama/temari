@@ -16,7 +16,7 @@ const DISCLAIMER = {
 };
 
 function disclosurePanel() {
-    const trigger = screen.getByRole('button', { name: /data & AI use/ });
+    const trigger = screen.getByRole('button', { name: /the fine print/ });
     return document.getElementById(trigger.getAttribute('aria-controls') ?? '');
 }
 
@@ -70,7 +70,7 @@ describe('Login', () => {
         const nav = screen.getByRole('navigation', { name: 'Legal' });
         expect(nav).toHaveTextContent('terms');
         expect(nav).toHaveTextContent('privacy');
-        expect(nav).toHaveTextContent('how temari uses AI');
+        expect(nav).not.toHaveTextContent('AI');
         expect(nav).toHaveTextContent('training disclaimer');
         expect(screen.getByRole('link', { name: 'privacy' })).toHaveAttribute(
             'href',
@@ -159,7 +159,7 @@ describe('Login', () => {
         ).toHaveAttribute('href', '/training-disclaimer');
     });
 
-    it('keeps the data & AI use disclosure open by default, and lets it be collapsed', async () => {
+    it('keeps the fine-print disclosure open by default, and lets it be collapsed', async () => {
         const userEvent = (await import('@testing-library/user-event')).default;
         render(
             <Login
@@ -169,7 +169,7 @@ describe('Login', () => {
             />,
         );
 
-        const trigger = screen.getByRole('button', { name: /data & AI use/ });
+        const trigger = screen.getByRole('button', { name: /the fine print/ });
         expect(trigger).toHaveAttribute('aria-expanded', 'true');
         expect(screen.getByText(DATA_USE.points[0])).toBeVisible();
 
@@ -182,7 +182,7 @@ describe('Login', () => {
     it('omits the disclosure entirely when the server sends no copy', () => {
         render(<Login authStravaUrl="/x" />);
 
-        expect(screen.queryByText(/data & AI use/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/the fine print/)).not.toBeInTheDocument();
         expect(
             screen.queryByText(/read the whole disclaimer/),
         ).not.toBeInTheDocument();

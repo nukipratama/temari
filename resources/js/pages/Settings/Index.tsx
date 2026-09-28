@@ -67,7 +67,6 @@ interface SettingsProps {
 const LEGAL_ROWS: ReadonlyArray<{ href: string; label: string }> = [
     { href: '/terms', label: 'terms of use' },
     { href: '/privacy', label: 'privacy policy' },
-    { href: '/ai-use', label: 'how temari uses AI' },
     { href: '/training-disclaimer', label: 'training disclaimer' },
 ];
 

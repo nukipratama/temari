@@ -50,9 +50,11 @@ describe('BareShell', () => {
         });
         render(<BareShell>content</BareShell>);
 
-        expect(screen.queryByText(/resting for a bit/)).not.toBeInTheDocument();
         expect(
-            screen.queryByText(/Still processing in the background/),
+            screen.queryByText(/catching her breath/),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/still reading through your runs/),
         ).not.toBeInTheDocument();
         expect(
             screen.queryByText(/pull from Strava is paused/),

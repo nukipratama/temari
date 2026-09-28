@@ -166,7 +166,7 @@ describe('AskAboutRun', () => {
         ).toBeInTheDocument();
     });
 
-    it('says generation is paused rather than pretending the question landed', async () => {
+    it('says temari is catching her breath rather than pretending the question landed', async () => {
         stubApi(
             { questions: [], suggestions: [] },
             new Response('{"error":"generation_paused"}', { status: 409 }),
@@ -180,7 +180,7 @@ describe('AskAboutRun', () => {
         fireEvent.click(screen.getByRole('button', { name: /ask/ }));
 
         expect(
-            await screen.findByText(/generation is paused/),
+            await screen.findByText(/catching my breath/),
         ).toBeInTheDocument();
     });
 

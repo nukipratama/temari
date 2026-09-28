@@ -33,8 +33,8 @@ export default function AiCatchingUpBanner() {
                     aria-hidden
                 />
                 <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
-                    Still processing in the background. Check back in a bit, the
-                    narration will catch up automatically.
+                    temari&apos;s still reading through your runs. check back in
+                    a bit, your notes will catch up on their own.
                 </p>
             </div>
         </div>

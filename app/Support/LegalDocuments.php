@@ -5,17 +5,19 @@ declare(strict_types=1);
 namespace App\Support;
 
 /**
- * Copy for the four public legal pages. Every claim here has to be one the code
+ * Copy for the three public legal pages. Every claim here has to be one the code
  * actually keeps, so the two statements that already exist in code are pulled in
  * rather than paraphrased: {@see DataUseStatement} for AI data use and
  * {@see TrainingDisclaimer} for the not-medical-advice position.
  *
- * @phpstan-type Section array{heading: string, paragraphs: list<string>}
+ * @phpstan-type Section array{id?: string, heading: string, paragraphs: list<string>}
  * @phpstan-type Document array{slug: string, title: string, updated: string, intro: string, sections: list<Section>}
  */
 final class LegalDocuments
 {
     public const string UPDATED = '2026-08-14';
+
+    public const string NOTES_SECTION_ID = 'notes';
 
     private const string STRAVA_REVOKE_URL = 'https://www.strava.com/settings/apps';
 
@@ -47,7 +49,7 @@ final class LegalDocuments
                     'heading' => 'What it costs',
                     'paragraphs' => [
                         'Nothing. There is no fee, no subscription, no payment path in the app at all, and no advertising.',
-                        'The running costs, mostly the AI text, are paid by the person who runs it, out of pocket, against a daily ceiling. When that ceiling is reached, text generation pauses until the next day. Blocks waiting on it say they are pending rather than inventing something to show you.',
+                        'Temari is paid for by the one person who runs it.',
                     ],
                 ],
                 [
@@ -114,18 +116,29 @@ final class LegalDocuments
                     'paragraphs' => [
                         'No other Temari account, ever. Reads are scoped to the signed-in user, and that is covered by tests rather than by intention.',
                         'It is not sold, and it is not handed to advertisers or data brokers. There is no advertising and no third-party analytics or tracking script in the app.',
-                        'A small number of services are used to make specific features work, and they only receive what that feature needs: Azure OpenAI receives your run numbers so it can write text about them; Open-Meteo receives a coordinate and a timestamp to return the weather for a run; OpenStreetMap\'s Nominatim receives a start coordinate to name the place; Telegram receives your messages only if you connect it; your browser vendor\'s push service receives a notification payload only if you turn push on.',
+                        'A small number of services are used to make specific features work, and they only receive what that feature needs: a third-party AI service receives your run numbers so it can write your notes, and does not train on them; Open-Meteo receives a coordinate and a timestamp to return the weather for a run; OpenStreetMap\'s Nominatim receives a start coordinate to name the place; Telegram receives your messages only if you connect it; your browser vendor\'s push service receives a notification payload only if you turn push on.',
                     ],
                 ],
                 [
-                    'heading' => DataUseStatement::HEADLINE.' and AI',
+                    'heading' => DataUseStatement::HEADLINE,
                     'paragraphs' => DataUseStatement::points(),
+                ],
+                [
+                    'id' => self::NOTES_SECTION_ID,
+                    'heading' => 'How Temari writes your notes',
+                    'paragraphs' => [
+                        'Most of the words in Temari, the notes on your runs, weeks and plan, are written by an AI service from your numbers. Each note is written once and stored, so re-reading a page sends nothing.',
+                        'What goes out is the run\'s numbers and the context Temari has already worked out around them: your recent averages, how this run compares to your own history, your load and streak.',
+                        'Writing fresh notes has a daily limit. Past it, notes come from a fixed set of lines built from the same numbers, and the page does not mark which is which.',
+                        'The notes are not checked before you read them, so they can misread a run or overstate a pattern. The numbers they describe are the reliable part.',
+                        'There is no per-account switch for AI text today, and this page would rather say so than imply one exists. If you do not want your runs read this way, do not connect the account, or delete it, which removes the stored notes with everything else.',
+                    ],
                 ],
                 [
                     'heading' => 'Deleting your account',
                     'paragraphs' => [
                         'Settings has a delete button. It removes your account and everything hanging off it, including activities, their details and streams, cards, records, weekly and monthly snapshots, notification subscriptions and every piece of text Temari wrote about you, and it unlinks your Strava connection.',
-                        'One narrow exception, stated plainly because the sentence above would otherwise be untrue: the AI cost ledger is kept. Those rows are spending records rather than running data, and to stay attributable after the account is gone they keep your name and your Strava athlete id alongside the cost. They hold no activity data. If you want that removed too, ask.',
+                        'One thing stays: a record of what your notes cost to write, which keeps your name and your Strava athlete id but no activity data.',
                         'Deleting here does not delete anything in Strava. Your activities are yours and stay there.',
                     ],
                 ],
@@ -140,45 +153,6 @@ final class LegalDocuments
                     'paragraphs' => [
                         'On a server the operator runs and administers personally, not on a managed platform. Traffic reaches it over HTTPS.',
                         'Data is kept for as long as your account exists. There is no scheduled purge, because the value of the app is the history.',
-                    ],
-                ],
-            ],
-        ];
-    }
-
-    /**
-     * @return Document
-     */
-    public static function aiUse(): array
-    {
-        return [
-            'slug' => 'ai-use',
-            'title' => 'how Temari uses AI',
-            'updated' => self::UPDATED,
-            'intro' => 'Most of the words in Temari are written by a language model, from your numbers, at the moment you first see them. This page says exactly what that involves.',
-            'sections' => [
-                [
-                    'heading' => DataUseStatement::HEADLINE,
-                    'paragraphs' => DataUseStatement::points(),
-                ],
-                [
-                    'heading' => 'What is sent, and when',
-                    'paragraphs' => [
-                        'What goes to the model is the run\'s numbers and the context Temari has already computed around them: your recent averages, how this run compares to your own history, your load and streak state. It is sent when a block of text is first generated, not on every page load, and the result is stored so re-reading a page costs nothing.',
-                        'Nothing is sent to the model once the daily spend ceiling has been reached. Blocks written past that point come from a fixed set of lines Temari falls back to, built from the same numbers but chosen by a rule rather than written fresh. There is no marker on the page saying which of the two you are reading.',
-                    ],
-                ],
-                [
-                    'heading' => 'It can be wrong',
-                    'paragraphs' => [
-                        'The text is generated, not checked. Nobody reads it before you do. It can misread a run, overstate a pattern, or be confidently wrong about something you know better than it does. The numbers it is describing are the reliable part.',
-                        TrainingDisclaimer::TEXT,
-                    ],
-                ],
-                [
-                    'heading' => 'Turning it off',
-                    'paragraphs' => [
-                        'There is no per-account switch for AI text today, and this page would rather say so than imply one exists. If you do not want a model reading your runs, do not connect the account, or delete it, which removes the stored text with everything else.',
                     ],
                 ],
             ],

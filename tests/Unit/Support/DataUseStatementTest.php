@@ -4,24 +4,24 @@ declare(strict_types=1);
 
 use App\Support\DataUseStatement;
 
-it('states that AI use is inference and never training', function (): void {
+it('states that the AI service only writes the notes and never trains on the data', function (): void {
     $statement = implode(' ', DataUseStatement::points());
 
-    expect($statement)->toContain('Azure OpenAI')
-        ->and($statement)->toContain('inference')
-        ->and($statement)->toContain('trains or fine-tunes');
+    expect($statement)->toContain('third-party AI service')
+        ->and($statement)->toContain('trains any AI model')
+        ->and($statement)->not->toMatch('/azure|openai|\bgpt/i');
 });
 
 it('states that activity data is never shown to another account', function (): void {
     expect(implode(' ', DataUseStatement::points()))->toContain('no other account can see it');
 });
 
-it('names the AI cost ledger that UserEraser deliberately keeps', function (): void {
+it('points deletion details at the privacy policy instead of restating the retained ledger', function (): void {
     $statement = implode(' ', DataUseStatement::points());
 
-    expect($statement)->toContain('AI cost ledger')
-        ->and($statement)->toContain('Strava athlete id')
-        ->and($statement)->toContain('no activity data');
+    expect($statement)->toContain('privacy policy')
+        ->and($statement)->not->toContain('ledger')
+        ->and($statement)->not->toContain('athlete id');
 });
 
 it('keeps the copy free of em-dashes like the rest of the voice', function (): void {
