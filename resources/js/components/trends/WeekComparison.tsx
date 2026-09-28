@@ -13,7 +13,7 @@ import {
     formStatusTone,
     formStatusWord,
 } from '@/lib/formStatus';
-import { formatShortDateId } from '@/lib/pace';
+import { ID_MONTH_SHORT, formatShortDateId } from '@/lib/pace';
 
 import { Stat, StatDelta } from './Stat';
 
@@ -100,21 +100,26 @@ function strainMeaning(strain: number | null, range: WeeklyRange): string {
     return `${value} over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
 }
 
-/** Lowercase, matching UI chrome's own register — "wednesday", not "Wednesday". */
+function dateParts(iso: string): { day: number; month: string; year: string } {
+    const [year, month, day] = iso.split('-');
+
+    return { day: Number(day), month: ID_MONTH_SHORT[Number(month) - 1], year };
+}
+
 function dateRangeLabel(
     range: WeekComparisonPayload['date_ranges']['this_week'],
 ): string {
-    const start = formatShortDateId(range.start);
-    const end = formatShortDateId(range.end);
-    const [startDay, startMonth, startYear] = start.split(' ');
-    const [endDay, endMonth, endYear] = end.split(' ');
+    if (range.start === range.end) return formatShortDateId(range.end);
 
-    if (range.start === range.end) return end;
-    if (startYear !== endYear) return `${start}–${end}`;
-    if (startMonth === endMonth)
-        return `${startDay}–${endDay} ${endMonth} ${endYear}`;
+    const start = dateParts(range.start);
+    const end = dateParts(range.end);
 
-    return `${startDay} ${startMonth}–${endDay} ${endMonth} ${endYear}`;
+    if (start.year !== end.year)
+        return `${formatShortDateId(range.start)}–${formatShortDateId(range.end)}`;
+    if (start.month === end.month)
+        return `${start.day}–${end.day} ${end.month} ${end.year}`;
+
+    return `${start.day} ${start.month}–${end.day} ${end.month} ${end.year}`;
 }
 
 interface WeekComparisonProps {
