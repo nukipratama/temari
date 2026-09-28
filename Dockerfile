@@ -118,7 +118,6 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
 
 COPY resources ./resources
 COPY public ./public
-# scripts/ carries build-icon-bundle.mjs, which `npm run build` runs via prebuild.
 COPY scripts ./scripts
 COPY --from=vendor /var/www/html/vendor ./vendor
 RUN npm run build

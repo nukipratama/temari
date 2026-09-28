@@ -23,11 +23,13 @@ use Override;
  * One day of a user's periodized plan ({@see \App\Services\Run\Plan\Periodizer}).
  * `unique(user_id, date)` — the app's first clean single-purpose daily-grain
  * unique table. A `pinned` row is a fixed constraint the periodizer must plan
- * around and never overwrite; the readiness clamp, volume redistribution and
- * segment structure ({@see \App\Services\Run\Plan\SegmentGenerator}) are all
- * render-time-only and never mutate this row (see
+ * around and never overwrite; volume redistribution and segment structure
+ * ({@see \App\Services\Run\Plan\SegmentGenerator}) are render-time-only and
+ * never stored, but the readiness clamp outcome (`clamped_km`/
+ * `rest_clamped_at`/`eased_pace_sec_per_km`) is persisted once by
+ * {@see \App\Services\Run\Plan\RestClampRecorder} (see
  * `docs/features/plan-periodizer.md`). `status`/`compliance_score`/
- * `ran_anyway` are the one exception — written once, by `plan:score-compliance`
+ * `ran_anyway` are written once, by `plan:score-compliance`
  * (daily), the morning after a day passes; `skipped` is written earlier,
  * whenever the athlete explicitly excuses the day via `PlanController::update()`.
  *
