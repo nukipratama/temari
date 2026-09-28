@@ -67,7 +67,7 @@ class StaggerBackfillAction
         $now = Carbon::now();
 
         $cached = Cache::get($key);
-        $slotAt = (is_numeric($cached) && (int) $cached > $now->getTimestamp()) ? Carbon::createFromTimestamp((int) $cached) : $now->copy();
+        $slotAt = (is_numeric($cached) && (int) $cached > $now->getTimestamp()) ? Carbon::createFromTimestamp((int) $cached, $now->getTimezone()) : $now->copy();
         $delaySec = (int) $now->diffInSeconds($slotAt, absolute: true);
 
         Cache::put($key, $slotAt->copy()->addSeconds($staggerSec)->getTimestamp(), $now->copy()->addHours(self::SLOT_CACHE_TTL_HOURS));
