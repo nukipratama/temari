@@ -20,6 +20,7 @@ export default function SeasonTimeline({
     weekFocus,
     dayNarration,
     focusDay = null,
+    selectedDay = null,
     onMove,
     onSkip,
 }: Readonly<{
@@ -33,15 +34,18 @@ export default function SeasonTimeline({
     dayNarration: Record<string, AnalysisPayload>;
     /** The day the visitor arrived asking for, from `/plan?day=`. */
     focusDay?: string | null;
+    /** The day selected earlier in this tab session. */
+    selectedDay?: string | null;
     onMove: (day: PlanDay, toDate: string) => void;
     onSkip: (day: PlanDay) => void;
 }>) {
     const current = weeks.find((week) => week.type === 'current') ?? null;
+    const initialDay = focusDay ?? selectedDay;
     const [shownWeekStart, setShownWeekStart] = useState(
         () =>
             weeks.find((week) =>
                 detailByWeekStart[week.week_start]?.days.some(
-                    (day) => day.date === focusDay,
+                    (day) => day.date === initialDay,
                 ),
             )?.week_start ??
             current?.week_start ??
@@ -76,6 +80,7 @@ export default function SeasonTimeline({
                     focus={shown === current ? weekFocus : null}
                     dayNarration={dayNarration}
                     focusDay={pendingFocusDay}
+                    selectedDay={selectedDay}
                     onBack={
                         shown === current
                             ? undefined

@@ -13,6 +13,7 @@ import WeekStrip from '@/components/plan/WeekStrip';
 import FlagWrong from '@/components/temari/FlagWrong';
 import Chip from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
+import { rememberPlanSelectedDay } from '@/lib/navigationMemory';
 import { formatNaiveMonthDayId } from '@/lib/pace';
 import {
     complianceTally,
@@ -65,9 +66,9 @@ function WeekMarks({
 /**
  * One week laid out open: its header, how it has gone so far, the week's
  * adaptation note in full, a strip of seven day tiles and, below it, the
- * selected day's panel. Opens on the day `/plan?day=` asked for when it falls
- * in this week, else today, else the first session still to run, else the
- * first day.
+ * selected day's panel. Opens on the day `/plan?day=` asked for or the day
+ * selected earlier in this tab session when either falls in this week, else
+ * today, else the first session still to run, else the first day.
  */
 export default function WeekView({
     week,
@@ -78,6 +79,7 @@ export default function WeekView({
     focus,
     dayNarration,
     focusDay = null,
+    selectedDay = null,
     onBack,
     onMove,
     onSkip,
@@ -93,6 +95,8 @@ export default function WeekView({
     dayNarration: Record<string, AnalysisPayload>;
     /** The day the visitor arrived asking for, from `/plan?day=`. */
     focusDay?: string | null;
+    /** The day selected earlier in this tab session. */
+    selectedDay?: string | null;
     /** Returns to the current week; set only while another week is shown. */
     onBack?: () => void;
     onMove: (day: PlanDay, toDate: string) => void;
@@ -102,7 +106,7 @@ export default function WeekView({
     const panelId = `${baseId}-panel`;
     const tabId = (date: string) => `${baseId}-day-${date}`;
     const [selectedDate, setSelectedDate] = useState(() =>
-        initialDate(days, today, focusDay),
+        initialDate(days, today, focusDay ?? selectedDay),
     );
     const panelRef = useRef<HTMLDivElement>(null);
     const focusHere = days.some((day) => day.date === focusDay);
@@ -118,6 +122,11 @@ export default function WeekView({
         selected === null ? null : (dayNarration[selected.date] ?? null);
     const tally = complianceTally(days);
     const adherence = computeAdherence(days);
+
+    const selectDate = (date: string) => {
+        setSelectedDate(date);
+        rememberPlanSelectedDay(date);
+    };
 
     return (
         <section aria-label={`week ${weekNumber}`}>
@@ -190,7 +199,7 @@ export default function WeekView({
                         days={days}
                         today={today}
                         selectedDate={selectedDate}
-                        onSelect={setSelectedDate}
+                        onSelect={selectDate}
                         tabId={tabId}
                         panelId={panelId}
                     />

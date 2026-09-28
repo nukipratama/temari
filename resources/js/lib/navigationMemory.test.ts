@@ -6,9 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NavigationPage } from './navigationMemory';
 
 import {
+    clearNavigationMemory,
     readContextualOrigin,
+    readPlanSelectedDay,
+    readTabMemory,
+    rememberPlanSelectedDay,
     startContextualBackSession,
     writeContextualOrigin,
+    writeTabMemory,
 } from './navigationMemory';
 
 function eventHandler(name: 'before' | 'navigate' | 'finish') {
@@ -20,9 +25,9 @@ function eventHandler(name: 'before' | 'navigate' | 'finish') {
     return call[1];
 }
 
-function fireBefore(url: string) {
+function fireBefore(url: string, only: string[] = []) {
     eventHandler('before')({
-        detail: { visit: { url: new URL(url, window.location.origin) } },
+        detail: { visit: { url: new URL(url, window.location.origin), only } },
     } as GlobalEvent<'before'>);
 }
 
@@ -63,9 +68,15 @@ describe('navigationMemory', () => {
             scrollY: 300,
             tab: 'plan',
         });
+        writeTabMemory('plan', {
+            href: '/plan?day=2026-06-16',
+            scrollY: 312,
+            selectedDay: '2026-06-16',
+        });
         startContextualBackSession(PLAN_PAGE, router);
 
         expect(readContextualOrigin()).toBeNull();
+        expect(readTabMemory('plan')).toBeNull();
     });
 
     it('captures the internal route and scroll when a tab opens a run', () => {
@@ -85,6 +96,10 @@ describe('navigationMemory', () => {
             scrollY: 312,
             tab: 'plan',
         });
+        expect(readTabMemory('plan')).toEqual({
+            href: '/plan?day=2026-06-16',
+            scrollY: 312,
+        });
     });
 
     it('does not capture an external target', () => {
@@ -100,12 +115,57 @@ describe('navigationMemory', () => {
         expect(readContextualOrigin()).toBeNull();
     });
 
+    it('does not let deferred prop visits overwrite a saved tab location', () => {
+        const historyPage: NavigationPage = {
+            component: 'History',
+            url: '/history?weeks=12',
+            props: { auth: { user: { id: 7 } } },
+        };
+        startContextualBackSession(historyPage, router);
+        writeTabMemory('history', {
+            href: '/history?weeks=12',
+            scrollY: 460,
+        });
+        window.history.replaceState({}, '', '/plan');
+
+        fireBefore('/plan', ['runs']);
+
+        expect(readTabMemory('history')).toEqual({
+            href: '/history?weeks=12',
+            scrollY: 460,
+        });
+        expect(readContextualOrigin()).toBeNull();
+    });
+
+    it('captures a partial visit that changes the tab route', () => {
+        const historyPage: NavigationPage = {
+            component: 'History',
+            url: '/history?weeks=12',
+            props: { auth: { user: { id: 7 } } },
+        };
+        startContextualBackSession(historyPage, router);
+        window.history.replaceState({}, '', '/history?weeks=12');
+        window.scrollY = 240;
+
+        fireBefore('/history?weeks=4', ['runs']);
+
+        expect(readTabMemory('history')).toEqual({
+            href: '/history?weeks=12',
+            scrollY: 240,
+        });
+    });
+
     it('clears contextual state when the signed-in identity changes', () => {
         startContextualBackSession(PLAN_PAGE, router);
         writeContextualOrigin({
             href: '/plan',
             scrollY: 300,
             tab: 'plan',
+        });
+        writeTabMemory('plan', {
+            href: '/plan',
+            scrollY: 300,
+            selectedDay: '2026-06-16',
         });
         fireNavigate({
             component: 'Home',
@@ -114,6 +174,7 @@ describe('navigationMemory', () => {
         });
 
         expect(readContextualOrigin()).toBeNull();
+        expect(readTabMemory('plan')).toBeNull();
     });
 
     it('restores scroll only when returning to the recorded route, then clears it', () => {
@@ -150,7 +211,27 @@ describe('navigationMemory', () => {
         expect(readContextualOrigin()).toBeNull();
     });
 
-    it('retries contextual scroll restoration after deferred page content loads', () => {
+    it('rejects an external saved destination', () => {
+        writeContextualOrigin({
+            href: 'https://example.com/plan',
+            scrollY: 300,
+            tab: 'plan',
+        });
+
+        expect(readContextualOrigin()).toBeNull();
+    });
+
+    it('stores and clears the selected plan day in session memory', () => {
+        rememberPlanSelectedDay('2026-06-16');
+
+        expect(readPlanSelectedDay()).toBe('2026-06-16');
+
+        clearNavigationMemory();
+
+        expect(readPlanSelectedDay()).toBeNull();
+    });
+
+    it('restores a tab scroll when its saved route is revisited', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
         vi.stubGlobal(
@@ -162,39 +243,66 @@ describe('navigationMemory', () => {
         );
         startContextualBackSession(
             {
-                component: 'Runs/Show',
-                url: '/activities/42',
+                component: 'History',
+                url: '/history',
                 props: { auth: { user: { id: 7 } } },
             },
             router,
         );
-        writeContextualOrigin({
-            href: '/history?weeks=12',
-            scrollY: 460,
-            tab: 'history',
+        writeTabMemory('plan', {
+            href: '/plan?day=2026-06-16',
+            scrollY: 560,
+            selectedDay: '2026-06-16',
         });
 
         fireNavigate({
-            component: 'History',
-            url: '/history?weeks=12',
+            component: 'Plan',
+            url: '/plan?day=2026-06-16',
             props: { auth: { user: { id: 7 } } },
+        });
+
+        expect(scrollTo).toHaveBeenCalledWith({ top: 560, behavior: 'auto' });
+        expect(readTabMemory('plan')).toEqual({
+            href: '/plan?day=2026-06-16',
+            scrollY: 560,
+            selectedDay: '2026-06-16',
+        });
+    });
+
+    it('retries scroll restoration when deferred page content finishes loading', () => {
+        const scrollTo = vi.fn();
+        vi.stubGlobal('scrollTo', scrollTo);
+        vi.stubGlobal(
+            'requestAnimationFrame',
+            (callback: FrameRequestCallback) => {
+                callback(0);
+                return 1;
+            },
+        );
+        startContextualBackSession(
+            {
+                component: 'History',
+                url: '/history?weeks=12',
+                props: { auth: { user: { id: 7 } } },
+            },
+            router,
+        );
+        writeTabMemory('plan', {
+            href: '/plan?day=2026-06-16',
+            scrollY: 560,
+            selectedDay: '2026-06-16',
+        });
+
+        fireNavigate({
+            ...PLAN_PAGE,
+            url: '/plan?day=2026-06-16',
         });
         fireFinish(['runs']);
 
         expect(scrollTo).toHaveBeenCalledTimes(2);
         expect(scrollTo).toHaveBeenLastCalledWith({
-            top: 460,
+            top: 560,
             behavior: 'auto',
         });
-    });
-
-    it('rejects an external saved destination', () => {
-        writeContextualOrigin({
-            href: 'https://example.com/plan',
-            scrollY: 300,
-            tab: 'plan',
-        });
-
-        expect(readContextualOrigin()).toBeNull();
     });
 });

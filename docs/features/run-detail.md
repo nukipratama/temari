@@ -3,7 +3,7 @@ title: Run detail (single activity)
 description: One run, fully unpacked — a headline hero, a "Past You" match, the story + adaptive claims voice card, the Q&A panel, and the breakdown (vitals, splits, laps)
 tags: [feature, runs]
 status: living
-reviewed: 2026-09-24
+reviewed: 2026-09-28
 code_refs:
   - resources/js/pages/Runs/Show.tsx
   - app/Http/Controllers/RunController.php
@@ -18,6 +18,9 @@ code_refs:
   - resources/js/components/run/LapsCarousel.tsx
   - resources/js/components/run/RouteMap.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
+  - resources/js/components/MobileTopBar.tsx
+  - resources/js/lib/nav.ts
+  - resources/js/lib/navigationMemory.ts
 ---
 
 # Run detail (single activity)
@@ -28,7 +31,10 @@ code_refs:
 which 404s on a foreign or not-yet-analyzed activity and lazily kicks a
 location-resolve job when the run has GPS but no resolved place name.
 
-**Navigation:** `route('activities.show', activity)` → `/activities/{activity}`. Named route: `activities.show`. It is a **pushed** screen (P6): back chevron, no bottom nav, and back goes to History.
+**Navigation:** `route('activities.show', activity)` → `/activities/{activity}`.
+Named route: `activities.show`. It is a **pushed** screen (P6): back chevron,
+no bottom nav. An in-app visit returns to its recorded internal route and scroll
+position; a cold deep link or notification launch falls back to History.
 
 ## Section order
 
