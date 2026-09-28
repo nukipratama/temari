@@ -29,6 +29,7 @@ import {
     type CardStyle,
 } from '@/lib/card/types';
 import { cn } from '@/lib/cn';
+import { iconButtonVariants } from '@/lib/variants';
 
 /** What the page hands the modal: the run, its facts, and the share copy. */
 export interface ShareCardTarget {
@@ -88,7 +89,11 @@ export default function ShareCardModal({
         text: string;
     } | null>(null);
     const panelRef = useRef<HTMLDivElement>(null);
-    const swipeStartRef = useRef<number | null>(null);
+    const swipeStartRef = useRef<{
+        identifier: number;
+        x: number;
+        y: number;
+    } | null>(null);
 
     useModal(card !== null, panelRef, onClose);
 
@@ -245,7 +250,10 @@ export default function ShareCardModal({
                         type="button"
                         onClick={onClose}
                         aria-label="close"
-                        className="focus-ring grid size-8 flex-none place-items-center rounded-full border border-border text-text-2"
+                        className={cn(
+                            iconButtonVariants(),
+                            'flex-none border border-border',
+                        )}
                     >
                         <Icon icon={X} width={15} aria-hidden />
                     </button>
@@ -264,7 +272,7 @@ export default function ShareCardModal({
                             onClick={() => setAspect(option)}
                             aria-pressed={aspect === option}
                             className={cn(
-                                'focus-ring flex flex-1 items-center justify-center gap-[7px] rounded-full py-2 text-[0.8125rem] font-semibold transition',
+                                'pressable focus-ring flex flex-1 items-center justify-center gap-[7px] rounded-full py-2 text-[0.8125rem] font-semibold transition',
                                 aspect === option
                                     ? 'bg-card text-foreground shadow-e1'
                                     : 'text-text-3',
@@ -295,19 +303,45 @@ export default function ShareCardModal({
                         if (event.key === 'ArrowRight') step(1);
                     }}
                     onTouchStart={(event) => {
-                        swipeStartRef.current = event.touches[0].clientX;
+                        if (event.touches.length > 1) {
+                            swipeStartRef.current = null;
+                            return;
+                        }
+                        if (swipeStartRef.current !== null) return;
+                        const touch = event.touches[0];
+                        if (touch) {
+                            swipeStartRef.current = {
+                                identifier: touch.identifier,
+                                x: touch.clientX,
+                                y: touch.clientY,
+                            };
+                        }
                     }}
                     onTouchEnd={(event) => {
-                        const from = swipeStartRef.current;
+                        const start = swipeStartRef.current;
+                        if (start === null) return;
+                        const touch = Array.from(event.changedTouches).find(
+                            (changedTouch) =>
+                                changedTouch.identifier === start.identifier,
+                        );
+                        if (!touch) return;
                         swipeStartRef.current = null;
-                        if (from === null) return;
-                        const travel = event.changedTouches[0].clientX - from;
-                        if (Math.abs(travel) > 40) step(travel < 0 ? 1 : -1);
+                        const deltaX = touch.clientX - start.x;
+                        const deltaY = touch.clientY - start.y;
+                        if (
+                            Math.abs(deltaX) > 40 &&
+                            Math.abs(deltaX) > Math.abs(deltaY)
+                        ) {
+                            step(deltaX < 0 ? 1 : -1);
+                        }
+                    }}
+                    onTouchCancel={() => {
+                        swipeStartRef.current = null;
                     }}
                     className="focus-ring relative h-[var(--print-h)] overflow-hidden"
                 >
                     <div
-                        className="absolute left-1/2 top-0 flex gap-[18px] transition-transform duration-300"
+                        className="absolute left-1/2 top-0 flex gap-[18px] motion-safe:transition-transform motion-safe:duration-300"
                         style={{
                             transform: `translateX(calc(-0.5 * var(--print-w) - ${index} * (var(--print-w) + 18px)))`,
                         }}

@@ -14,10 +14,9 @@ use Illuminate\Support\Facades\RateLimiter;
  * the key active for the whole window; `remaining()` reports the countdown so a
  * caller can surface a "wait Xm" disabled state.
  *
- * The window is per-instance because the three uses guard different things.
- * Re-narrating a block spends money, so it holds longest. Re-sending an
- * existing narration spends nothing and only has to spare the recipient a
- * duplicate buzz. The test send protects nobody at all — it exists to prove a
+ * The window is per-instance because the uses guard different things.
+ * Re-narrating a block spends money, so it holds longest. The test send
+ * protects nobody at all — it exists to prove a
  * channel works, and is pressed exactly when someone is setting one up and
  * iterating, so a long lock turns a 30-second check into a 15-minute one.
  */
@@ -30,13 +29,6 @@ final readonly class Cooldown
      * per-block-manual-retry decision note before shortening it.
      */
     public const int WINDOW_SECONDS = 900;
-
-    /**
-     * Manual re-send of an already-generated narration. Costs nothing to run,
-     * so it only has to stop the recipient being buzzed twice about the same
-     * thing.
-     */
-    public const int NOTIFICATION_WINDOW_SECONDS = 300;
 
     /**
      * Re-narrating a whole week's plan after a settings change. Editing a race
@@ -124,11 +116,6 @@ final readonly class Cooldown
         }
 
         return $remaining;
-    }
-
-    public static function notificationKey(int $analysisId): string
-    {
-        return "notification-send:{$analysisId}";
     }
 
     /**

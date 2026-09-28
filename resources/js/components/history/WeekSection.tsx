@@ -71,11 +71,6 @@ const WeekSection = memo(function WeekSection({
                     awaitingSchedule={snapshot.is_current_week}
                     isChainHead={snapshot.is_chain_head}
                     chips={<WeeklyStatLine snapshot={snapshot} />}
-                    notification={{
-                        url: `/recaps/weekly/${snapshot.id}/send`,
-                        retryAfterSeconds:
-                            snapshot.notification_retry_after_seconds,
-                    }}
                     className="mb-2.5"
                 />
             )}

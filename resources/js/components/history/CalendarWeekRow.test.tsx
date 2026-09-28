@@ -83,7 +83,6 @@ function snapshot(
             subject_id: 7,
             discriminator: null,
         },
-        notification_retry_after_seconds: null,
         ...overrides,
     };
 }

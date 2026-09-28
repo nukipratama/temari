@@ -214,7 +214,6 @@ class HistoryController extends Controller
             'is_current_week' => $row->week_ending->equalTo($currentWeekEnding),
             'is_chain_head' => $row->id === $chainHeadId,
             'recap_analysis' => $recapAnalysis,
-            'notification_retry_after_seconds' => Analysis::notificationCooldownRemaining($recapAnalysis),
         ];
     }
 
@@ -289,7 +288,6 @@ class HistoryController extends Controller
         return [
             ...$payload,
             'is_chain_head' => $discriminator === $this->latestNarratedMonthFor($user),
-            'notification_retry_after_seconds' => Analysis::notificationCooldownRemaining($payload),
         ];
     }
 

@@ -1,6 +1,5 @@
-import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 import { makeUser, setMockDeferred, setMockPage } from '@/test/setup';
 
@@ -20,7 +19,6 @@ function makeRecap(overrides: Partial<MonthlyRecap> = {}): MonthlyRecap {
         subject_id: 1,
         discriminator: '2026-05',
         is_chain_head: true,
-        notification_retry_after_seconds: null,
         ...overrides,
     };
 }
@@ -421,51 +419,6 @@ describe('calendar', () => {
             expect(
                 screen.queryByRole('button', { name: /reread/ }),
             ).not.toBeInTheDocument();
-        });
-
-        it('shows a muted send button that nudges (no send) when no channel is wired', () => {
-            // telegramConnected defaults to falsy in beforeEach.
-            vi.mocked(router.post).mockReset();
-            render(
-                <Calendar
-                    {...BASE_PROPS}
-                    month="2026-04"
-                    cells={TWO_WEEK_CELLS}
-                    monthlyRecap={makeRecap()}
-                />,
-            );
-            fireEvent.click(
-                screen.getByRole('button', {
-                    name: 'turn on notifications to send',
-                }),
-            );
-            expect(router.post).not.toHaveBeenCalled();
-        });
-
-        it('force-sends the monthly recap when a channel is wired and the button is clicked', () => {
-            vi.mocked(router.post).mockReset();
-            setMockPage({
-                auth: { user: makeUser({ name: 'Andi', first_name: 'Andi' }) },
-                flash: {},
-                demoLoginEnabled: false,
-                telegramConnected: true,
-            });
-            render(
-                <Calendar
-                    {...BASE_PROPS}
-                    month="2026-04"
-                    cells={TWO_WEEK_CELLS}
-                    monthlyRecap={makeRecap()}
-                />,
-            );
-            fireEvent.click(
-                screen.getByRole('button', { name: 'send notification' }),
-            );
-            expect(router.post).toHaveBeenCalledWith(
-                '/recaps/monthly/2026-04/send',
-                {},
-                expect.objectContaining({ preserveScroll: true }),
-            );
         });
     });
 });

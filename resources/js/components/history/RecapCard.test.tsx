@@ -1,6 +1,5 @@
-import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
@@ -96,58 +95,6 @@ describe('RecapCard', () => {
         expect(screen.getByText('You ran 3x this week.')).toBeInTheDocument();
     });
 
-    it('offers no send while narration is not done', () => {
-        render(
-            <RecapCard
-                mood="easy"
-                analysis={analysis({ status: 'pending', content: null })}
-                fallback="fallback copy"
-                notification={{
-                    url: '/recaps/weekly/7/send',
-                    retryAfterSeconds: null,
-                }}
-            />,
-        );
-
-        expect(
-            screen.queryByRole('button', {
-                name: /send notification|turn on notifications/i,
-            }),
-        ).not.toBeInTheDocument();
-    });
-
-    it('force-sends the recap when a channel is wired and the button is clicked', () => {
-        vi.mocked(router.post).mockReset();
-        setMockPage({
-            auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
-            flash: {},
-            demoLoginEnabled: false,
-            stravaSync: { state: 'ready', last_synced_at: '2026-01-01' },
-            telegramConnected: true,
-        });
-
-        render(
-            <RecapCard
-                mood="blazing"
-                analysis={analysis()}
-                fallback="fallback copy"
-                notification={{
-                    url: '/recaps/weekly/7/send',
-                    retryAfterSeconds: null,
-                }}
-            />,
-        );
-
-        fireEvent.click(
-            screen.getByRole('button', { name: 'send notification' }),
-        );
-        expect(router.post).toHaveBeenCalledWith(
-            '/recaps/weekly/7/send',
-            {},
-            expect.objectContaining({ preserveScroll: true }),
-        );
-    });
-
     it('puts the chips on one wrapping row above the narration', () => {
         render(
             <RecapCard
@@ -175,21 +122,5 @@ describe('RecapCard', () => {
         );
 
         expect(screen.queryByTestId('recap-secondary')).not.toBeInTheDocument();
-    });
-
-    it('renders no send affordance at all when notification is omitted', () => {
-        render(
-            <RecapCard
-                mood="blazing"
-                analysis={analysis()}
-                fallback="fallback copy"
-            />,
-        );
-
-        expect(
-            screen.queryByRole('button', {
-                name: /send notification|turn on notifications/i,
-            }),
-        ).not.toBeInTheDocument();
     });
 });

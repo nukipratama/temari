@@ -1,5 +1,4 @@
-import { router } from '@inertiajs/react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
@@ -65,7 +64,6 @@ function snapshot(
         is_current_week: false,
         is_chain_head: true,
         recap_analysis: recapAnalysis(),
-        notification_retry_after_seconds: null,
         ...overrides,
     };
 }
@@ -198,56 +196,8 @@ describe('WeekSection', () => {
         expect(screen.getByText('9.4%')).toBeInTheDocument();
     });
 
-    describe('weekly recap notification', () => {
-        it('shows a muted button that nudges (no send) when no channel is wired', () => {
-            // telegramConnected defaults to undefined (falsy) in beforeEach.
-            vi.mocked(router.post).mockReset();
-            render(
-                <WeekSection
-                    bucket={bucket()}
-                    snapshot={snapshot()}
-                    notes={{}}
-                    moods={{}}
-                />,
-            );
-
-            fireEvent.click(
-                screen.getByRole('button', {
-                    name: 'turn on notifications to send',
-                }),
-            );
-            expect(router.post).not.toHaveBeenCalled();
-        });
-
-        it('force-sends the weekly recap when a channel is wired and the button is clicked', () => {
-            vi.mocked(router.post).mockReset();
-            setMockPage({
-                auth: { user: makeUser({ name: 'Ada', first_name: 'Ada' }) },
-                flash: {},
-                demoLoginEnabled: false,
-                stravaSync: { state: 'ready', last_synced_at: '2026-01-01' },
-                telegramConnected: true,
-            });
-            render(
-                <WeekSection
-                    bucket={bucket()}
-                    snapshot={snapshot()}
-                    notes={{}}
-                    moods={{}}
-                />,
-            );
-
-            fireEvent.click(
-                screen.getByRole('button', { name: 'send notification' }),
-            );
-            expect(router.post).toHaveBeenCalledWith(
-                '/recaps/weekly/7/send',
-                {},
-                expect.objectContaining({ preserveScroll: true }),
-            );
-        });
-
-        it('offers no send while the narration is pending, and keeps the rule-based fallback visible so the block is not empty', () => {
+    describe('weekly recap fallback', () => {
+        it('keeps the rule-based fallback visible while the narration is pending so the block is not empty', () => {
             render(
                 <WeekSection
                     bucket={bucket()}
@@ -263,11 +213,6 @@ describe('WeekSection', () => {
                 />,
             );
 
-            expect(
-                screen.queryByRole('button', {
-                    name: /send notification|turn on notifications/i,
-                }),
-            ).not.toBeInTheDocument();
             expect(
                 screen.getByText(/You ran 4x this week for 35.5 km/),
             ).toBeInTheDocument();

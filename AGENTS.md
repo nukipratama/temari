@@ -20,7 +20,7 @@ Every pull request is a reviewer handoff, not just a change list. Keep the descr
 - the user-visible outcome and the settled decision or acceptance criteria it implements;
 - a concise map of the affected files/subsystems, including migrations, jobs, queues, backfills, or external-service effects;
 - exact verification commands and their results, plus any checks that could not run;
-- a reviewer path: fixtures, flags, routes, screenshots, or focused tests that make the behavior easy to reproduce;
+- a reviewer path: fixtures, flags, routes, screenshots, or focused tests that make the behavior easy to reproduce; for a visual change, `gh pr edit <n> --attach '<file>#<alt>'` can upload the reviewed screenshots without a browser;
 - rollout, privacy, failure, rollback, and follow-up notes, including demo-data exclusions where relevant.
 
 Use `Closes #<n>` in the PR body, keep issue/PR text free of secrets and identifying athlete data, and update the description when later pushes change scope or verification.

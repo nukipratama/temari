@@ -97,12 +97,11 @@ export default function MetricExplainer({
     }, [open]);
 
     const iconSize = size === 'xs' ? 12 : 14;
-    // The box is 24px (WCAG 2.5.8) while negative margins keep the glyph's
-    // 16/20px footprint in the line, so no label row reflows.
-    const buttonClass =
-        size === 'xs'
-            ? 'focus-ring -m-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-text-3 transition hover:bg-muted hover:text-foreground'
-            : 'focus-ring -m-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-text-3 transition hover:bg-muted hover:text-foreground';
+    // Negative margins preserve the label row's original footprint.
+    const buttonClass = cn(
+        "relative focus-ring pressable inline-flex h-6 w-6 items-center justify-center rounded-full text-text-3 transition hover:bg-muted hover:text-foreground before:absolute before:-inset-2.5 before:content-['']",
+        size === 'xs' ? '-m-1' : '-m-0.5',
+    );
 
     return (
         <span
@@ -112,6 +111,7 @@ export default function MetricExplainer({
             <button
                 type="button"
                 onClick={() => (open ? close() : setOpen(true))}
+                aria-haspopup="dialog"
                 aria-label={`Explain ${entry.label}`}
                 aria-expanded={open}
                 aria-controls={open ? popoverId : undefined}
