@@ -1,12 +1,11 @@
 import { Deferred, Head, Link, router } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
 import CalendarGrid from '@/components/history/CalendarGrid';
 import ConsistencyLine from '@/components/history/ConsistencyLine';
-import DayRunsSheet from '@/components/history/DayRunsSheet';
 import EffortLegend from '@/components/history/EffortLegend';
 import HistoryHeader from '@/components/history/HistoryHeader';
 import RecapCard from '@/components/history/RecapCard';
@@ -15,10 +14,20 @@ import PageContainer from '@/components/ui/PageContainer';
 import Skeleton, { SkeletonRows } from '@/components/ui/Skeleton';
 import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { appLayout } from '@/layouts/appLayout';
+import { lazyIsland } from '@/lib/lazyIsland';
 import { consistencyOf } from '@/pages/Activities/calendarBars';
 
 import { useCalendar, type CalendarCell } from './useCalendar';
 import { snapshotsByWeekEnding } from './weekBuckets';
+
+/**
+ * DayRunsSheet pulls in Base UI's Overlay/Sheet chunk (~15KB gzipped): keep
+ * it off Calendar's static import closure, loading it only once a multi-run
+ * day is actually opened.
+ */
+const DayRunsSheet = lazyIsland(
+    () => import('@/components/history/DayRunsSheet'),
+);
 
 export { dominantMoodOf, type CalendarCell } from './useCalendar';
 
@@ -76,6 +85,7 @@ export default function Calendar({
         todayMonth,
     });
     const [openDay, setOpenDay] = useState<CalendarCell | null>(null);
+    const [askedDayRuns, setAskedDayRuns] = useState(false);
 
     const snapshotsByWeek = useMemo(
         () => snapshotsByWeekEnding(weeklySnapshots),
@@ -129,7 +139,10 @@ export default function Calendar({
                             <CalendarGrid
                                 weeks={weeks}
                                 snapshotsByWeek={snapshotsByWeek}
-                                onOpenDay={setOpenDay}
+                                onOpenDay={(cell) => {
+                                    setAskedDayRuns(true);
+                                    setOpenDay(cell);
+                                }}
                             />
                         )}
                     </Deferred>
@@ -157,7 +170,14 @@ export default function Calendar({
                     </Deferred>
                 </div>
 
-                <DayRunsSheet cell={openDay} onClose={() => setOpenDay(null)} />
+                {askedDayRuns && (
+                    <Suspense fallback={null}>
+                        <DayRunsSheet
+                            cell={openDay}
+                            onClose={() => setOpenDay(null)}
+                        />
+                    </Suspense>
+                )}
             </PageContainer>
         </>
     );

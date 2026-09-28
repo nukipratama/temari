@@ -112,6 +112,25 @@ it('carries a per-run breakdown for a multi-run day, so the sheet can list each 
         ->and($byName['evening intervals']['mood'])->toBeNull();
 });
 
+it('orders the runs breakdown chronologically, earliest first, regardless of creation order', function (): void {
+    $evening = Activity::factory()->for($this->user)->analyzed()->create();
+    ActivityDetail::factory()->for($evening)->create([
+        'start_date_local' => Carbon::create(2026, 5, 15, 18),
+        'name' => 'evening intervals',
+    ]);
+
+    $morning = Activity::factory()->for($this->user)->analyzed()->create();
+    ActivityDetail::factory()->for($morning)->create([
+        'start_date_local' => Carbon::create(2026, 5, 15, 6),
+        'name' => 'morning shakeout',
+    ]);
+
+    $cells = ($this->buildCells)($this->user);
+    $names = collect(cellOn($cells, '2026-05-15')['runs'])->pluck('name')->all();
+
+    expect($names)->toBe(['morning shakeout', 'evening intervals']);
+});
+
 it('carries a single-item runs breakdown for a single-run day, and none for a run-less day', function (): void {
     $activity = Activity::factory()->for($this->user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([

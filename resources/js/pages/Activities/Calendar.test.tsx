@@ -210,9 +210,7 @@ describe('calendar', () => {
 
     it('rings today in the grid, named in its accessible label', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        expect(
-            screen.getByLabelText(/2026-05-07 \(today\)/),
-        ).toBeInTheDocument();
+        expect(screen.getByLabelText(/may 7 \(today\)/)).toBeInTheDocument();
     });
 
     it('renders prev / next nav links with correct hrefs and a partial reload', () => {
@@ -288,12 +286,10 @@ describe('calendar', () => {
             { date: '2026-05-07', day: 7 },
         ]);
         render(<Calendar {...BASE_PROPS} cells={cells} />);
-        expect(screen.getByLabelText('2026-05-01: no run')).toHaveTextContent(
-            '1',
-        );
+        expect(screen.getByLabelText('may 1: no run')).toHaveTextContent('1');
     });
 
-    it('opens the multi-run sheet for a 2+ run day instead of linking', () => {
+    it('opens the multi-run sheet for a 2+ run day instead of linking', async () => {
         const cells = cellsFor([
             {
                 date: '2026-05-01',
@@ -330,8 +326,8 @@ describe('calendar', () => {
         render(<Calendar {...BASE_PROPS} cells={cells} />);
 
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: /2026-05-01/ }));
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /may 1/ }));
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
         expect(screen.getByText('am')).toBeInTheDocument();
         expect(screen.getByText('pm')).toBeInTheDocument();
     });

@@ -1,5 +1,7 @@
 import type { Effort } from '@/types/inertia';
 
+import { formatNaiveMonthDayId } from '@/lib/pace';
+
 import type { CalendarCell } from './useCalendar';
 
 /** A day "ran" when it carries a positive summed distance. */
@@ -53,6 +55,41 @@ export function gridMaxKm(cells: ReadonlyArray<CalendarCell>): number {
     return Math.max(1, ...cells.map((cell) => cell.distance_km ?? 0));
 }
 
+export interface BarSegment {
+    activityId: number;
+    effort: Effort;
+    heightPct: number;
+}
+
+/**
+ * One bar segment per run, stacked bottom-up in the order `cell.runs`
+ * arrives — the backend orders by start time, so the earliest run lands at
+ * the bottom. Each segment's height uses the same per-grid scale as a
+ * single-run day (own distance, own effort colour), so a multi-run day
+ * reads as a taller bar instead of collapsing to its hardest run's colour.
+ * Falls back to one segment from the day's aggregate when the breakdown is
+ * thin (a legacy summary-only day with no per-run detail).
+ */
+export function barSegments(cell: CalendarCell, gridMax: number): BarSegment[] {
+    if (cell.runs.length > 0) {
+        return cell.runs.map((run) => ({
+            activityId: run.activity_id,
+            effort: run.effort,
+            heightPct: barHeightPct(run.distance_km ?? 0, gridMax),
+        }));
+    }
+    if (cell.effort === null || cell.effort === 'rest') {
+        return [];
+    }
+    return [
+        {
+            activityId: cell.activity_id ?? 0,
+            effort: cell.effort,
+            heightPct: barHeightPct(cell.distance_km ?? 0, gridMax),
+        },
+    ];
+}
+
 export interface Consistency {
     runs: number;
     km: number;
@@ -92,14 +129,22 @@ export function consistencyOf(cells: ReadonlyArray<CalendarCell>): Consistency {
     return { runs, km, ranDays, daysInMonth, longestStreak };
 }
 
-/** A day cell's accessible name, since the bar draws only numbers and color. */
+/**
+ * A day cell's accessible name, since the bar draws only numbers and color.
+ * A multi-run day names the run count ahead of the day total (e.g. "Sep 24,
+ * 2 runs, 13.5 km") since the bar itself is now a stack of per-run segments,
+ * not one hardest-effort colour.
+ */
 export function describeDay(cell: CalendarCell): string {
     const n = runCount(cell);
+    const date = formatNaiveMonthDayId(cell.date);
     const today = cell.is_today ? ' (today)' : '';
     if (n === 0) {
-        return `${cell.date}${today}: ${cell.effort === 'rest' ? 'planned rest' : 'no run'}`;
+        return `${date}${today}: ${cell.effort === 'rest' ? 'planned rest' : 'no run'}`;
+    }
+    if (n > 1) {
+        return `${date}${today}, ${n} runs, ${kmLabel(cell.distance_km ?? 0)} km`;
     }
     const effort = cell.effort ? `, ${EFFORT_WORD[cell.effort]}` : '';
-    const runs = n > 1 ? `, ${n} runs` : '';
-    return `${cell.date}${today}: ${kmLabel(cell.distance_km ?? 0)} km${effort}${runs}`;
+    return `${date}${today}: ${kmLabel(cell.distance_km ?? 0)} km${effort}`;
 }

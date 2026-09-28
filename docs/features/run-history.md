@@ -157,24 +157,34 @@ month**, derived client-side from `cells`; TRIMP does not appear here.
 draws one small bar chart per Mon–Sun week: a roomy, borderless week column on
 the left (`week N`, that week's km and run count, a full-height tap target
 that opens the weekly recap disclosure) beside seven day bars, weeks separated
-by MASTER.md's dashed lane lines. A day's bar height is its distance relative
-to the month's tallest day (`barHeightPct`/`gridMaxKm` in calendarBars.ts, with
-a minimum visible height), its colour is effort, the summed distance prints
-above the bar and the date below it; today's date carries a lime ring. A
-planned rest day with no run gets a dashed marker instead of a bar; a day with
-neither a run nor a plan shows only the baseline and a muted date. **Mood left
-the grid** — it now appears only as a word in the multi-run sheet and the run
+by MASTER.md's dashed lane lines. A single-run day's bar height is its
+distance relative to the month's tallest day (`barHeightPct`/`gridMaxKm` in
+calendarBars.ts, with a minimum visible height), its colour is effort. A
+day with 2+ runs stacks one segment per run instead (`barSegments` in
+calendarBars.ts): bottom-up in the order `cell.runs` arrives — the backend
+orders by start time, so the earliest run is at the bottom — each segment
+scaled on the same grid-max scale as a single-run bar and coloured by that
+run's own effort, with a small gap between segments and each floored at the
+same minimum visible height, so a multi-run day is never collapsed to one
+hardest-effort colour. Either way the day's summed distance prints above the
+bar and the date below it; today's date carries a lime ring. A planned rest
+day with no run gets a dashed marker instead of a bar; a day with neither a
+run nor a plan shows only the baseline and a muted date. **Mood left the
+grid** — it now appears only as a word in the multi-run sheet and the run
 detail page; an on-page `EffortLegend` (words, not colour alone) replaced the
 old mood legend.
 
 Tap behaviour is per-day: one run links straight to [[run-detail]], 2+ runs
 opens [DayRunsSheet](../../resources/js/components/history/DayRunsSheet.tsx)
-(a bottom sheet on `resources/js/components/ui/Overlay.tsx`) listing each
-run's name, distance, pace, effort and mood as a word, each linking on to its
-own detail; an empty day is inert. `BuildCalendarCellsAction` carries a
-per-day `runs` breakdown (activity id, name, distance, pace, effort, mood) so
-the sheet needs no second query — the cell's own `distance_km`/`effort` stay
-the already-summed/hardest-of-the-day aggregate.
+(a bottom sheet on `resources/js/components/ui/Overlay.tsx`, lazy-loaded via
+`lazyIsland` so its Base UI Overlay chunk stays off Calendar's first paint)
+listing each run's name, distance, pace, effort and mood as a word, each
+linking on to its own detail; an empty day is inert. `BuildCalendarCellsAction`
+carries a per-day `runs` breakdown (activity id, name, distance, pace, effort,
+mood), ordered by start time, so the sheet needs no second query and the bar's
+segments stack chronologically — the cell's own `distance_km`/`effort` stay
+the already-summed/hardest-of-the-day aggregate, used for the day total label
+and the multi-run sheet's header, not for the bar's colour anymore.
 
 Week rows total the **whole** Mon–Sun week, padding days included, because the
 row sits beside that week's own ISO-week recap and would otherwise contradict

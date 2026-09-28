@@ -144,7 +144,7 @@ describe('CalendarGrid', () => {
         );
         expect(
             screen
-                .getByRole('link', { name: /2026-05-04/ })
+                .getByRole('link', { name: /may 4/ })
                 .querySelector('.bg-ember'),
         ).toBeInTheDocument();
     });
@@ -157,7 +157,7 @@ describe('CalendarGrid', () => {
                 onOpenDay={vi.fn()}
             />,
         );
-        const todayCell = screen.getByLabelText('2026-05-07 (today): no run');
+        const todayCell = screen.getByLabelText('may 7 (today): no run');
         expect(
             todayCell.querySelector('.ring-icon-accent'),
         ).toBeInTheDocument();
@@ -180,7 +180,7 @@ describe('CalendarGrid', () => {
                 onOpenDay={vi.fn()}
             />,
         );
-        const cell = screen.getByLabelText('2026-05-04: planned rest');
+        const cell = screen.getByLabelText('may 4: planned rest');
         expect(
             cell.querySelector('.border-dashed.border-border-strong'),
         ).toBeInTheDocument();
@@ -194,7 +194,7 @@ describe('CalendarGrid', () => {
                 onOpenDay={vi.fn()}
             />,
         );
-        const cell = screen.getByLabelText('2026-05-05: no run');
+        const cell = screen.getByLabelText('may 5: no run');
         expect(
             cell.querySelector(
                 '.bg-leaf, .bg-citrus, .bg-ember, .border-dashed',
@@ -211,9 +211,10 @@ describe('CalendarGrid', () => {
                     onOpenDay={vi.fn()}
                 />,
             );
-            expect(
-                screen.getByRole('link', { name: /2026-05-04/ }),
-            ).toHaveAttribute('href', '/activities/55');
+            expect(screen.getByRole('link', { name: /may 4/ })).toHaveAttribute(
+                'href',
+                '/activities/55',
+            );
         });
 
         it('opens the multi-run sheet callback for a 2+ run day', () => {
@@ -259,7 +260,7 @@ describe('CalendarGrid', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByRole('button', { name: /2026-05-04/ }));
+            fireEvent.click(screen.getByRole('button', { name: /may 4/ }));
             expect(onOpenDay).toHaveBeenCalledWith(week.days[0]);
         });
 
@@ -271,7 +272,7 @@ describe('CalendarGrid', () => {
                     onOpenDay={vi.fn()}
                 />,
             );
-            const cell = screen.getByLabelText('2026-05-05: no run');
+            const cell = screen.getByLabelText('may 5: no run');
             expect(cell.tagName).toBe('DIV');
         });
     });

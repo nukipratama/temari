@@ -57,6 +57,7 @@ class BuildCalendarCellsAction
                 'activity_details.stream_summary',
                 'activity_details.name',
             ])
+            ->orderBy('activity_details.start_date_local')
             ->get();
 
         $activityIds = $details->pluck('activity_id')->all();

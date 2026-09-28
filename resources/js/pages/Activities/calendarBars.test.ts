@@ -4,6 +4,7 @@ import type { CalendarCell, CalendarCellRun } from './useCalendar';
 
 import {
     barHeightPct,
+    barSegments,
     consistencyOf,
     describeDay,
     EFFORT_FILL,
@@ -197,21 +198,21 @@ describe('consistencyOf', () => {
 describe('describeDay', () => {
     it('describes a run-less day', () => {
         const [cell] = cellsFor([{ date: '2026-05-01', day: 1 }]);
-        expect(describeDay(cell)).toBe('2026-05-01: no run');
+        expect(describeDay(cell)).toBe('may 1: no run');
     });
 
     it('names today', () => {
         const [cell] = cellsFor([
             { date: '2026-05-01', day: 1, is_today: true },
         ]);
-        expect(describeDay(cell)).toBe('2026-05-01 (today): no run');
+        expect(describeDay(cell)).toBe('may 1 (today): no run');
     });
 
     it('describes a planned rest day', () => {
         const [cell] = cellsFor([
             { date: '2026-05-01', day: 1, effort: 'rest' },
         ]);
-        expect(describeDay(cell)).toBe('2026-05-01: planned rest');
+        expect(describeDay(cell)).toBe('may 1: planned rest');
     });
 
     it('describes a single-run day with its distance and effort', () => {
@@ -223,19 +224,97 @@ describe('describeDay', () => {
                 effort: 'steady',
             },
         ]);
-        expect(describeDay(cell)).toBe('2026-05-01: 8.4 km, steady');
+        expect(describeDay(cell)).toBe('may 1: 8.4 km, steady');
     });
 
-    it('names the run count on a multi-run day summing distance and taking the hardest effort', () => {
+    it('leads with the run count on a multi-run day, ahead of the day total', () => {
         const [cell] = cellsFor([
             {
-                date: '2026-05-01',
-                day: 1,
-                distance_km: 13.2,
+                date: '2026-09-24',
+                day: 24,
+                distance_km: 13.5,
                 effort: 'hard',
                 runs: [run({ effort: 'easy' }), run({ effort: 'hard' })],
             },
         ]);
-        expect(describeDay(cell)).toBe('2026-05-01: 13.2 km, hard, 2 runs');
+        expect(describeDay(cell)).toBe('sep 24, 2 runs, 13.5 km');
+    });
+});
+
+describe('barSegments', () => {
+    it('gives a single-run day one segment from its own distance and effort', () => {
+        const [cell] = cellsFor([
+            {
+                date: '2026-05-01',
+                day: 1,
+                distance_km: 8,
+                effort: 'hard',
+                runs: [run({ activity_id: 9, distance_km: 8, effort: 'hard' })],
+            },
+        ]);
+        expect(barSegments(cell, 10)).toEqual([
+            { activityId: 9, effort: 'hard', heightPct: 80 },
+        ]);
+    });
+
+    it('gives a multi-run day one segment per run, in cell.runs order, each scaled against the grid max', () => {
+        const [cell] = cellsFor([
+            {
+                date: '2026-05-01',
+                day: 1,
+                distance_km: 12,
+                effort: 'hard',
+                runs: [
+                    run({
+                        activity_id: 1,
+                        distance_km: 8,
+                        effort: 'easy',
+                    }),
+                    run({
+                        activity_id: 2,
+                        distance_km: 4,
+                        effort: 'hard',
+                    }),
+                ],
+            },
+        ]);
+        expect(barSegments(cell, 10)).toEqual([
+            { activityId: 1, effort: 'easy', heightPct: 80 },
+            { activityId: 2, effort: 'hard', heightPct: 40 },
+        ]);
+    });
+
+    it('floors every segment at the shared minimum height, even a zero-distance run', () => {
+        const [cell] = cellsFor([
+            {
+                date: '2026-05-01',
+                day: 1,
+                distance_km: 8,
+                effort: 'hard',
+                runs: [
+                    run({ activity_id: 1, distance_km: 8, effort: 'hard' }),
+                    run({ activity_id: 2, distance_km: 0, effort: 'easy' }),
+                ],
+            },
+        ]);
+        expect(barSegments(cell, 10)[1]).toEqual({
+            activityId: 2,
+            effort: 'easy',
+            heightPct: 8,
+        });
+    });
+
+    it('falls back to one segment from the day aggregate when the breakdown is thin', () => {
+        const [cell] = cellsFor([
+            { date: '2026-05-01', day: 1, distance_km: 6, effort: 'steady' },
+        ]);
+        expect(barSegments(cell, 10)).toEqual([
+            { activityId: 0, effort: 'steady', heightPct: 60 },
+        ]);
+    });
+
+    it('gives a run-less day no segments', () => {
+        const [cell] = cellsFor([{ date: '2026-05-01', day: 1 }]);
+        expect(barSegments(cell, 10)).toEqual([]);
     });
 });

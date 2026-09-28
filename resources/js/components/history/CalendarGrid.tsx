@@ -11,7 +11,7 @@ import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
 import { RARITY_INK, RARITY_LABELS } from '@/lib/runcard';
 import {
-    barHeightPct,
+    barSegments,
     describeDay,
     EFFORT_FILL,
     gridMaxKm,
@@ -132,8 +132,7 @@ function DayBar({
     onOpenDay: (cell: CalendarCell) => void;
 }>) {
     const ran = hasRun(cell);
-    const n = runCount(cell);
-    const heightPct = ran ? barHeightPct(cell.distance_km ?? 0, maxKm) : 0;
+    const segments = ran ? barSegments(cell, maxKm) : [];
 
     return (
         <DayTarget
@@ -149,22 +148,25 @@ function DayBar({
                 {ran && (
                     <span className="mb-0.5 font-mono text-[0.625rem] leading-none font-bold tabular-nums whitespace-nowrap text-foreground">
                         {kmLabel(cell.distance_km ?? 0)}
-                        {n > 1 && (
-                            <span className="font-normal text-text-3">
-                                ×{n}
-                            </span>
-                        )}
                     </span>
                 )}
-                {ran && cell.effort !== null && (
+                {ran && segments.length > 0 && (
                     <span
-                        aria-hidden
-                        className={cn(
-                            'w-3/5 max-w-6 rounded-t-[3px]',
-                            EFFORT_FILL[cell.effort],
-                        )}
-                        style={{ height: `${heightPct * 0.7}%` }}
-                    />
+                        className="flex w-3/5 max-w-6 flex-col-reverse gap-[2px]"
+                        style={{ height: '70%' }}
+                    >
+                        {segments.map((segment) => (
+                            <span
+                                key={segment.activityId}
+                                aria-hidden
+                                className={cn(
+                                    'w-full last:rounded-t-[3px]',
+                                    EFFORT_FILL[segment.effort],
+                                )}
+                                style={{ height: `${segment.heightPct}%` }}
+                            />
+                        ))}
+                    </span>
                 )}
                 {!ran && cell.effort === 'rest' && (
                     <span
