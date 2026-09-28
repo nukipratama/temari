@@ -506,11 +506,7 @@ class StreamAnalysis
     private function steadyEffortDrift(array $splits): array
     {
         $full = $this->fullKmSplits($splits);
-        $movingTime = array_sum(array_map(
-            fn (array $split): float => max(0.0, (float) ($split['moving_time'] ?? 0)),
-            $splits,
-        ));
-        $warmupTarget = $movingTime * self::DRIFT_WARMUP_MOVING_TIME_FRACTION;
+        $warmupTarget = self::movingTimeSec($splits) * self::DRIFT_WARMUP_MOVING_TIME_FRACTION;
         $warmupTime = 0.0;
         $warmupSplits = 0;
         foreach ($full as $split) {
@@ -549,10 +545,7 @@ class StreamAnalysis
         $steadyStats = null;
         $steadyMovingTime = 0.0;
         foreach ($segments as $candidate) {
-            $candidateMovingTime = array_sum(array_map(
-                fn (array $split): float => max(0.0, (float) ($split['moving_time'] ?? 0)),
-                $candidate,
-            ));
+            $candidateMovingTime = self::movingTimeSec($candidate);
             if ($candidateMovingTime < self::DRIFT_MIN_SEGMENT_MOVING_SEC
                 || $candidateMovingTime <= $steadyMovingTime
                 || count($candidate) < 2) {
@@ -583,6 +576,17 @@ class StreamAnalysis
             'steady_effort_decoupling_pct' => $decoupling,
             'steady_effort_hr_drift_bpm' => $hrDrift,
         ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $splits
+     */
+    private static function movingTimeSec(array $splits): float
+    {
+        return array_sum(array_map(
+            fn (array $split): float => max(0.0, (float) ($split['moving_time'] ?? 0)),
+            $splits,
+        ));
     }
 
     /**

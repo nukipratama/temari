@@ -270,15 +270,7 @@ class WeeklyAggregator
      */
     private function averageDecoupling(Enumerable $details): ?float
     {
-        $values = $details
-            ->map(fn (ActivityDetail $detail): ?float => StreamSummary::fromArray($detail->stream_summary)->decouplingPct())
-            ->filter(fn (?float $value): bool => $value !== null);
-
-        if ($values->count() < self::MIN_RUNS_FOR_AVG_DECOUPLING) {
-            return null;
-        }
-
-        return round((float) $values->avg(), 2);
+        return self::averageDecouplingReading($details, fn (StreamSummary $summary): ?float => $summary->decouplingPct());
     }
 
     /**
@@ -289,8 +281,17 @@ class WeeklyAggregator
      */
     private function averageSegmentDecoupling(Enumerable $details): ?float
     {
+        return self::averageDecouplingReading($details, fn (StreamSummary $summary): ?float => $summary->steadyEffortDecouplingPct());
+    }
+
+    /**
+     * @param  Enumerable<int, ActivityDetail>  $details
+     * @param  callable(StreamSummary): ?float  $reading
+     */
+    private static function averageDecouplingReading(Enumerable $details, callable $reading): ?float
+    {
         $values = $details
-            ->map(fn (ActivityDetail $detail): ?float => StreamSummary::fromArray($detail->stream_summary)->steadyEffortDecouplingPct())
+            ->map(fn (ActivityDetail $detail): ?float => $reading(StreamSummary::fromArray($detail->stream_summary)))
             ->filter(fn (?float $value): bool => $value !== null);
 
         if ($values->count() < self::MIN_RUNS_FOR_AVG_DECOUPLING) {
