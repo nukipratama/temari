@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Actions\Geo\ReverseGeocodeAction;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -94,6 +97,49 @@ it('honors the --limit option', function (): void {
     $this->artisan('geo:backfill-locations', ['--limit' => 2])->assertSuccessful();
 
     Queue::assertPushed(ResolveActivityLocationJob::class, 2);
+});
+
+it('skips cached failures and no-address results without starving later rows past the limit', function (): void {
+    Queue::fake();
+    $this->freezeTime();
+    Cache::flush();
+    $requestCount = 0;
+    Http::fake([
+        'nominatim.openstreetmap.org/*' => function () use (&$requestCount) {
+            $requestCount++;
+
+            return $requestCount <= 201
+                ? Http::response('rate limited', 429)
+                : Http::response(['address' => []]);
+        },
+    ]);
+
+    $activities = Activity::factory()->count(602)->create();
+    $resolver = new ReverseGeocodeAction();
+    foreach ($activities->take(402)->values() as $index => $activity) {
+        $lat = -6.0 - ($index / 1000);
+        ActivityDetail::factory()->for($activity)->create([
+            'start_lat' => $lat,
+            'start_lng' => 106.0,
+            'location_resolved_at' => null,
+        ]);
+        $resolver($lat, 106.0);
+        $this->travel(1)->seconds();
+    }
+
+    $eligibleIds = $activities->skip(402)->map(fn (Activity $activity): int => ActivityDetail::factory()->for($activity)->create([
+        'start_lat' => -8.0,
+        'start_lng' => 106.0,
+        'location_resolved_at' => null,
+    ])->id)->values()->all();
+
+    $this->artisan('geo:backfill-locations')->assertSuccessful();
+
+    $queuedIds = Queue::pushed(ResolveActivityLocationJob::class)
+        ->map(fn (ResolveActivityLocationJob $job): int => $job->activityDetailId)
+        ->all();
+    expect($queuedIds)->toBe($eligibleIds);
+    Http::assertSentCount(402);
 });
 
 it('backfills start_lat/start_lng from summary_polyline when coords are null', function (): void {
