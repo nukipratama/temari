@@ -224,7 +224,10 @@ export interface StreamSummary {
     cadence_drop_spm?: number;
     time_in_zone_pct?: ZonePct;
     time_in_zone_min?: ZoneMinutes;
+    /** Legacy cardiac decoupling (avgHR ÷ pace); frozen, no longer displayed. */
     decoupling_pct?: number;
+    /** Version 2 steady-effort decoupling (avgHR × flat pace); the one the UI shows. */
+    steady_effort_decoupling_pct?: number | null;
     cadence_distribution_pct?: CadenceDistributionPct;
     optimal_cadence_pct?: number;
     max_grade_pct?: number;
@@ -547,7 +550,10 @@ export interface WeeklySnapshot {
     atl_7d: number | null;
     form: number | null;
     form_status: FormStatus | null;
+    /** Legacy weekly average decoupling; frozen, no longer displayed. */
     avg_decoupling: number | null;
+    /** Version 2 weekly average steady-effort decoupling; the one the UI shows. */
+    avg_decoupling_v2: number | null;
     monotony: number | null;
     strain: number | null;
 }

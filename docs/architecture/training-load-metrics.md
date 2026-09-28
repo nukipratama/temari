@@ -43,7 +43,7 @@ The remaining two numbers describe the *distribution* of load across the last 7 
 
 [WeeklyAggregator](app/Services/Run/Metrics/WeeklyAggregator.php) persists the engine's output one row per ISO week into [WeeklySnapshot](app/Models/WeeklySnapshot.php) (week keyed by its Sunday `week_ending`; see [[data-model]]). Each week is an idempotent **upsert** keyed by `(user_id, week_ending)` in [upsertWeek](app/Services/Run/Metrics/WeeklyAggregator.php#L172), which slices that week's runs for the volume columns and asks [TrainingLoad](app/Services/Run/Metrics/TrainingLoad.php) for the load columns.
 
-The `avg_decoupling` column remains the legacy whole-run average for historical display. The separate `avg_decoupling_v2` column averages version 2 steady-segment readings ([averageSegmentDecoupling](app/Services/Run/Metrics/WeeklyAggregator.php)); it needs **at least two** measured runs, since a one-run mean only describes that run. The recap narrator uses this version 2 column, and it stays `null` when fewer than two runs carry a comparable segment. Neither column is backfilled from new calculations.
+The `avg_decoupling` column remains the legacy whole-run average, frozen and no longer read by the UI or narration. The separate `avg_decoupling_v2` column averages version 2 steady-segment readings ([averageSegmentDecoupling](app/Services/Run/Metrics/WeeklyAggregator.php)); it needs **at least two** measured runs, since a one-run mean only describes that run. Both narration and [WeeklyStatLine](resources/js/components/history/WeeklyStatLine.tsx) read this version 2 column, and it stays `null` (hidden, never falling back to legacy) when fewer than two runs carry a comparable segment. Neither column is backfilled from new calculations.
 
 Two subtleties:
 

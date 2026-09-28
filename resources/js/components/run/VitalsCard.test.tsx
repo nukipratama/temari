@@ -81,7 +81,7 @@ describe('VitalsCard', () => {
     });
 
     it('reads steady breathing under the decoupling threshold', () => {
-        renderCard({ decoupling_pct: 3.2 });
+        renderCard({ steady_effort_decoupling_pct: 3.2 });
         expect(screen.getByText('+3.2%')).toHaveClass('text-icon-accent');
         expect(
             screen.getByText('breathing held steady to the end'),
@@ -89,33 +89,49 @@ describe('VitalsCard', () => {
     });
 
     it('warns when drift clears the threshold on a temperate run', () => {
-        renderCard({ decoupling_pct: 11.4 }, { weather_temp_c: 22 });
-        expect(screen.getByText('+11.4%')).toHaveClass('text-ember-ink');
+        renderCard(
+            { steady_effort_decoupling_pct: 14.4 },
+            { weather_temp_c: 22 },
+        );
+        expect(screen.getByText('+14.4%')).toHaveClass('text-ember-ink');
         expect(
             screen.getByText('breathing drifted in the second half'),
         ).toBeInTheDocument();
     });
 
     it('blames the heat, not the athlete, when a hot run drifts', () => {
-        renderCard({ decoupling_pct: 11.4 }, { weather_temp_c: 33 });
-        expect(screen.getByText('+11.4%')).toHaveClass('text-icon-accent');
+        renderCard(
+            { steady_effort_decoupling_pct: 14.4 },
+            { weather_temp_c: 33 },
+        );
+        expect(screen.getByText('+14.4%')).toHaveClass('text-icon-accent');
         expect(screen.getByText('normal, it was 33°C out')).toBeInTheDocument();
     });
 
     it('does not excuse a large negative decoupling as heat', () => {
-        renderCard({ decoupling_pct: -12 }, { weather_temp_c: 33 });
-        expect(screen.getByText('-12.0%')).toHaveClass('text-ember-ink');
+        renderCard(
+            { steady_effort_decoupling_pct: -14 },
+            { weather_temp_c: 33 },
+        );
+        expect(screen.getByText('-14.0%')).toHaveClass('text-ember-ink');
         expect(
             screen.getByText('breathing drifted in the second half'),
         ).toBeInTheDocument();
     });
 
+    it('never falls back to the frozen legacy reading', () => {
+        renderCard({ decoupling_pct: 5, steady_effort_decoupling_pct: null });
+        expect(screen.queryByText('Decoupling')).not.toBeInTheDocument();
+    });
+
     it('pins the decoupling marker inside the gradient at either extreme', () => {
-        const { container, unmount } = renderCard({ decoupling_pct: -4 });
+        const { container, unmount } = renderCard({
+            steady_effort_decoupling_pct: -4,
+        });
         expect(container.querySelector('[style*="left: 0%"]')).not.toBeNull();
         unmount();
 
-        const hot = renderCard({ decoupling_pct: 40 });
+        const hot = renderCard({ steady_effort_decoupling_pct: 40 });
         expect(
             hot.container.querySelector('[style*="left: 100%"]'),
         ).not.toBeNull();

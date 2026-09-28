@@ -7,7 +7,8 @@ import { formStatusMeaning, formStatusWord } from '@/lib/formStatus';
 import { METRIC_GLOSSARY } from '@/lib/metricGlossary';
 
 const MONOTONY_ALERT_AT = 1.5;
-const DECOUPLING_ALERT_PCT_AT = 8;
+// Mirrors DecouplingBands::HIGH, the version 2 steady-effort scale (app/Services/Run/Metrics/DecouplingBands.php).
+const DECOUPLING_ALERT_PCT_AT = 12;
 
 interface StatMetric {
     key: string;
@@ -44,9 +45,9 @@ function buildMetrics(snapshot: WeeklySnapshotWithRecap): StatMetric[] {
         });
     }
 
-    if (snapshot.avg_decoupling !== null) {
-        const flagged = snapshot.avg_decoupling >= DECOUPLING_ALERT_PCT_AT;
-        const value = `${snapshot.avg_decoupling.toFixed(1)}%`;
+    if (snapshot.avg_decoupling_v2 !== null) {
+        const flagged = snapshot.avg_decoupling_v2 >= DECOUPLING_ALERT_PCT_AT;
+        const value = `${snapshot.avg_decoupling_v2.toFixed(1)}%`;
         metrics.push({
             key: 'decoupling',
             word: 'drift',

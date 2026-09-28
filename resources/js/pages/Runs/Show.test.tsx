@@ -55,7 +55,7 @@ const detail: ActivityDetail = {
             { km: 1, pace: '6:00', avg_hr: 150, avg_cadence_spm: 170 },
             { km: 2, pace: '5:45', avg_hr: 155, avg_cadence_spm: 173 },
         ],
-        decoupling_pct: 4.5,
+        steady_effort_decoupling_pct: 4.5,
         stopped_time_sec: 30,
         stop_count: 2,
     },
@@ -329,7 +329,10 @@ describe('Runs/Show', () => {
     });
 
     it('omits the splits section when the run has neither full kms nor a partial', () => {
-        const noSplits = { ...detail, stream_summary: { decoupling_pct: 4.5 } };
+        const noSplits = {
+            ...detail,
+            stream_summary: { steady_effort_decoupling_pct: 4.5 },
+        };
         renderShow({
             activity: {
                 id: 99,

@@ -19,7 +19,8 @@ function snapshot(
         ctl_42d: 42,
         form: -2.5,
         form_status: 'optimal',
-        avg_decoupling: 3.2,
+        avg_decoupling: 30,
+        avg_decoupling_v2: 3.2,
         monotony: 1.15,
         strain: 486,
         is_current_week: false,
@@ -74,13 +75,29 @@ describe('WeeklyStatLine', () => {
                 snapshot={snapshot({
                     atl_7d: null,
                     monotony: null,
-                    avg_decoupling: null,
+                    avg_decoupling_v2: null,
                     form_status: null,
                 })}
             />,
         );
 
         expect(container).toBeEmptyDOMElement();
+    });
+
+    it('never shows drift when only the frozen legacy field carries a reading', () => {
+        render(
+            <WeeklyStatLine
+                snapshot={snapshot({
+                    avg_decoupling: 30,
+                    avg_decoupling_v2: null,
+                })}
+            />,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: 'drift' }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText('30.0%')).not.toBeInTheDocument();
     });
 
     it('omits a metric whose value is unknown rather than showing a zero', () => {
@@ -118,7 +135,7 @@ describe('WeeklyStatLine', () => {
     it('flags a metric past its alarm threshold in ember, open by default with a deterministic read', () => {
         render(
             <WeeklyStatLine
-                snapshot={snapshot({ monotony: 1.8, avg_decoupling: 9.4 })}
+                snapshot={snapshot({ monotony: 1.8, avg_decoupling_v2: 13.4 })}
             />,
         );
 
@@ -130,19 +147,21 @@ describe('WeeklyStatLine', () => {
         expect(drift).toHaveAttribute('aria-expanded', 'true');
 
         expect(screen.getByText(/variety 1.80:/)).toBeInTheDocument();
-        expect(screen.getByText(/drift 9.4%:/)).toBeInTheDocument();
+        expect(screen.getByText(/drift 13.4%:/)).toBeInTheDocument();
     });
 
     it('lets a flagged metric be dismissed by tapping it', () => {
-        render(<WeeklyStatLine snapshot={snapshot({ avg_decoupling: 9.4 })} />);
+        render(
+            <WeeklyStatLine snapshot={snapshot({ avg_decoupling_v2: 13.4 })} />,
+        );
 
         const drift = screen.getByRole('button', { name: 'drift' });
-        expect(screen.getByText(/drift 9.4%:/)).toBeInTheDocument();
+        expect(screen.getByText(/drift 13.4%:/)).toBeInTheDocument();
 
         fireEvent.click(drift);
 
         expect(drift).toHaveAttribute('aria-expanded', 'false');
-        expect(screen.queryByText(/drift 9.4%:/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/drift 13.4%:/)).not.toBeInTheDocument();
     });
 
     it('does not flag fatigue, which has no alarm threshold', () => {

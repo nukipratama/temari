@@ -58,12 +58,23 @@ describe('showsGrade', () => {
 
 describe('showsDecoupling', () => {
     it('reads a real zero as a reading, not as absence', () => {
-        expect(showsDecoupling({ decoupling_pct: 0 })).toBe(true);
+        expect(showsDecoupling({ steady_effort_decoupling_pct: 0 })).toBe(true);
     });
 
     it('is false when the run never measured it', () => {
         expect(showsDecoupling({})).toBe(false);
-        expect(showsDecoupling({ decoupling_pct: 'oops' })).toBe(false);
+        expect(showsDecoupling({ steady_effort_decoupling_pct: 'oops' })).toBe(
+            false,
+        );
+    });
+
+    it('ignores the frozen legacy field, even when it carries a reading', () => {
+        expect(
+            showsDecoupling({
+                decoupling_pct: 4,
+                steady_effort_decoupling_pct: null,
+            }),
+        ).toBe(false);
     });
 });
 
@@ -115,7 +126,11 @@ describe('drawnRunAnchors', () => {
      */
     it('draws none of the metrics the run page has no site for', () => {
         const drawn = drawnRunAnchors(
-            { max_grade_pct: 6, gap_pace: '5:30', decoupling_pct: 4 },
+            {
+                max_grade_pct: 6,
+                gap_pace: '5:30',
+                steady_effort_decoupling_pct: 4,
+            },
             5,
             { Z2: 100 },
         );

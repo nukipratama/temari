@@ -48,7 +48,7 @@ export const METRIC_GLOSSARY = {
     },
     decoupling: {
         label: 'decoupling',
-        body: "the efficiency gap between the first and second half of a run. above 5% means HR drift, either your aerobic base isn't solid yet or you were already gassed.",
+        body: "the efficiency gap between the first and second half of a run's steadiest stretch. above 12% means HR drift, either your aerobic base isn't solid yet or you were already gassed.",
     },
     recovery: {
         label: 'break',
