@@ -3,7 +3,7 @@ title: Plan — deterministic periodizer and the Plan tab
 description: The rules-only training periodizer that fills the Plan tab, its two modes, the render-time readiness clamp, and the render-time volume redistribution
 tags: [feature, run]
 status: living
-reviewed: 2026-09-26
+reviewed: 2026-09-28
 code_refs:
   - app/Services/Run/Plan/Periodizer.php
   - app/Services/Run/Plan/PlanRegenerationService.php
@@ -36,6 +36,7 @@ code_refs:
   - app/Models/PlannedSession.php
   - app/Models/Season.php
   - app/Models/SeasonGoal.php
+  - database/migrations/2026_09_28_000000_add_unique_metric_to_season_goals_table.php
   - app/Http/Controllers/PlanController.php
   - app/Services/Gamification/SeasonStreakSummaryBuilder.php
   - app/Services/Run/Plan/SeasonSummaryBuilder.php
@@ -190,7 +191,7 @@ Because sessions are matched to days and not to runs, a day counts once however 
 
 The Plan tab's top-of-page summary section is the same periodized arc viewed at a higher zoom, not a separate page (`Season IS the training block` — see the v2 program's locked decisions). [SeasonService::ensureCurrent()](app/Services/Run/Plan/SeasonService.php) is called both from `PlanController::index()` (a fresh user's first page view already has a season) and from `Periodizer::regenerate()` (the weekly job and on-demand regeneration keep it in lockstep with the plan's own mode). `SeasonService::peekCurrent()` is the read-only counterpart the [[profile]] page uses instead — it returns the current season if one already exists, `null` otherwise, and never creates, updates, or closes a `Season` row. A self-scaled `Season` runs a fixed 12 weeks (matching `HORIZON_WEEKS`) and auto-cycles into a fresh one on expiry; a race-oriented one ends on `race_date`. The season also carries `anchor_weekly_volume_km` — the trailing weekly mean frozen at the moment the arc opened, which every prescription in it ramps off. `SeasonService::reanchorIfCollapsed()` is its only mid-season write: downward only, and only past a 25% collapse. See [[the-arc-is-anchored-once]]. Setting or clearing a `RaceGoal` mid-season closes the current season early (`ends_at` moves to the day before) and opens the other mode at the next call — never a gap, never an overlap, since the mode check always compares the CURRENT active race against the latest season's `race_goal_id`.
 
-`SeasonGoal` rows generate at creation. A race season adds its block goals on the first call on or after block open, stamped as `seasons.block_goals_appended_at` so later calls skip the database. Because a web request and a queued regeneration can both reach [SeasonService::ensureCurrent()](app/Services/Run/Plan/SeasonService.php#L81) for the same athlete, the whole call runs in one transaction holding a lock on the user row and re-reads the current season inside it. Goal rows are written with `firstOrCreate`, and the existing `unique(user_id, starts_at)` on `seasons` is the backstop: a season insert that still collides returns the season that won. See [[gamification]] for the full list and the rest-day reward mechanism that isn't a `Badge`. A race season with fewer block rows from its start through race week than the full block serves a fixed under-ready line once on the Plan page, stamped as `seasons.under_ready_noted_at` ([SeasonService::takeUnderReadyLine()](app/Services/Run/Plan/SeasonService.php)); see [[the-block-opens-on-a-computed-date]].
+`SeasonGoal` rows generate at creation. A race season adds its block goals on the first call on or after block open, stamped as `seasons.block_goals_appended_at` so later calls skip the database. Because a web request and a queued regeneration can both reach [SeasonService::ensureCurrent()](app/Services/Run/Plan/SeasonService.php#L81) for the same athlete, the whole call runs in one transaction holding a lock on the user row and re-reads the current season inside it. Goal rows are written with `firstOrCreate`, with `unique(season_id, metric)` on `season_goals` as the database backstop. The existing `unique(user_id, starts_at)` on `seasons` backs season creation: a season insert that still collides returns the season that won. See [[gamification]] for the full list and the rest-day reward mechanism that isn't a `Badge`. A race season with fewer block rows from its start through race week than the full block serves a fixed under-ready line once on the Plan page, stamped as `seasons.under_ready_noted_at` ([SeasonService::takeUnderReadyLine()](app/Services/Run/Plan/SeasonService.php)); see [[the-block-opens-on-a-computed-date]].
 
 ### Season-wide summary — the nested timeline (`V0` fork 3, rebuilt by `PS4`)
 

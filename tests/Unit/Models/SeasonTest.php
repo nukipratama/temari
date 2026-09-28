@@ -59,7 +59,11 @@ it('casts under_ready_noted_at and block_goals_appended_at to datetimes, null un
 
 it('has many season goals', function (): void {
     $season = Season::factory()->create();
-    SeasonGoal::factory()->for($season)->count(3)->create();
+    SeasonGoal::factory()->for($season)->count(3)->sequence(
+        ['metric' => 'season_sessions_completed'],
+        ['metric' => 'season_quality_completed'],
+        ['metric' => 'season_longest_long_run_km'],
+    )->create();
 
     expect($season->goals)->toHaveCount(3)
         ->and($season->goals->first())->toBeInstanceOf(SeasonGoal::class);
