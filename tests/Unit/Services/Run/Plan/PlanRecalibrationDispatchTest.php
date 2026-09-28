@@ -29,6 +29,14 @@ it('dispatches one recalibration for a real user and excludes demo users', funct
         ->and($user->fresh()->plan_recalibration_completed_at)->toBeNull();
 });
 
+it('releases the overlap lock before dispatching so a synchronous recalibration can take it', function (): void {
+    $user = User::factory()->create();
+
+    PlanRecalibrationDispatch::forUserId($user->id);
+
+    expect($user->fresh()->plan_recalibration_completed_at)->not->toBeNull();
+});
+
 it('can suppress recursive dispatch while recalibration updates zone-derived data', function (): void {
     Bus::fake();
     $user = User::factory()->create();

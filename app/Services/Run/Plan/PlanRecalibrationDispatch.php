@@ -41,11 +41,11 @@ final class PlanRecalibrationDispatch
                 'plan_recalibration_started_at' => now(),
                 'plan_recalibration_completed_at' => null,
             ])->saveQuietly();
-
-            RecalibrateTrainingHistoryJob::dispatch($userId)->delay(5)->afterCommit();
         } finally {
             $lock->release();
         }
+
+        RecalibrateTrainingHistoryJob::dispatch($userId)->delay(5)->afterCommit();
     }
 
     public static function withoutDispatching(callable $callback): mixed
