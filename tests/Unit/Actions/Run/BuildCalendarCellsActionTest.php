@@ -76,6 +76,58 @@ it('aggregates multiple runs on the same day into one cell with weighted HR', fu
         ->and($cell['activity_id'])->toBeNull(); // multi-run days don't link
 });
 
+it('carries a per-run breakdown for a multi-run day, so the sheet can list each run', function (): void {
+    $easy = Activity::factory()->for($this->user)->analyzed()->create();
+    ActivityDetail::factory()->for($easy)->create([
+        'start_date_local' => Carbon::create(2026, 5, 15, 6),
+        'distance' => 3_000,
+        'elapsed_time' => 1_080,
+        'name' => 'morning shakeout',
+        'workout_type' => null,
+    ]);
+    StoryLine::factory()->for($easy)->create([
+        'kind' => StoryLine::KIND_POST_RUN,
+        'mood' => 'chill',
+    ]);
+
+    $hard = Activity::factory()->for($this->user)->analyzed()->create();
+    ActivityDetail::factory()->for($hard)->create([
+        'start_date_local' => Carbon::create(2026, 5, 15, 18),
+        'distance' => 4_000,
+        'elapsed_time' => 1_440,
+        'name' => 'evening intervals',
+        'workout_type' => 1, // Strava race tag -> hard
+    ]);
+
+    $cells = ($this->buildCells)($this->user);
+    $runs = cellOn($cells, '2026-05-15')['runs'];
+
+    expect($runs)->toHaveCount(2);
+    $byName = collect($runs)->keyBy('name');
+    expect($byName['morning shakeout']['distance_km'])->toBe(3.0)
+        ->and($byName['morning shakeout']['effort'])->toBe('unknown')
+        ->and($byName['morning shakeout']['mood'])->toBe('chill')
+        ->and($byName['evening intervals']['distance_km'])->toBe(4.0)
+        ->and($byName['evening intervals']['effort'])->toBe('hard')
+        ->and($byName['evening intervals']['mood'])->toBeNull();
+});
+
+it('carries a single-item runs breakdown for a single-run day, and none for a run-less day', function (): void {
+    $activity = Activity::factory()->for($this->user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::create(2026, 5, 10),
+        'distance' => 5_000,
+        'elapsed_time' => 1_500,
+        'name' => 'tempo run',
+    ]);
+
+    $cells = ($this->buildCells)($this->user);
+
+    expect(cellOn($cells, '2026-05-10')['runs'])->toHaveCount(1)
+        ->and(cellOn($cells, '2026-05-10')['runs'][0]['name'])->toBe('tempo run')
+        ->and(cellOn($cells, '2026-05-20')['runs'])->toBe([]);
+});
+
 it('links a single-run day to its activity and attaches the mood', function (): void {
     $activity = Activity::factory()->for($this->user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([

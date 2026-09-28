@@ -5,6 +5,16 @@ import type { Effort, Mood, Rarity } from '@/types/inertia';
 import { dominantMood as pickDominantMood } from '@/lib/mood';
 import { RARITY_ORDER } from '@/lib/runcard';
 
+/** One run's own detail, for the multi-run day sheet. */
+export interface CalendarCellRun {
+    activity_id: number;
+    name: string | null;
+    distance_km: number | null;
+    pace_sec_per_km: number | null;
+    effort: Effort;
+    mood: Mood | null;
+}
+
 export interface CalendarCell {
     date: string;
     day: number;
@@ -20,6 +30,8 @@ export interface CalendarCell {
     activity_id: number | null;
     /** Hardest run of the day; a planned rest day with no run; null with neither. */
     effort: Effort | null;
+    /** Every run of the day, for the multi-run sheet. Empty on a run-less day. */
+    runs: CalendarCellRun[];
 }
 
 export interface WeekRow {
@@ -32,17 +44,8 @@ export interface WeekRow {
     runCount: number;
     /** Null when the week ran but nothing scored (unknown, not zero). */
     totalTrimp: number | null;
-    /** The week's own mood, across all seven days. */
-    mood: Mood | null;
     /** The week's rarest earned card, across all seven days. */
     rarity: Rarity | null;
-}
-
-export interface MonthTotals {
-    runs: number;
-    km: number;
-    /** Null when the month ran but nothing scored. */
-    trimp: number | null;
 }
 
 /**
@@ -82,7 +85,8 @@ export function rarestRarityOf(
  * Week rows total the whole Mon-Sun week, padding days included: a row sits
  * beside that week's recap narration, which is itself ISO-week-grained, so
  * scoping the row to the viewed month would have it contradict the sentence
- * next to it. The month meta is scoped separately, in {@link monthTotalsOf}.
+ * next to it. The header's month meta is derived separately, from
+ * {@link consistencyOf} in calendarBars.ts.
  */
 export function chunkIntoWeeks(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
     const weeks: WeekRow[] = [];
@@ -109,29 +113,10 @@ export function chunkIntoWeeks(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
             totalKm,
             runCount,
             totalTrimp,
-            mood: pickDominantMood(days.map((day) => day.mood)),
             rarity: rarestRarityOf(days),
         });
     }
     return weeks;
-}
-
-/** The viewed month's own totals: padding days from adjacent months excluded. */
-export function monthTotalsOf(cells: ReadonlyArray<CalendarCell>): MonthTotals {
-    let runs = 0;
-    let km = 0;
-    let trimp: number | null = null;
-    for (const cell of cells) {
-        if (!cell.is_current_month) continue;
-        if (cell.distance_km !== null && cell.distance_km > 0) {
-            km += cell.distance_km;
-            runs += 1;
-        }
-        if (cell.trimp !== null) {
-            trimp = (trimp ?? 0) + cell.trimp;
-        }
-    }
-    return { runs, km, trimp };
 }
 
 interface CalendarDataProps {
@@ -143,13 +128,11 @@ interface CalendarDataProps {
 export function useCalendar({ cells, month, todayMonth }: CalendarDataProps) {
     const weeks = useMemo<WeekRow[]>(() => chunkIntoWeeks(cells), [cells]);
     const dominantMood = useMemo(() => dominantMoodOf(cells), [cells]);
-    const monthTotals = useMemo(() => monthTotalsOf(cells), [cells]);
     const isCurrentMonth = month === todayMonth;
 
     return {
         weeks,
         dominantMood,
-        monthTotals,
         isCurrentMonth,
     };
 }

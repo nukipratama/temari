@@ -37,7 +37,7 @@ class BuildCalendarCellsAction
     ];
 
     /**
-     * @return array<int, array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null, effort: string|null}>
+     * @return array<int, array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null, effort: string|null, runs: array<int, array{activity_id: int, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, effort: string, mood: string|null}>}>
      */
     public function __invoke(User $user, Carbon $gridStart, Carbon $gridEnd, Carbon $monthStart, Carbon $monthEnd): array
     {
@@ -55,6 +55,7 @@ class BuildCalendarCellsAction
                 'activity_details.trimp_edwards',
                 'activity_details.workout_type',
                 'activity_details.stream_summary',
+                'activity_details.name',
             ])
             ->get();
 
@@ -84,7 +85,7 @@ class BuildCalendarCellsAction
      * @param  array<int, Rarity>  $rarityByActivity
      * @param  array<int, Effort>  $effortByActivity
      * @param  array<int, string>  $restDates
-     * @return array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null, effort: string|null}
+     * @return array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null, effort: string|null, runs: array<int, array{activity_id: int, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, effort: string, mood: string|null}>}
      */
     private function cellFor(Carbon $cursor, string $dateKey, ?Collection $rows, array $moodByActivity, array $rarityByActivity, array $effortByActivity, array $restDates, Carbon $monthStart, Carbon $monthEnd, string $todayKey): array
     {
@@ -106,6 +107,7 @@ class BuildCalendarCellsAction
                 'rarity' => null,
                 'activity_id' => null,
                 'effort' => in_array($dateKey, $restDates, true) ? Effort::Rest->value : null,
+                'runs' => [],
             ];
         }
 
@@ -142,7 +144,34 @@ class BuildCalendarCellsAction
             'rarity' => $this->rarestOf($rows, $rarityByActivity)?->value,
             'activity_id' => $rows->count() === 1 ? $primaryId : null,
             'effort' => $this->hardestEffort($rows, $effortByActivity)->value,
+            'runs' => $this->runsFor($rows, $moodByActivity, $effortByActivity),
         ];
+    }
+
+    /**
+     * Per-run detail for the day, so a multi-run day's sheet can list each run
+     * by name, pace, effort and mood without a second query.
+     *
+     * @param  Collection<int, ActivityDetail>  $rows
+     * @param  array<int, string>  $moodByActivity
+     * @param  array<int, Effort>  $effortByActivity
+     * @return array<int, array{activity_id: int, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, effort: string, mood: string|null}>
+     */
+    private function runsFor(Collection $rows, array $moodByActivity, array $effortByActivity): array
+    {
+        return $rows->map(function ($row) use ($moodByActivity, $effortByActivity): array {
+            $id = (int) $row->getAttribute('activity_id');
+            $pace = PaceCalculator::secPerKm((float) ($row->distance ?? 0), (float) ($row->elapsed_time ?? 0));
+
+            return [
+                'activity_id' => $id,
+                'name' => $row->name,
+                'distance_km' => DistanceFormatter::km((float) ($row->distance ?? 0), DistanceFormatter::EXACT),
+                'pace_sec_per_km' => $pace !== null ? round($pace, 0) : null,
+                'effort' => ($effortByActivity[$id] ?? Effort::Unknown)->value,
+                'mood' => $moodByActivity[$id] ?? null,
+            ];
+        })->values()->all();
     }
 
     /**

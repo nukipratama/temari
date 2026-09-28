@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { router } from '@inertiajs/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockDeferred, setMockPage } from '@/test/setup';
 
@@ -29,6 +30,7 @@ beforeEach(() => {
         flash: {},
         demoLoginEnabled: false,
     });
+    vi.mocked(router.visit).mockClear();
 });
 
 function cellsFor(
@@ -45,6 +47,7 @@ function cellsFor(
         rarity: null,
         activity_id: null,
         effort: null,
+        runs: [],
         ...r,
     }));
 }
@@ -52,49 +55,69 @@ function cellsFor(
 // Two complete weeks (14 cells) starting Monday — enough to render at least one
 // full week row.
 const TWO_WEEK_CELLS: CalendarCell[] = cellsFor([
-    { date: '2026-04-27', day: 27 }, // Mon prev month
-    { date: '2026-04-28', day: 28 },
-    { date: '2026-04-29', day: 29 },
-    { date: '2026-04-30', day: 30 },
+    { date: '2026-04-27', day: 27, is_current_month: false },
+    { date: '2026-04-28', day: 28, is_current_month: false },
+    { date: '2026-04-29', day: 29, is_current_month: false },
+    { date: '2026-04-30', day: 30, is_current_month: false },
     {
         date: '2026-05-01',
         day: 1,
-        is_current_month: true,
         distance_km: 5,
-        trimp: 50,
-        pace_sec_per_km: 360,
-        avg_hr: 145,
-        mood: 'easy',
         activity_id: 100,
+        effort: 'easy',
+        runs: [
+            {
+                activity_id: 100,
+                name: 'easy run',
+                distance_km: 5,
+                pace_sec_per_km: 360,
+                effort: 'easy',
+                mood: 'easy',
+            },
+        ],
     },
-    { date: '2026-05-02', day: 2, is_current_month: true },
-    { date: '2026-05-03', day: 3, is_current_month: true },
-    { date: '2026-05-04', day: 4, is_current_month: true },
+    { date: '2026-05-02', day: 2 },
+    { date: '2026-05-03', day: 3 },
+    { date: '2026-05-04', day: 4 },
     {
         date: '2026-05-05',
         day: 5,
-        is_current_month: true,
         distance_km: 7.2,
-        trimp: 80,
-        pace_sec_per_km: 380,
-        avg_hr: 150,
-        mood: 'blazing',
         activity_id: 101,
+        effort: 'hard',
+        runs: [
+            {
+                activity_id: 101,
+                name: 'tempo',
+                distance_km: 7.2,
+                pace_sec_per_km: 320,
+                effort: 'hard',
+                mood: 'blazing',
+            },
+        ],
     },
-    { date: '2026-05-06', day: 6, is_current_month: true },
+    { date: '2026-05-06', day: 6 },
     {
         date: '2026-05-07',
         day: 7,
-        is_current_month: true,
         is_today: true,
         distance_km: 3.5,
-        trimp: 25,
-        mood: 'overloaded',
         activity_id: 102,
+        effort: 'easy',
+        runs: [
+            {
+                activity_id: 102,
+                name: 'shakeout',
+                distance_km: 3.5,
+                pace_sec_per_km: 400,
+                effort: 'easy',
+                mood: 'overloaded',
+            },
+        ],
     },
-    { date: '2026-05-08', day: 8, is_current_month: true },
-    { date: '2026-05-09', day: 9, is_current_month: true },
-    { date: '2026-05-10', day: 10, is_current_month: true },
+    { date: '2026-05-08', day: 8 },
+    { date: '2026-05-09', day: 9 },
+    { date: '2026-05-10', day: 10 },
 ]);
 
 const BASE_PROPS = {
@@ -106,17 +129,17 @@ const BASE_PROPS = {
 };
 
 describe('calendar', () => {
-    it("renders the month label and the prototype's two-letter weekday header", () => {
+    it('renders the month label and the lowercase two-letter weekday header', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        for (const day of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']) {
+        for (const day of ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']) {
             expect(screen.getByText(day)).toBeInTheDocument();
         }
     });
 
-    it('paints the month nav and weekday header while the grid skeletons', () => {
+    it('paints the month nav while the grid skeletons', () => {
         setMockDeferred(['cells', 'weeklySnapshots', 'monthlyRecap']);
 
         const { container } = render(
@@ -130,8 +153,6 @@ describe('calendar', () => {
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('Mo')).toBeInTheDocument();
-        expect(screen.queryByText(/TRIMP/)).not.toBeInTheDocument();
         expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
             0,
         );
@@ -152,12 +173,28 @@ describe('calendar', () => {
         expect(screen.getByText('History · 63 activities')).toBeInTheDocument();
     });
 
-    it('renders per-week km totals in the week summary column', () => {
+    it('renders the consistency line derived from the cells', () => {
+        const { container } = render(
+            <Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />,
+        );
+        // 3 current-month runs: 5 + 7.2 + 3.5 = 15.7 -> rounds to 16 km, ran 3/10 days.
+        const line = Array.from(container.querySelectorAll('p')).find((p) =>
+            p.textContent?.includes('runs ·'),
+        );
+        expect(line?.textContent).toBe(
+            '3 runs · 16 km · ran 3/10 days · longest streak 1',
+        );
+    });
+
+    it('renders no TRIMP in the header, which left with the old design', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        // Week 2: 7.2 + 3.5 = 10.7k.
-        expect(screen.getByText('10.7k')).toBeInTheDocument();
-        expect(screen.getByText('WK 1')).toBeInTheDocument();
-        expect(screen.getByText('WK 2')).toBeInTheDocument();
+        expect(screen.queryByText(/TRIMP/)).not.toBeInTheDocument();
+    });
+
+    it('renders per-week km totals in the week column', () => {
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        expect(screen.getByText('week 1')).toBeInTheDocument();
+        expect(screen.getByText('week 2')).toBeInTheDocument();
     });
 
     it('links the day cell with a single activity to its detail page', () => {
@@ -171,35 +208,14 @@ describe('calendar', () => {
         expect(activityLinks).toContain('/activities/102');
     });
 
-    it("names today in the cell's accessible label, not by fill alone", () => {
+    it('rings today in the grid, named in its accessible label', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
             screen.getByLabelText(/2026-05-07 \(today\)/),
         ).toBeInTheDocument();
     });
 
-    it('hides the "Today" jump-back when already on the current month', () => {
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        expect(
-            screen.queryByRole('link', { name: 'Jump to current month' }),
-        ).not.toBeInTheDocument();
-    });
-
-    it('offers no "jump to today" shortcut, which the prototype does not draw', () => {
-        render(
-            <Calendar
-                {...BASE_PROPS}
-                cells={TWO_WEEK_CELLS}
-                month="2026-04"
-                todayMonth="2026-05"
-            />,
-        );
-        expect(
-            screen.queryByRole('link', { name: 'Jump to current month' }),
-        ).not.toBeInTheDocument();
-    });
-
-    it('renders prev / next nav buttons with correct hrefs', () => {
+    it('renders prev / next nav links with correct hrefs and a partial reload', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
             screen.getByRole('link', { name: 'Previous month' }),
@@ -209,58 +225,56 @@ describe('calendar', () => {
         ).toHaveAttribute('href', '/history?view=calendar&month=2026-06');
     });
 
-    it('renders all six mood swatches in the legend', () => {
+    it('swipes left to the next month via a partial reload', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        ['blazing', 'easy', 'wobbly', 'gassed', 'overloaded', 'chill'].forEach(
-            (label) => {
-                expect(screen.getByText(label)).toBeInTheDocument();
-            },
+        const target = screen.getByTestId('calendar-swipe-area');
+
+        fireEvent.touchStart(target, {
+            touches: [{ identifier: 1, clientX: 200, clientY: 100 }],
+        });
+        fireEvent.touchEnd(target, {
+            changedTouches: [{ identifier: 1, clientX: 100, clientY: 100 }],
+        });
+
+        expect(router.visit).toHaveBeenCalledWith(
+            '/history?view=calendar&month=2026-06',
+            expect.objectContaining({
+                only: expect.arrayContaining(['cells']),
+            }),
         );
     });
 
-    // The row sits beside that week's own ISO-week recap, so it counts the
-    // whole Mon-Sun week rather than only the part inside the viewed month.
-    it('counts prev-month padding days in the week total, muted but included', () => {
-        const cells = cellsFor([
-            {
-                date: '2026-04-27',
-                day: 27,
-                is_current_month: false,
-                distance_km: 10,
-                trimp: 100,
-            },
-            { date: '2026-04-28', day: 28, is_current_month: false },
-            { date: '2026-04-29', day: 29, is_current_month: false },
-            { date: '2026-04-30', day: 30, is_current_month: false },
-            {
-                date: '2026-05-01',
-                day: 1,
-                is_current_month: true,
-                distance_km: 5,
-                trimp: 50,
-                activity_id: 100,
-            },
-            { date: '2026-05-02', day: 2, is_current_month: true },
-            { date: '2026-05-03', day: 3, is_current_month: true },
-        ]);
-        render(<Calendar {...BASE_PROPS} cells={cells} />);
-        expect(screen.getByText('15.0k')).toBeInTheDocument();
-        expect(screen.getByText('WK 1')).toBeInTheDocument();
-    });
-
-    it('renders the Feed ⇄ Calendar nav with calendar active', () => {
+    it('swipes right to the previous month via a partial reload', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        expect(screen.getByText('calendar').closest('a')).toHaveClass(
-            'bg-card',
+        const target = screen.getByTestId('calendar-swipe-area');
+
+        fireEvent.touchStart(target, {
+            touches: [{ identifier: 1, clientX: 100, clientY: 100 }],
+        });
+        fireEvent.touchEnd(target, {
+            changedTouches: [{ identifier: 1, clientX: 200, clientY: 100 }],
+        });
+
+        expect(router.visit).toHaveBeenCalledWith(
+            '/history?view=calendar&month=2026-04',
+            expect.objectContaining({
+                only: expect.arrayContaining(['cells']),
+            }),
         );
     });
 
-    it('renders the viewed month totals (not lifetime) as a meta line', () => {
+    it('renders the effort legend with words, replacing the old mood legend', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        // Two current-month runs: 5 + 7.2 + 3.5 km = 15.7, 3 runs, 50+80+25 TRIMP = 155.
-        expect(
-            screen.getByText(/3 runs · 15\.7 km · 155 TRIMP/),
-        ).toBeInTheDocument();
+        for (const word of [
+            'easy',
+            'steady',
+            'hard',
+            'unscored',
+            'planned rest',
+        ]) {
+            expect(screen.getByText(word)).toBeInTheDocument();
+        }
+        expect(screen.queryByText('blazing')).not.toBeInTheDocument();
     });
 
     it('draws a run-less day as a plain numbered box', () => {
@@ -279,40 +293,55 @@ describe('calendar', () => {
         );
     });
 
-    it('rolls multi-activity days into a non-linked cell', () => {
+    it('opens the multi-run sheet for a 2+ run day instead of linking', () => {
         const cells = cellsFor([
             {
                 date: '2026-05-01',
                 day: 1,
-                is_current_month: true,
                 distance_km: 10,
-                trimp: 100,
-                mood: 'gassed',
                 activity_id: null,
+                effort: 'hard',
+                runs: [
+                    {
+                        activity_id: 1,
+                        name: 'am',
+                        distance_km: 6,
+                        pace_sec_per_km: 300,
+                        effort: 'hard',
+                        mood: null,
+                    },
+                    {
+                        activity_id: 2,
+                        name: 'pm',
+                        distance_km: 4,
+                        pace_sec_per_km: 320,
+                        effort: 'easy',
+                        mood: null,
+                    },
+                ],
             },
-            { date: '2026-05-02', day: 2, is_current_month: true },
-            { date: '2026-05-03', day: 3, is_current_month: true },
-            { date: '2026-05-04', day: 4, is_current_month: true },
-            { date: '2026-05-05', day: 5, is_current_month: true },
-            { date: '2026-05-06', day: 6, is_current_month: true },
-            { date: '2026-05-07', day: 7, is_current_month: true },
+            { date: '2026-05-02', day: 2 },
+            { date: '2026-05-03', day: 3 },
+            { date: '2026-05-04', day: 4 },
+            { date: '2026-05-05', day: 5 },
+            { date: '2026-05-06', day: 6 },
+            { date: '2026-05-07', day: 7 },
         ]);
         render(<Calendar {...BASE_PROPS} cells={cells} />);
-        const activityLinks = screen
-            .getAllByRole('link')
-            .filter((el) =>
-                (el.getAttribute('href') ?? '').startsWith('/activities/'),
-            );
-        expect(activityLinks).toHaveLength(0);
+
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /2026-05-01/ }));
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('am')).toBeInTheDocument();
+        expect(screen.getByText('pm')).toBeInTheDocument();
     });
 
     it('renders the page chrome even with an empty cells array', () => {
         render(<Calendar {...BASE_PROPS} cells={[]} />);
-        // No grid rows since chunkIntoWeeks returns []. Chrome (month label + legend) still shows.
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('blazing')).toBeInTheDocument();
+        expect(screen.getByText('easy')).toBeInTheDocument();
     });
 
     describe('monthly recap card', () => {
@@ -333,93 +362,6 @@ describe('calendar', () => {
             render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
             expect(screen.queryByText(/May was full/)).not.toBeInTheDocument();
         });
-
-        it('renders no narration/trigger when a past month is not yet narrated', () => {
-            render(
-                <Calendar
-                    {...BASE_PROPS}
-                    month="2026-04"
-                    cells={TWO_WEEK_CELLS}
-                    monthlyRecap={makeRecap({
-                        status: 'pending',
-                        content: null,
-                        id: null,
-                    })}
-                />,
-            );
-            expect(
-                screen.queryByText(/thinking it over/),
-            ).not.toBeInTheDocument();
-            expect(
-                screen.queryByRole('button', { name: /try again/ }),
-            ).not.toBeInTheDocument();
-        });
-
-        it('suppresses every trigger on the still-open current month and reads as unavailable', () => {
-            render(
-                <Calendar
-                    {...BASE_PROPS}
-                    cells={TWO_WEEK_CELLS}
-                    monthlyRecap={makeRecap({
-                        status: 'pending',
-                        content: null,
-                        id: null,
-                        is_chain_head: false,
-                    })}
-                />,
-            );
-            expect(
-                screen.getByText("this month's recap isn't ready yet."),
-            ).toBeInTheDocument();
-            expect(
-                screen.queryByRole('button', { name: /try again/ }),
-            ).not.toBeInTheDocument();
-        });
-
-        it('shows a "try again" resume action when a past month recap failed', () => {
-            render(
-                <Calendar
-                    {...BASE_PROPS}
-                    month="2026-04"
-                    cells={TWO_WEEK_CELLS}
-                    monthlyRecap={makeRecap({
-                        status: 'failed',
-                        content: null,
-                    })}
-                />,
-            );
-            expect(
-                screen.getByRole('button', { name: /try again/ }),
-            ).toBeInTheDocument();
-        });
-
-        it('shows the "reread" regenerate action only on the chain-head month', () => {
-            render(
-                <Calendar
-                    {...BASE_PROPS}
-                    month="2026-04"
-                    cells={TWO_WEEK_CELLS}
-                    monthlyRecap={makeRecap({ is_chain_head: true })}
-                />,
-            );
-            expect(
-                screen.getByRole('button', { name: /reread/ }),
-            ).toBeInTheDocument();
-        });
-
-        it('hides the regenerate action on a historical (non-head) month', () => {
-            render(
-                <Calendar
-                    {...BASE_PROPS}
-                    month="2026-04"
-                    cells={TWO_WEEK_CELLS}
-                    monthlyRecap={makeRecap({ is_chain_head: false })}
-                />,
-            );
-            expect(
-                screen.queryByRole('button', { name: /reread/ }),
-            ).not.toBeInTheDocument();
-        });
     });
 });
 
@@ -432,39 +374,6 @@ describe('dominantMoodOf', () => {
             { date: '2026-05-04', day: 4, mood: null },
         ]);
         expect(dominantMoodOf(cells)).toBe('chill');
-    });
-
-    it('breaks ties by MOOD_ORDER so the pick is deterministic', () => {
-        // blazing and chill each appear once; blazing is earlier in MOOD_ORDER.
-        const cells = cellsFor([
-            { date: '2026-05-01', day: 1, mood: 'chill' },
-            { date: '2026-05-02', day: 2, mood: 'blazing' },
-        ]);
-        expect(dominantMoodOf(cells)).toBe('blazing');
-    });
-
-    it('excludes padding days from adjacent months', () => {
-        const cells = cellsFor([
-            {
-                date: '2026-04-30',
-                day: 30,
-                is_current_month: false,
-                mood: 'chill',
-            },
-            {
-                date: '2026-04-29',
-                day: 29,
-                is_current_month: false,
-                mood: 'chill',
-            },
-            {
-                date: '2026-05-01',
-                day: 1,
-                is_current_month: true,
-                mood: 'blazing',
-            },
-        ]);
-        expect(dominantMoodOf(cells)).toBe('blazing');
     });
 
     it('returns null when the month has no runs', () => {

@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import {
     chunkIntoWeeks,
     dominantMoodOf,
-    monthTotalsOf,
     rarestRarityOf,
     useCalendar,
     type CalendarCell,
@@ -24,6 +23,7 @@ function cellsFor(
         rarity: null,
         activity_id: null,
         effort: null,
+        runs: [],
         ...r,
     }));
 }
@@ -125,18 +125,17 @@ describe('chunkIntoWeeks', () => {
         expect(week.runCount).toBe(2);
     });
 
-    it("carries the week's own mood, rarest card and sunday", () => {
+    it("carries the week's rarest card and sunday", () => {
         const cells = cellsFor([
-            { date: '2026-05-04', day: 4, mood: 'chill', rarity: 'rare' },
-            { date: '2026-05-05', day: 5, mood: 'chill' },
-            { date: '2026-05-06', day: 6, mood: 'blazing', rarity: 'epic' },
+            { date: '2026-05-04', day: 4, rarity: 'rare' },
+            { date: '2026-05-05', day: 5 },
+            { date: '2026-05-06', day: 6, rarity: 'epic' },
             { date: '2026-05-07', day: 7 },
             { date: '2026-05-08', day: 8 },
             { date: '2026-05-09', day: 9 },
             { date: '2026-05-10', day: 10 },
         ]);
         const [week] = chunkIntoWeeks(cells);
-        expect(week.mood).toBe('chill');
         expect(week.rarity).toBe('epic');
         expect(week.weekEnding).toBe('2026-05-10');
     });
@@ -186,34 +185,6 @@ describe('rarestRarityOf', () => {
     });
 });
 
-describe('monthTotalsOf', () => {
-    it("sums runs, km and TRIMP across the viewed month's own days", () => {
-        const cells = cellsFor([
-            { date: '2026-05-01', day: 1, distance_km: 5, trimp: 40 },
-            { date: '2026-05-08', day: 8, distance_km: 10, trimp: 60 },
-            {
-                date: '2026-04-30',
-                day: 30,
-                distance_km: 99,
-                trimp: 999,
-                is_current_month: false,
-            },
-        ]);
-        expect(monthTotalsOf(cells)).toEqual({ runs: 2, km: 15, trimp: 100 });
-    });
-
-    it('leaves TRIMP unknown (not zero) when nothing in the month scored', () => {
-        const cells = cellsFor([
-            { date: '2026-05-01', day: 1, distance_km: 5 },
-        ]);
-        expect(monthTotalsOf(cells).trimp).toBeNull();
-    });
-
-    it('returns zeroes for an empty month', () => {
-        expect(monthTotalsOf([])).toEqual({ runs: 0, km: 0, trimp: null });
-    });
-});
-
 describe('useCalendar', () => {
     const CELLS = cellsFor([
         { date: '2026-05-01', day: 1, mood: 'blazing', distance_km: 5 },
@@ -231,22 +202,6 @@ describe('useCalendar', () => {
 
         expect(result.current.weeks).toHaveLength(1);
         expect(result.current.dominantMood).toBe('blazing');
-    });
-
-    it('exposes month totals derived from the weeks', () => {
-        const { result } = renderHook(() =>
-            useCalendar({
-                cells: CELLS,
-                month: '2026-05',
-                todayMonth: '2026-05',
-            }),
-        );
-
-        expect(result.current.monthTotals).toEqual({
-            runs: 1,
-            km: 5,
-            trimp: null,
-        });
     });
 
     it('reports whether the viewed month is the current one', () => {

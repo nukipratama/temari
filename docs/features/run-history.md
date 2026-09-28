@@ -1,9 +1,9 @@
 ---
 title: Run history (Feed & Calendar)
-description: The activity archive — weekly snapshots on the Feed view, the prototype's week grid on the Calendar view, both behind one /history route. Filters and the journey strip were cut in the mobile-UX port (S7); PS7 ported the screen to prototype parity.
+description: The activity archive — weekly snapshots on the Feed view, a weekly bar-chart grid on the Calendar view, both behind one /history route. Filters and the journey strip were cut in the mobile-UX port (S7); PS7 ported the screen to prototype parity; #1343 redesigned the Calendar grid as bar charts.
 tags: [feature, runs]
 status: living
-reviewed: 2026-09-01
+reviewed: 2026-09-28
 code_refs:
   - resources/js/pages/History.tsx
   - resources/js/pages/Activities/Feed.tsx
@@ -19,7 +19,12 @@ code_refs:
   - resources/js/components/history/RecapCard.tsx
   - resources/js/components/history/WeekSection.tsx
   - resources/js/components/history/WeeklyStatLine.tsx
-  - resources/js/components/history/CalendarWeekRow.tsx
+  - resources/js/components/history/CalendarGrid.tsx
+  - resources/js/components/history/DayRunsSheet.tsx
+  - resources/js/components/history/ConsistencyLine.tsx
+  - resources/js/components/history/EffortLegend.tsx
+  - resources/js/pages/Activities/calendarBars.ts
+  - app/Actions/Run/BuildCalendarCellsAction.php
   - resources/js/components/history/InlineNote.tsx
 ---
 
@@ -137,40 +142,60 @@ payload rendered through `RecapCard`, with a rule-based fallback
 week (`is_current_week`) waits for the scheduler. See [[recaps]] and
 [[ai-pipeline]].
 
-## Calendar — the month grid
+## Calendar — the weekly bar-chart grid
 
-[Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx) draws the
-prototype's month grid: a weekday header, then one
-[CalendarWeekRow](../../resources/js/components/history/CalendarWeekRow.tsx) per
-Mon–Sun week — a week-summary button beside seven bordered day boxes, each box
-carrying only its day number and a mood dot. `HistoryController`'s calendar
-branch resolves `?month=YYYY-MM`, pads the grid to full weeks, and hands the
-frontend pre-computed `cells` (per-day distance / pace / HR / mood / card
-`rarity` / `activity_id`) so nothing needs a second query. A run-day cell still
-links to that run's [[run-detail]], and keeps its distance, pace, HR and mood in
-its accessible label — the prototype's box has nowhere visible left for them.
+[Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx) renders order
+header → grid → effort legend → monthly recap card (#1343, replacing the
+former bordered-box + mood-dot grid, prototype variant C on
+`prototype/calendar-redesign`). The header is month nav plus a consistency
+line (`consistencyOf` in
+[calendarBars.ts](../../resources/js/pages/Activities/calendarBars.ts)) — runs,
+km, days run and the longest **consecutive-run-day streak within the visible
+month**, derived client-side from `cells`; TRIMP does not appear here.
+
+[CalendarGrid.tsx](../../resources/js/components/history/CalendarGrid.tsx)
+draws one small bar chart per Mon–Sun week: a roomy, borderless week column on
+the left (`week N`, that week's km and run count, a full-height tap target
+that opens the weekly recap disclosure) beside seven day bars, weeks separated
+by MASTER.md's dashed lane lines. A day's bar height is its distance relative
+to the month's tallest day (`barHeightPct`/`gridMaxKm` in calendarBars.ts, with
+a minimum visible height), its colour is effort, the summed distance prints
+above the bar and the date below it; today's date carries a lime ring. A
+planned rest day with no run gets a dashed marker instead of a bar; a day with
+neither a run nor a plan shows only the baseline and a muted date. **Mood left
+the grid** — it now appears only as a word in the multi-run sheet and the run
+detail page; an on-page `EffortLegend` (words, not colour alone) replaced the
+old mood legend.
+
+Tap behaviour is per-day: one run links straight to [[run-detail]], 2+ runs
+opens [DayRunsSheet](../../resources/js/components/history/DayRunsSheet.tsx)
+(a bottom sheet on `resources/js/components/ui/Overlay.tsx`) listing each
+run's name, distance, pace, effort and mood as a word, each linking on to its
+own detail; an empty day is inert. `BuildCalendarCellsAction` carries a
+per-day `runs` breakdown (activity id, name, distance, pace, effort, mood) so
+the sheet needs no second query — the cell's own `distance_km`/`effort` stay
+the already-summed/hardest-of-the-day aggregate.
 
 Week rows total the **whole** Mon–Sun week, padding days included, because the
 row sits beside that week's own ISO-week recap and would otherwise contradict
-the sentence next to it. The viewed month's meta line is scoped separately, to
-the month's own days (`monthTotalsOf` in
-[useCalendar.ts](../../resources/js/pages/Activities/useCalendar.ts), computed
-from `cells` rather than by summing the rows). The month also carries a
-`monthlyRecap`, rendered through
-the same `RecapCard` used by the Feed — Temari wears the month's **dominant run
-mood** (`dominantMoodOf`) — and a `lifetime` eyebrow (a separate, all-time stat,
-not the viewed month's). `RecapCard`'s `fallback` prop is omitted here: there is
-no rule-based fallback for monthly recaps.
+the sentence next to it. The month also carries a `monthlyRecap`, rendered
+through the same `RecapCard` used by the Feed — Temari wears the month's
+**dominant run mood** (`dominantMoodOf`) — and a `lifetime` eyebrow (a
+separate, all-time stat, not the viewed month's). `RecapCard`'s `fallback`
+prop is omitted here: there is no rule-based fallback for monthly recaps.
 
-**Per-week narration inside the grid** is the prototype's tap-to-expand week
-row, and it is ported: the calendar branch ships the grid's own
-`weeklySnapshots` (bounded to `gridStart`..`gridEnd`, so an old month does not
-get the newest weeks), and pressing a week reveals its recap through
-`AnalysisStatus`, the shared `WeeklyStatLine`, and — the one Card surface
-this screen keeps (decision P12) — a badge for the week's **rarest** earned
-card, tinted by rarity. A week with no snapshot leaves the button disabled and
-dimmed. The badge lives here and nowhere else on the screen; it is not a day-cell
-affordance.
+**Per-week narration inside the grid** is the tap-to-expand week column, and
+pressing it reveals its recap through `AnalysisStatus`, the shared
+`WeeklyStatLine`, and — the one Card surface this screen keeps (decision
+P12) — a badge for the week's **rarest** earned card, tinted by rarity. A week
+with no snapshot leaves the column disabled. The badge lives here and nowhere
+else on the screen; it is not a day-cell affordance.
+
+**Month nav** is prev/next `Link`s plus a horizontal swipe on the grid on
+mobile (`useHorizontalSwipe`, which already starts its gesture away from the
+screen edges). Both paths do a **partial reload** (`only: [month, monthLabel,
+prevMonth, nextMonth, cells, weeklySnapshots, monthlyRecap]`) so the header
+doesn't flash, while still pushing one URL per month so Back works.
 
 ## See also
 
