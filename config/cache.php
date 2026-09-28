@@ -39,7 +39,10 @@ return [
 
         'array' => [
             'driver' => 'array',
-            'serialize' => false,
+            // Serializes in testing (see phpunit.xml CACHE_ARRAY_SERIALIZE) so
+            // the array store round-trips through config('cache.serializable_classes')
+            // the same way every real store (redis/database/file) does.
+            'serialize' => env('CACHE_ARRAY_SERIALIZE', false),
         ],
 
         'database' => [
