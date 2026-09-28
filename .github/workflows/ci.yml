@@ -443,7 +443,7 @@ jobs:
           fi
 
       - name: Roll back on failure
-        if: failure()
+        if: failure() && steps.tip.outputs.current == 'true'
         timeout-minutes: 6
         run: |
           $COMPOSE start scheduler horizon pulse || true
