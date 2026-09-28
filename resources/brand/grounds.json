@@ -286,9 +286,6 @@
         },
         "horizon/0.15": {
             "over": {
-                "resources/js/components/history/CalendarWeekRow.tsx": [
-                    "paper"
-                ],
                 "resources/js/components/temari/AnalysisStatus.tsx": [
                     "paper"
                 ],

@@ -117,10 +117,17 @@ sheets and modals.
 
 ### Calendar cells
 
-- A 3px effort bar on the **bottom edge**, colored per the effort table, alongside the existing
-  mood dot — both signals stay, neither replaces the other.
-- Several runs in one day show the hardest of them (hard > steady > easy > unknown).
-- A planned rest day with no run gets the dashed rest bar; a day with no run and no plan gets none.
+- Each day is a small bar on a baseline, not a bordered box: bar height is the day's distance
+  relative to the month's longest day (a minimum visible height keeps a short run legible), bar
+  colour is effort per the effort table. The distance prints above the bar, the date below it.
+  Mood does not appear on the grid — only as a word, in the multi-run sheet and the run detail.
+- Several runs in one day stack the bar into one segment per run, bottom-up in the order they were
+  run (earliest at the bottom), each segment sized to that run's own distance and coloured by that
+  run's own effort, with a small gap between segments — never collapsed to one summed bar or the
+  hardest effort's colour. The distance printed above the bar is still the day's total.
+- A planned rest day with no run gets the dashed rest marker; a day with no run and no plan gets
+  only the baseline and a muted date.
+- Today's date carries a lime ring, never a fill.
 
 ### Buttons
 
