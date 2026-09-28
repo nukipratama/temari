@@ -184,15 +184,16 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
         with:
           path: .phpstan-cache
-          key: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}
-          restore-keys: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-
+          key: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}-${{ github.run_id }}
+          restore-keys: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}-
 
       - name: Cache Rector analyser cache
         if: matrix.tool == 'rector'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
         with:
           path: .rector-cache
-          key: rector-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}
+          key: rector-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}-${{ github.run_id }}
+          restore-keys: rector-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}-
 
       - name: Pint (code style)
         if: matrix.tool == 'pint'
