@@ -42,7 +42,7 @@ const card: ShareCardTarget = {
 };
 
 async function openModal(target: ShareCardTarget = card) {
-    render(<ShareCardModal card={target} onClose={vi.fn()} />);
+    render(<ShareCardModal open card={target} onClose={vi.fn()} />);
     await waitFor(() =>
         expect(screen.getAllByRole('img').length).toBeGreaterThan(0),
     );
@@ -70,7 +70,7 @@ afterEach(async () => {
 describe('ShareCardModal', () => {
     it('renders nothing without a card', () => {
         const { container } = render(
-            <ShareCardModal card={null} onClose={vi.fn()} />,
+            <ShareCardModal open card={null} onClose={vi.fn()} />,
         );
 
         expect(container).toBeEmptyDOMElement();
@@ -283,7 +283,7 @@ describe('ShareCardModal', () => {
 
     it('offers a retry when a print cannot be made', async () => {
         renderPrint.mockRejectedValue(new Error('boom'));
-        render(<ShareCardModal card={card} onClose={vi.fn()} />);
+        render(<ShareCardModal open card={card} onClose={vi.fn()} />);
 
         await waitFor(() =>
             expect(
@@ -428,7 +428,7 @@ describe('ShareCardModal', () => {
 
     it('closes on the close button', async () => {
         const onClose = vi.fn();
-        render(<ShareCardModal card={card} onClose={onClose} />);
+        render(<ShareCardModal open card={card} onClose={onClose} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'close' }));
 
@@ -440,7 +440,7 @@ describe('ShareCardModal', () => {
         const onClose = vi.fn();
         const pageSawBack = vi.fn();
         window.addEventListener('popstate', pageSawBack);
-        render(<ShareCardModal card={card} onClose={onClose} />);
+        render(<ShareCardModal open card={card} onClose={onClose} />);
 
         window.history.back();
         await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
@@ -450,7 +450,7 @@ describe('ShareCardModal', () => {
     });
 
     it('is a modal dialog named for what it does', () => {
-        render(<ShareCardModal card={card} onClose={vi.fn()} />);
+        render(<ShareCardModal open card={card} onClose={vi.fn()} />);
 
         expect(
             screen.getByRole('dialog', { name: 'share this run' }),

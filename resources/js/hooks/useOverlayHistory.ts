@@ -10,7 +10,6 @@ interface Entry {
 const entries: Entry[] = [];
 let pendingPops = 0;
 let stateBeforePop: unknown = null;
-let listening = false;
 
 function pop(count: number): void {
     pendingPops++;
@@ -62,12 +61,13 @@ function onVisitStart(event: {
     open.forEach((entry) => entry.close());
 }
 
-function listen(): void {
-    if (listening) {
-        return;
-    }
-    listening = true;
-    window.addEventListener('popstate', onPopState, { capture: true });
+/**
+ * Must run before Inertia boots: popstate listeners on window fire in
+ * registration order, and only an earlier one can keep Inertia from
+ * re-rendering the page for a Back that only closed an overlay.
+ */
+export function installOverlayHistory(): void {
+    window.addEventListener('popstate', onPopState);
     router.on('start', onVisitStart);
 }
 
@@ -89,7 +89,6 @@ export function useOverlayHistory(open: boolean, onClose: () => void): void {
             return;
         }
 
-        listen();
         const entry: Entry = { close: () => closeRef.current(), closed: false };
         window.history.pushState(window.history.state, '');
         entries.push(entry);

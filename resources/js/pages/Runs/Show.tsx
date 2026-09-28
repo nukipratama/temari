@@ -70,6 +70,7 @@ export default function RunsShow({
     prBib,
 }: Readonly<ShowProps>) {
     const [shareOpen, setShareOpen] = useState(false);
+    const [shareAsked, setShareAsked] = useState(false);
     const {
         summary,
         perKm,
@@ -116,7 +117,12 @@ export default function RunsShow({
                         hr={hr}
                         trimp={trimp}
                         onShare={
-                            shareData ? () => setShareOpen(true) : undefined
+                            shareData
+                                ? () => {
+                                      setShareAsked(true);
+                                      setShareOpen(true);
+                                  }
+                                : undefined
                         }
                         prBib={prBib}
                     />
@@ -182,9 +188,10 @@ export default function RunsShow({
                         ` · #${activity.strava_external_id}`}
                 </Eyebrow>
             </PageContainer>
-            {shareOpen && shareData !== null && (
+            {shareAsked && shareData !== null && (
                 <Suspense fallback={null}>
                     <ShareCardModal
+                        open={shareOpen}
                         card={shareData}
                         onClose={() => setShareOpen(false)}
                     />

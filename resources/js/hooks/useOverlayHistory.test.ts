@@ -16,18 +16,14 @@ type StartHandler = (event: {
     detail: { visit: { preserveState: unknown; prefetch: boolean } };
 }) => void;
 
-const handlers: { start?: StartHandler } = {};
 const inertiaPopstate = vi.fn();
+let onVisitStart: StartHandler;
 
 beforeAll(() => {
-    vi.mocked(router.on).mockImplementation(((
-        event: string,
-        callback: StartHandler,
-    ) => {
-        if (event === 'start') handlers.start = callback;
-        return () => {};
-    }) as unknown as typeof router.on);
-    // Registered before any overlay, like Inertia's own listener.
+    // test/setup.ts installed the manager; this stands in for Inertia's own listener, registered after it.
+    onVisitStart = vi
+        .mocked(router.on)
+        .mock.calls.find(([event]) => event === 'start')?.[1] as StartHandler;
     window.addEventListener('popstate', inertiaPopstate);
 });
 
@@ -159,7 +155,7 @@ describe('useOverlayHistory', () => {
         const upper = overlay();
 
         act(() =>
-            handlers.start?.({
+            onVisitStart({
                 detail: { visit: { preserveState: false, prefetch: false } },
             }),
         );
@@ -179,12 +175,12 @@ describe('useOverlayHistory', () => {
         const sheet = overlay();
 
         act(() =>
-            handlers.start?.({
+            onVisitStart({
                 detail: { visit: { preserveState: true, prefetch: false } },
             }),
         );
         act(() =>
-            handlers.start?.({
+            onVisitStart({
                 detail: { visit: { preserveState: false, prefetch: true } },
             }),
         );
@@ -198,7 +194,7 @@ describe('useOverlayHistory', () => {
 
     it('ignores visits with no overlay open', async () => {
         act(() =>
-            handlers.start?.({
+            onVisitStart({
                 detail: { visit: { preserveState: false, prefetch: false } },
             }),
         );

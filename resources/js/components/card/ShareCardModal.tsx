@@ -79,9 +79,14 @@ const FACT_CHIPS: Array<{
  * any progress at all.
  */
 export default function ShareCardModal({
+    open,
     card,
     onClose,
-}: Readonly<{ card: ShareCardTarget | null; onClose: () => void }>) {
+}: Readonly<{
+    open: boolean;
+    card: ShareCardTarget | null;
+    onClose: () => void;
+}>) {
     const [style, setStyle] = useState<CardStyle>('broadsheet');
     const [aspect, setAspect] = useState<CardAspect>('story');
     const [facts, setFacts] = useState<CardOptions>(ALL_FACTS);
@@ -206,7 +211,7 @@ export default function ShareCardModal({
 
     return (
         <Overlay
-            open
+            open={open}
             onOpenChange={(open) => {
                 if (!open) onClose();
             }}

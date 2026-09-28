@@ -4,6 +4,7 @@ import { createInertiaApp, router } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
 
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { installOverlayHistory } from '@/hooks/useOverlayHistory';
 import {
     syncAppBadge,
     syncAppBadgeOnVisible,
@@ -27,6 +28,7 @@ router.on('navigate', (event) => {
 });
 
 installGlobalErrorReporting();
+installOverlayHistory();
 
 const pages = import.meta.glob<{ default: ComponentType }>([
     './pages/**/*.tsx',

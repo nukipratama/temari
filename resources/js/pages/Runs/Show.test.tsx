@@ -23,13 +23,14 @@ vi.mock('@/components/run/RouteMap', () => ({
 // The share popup sits behind a lazy import and fetches its PNG from the
 // server; this file only asserts that the button reaches it.
 vi.mock('@/components/card/ShareCardModal', () => ({
-    default: ({ onClose }: { onClose: () => void }) => (
-        <div data-testid="share-card-modal">
-            <button type="button" onClick={onClose}>
-                Close share
-            </button>
-        </div>
-    ),
+    default: ({ open, onClose }: { open: boolean; onClose: () => void }) =>
+        open ? (
+            <div data-testid="share-card-modal">
+                <button type="button" onClick={onClose}>
+                    Close share
+                </button>
+            </div>
+        ) : null,
 }));
 
 beforeEach(() => {
