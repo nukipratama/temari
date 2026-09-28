@@ -705,9 +705,9 @@ final readonly class RuleBasedNarrationFiller
     private function usualMonthlyKm(int $userId, Carbon $monthStart): ?float
     {
         $distances = ActivityDetail::query()
+            ->selectRaw("DATE_FORMAT(start_date_local, '%Y-%m') as month, SUM(COALESCE(distance, 0)) / 1000 as distance_km")
             ->forUser($userId)
             ->where('start_date_local', '<', $monthStart)
-            ->selectRaw("DATE_FORMAT(start_date_local, '%Y-%m') as month, SUM(COALESCE(distance, 0)) / 1000 as distance_km")
             ->groupBy('month')
             ->orderByDesc('month')
             ->limit(6)

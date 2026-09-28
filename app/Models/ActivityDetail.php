@@ -135,7 +135,13 @@ class ActivityDetail extends Model
     #[Scope]
     protected function forUser(Builder $query, int $userId): Builder
     {
-        return $query->whereHas('activity', fn ($q) => $q->where('user_id', $userId));
+        if ($query->getQuery()->columns === null) {
+            $query->select('activity_details.*');
+        }
+
+        return Activity::analyzedJoinConstraint(
+            $query->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )->where('activities.user_id', $userId);
     }
 
     /**

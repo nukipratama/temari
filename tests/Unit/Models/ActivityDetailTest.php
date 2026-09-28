@@ -13,10 +13,23 @@ uses(RefreshDatabase::class);
 
 it('forUser scopes to details whose activity belongs to the user', function (): void {
     $user = User::factory()->create();
+    Activity::factory()->count(3)->for($user)->create();
     $mine = ActivityDetail::factory()->for(Activity::factory()->for($user))->create();
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->stub())->create();
     ActivityDetail::factory()->create(); // another user
+    $details = ActivityDetail::query()->forUser($user->id)->get();
 
-    expect(ActivityDetail::query()->forUser($user->id)->pluck('id')->all())->toBe([$mine->id]);
+    expect($details->pluck('id')->all())->toBe([$mine->id])
+        ->and($details->first()->activity_id)->toBe($mine->activity_id);
+});
+
+it('forUser uses an analyzed activities join', function (): void {
+    $sql = ActivityDetail::query()->forUser(1)->toSql();
+
+    expect($sql)->toContain('inner join `activities`')
+        ->and($sql)->toContain('`activities`.`user_id` = ?')
+        ->and($sql)->toContain('`activities`.`analyzed_at` is not null')
+        ->and($sql)->not->toContain('exists');
 });
 
 it('casts numeric, boolean, datetime, and json columns', function (): void {
