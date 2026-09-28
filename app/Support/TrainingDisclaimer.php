@@ -16,7 +16,7 @@ final class TrainingDisclaimer
 
     public const string SHORT = 'temari plans from your runs, not a check-up. if something hurts, rest and see a pro.';
 
-    public const string TEXT = 'Temari prescribes from your own data, not from a medical assessment. These numbers are training guidance, not medical advice. Pain, illness or injury is a conversation for a doctor, not a plan engine.';
+    public const string TEXT = 'Temari plans from your own runs, not from a medical assessment. These numbers are training guidance, not medical advice. If something hurts, or you are ill or injured, that is one for a doctor, not the plan.';
 
     /**
      * The scope of what the plan engine can and cannot see, for the standalone
@@ -29,8 +29,8 @@ final class TrainingDisclaimer
     {
         return [
             'The plan is arithmetic over what you have already run: your recent volume, how much of last week you actually completed, your readiness and load signals, and your race goal if you set one. Nothing else goes into it.',
-            'It cannot see an injury, an illness, a medication, a bad night, or any training you did that never reached Strava. When one of those is in play, the plan is working from a picture it knows is incomplete.',
-            'The same holds for everything Temari writes. The notes are generated from your numbers, not from an assessment of you, and they are not reviewed by anyone before you read them.',
+            'It can\'t see an injury, an illness, a medication, a bad night, or any training you did that never reached Strava. When one of those is in play, the plan is working from a picture it knows is incomplete.',
+            'The same holds for everything Temari writes. The notes come from your numbers, not from an assessment of you, and nobody checks them before you read them.',
         ];
     }
 }

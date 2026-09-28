@@ -26,7 +26,7 @@ class LegalController extends Controller
     }
 
     /**
-     * @param  array{slug: string, title: string, updated: string, intro: string, sections: list<array{id?: string, heading: string, paragraphs: list<string>}>}  $document
+     * @param  array{slug: string, title: string, updated: string, intro: string, summary: list<string>, sections: list<array{id?: string, heading: string, paragraphs: list<string>}>}  $document
      */
     private static function render(array $document): Response
     {

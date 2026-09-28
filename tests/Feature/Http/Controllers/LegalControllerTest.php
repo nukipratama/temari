@@ -26,6 +26,7 @@ it('serves every legal document to a signed-out stranger', function (string $rou
             ->has('title')
             ->has('updated')
             ->has('intro')
+            ->has('summary')
             ->has('sections'));
 })->with(collect($routes)->map(fn (string $slug, string $route): array => [$route, $slug])->values()->all());
 

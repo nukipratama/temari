@@ -28,6 +28,11 @@ function renderDocument(overrides = {}) {
             title="privacy policy"
             updated="2026-08-13"
             intro="What is held, and what leaves the server."
+            summary={[
+                'Only you see your runs.',
+                'No ads, no trackers.',
+                'Delete your account from Settings anytime.',
+            ]}
             sections={SECTIONS}
             {...overrides}
         />,
@@ -50,6 +55,16 @@ describe('Legal/Document', () => {
         expect(
             screen.getByText('Your name and your Strava athlete id.'),
         ).toBeInTheDocument();
+    });
+
+    it('opens with the short version before the full sections', () => {
+        renderDocument();
+
+        const summary = screen.getByRole('region', {
+            name: 'the short version',
+        });
+        expect(summary).toHaveTextContent('Only you see your runs.');
+        expect(summary).toHaveTextContent('No ads, no trackers.');
     });
 
     it('anchors a section by its id so the old AI-use link lands on it', () => {

@@ -16,6 +16,7 @@ interface DocumentProps {
     title: string;
     updated: string;
     intro: string;
+    summary: string[];
     sections: Section[];
 }
 
@@ -62,6 +63,7 @@ export default function LegalDocument({
     title,
     updated,
     intro,
+    summary,
     sections,
 }: Readonly<DocumentProps>) {
     return (
@@ -85,6 +87,24 @@ export default function LegalDocument({
                     <p className="mt-4 font-sans text-sm leading-relaxed text-text-2">
                         {linkify(intro)}
                     </p>
+
+                    <section
+                        aria-label="the short version"
+                        className="mt-6 rounded-2xl border border-border bg-card px-4 py-3.5 shadow-e1"
+                    >
+                        <Eyebrow
+                            token="small"
+                            as="h2"
+                            className="text-foreground"
+                        >
+                            the short version
+                        </Eyebrow>
+                        <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-4.5 font-sans text-sm leading-relaxed text-foreground marker:text-text-3">
+                            {summary.map((line) => (
+                                <li key={line}>{line}</li>
+                            ))}
+                        </ul>
+                    </section>
 
                     <div className="mt-10 flex flex-col divide-y divide-dashed divide-border [&>*]:pt-10 [&>*:first-child]:pt-0">
                         {sections.map((section) => (

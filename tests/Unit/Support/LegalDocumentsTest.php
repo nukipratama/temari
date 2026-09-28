@@ -7,7 +7,7 @@ use App\Support\LegalDocuments;
 use App\Support\TrainingDisclaimer;
 
 /**
- * @return list<array{slug: string, title: string, updated: string, intro: string, sections: list<array{heading: string, paragraphs: list<string>}>}>
+ * @return list<array{slug: string, title: string, updated: string, intro: string, summary: list<string>, sections: list<array{heading: string, paragraphs: list<string>}>}>
  */
 function allLegalDocuments(): array
 {
@@ -21,7 +21,7 @@ function allLegalDocuments(): array
 function legalProse(): string
 {
     return implode(' ', array_map(
-        fn (array $document): string => $document['title'].' '.$document['intro'].' '.implode(' ', array_merge(
+        fn (array $document): string => $document['title'].' '.$document['intro'].' '.implode(' ', $document['summary']).' '.implode(' ', array_merge(
             ...array_map(fn (array $section): array => [$section['heading'], ...$section['paragraphs']], $document['sections']),
         )),
         allLegalDocuments(),
@@ -40,6 +40,30 @@ it('gives every document a slug, a title, a date and at least one section', func
                 ->and($section['paragraphs'])->not->toBeEmpty();
         }
     }
+});
+
+it('opens every document with a short version of three to five lines', function (): void {
+    foreach (allLegalDocuments() as $document) {
+        expect(count($document['summary']))->toBeGreaterThanOrEqual(3)->toBeLessThanOrEqual(5);
+    }
+});
+
+it('keeps section headings lowercase to match the app chrome', function (): void {
+    foreach (allLegalDocuments() as $document) {
+        foreach ($document['sections'] as $section) {
+            expect($section['heading'])->toBe(mb_strtolower($section['heading']));
+        }
+    }
+});
+
+it('speaks as temari, says once that one person runs it, and never as "the operator"', function (): void {
+    expect(legalProse())->not->toContain('operator')
+        ->and(substr_count(legalProse(), 'Temari is run by one person'))->toBe(1);
+});
+
+it('points deletion at the self-serve button instead of asking anyone', function (): void {
+    expect(legalProse())->not->toContain('ask.')
+        ->and(legalProse())->toContain('Deleting is self-serve');
 });
 
 it('gives the three documents distinct slugs', function (): void {
@@ -76,7 +100,7 @@ it('serves the training disclaimer from TrainingDisclaimer rather than a second 
 
 it('discloses the one thing account deletion keeps, so the promise stays true', function (): void {
     $deletion = collect(LegalDocuments::privacy()['sections'])->firstOrFail(
-        fn (array $section): bool => $section['heading'] === 'Deleting your account',
+        fn (array $section): bool => $section['heading'] === 'deleting your account',
     );
 
     expect(implode(' ', $deletion['paragraphs']))->toContain('what your notes cost to write')
