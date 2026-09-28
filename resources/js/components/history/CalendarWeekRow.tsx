@@ -50,45 +50,11 @@ export default function CalendarWeekRow({
                 ))}
             </div>
             {expanded && snapshot !== null && (
-                <div
+                <WeekRecapPanel
                     id={disclosureId}
-                    className="mt-1 mb-2 rounded-sm bg-muted px-3 py-2.5"
-                >
-                    <AnalysisStatus
-                        analysis={snapshot.recap_analysis}
-                        thinkingMark
-                        inertiaReloadProps={['weeklySnapshots']}
-                        awaitingSchedule={snapshot.is_current_week}
-                        chained
-                        isChainHead={snapshot.is_chain_head}
-                        size="sm"
-                        renderContent={(content) => (
-                            <p className="narration-dense m-0">
-                                &quot;{renderBold(stripEdgeQuotes(content))}
-                                &quot;
-                            </p>
-                        )}
-                    />
-                    <div className="mt-1.75 flex flex-wrap items-start gap-1.5">
-                        <WeeklyStatLine snapshot={snapshot} />
-                        {week.rarity && (
-                            <span
-                                className={cn(
-                                    'inline-flex items-center gap-0.5 rounded-full bg-card px-1.75 py-0.5 font-mono text-[0.5rem] leading-[1.2] font-extrabold tracking-[.03em] uppercase',
-                                    RARITY_INK[week.rarity],
-                                )}
-                            >
-                                <Icon
-                                    icon={Sparkle}
-                                    width={10}
-                                    height={10}
-                                    aria-hidden
-                                />
-                                {RARITY_LABELS[week.rarity]} card
-                            </span>
-                        )}
-                    </div>
-                </div>
+                    week={week}
+                    snapshot={snapshot}
+                />
             )}
         </div>
     );
@@ -232,4 +198,53 @@ function describeCell(cell: CalendarCell, hasRun: boolean): string {
     }
 
     return `${cell.date}${cell.is_today ? ' (today)' : ''}: ${parts.join(', ')}`;
+}
+
+export function WeekRecapPanel({
+    id,
+    week,
+    snapshot,
+}: Readonly<{
+    id: string;
+    week: WeekRow;
+    snapshot: WeeklySnapshotWithRecap;
+}>) {
+    return (
+        <div id={id} className="mt-1 mb-2 rounded-sm bg-muted px-3 py-2.5">
+            <AnalysisStatus
+                analysis={snapshot.recap_analysis}
+                thinkingMark
+                inertiaReloadProps={['weeklySnapshots']}
+                awaitingSchedule={snapshot.is_current_week}
+                chained
+                isChainHead={snapshot.is_chain_head}
+                size="sm"
+                renderContent={(content) => (
+                    <p className="narration-dense m-0">
+                        &quot;{renderBold(stripEdgeQuotes(content))}
+                        &quot;
+                    </p>
+                )}
+            />
+            <div className="mt-1.75 flex flex-wrap items-start gap-1.5">
+                <WeeklyStatLine snapshot={snapshot} />
+                {week.rarity && (
+                    <span
+                        className={cn(
+                            'inline-flex items-center gap-0.5 rounded-full bg-card px-1.75 py-0.5 font-mono text-[0.5rem] leading-[1.2] font-extrabold tracking-[.03em] uppercase',
+                            RARITY_INK[week.rarity],
+                        )}
+                    >
+                        <Icon
+                            icon={Sparkle}
+                            width={10}
+                            height={10}
+                            aria-hidden
+                        />
+                        {RARITY_LABELS[week.rarity]} card
+                    </span>
+                )}
+            </div>
+        </div>
+    );
 }

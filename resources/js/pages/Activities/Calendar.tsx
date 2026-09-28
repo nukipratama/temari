@@ -1,18 +1,34 @@
-import { Deferred, Head, Link } from '@inertiajs/react';
+import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
-import CalendarWeekRow from '@/components/history/CalendarWeekRow';
 import HistoryHeader from '@/components/history/HistoryHeader';
 import RecapCard from '@/components/history/RecapCard';
+import CalendarGridA from '@/components/prototype/CalendarGridA';
+import CalendarGridB from '@/components/prototype/CalendarGridB';
+import CalendarGridC from '@/components/prototype/CalendarGridC';
+import {
+    calendarUrl,
+    consistencyOf,
+    type ProtoCell,
+    readVariant,
+    VARIANT_LABEL,
+    VARIANTS,
+    withFakeMultiRun,
+} from '@/components/prototype/calendarProto';
+import {
+    ConsistencyLine,
+    DayRunsSheet,
+    EffortLegend,
+} from '@/components/prototype/CalendarProtoParts';
+import PrototypeSwitcher from '@/components/prototype/PrototypeSwitcher';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import Skeleton, { SkeletonRows } from '@/components/ui/Skeleton';
+import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { appLayout } from '@/layouts/appLayout';
-import { cn } from '@/lib/cn';
-import { MOOD_FILL, MOOD_LABEL, MOOD_ORDER } from '@/lib/mood';
 
 import { useCalendar, type CalendarCell } from './useCalendar';
 import { snapshotsByWeekEnding } from './weekBuckets';
@@ -42,7 +58,19 @@ interface CalendarProps {
     monthlyRecap?: MonthlyRecap;
 }
 
-const WEEKDAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as const;
+// PROTOTYPE — throwaway, calendar redesign variants: this page is rewired to the ?variant= grids.
+const MONTH_PROPS = [
+    'month',
+    'monthLabel',
+    'prevMonth',
+    'nextMonth',
+    'todayMonth',
+    'cells',
+    'weeklySnapshots',
+    'monthlyRecap',
+];
+
+const GRIDS = { A: CalendarGridA, B: CalendarGridB, C: CalendarGridC };
 
 export default function Calendar({
     cells = [],
@@ -55,123 +83,130 @@ export default function Calendar({
     weeklySnapshots = [],
     monthlyRecap,
 }: Readonly<CalendarProps>) {
-    const { weeks, dominantMood, monthTotals, isCurrentMonth } = useCalendar({
-        cells,
+    const { url } = usePage();
+    const variant = readVariant(url);
+    const protoCells = useMemo(() => withFakeMultiRun(cells), [cells]);
+    const { weeks, dominantMood, isCurrentMonth } = useCalendar({
+        cells: protoCells,
         month,
         todayMonth,
     });
+    const stats = useMemo(() => consistencyOf(protoCells), [protoCells]);
+    const [openDay, setOpenDay] = useState<ProtoCell | null>(null);
 
     const snapshotsByWeek = useMemo(
         () => snapshotsByWeekEnding(weeklySnapshots),
         [weeklySnapshots],
     );
 
+    const goMonth = (target: string) =>
+        router.get(
+            calendarUrl(target, variant),
+            {},
+            { only: MONTH_PROPS, preserveState: true, preserveScroll: true },
+        );
+    const swipe = useHorizontalSwipe((direction) =>
+        goMonth(direction === 'left' ? nextMonth : prevMonth),
+    );
+
+    const Grid = GRIDS[variant];
+    const legend = <EffortLegend className="mt-4" />;
+
     return (
         <>
             <Head title={`History · Calendar · ${monthLabel}`} />
-            <PageContainer>
+            <PageContainer className="pb-24">
                 <HistoryHeader
                     active="calendar"
                     activityCount={lifetime?.total_runs}
                 />
 
-                <div className="mt-8 mb-2.5">
+                <div className="mt-8 mb-2">
                     <MonthNav
                         label={monthLabel}
-                        prevMonth={prevMonth}
-                        nextMonth={nextMonth}
+                        onPrev={() => goMonth(prevMonth)}
+                        onNext={() => goMonth(nextMonth)}
                     />
                 </div>
 
                 <Deferred
-                    data={['cells', 'monthlyRecap']}
-                    fallback={<Skeleton className="mx-auto mb-2.5 h-3 w-44" />}
+                    data={['cells']}
+                    fallback={<Skeleton className="mx-auto mb-4 h-3 w-60" />}
                 >
-                    {() => (
-                        <>
-                            <div className="mb-2.5 text-center font-mono text-[0.59375rem] leading-[1.2] text-text-3">
-                                {monthTotals.runs} run
-                                {monthTotals.runs === 1 ? '' : 's'} ·{' '}
-                                {monthTotals.km.toFixed(1)} km ·{' '}
-                                {monthTotals.trimp === null
-                                    ? '— TRIMP'
-                                    : `${Math.round(monthTotals.trimp)} TRIMP`}
-                            </div>
-
-                            {monthlyRecap && (
-                                <RecapCard
-                                    mood={dominantMood}
-                                    analysis={monthlyRecap}
-                                    awaitingSchedule={isCurrentMonth}
-                                    awaitingScheduleLabel="this month's recap isn't ready yet."
-                                    isChainHead={monthlyRecap.is_chain_head}
-                                    size="month"
-                                    inertiaReloadProps={['monthlyRecap']}
-                                    className="mb-2.5"
-                                />
-                            )}
-                        </>
-                    )}
+                    {() => <ConsistencyLine stats={stats} className="mb-4" />}
                 </Deferred>
 
-                <Legend />
+                {variant === 'B' && (
+                    <EffortLegend className="mb-4 justify-center" />
+                )}
 
-                <div className="mb-1.5 grid grid-cols-[30px_repeat(7,minmax(0,1fr))] gap-0.75">
-                    <span aria-hidden />
-                    {WEEKDAY_LABELS.map((label) => (
-                        <span
-                            key={label}
-                            className="text-center font-mono text-[0.46875rem] leading-[1.2] font-extrabold text-text-3 uppercase"
-                        >
-                            {label}
-                        </span>
-                    ))}
-                </div>
-                <Deferred
-                    data={['cells', 'weeklySnapshots']}
-                    fallback={<SkeletonRows count={6} />}
-                >
-                    {() => (
-                        <div key={month} className="reveal">
-                            {weeks.map((week) => (
-                                <CalendarWeekRow
-                                    key={week.weekStart}
-                                    week={week}
-                                    snapshot={
-                                        snapshotsByWeek.get(week.weekEnding) ??
-                                        null
-                                    }
+                <div className="touch-pan-y" {...swipe}>
+                    <Deferred
+                        data={['cells', 'weeklySnapshots']}
+                        fallback={<SkeletonRows count={6} />}
+                    >
+                        {() => (
+                            <div key={month} className="reveal">
+                                <Grid
+                                    weeks={weeks}
+                                    snapshotsByWeek={snapshotsByWeek}
+                                    onOpenDay={setOpenDay}
                                 />
-                            ))}
-                        </div>
-                    )}
+                            </div>
+                        )}
+                    </Deferred>
+                </div>
+
+                {variant !== 'B' && legend}
+
+                <Deferred data={['cells', 'monthlyRecap']} fallback={<span />}>
+                    {() =>
+                        monthlyRecap ? (
+                            <RecapCard
+                                mood={dominantMood}
+                                analysis={monthlyRecap}
+                                awaitingSchedule={isCurrentMonth}
+                                awaitingScheduleLabel="this month's recap isn't ready yet."
+                                isChainHead={monthlyRecap.is_chain_head}
+                                size="month"
+                                inertiaReloadProps={['monthlyRecap']}
+                                className="mt-6"
+                            />
+                        ) : null
+                    }
                 </Deferred>
             </PageContainer>
+            <DayRunsSheet cell={openDay} onClose={() => setOpenDay(null)} />
+            <PrototypeSwitcher
+                variants={VARIANTS}
+                labels={VARIANT_LABEL}
+                current={variant}
+            />
         </>
     );
 }
 
 function MonthNav({
     label,
-    prevMonth,
-    nextMonth,
+    onPrev,
+    onNext,
 }: Readonly<{
     label: string;
-    prevMonth: string;
-    nextMonth: string;
+    onPrev: () => void;
+    onNext: () => void;
 }>) {
     return (
         <div className="flex w-full items-center justify-between gap-2">
             <NavButton
-                href={`/history?view=calendar&month=${prevMonth}`}
+                onClick={onPrev}
                 icon={ChevronLeft}
                 label="Previous month"
             />
-            <h2 className="font-serif text-[0.9375rem] leading-[1.2] font-semibold text-foreground">
+            <h2 className="font-serif text-headline-sm text-foreground">
                 {label}
             </h2>
             <NavButton
-                href={`/history?view=calendar&month=${nextMonth}`}
+                onClick={onNext}
                 icon={ChevronRight}
                 label="Next month"
             />
@@ -180,41 +215,19 @@ function MonthNav({
 }
 
 function NavButton({
-    href,
+    onClick,
     icon,
     label,
-}: Readonly<{ href: string; icon: IconComponent; label: string }>) {
+}: Readonly<{ onClick: () => void; icon: IconComponent; label: string }>) {
     return (
-        <Link
-            href={href}
+        <button
+            type="button"
+            onClick={onClick}
             aria-label={label}
-            preserveScroll
-            className="pressable focus-ring flex size-7 flex-none items-center justify-center rounded-full bg-card text-foreground shadow-e1"
+            className="pressable focus-ring flex size-9 flex-none items-center justify-center rounded-full bg-card text-foreground shadow-e1"
         >
             <Icon icon={icon} width={16} height={16} aria-hidden />
-        </Link>
-    );
-}
-
-function Legend() {
-    return (
-        <div className="mb-3.5 flex flex-wrap gap-x-3 gap-y-1.75 px-0.5">
-            {MOOD_ORDER.map((mood) => (
-                <div
-                    key={mood}
-                    className="flex items-center gap-1 font-mono text-[0.5rem] leading-[1.2] font-bold tracking-[.03em] text-foreground uppercase"
-                >
-                    <span
-                        className={cn(
-                            'size-1.5 flex-none rounded-full',
-                            MOOD_FILL[mood],
-                        )}
-                        aria-hidden
-                    />
-                    {MOOD_LABEL[mood]}
-                </div>
-            ))}
-        </div>
+        </button>
     );
 }
 
