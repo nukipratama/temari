@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Override;
 
@@ -135,9 +136,11 @@ class ActivityDetail extends Model
     #[Scope]
     protected function forUser(Builder $query, int $userId): Builder
     {
-        if ($query->getQuery()->columns === null) {
-            $query->select('activity_details.*');
-        }
+        $query->getQuery()->beforeQuery(static function (QueryBuilder $base): void {
+            if ($base->aggregate === null && in_array($base->columns, [null, ['*']], true)) {
+                $base->columns = ['activity_details.*'];
+            }
+        });
 
         return Activity::analyzedJoinConstraint(
             $query->join('activities', 'activities.id', '=', 'activity_details.activity_id'),

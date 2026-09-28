@@ -23,6 +23,19 @@ it('forUser scopes to details whose activity belongs to the user', function (): 
         ->and($details->first()->activity_id)->toBe($mine->activity_id);
 });
 
+it('forUser keeps the columns a caller asks for', function (): void {
+    $user = User::factory()->create();
+    $detail = ActivityDetail::factory()->for(Activity::factory()->for($user))->create(['distance' => 5000]);
+
+    $row = ActivityDetail::query()->forUser($user->id)->get(['distance'])->sole();
+    $dates = ActivityDetail::query()->forUser($user->id)->toBase()->pluck('start_date_local');
+
+    expect(array_keys($row->getAttributes()))->toBe(['distance'])
+        ->and($dates->all())->toBe([$detail->start_date_local->format('Y-m-d H:i:s')])
+        ->and(ActivityDetail::query()->forUser($user->id)->count())->toBe(1)
+        ->and(ActivityDetail::query()->forUser($user->id)->toSql())->toStartWith('select `activity_details`.*');
+});
+
 it('forUser uses an analyzed activities join', function (): void {
     $sql = ActivityDetail::query()->forUser(1)->toSql();
 
