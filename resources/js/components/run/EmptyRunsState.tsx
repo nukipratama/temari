@@ -24,7 +24,7 @@ const HERO: Record<
     revoked: {
         eyebrow: '★ Disconnected',
         headline: 'Strava connection lost',
-        copy: "your Strava token isn't active anymore. reconnect so new runs can be read.",
+        copy: "your Strava connection isn't active anymore. reconnect so new runs can be read.",
     },
     syncing: {
         eyebrow: '★ Syncing',

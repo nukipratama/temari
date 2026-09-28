@@ -45,6 +45,13 @@ it('shows the login page to guests', function (): void {
         ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->has('authStravaUrl'));
 });
 
+it('shares the you-vs-past-you line as the page and social description', function (): void {
+    $this->get(route('login'))
+        ->assertSuccessful()
+        ->assertSee('<meta property="og:description" content="Every run, measured against one you\'ve already done.', false)
+        ->assertDontSee('easygoing');
+});
+
 it('hands the landing page its legal copy from the single source, not a retype', function (): void {
     $this->get(route('login'))
         ->assertSuccessful()
@@ -71,8 +78,8 @@ it('fails honestly when the ip-keyed oauth throttle trips', function (): void {
 
     $this->get(route('auth.strava.redirect'))
         ->assertStatus(429)
-        ->assertSee('Too many tries, too fast')
-        ->assertSee('Wait a minute and start the connect over');
+        ->assertSee('easy there')
+        ->assertSee('try again in a minute');
 });
 
 it('redirects authenticated users away from login', function (): void {

@@ -55,6 +55,16 @@ describe('Login', () => {
         );
     });
 
+    it('puts the trust line under the CTA, linking to the privacy summary', () => {
+        render(<Login authStravaUrl="/x" />);
+
+        expect(
+            screen.getByRole('link', {
+                name: 'read-only · no ads · delete anytime',
+            }),
+        ).toHaveAttribute('href', '/privacy');
+    });
+
     it('hides demo button when demoLoginEnabled is false', () => {
         render(<Login authStravaUrl="/x" />);
         expect(screen.queryByText('try the demo')).not.toBeInTheDocument();
@@ -146,8 +156,6 @@ describe('Login', () => {
             />,
         );
 
-        // "what temari stores" is also the auth card's footnote link, so the
-        // headings are asserted against the disclosure panel.
         expect(disclosurePanel()).toHaveTextContent('what temari stores');
         expect(disclosurePanel()).toHaveTextContent(
             'before you take its advice',

@@ -15,7 +15,7 @@ const HERO_COPY: Record<StravaSyncState, { headline: string; copy: string }> = {
     },
     revoked: {
         headline: 'Strava connection lost',
-        copy: "Your Strava token isn't active anymore. Reconnect so new runs can be read.",
+        copy: "Your Strava connection isn't active anymore. Reconnect so new runs can be read.",
     },
     syncing: {
         headline: 'your runs are being pulled from Strava',

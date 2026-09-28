@@ -1,6 +1,6 @@
 @extends('errors.layout')
 
 @section('code', '419')
-@section('title', 'Your session timed out')
-@section('message', 'It sat idle too long, so your session expired. Refresh the page and try again.')
-@section('cta', 'Back to home')
+@section('title', 'your session timed out')
+@section('message', 'it sat idle too long, so it expired. refresh the page and try again.')
+@section('cta', 'back to home')

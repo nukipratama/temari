@@ -1,5 +1,5 @@
 @extends('errors.layout')
 
 @section('code', '403')
-@section('title', 'You can\'t go here')
-@section('message', 'This page isn\'t open to you. If that seems wrong, try logging in again.')
+@section('title', 'this page is locked')
+@section('message', 'it isn\'t open to your account. if that seems wrong, try signing in again.')

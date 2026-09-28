@@ -181,7 +181,7 @@ const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
     },
     revoked: {
         line: 'Strava connection dropped',
-        sub: "your token isn't active anymore. reconnect so new runs get picked up.",
+        sub: "your Strava connection isn't active anymore. reconnect so new runs get picked up.",
     },
     syncing: {
         line: 'pulling in your runs',
