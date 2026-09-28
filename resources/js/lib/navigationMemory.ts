@@ -217,9 +217,6 @@ export function startContextualBackSession(
             return;
         }
 
-        restoreScroll(
-            pendingScrollRestore.href,
-            pendingScrollRestore.scrollY,
-        );
+        restoreScroll(pendingScrollRestore.href, pendingScrollRestore.scrollY);
     });
 }
