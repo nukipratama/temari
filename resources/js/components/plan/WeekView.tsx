@@ -13,6 +13,7 @@ import WeekStrip from '@/components/plan/WeekStrip';
 import FlagWrong from '@/components/temari/FlagWrong';
 import Chip from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
+import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { rememberPlanSelectedDay } from '@/lib/navigationMemory';
 import { formatNaiveMonthDayId } from '@/lib/pace';
 import {
@@ -118,15 +119,21 @@ export default function WeekView({
     }, [focusHere]);
 
     const selected = days.find((day) => day.date === selectedDate) ?? null;
-    const narration =
-        selected === null ? null : (dayNarration[selected.date] ?? null);
-    const tally = complianceTally(days);
-    const adherence = computeAdherence(days);
-
     const selectDate = (date: string) => {
         setSelectedDate(date);
         rememberPlanSelectedDay(date);
     };
+    const touchHandlers = useHorizontalSwipe((direction) => {
+        const index = days.findIndex((day) => day.date === selectedDate);
+        const next = index + (direction === 'left' ? 1 : -1);
+        if (next >= 0 && next < days.length) {
+            selectDate(days[next].date);
+        }
+    });
+    const narration =
+        selected === null ? null : (dayNarration[selected.date] ?? null);
+    const tally = complianceTally(days);
+    const adherence = computeAdherence(days);
 
     return (
         <section aria-label={`week ${weekNumber}`}>
@@ -210,7 +217,8 @@ export default function WeekView({
                         role="tabpanel"
                         id={panelId}
                         aria-labelledby={tabId(selected.date)}
-                        className="border-t border-dashed border-border pt-3"
+                        className="touch-pan-y border-t border-dashed border-border pt-3"
+                        {...touchHandlers}
                     >
                         <div className="flex items-start gap-2">
                             <div className="min-w-0 flex-1">
