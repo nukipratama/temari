@@ -6,18 +6,21 @@ namespace App\Support;
 
 /**
  * The single wording of "these numbers are guidance, not medicine", so the Plan
- * tab and the public legal pages cannot end up saying it two different ways.
+ * tab, the login page and the public legal pages cannot end up saying it two
+ * different ways.
  * Mirrors {@see DataUseStatement}, which does the same job for AI data use.
  */
 final class TrainingDisclaimer
 {
     public const string HEADLINE = 'training guidance, not medical advice';
 
+    public const string SHORT = 'temari plans from your runs, not a check-up. if something hurts, rest and see a pro.';
+
     public const string TEXT = 'Temari prescribes from your own data, not from a medical assessment. These numbers are training guidance, not medical advice. Pain, illness or injury is a conversation for a doctor, not a plan engine.';
 
     /**
      * The scope of what the plan engine can and cannot see, for the standalone
-     * page. The Plan tab shows {@see self::HEADLINE} as a footer line linking
+     * page. The Plan tab and the login page show {@see self::SHORT} with a link
      * here.
      *
      * @return list<string>

@@ -47,7 +47,7 @@ class PlanController extends Controller
             'seasonSummary' => Inertia::defer(fn (): array => $plan->seasonSummary($user, $today)),
             'seasonAdherencePct' => Inertia::defer(fn (): ?int => $plan->seasonAdherencePct($user, $today)),
             'adaptation' => Inertia::defer(fn (): ?array => $plan->adaptation($user, $today)),
-            'disclaimerHeadline' => TrainingDisclaimer::HEADLINE,
+            'disclaimerLine' => TrainingDisclaimer::SHORT,
             'planNarration' => Inertia::defer(fn (): array => $plan->planNarration($user, $today)),
             'regenerateCooldownSeconds' => fn (): ?int => $plan->regenerateCooldownSeconds($user),
         ]);

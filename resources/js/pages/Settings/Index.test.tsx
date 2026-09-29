@@ -332,6 +332,9 @@ describe('Settings', () => {
         expect(
             document.querySelector('[role="dialog"] svg[data-mascot]'),
         ).toHaveAttribute('data-mascot', 'concerned');
+        expect(
+            screen.getByRole('link', { name: "what's kept afterwards" }),
+        ).toHaveAttribute('href', '/privacy');
         // Nothing is deleted until the user confirms.
         expect(router.delete).not.toHaveBeenCalled();
     });

@@ -25,7 +25,7 @@ class LoginController extends Controller
             ],
             'trainingDisclaimer' => [
                 'headline' => TrainingDisclaimer::HEADLINE,
-                'text' => TrainingDisclaimer::TEXT,
+                'text' => TrainingDisclaimer::SHORT,
             ],
         ]);
     }

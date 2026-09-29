@@ -55,8 +55,8 @@ final class LegalDocuments
                 [
                     'heading' => 'What you can expect from it',
                     'paragraphs' => [
-                        'Best effort, and no more than that. There is no uptime commitment, no guarantee your data will still be here tomorrow, and no promise the service will keep existing. Strava remains the system of record for your activities; Temari is a reader of it.',
-                        'Keep your own backups if the data matters to you. Your activities live in Strava regardless, which is the point of only ever reading from it.',
+                        'Temari is a one-person project, run with care. That also means there is no uptime promise, no guarantee what it stores will be here tomorrow, and no promise it keeps running for good.',
+                        'Strava always keeps your originals. Temari only ever reads from it, so your activities stay safe there whatever happens here.',
                     ],
                 ],
                 [
@@ -139,6 +139,7 @@ final class LegalDocuments
                     'paragraphs' => [
                         'Settings has a delete button. It removes your account and everything hanging off it, including activities, their details and streams, cards, records, weekly and monthly snapshots, notification subscriptions and every piece of text Temari wrote about you, and it unlinks your Strava connection.',
                         'One thing stays: a record of what your notes cost to write, which keeps your name and your Strava athlete id but no activity data.',
+                        'Your Strava sign-in key is kept, encrypted, only until Strava confirms it has been released, and then it goes too.',
                         'Deleting here does not delete anything in Strava. Your activities are yours and stay there.',
                     ],
                 ],

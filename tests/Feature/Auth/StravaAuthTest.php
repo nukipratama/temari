@@ -53,7 +53,7 @@ it('hands the landing page its legal copy from the single source, not a retype',
             ->where('dataUse.headline', DataUseStatement::HEADLINE)
             ->where('dataUse.points', DataUseStatement::points())
             ->where('trainingDisclaimer.headline', TrainingDisclaimer::HEADLINE)
-            ->where('trainingDisclaimer.text', TrainingDisclaimer::TEXT)
+            ->where('trainingDisclaimer.text', TrainingDisclaimer::SHORT)
             ->etc());
 });
 

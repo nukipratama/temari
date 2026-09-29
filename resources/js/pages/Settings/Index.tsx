@@ -252,13 +252,16 @@ function AccountActions() {
                         title="sure you want to delete your account?"
                         body={
                             <>
-                                All your runs, cards, and Strava connection will
-                                be removed and can't be undone. If you just want
-                                to switch Strava accounts, this is also how.
-                                Your Strava refresh token is kept securely only
-                                until Strava confirms release or that the grant
-                                is no longer active; your profile and activity
-                                data are deleted with your account.
+                                your runs, cards and notes go, your Strava
+                                connection is unlinked, and it can&apos;t be
+                                undone. if you just want to switch Strava
+                                accounts, this is also how.{' '}
+                                <Link
+                                    href="/privacy"
+                                    className="underline underline-offset-2"
+                                >
+                                    what&apos;s kept afterwards
+                                </Link>
                             </>
                         }
                         primaryLabel="yes, delete my account"

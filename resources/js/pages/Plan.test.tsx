@@ -20,7 +20,8 @@ vi.mock('@/lib/pace', async () => {
     return { ...actual, todayLocalIso: () => '2026-06-17' };
 });
 
-const DISCLAIMER_HEADLINE = 'Training guidance, not medical advice';
+const DISCLAIMER_LINE =
+    'temari plans from your runs, not a check-up. if something hurts, rest and see a pro.';
 
 function day(overrides: Partial<PlanDay> = {}): PlanDay {
     return {
@@ -107,7 +108,7 @@ const BASE_PROPS: ComponentProps<typeof Plan> = {
     seasonSummary: [summaryWeek()],
     seasonAdherencePct: 82,
     adaptation: null,
-    disclaimerHeadline: DISCLAIMER_HEADLINE,
+    disclaimerLine: DISCLAIMER_LINE,
 };
 
 function renderPlan(overrides: Partial<ComponentProps<typeof Plan>> = {}) {
@@ -154,9 +155,7 @@ describe('Plan', () => {
         expect(screen.getByRole('heading')).toHaveTextContent(
             /the weeks\s*ahead\./i,
         );
-        expect(
-            screen.getByText(/training guidance, not medical advice/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/not a check-up/i)).toBeInTheDocument();
         expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
             0,
         );
@@ -348,10 +347,10 @@ describe('Plan', () => {
         renderPlan();
 
         expect(screen.getByRole('contentinfo')).toHaveTextContent(
-            /training guidance, not medical advice/i,
+            DISCLAIMER_LINE,
         );
         expect(
-            screen.getByRole('link', { name: /read more/i }),
+            screen.getByRole('link', { name: /the full disclaimer/i }),
         ).toHaveAttribute('href', '/training-disclaimer');
     });
 });
