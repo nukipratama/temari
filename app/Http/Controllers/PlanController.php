@@ -9,8 +9,6 @@ use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
-use App\Services\AI\AnalysisOrigin;
-use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanRegenerationService;
@@ -138,7 +136,6 @@ class PlanController extends Controller
         }
 
         if ($occupant !== null || $session->wasChanged(['session_type', 'skipped', 'date'])) {
-            app(NarrationOrigin::class)->set(AnalysisOrigin::User);
             $touchedSessions = $occupant === null ? [$session] : [$session, $occupant];
             foreach ($touchedSessions as $touchedSession) {
                 if ($touchedSession->status->isCredited() && $narrationRequester->isWithinCurrentWeek($touchedSession->date, $today)) {
