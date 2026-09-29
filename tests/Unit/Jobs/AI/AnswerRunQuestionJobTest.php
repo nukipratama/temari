@@ -15,6 +15,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\Narrators\RunQuestionNarrator;
+use App\Services\AI\RunQuestion\RunQuestionSeeds;
 use App\Services\AI\RunQuestion\RunQuestionTopic;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -33,7 +34,7 @@ function questionRow(array $attributes = []): RunQuestion
 {
     $user = User::factory()->create($attributes['user'] ?? []);
     $activity = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($activity)->create();
+    ActivityDetail::factory()->for($activity)->create(['weather_temp_c' => 20]);
 
     return RunQuestion::factory()->create([
         'user_id' => $user->id,
@@ -202,7 +203,10 @@ it('serves the deterministic answer when the daily cost ceiling is the only stop
     expect($row->refresh()->status)->toBe(AnalysisStatus::Done)
         ->and($row->error)->toBeNull()
         ->and($row->answer)->toBeString()->not->toBeEmpty()
-        ->and($row->follow_ups)->toBe([RunQuestionTopic::Baseline->question()])
+        ->and($row->follow_ups)->toBe(array_map(
+            fn (RunQuestionTopic $topic): string => $topic->question(),
+            RunQuestionSeeds::for($row->activity->detail),
+        ))
         ->and(app(CostCeilingLedger::class)->today()['degradedBreakdown'])->toBe([
             ['kind' => 'run_question', 'userId' => $row->user_id, 'count' => 1],
         ]);
