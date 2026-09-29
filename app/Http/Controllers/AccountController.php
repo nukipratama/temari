@@ -9,6 +9,7 @@ use App\Services\User\UserEraser;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class AccountController extends Controller
 {
@@ -38,6 +39,7 @@ class AccountController extends Controller
         $eraser->erase($user);
 
         $request->session()->invalidate();
+        Inertia::clearHistory();
         $request->session()->regenerateToken();
 
         return redirect()->route('login')->with('info', 'Your account has been deleted, and your Strava connection has been unlinked. Thanks for running with Temari.');

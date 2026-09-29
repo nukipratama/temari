@@ -58,6 +58,9 @@ it('deletes the account, revokes Strava, logs the user out and redirects to logi
     expect(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->exists())->toBeFalse();
 
     $this->assertGuest();
+
+    $this->get(route('login'))
+        ->assertViewHas('page.clearHistory', true);
 });
 
 it('rejects a guest', function (): void {
