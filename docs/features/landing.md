@@ -34,7 +34,7 @@ The page reads top to bottom as promise → mechanism → proof → cost → ask
 
 [LoginController](../../app/Http/Controllers/Auth/LoginController.php) hands down `dataUse` and `trainingDisclaimer` from [DataUseStatement](../../app/Support/DataUseStatement.php) and [TrainingDisclaimer](../../app/Support/TrainingDisclaimer.php) — the same constants `/settings`, `/plan` and the public documents read. A test in [StravaAuthTest](../../tests/Feature/Auth/StravaAuthTest.php) asserts prop equality against those constants, so a retype fails rather than silently drifting. Both sections render only when the prop is present, so the page degrades to promise + ask rather than to a half-stated legal claim.
 
-The four legal links stay **plain `<a>` anchors**, not Inertia `<Link>`s: they are what a stranger reads before deciding to connect, so they must resolve even if the SPA runtime never boots. See [[legal-pages]].
+The three legal links stay **plain `<a>` anchors**, not Inertia `<Link>`s: they are what a stranger reads before deciding to connect, so they must resolve even if the SPA runtime never boots. See [[legal-pages]].
 
 ## The Strava mark sits on neutral ground
 
