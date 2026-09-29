@@ -726,6 +726,21 @@ it('dayPayload explains a long day that covered its distance in pieces', functio
         ->and($render($inPieces, PlannedSessionStatus::Done))->toBeNull();
 });
 
+it('dayPayload never asks a long day eased to an easy run for one go', function (): void {
+    $session = PlannedSession::factory()->make([
+        'session_type' => SessionType::Long,
+        'phase' => PlanPhase::Build,
+        'date' => Carbon::parse('2026-08-10'),
+        'clamped_km' => 6.8,
+    ]);
+    $split = ['km' => 8.1, 'runs' => [['id' => 1, 'km' => 4.5, 'seconds' => 1800, 'moving_time' => 1800, 'started_at' => '06:00'], ['id' => 2, 'km' => 3.6, 'seconds' => 1440, 'moving_time' => 1440, 'started_at' => '17:30']]];
+
+    $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-12'), null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Partial, $split);
+
+    expect($payload['session_type'])->toBe(SessionType::Easy->value)
+        ->and($payload['credit_note'])->toBeNull();
+});
+
 it('dayPayload reports whether this athlete has flagged the day', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->create([
