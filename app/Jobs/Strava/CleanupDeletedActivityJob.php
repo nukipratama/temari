@@ -26,6 +26,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 /**
  * Deletes a Strava-removed activity and heals the artifacts that don't cascade:
@@ -63,6 +65,8 @@ class CleanupDeletedActivityJob implements ShouldQueue
         ResolveTrailingWeeksAction $weeklySnapshots,
         SettleEarlyNarrationAction $settleEarlyNarration,
     ): void {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
+
         $user = User::query()->with('stravaConnection')->find($this->userId);
         if ($user === null) {
             return;

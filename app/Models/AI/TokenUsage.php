@@ -14,6 +14,7 @@ use Override;
  * @property int $id
  * @property int|null $user_id
  * @property int|null $analysis_id  The ai_analyses row this call paid for; a bare integer, since that table lives on the default connection.
+ * @property int|null $run_question_id  The run_questions row this call answered; a bare integer, since that table lives on the default connection.
  * @property string $kind
  * @property AnalysisOrigin $origin  What started the call, as opposed to which narrator answered it.
  * @property int $prompt_tokens
@@ -30,7 +31,7 @@ use Override;
  * @property bool $truncated
  * @property Carbon $created_at
  */
-#[Fillable(['user_id', 'analysis_id', 'user_name', 'strava_athlete_id', 'kind', 'origin', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'cached_tokens', 'reasoning_tokens', 'steps', 'tool_calls', 'model', 'latency_ms', 'truncated', 'created_at'])]
+#[Fillable(['user_id', 'analysis_id', 'run_question_id', 'user_name', 'strava_athlete_id', 'kind', 'origin', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'cached_tokens', 'reasoning_tokens', 'steps', 'tool_calls', 'model', 'latency_ms', 'truncated', 'created_at'])]
 class TokenUsage extends Model
 {
     #[Override]
@@ -51,6 +52,7 @@ class TokenUsage extends Model
         return [
             'user_id' => 'integer',
             'analysis_id' => 'integer',
+            'run_question_id' => 'integer',
             'origin' => AnalysisOrigin::class,
             'strava_athlete_id' => 'integer',
             'prompt_tokens' => 'integer',

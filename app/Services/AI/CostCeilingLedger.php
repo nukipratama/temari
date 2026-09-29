@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Cache;
  * blocks and run-question answers. Keyed by date and cache-backed rather than
  * migrated, because it answers one operator question on /devtools/narration about the
  * current day, and the spend history it would duplicate already lives in
- * ai_token_usages.
+ * ai_token_usages. Each fill is also tallied by kind and athlete, so the day can
+ * be broken down beyond the bare total.
  */
 class CostCeilingLedger
 {
@@ -24,14 +25,21 @@ class CostCeilingLedger
         Cache::add($this->key('tripped_at'), Carbon::now()->toIso8601String(), self::TTL_SECONDS);
     }
 
-    public function recordDegradedFill(): void
+    public function recordDegradedFill(string $kind, ?int $userId): void
     {
         Cache::add($this->key('fills'), 0, self::TTL_SECONDS);
         Cache::increment($this->key('fills'));
+
+        Cache::lock($this->key('breakdown_lock'), 5)->block(2, function () use ($kind, $userId): void {
+            $breakdown = $this->breakdown();
+            $slot = $kind.':'.($userId ?? '');
+            $breakdown[$slot] = ['kind' => $kind, 'userId' => $userId, 'count' => ($breakdown[$slot]['count'] ?? 0) + 1];
+            Cache::put($this->key('breakdown'), $breakdown, self::TTL_SECONDS);
+        });
     }
 
     /**
-     * @return array{trippedAt: string|null, degradedFills: int}
+     * @return array{trippedAt: string|null, degradedFills: int, degradedBreakdown: list<array{kind: string, userId: int|null, count: int}>}
      */
     public function today(): array
     {
@@ -40,7 +48,16 @@ class CostCeilingLedger
         return [
             'trippedAt' => is_string($trippedAt) ? $trippedAt : null,
             'degradedFills' => (int) Cache::get($this->key('fills'), 0),
+            'degradedBreakdown' => array_values($this->breakdown()),
         ];
+    }
+
+    /** @return array<string, array{kind: string, userId: int|null, count: int}> */
+    private function breakdown(): array
+    {
+        $stored = Cache::get($this->key('breakdown'), []);
+
+        return is_array($stored) ? $stored : [];
     }
 
     private function key(string $suffix): string

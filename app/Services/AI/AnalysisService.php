@@ -1103,7 +1103,10 @@ class AnalysisService
         }
 
         if ($this->fillRuleBased($row, AnalysisOrigin::Capped, $generationToken ?? $row->generation_token)) {
-            $this->ceilingLedger->recordDegradedFill();
+            $this->ceilingLedger->recordDegradedFill(
+                $row->analysis_type->value,
+                AnalysisSubjectMap::ownerId($row->subject_type, $row->subject_id),
+            );
         }
     }
 

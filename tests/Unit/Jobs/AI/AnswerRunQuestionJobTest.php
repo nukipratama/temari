@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\CostCeilingLedger;
+use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\Narrators\RunQuestionNarrator;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -107,6 +108,22 @@ it('answers the question and marks it done', function (): void {
         ->and($row->answer)->toBe('your heart rate climbed 6 bpm while the pace held.');
 });
 
+it('holds the question id for the length of the narrator call so its usage row can be joined back', function (): void {
+    $row = questionRow();
+    $seen = null;
+    $narrator = Mockery::mock(RunQuestionNarrator::class);
+    $narrator->shouldReceive('generate')->andReturnUsing(function () use (&$seen): string {
+        $seen = app(NarratedAnalysis::class)->currentRunQuestion();
+
+        return 'answer';
+    });
+
+    new AnswerRunQuestionJob($row->id)->handle(app(AnalysisService::class), $narrator);
+
+    expect($seen)->toBe($row->id)
+        ->and(app(NarratedAnalysis::class)->currentRunQuestion())->toBeNull();
+});
+
 it('passes athlete-supplied context to the narrator unchanged', function (): void {
     $question = 'Ga tidur malam';
     $row = questionRow(['question' => ['question' => $question]]);
@@ -169,7 +186,9 @@ it('serves the deterministic answer when the daily cost ceiling is the only stop
     expect($row->refresh()->status)->toBe(AnalysisStatus::Done)
         ->and($row->error)->toBeNull()
         ->and($row->answer)->toBeString()->not->toBeEmpty()
-        ->and(app(CostCeilingLedger::class)->today()['degradedFills'])->toBe(1);
+        ->and(app(CostCeilingLedger::class)->today()['degradedBreakdown'])->toBe([
+            ['kind' => 'run_question', 'userId' => $row->user_id, 'count' => 1],
+        ]);
 });
 
 it('fails the question when the run has no detail to read', function (): void {

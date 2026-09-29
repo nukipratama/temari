@@ -17,6 +17,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Facades\Log;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 /**
  * Re-pull of a single activity: re-fetches detail + streams from Strava and
@@ -71,6 +73,8 @@ class ResyncActivityJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(ActivityPipeline $pipeline): void
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
+
         $activity = Activity::query()
             ->withStubs()
             ->find($this->activityId);

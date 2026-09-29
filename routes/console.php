@@ -95,11 +95,9 @@ $alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:09')->wi
 //
 // The periodizer is deterministic and free, but this command is NOT LLM-free:
 // it then calls PlanNarrationRequester::requestForCurrentWeek() per non-demo
-// user, dispatching plan_day_voice x7 with invalidate gated per row on
-// whether its content fingerprint actually changed (a session that
-// regenerated into the same shape is left alone) plus an idempotent
-// plan_season_voice. Up to 8 rows per user per week. See
-// docs/architecture/llm-triggers.md.
+// user, which touches one row: plan_season_voice, re-read only when its
+// content fingerprint changed. plan_day_voice is requested per run day after
+// reconciliation, not here. See docs/architecture/llm-triggers.md.
 $alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:26')->withoutOverlapping(45)->onOneServer()
     ->when(static fn (): bool => SchedulerChain::prerequisitesMet('plan:regenerate')), 'plan:regenerate');
 

@@ -215,8 +215,8 @@ it('reports no app-wide ceiling when none is configured', function (): void {
 it('carries the ceiling trip and the rule-based fill count into the budget block', function () use ($range): void {
     $ledger = app(CostCeilingLedger::class);
     $ledger->recordTrip();
-    $ledger->recordDegradedFill();
-    $ledger->recordDegradedFill();
+    $ledger->recordDegradedFill('run_insight', 1);
+    $ledger->recordDegradedFill('run_insight', 1);
 
     [$from, $to] = $range();
     $result = $this->report->build($from, $to, null);

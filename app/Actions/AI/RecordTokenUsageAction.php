@@ -33,11 +33,13 @@ class RecordTokenUsageAction
         ?int $userId = null,
         AnalysisOrigin $origin = AnalysisOrigin::Unknown,
         ?int $analysisId = null,
+        ?int $runQuestionId = null,
     ): void {
         try {
             TokenUsage::query()->create([
                 'user_id' => $userId,
                 'analysis_id' => $analysisId,
+                'run_question_id' => $runQuestionId,
                 'kind' => $kind,
                 'origin' => $origin,
                 // The usage table's prompt/completion columns hold input/output.

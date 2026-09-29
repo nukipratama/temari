@@ -76,6 +76,7 @@ const baseProps: NarrationOverviewProps = {
         currency: 'USD',
         trippedAt: null,
         degradedFills: 0,
+        degradedBreakdown: [],
     },
     contentFilter: { trips: 0, pct: 0 },
     chart: {

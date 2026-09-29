@@ -56,7 +56,7 @@ class TokenUsageReport
      *     byOrigin: list<array{origin:string, label:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
  *     availableKinds: list<array{value:string, label:string}>,
  *     availableOrigins: list<array{value:string, label:string}>,
-     *     budget: array{todayCost:float, tokens:array{prompt:int, completion:int, cached:int, total:int}, dailyCeiling:float|null, perUserCeiling:float|null, totalCeiling:float|null, athletes:int, currency:string, trippedAt:string|null, degradedFills:int},
+     *     budget: array{todayCost:float, tokens:array{prompt:int, completion:int, cached:int, total:int}, dailyCeiling:float|null, perUserCeiling:float|null, totalCeiling:float|null, athletes:int, currency:string, trippedAt:string|null, degradedFills:int, degradedBreakdown:list<array{kind:string, userId:int|null, count:int}>},
      *     contentFilter: array{trips:int, pct:float|null},
      * }
      */

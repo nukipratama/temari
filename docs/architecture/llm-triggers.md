@@ -3,7 +3,7 @@ title: The LLM surface — everything that calls a model, what starts it, and wh
 description: The complete inventory of narrators, agent tools and deterministic producers, with the five origins that dispatch them, the seven things that stop them, a proposed verdict per surface, and what the prod rebuild means for spend.
 tags: [architecture, ai]
 status: living
-reviewed: 2026-09-04
+reviewed: 2026-09-29
 code_refs:
   - routes/console.php
   - app/Services/AI/StructuredChatCaller.php
@@ -82,15 +82,15 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 
 | when | command | what it dispatches |
 |---|---|---|
-| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L39) | one `BriefingMascotVoice` per active non-demo user — narrates right away even for a first connect whose backlog is still draining ([[history-narrates-on-demand]], #1054) |
-| Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php#L53) | `WeeklyRecap`, oldest unfinished link first |
-| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L60) | `ProfileVoice`, keyed by ISO week — narrates right away under the same first-connect condition |
-| **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php#L90) | **up to 9 rows per user — see below** |
-| 1st 05:45 | [`ai:monthly-recap`](../../routes/console.php#L98) | `MonthlyRecap`, oldest first |
+| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L43) | one `BriefingMascotVoice` per active non-demo user — narrates right away even for a first connect whose backlog is still draining ([[history-narrates-on-demand]], #1054) |
+| Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php#L60) | `WeeklyRecap`, oldest unfinished link first |
+| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L68) | `ProfileVoice`, keyed by ISO week — narrates right away under the same first-connect condition |
+| **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php#L101) | **one row per user, the season voice — see below** |
+| 1st 05:45 | [`ai:monthly-recap`](../../routes/console.php#L111) | `MonthlyRecap`, oldest first |
 | daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php#L118) | `TrendRead`, discriminator `7d` — the only range since #967 |
 | first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | the `trend_read` row, so a new account isn't a day behind |
-| hourly | [`ai:self-heal`](../../routes/console.php#L118) | recovery only — see origin 4 |
-| hourly | [`ai:catch-up`](../../routes/console.php#L127) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
+| hourly | [`ai:self-heal`](../../routes/console.php#L130) | recovery only — see origin 4 |
+| hourly | [`ai:catch-up`](../../routes/console.php#L139) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
 **A new athlete's recap kickoff only reaches periods that closed after they connected.**
 [`KickoffWeeklyRecaps`](../../app/Actions/AI/KickoffWeeklyRecaps.php) /
@@ -112,12 +112,12 @@ See [[deferred-recap-windowing]] and [[history-narrates-on-demand]].
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 and it still runs for every athlete. The narration half then calls
-[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L198) for each
+[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L211) for each
 recently-active athlete, touching one row: `PlanSeasonVoice`. Its fingerprint includes the
 sustained-ahead signal and the current week's adaptation reason/deload, so a Monday plan change
 re-reads the season only when that material changes. Ahead-of-time day narration was cut in #939 —
 a day's own read is requested separately, once it actually has a run, by
-[`requestDayVoiceIfChanged()`](../../app/Services/AI/PlanNarrationRequester.php#L83), called after
+[`requestDayVoiceIfChanged()`](../../app/Services/AI/PlanNarrationRequester.php#L86), called after
 the post-ingest plan reconciliation settles the day.
 
 **A brand-new account also gets today's briefing on the day it signs up.** `BriefingMascotVoice`
@@ -243,8 +243,8 @@ narrate them once the window closes, which is why a pending recap row is not a b
   instead. It still goes through `StructuredChatCaller`, so persona, budget, retries and metering are
   unchanged. See [[scoped-run-qa-not-an-analysis-row]].
 - **`PlanController::regenerate`** — the Plan page's own regenerate button runs the *same*
-  `requestForCurrentWeek()` as the Monday command, so a user can trigger a full week of plan
-  narration by hand. It is limited by its own 3600s cooldown inside `PlanNarrationRequester`, not by
+  `requestForCurrentWeek()` as the Monday command, which touches only the season row
+  (`PlanSeasonVoice`). It is limited by its own 3600s cooldown inside `PlanNarrationRequester`, not by
   the per-block cooldown every other trigger uses.
 
 ### 4. Recovery
@@ -341,7 +341,7 @@ Three more limits:
   [900s cooldown](../../app/Support/Cooldown.php#L32) stops a human clicking twice, at the
   controller, before a job exists. The `Done` check at the top of
   [`AnalyzeRowJob::handle()`](../../app/Jobs/AI/AnalyzeRowJob.php#L23) stops a UI trigger and a
-  Horizon retry racing into a double bill. Plan narration adds a third, separate 3600s cooldown.
+  Horizon retry racing into a double bill. Plan narration adds two more, separate ones inside `PlanNarrationRequester`: a 86400s per-athlete narration cooldown (`Cooldown::PLAN_NARRATION_WINDOW_SECONDS`) and the 3600s manual-regenerate cooldown.
 
 Three further ceilings bound a call rather than stopping it: a per-user trigger rate limit of 8/min,
 a run-question limit of 4/min, and a per-run agent budget of 8 steps / 30k tokens — all in
@@ -349,9 +349,9 @@ a run-question limit of 4/min, and a per-run agent budget of 8 steps / 30k token
 
 ## Cost shape
 
-**Every narrator is a tool-calling agent run.** There is no one-shot structured call anywhere in the
-app: each block is a multi-turn loop, and each turn re-sends the whole prefix. That single fact
-drives everything below.
+**Every narrator but the clamp voice is a tool-calling agent run.** The clamp voice is a plain
+single-turn call with no toolbox; every other block is a multi-turn loop, and each turn re-sends the
+whole prefix. That single fact drives everything below.
 
 | narrator | tools | max steps | max output | temp | deployment key |
 |---|---|---|---|---|---|
@@ -365,7 +365,7 @@ drives everything below.
 | `MonthlyRecapNarrator` | 2 | **6** | 1500 | 0.7 | `monthly_recap` |
 | `TrendReadNarrator` | 2 | **6** | 1200 | 0.7 | `trend_read` |
 | `PlanDayVoiceNarrator` | 1 | **4** | 300 | 0.7 | `plan_day_voice` |
-| `PlanClampVoiceNarrator` | 1 | — | 200 | 0.7 | `plan_clamp_voice` |
+| `PlanClampVoiceNarrator` | 0 | 1 (plain call) | 200 | 0.7 | `plan_clamp_voice` |
 | `PlanSeasonVoiceNarrator` | 1 | **4** | 400 | 0.7 | `plan_season_voice` |
 
 Every kind has its own `azure_openai.narrators.*` override key, each defaulting to
@@ -480,10 +480,10 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | `post_run_speech` | earns it | The persona's reaction to a run is the product. |
 | `run_insight` | earns it | The most expensive call in the app — 10 tools, 3000 output tokens — and the most substantive block it produces. Finding the non-obvious thing in a run is exactly what the toolbox is for. Ruled 2026-09-04: narrowing it would flatten the output for a saving nobody has measured. |
 | `card_flavor` | earns it | One line capped at 400 output tokens from up to 6 tools, and it cannot tighten its budget while it carries them (`2 * (6 + 1)` already exceeds the default). Ruled 2026-09-04: the extra tools are conditional on the run having detail, so the 6-tool case is rarer than the table implies, and trimming them makes the flavour line generic. |
-| `weekly_recap` | earns it | Chained, reads a real snapshot, already tightened to 4 steps. |
-| `monthly_recap` | earns it | Same shape, same tightening. |
+| `weekly_recap` | earns it | Chained, reads a real snapshot, already tightened to 6 steps. |
+| `monthly_recap` | earns it | Same shape, same 6-step budget. |
 | `profile_voice` | earns it | Once a week, four reads, genuinely synthetic. |
-| `trend_read` | earns it | 1 tool and a 4-step budget, one call per active athlete per day since `30d`/`90d`/`12mo` retired (#967). |
+| `trend_read` | earns it | 2 tools and a 6-step budget, one call per active athlete per day since `30d`/`90d`/`12mo` retired (#967). |
 | `plan_day_voice` | earns it | Budget aligned to 4. Since #939 it is no longer scheduled at all — one call per run day, requested after post-ingest plan reconciliation settles the credited day, phrasing #946's intent verdict rather than announcing the session ahead of time. |
 | `plan_season_voice` | earns it | Budget aligned to 4 and idempotent, so it neither re-bills nor over-runs. |
 | run Q&A | earns it | A free-form question about one run is exactly what rules cannot answer. |

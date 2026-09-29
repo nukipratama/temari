@@ -24,6 +24,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Sleep;
 use Throwable;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 /**
  * Three passes, in order: fetch the missing `laps` blobs from Strava, recompute
@@ -43,6 +45,8 @@ class RebuildSplitsCommand extends Command
         PersonalRecords $personalRecords,
         WeeklyAggregator $weeklyAggregator,
     ): int {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Recovery);
+
         if ($this->option('skip-fetch')) {
             $this->line('Pass 1 skipped (--skip-fetch): no Strava calls.');
         } else {

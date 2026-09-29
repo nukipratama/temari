@@ -949,6 +949,17 @@ it('stamps the analysis row being narrated onto the usage row', function (): voi
     expect(TokenUsage::query()->first()->analysis_id)->toBe(77);
 });
 
+it('stamps the run question being answered onto the usage row', function (): void {
+    $caller = structuredCaller(json_encode(['headline' => 'ok'], JSON_THROW_ON_ERROR));
+
+    app(NarratedAnalysis::class)->duringRunQuestion(
+        31,
+        fn (): array => $caller->call('run_question', 'sys', [], 'schema', ['headline']),
+    );
+
+    expect(TokenUsage::query()->first()->run_question_id)->toBe(31);
+});
+
 it('leaves analysis_id null for a call made outside a narration', function (): void {
     structuredCaller(json_encode(['headline' => 'ok'], JSON_THROW_ON_ERROR))
         ->call('run_question', 'sys', [], 'schema', ['headline']);

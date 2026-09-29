@@ -13,19 +13,29 @@ use Closure;
  *
  * The same seam {@see NarrationOrigin} uses, and for the same reason: threading
  * an id through every narrator signature would push a metering concern into
- * every prompt builder. A call made outside a narration (a run question, a
- * manual script) reads null and stays unattributed.
+ * every prompt builder. A call made outside a narration (a manual script)
+ * reads null and stays unattributed.
  *
  * Bound `scoped`, so a long-lived worker cannot carry one job's row id into the
  * next.
+ *
+ * A run question has no Analysis row, so it declares its own id the same way
+ * through {@see self::duringRunQuestion()}.
  */
 final class NarratedAnalysis
 {
     private ?int $current = null;
 
+    private ?int $currentRunQuestion = null;
+
     public function current(): ?int
     {
         return $this->current;
+    }
+
+    public function currentRunQuestion(): ?int
+    {
+        return $this->currentRunQuestion;
     }
 
     /**
@@ -43,6 +53,24 @@ final class NarratedAnalysis
             return $callback();
         } finally {
             $this->current = $previous;
+        }
+    }
+
+    /**
+     * @template TReturn
+     *
+     * @param  Closure(): TReturn  $callback
+     * @return TReturn
+     */
+    public function duringRunQuestion(int $runQuestionId, Closure $callback): mixed
+    {
+        $previous = $this->currentRunQuestion;
+        $this->currentRunQuestion = $runQuestionId;
+
+        try {
+            return $callback();
+        } finally {
+            $this->currentRunQuestion = $previous;
         }
     }
 }

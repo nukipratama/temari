@@ -133,7 +133,7 @@ function buildFaults(
             key: 'ceiling',
             head: 'app-wide ceiling tripped',
             value: `${budget.trippedAt.slice(11, 16)} today`,
-            body: `${plural(budget.degradedFills, 'block')} served rule-based since.`,
+            body: `${plural(budget.degradedFills, 'answer')} served rule-based since.`,
         });
     }
 
