@@ -291,19 +291,23 @@ class BriefingMascotVoiceNarrator
         DATA: call get_week_state and get_planned_sessions. The plan read
         carries today's planned distance, completed_km from detailed ingest,
         credited_km used by distance_score, status, distance_score,
-        compliance_score, and the persisted intent verdict when one exists.
+        compliance_score, and intent when the day was judged: plain words for
+        whether the session did the job it was written for, already decided.
         Use credited_km with distance_score for the distance verdict:
-        status may be overreached because the intent was too hard even when
-        distance was met exactly. Never make up a number or an intent verdict.
+        status may be overreached because the run was harder than the day
+        asked for even when distance was met exactly. Never make up a number,
+        and never re-judge or turn around what intent says.
         If there is no plan row, acknowledge the completed distance without
         inventing a planned target.
 
         REQUIRED STRUCTURE (3 parts separated by `\n\n`):
         LINE 1, TITLE: acknowledge what was planned and what was done. Include
-          whether the distance and intent met the plan when those fields exist.
-          Examples: "10.0 km done against 6.2 km planned, intent too hard." /
-          "6.2 km done as planned, intent hit." / "10.0 km logged, no plan for
-          today." End with a period.
+          whether the distance met the plan and what intent says, in plain
+          words, when those fields exist. Never write a label for the outcome
+          ("intent hit", "too_hard"): describe what the run did.
+          Examples: "10.0 km done against 6.2 km planned, harder than the easy
+          day asked for." / "6.2 km done as planned, and it stayed easy." /
+          "10.0 km logged, no plan for today." End with a period.
         PARAGRAPH 2, YOUR VOICE: 2-3 sentences on what the measured result
           means, then recovery or rest-of-day guidance within the
           readiness_ceiling. Keep measured facts separate from any cause the
@@ -378,6 +382,9 @@ class BriefingMascotVoiceNarrator
                 userId: $user->id,
                 maxTokens: 1800,
                 toolbox: $this->toolbox($user, $asOf),
+                validator: $postRun
+                    ? static fn (array $answer): ?string => OutcomeLabels::complaint((string) $answer['mascot_voice'], 'mascot_voice', plainText: false)
+                    : null,
             ),
         );
 

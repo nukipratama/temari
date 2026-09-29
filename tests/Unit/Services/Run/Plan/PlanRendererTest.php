@@ -1003,3 +1003,31 @@ it('dayPayload says why a day ran hot, and stays quiet when the distance alone o
         ->and($render(['compliance_score' => 103, 'intent_verdict' => IntentVerdict::Hit]))
         ->toBeNull();
 });
+
+it('dayPayload quotes the card\'s moving pace in the hot note, naming the hill-adjusted one only when it differs', function (): void {
+    $today = Carbon::parse('2026-08-10');
+    $render = fn (int $movingTime): ?string => PlanRenderer::dayPayload(
+        PlannedSession::factory()->create([
+            'session_type' => SessionType::Easy,
+            'phase' => PlanPhase::Build,
+            'date' => $today->copy()->subDay(),
+            'intent_verdict' => IntentVerdict::TooHard,
+            'compliance_score' => 103,
+            'intent_evidence' => ['basis' => 'pace', 'pace_sec' => 380, 'ceiling_pace_sec' => 408],
+        ]),
+        $today,
+        null,
+        [],
+        null,
+        false,
+        20.0,
+        1.0,
+        INF,
+        RENDERER_PACES,
+        PlannedSessionStatus::Overreached,
+        ['km' => 8.0, 'runs' => [['id' => 1, 'km' => 8.0, 'seconds' => $movingTime, 'moving_time' => $movingTime, 'started_at' => '06:00']]],
+    )['hot_note'];
+
+    expect($render(3_056))->toBe('averaged 6:22/km, past the 6:48/km ceiling for this run.')
+        ->and($render(3_200))->toBe('averaged 6:40/km; effort-adjusted for hills that is 6:20/km, past the 6:48/km ceiling for this run.');
+});

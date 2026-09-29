@@ -960,26 +960,81 @@ it('reads a graded day from the prescription persisted by the scorer', function 
  * The verdict a narrator reads has to be the exact one the grade persisted —
  * see `docs/decisions/a-day-is-graded-on-distance-and-intent.md`.
  */
-it('carries the persisted intent verdict and its evidence once the day is credited', function (): void {
+it('words a tempo verdict and its evidence once the day is credited', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'session_type' => SessionType::Tempo,
         'date' => Carbon::today()->toDateString(),
         'status' => PlannedSessionStatus::Done,
         'intent_verdict' => IntentVerdict::Hit,
-        'intent_evidence' => ['target_pace_sec' => 300, 'window_pace_sec' => 295, 'basis' => 'pace'],
+        'intent_evidence' => ['block_minutes' => 20.0, 'target_pace_sec' => 300, 'window' => '20min', 'window_pace_sec' => 295, 'basis' => 'pace'],
     ]);
-    $baseline = app(TrainingBaseline::class);
 
-    $reading = planDayTool($session, $baseline, completedKm: 5.9)->handle([]);
+    $reading = planDayTool($session, app(TrainingBaseline::class), completedKm: 5.9)->handle([]);
 
-    expect($reading['intent'])->toBe('hit')
-        ->and($reading['intent_evidence']['target_pace_formatted'])->toBe('5:00')
-        ->and($reading['intent_evidence']['window_pace_formatted'])->toBe('4:55');
+    expect($reading['intent'])->toBe('the hard block got done at the effort it asked for')
+        ->and($reading['intent_detail'])->toBe('best 20-minute stretch averaged 4:55/km, on the 5:00/km target pace')
+        ->and($reading)->not->toHaveKey('intent_evidence');
 });
 
-/** unknown flags itself exactly like every other verdict, so the read can say so plainly. */
-it('flags an unknown intent verdict rather than omitting it', function (): void {
+/**
+ * An easy day graded hit on its hill-adjusted pace (449 s/km) while the card
+ * showed 7:22/km. The read inverted it ("missed the hit mark") from the raw
+ * pace-vs-ceiling pair, so the payload now carries the outcome in words, the
+ * card's pace first, and no ceiling to compare against.
+ */
+it('hands the model an easy day that stayed easy in words, quoting the card\'s pace', function (): void {
+    $session = PlannedSession::factory()->for(User::factory()->create())->create([
+        'session_type' => SessionType::Easy,
+        'date' => Carbon::today()->toDateString(),
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['pace_sec' => 449, 'ceiling_pace_sec' => 408, 'basis' => 'pace'],
+    ]);
+
+    $reading = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class), 8.0, 442)->handle([]);
+
+    expect($reading['intent'])->toBe('it stayed at the easy effort the day asked for')
+        ->and($reading['intent_detail'])->toBe('averaged 7:22/km; effort-adjusted for hills that is 7:29/km')
+        ->and($reading)->not->toHaveKey('intent_evidence')
+        ->and(json_encode($reading, JSON_THROW_ON_ERROR))->not->toContain('6:48')->not->toContain('ceiling')->not->toContain('"hit"');
+});
+
+/** The eased long day graded hit at 419 s/km against a 408 s/km limit, the second inverted read. */
+it('hands the model an eased long day that stayed easy without the limit it was graded against', function (): void {
+    $session = PlannedSession::factory()->for(User::factory()->create())->create([
+        'session_type' => SessionType::Long,
+        'date' => Carbon::today()->toDateString(),
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['pace_sec' => 419, 'ceiling_pace_sec' => 408, 'basis' => 'pace'],
+    ]);
+
+    $reading = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class), 7.0, 418)->handle([]);
+
+    expect($reading['intent'])->toBe('it stayed at the easy effort the day asked for')
+        ->and($reading['intent_detail'])->toBe('averaged 6:58/km')
+        ->and(json_encode($reading, JSON_THROW_ON_ERROR))->not->toContain('6:48')->not->toContain('ceiling');
+});
+
+it('hands the model a heart-rate too-hard day with the direction already stated', function (): void {
+    $session = PlannedSession::factory()->for(User::factory()->create())->create([
+        'session_type' => SessionType::Easy,
+        'date' => Carbon::today()->toDateString(),
+        'status' => PlannedSessionStatus::Overreached,
+        'intent_verdict' => IntentVerdict::TooHard,
+        'intent_evidence' => ['pace_sec' => 395, 'ceiling_pace_sec' => 408, 'basis' => 'heart_rate', 'zone' => 'Z2', 'above_zone_pct' => 64],
+    ]);
+
+    $reading = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class), 8.0, 396)->handle([]);
+
+    expect($reading['intent'])->toBe('it ran harder than the easy effort the day asked for')
+        ->and($reading['intent_detail'])->toBe('averaged 6:36/km, and 64% of the run sat above Z2')
+        ->and(json_encode($reading, JSON_THROW_ON_ERROR))->not->toContain('too_hard');
+});
+
+/** unknown words itself exactly like every other verdict, so the read can say so plainly. */
+it('words an unknown intent verdict rather than omitting it', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'session_type' => SessionType::Interval,
@@ -992,7 +1047,8 @@ it('flags an unknown intent verdict rather than omitting it', function (): void 
 
     $reading = planDayTool($session, $baseline, completedKm: 6.4)->handle([]);
 
-    expect($reading['intent'])->toBe('unknown');
+    expect($reading['intent'])->toBe("this run's data can't tell how the effort went")
+        ->and($reading)->not->toHaveKey('intent_detail');
 });
 
 /** No intent to judge (a rest/race day, or one never judged) carries no key at all. */
@@ -1009,7 +1065,7 @@ it('omits intent entirely when the day was never judged', function (): void {
     $reading = planDayTool($session, $baseline, completedKm: 0.0)->handle([]);
 
     expect($reading)->not->toHaveKey('intent')
-        ->and($reading)->not->toHaveKey('intent_evidence');
+        ->and($reading)->not->toHaveKey('intent_detail');
 });
 
 /** A pace-only ease is carried the same way `eased_from` names a type/distance ease. */
@@ -1099,7 +1155,7 @@ it('carries a detailed run and persisted intent beside the plan row', function (
     $reading = planContextTool($user, $today, $today)->handle([])['days'][0];
 
     expect($reading['completed_km'])->toBe(10.0)
-        ->and($reading['intent'])->toBe('too_hard');
+        ->and($reading['intent'])->toBe('it ran harder than the easy effort the day asked for');
 });
 
 it('keeps total distance separate from the distance credited on a multi-run tempo day', function (): void {

@@ -21,6 +21,7 @@ use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Plan\EffectiveSession;
+use App\Services\Run\Plan\IntentOutcome;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\SustainedAheadOfRacePace;
@@ -200,7 +201,7 @@ final readonly class RuleBasedNarrationFiller
             $distanceStatus === null
                 ? ($planned?->distance_score === null ? null : 'distance '.$planned->distance_score.'% of planned')
                 : 'distance '.$this->postRunStatus($distanceStatus),
-            $intent === null ? null : 'intent '.str_replace('_', ' ', $intent->value),
+            $intent === null ? null : IntentOutcome::outcome($intent, $planned->intent_evidence ?? []),
         ]));
 
         return strtr($this->select(self::POST_RUN_BRIEFINGS, $seed), [
@@ -597,21 +598,23 @@ final readonly class RuleBasedNarrationFiller
                 : $this->select(['race day, logged.', 'the race is in the book.'], $seed);
         }
 
+        $outcome = IntentOutcome::outcome($session->intent_verdict ?? IntentVerdict::Unknown, $session->intent_evidence ?? []);
+
         return match ($session->intent_verdict) {
             IntentVerdict::Hit => $this->select([
-                "{$km} km, and the session did what it was written for.",
+                "{$km} km, and {$outcome}.",
                 "right where the day asked you to be. {$km} km.",
             ], $seed),
             IntentVerdict::Missed => $this->select([
-                "{$km} km is there, but the effort the day asked for never quite showed up.",
+                "{$km} km logged; {$outcome}.",
                 "logged at {$km} km, though the session itself came in softer than what was written.",
             ], $seed),
             IntentVerdict::TooHard => $this->select([
-                "{$km} km, harder than the day called for. the ground is covered either way.",
+                "{$km} km, and {$outcome}. the ground is covered either way.",
                 "more effort than this one asked for, at {$km} km.",
             ], $seed),
             default => $this->select([
-                "{$km} km done; couldn't make out the effort from this one.",
+                "{$km} km done; {$outcome}.",
                 "not enough signal here to say how it went, only that {$km} km happened.",
             ], $seed),
         };

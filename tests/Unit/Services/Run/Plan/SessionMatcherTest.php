@@ -272,6 +272,27 @@ it('credits nothing on a day with no runs at all', function (): void {
     expect(app(SessionMatcher::class)->creditedKmFor($session))->toBeNull();
 });
 
+it('reads one day\'s moving pace the way its card does, and nothing on a day with no runs', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-03',
+        'session_type' => SessionType::Easy,
+    ]);
+    $matcher = app(SessionMatcher::class);
+
+    expect($matcher->ranPaceSecPerKmFor($session))->toBeNull();
+
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->create([
+        'activity_id' => $activity->id,
+        'start_date_local' => Carbon::parse('2026-08-03 06:00:00'),
+        'distance' => 8_000.0,
+        'moving_time' => 3_536,
+    ]);
+
+    expect($matcher->ranPaceSecPerKmFor($session->fresh()))->toBe(442);
+});
+
 /**
  * A quality session is one effort. Two easy 5 km outings on a tempo day are
  * not a 10 km tempo, so the day is credited from its best single run rather

@@ -152,6 +152,9 @@ final class SessionIntentJudge
 
         $ceiling = $paces['marathon'] - ($main->paceLabel === PaceBand::Marathon ? self::PACE_TOLERANCE_SEC : 0);
         $evidence = ['pace_sec' => $pace, 'ceiling_pace_sec' => $ceiling];
+        if ($main->paceLabel === PaceBand::Marathon) {
+            $evidence['limit'] = 'marathon';
+        }
         if ($pace >= $ceiling) {
             return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'pace']);
         }

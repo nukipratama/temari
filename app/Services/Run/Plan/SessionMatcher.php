@@ -285,6 +285,14 @@ final readonly class SessionMatcher
         return self::creditedKm($session->session_type, $day);
     }
 
+    /** The pace the day's card shows ({@see self::ranPaceSecPerKmFromRuns()}), or null when nothing was logged. */
+    public function ranPaceSecPerKmFor(PlannedSession $session): ?int
+    {
+        $runs = $this->activityByDate($session->user, $session->date, $session->date)[$session->date->toDateString()]['runs'] ?? [];
+
+        return self::ranPaceSecPerKmFromRuns($session->session_type, $runs);
+    }
+
     /**
      * The pace the credited runs actually averaged — moving time over
      * distance — over the identical best-run/day-total selection

@@ -15,6 +15,7 @@ use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\EffectiveSession;
+use App\Services\Run\Plan\IntentOutcome;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\SegmentGenerator;
@@ -62,7 +63,9 @@ final class PlanContextTool extends UserTool
             .'distance_score (the longest run on tempo/interval days, the day total otherwise), '
             .'and distance_score for the '
             .'distance-only percentage, and compliance_score after the intent adjustment, '
-            .'intent (hit/missed/too_hard/unknown) when the day was judged, and ran_anyway true '
+            .'intent when the day was judged: plain words for whether the session did the job it '
+            .'was written for, already decided, so repeat its meaning and never re-judge or label '
+            .'it; and ran_anyway true '
             .'when they ran a day they had excused themselves from. skipped true means they excused '
             .'the day. eased_from means '
             .'readiness eased the day: session_type, distance_km and the pace are the eased session '
@@ -134,7 +137,9 @@ final class PlanContextTool extends UserTool
                     'distance_score' => $session->distance_score,
                     'compliance_score' => $session->compliance_score,
                     'ran_anyway' => $session->ran_anyway,
-                    'intent' => $session->intent_verdict?->value,
+                    'intent' => $session->intent_verdict === null
+                        ? null
+                        : IntentOutcome::outcome($session->intent_verdict, $session->intent_evidence ?? []),
                 ];
             })->all(),
         ];
