@@ -80,8 +80,8 @@
         <div class="code">@yield('code')</div>
         <h1 class="title">@yield('title')</h1>
         <p class="message">@yield('message')</p>
-        <a class="cta" href="{{ url('/') }}">@yield('cta', 'Back to Today')</a>
-        <p class="foot">Temari · your running companion, every step.</p>
+        <a class="cta" href="{{ url('/') }}">@yield('cta', 'back to today')</a>
+        <p class="foot">temari · your running companion, every step.</p>
     </div>
 </body>
 </html>

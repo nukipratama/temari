@@ -17,7 +17,7 @@ const DISCLAIMER = {
 
 function disclosurePanel() {
     const trigger = screen.getByRole('button', {
-        name: /read-only · only you see it · delete anytime/,
+        name: /how your data is used · details/,
     });
     return document.getElementById(trigger.getAttribute('aria-controls') ?? '');
 }
@@ -53,6 +53,16 @@ describe('Login', () => {
                     encodeURIComponent('/activities/5?tab=splits'),
             ),
         );
+    });
+
+    it('puts the trust line under the CTA, linking to the privacy summary', () => {
+        render(<Login authStravaUrl="/x" />);
+
+        expect(
+            screen.getByRole('link', {
+                name: 'read-only · no ads · delete anytime',
+            }),
+        ).toHaveAttribute('href', '/privacy');
     });
 
     it('hides demo button when demoLoginEnabled is false', () => {
@@ -146,8 +156,6 @@ describe('Login', () => {
             />,
         );
 
-        // "what temari stores" is also the auth card's footnote link, so the
-        // headings are asserted against the disclosure panel.
         expect(disclosurePanel()).toHaveTextContent('what temari stores');
         expect(disclosurePanel()).toHaveTextContent(
             'before you take its advice',
@@ -175,7 +183,7 @@ describe('Login', () => {
         );
 
         const trigger = screen.getByRole('button', {
-            name: /read-only · only you see it · delete anytime/,
+            name: /how your data is used · details/,
         });
         expect(trigger).toHaveAttribute('aria-expanded', 'false');
         expect(screen.getByText(DATA_USE.points[0])).not.toBeVisible();
@@ -189,7 +197,9 @@ describe('Login', () => {
     it('omits the disclosure entirely when the server sends no copy', () => {
         render(<Login authStravaUrl="/x" />);
 
-        expect(screen.queryByText(/only you see it/)).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/how your data is used/),
+        ).not.toBeInTheDocument();
         expect(
             screen.queryByText(/read the whole disclaimer/),
         ).not.toBeInTheDocument();

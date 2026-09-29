@@ -11,15 +11,15 @@
 
     {{-- Default social preview for the app (e.g. a shared /login link). There is
          no public per-card page, so these tags are the only ones the app ships. --}}
-    <meta name="description" content="Temari, running alongside you every step. Turns your Strava runs into collectible cards and easygoing stories.">
+    <meta name="description" content="Every run, measured against one you've already done. Temari reads your Strava runs and tells you which way you're going.">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Temari">
-    <meta property="og:description" content="Temari, running alongside you every step. Turns your Strava runs into collectible cards and easygoing stories.">
+    <meta property="og:description" content="Every run, measured against one you've already done. Temari reads your Strava runs and tells you which way you're going.">
     <meta property="og:image" content="{{ asset('og-default.png') }}">
     <meta property="og:site_name" content="Temari">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Temari">
-    <meta name="twitter:description" content="Temari, running alongside you every step.">
+    <meta name="twitter:description" content="Every run, measured against one you've already done.">
     <meta name="twitter:image" content="{{ asset('og-default.png') }}">
 
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">

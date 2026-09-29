@@ -222,7 +222,7 @@ function ConnectPanel({
                 start with your history
             </div>
             <p className="mt-1.5 text-xs leading-relaxed text-text-2">
-                sign in through Strava, no separate account, read-only access.
+                sign in through Strava. no separate account, no password.
             </p>
 
             <a
@@ -254,12 +254,11 @@ function ConnectPanel({
             )}
 
             <p className="mt-3 text-center text-xs leading-relaxed text-text-2">
-                read-only, and only for you.{' '}
                 <a
                     href="/privacy"
-                    className="focus-ring rounded text-foreground underline underline-offset-2 hover:text-text-2"
+                    className="focus-ring rounded underline decoration-border-strong underline-offset-2 hover:text-foreground"
                 >
-                    what temari stores
+                    read-only · no ads · delete anytime
                 </a>
             </p>
         </section>
@@ -361,7 +360,7 @@ function DataUseDisclosure({
                 className="focus-ring group flex w-full items-center justify-between gap-2 px-3.5 py-3.5 text-left text-xs leading-tight text-text-2"
             >
                 <span>
-                    read-only · only you see it · delete anytime ·{' '}
+                    how your data is used ·{' '}
                     <span className="font-bold text-foreground underline underline-offset-2">
                         details
                     </span>
