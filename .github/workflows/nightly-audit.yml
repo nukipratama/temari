@@ -12,7 +12,7 @@ name: Nightly dependency audit
 # deliberately does NOT go through MaintainerAlerter: that path is
 # Telegram-over-the-prod-DB and is only reachable from inside the prod app
 # container on the homelab runner, which this workflow does not touch (both
-# audit jobs run on ubuntu-latest and read the lock files directly - no
+# audit jobs run on ubuntu-26.04-arm and read the lock files directly - no
 # install, no homelab). The push needs its own `TELEGRAM_BOT_TOKEN` and
 # `TELEGRAM_MAINTAINER_CHAT_ID` repository secrets; until both are set the
 # alert step is a no-op skip (both jobs still fail/pass normally).
@@ -73,7 +73,7 @@ jobs:
   # use would also be its first test. This runs the script's real code path
   # (its flags, env expectations, the gzip/streaming restore) against a
   # throwaway MySQL instead of compose.prod.yaml, via the COMPOSE_FILE /
-  # MYSQL_SERVICE overrides added alongside this job. ubuntu-latest, not the
+  # MYSQL_SERVICE overrides added alongside this job. ubuntu-26.04-arm, not the
   # self-hosted homelab runner: no reason to compete with prod for the shared
   # 4 cores, and a runner-local docker compose stack needs no bind mounts (the
   # dump moves through a pipe, same as the prod backup step) so the homelab's

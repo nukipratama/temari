@@ -7,7 +7,7 @@ name: Refresh shards
 # one PR, but only when scripts/compare-shards.php decides the drift matters
 # enough to be worth a review.
 #
-# Runs on ubuntu-latest, never the homelab runner: that box is shared with prod. The suite runs serially,
+# Runs on ubuntu-26.04-arm, never the homelab runner: that box is shared with prod. The suite runs serially,
 # without --parallel, so the recorded timings stay per-class.
 #
 # The PR is opened with the default GITHUB_TOKEN, so its own CI does not
