@@ -6,6 +6,11 @@ area:ai:
           - 'app/Actions/AI/**'
           - 'app/Models/AI/**'
           - 'app/Console/Commands/AI/**'
+          - 'app/Http/Controllers/Narration*Controller.php'
+          - 'database/migrations/**/*_ai_*'
+          - 'resources/js/components/narration/**'
+          - 'resources/js/components/Ai*Banner.tsx'
+          - 'resources/js/pages/Narration/**'
 
 area:plan:
   - changed-files:
@@ -18,6 +23,11 @@ area:plan:
           - 'resources/js/components/plan/**'
           - 'resources/js/pages/Plan.tsx'
           - 'resources/js/pages/Race.tsx'
+          - 'app/Models/{PlannedSession,PlanAdaptation,Season,SeasonGoal,RaceGoal,TrainingPreference}.php'
+          - 'database/migrations/*_{planned_sessions,seasons,season_goals,race_goals,plan_adaptations,training_preferences}_*'
+          - 'database/migrations/*_plan_*'
+          - 'resources/js/components/race/**'
+          - 'resources/js/lib/{plan,raceGoal,goalProgress}.ts'
 
 area:notifs:
   - changed-files:
@@ -30,11 +40,23 @@ area:notifs:
           - 'app/Http/Controllers/Telegram/**'
           - 'app/Console/Commands/Notifications/**'
           - 'app/Console/Commands/Telegram/**'
+          - 'app/Models/{InboxNotification,NotificationDelivery,NotificationPreference,TelegramConnection}.php'
+          - 'app/Http/Controllers/{Inbox,NotificationPreference,NotificationTest}Controller.php'
+          - 'app/Http/Controllers/WebPush/**'
+          - 'database/migrations/*{notification,telegram,push_subscription}*'
+          - 'app/Models/Telegram*.php'
+          - 'resources/js/components/inbox/**'
+          - 'resources/js/components/{NotificationBell,PushNotificationToggle}.tsx'
+          - 'resources/js/pages/Inbox.tsx'
+          - 'resources/js/lib/webPush.ts'
 
 area:ui:
   - changed-files:
       - any-glob-to-any-file:
           - 'resources/js/**'
+          - 'resources/css/**'
+          - 'resources/brand/**'
+          - 'design-system/**'
 
 area:devops:
   - changed-files:
@@ -44,11 +66,19 @@ area:devops:
           - 'scripts/**'
           - 'compose*.yaml'
           - 'compose*.yml'
+          - 'Dockerfile'
+          - '.dockerignore'
+          - 'Makefile'
+          - 'deploy/**'
+          - '.githooks/**'
 
 documentation:
   - changed-files:
       - any-glob-to-any-file:
           - 'docs/**'
+          - 'design-system/**'
+          - '.claude/skills/**'
+          - '*.md'
 
 php:
   - changed-files:

@@ -125,11 +125,11 @@ it('decides no when a fresh split would not do any better than the stale one', f
         ->and((float) $out['new_excess_pct'])->toBe(12.0);
 });
 
-it('runs the refresh workflow on ubuntu-latest, serially, off the existing nightly crons', function (): void {
+it('runs the refresh workflow on ubuntu-26.04-arm, serially, off the existing nightly crons', function (): void {
     $workflow = Yaml::parseFile(base_path('.github/workflows/refresh-shards.yml'));
     $job = $workflow['jobs']['refresh-shards'];
 
-    expect($job['runs-on'])->toBe('ubuntu-latest')
+    expect($job['runs-on'])->toBe('ubuntu-26.04-arm')
         ->and($workflow['permissions'])->toBe(['contents' => 'write', 'pull-requests' => 'write']);
 
     $regenerate = collect($job['steps'])->firstWhere('name', 'Regenerate shards.json');
