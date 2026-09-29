@@ -154,7 +154,7 @@ describe('DayCellBody', () => {
 
         const bar = container.querySelector('.border-citrus');
         expect(bar).not.toBeNull();
-        expect(bar).toHaveClass('absolute', 'inset-x-0', 'bottom-0');
+        expect(bar).toHaveClass('absolute', 'inset-x-0', '-bottom-[3px]');
         expect(bar?.className).not.toMatch(/rounded/);
     });
 

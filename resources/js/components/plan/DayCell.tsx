@@ -18,7 +18,7 @@ const kmFigure = (km: number | null): string =>
 /** The borderless column both Today's and Plan's week strip wrap their day
  *  content in — only the ring/selection state differs between the two. */
 export const DAY_CELL_CLASS =
-    'focus-ring relative flex flex-col items-center gap-0.5 rounded-t-lg pt-1.5 pb-2 transition-colors hover:bg-muted';
+    'focus-ring relative flex flex-col items-center gap-0.5 h-full pt-1.5 pb-2 transition-colors hover:bg-muted';
 
 /**
  * The shared day cell content for Today's week widget and Plan's week strip
@@ -61,24 +61,24 @@ export function DayCellBody({
             />
             {ran ? (
                 <>
-                    <span className="text-meta font-bold whitespace-nowrap tabular-nums text-foreground">
+                    <span className="text-meta font-bold tracking-tight whitespace-nowrap tabular-nums text-foreground">
                         {kmFigure(day.actual_km)} km
                     </span>
                     {!isRest && (
-                        <span className="text-meta leading-tight whitespace-nowrap text-text-2">
+                        <span className="text-meta leading-tight tracking-tight whitespace-nowrap text-text-2">
                             of {kmFigure(planned)}
                         </span>
                     )}
                 </>
             ) : (
-                <span className="text-meta whitespace-nowrap text-foreground">
+                <span className="text-meta tracking-tight whitespace-nowrap text-foreground">
                     {isRest ? 'rest' : `${kmFigure(planned)} km`}
                 </span>
             )}
             <span
                 aria-hidden
                 className={cn(
-                    'absolute inset-x-0 bottom-0',
+                    'absolute inset-x-0 -bottom-[3px]',
                     EFFORT_EDGE_CLASS[effort],
                 )}
             />

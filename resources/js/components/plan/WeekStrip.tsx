@@ -142,8 +142,8 @@ export default function WeekStrip({
                             'min-w-0',
                             selected &&
                                 (isToday
-                                    ? 'ring-2 ring-icon-accent ring-offset-1 ring-offset-card'
-                                    : 'ring-2 ring-foreground ring-offset-1 ring-offset-card'),
+                                    ? 'ring-2 ring-inset ring-icon-accent'
+                                    : 'ring-2 ring-inset ring-foreground'),
                             !selected &&
                                 isToday &&
                                 'ring-[1.5px] ring-inset ring-icon-accent',
