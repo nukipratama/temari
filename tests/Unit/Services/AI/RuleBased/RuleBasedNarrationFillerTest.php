@@ -19,6 +19,7 @@ use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Narrators\OutcomeLabels;
 use App\Services\AI\RuleBased\RuleBasedRunInsights;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -150,7 +151,8 @@ it('uses a post-run briefing when a detailed run lands against a credited plan r
     expect($copy)
         ->toContain('10.0 km logged, 5.0 km credited against 8.0 km planned')
         ->toContain('distance partial')
-        ->toContain('intent hit')
+        ->toContain('the session did the job it was written for')
+        ->not->toContain('intent hit')
         ->toContain('recovery')
         ->not->toContain('Easy tempo');
 });
@@ -516,7 +518,7 @@ it('phrases an intent hit as the session doing its job', function (): void {
         fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
     );
 
-    expect($voice)->toMatch('/did what it was written for|right where the day asked you to be/');
+    expect($voice)->toMatch('/did the job it was written for|right where the day asked you to be/');
 });
 
 it('phrases an intent miss as the effort not showing up', function (): void {
@@ -531,7 +533,7 @@ it('phrases an intent miss as the effort not showing up', function (): void {
         fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
     );
 
-    expect($voice)->toMatch('/never quite showed up|came in softer/');
+    expect($voice)->toMatch('/never showed up|came in softer/');
 });
 
 it('phrases too-hard intent as harder than the day called for', function (): void {
@@ -546,7 +548,7 @@ it('phrases too-hard intent as harder than the day called for', function (): voi
         fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
     );
 
-    expect($voice)->toMatch('/harder than the day called for|more effort than this one asked for/');
+    expect($voice)->toMatch('/harder than the easy effort the day asked for|more effort than this one asked for/');
 });
 
 it('phrases an unknown intent as unreadable rather than guessing', function (): void {
@@ -561,8 +563,47 @@ it('phrases an unknown intent as unreadable rather than guessing', function (): 
         fillerRow(AnalysisType::PlanDayVoice, $session->user_id, '2026-05-18'),
     );
 
-    expect($voice)->toMatch("/couldn't make out|not enough signal/");
+    expect($voice)->toMatch("/can't tell how the effort went|not enough signal/");
 });
+
+it('stores no verdict label or markdown in any plan-day read or post-run verdict line', function (IntentVerdict $verdict, SessionType $type, array $evidence): void {
+    $user = User::factory()->create();
+    $filler = app(RuleBasedNarrationFiller::class);
+    $reads = [];
+    foreach (['2026-05-18', '2026-05-19', '2026-05-20', '2026-05-21'] as $date) {
+        PlannedSession::factory()->for($user)->create([
+            'session_type' => $type,
+            'date' => $date,
+            'status' => PlannedSessionStatus::Done,
+            'intent_verdict' => $verdict,
+            'intent_evidence' => $evidence,
+        ]);
+        $reads[] = $filler->fillFor(fillerRow(AnalysisType::PlanDayVoice, $user->id, $date));
+    }
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create([
+        'start_date_local' => Carbon::today(),
+        'distance' => 8_000,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'session_type' => $type,
+        'date' => Carbon::today()->toDateString(),
+        'status' => PlannedSessionStatus::Done,
+        'prescribed_km' => 8.0,
+        'intent_verdict' => $verdict,
+        'intent_evidence' => $evidence,
+    ]);
+    $reads[] = $filler->fillFor(fillerRow(AnalysisType::BriefingMascotVoice, $user->id, Carbon::today()->toDateString()));
+
+    foreach ($reads as $read) {
+        expect(OutcomeLabels::complaint($read, 'read', plainText: true))->toBeNull();
+    }
+})->with([
+    'easy hit' => [IntentVerdict::Hit, SessionType::Easy, ['pace_sec' => 449, 'ceiling_pace_sec' => 408, 'basis' => 'pace']],
+    'easy too hard' => [IntentVerdict::TooHard, SessionType::Easy, ['pace_sec' => 380, 'ceiling_pace_sec' => 408, 'basis' => 'pace']],
+    'tempo missed' => [IntentVerdict::Missed, SessionType::Tempo, ['block_minutes' => 20.0, 'target_pace_sec' => 300]],
+    'interval hit' => [IntentVerdict::Hit, SessionType::Interval, ['reps_prescribed' => 5, 'target_pace_sec' => 270]],
+    'unknown' => [IntentVerdict::Unknown, SessionType::Interval, []],
+]);
 
 it('phrases a rest day run anyway as worth a nod, with no intent claim', function (): void {
     $session = PlannedSession::factory()->create([

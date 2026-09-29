@@ -341,6 +341,9 @@ final class PlanRenderer
             'sum' => $activity['km'],
             'longest' => $longestRunKm,
         ]), 1);
+        $ranPaceSecPerKm = $status->isCredited() && $sessionType !== SessionType::Rest
+            ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [])
+            : null;
 
         return [
             'id' => $s->id,
@@ -368,10 +371,8 @@ final class PlanRenderer
                 'voice' => $status->isCredited() ? null : ReadinessClamp::paceEaseNote(),
             ] : null,
             'credit_note' => self::creditNote($sessionType, $status, $askedKm, $activity),
-            'hot_note' => self::hotNote($s, $status),
-            'ran_pace_sec_per_km' => $status->isCredited() && $sessionType !== SessionType::Rest
-                ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [])
-                : null,
+            'hot_note' => self::hotNote($s, $status, $ranPaceSecPerKm),
+            'ran_pace_sec_per_km' => $ranPaceSecPerKm,
             'actual_km' => $activity['km'] ?? null,
             'credited_km' => $creditedKm,
             'activities' => array_map(
@@ -533,9 +534,10 @@ final class PlanRenderer
 
     /**
      * Why a day graded overreached on intent rather than distance, from the
-     * judge's own evidence. Null when the distance alone overreached.
+     * judge's own evidence, quoting the pace the card shows. Null when the
+     * distance alone overreached.
      */
-    private static function hotNote(PlannedSession $s, PlannedSessionStatus $status): ?string
+    private static function hotNote(PlannedSession $s, PlannedSessionStatus $status, ?int $ranPaceSecPerKm): ?string
     {
         if ($status !== PlannedSessionStatus::Overreached || $s->intent_verdict !== IntentVerdict::TooHard
             || ($s->compliance_score !== null && $s->compliance_score >= (int) round(SessionMatcher::OVERREACHED_FRACTION * 100))) {
@@ -546,7 +548,8 @@ final class PlanRenderer
 
         return match (true) {
             isset($evidence['above_zone_pct'], $evidence['zone']) => "{$evidence['above_zone_pct']}% of the run sat above {$evidence['zone']}.",
-            isset($evidence['pace_sec'], $evidence['ceiling_pace_sec']) => 'averaged '.PaceFormatter::format((float) $evidence['pace_sec']).'/km, past the '.PaceFormatter::format((float) $evidence['ceiling_pace_sec']).'/km ceiling for this run.',
+            isset($evidence['pace_sec'], $evidence['ceiling_pace_sec']) => IntentOutcome::averaged((int) $evidence['pace_sec'], $ranPaceSecPerKm, (int) $evidence['ceiling_pace_sec'])
+                .', past the '.PaceFormatter::format((float) $evidence['ceiling_pace_sec']).'/km ceiling for this run.',
             default => 'ran harder than an easy day asks.',
         };
     }

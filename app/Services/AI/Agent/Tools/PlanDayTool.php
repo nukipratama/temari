@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Agent\Tools;
 
+use App\Enums\IntentVerdict;
 use App\Models\PlannedSession;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\EffectiveSession;
+use App\Services\Run\Plan\IntentOutcome;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
@@ -32,17 +34,13 @@ use Illuminate\Support\Carbon;
  * `docs/decisions/the-eased-session-leads.md`.
  *
  * Once the day is credited it also carries the intent verdict
- * {@see \App\Services\Run\Plan\ComplianceScorer} persisted alongside the grade
- * ({@see \App\Enums\IntentVerdict}) and the numbers that justify it, read back
- * rather than recomputed — see
+ * {@see \App\Services\Run\Plan\ComplianceScorer} persisted alongside the grade,
+ * read back rather than recomputed and worded by {@see IntentOutcome} — see
  * `docs/decisions/a-day-is-graded-on-distance-and-intent.md`. The read can
  * therefore never disagree with the grade: both come from the same row.
  */
 final class PlanDayTool extends NoArgumentTool
 {
-    /** Evidence keys carrying a pace in seconds/km, given a `_formatted` twin. */
-    private const array PACE_SEC_EVIDENCE_KEYS = ['pace_sec', 'ceiling_pace_sec', 'target_pace_sec', 'window_pace_sec'];
-
     public function __construct(
         private readonly PlannedSession $session,
         private readonly TrainingBaseline $baseline,
@@ -50,6 +48,8 @@ final class PlanDayTool extends NoArgumentTool
         private readonly TrainingPaceCalculator $paceCalculator,
         /** Km actually run on this date, or null while nothing has been logged. */
         private readonly ?float $completedKm = null,
+        /** The moving pace the day's card shows, or null while nothing has been logged. */
+        private readonly ?int $ranPaceSecPerKm = null,
     ) {
     }
 
@@ -66,12 +66,11 @@ final class PlanDayTool extends NoArgumentTool
             .'carries how it went: status (done/partial/missed/overreached), completed_km, and '
             .'ran_anyway true when they ran a day they had excused. Those four are absent on a '
             .'day that has not been graded yet, which means it is still ahead of the athlete. '
-            .'On a credited day, intent is the deterministic verdict on whether the session did '
-            ."the job it was written for: hit, missed, too_hard, or unknown when the day's data "
-            .'cannot tell — never guess a stronger verdict than this. intent_evidence carries the '
-            .'numbers behind it (a pace ends in _sec with a matching _formatted twin; quote only '
-            .'the formatted one). intent is absent on a rest or race day, or one with no intent to '
-            .'judge. eased_from means readiness eased the day: session_type and distance_km are the '
+            .'On a credited day, intent says in plain words whether the session did the job it was '
+            .'written for, already decided — repeat its meaning, never re-judge it or make it '
+            .'stronger. intent_detail, when present, is the evidence as a sentence with every '
+            .'comparison already worded; keep its direction exactly as written. intent is absent on '
+            .'a rest or race day, or one with no intent to judge. eased_from means readiness eased the day: session_type and distance_km are the '
             .'eased session the athlete is actually doing, and eased_from names the session it '
             .'replaced (with its distance only when that moved). Describe the eased session as the '
             .'day, and the replaced one only as what it was eased from. pace_sec/pace_formatted are '
@@ -126,27 +125,21 @@ final class PlanDayTool extends NoArgumentTool
                 'status' => $this->session->status->value,
                 'completed_km' => $this->completedKm,
                 'ran_anyway' => $this->session->ran_anyway,
-                ...($this->session->intent_verdict === null ? [] : [
-                    'intent' => $this->session->intent_verdict->value,
-                    'intent_evidence' => self::formattedEvidence($this->session->intent_evidence ?? []),
-                ]),
+                ...($this->session->intent_verdict === null ? [] : $this->intent($this->session->intent_verdict)),
             ] : []),
         ];
     }
 
-    /**
-     * @param  array<string, int|float|string>  $evidence
-     * @return array<string, int|float|string>
-     */
-    private static function formattedEvidence(array $evidence): array
+    /** @return array{intent: string, intent_detail?: string} */
+    private function intent(IntentVerdict $verdict): array
     {
-        foreach (self::PACE_SEC_EVIDENCE_KEYS as $key) {
-            if (isset($evidence[$key]) && is_numeric($evidence[$key])) {
-                $formattedKey = substr($key, 0, -strlen('_sec')).'_formatted';
-                $evidence[$formattedKey] = PaceFormatter::format((float) $evidence[$key]);
-            }
+        $evidence = $this->session->intent_evidence ?? [];
+        $intent = ['intent' => IntentOutcome::outcome($verdict, $evidence)];
+        $detail = IntentOutcome::detail($verdict, $evidence, $this->ranPaceSecPerKm);
+        if ($detail !== null) {
+            $intent['intent_detail'] = $detail;
         }
 
-        return $evidence;
+        return $intent;
     }
 }

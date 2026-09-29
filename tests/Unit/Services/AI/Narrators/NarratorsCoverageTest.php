@@ -32,6 +32,7 @@ use App\Services\AI\Anchor\DayAnchorResolver;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
+use App\Services\AI\Narrators\OutcomeLabels;
 use App\Services\AI\Narrators\QuotedFigures;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PlanDayVoiceNarrator;
@@ -933,6 +934,96 @@ it('PlanDayVoiceNarrator prompt separates the training phase from the day\'s eff
     expect($prompt)->toContain('PHASE IS THE BLOCK, NOT THE EFFORT')
         ->and($prompt)->toContain('base work')
         ->and($prompt)->toContain('quality work in every phase');
+});
+
+/**
+ * Prod inverted a hit ("so it missed the hit mark") after reading the verdict
+ * as an enum beside a raw pace-vs-limit pair. The prompt now reads the worded
+ * outcome inside its FLOW, and names no verdict value the model could echo.
+ */
+it('PlanDayVoiceNarrator prompt reads the worded outcome and never lists a verdict value', function (): void {
+    $prompt = narratorPrompt(PlanDayVoiceNarrator::class);
+
+    expect($prompt)->toContain('intent_detail')
+        ->toContain('never turn it around')
+        ->toContain('effort-adjusted for hills')
+        ->toContain('no markdown')
+        ->not->toContain('intent_evidence')
+        ->not->toContain('hit, missed, too_hard');
+});
+
+it('PlanDayVoiceNarrator re-asks once when the read labels the outcome instead of describing it', function (): void {
+    $session = PlannedSession::factory()->for(User::factory()->create())->create(['date' => Carbon::today()->toDateString()]);
+    $client = new ClientFake([
+        fakeAzureResponse(json_encode(['voice' => 'easy 8 km at 7:29/km, so it missed the hit mark.'], JSON_THROW_ON_ERROR)),
+        fakeAzureResponse(json_encode(['voice' => 'easy 8 km at 7:22/km, kept easy the whole way.'], JSON_THROW_ON_ERROR)),
+    ]);
+    $narrator = new PlanDayVoiceNarrator(fakeStructuredCaller($client), app(TrainingBaseline::class), app(SessionMatcher::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+
+    expect($narrator->generate($session))->toBe('easy 8 km at 7:22/km, kept easy the whole way.');
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $last = end($params['input']);
+
+        return $method === 'create' && is_array($last) && str_contains((string) $last['content'], 'names the outcome with a label');
+    });
+});
+
+it('PlanDayVoiceNarrator throws rather than store a read that keeps a markdown enum', function (): void {
+    $session = PlannedSession::factory()->for(User::factory()->create())->create(['date' => Carbon::today()->toDateString()]);
+    $client = new ClientFake([
+        fakeAzureResponse(json_encode(['voice' => 'easy day, **too_hard** at 6:20/km.'], JSON_THROW_ON_ERROR)),
+        fakeAzureResponse(json_encode(['voice' => 'easy day, *too hard* at 6:20/km.'], JSON_THROW_ON_ERROR)),
+    ]);
+    $narrator = new PlanDayVoiceNarrator(fakeStructuredCaller($client), app(TrainingBaseline::class), app(SessionMatcher::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+
+    $narrator->generate($session);
+})->throws(UnavailableException::class, 'rejected twice');
+
+it('OutcomeLabels catches a verdict label or markdown, and passes a described outcome', function (string $text, bool $label, bool $markdown): void {
+    expect(OutcomeLabels::labelIn($text))->toBe($label)
+        ->and(OutcomeLabels::markdownIn($text))->toBe($markdown)
+        ->and(OutcomeLabels::complaint($text, 'voice', plainText: true) === null)->toBe(! $label && ! $markdown)
+        ->and(OutcomeLabels::complaint($text, 'voice', plainText: false) === null)->toBe(! $label);
+})->with([
+    'the inverted prod read' => ['the pace sat at 7:29/km, so it missed the hit mark.', true, false],
+    'a bold enum' => ['easy day, **too_hard** at 6:20/km.', true, true],
+    'the briefing label' => ['6.2 km done as planned, intent hit.', true, false],
+    'a spaced enum after intent' => ['intent: too hard.', true, false],
+    'a field name' => ['your completed_km says 8.', true, false],
+    'emphasis only' => ['that was *easy*, properly.', false, true],
+    'a backtick' => ['kept it `easy`.', false, true],
+    'a described hit' => ['8 easy km at 7:22/km, kept properly easy the whole way.', false, false],
+    'hit as a verb' => ['you hit the tempo block right on 5:00/km.', false, false],
+    'a described too-hard day' => ['10 against an easy 7, harder than the day asked for.', false, false],
+]);
+
+it('BriefingMascotVoiceNarrator re-asks a post-run block that labels the intent', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today(), 'distance' => 6_200]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'status' => 'done',
+        'prescribed_km' => 6.2,
+        'intent_verdict' => 'hit',
+        'intent_evidence' => ['pace_sec' => 449, 'ceiling_pace_sec' => 408, 'basis' => 'pace'],
+    ]);
+    $client = new ClientFake([
+        fakeAzureResponse(json_encode(['mascot_voice' => '6.2 km done as planned, intent hit.', 'session_type' => 'rest'], JSON_THROW_ON_ERROR)),
+        fakeAzureResponse(json_encode(['mascot_voice' => '6.2 km done as planned, and it stayed easy.', 'session_type' => 'rest'], JSON_THROW_ON_ERROR)),
+    ]);
+
+    expect(bootMascotNarratorWithCaller(fakeStructuredCaller($client))->generate($user, Carbon::today()))
+        ->toBe('6.2 km done as planned, and it stayed easy.');
+});
+
+it('BriefingMascotVoiceNarrator post-run prompt shows outcomes in words, not verdict labels', function (): void {
+    $prompt = (string) new ReflectionClass(BriefingMascotVoiceNarrator::class)->getConstant('POST_RUN_SYSTEM_PROMPT');
+
+    expect($prompt)->toContain('and it stayed easy.')
+        ->not->toContain('planned, intent hit.')
+        ->not->toContain('intent too hard.');
 });
 
 /**
