@@ -105,6 +105,14 @@ it('routes public PHP entry points to backend or all checks', function (): void 
     ]);
 })->group('structure');
 
+it('routes toolchain and testing environment inputs to their checks', function (string $path, array $checks): void {
+    expect(ciClassifyPaths([$path]))->toBe($checks);
+})->with([
+    '.nvmrc' => ['.nvmrc', ['backend' => false, 'frontend' => true, 'docker' => false]],
+    '.npmrc' => ['.npmrc', ['backend' => false, 'frontend' => true, 'docker' => false]],
+    '.env.testing.example' => ['.env.testing.example', ['backend' => true, 'frontend' => false, 'docker' => false]],
+])->group('structure');
+
 it('routes development shell helpers to backend CI only', function (): void {
     foreach ([
         'scripts/deploy/check-restore-counts.sh',
