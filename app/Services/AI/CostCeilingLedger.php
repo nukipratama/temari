@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -30,12 +31,15 @@ class CostCeilingLedger
         Cache::add($this->key('fills'), 0, self::TTL_SECONDS);
         Cache::increment($this->key('fills'));
 
-        Cache::lock($this->key('breakdown_lock'), 5)->block(2, function () use ($kind, $userId): void {
-            $breakdown = $this->breakdown();
-            $slot = $kind.':'.($userId ?? '');
-            $breakdown[$slot] = ['kind' => $kind, 'userId' => $userId, 'count' => ($breakdown[$slot]['count'] ?? 0) + 1];
-            Cache::put($this->key('breakdown'), $breakdown, self::TTL_SECONDS);
-        });
+        try {
+            Cache::lock($this->key('breakdown_lock'), 5)->block(2, function () use ($kind, $userId): void {
+                $breakdown = $this->breakdown();
+                $slot = $kind.':'.($userId ?? '');
+                $breakdown[$slot] = ['kind' => $kind, 'userId' => $userId, 'count' => ($breakdown[$slot]['count'] ?? 0) + 1];
+                Cache::put($this->key('breakdown'), $breakdown, self::TTL_SECONDS);
+            });
+        } catch (LockTimeoutException) {
+        }
     }
 
     /**
