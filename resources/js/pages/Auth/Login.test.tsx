@@ -6,7 +6,7 @@ import { formMock, setMockPage } from '@/test/setup';
 import Login from './Login';
 
 const DATA_USE = {
-    headline: 'Your data',
+    headline: 'your data',
     points: ['Temari reads your Strava activities.', 'Delete it and it goes.'],
 };
 

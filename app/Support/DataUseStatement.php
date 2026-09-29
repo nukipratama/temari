@@ -10,7 +10,7 @@ namespace App\Support;
  */
 final class DataUseStatement
 {
-    public const string HEADLINE = 'Your data';
+    public const string HEADLINE = 'your data';
 
     private const string POLICY_POINTER = 'The privacy policy spells out the details.';
 

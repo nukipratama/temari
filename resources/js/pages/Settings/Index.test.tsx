@@ -119,12 +119,12 @@ describe('Settings', () => {
         render(
             <Settings
                 dataUse={{
-                    headline: 'Your data',
+                    headline: 'your data',
                     points: ['Inference only, never training.'],
                 }}
             />,
         );
-        expect(screen.getByText('Your data')).toBeInTheDocument();
+        expect(screen.getByText('your data')).toBeInTheDocument();
         expect(
             screen.getByText('Inference only, never training.'),
         ).toBeInTheDocument();
