@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { cn } from './cn';
@@ -54,6 +55,43 @@ describe('cn', () => {
             'text-quote-lg text-text-2',
         );
         expect(cn('text-stat', 'text-cream')).toBe('text-stat text-cream');
+    });
+
+    it.each([
+        ['text-stat-sm', 'text-foreground'],
+        ['text-meta', 'text-text-3'],
+        ['text-prose', 'text-text-2'],
+    ])('keeps %s alongside %s', (size, color) => {
+        expect(cn(size, color)).toBe(`${size} ${color}`);
+    });
+
+    it('registers every custom text utility and theme font-size token', () => {
+        const css = readFileSync('resources/css/app.css', 'utf8').replace(
+            /\/\*[\s\S]*?\*\//g,
+            '',
+        );
+        const utilities = [...css.matchAll(/\.(text-[\w-]+)\s*\{/g)].map(
+            ([, name]) => name,
+        );
+        const theme = [...css.matchAll(/@theme[^{]*\{([^}]+)\}/g)]
+            .map(([, block]) => block)
+            .join('\n');
+        const tokens = [...theme.matchAll(/--(text-[\w-]+)\s*:/g)]
+            .map(([, name]) => name)
+            .filter(
+                (name) =>
+                    !name.endsWith('--line-height') &&
+                    !name.endsWith('--letter-spacing'),
+            );
+
+        expect(utilities.length).toBeGreaterThan(0);
+        expect(tokens.length).toBeGreaterThan(0);
+        for (const name of new Set([...utilities, ...tokens])) {
+            expect(cn(name, 'text-foreground'), name).toBe(
+                `${name} text-foreground`,
+            );
+            expect(cn(name, 'text-lg'), name).toBe('text-lg');
+        }
     });
 });
 
