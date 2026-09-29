@@ -271,7 +271,7 @@ it('refuses a strava callback matching a demo connection without changing its us
     expect($demo->fresh()->getAttributes())->toBe($userBefore)
         ->and($connection->fresh()->getAttributes())->toBe($connectionBefore);
     $response->assertRedirect(route('login'))
-        ->assertSessionHasErrors(['strava' => 'this Strava account cannot be connected because it matches the shared demo account.']);
+        ->assertSessionHasErrors(['strava' => 'We can\'t connect this Strava account because it matches the shared demo account.']);
     Bus::assertNothingDispatched();
 });
 

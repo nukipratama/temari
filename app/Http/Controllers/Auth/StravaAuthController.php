@@ -181,7 +181,7 @@ class StravaAuthController extends Controller
             Log::warning('strava.auth.demo_connection_refused');
 
             return redirect()->route('login')->withErrors([
-                'strava' => 'this Strava account cannot be connected because it matches the shared demo account.',
+                'strava' => 'We can\'t connect this Strava account because it matches the shared demo account.',
             ]);
         }
 
