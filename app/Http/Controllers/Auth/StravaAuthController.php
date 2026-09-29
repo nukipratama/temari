@@ -72,6 +72,10 @@ class StravaAuthController extends Controller
 
         $upserted = $this->upsertUser($stravaUser, $grantedScopes);
 
+        if ($upserted instanceof RedirectResponse) {
+            return $upserted;
+        }
+
         if ($upserted === null) {
             return redirect()->route('dashboard');
         }
@@ -142,9 +146,9 @@ class StravaAuthController extends Controller
      * whether its resulting grant includes the zone scope.
      * Returns null when a new athlete is refused during maintenance.
      *
-     * @return array{0: User, 1: bool, 2: bool, 3: bool, 4: bool}|null
+     * @return array{0: User, 1: bool, 2: bool, 3: bool, 4: bool}|RedirectResponse|null
      */
-    private function upsertUser(SocialiteUser $stravaUser, string $grantedScopes = ''): ?array
+    private function upsertUser(SocialiteUser $stravaUser, string $grantedScopes = ''): array|RedirectResponse|null
     {
         $scopes = $grantedScopes !== '' ? $grantedScopes : implode(',', self::SCOPES);
 
@@ -172,6 +176,14 @@ class StravaAuthController extends Controller
         ];
 
         $connection = StravaConnection::where('strava_athlete_id', $stravaUser->getId())->first();
+
+        if ($connection !== null && $connection->user->is_demo) {
+            Log::warning('strava.auth.demo_connection_refused');
+
+            return redirect()->route('login')->withErrors([
+                'strava' => 'this Strava account cannot be connected because it matches the shared demo account.',
+            ]);
+        }
 
         if ($connection !== null) {
             return DB::transaction(function () use ($connection, $userAttributes, $connectionAttributes): array {

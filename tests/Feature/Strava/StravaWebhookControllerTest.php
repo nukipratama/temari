@@ -125,6 +125,21 @@ it('does not dispatch when the athlete is unknown', function (): void {
     Bus::assertNotDispatched(SyncActivitiesJob::class);
 });
 
+it('acknowledges a webhook matching a demo connection without dispatching anything', function (): void {
+    Bus::fake();
+    $demo = User::factory()->demo()->create();
+    $connection = StravaConnection::factory()->for($demo)->create();
+
+    $this->postJson(route('strava.webhook.handle'), [
+        'object_type' => 'activity',
+        'object_id' => 9_003,
+        'aspect_type' => 'create',
+        'owner_id' => $connection->strava_athlete_id,
+    ])->assertOk();
+
+    Bus::assertNothingDispatched();
+});
+
 it('does not dispatch sync for a revoked connection', function (): void {
     Bus::fake();
     $user = User::factory()->create();

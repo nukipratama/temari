@@ -78,6 +78,10 @@ class StravaWebhookController extends Controller
             return $this->ack();
         }
 
+        if ($connection->user->is_demo) {
+            return $this->ack();
+        }
+
         if ($objectType === 'athlete') {
             $this->handleAthleteEvent($request, $connection, $aspectType);
 

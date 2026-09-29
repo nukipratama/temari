@@ -3,7 +3,7 @@ title: Strava connection (OAuth, sync, webhook)
 description: Connecting Strava, the manual "Sync now" button, and the live push webhook.
 tags: [feature, strava]
 status: living
-reviewed: 2026-09-26
+reviewed: 2026-09-30
 code_refs:
   - resources/js/pages/Auth/Login.tsx
   - app/Http/Controllers/Auth/StravaAuthController.php
@@ -52,6 +52,8 @@ Socialite drives the handshake in [StravaAuthController](../../app/Http/Controll
 
 Routes: `auth.strava.redirect` / `auth.strava.callback` in [web.php](../../routes/web.php), both behind `throttle:strava-oauth` (10/min per IP, defined in [AppServiceProvider](../../app/Providers/AppServiceProvider.php)). This is the account-creation path and it is open to anyone, so it cannot key off a user id the way `strava-sync` and `analysis-trigger` do; it stays IP-keyed even for a signed-in reconnect. Terms, privacy, AI-use and the training disclaimer are linked from the login page footer so a stranger can read them before connecting — see [[legal-pages]].
 
+Connections whose user has `is_demo` are refused by `upsertUser()` before any user or credential write. The callback logs the refusal and redirects to login with an error; this checks the user's flag rather than reserving a numeric Strava athlete id.
+
 ## Manual sync ("Sync now")
 
 [StravaSyncButton](../../resources/js/components/StravaSyncButton.tsx) is the state-driven CTA on empty states. When `state === 'ready'` it `router.post('/strava/sync')`; when disconnected/revoked it shows the connect link instead; while a sync is in flight it renders nothing.
@@ -85,6 +87,8 @@ Local revocation and Strava release are separate facts. Local revocation stops T
 
 - `verify()` (GET) answers the subscription handshake, echoing `hub.challenge` only when `hub.verify_token` matches our configured secret via `hash_equals`.
 - `handle()` (POST) acks 200 fast and queues the work. Activity `create`/`update` → `SyncActivitiesJob` for that one activity. **Destructive events are treated as forgeable hints, not commands** (the body's `owner_id` is attacker-supplied): activity `delete` queues `CleanupDeletedActivityJob`, which only deletes after Strava confirms the activity truly 404s with the stored token. A rate limit, open circuit, 5xx or transport failure retries the job for up to 24 hours (backoff 1m, 5m, 15m, then hourly), while a 2xx, a dead token, a missing connection or another 4xx keeps the run without retrying; athlete `delete` / `updates.authorized === 'false'` queues [VerifyStravaRevocationJob](../../app/Jobs/Strava/VerifyStravaRevocationJob.php), which only `markRevoked()`s after `/athlete` returns a genuine 401. A live grant (2xx) means the event was forged/stale and is ignored. Unknown `owner_id` is a silent ack, never a leak. A `strava_webhook` Pulse heartbeat lets ops spot a delivery flatline.
+
+Events matching a demo user's connection are acknowledged without dispatching jobs, before either the activity or athlete handler runs.
 
 The POST route is rate-limited (60/min) to blunt amplification. The circuit breaker / rate limiting downstream lives in [[strava-circuit-breaker-rate-limit]]; the edge runs behind Cloudflare per [[trust-all-proxies-cloudflare]].
 
