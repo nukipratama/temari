@@ -139,7 +139,7 @@ class PlanController extends Controller
             $touchedSessions = $occupant === null ? [$session] : [$session, $occupant];
             foreach ($touchedSessions as $touchedSession) {
                 if ($touchedSession->status->isCredited() && $narrationRequester->isWithinCurrentWeek($touchedSession->date, $today)) {
-                    $narrationRequester->requestDayNarration($touchedSession->user_id, $touchedSession->date);
+                    $narrationRequester->requestDayVoiceIfChanged($user, $touchedSession->date);
                 }
             }
         }

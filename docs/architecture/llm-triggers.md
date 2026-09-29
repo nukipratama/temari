@@ -207,14 +207,15 @@ and spends nothing. See [[demo-user-billing-exclusion]].
 ### 2. Ingest cascade
 
 [`DispatchPostRunAnalysis::handle()`](../../app/Listeners/DispatchPostRunAnalysis.php#L41) is queued
-on `ActivityIngested` and is where most per-run spend originates. In order: `CardFlavor`, then the
+on `ActivityIngested` and is where most per-run spend originates. In order: `CardFlavor` (invalidated only when the run's material fingerprint moved), then the
 grouped `PostRunSpeech` + `RunInsight` pair — both filled rule-based instead, with no dispatch, when
 [`NarrationEligibility::forIngestedRun()`](../../app/Services/AI/NarrationEligibility.php) says demo,
 too old, or pre-connect and older than the last 7 days (see *the history gate* below), and staged
 `Pending` with every LLM request below skipped (briefing, profile
 voice, clamp voice, Temari's read) when the athlete is away from the app, until origin 5 catches them
 up — then `BriefingMascotVoice` (invalidated only when the
-run is today's), then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
+run is today's, and dispatched 120 s late so a burst of same-day ingests collapses to one regeneration),
+then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
 never re-bills. Both of those two narrate right away even while history their own narrator reads
 is still hydrating (#1054) — a fresh connect's early pass, per [[history-narrates-on-demand]]:
 `AnalysisService::markDone()` detects it live, at generation time (the briefing on past-you's

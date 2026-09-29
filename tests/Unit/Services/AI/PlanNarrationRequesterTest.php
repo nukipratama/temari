@@ -3,7 +3,12 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
+use App\Jobs\AI\AnalyzePlanClampVoiceJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
+use App\Models\WeeklySnapshot;
+use App\Services\Run\Plan\ClampNarrationContext;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Models\AI\Analysis;
 use App\Models\Feedback;
@@ -208,12 +213,66 @@ it('invalidates the season row when the current week adaptation changes', functi
     Bus::assertDispatchedTimes(AnalyzePlanSeasonVoiceJob::class, 1);
 });
 
-it('re-narrates a single day via requestDayNarration', function (): void {
-    $user = User::factory()->create();
+it('serves the season rule-based for the demo account, dispatching nothing', function (): void {
+    $user = User::factory()->create(['is_demo' => true]);
+    $season = Season::factory()->for($user)->create();
 
-    $this->requester->requestDayNarration($user->id, Carbon::today());
+    $this->requester->requestForCurrentWeek($user, Carbon::today());
 
-    Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 1);
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
+    expect(Analysis::query()->forSubject(Season::class, $season->id, AnalysisType::PlanSeasonVoice)->firstOrFail()->status)
+        ->toBe(AnalysisStatus::Done);
+});
+
+describe('requestClampVoice', function (): void {
+    function tiredUserWithClampedDay(): User
+    {
+        $user = User::factory()->create();
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+            'form_status' => 'overreaching',
+            'monotony' => 1.0,
+        ]);
+        PlannedSession::factory()->for($user)->create([
+            'date' => Carbon::today()->toDateString(),
+            'session_type' => SessionType::Interval,
+        ]);
+
+        return $user;
+    }
+
+    it('asks for nothing when the day has no clamp', function (): void {
+        $user = User::factory()->create();
+
+        expect($this->requester->requestClampVoice($user, Carbon::today()))->toBeFalse();
+        Bus::assertNotDispatched(AnalyzePlanClampVoiceJob::class);
+    });
+
+    it('regenerates only when the clamp it explains changed', function (): void {
+        $user = tiredUserWithClampedDay();
+
+        $this->requester->requestClampVoice($user, Carbon::today());
+        Bus::assertDispatchedTimes(AnalyzePlanClampVoiceJob::class, 1);
+
+        $context = app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today());
+        $row = Analysis::query()->where('analysis_type', AnalysisType::PlanClampVoice)->firstOrFail();
+        app(AnalysisService::class)->markDone(
+            $row,
+            'eased.',
+            ServedBy::Llm,
+            fingerprint: MaterialFingerprint::forClamp($context['ceiling'], $context['clamped_to'], $context['has_run_today']),
+        );
+
+        Bus::fake();
+        $this->requester->requestClampVoice($user, Carbon::today());
+        Bus::assertNotDispatched(AnalyzePlanClampVoiceJob::class);
+
+        ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+            'start_date_local' => Carbon::today()->setHour(7),
+        ]);
+        $this->requester->requestClampVoice($user, Carbon::today());
+        Bus::assertDispatchedTimes(AnalyzePlanClampVoiceJob::class, 1);
+    });
 });
 
 describe('regenerate cooldown', function (): void {

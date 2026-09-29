@@ -23,8 +23,8 @@ use App\Actions\Run\Plan\ResolveSeasonAction;
  * often {@see \App\Http\Controllers\PlanController::regenerate()} may run — a
  * manual regenerate re-narrates the season, a real LLM cost per click.
  *
- * A day's own read is requested only from {@see self::requestDayVoiceIfChanged()}
- * and {@see self::requestDayNarration()}, never from the week-wide requests
+ * A day's own read is requested only from {@see self::requestDayVoiceIfChanged()},
+ * never from the week-wide requests
  * here: ahead-of-time day narration was cut in #939, since a day with no run
  * has nothing to read.
  *
@@ -78,10 +78,8 @@ final readonly class PlanNarrationRequester
      * re-request six days nothing touched. Returns whether anything was asked
      * for, so the caller can tell a real invalidation from a no-op.
      *
-     * The gated counterpart to {@see self::requestDayNarration()}, which
-     * invalidates unconditionally. That is right for a user edit, where the
-     * athlete has just changed the day; it is wrong here, because this runs on
-     * every ingested run and would re-bill each one.
+     * Runs on every ingested run and on every plan edit of a credited day, so
+     * the fingerprint gate is what keeps a repeatable event from re-billing.
      */
     public function requestDayVoiceIfChanged(User $user, Carbon $date): bool
     {
@@ -134,15 +132,24 @@ final readonly class PlanNarrationRequester
      */
     public function requestClampVoice(User $user, Carbon $today): bool
     {
-        if ($this->clampContext->forUserOn($user->id, $today) === null) {
+        $context = $this->clampContext->forUserOn($user->id, $today);
+        if ($context === null) {
             return false;
         }
+
+        $discriminator = $today->toDateString();
+        $stamped = Analysis::query()
+            ->forSubject(AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanClampVoice, $discriminator)
+            ->where('status', AnalysisStatus::Done)
+            ->value('content_fingerprint');
+        $expected = MaterialFingerprint::forClamp($context['ceiling'], $context['clamped_to'], $context['has_run_today']);
 
         $this->analysisService->request(
             subjectOrType: AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
             subjectId: $user->id,
             type: AnalysisType::PlanClampVoice,
-            discriminator: $today->toDateString(),
+            discriminator: $discriminator,
+            invalidate: $stamped !== null && $stamped !== $expected,
         );
 
         return true;
@@ -246,6 +253,12 @@ final readonly class PlanNarrationRequester
             $adaptation?->reason,
             $adaptation === null ? false : $adaptation->deload,
         );
+        if ($this->analysisService->shouldServeRuleBased($user)) {
+            $this->analysisService->requestRuleBased(Season::class, $season->id, AnalysisType::PlanSeasonVoice, refillDone: false);
+
+            return;
+        }
+
         $stamped = Analysis::query()
             ->forSubject(Season::class, $season->id, AnalysisType::PlanSeasonVoice)
             ->value('content_fingerprint');
@@ -301,27 +314,6 @@ final readonly class PlanNarrationRequester
                 refillDone: false,
             );
         }
-    }
-
-    /**
-     * Re-narrates a single day — used when an edit
-     * ({@see \App\Http\Controllers\PlanController::update()}) changes what a
-     * day's blurb would need to say, so it never keeps describing a session
-     * the athlete just skipped, blocked, or moved off of.
-     *
-     * Invalidates unconditionally, because the edit IS the change. Anything
-     * firing on a repeatable event wants {@see self::requestDayVoiceIfChanged()}
-     * instead, which asks the fingerprint first.
-     */
-    public function requestDayNarration(int $userId, Carbon $date): void
-    {
-        $this->analysisService->request(
-            AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
-            $userId,
-            AnalysisType::PlanDayVoice,
-            $date->toDateString(),
-            invalidate: true,
-        );
     }
 
     /**

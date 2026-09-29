@@ -9,6 +9,7 @@ use App\Enums\SessionType;
 use App\Http\Controllers\PlanController;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
+use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -19,7 +20,12 @@ use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
+use App\Services\AI\MaterialFingerprint;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\Periodizer;
@@ -164,6 +170,57 @@ it('attributes an edit\'s re-narration to the athlete, so it re-arms the row\'s 
         AnalyzePlanDayVoiceJob::class,
         fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
     );
+});
+
+it('does not re-narrate a credited day whose read already matches the edited material', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'status' => PlannedSessionStatus::Done,
+        'skipped' => false,
+    ]);
+    $editedFingerprint = MaterialFingerprint::forPlannedSession(
+        $session->replicate()->fill(['skipped' => true]),
+        app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'],
+    );
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::PlanDayVoice,
+        'discriminator' => Carbon::today()->toDateString(),
+        'status' => AnalysisStatus::Done,
+        'content' => 'read',
+        'content_fingerprint' => $editedFingerprint,
+    ]);
+
+    $this->actingAs($user)->patch("/plan/sessions/{$session->id}", ['skipped' => true]);
+
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+});
+
+it('serves a demo manual regenerate rule-based, dispatching no season job', function (): void {
+    Bus::fake();
+    $user = User::factory()->create(['is_demo' => true]);
+    Season::factory()->for($user)->create();
+
+    $this->actingAs($user)->post('/plan/regenerate');
+
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
+});
+
+it('serves a demo plan edit of a credited day rule-based, dispatching no job', function (): void {
+    Bus::fake();
+    $user = User::factory()->create(['is_demo' => true]);
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'status' => PlannedSessionStatus::Done,
+    ]);
+
+    $this->actingAs($user)->patch("/plan/sessions/{$session->id}", ['skipped' => true]);
+
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+    expect(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->firstOrFail()->status)->toBe(AnalysisStatus::Done);
 });
 
 /**

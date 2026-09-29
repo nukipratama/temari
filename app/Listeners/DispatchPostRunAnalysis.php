@@ -36,6 +36,8 @@ use App\Services\AI\NarrationOrigin;
  */
 class DispatchPostRunAnalysis implements ShouldQueue
 {
+    private const int BRIEFING_COALESCE_SECONDS = 120;
+
     public function __construct(
         private readonly AnalysisService $analysisService,
         private readonly WeeklyAggregator $weeklyAggregator,
@@ -98,7 +100,12 @@ class DispatchPostRunAnalysis implements ShouldQueue
         // lands, so each block narrates with everything done so far today;
         // backfill of an older day leaves Done rows untouched.
         if (! $athleteAway) {
-            $this->analysisService->requestBriefing($user, $today, invalidate: $isToday, delaySeconds: $delaySec);
+            $this->analysisService->requestBriefing(
+                $user,
+                $today,
+                invalidate: $isToday,
+                delaySeconds: $isToday ? max($delaySec, self::BRIEFING_COALESCE_SECONDS) : $delaySec,
+            );
             $this->analysisService->request(
                 subjectOrType: AnalysisType::ProfileVoice->subjectType(),
                 subjectId: $user->id,
@@ -183,12 +190,17 @@ class DispatchPostRunAnalysis implements ShouldQueue
             return;
         }
 
+        $stamped = Analysis::query()
+            ->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)
+            ->where('status', AnalysisStatus::Done)
+            ->value('content_fingerprint');
+
         $this->analysisService->request(
             subjectOrType: RunCard::class,
             subjectId: $card->id,
             delaySeconds: $delaySec,
             type: AnalysisType::CardFlavor,
-            invalidate: true,
+            invalidate: $stamped !== null && $stamped !== MaterialFingerprint::forActivity($activity),
         );
     }
 
