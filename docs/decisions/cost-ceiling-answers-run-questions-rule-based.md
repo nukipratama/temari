@@ -41,7 +41,7 @@ Refusal turned out to mean two different things, both wrong:
 
 This is not a bypass. Nothing is billed — the answer is assembled from the run's own stored numbers, the same content the demo has always received, and no agent run is dispatched.
 
-**2. The job degrades too** ([`costCeilingDegraded`](app/Jobs/AI/AnswerRunQuestionJob.php#L60)), for the question dispatched moments before the ceiling tripped. `Failed` is kept for genuine faults: a missing detail, a terminal upstream error, an exhausted retry budget. The activity and its detail are resolved before the pause checks, because the deterministic answer reads the same detail the narrator would have.
+**2. The job degrades too** ([`costCeilingDegraded`](app/Jobs/AI/AnswerRunQuestionJob.php#L76)), for the question dispatched moments before the ceiling tripped. `Failed` is kept for genuine faults: a missing detail, a terminal upstream error, an exhausted retry budget. The activity and its detail are resolved before the pause checks, because the deterministic answer reads the same detail the narrator would have.
 
 **3. The response shape does not change.** Both degrade paths return what the demo path has always returned: `201` with a `Done` question carrying its answer. No client contract appears, and the existing 409 handling stays correct for the stops that still produce it.
 
