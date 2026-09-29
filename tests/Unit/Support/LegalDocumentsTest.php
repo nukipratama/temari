@@ -14,7 +14,6 @@ function allLegalDocuments(): array
     return [
         LegalDocuments::terms(),
         LegalDocuments::privacy(),
-        LegalDocuments::aiUse(),
         LegalDocuments::trainingDisclaimer(),
     ];
 }
@@ -43,28 +42,27 @@ it('gives every document a slug, a title, a date and at least one section', func
     }
 });
 
-it('gives the four documents distinct slugs', function (): void {
+it('gives the three documents distinct slugs', function (): void {
     $slugs = array_map(fn (array $document): string => $document['slug'], allLegalDocuments());
 
-    expect($slugs)->toBe(['terms', 'privacy', 'ai-use', 'training-disclaimer']);
+    expect($slugs)->toBe(['terms', 'privacy', 'training-disclaimer']);
 });
 
-it('serves the AI data-use wording from DataUseStatement rather than a second copy', function (): void {
-    $aiUse = LegalDocuments::aiUse();
-    $privacy = LegalDocuments::privacy();
-
-    $headings = array_column($aiUse['sections'], 'heading');
-    expect($headings)->toContain(DataUseStatement::HEADLINE);
-
-    foreach (DataUseStatement::points() as $point) {
-        expect($aiUse['sections'][0]['paragraphs'])->toContain($point)
-            ->and(legalProse())->toContain($point);
-    }
-
-    $privacyAi = collect($privacy['sections'])->firstOrFail(
-        fn (array $section): bool => str_contains($section['heading'], DataUseStatement::HEADLINE),
+it('serves the data-use wording from DataUseStatement rather than a second copy', function (): void {
+    $privacyData = collect(LegalDocuments::privacy()['sections'])->firstOrFail(
+        fn (array $section): bool => $section['heading'] === DataUseStatement::HEADLINE,
     );
-    expect($privacyAi['paragraphs'])->toBe(DataUseStatement::points());
+
+    expect($privacyData['paragraphs'])->toBe(DataUseStatement::points(pointToPrivacyPolicy: false));
+});
+
+it('folds how the notes get written into privacy, under the anchor the old page redirects to', function (): void {
+    $notes = collect(LegalDocuments::privacy()['sections'])->firstOrFail(
+        fn (array $section): bool => ($section['id'] ?? null) === LegalDocuments::NOTES_SECTION_ID,
+    );
+
+    expect(implode(' ', $notes['paragraphs']))->toContain('does not mark which is which')
+        ->and(implode(' ', $notes['paragraphs']))->toContain('not checked before you read them');
 });
 
 it('serves the training disclaimer from TrainingDisclaimer rather than a second wording', function (): void {
@@ -81,8 +79,21 @@ it('discloses the one thing account deletion keeps, so the promise stays true', 
         fn (array $section): bool => $section['heading'] === 'Deleting your account',
     );
 
-    expect(implode(' ', $deletion['paragraphs']))->toContain('cost ledger is kept')
+    expect(implode(' ', $deletion['paragraphs']))->toContain('what your notes cost to write')
         ->and(implode(' ', $deletion['paragraphs']))->toContain('Strava athlete id');
+});
+
+it('states the cost-ledger retention in exactly one line, on privacy only', function (): void {
+    $lines = collect(allLegalDocuments())
+        ->flatMap(fn (array $document): array => array_merge(...array_column($document['sections'], 'paragraphs')))
+        ->merge(DataUseStatement::points(pointToPrivacyPolicy: false))
+        ->filter(fn (string $line): bool => str_contains($line, 'Strava athlete id') && str_contains($line, 'cost'));
+
+    expect($lines)->toHaveCount(1);
+});
+
+it('never names the AI vendor or model in the legal copy', function (): void {
+    expect(legalProse())->not->toMatch('/azure|openai|\bgpt|language model/i');
 });
 
 it('does not claim a per-account AI switch the app has no toggle for', function (): void {

@@ -100,14 +100,13 @@ describe('Settings', () => {
         expect(logOut.parentElement).toHaveClass('min-[900px]:flex-row');
     });
 
-    it('links out to the four legal pages', () => {
+    it('links out to the three legal pages', () => {
         render(<Settings />);
 
         expect(screen.getByText('The fine print')).toBeInTheDocument();
         for (const [label, href] of [
             ['terms of use', '/terms'],
             ['privacy policy', '/privacy'],
-            ['how temari uses AI', '/ai-use'],
             ['training disclaimer', '/training-disclaimer'],
         ]) {
             expect(

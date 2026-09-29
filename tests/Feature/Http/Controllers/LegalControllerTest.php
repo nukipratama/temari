@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use App\Support\DataUseStatement;
+use App\Support\LegalDocuments;
 use App\Support\TrainingDisclaimer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -13,7 +14,6 @@ uses(RefreshDatabase::class);
 $routes = [
     'legal.terms' => 'terms',
     'legal.privacy' => 'privacy',
-    'legal.ai-use' => 'ai-use',
     'legal.training-disclaimer' => 'training-disclaimer',
 ];
 
@@ -40,14 +40,18 @@ it('does not bounce a signed-in user off the legal pages the way it does off log
         ->assertInertia(fn (Assert $page) => $page->component('Legal/Document'));
 });
 
-it('renders the AI data-use wording from the shared statement', function (): void {
-    $this->get(route('legal.ai-use'))
+it('permanently redirects the retired AI-use page to its section on privacy', function (): void {
+    $this->get('/ai-use')->assertStatus(301)->assertRedirect('/privacy#'.LegalDocuments::NOTES_SECTION_ID);
+});
+
+it('renders the data-use wording from the shared statement', function (): void {
+    $this->get(route('legal.privacy'))
         ->assertOk()
         ->assertInertia(function (Assert $page): void {
             $paragraphs = collect($page->toArray()['props']['sections'])
                 ->flatMap(fn (array $section): array => $section['paragraphs']);
 
-            foreach (DataUseStatement::points() as $point) {
+            foreach (DataUseStatement::points(pointToPrivacyPolicy: false) as $point) {
                 expect($paragraphs)->toContain($point);
             }
         });

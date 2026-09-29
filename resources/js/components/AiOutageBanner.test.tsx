@@ -29,7 +29,7 @@ describe('AiOutageBanner', () => {
         render(<AiOutageBanner />);
         expect(
             screen.getByText(
-                "temari's resting for a bit. The narration isn't gone, it'll catch up automatically once generation's back.",
+                "temari's catching her breath. your notes aren't lost, they'll catch up on their own.",
             ),
         ).toBeInTheDocument();
     });

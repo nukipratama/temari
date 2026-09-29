@@ -19,7 +19,7 @@ import { inputVariants, outlineChipVariants } from '@/lib/variants';
 const ERROR_COPY: Readonly<Record<AskError, string>> = {
     rate_limited:
         "you're asking faster than i can think. give it a minute, then try again.",
-    paused: "generation is paused right now, so i didn't send that one. it would only sit there.",
+    paused: "i'm catching my breath right now, so i didn't send that one. ask me again in a bit.",
     invalid: "i couldn't read that one. try rephrasing it.",
     failed: 'that question never made it to me. try again.',
 };

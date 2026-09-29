@@ -9,6 +9,11 @@ const SECTIONS = [
         paragraphs: ['Your name and your Strava athlete id.'],
     },
     {
+        id: 'notes',
+        heading: 'How Temari writes your notes',
+        paragraphs: ['Each note is written once and stored.'],
+    },
+    {
         heading: 'Cutting access from Strava',
         paragraphs: [
             'Revoke at https://www.strava.com/settings/apps at any time.',
@@ -47,6 +52,19 @@ describe('Legal/Document', () => {
         ).toBeInTheDocument();
     });
 
+    it('anchors a section by its id so the old AI-use link lands on it', () => {
+        renderDocument();
+
+        expect(
+            screen
+                .getByRole('heading', {
+                    level: 2,
+                    name: 'How Temari writes your notes',
+                })
+                .closest('section'),
+        ).toHaveAttribute('id', 'notes');
+    });
+
     it('turns a bare URL in the copy into a link', () => {
         renderDocument();
 
@@ -67,7 +85,7 @@ describe('Legal/Document', () => {
             name: 'Other documents',
         });
         expect(nav).toHaveTextContent('terms of use');
-        expect(nav).toHaveTextContent('how Temari uses AI');
+        expect(nav).not.toHaveTextContent('AI');
         expect(nav).toHaveTextContent('training disclaimer');
         expect(nav).not.toHaveTextContent('privacy policy');
     });

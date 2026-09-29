@@ -32,9 +32,8 @@ export default function AiOutageBanner() {
                     aria-hidden
                 />
                 <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
-                    temari&apos;s resting for a bit. The narration isn&apos;t
-                    gone, it&apos;ll catch up automatically once
-                    generation&apos;s back.
+                    temari&apos;s catching her breath. your notes aren&apos;t
+                    lost, they&apos;ll catch up on their own.
                 </p>
             </div>
         </div>

@@ -6,6 +6,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import { bareLayout } from '@/layouts/BareShell';
 
 interface Section {
+    id?: string;
     heading: string;
     paragraphs: string[];
 }
@@ -22,7 +23,6 @@ const DOCUMENTS: ReadonlyArray<{ slug: string; href: string; label: string }> =
     [
         { slug: 'terms', href: '/terms', label: 'terms of use' },
         { slug: 'privacy', href: '/privacy', label: 'privacy policy' },
-        { slug: 'ai-use', href: '/ai-use', label: 'how Temari uses AI' },
         {
             slug: 'training-disclaimer',
             href: '/training-disclaimer',
@@ -88,7 +88,11 @@ export default function LegalDocument({
 
                     <div className="mt-10 flex flex-col divide-y divide-dashed divide-border [&>*]:pt-10 [&>*:first-child]:pt-0">
                         {sections.map((section) => (
-                            <section key={section.heading}>
+                            <section
+                                key={section.heading}
+                                id={section.id}
+                                className="scroll-mt-6"
+                            >
                                 <Eyebrow
                                     token="small"
                                     as="h2"

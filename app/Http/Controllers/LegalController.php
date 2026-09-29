@@ -20,18 +20,13 @@ class LegalController extends Controller
         return self::render(LegalDocuments::privacy());
     }
 
-    public function aiUse(): Response
-    {
-        return self::render(LegalDocuments::aiUse());
-    }
-
     public function trainingDisclaimer(): Response
     {
         return self::render(LegalDocuments::trainingDisclaimer());
     }
 
     /**
-     * @param  array{slug: string, title: string, updated: string, intro: string, sections: list<array{heading: string, paragraphs: list<string>}>}  $document
+     * @param  array{slug: string, title: string, updated: string, intro: string, sections: list<array{id?: string, heading: string, paragraphs: list<string>}>}  $document
      */
     private static function render(array $document): Response
     {

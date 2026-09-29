@@ -83,7 +83,6 @@ const WHY_GET: ReadonlyArray<WhyItem> = [
 const LEGAL_LINKS: ReadonlyArray<{ href: string; label: string }> = [
     { href: '/terms', label: 'terms' },
     { href: '/privacy', label: 'privacy' },
-    { href: '/ai-use', label: 'how temari uses AI' },
     { href: '/training-disclaimer', label: 'training disclaimer' },
 ];
 
@@ -361,7 +360,7 @@ function DataUseDisclosure({
                 onClick={() => setOpen((wasOpen) => !wasOpen)}
                 className="focus-ring group flex w-full items-center justify-between px-3.5 py-3.5 text-left text-xs leading-tight font-bold text-foreground"
             >
-                data &amp; AI use
+                the fine print
                 <Icon
                     icon={ChevronDown}
                     width={18}
