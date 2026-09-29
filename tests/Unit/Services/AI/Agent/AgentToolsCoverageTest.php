@@ -13,6 +13,8 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\EffortContextTool;
+use App\Services\AI\Agent\Tools\GetThreadTool;
+use App\Models\AI\RunQuestion;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
 use App\Services\AI\Agent\Tools\LapsTool;
@@ -98,12 +100,71 @@ it('names every tool in snake_case with a description the model can choose on', 
         new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction()),
         new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class)),
         planContextTool($a->user, $d->start_date_local, $d->start_date_local),
+        new GetThreadTool($a, 1),
     ];
 
     foreach ($tools as $tool) {
         expect($tool->name())->toMatch('/^get_[a-z_]+$/')
             ->and($tool->description())->not->toBe('');
     }
+});
+
+// ── GetThreadTool ─────────────────────────────────────────────────────
+
+function threadExchange(Activity $activity, string $question, ?int $userId = null, AnalysisStatus $status = AnalysisStatus::Done): RunQuestion
+{
+    return RunQuestion::factory()->create([
+        'user_id' => $userId ?? $activity->user_id,
+        'activity_id' => $activity->id,
+        'question' => $question,
+        'answer' => $status === AnalysisStatus::Done ? "answer to {$question}" : null,
+        'status' => $status,
+    ]);
+}
+
+it('reads this run earlier settled exchanges oldest first, without the one being answered', function (): void {
+    ['activity' => $a] = agentToolFixture();
+    threadExchange($a, 'first?');
+    threadExchange($a, 'never came back?', status: AnalysisStatus::Failed);
+    threadExchange($a, 'second?');
+    $answering = threadExchange($a, 'why that?', status: AnalysisStatus::Processing);
+    threadExchange($a, 'asked later?');
+
+    expect(new GetThreadTool($a, $answering->id)->handle([]))->toBe(['thread' => [
+        ['question' => 'first?', 'answer' => 'answer to first?'],
+        ['question' => 'second?', 'answer' => 'answer to second?'],
+    ]]);
+});
+
+it('keeps only the most recent six exchanges of a long thread', function (): void {
+    ['activity' => $a] = agentToolFixture();
+    foreach (range(1, 8) as $n) {
+        threadExchange($a, "q{$n}?");
+    }
+    $answering = threadExchange($a, 'and now?', status: AnalysisStatus::Queued);
+
+    expect(array_column(new GetThreadTool($a, $answering->id)->handle([])['thread'], 'question'))
+        ->toBe(['q3?', 'q4?', 'q5?', 'q6?', 'q7?', 'q8?']);
+});
+
+it('reads only this run thread even when the call forges another run and user', function (): void {
+    ['activity' => $mine] = agentToolFixture();
+    ['activity' => $theirs] = agentToolFixture();
+    ['activity' => $myOtherRun] = agentToolFixture();
+    $myOtherRun->update(['user_id' => $mine->user_id]);
+    threadExchange($mine, 'mine?');
+    threadExchange($theirs, 'theirs?');
+    threadExchange($myOtherRun, 'my other run?');
+    threadExchange($mine, 'planted by someone else?', userId: $theirs->user_id);
+    $answering = threadExchange($mine, 'why?', status: AnalysisStatus::Queued);
+
+    $forged = new GetThreadTool($mine, $answering->id)->handle([
+        'activity_id' => $theirs->id,
+        'user_id' => $theirs->user_id,
+        'limit' => 100,
+    ]);
+
+    expect(array_column($forged['thread'], 'question'))->toBe(['mine?']);
 });
 
 // ── RunSummaryTool ────────────────────────────────────────────────────

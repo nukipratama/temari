@@ -20,6 +20,8 @@ final class RunQuestionSeeds
     /** Beyond this the suggestions stop being suggestions and become a menu. */
     private const int MAX_SEEDS = 4;
 
+    private const int MAX_FOLLOW_UPS = 2;
+
     /** Heart rate climbing by less than this within the steady segment is noise. */
     private const float HR_DRIFT_BPM_FLOOR = 3.0;
 
@@ -88,6 +90,25 @@ final class RunQuestionSeeds
         }
 
         return null;
+    }
+
+    /**
+     * The suggested questions this run still has that nobody asked, as the
+     * follow-ups a rule-based answer offers.
+     *
+     * @param  list<string>  $asked
+     * @return list<string>
+     */
+    public static function unasked(ActivityDetail $detail, array $asked): array
+    {
+        $askedKeys = array_map(self::normalise(...), $asked);
+
+        $open = array_filter(
+            array_map(fn (RunQuestionTopic $topic): string => $topic->question(), self::for($detail)),
+            fn (string $question): bool => ! in_array(self::normalise($question), $askedKeys, true),
+        );
+
+        return array_slice(array_values($open), 0, self::MAX_FOLLOW_UPS);
     }
 
     private static function normalise(string $question): string

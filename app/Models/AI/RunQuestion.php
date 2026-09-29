@@ -31,6 +31,7 @@ use Override;
  * @property int $activity_id
  * @property string $question
  * @property string|null $answer
+ * @property list<string>|null $follow_ups
  * @property AnalysisStatus $status
  * @property string|null $error
  * @property string|null $claim_token
@@ -40,7 +41,7 @@ use Override;
  * @property-read User $user
  * @property-read Activity $activity
  */
-#[Fillable(['user_id', 'activity_id', 'question', 'answer', 'status', 'error'])]
+#[Fillable(['user_id', 'activity_id', 'question', 'answer', 'follow_ups', 'status', 'error'])]
 class RunQuestion extends Model
 {
     /** @use HasFactory<RunQuestionFactory> */
@@ -66,6 +67,20 @@ class RunQuestion extends Model
     }
 
     /**
+     * Every question already asked about this run, oldest first.
+     *
+     * @return list<string>
+     */
+    public static function askedAbout(int $activityId): array
+    {
+        return array_values(self::query()
+            ->forActivity($activityId)
+            ->get(['question'])
+            ->map(fn (RunQuestion $row): string => $row->question)
+            ->all());
+    }
+
+    /**
      * This run's exchanges oldest-first, which is the order a thread reads in.
      *
      * @param  Builder<RunQuestion>  $query
@@ -83,6 +98,7 @@ class RunQuestion extends Model
         return [
             'user_id' => 'integer',
             'activity_id' => 'integer',
+            'follow_ups' => 'array',
             'status' => AnalysisStatus::class,
             'claimed_at' => 'datetime',
         ];

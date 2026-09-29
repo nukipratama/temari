@@ -11,6 +11,7 @@ function row(overrides: Partial<RunQuestion> = {}): RunQuestion {
         activity_id: 9,
         question: 'why did my heart rate drift up?',
         answer: null,
+        follow_ups: [],
         status: 'queued',
         asked_at: '2026-08-13T10:00:00+00:00',
         ...overrides,
@@ -19,7 +20,11 @@ function row(overrides: Partial<RunQuestion> = {}): RunQuestion {
 
 /** GET returns the thread, POST returns whatever `post` is set to. */
 function stubApi(
-    thread: { questions: RunQuestion[]; suggestions: string[] },
+    thread: {
+        questions: RunQuestion[];
+        suggestions: string[];
+        at_run_cap?: boolean;
+    },
     post: Response = new Response(JSON.stringify(row()), { status: 201 }),
 ) {
     const fetchMock = vi.fn((_url: string, init?: RequestInit) =>
@@ -249,6 +254,121 @@ describe('AskAboutRun', () => {
         expect(
             screen.queryByText(/zones or terrain yet/),
         ).not.toBeInTheDocument();
+    });
+
+    it('offers the latest answer follow-ups under a keep going label, and sends one on tap', async () => {
+        const fetchMock = stubApi({
+            questions: [
+                row({
+                    id: 1,
+                    status: 'done',
+                    answer: 'Heat.',
+                    follow_ups: ['stale follow-up?'],
+                }),
+                row({
+                    id: 2,
+                    question: 'and km 5?',
+                    status: 'done',
+                    answer: 'Slowest.',
+                    follow_ups: ['why was km 5 slow?', 'was it the climb?'],
+                }),
+            ],
+            suggestions: [],
+        });
+
+        render(<AskAboutRun activityId={9} />);
+
+        const chip = await screen.findByRole('button', {
+            name: 'why was km 5 slow?',
+        });
+        expect(screen.getByText('Keep going')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'was it the climb?' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'stale follow-up?' }),
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(chip);
+
+        await waitFor(() =>
+            expect(fetchMock).toHaveBeenCalledWith(
+                '/api/activities/9/questions',
+                expect.objectContaining({
+                    method: 'POST',
+                    body: JSON.stringify({ question: 'why was km 5 slow?' }),
+                }),
+            ),
+        );
+    });
+
+    it('holds the follow-ups back while the latest question is still pending', async () => {
+        stubApi({
+            questions: [
+                row({
+                    id: 1,
+                    status: 'done',
+                    answer: 'Heat.',
+                    follow_ups: ['was it the humidity?'],
+                }),
+                row({ id: 2, question: 'and km 5?', status: 'queued' }),
+            ],
+            suggestions: [],
+        });
+
+        render(<AskAboutRun activityId={9} />);
+        await screen.findByText('Heat.');
+
+        expect(screen.queryByText('Keep going')).not.toBeInTheDocument();
+    });
+
+    it('turns the ask away politely and locks the box once the run hits its daily cap', async () => {
+        stubApi(
+            {
+                questions: [
+                    row({
+                        status: 'done',
+                        answer: 'Heat.',
+                        follow_ups: ['was it the humidity?'],
+                    }),
+                ],
+                suggestions: [],
+            },
+            new Response(JSON.stringify({ error: 'run_cap' }), { status: 429 }),
+        );
+
+        render(<AskAboutRun activityId={9} />);
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'was it the humidity?' }),
+        );
+
+        expect(
+            await screen.findByText(/plenty on this one for today/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByPlaceholderText('ask about this run'),
+        ).toBeDisabled();
+        expect(screen.queryByText('Keep going')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText(/asking faster than i can think/),
+        ).not.toBeInTheDocument();
+    });
+
+    it('opens already locked on a run that hit its cap earlier today', async () => {
+        stubApi({
+            questions: [row({ status: 'done', answer: 'Heat.' })],
+            suggestions: [],
+            at_run_cap: true,
+        });
+
+        render(<AskAboutRun activityId={9} />);
+
+        expect(
+            await screen.findByText(/plenty on this one for today/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByPlaceholderText('ask about this run'),
+        ).toBeDisabled();
     });
 
     it('still offers the ask box when the thread fails to load', async () => {

@@ -35,6 +35,10 @@ return [
     // azure_openai.daily_cost_ceiling's job.
     'run_question_rate_limit_per_minute' => (int) env('AI_RUN_QUESTION_RATE_LIMIT_PER_MINUTE', 4),
 
+    // Questions one athlete may ask about one run per local day. Past it the
+    // ask is refused outright: no agent run and no rule-based answer.
+    'run_question_daily_cap_per_run' => (int) env('AI_RUN_QUESTION_DAILY_CAP_PER_RUN', 10),
+
     // Activities ingested with `start_date_local` more than this many hours
     // ago are treated as backfill — their auto-cascade gets staggered so a
     // Strava connect+backfill doesn't burst hundreds of LLM calls at once.

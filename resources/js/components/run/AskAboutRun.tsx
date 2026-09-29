@@ -16,6 +16,9 @@ import { cn } from '@/lib/cn';
 import { renderBold } from '@/lib/richText';
 import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
+const RUN_CAP_COPY =
+    "that's plenty on this one for today. come back tomorrow and we'll pick it up again.";
+
 const ERROR_COPY: Readonly<Record<AskError, string>> = {
     rate_limited:
         "you're asking faster than i can think. give it a minute, then try again.",
@@ -37,7 +40,8 @@ interface AskAboutRunProps {
 /**
  * The Q&A panel: the thread so far, then the ask box. The invitation copy and
  * the starting points are cold-start affordances — they retire once the thread
- * has an entry, so what Temari already said sits at the top of the panel.
+ * has an entry, so what Temari already said sits at the top of the panel. From
+ * then on the latest settled answer carries its own follow-ups instead.
  */
 export default function AskAboutRun({
     activityId,
@@ -53,11 +57,16 @@ export default function AskAboutRun({
         error,
         stalled,
         checkAgain,
+        atRunCap,
     } = useRunQuestions(activityId);
     const [draft, setDraft] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const canSend = draft.trim().length >= MIN_QUESTION_LENGTH && !asking;
+    const locked = asking || atRunCap;
+    const canSend = draft.trim().length >= MIN_QUESTION_LENGTH && !locked;
+    const latest = questions.at(-1);
+    const followUps =
+        latest?.status === 'done' && !atRunCap ? latest.follow_ups : [];
 
     const send = async (text: string) => {
         const accepted = await ask(text);
@@ -85,15 +94,9 @@ export default function AskAboutRun({
                 </Eyebrow>
             </div>
             {loaded && questions.length === 0 && (
-                <>
-                    <p className="narration mt-2">
-                        The numbers are up there. Ask me why.
-                    </p>
-                    <p className="mt-1.5 font-sans text-xs leading-relaxed text-text-2">
-                        One run, one question at a time. I can only read this
-                        run and your own history.
-                    </p>
-                </>
+                <p className="narration mt-2">
+                    The numbers are up there. Ask me why.
+                </p>
             )}
 
             {summaryOnly && (
@@ -120,27 +123,29 @@ export default function AskAboutRun({
                 </ol>
             )}
 
+            {followUps.length > 0 && (
+                <>
+                    <Eyebrow token="micro" tone="ink-3" className="mb-2 mt-1">
+                        Keep going
+                    </Eyebrow>
+                    <SuggestionChips
+                        questions={followUps}
+                        disabled={locked}
+                        onPick={(question) => void send(question)}
+                    />
+                </>
+            )}
+
             {loaded && questions.length === 0 && suggestions.length > 0 && (
                 <>
                     <Eyebrow token="micro" tone="ink-3" className="mb-2 mt-3.5">
                         Starting points
                     </Eyebrow>
-                    <div className="mb-3.5 flex flex-wrap gap-1.5">
-                        {suggestions.map((suggestion) => (
-                            <button
-                                key={suggestion}
-                                type="button"
-                                disabled={asking}
-                                onClick={() => void send(suggestion)}
-                                className={cn(
-                                    outlineChipVariants({ selected: false }),
-                                    'text-left disabled:opacity-50',
-                                )}
-                            >
-                                {suggestion}
-                            </button>
-                        ))}
-                    </div>
+                    <SuggestionChips
+                        questions={suggestions}
+                        disabled={locked}
+                        onPick={(suggestion) => void send(suggestion)}
+                    />
                 </>
             )}
 
@@ -154,7 +159,7 @@ export default function AskAboutRun({
                     type="text"
                     value={draft}
                     maxLength={MAX_QUESTION_LENGTH}
-                    disabled={asking}
+                    disabled={locked}
                     onChange={(event) => setDraft(event.target.value)}
                     placeholder="ask about this run"
                     className={cn(inputVariants(), 'min-w-0 flex-1')}
@@ -175,6 +180,16 @@ export default function AskAboutRun({
                 </Button>
             </form>
 
+            {atRunCap && (
+                <p
+                    role="status"
+                    aria-live="polite"
+                    className="mt-3 font-sans text-xs leading-relaxed text-text-2"
+                >
+                    {RUN_CAP_COPY}
+                </p>
+            )}
+
             {error !== null && (
                 <p
                     role="status"
@@ -185,6 +200,35 @@ export default function AskAboutRun({
                 </p>
             )}
         </section>
+    );
+}
+
+function SuggestionChips({
+    questions,
+    disabled,
+    onPick,
+}: Readonly<{
+    questions: ReadonlyArray<string>;
+    disabled: boolean;
+    onPick: (question: string) => void;
+}>) {
+    return (
+        <div className="mb-3.5 flex flex-wrap gap-1.5">
+            {questions.map((question) => (
+                <button
+                    key={question}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onPick(question)}
+                    className={cn(
+                        outlineChipVariants({ selected: false }),
+                        'text-left disabled:opacity-50',
+                    )}
+                >
+                    {question}
+                </button>
+            ))}
+        </div>
     );
 }
 

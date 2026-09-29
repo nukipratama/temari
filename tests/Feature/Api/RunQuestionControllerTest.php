@@ -275,3 +275,113 @@ it('leaves reading the thread unthrottled', function (): void {
         $this->actingAs($user)->getJson("/api/activities/{$activity->id}/questions")->assertOk();
     }
 });
+
+// ── Per-run daily cap ───────────────────────────────────────────────────────
+
+function askedEarlier(User $user, Activity $activity, int $count, ?Carbon $at = null): void
+{
+    RunQuestion::factory()->answered()->count($count)->create([
+        'user_id' => $user->id,
+        'activity_id' => $activity->id,
+        'created_at' => $at ?? Carbon::now(),
+    ]);
+}
+
+it('accepts the tenth question on a run today and refuses the eleventh without a row or a dispatch', function (): void {
+    config()->set('ai.run_question_daily_cap_per_run', 10);
+    $user = User::factory()->create();
+    $activity = runFor($user);
+    askedEarlier($user, $activity, 9);
+
+    $this->actingAs($user)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'the tenth?'])
+        ->assertCreated();
+
+    $this->actingAs($user)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'the eleventh?'])
+        ->assertStatus(429)
+        ->assertExactJson(['error' => 'run_cap']);
+
+    Bus::assertDispatchedTimes(AnswerRunQuestionJob::class, 1);
+    expect(RunQuestion::query()->count())->toBe(10);
+});
+
+it('says the run is capped when the thread is read at the cap, and not below it', function (): void {
+    $user = User::factory()->create();
+    $activity = runFor($user);
+    askedEarlier($user, $activity, 9);
+    $url = "/api/activities/{$activity->id}/questions";
+
+    expect($this->actingAs($user)->getJson($url)->json('at_run_cap'))->toBeFalse();
+
+    askedEarlier($user, $activity, 1);
+
+    expect($this->actingAs($user)->getJson($url)->json('at_run_cap'))->toBeTrue();
+});
+
+it('refuses at the cap before the cost ceiling could answer rule-based', function (): void {
+    $user = User::factory()->create();
+    config([
+        'azure_openai.daily_cost_ceiling_per_user' => 1.0,
+        'azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]],
+    ]);
+    TokenUsage::query()->create([
+        'user_id' => $user->id,
+        'kind' => 'run_question', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+    $activity = runFor($user);
+    askedEarlier($user, $activity, 10);
+
+    $this->actingAs($user)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'one more?'])
+        ->assertStatus(429)
+        ->assertJson(['error' => 'run_cap']);
+
+    expect(RunQuestion::query()->count())->toBe(10)
+        ->and(app(CostCeilingLedger::class)->today()['degradedFills'])->toBe(0);
+});
+
+it('counts the cap per run and per local day', function (): void {
+    $user = User::factory()->create();
+    $capped = runFor($user);
+    $other = runFor($user);
+    $yesterday = runFor($user);
+    askedEarlier($user, $capped, 10);
+    askedEarlier($user, $yesterday, 10, Carbon::yesterday()->setTime(23, 59));
+
+    $this->actingAs($user)->postJson("/api/activities/{$capped->id}/questions", ['question' => 'again?'])->assertStatus(429);
+    $this->actingAs($user)->postJson("/api/activities/{$other->id}/questions", ['question' => 'this one?'])->assertCreated();
+    $this->actingAs($user)->postJson("/api/activities/{$yesterday->id}/questions", ['question' => 'new day?'])->assertCreated();
+});
+
+it('leaves the demo path uncapped', function (): void {
+    $demo = User::factory()->create(['is_demo' => true]);
+    $activity = runFor($demo);
+    askedEarlier($demo, $activity, 10);
+
+    $this->actingAs($demo)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'how did this one go?'])
+        ->assertCreated()
+        ->assertJson(['status' => 'done']);
+
+    expect($this->actingAs($demo)->getJson("/api/activities/{$activity->id}/questions")->json('at_run_cap'))->toBeFalse();
+});
+
+// ── Follow-ups on a rule-based answer ───────────────────────────────────────
+
+it('offers the seeds nobody has asked yet as a rule-based answer follow-ups', function (): void {
+    $demo = User::factory()->create(['is_demo' => true]);
+    $activity = runFor($demo, [
+        'weather_temp_c' => 32,
+        'stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4],
+    ]);
+    RunQuestion::factory()->answered()->create([
+        'user_id' => $demo->id, 'activity_id' => $activity->id, 'question' => RunQuestionTopic::Heat->question(),
+    ]);
+
+    $this->actingAs($demo)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => RunQuestionTopic::HrDrift->question()])
+        ->assertCreated()
+        ->assertJsonPath('follow_ups', [RunQuestionTopic::Baseline->question()]);
+});

@@ -9,6 +9,7 @@ export interface RunQuestion {
     activity_id: number;
     question: string;
     answer: string | null;
+    follow_ups: ReadonlyArray<string>;
     status: RunQuestionStatus;
     asked_at: string;
 }
@@ -34,6 +35,15 @@ const ERROR_BY_STATUS: Readonly<Record<number, AskError>> = {
 
 function isPending(question: RunQuestion): boolean {
     return question.status === 'queued' || question.status === 'processing';
+}
+
+async function isRunCap(response: Response): Promise<boolean> {
+    try {
+        const body: { error?: string } = await response.json();
+        return body.error === 'run_cap';
+    } catch {
+        return false;
+    }
 }
 
 /**
@@ -64,6 +74,7 @@ export function useRunQuestions(activityId: number) {
     const [error, setError] = useState<AskError | null>(null);
     const [stalled, setStalled] = useState(false);
     const [loaded, setLoaded] = useState(false);
+    const [atRunCap, setAtRunCap] = useState(false);
     const [tick, setTick] = useState(0);
     const pollsLeftRef = useRef(MAX_POLLS);
     const mountedRef = useRef(true);
@@ -95,6 +106,7 @@ export function useRunQuestions(activityId: number) {
         const body: {
             questions?: ReadonlyArray<RunQuestion>;
             suggestions?: ReadonlyArray<string>;
+            at_run_cap?: boolean;
         } = await response.json();
         if (isStale()) {
             return;
@@ -102,6 +114,7 @@ export function useRunQuestions(activityId: number) {
         newestAppliedRef.current = generation;
         setQuestions((prev) => mergeThread(prev, body.questions ?? []));
         setSuggestions(body.suggestions ?? []);
+        setAtRunCap(body.at_run_cap === true);
         setLoaded(true);
     }, [url]);
 
@@ -112,6 +125,7 @@ export function useRunQuestions(activityId: number) {
         setSuggestions([]);
         setStalled(false);
         setLoaded(false);
+        setAtRunCap(false);
     }
 
     useEffect(() => {
@@ -154,7 +168,7 @@ export function useRunQuestions(activityId: number) {
     const ask = useCallback(
         async (text: string): Promise<boolean> => {
             const question = text.trim();
-            if (question.length < MIN_QUESTION_LENGTH || asking) {
+            if (question.length < MIN_QUESTION_LENGTH || asking || atRunCap) {
                 return false;
             }
             setAsking(true);
@@ -169,6 +183,10 @@ export function useRunQuestions(activityId: number) {
                     setTick((n) => n + 1);
                     return true;
                 }
+                if (response.status === 429 && (await isRunCap(response))) {
+                    setAtRunCap(true);
+                    return false;
+                }
                 setError(ERROR_BY_STATUS[response.status] ?? 'failed');
                 return false;
             } catch {
@@ -180,7 +198,7 @@ export function useRunQuestions(activityId: number) {
                 }
             }
         },
-        [url, asking],
+        [url, asking, atRunCap],
     );
 
     const checkAgain = useCallback(() => {
@@ -201,5 +219,6 @@ export function useRunQuestions(activityId: number) {
         awaitingAnswer,
         stalled,
         checkAgain,
+        atRunCap,
     };
 }

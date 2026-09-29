@@ -472,6 +472,16 @@ it('RunInsightNarrator prompt carries the quality-session framing so it stops as
         ->and($prompt)->toContain('QUALITY SESSIONS');
 });
 
+it('RunQuestionNarrator reads the thread when a question refers back, and offers unasked follow-ups', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(RunQuestionNarrator::class));
+
+    expect($prompt)
+        ->toContain('THREAD:')
+        ->toContain('call get_thread')
+        ->toContain('FOLLOW-UPS:')
+        ->toContain('nobody has asked yet');
+});
+
 it('RunQuestionNarrator treats athlete-supplied conditions as context, not excuses', function (): void {
     $prompt = preg_replace('/\s+/', ' ', narratorPrompt(RunQuestionNarrator::class));
 
