@@ -232,3 +232,10 @@ it('cannot judge without paces, without runs, or on a rest or race day', functio
         ->and(SessionIntentJudge::judge(SessionType::Tempo, [], JUDGE_PACES, [$run])['verdict'])->toBe(IntentVerdict::Unknown)
         ->and(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [judgeRun(0.0, 0)])['verdict'])->toBe(IntentVerdict::Unknown);
 });
+
+it('marks a single marathon-pace long segment as graded against the marathon limit', function (): void {
+    $reading = SessionIntentJudge::judge(SessionType::Long, easyDay(PaceBand::Marathon), JUDGE_PACES, [judgeRun(6.0, 1980)]);
+
+    expect($reading['evidence'])->toMatchArray(['limit' => 'marathon', 'ceiling_pace_sec' => 330])
+        ->and(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [judgeRun(6.0, 1980)])['evidence'])->not->toHaveKey('limit');
+});

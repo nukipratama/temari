@@ -16,9 +16,11 @@ it('words every verdict as a clause with no enum token in it', function (IntentV
     'tempo block hit' => [IntentVerdict::Hit, ['block_minutes' => 20, 'target_pace_sec' => 300], 'the hard block got done at the effort it asked for'],
     'reps hit' => [IntentVerdict::Hit, ['reps_prescribed' => 5, 'target_pace_sec' => 270], 'the reps got done at the effort they asked for'],
     'hit with no evidence' => [IntentVerdict::Hit, [], 'the session did the job it was written for'],
-    'tempo missed' => [IntentVerdict::Missed, ['block_minutes' => 20], 'the distance is there, but the hard effort the day asked for never showed up'],
-    'reps missed' => [IntentVerdict::Missed, ['reps_prescribed' => 5], 'the distance is there, but the reps never reached the effort they asked for'],
+    'tempo missed' => [IntentVerdict::Missed, ['block_minutes' => 20], 'the hard effort the day asked for never showed up'],
+    'reps missed' => [IntentVerdict::Missed, ['reps_prescribed' => 5], 'the reps never reached the effort they asked for'],
     'too hard' => [IntentVerdict::TooHard, ['pace_sec' => 380, 'ceiling_pace_sec' => 408], 'it ran harder than the easy effort the day asked for'],
+    'marathon-pace long run hit' => [IntentVerdict::Hit, ['pace_sec' => 340, 'ceiling_pace_sec' => 330, 'limit' => 'marathon', 'basis' => 'pace'], 'it held no harder than the marathon effort the day asked for'],
+    'marathon-pace long run too hard' => [IntentVerdict::TooHard, ['pace_sec' => 320, 'ceiling_pace_sec' => 330, 'limit' => 'marathon', 'basis' => 'pace'], 'it ran harder than the marathon effort the day asked for'],
     'unknown' => [IntentVerdict::Unknown, [], "this run's data can't tell how the effort went"],
 ]);
 
@@ -93,4 +95,12 @@ it('has nothing to add for an unknown verdict or evidence it cannot read', funct
         ->and(IntentOutcome::detail(IntentVerdict::Hit, [], 400))->toBeNull()
         ->and(IntentOutcome::detail(IntentVerdict::Hit, ['ceiling_pace_sec' => 408], 400))->toBeNull()
         ->and(IntentOutcome::detail(IntentVerdict::Missed, ['block_minutes' => 20.0, 'basis' => 'pace'], null))->toBeNull();
+});
+
+it('names the marathon limit, not an easy one, on a marathon-pace long run', function (): void {
+    $tooHard = ['pace_sec' => 320, 'ceiling_pace_sec' => 330, 'limit' => 'marathon', 'basis' => 'pace'];
+    $rescued = ['pace_sec' => 320, 'ceiling_pace_sec' => 330, 'limit' => 'marathon', 'basis' => 'heart_rate', 'zone' => 'Z3', 'above_zone_pct' => 4];
+
+    expect(IntentOutcome::detail(IntentVerdict::TooHard, $tooHard, 320))->toBe('averaged 5:20/km, quicker than the marathon limit of 5:30/km')
+        ->and(IntentOutcome::detail(IntentVerdict::Hit, $rescued, 320))->toBe('averaged 5:20/km, but heart rate kept it in range: only 4% of the run went above Z3');
 });

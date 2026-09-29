@@ -34,15 +34,17 @@ final class IntentOutcome
 
         return match ($verdict) {
             IntentVerdict::Hit => match ($family) {
-                self::STEADY => 'it stayed at the easy effort the day asked for',
+                self::STEADY => self::marathonLimit($evidence)
+                    ? 'it held no harder than the marathon effort the day asked for'
+                    : 'it stayed at the easy effort the day asked for',
                 self::BLOCK => 'the hard block got done at the effort it asked for',
                 self::REPS => 'the reps got done at the effort they asked for',
                 default => 'the session did the job it was written for',
             },
             IntentVerdict::Missed => $family === self::REPS
-                ? 'the distance is there, but the reps never reached the effort they asked for'
-                : 'the distance is there, but the hard effort the day asked for never showed up',
-            IntentVerdict::TooHard => 'it ran harder than the easy effort the day asked for',
+                ? 'the reps never reached the effort they asked for'
+                : 'the hard effort the day asked for never showed up',
+            IntentVerdict::TooHard => 'it ran harder than the '.self::limitName($evidence).' effort the day asked for',
             IntentVerdict::Unknown => "this run's data can't tell how the effort went",
         };
     }
@@ -100,13 +102,25 @@ final class IntentOutcome
 
         return match (true) {
             $onHeartRate && $verdict === IntentVerdict::Hit => self::averaged($judged, $ranPaceSec)
-                .", but heart rate kept it easy: only {$evidence['above_zone_pct']}% of the run went above {$evidence['zone']}",
+                .', but heart rate kept it '.(self::marathonLimit($evidence) ? 'in range' : 'easy').": only {$evidence['above_zone_pct']}% of the run went above {$evidence['zone']}",
             $onHeartRate => self::averaged($judged, $ranPaceSec)
                 .", and {$evidence['above_zone_pct']}% of the run sat above {$evidence['zone']}",
             $verdict === IntentVerdict::TooHard => self::averaged($judged, $ranPaceSec, $ceiling)
-                .', quicker than the easy limit of '.self::pace($ceiling),
+                .', quicker than the '.self::limitName($evidence).' limit of '.self::pace($ceiling),
             default => self::averaged($judged, $ranPaceSec),
         };
+    }
+
+    /** @param  array<string, int|float|string>  $evidence */
+    private static function marathonLimit(array $evidence): bool
+    {
+        return ($evidence['limit'] ?? null) === 'marathon';
+    }
+
+    /** @param  array<string, int|float|string>  $evidence */
+    private static function limitName(array $evidence): string
+    {
+        return self::marathonLimit($evidence) ? 'marathon' : 'easy';
     }
 
     /** @param  array<string, int|float|string>  $evidence */
