@@ -20,7 +20,7 @@ final class RunQuestionSeeds
     /** Beyond this the suggestions stop being suggestions and become a menu. */
     private const int MAX_SEEDS = 4;
 
-    private const int MAX_FOLLOW_UPS = 2;
+    public const int MAX_FOLLOW_UPS = 2;
 
     /** Heart rate climbing by less than this within the steady segment is noise. */
     private const float HR_DRIFT_BPM_FLOOR = 3.0;

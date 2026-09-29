@@ -23,6 +23,7 @@ use App\Services\AI\Agent\Tools\TrainingLoadTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\ChatCallOptions;
+use App\Services\AI\RunQuestion\RunQuestionSeeds;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -105,8 +106,6 @@ class RunQuestionNarrator
         'follow_ups' => ['type' => 'array', 'items' => ['type' => 'string']],
     ];
 
-    private const int MAX_FOLLOW_UPS = 2;
-
     public function __construct(
         private readonly StructuredChatCaller $caller,
         private readonly TrainingLoad $trainingLoad,
@@ -152,7 +151,7 @@ class RunQuestionNarrator
             fn (string $item): bool => $item !== '',
         );
 
-        return array_slice(array_values($questions), 0, self::MAX_FOLLOW_UPS);
+        return array_slice(array_values($questions), 0, RunQuestionSeeds::MAX_FOLLOW_UPS);
     }
 
     /**
