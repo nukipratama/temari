@@ -101,18 +101,67 @@ it('writes the reconciliation marker in the post-ingest listener', function (): 
     Bus::assertDispatched(ReconcilePlanJob::class);
 });
 
-it('re-narrates card flavor on a re-ingest (invalidate:true) without minting a second row', function (): void {
+it('re-narrates card flavor on a re-ingest whose run material changed, without minting a second row', function (): void {
     $activity = analyzedActivity();
     $card = RunCard::factory()->create(['activity_id' => $activity->id]);
 
     fire($activity);
     $row = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'card pertama', ServedBy::Llm);
+    app(AnalysisService::class)->markDone($row, 'card pertama', ServedBy::Llm, fingerprint: 'stale-material');
 
     fire($activity);
 
     expect(Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->count())->toBe(1)
         ->and($row->fresh()->status)->not->toBe(AnalysisStatus::Done);
+});
+
+it('does not re-bill card flavor on a re-ingest of an unchanged run', function (): void {
+    $activity = analyzedActivity();
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+
+    fire($activity);
+    $row = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
+    app(AnalysisService::class)->markDone($row, 'card pertama', ServedBy::Llm, fingerprint: MaterialFingerprint::forActivity($activity->fresh()));
+
+    Bus::fake();
+    fire($activity);
+
+    Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done);
+});
+
+it('stamps the card flavor row with the run material fingerprint', function (): void {
+    $activity = analyzedActivity();
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+    $row = Analysis::factory()->create([
+        'subject_type' => RunCard::class,
+        'subject_id' => $card->id,
+        'analysis_type' => AnalysisType::CardFlavor,
+        'discriminator' => null,
+    ]);
+
+    $fingerprint = (fn (): ?string => $this->fingerprintFor($row))->call(new AnalyzeCardFlavorJob($row->id));
+
+    expect($fingerprint)->toBe(MaterialFingerprint::forActivity($activity->fresh()));
+});
+
+it('delays the invalidating briefing request so a burst of same-day ingests bills one regeneration', function (): void {
+    Carbon::setTestNow('2026-05-19 06:00:00');
+    $first = analyzedActivity('2026-05-19 05:30:00');
+    fire($first);
+    Analysis::query()
+        ->where('analysis_type', AnalysisType::BriefingMascotVoice->value)
+        ->get()
+        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done', ServedBy::Llm));
+
+    Bus::fake();
+    fire(analyzedActivity('2026-05-19 05:40:00', $first->user_id));
+    fire(analyzedActivity('2026-05-19 05:50:00', $first->user_id));
+    fire(analyzedActivity('2026-05-19 05:55:00', $first->user_id));
+
+    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class, fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->delay >= 120);
+    Carbon::setTestNow();
 });
 
 it('dispatches ProfileVoice on first ingest, keyed by the current ISO week', function (): void {

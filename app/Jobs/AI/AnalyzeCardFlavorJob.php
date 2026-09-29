@@ -7,6 +7,7 @@ namespace App\Jobs\AI;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
+use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use Override;
 
@@ -21,5 +22,13 @@ class AnalyzeCardFlavorJob extends AnalyzeRowJob
         }
 
         return app(CardFlavorNarrator::class)->generate($card);
+    }
+
+    #[Override]
+    protected function fingerprintFor(Analysis $row): ?string
+    {
+        $activity = RunCard::query()->find($row->subject_id)?->activity;
+
+        return $activity === null ? null : MaterialFingerprint::forActivity($activity);
     }
 }
