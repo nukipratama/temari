@@ -1,47 +1,52 @@
 ---
 title: Ask about this run
-description: The scoped per-run Q&A — suggested questions derived from the run's own data, an agent answer bound to that single activity, and the persisted thread.
+description: The scoped per-run Q&A — suggested questions derived from the run's own data, a multi-turn conversation bound to that single activity, follow-ups, a per-run daily cap, and the persisted thread.
 tags: [feature, ai]
 status: living
-reviewed: 2026-09-05
+reviewed: 2026-09-29
 code_refs:
   - app/Http/Controllers/Api/RunQuestionController.php
   - app/Http/Requests/AskRunQuestionRequest.php
   - app/Http/Resources/RunQuestionResource.php
   - app/Services/AI/Narrators/RunQuestionNarrator.php
+  - app/Services/AI/Agent/Tools/GetThreadTool.php
   - app/Services/AI/RunQuestion/RunQuestionSeeds.php
   - app/Services/AI/RunQuestion/RunQuestionTopic.php
   - app/Services/AI/RunQuestion/RuleBasedRunAnswer.php
   - app/Jobs/AI/AnswerRunQuestionJob.php
   - app/Models/AI/RunQuestion.php
   - routes/web.php
+  - config/ai.php
   - resources/js/components/run/AskAboutRun.tsx
   - resources/js/hooks/useRunQuestions.ts
 ---
 
 # Ask about this run
 
-One run, one question, one answer. Not a chat — the toolbox behind it is bound to
-a single activity, so the boundary is structural rather than a prompt rule. See
-[[scoped-run-qa-not-an-analysis-row]] for why it is shaped this way, and
+A conversation about one run. The toolbox behind it is bound to a single
+activity, so the boundary is structural rather than a prompt rule; follow-ups can
+build on earlier answers, but never reach past this run. See
+[[scoped-run-qa-not-an-analysis-row]] for why it is shaped this way,
+[[run-qa-is-a-conversation-about-one-run]] for why it became multi-turn, and
 [[run-detail]] for the page it belongs to.
 
 ## The two endpoints
 
 Both live in [RunQuestionController](app/Http/Controllers/Api/RunQuestionController.php)
-and are registered in [routes/web.php](routes/web.php#L177) behind the normal
+and are registered in [routes/web.php](routes/web.php#L191) behind the normal
 auth group.
 
-- `GET /api/activities/{activity}/questions` — this run's thread (oldest first)
-  plus the `suggestions` this run's data supports. Unthrottled: it is what the
-  client polls while an answer is generating.
+- `GET /api/activities/{activity}/questions` — this run's thread (oldest first),
+  the `suggestions` this run's data supports, and `at_run_cap`. Unthrottled: it
+  is what the client polls while an answer is generating.
 - `POST /api/activities/{activity}/questions` — ask. Returns `201` with the row
   in its `queued` state; the answer arrives on a later `GET`. Throttled by the
-  `run-question` limiter ([AppServiceProvider](app/Providers/AppServiceProvider.php#L109),
-  configured at [config/ai.php](config/ai.php#L27)).
+  `run-question` limiter ([AppServiceProvider](app/Providers/AppServiceProvider.php#L163),
+  configured at [config/ai.php](config/ai.php#L36)), and capped per run per day
+  (below).
 
 Ownership is checked against the authenticated user on both
-([`ownedRun`](app/Http/Controllers/Api/RunQuestionController.php#L124)); another
+([`ownedRun`](app/Http/Controllers/Api/RunQuestionController.php#L137)); another
 user's run is a `403`, not a `404`, matching the analysis endpoints.
 
 ## Suggested questions come off the run
@@ -68,10 +73,31 @@ the agent budget, the content-filter retry, the exception taxonomy and the
 `ai_token_usages` metering all apply unchanged, under the `run_question` kind
 (visible on [[narration-devtools]]).
 
-The [toolbox](app/Services/AI/Narrators/RunQuestionNarrator.php#L113) is the run
-insight set minus the claim-shaping bits, and shrinks to the run summary plus the
-three history reads when the activity is still `summary` state. The full agent
+The [toolbox](app/Services/AI/Narrators/RunQuestionNarrator.php#L169) is the run
+insight set minus the claim-shaping bits, plus `get_thread`, and shrinks to the
+run summary, `get_thread` and the history reads when the activity is still
+`summary` state. The full agent
 mechanics are in [[ai-narration-internals]] and [[narration-agents-on-openai-php]].
+
+### The thread
+
+[GetThreadTool](app/Services/AI/Agent/Tools/GetThreadTool.php) is how a follow-up
+knows what came before. It is bound to this activity, its owner and the question
+being answered, and returns the earlier `done` exchanges on this run, oldest
+first, capped to the most recent six. The prompt's THREAD section tells the model
+to call it when the question refers back ("why", "that", "what about…"); a first
+question never needs it. Like every tool it takes no arguments, so a forged call
+naming another run or user still reads this run's thread.
+
+### Follow-ups
+
+The structured output carries `follow_ups` beside `answer`: zero to two short
+questions this run's data can answer that nobody asked yet. They are stored on
+the row (`follow_ups`, nullable json) and exposed by the resource. A rule-based
+answer offers the run's suggested questions nobody has asked yet instead
+([`RunQuestionSeeds::unasked`](app/Services/AI/RunQuestion/RunQuestionSeeds.php#L102)).
+
+### Answered once
 
 Each question is answered exactly once. The job takes the row with one
 conditional update that stamps a fresh `claim_token` and `claimed_at`, and every
@@ -84,6 +110,16 @@ overwrite the row.
 Failure is per-question and terminal: a failed question is marked `failed` with
 its error and the user asks again. There is no self-heal sweep for questions,
 unlike narration rows ([[bounded-self-heal-and-dead-letter]]).
+
+## The per-run daily cap
+
+One athlete may ask [`ai.run_question_daily_cap_per_run`](config/ai.php#L40)
+(default 10) questions about one run per local day, on top of the per-minute
+limit. [`store()`](app/Http/Controllers/Api/RunQuestionController.php#L72) checks
+it before the cost-ceiling and pause branches, so past it there is no agent run,
+no rule-based answer and no row: the response is `429` with
+`{"error": "run_cap"}`. Every row counts, including a failed one. The demo is
+exempt because it never bills.
 
 ## The demo never bills
 
@@ -107,20 +143,21 @@ a settled answer back to pending, and stops after a bounded number of polls into
 manual re-check, so a stuck answer degrades into a visible wait rather than an
 endless spinner or a lie.
 
-The thread reads as an **interview transcript, not a chat**. Each entry sets the
-question behind a leading accent rule, muted and a size down, with the answer
-beneath it in the `.narration` prose register — the separation is size, colour
-and rule, never font style, and never bubbles, avatars or speaker alignment,
-which would undo the boundary stated at the top of this note. The invitation
-line, the one-question-at-a-time disclaimer and the starting points are all
-**cold-start affordances**: once the thread has an entry they retire, so what
-Temari already said sits at the top of the panel rather than under a standing
-preamble, and the suggestions stop drifting further down the card with every
-answer. They are a way in, not a standing menu — past the first question the
-user is already asking their own.
+The thread reads as an **interview transcript**, even though it is multi-turn.
+Each entry sets the question behind a leading accent rule, muted and a size down,
+with the answer beneath it in the `.narration` prose register — the separation is
+size, colour and rule, never font style, and never bubbles, avatars or speaker
+alignment. The invitation line and the starting points are **cold-start
+affordances**: once the thread has an entry they retire, so what Temari already
+said sits at the top of the panel rather than under a standing preamble. From
+then on the **latest** settled answer carries a "keep going" row of its
+follow-ups, which fill and send exactly like the starting points; older answers
+never show theirs, and nothing shows while the newest question is pending.
 
-Each refusal gets its own line: the `429` says the asking is too fast without
-quoting a number the env can change, the `409` says generation is paused and
+Each refusal gets its own line: the throttle's `429` says the asking is too fast
+without quoting a number the env can change, the `run_cap` `429` says that's
+plenty on this run for today (again no number) and disables the box and the
+chips, which `at_run_cap` keeps disabled across a reload, the `409` says generation is paused and
 that nothing was sent, and a `422` asks for a rephrase. A `failed` row offers
 to refill the box, matching the terminal-failure model above rather than
 implying a retry that does not exist.

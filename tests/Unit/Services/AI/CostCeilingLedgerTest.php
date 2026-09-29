@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Services\AI\CostCeilingLedger;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Sleep;
 
 beforeEach(function (): void {
     $this->ledger = app(CostCeilingLedger::class);
@@ -54,4 +56,15 @@ it('breaks the day down by kind and athlete', function (): void {
         ['kind' => 'run_insight', 'userId' => 2, 'count' => 1],
         ['kind' => 'run_question', 'userId' => 1, 'count' => 1],
     ]);
+});
+
+it('still counts a fill when the breakdown lock is held elsewhere', function (): void {
+    $held = Cache::lock('ai:cost-ceiling:'.Carbon::today()->toDateString().':breakdown_lock', 30);
+    $held->get();
+    Sleep::fake(syncWithCarbon: true);
+
+    $this->ledger->recordDegradedFill('run_insight', 1);
+
+    expect($this->ledger->today())->toMatchArray(['degradedFills' => 1, 'degradedBreakdown' => []]);
+    $held->release();
 });

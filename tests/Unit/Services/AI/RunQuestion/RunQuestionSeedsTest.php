@@ -122,3 +122,18 @@ it('gives every topic a question written the way a user types', function (): voi
         expect($topic->question())->toEndWith('?')->and($topic->question())->not->toBe('');
     }
 });
+
+it('offers at most two seeds nobody asked yet as follow-ups, punctuation and case aside', function (): void {
+    $detail = runSeedDetail(
+        ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 7.0],
+        ['weather_temp_c' => 33],
+    );
+
+    expect(RunQuestionSeeds::unasked($detail, ['Why did my heart rate drift up']))
+        ->toBe([RunQuestionTopic::Heat->question(), RunQuestionTopic::Baseline->question()])
+        ->and(RunQuestionSeeds::unasked($detail, [
+            RunQuestionTopic::HrDrift->question(),
+            RunQuestionTopic::Heat->question(),
+            RunQuestionTopic::Baseline->question(),
+        ]))->toBe([]);
+});

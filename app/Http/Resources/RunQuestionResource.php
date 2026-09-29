@@ -25,6 +25,7 @@ class RunQuestionResource extends JsonResource
             'activity_id' => $this->activity_id,
             'question' => $this->question,
             'answer' => $this->answer,
+            'follow_ups' => $this->follow_ups ?? [],
             'status' => $this->status->value,
             'asked_at' => $this->created_at->toIso8601String(),
         ];

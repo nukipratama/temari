@@ -16,6 +16,7 @@ use App\Services\AI\Narrators\RunQuestionNarrator;
 use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RunQuestion\RuleBasedRunAnswer;
+use App\Services\AI\RunQuestion\RunQuestionSeeds;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Queue\Queueable;
@@ -76,6 +77,10 @@ class AnswerRunQuestionJob implements ShouldQueue
             if ($this->settle($question, $claimToken, [
                 'status' => AnalysisStatus::Done,
                 'answer' => RuleBasedRunAnswer::for($detail, $question->question),
+                'follow_ups' => json_encode(
+                    RunQuestionSeeds::unasked($detail, RunQuestion::askedAbout($question->activity_id)),
+                    JSON_THROW_ON_ERROR,
+                ),
                 'error' => null,
             ])) {
                 app(CostCeilingLedger::class)->recordDegradedFill('run_question', $activity->user_id);
@@ -91,12 +96,14 @@ class AnswerRunQuestionJob implements ShouldQueue
         }
 
         try {
+            $reply = app(NarratedAnalysis::class)->duringRunQuestion(
+                $question->id,
+                fn (): array => $narrator->generate($activity, $detail, $question),
+            );
             $this->settle($question, $claimToken, [
                 'status' => AnalysisStatus::Done,
-                'answer' => app(NarratedAnalysis::class)->duringRunQuestion(
-                    $question->id,
-                    fn () => $narrator->generate($activity, $detail, $question->question),
-                ),
+                'answer' => $reply['answer'],
+                'follow_ups' => json_encode($reply['follow_ups'], JSON_THROW_ON_ERROR),
                 'error' => null,
             ]);
         } catch (TransientUpstreamException $e) {

@@ -19,6 +19,12 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-13)
 
+> **2026-09-29 — the "no chat" part is superseded.** The Q&A is now a multi-turn
+> conversation about one run: the model reads earlier exchanges through an
+> argument-free `get_thread` tool, answers offer follow-ups, and a per-run daily cap
+> sits above the rate limit. Scope by construction, the storage shape and the demo
+> stance below all stand. See [[run-qa-is-a-conversation-about-one-run]].
+
 > **2026-09-03 — one path below has changed, the decision has not.** The operator console
 > moved behind a single `/devtools` prefix: `/ai-usage` is now `/devtools/ai-usage`,
 > `/pulse` is `/devtools/pulse` and `/horizon` is `/devtools/horizon`. The gate on them
@@ -50,7 +56,7 @@ Two things did not fit, though:
 ## Decision
 
 **Scope is enforced by construction, not by prompt.**
-[`RunQuestionNarrator::toolbox()`](app/Services/AI/Narrators/RunQuestionNarrator.php#L113)
+[`RunQuestionNarrator::toolbox()`](app/Services/AI/Narrators/RunQuestionNarrator.php#L169)
 builds the toolbox from one `Activity` and its detail, plus that owner's history
 *as of that run*. Every tool is argument-free, so no phrasing of a question
 reaches another run or another account. The prompt says the same thing, but the
@@ -73,7 +79,7 @@ same `ai` queue and supervisor as the narrators; the client polls the thread.
 **A summary-state run gets a smaller toolbox.** The summary-first ingest means an
 un-opened run has no splits, zones, laps or terrain. Rather than offer tools that
 answer `{}`, [the toolbox drops
-them](app/Services/AI/Narrators/RunQuestionNarrator.php#L123) and keeps the run's
+them](app/Services/AI/Narrators/RunQuestionNarrator.php#L181) and keeps the run's
 own summary numbers plus the history reads. Opening a run queues the detail
 fetch, so a question asked in that window answers from the smaller set and a
 later one answers from the full set. Neither ever announces what it could not

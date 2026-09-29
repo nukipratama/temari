@@ -8,8 +8,10 @@ use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\AI\RunQuestion;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\EffortContextTool;
+use App\Services\AI\Agent\Tools\GetThreadTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
 use App\Services\AI\Agent\Tools\LapsTool;
@@ -21,6 +23,7 @@ use App\Services\AI\Agent\Tools\TrainingLoadTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\ChatCallOptions;
+use App\Services\AI\RunQuestion\RunQuestionSeeds;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -43,6 +46,11 @@ class RunQuestionNarrator
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Task: answer the one question the user asked about the one run in front
         of you. Two to four sentences, prose, no lists.
+
+        THREAD: this may not be the first question about this run. When the
+        question refers back to something earlier (it, that, why, "what about",
+        "and the second half"), call get_thread first and answer in the context
+        of what was already said. Build on an earlier answer, never repeat it.
 
         DATA: the numbers are not handed to you. Fetch what the question needs
         through the tools, and if a result suggests a second read would answer
@@ -87,7 +95,16 @@ class RunQuestionNarrator
 
         NEVER: prescribe a session, a distance or a pace of your own. Never
         diagnose an injury. Never end on a motivational line.
+
+        FOLLOW-UPS: follow_ups holds zero to two short questions, each under ten
+        words, written the way the athlete would type them, that this run's data
+        can answer and that nobody has asked yet in this thread. Leave it empty
+        when nothing worth asking is left.
         PROMPT;
+
+    private const array FOLLOW_UPS_PROPERTY_SCHEMA = [
+        'follow_ups' => ['type' => 'array', 'items' => ['type' => 'string']],
+    ];
 
     public function __construct(
         private readonly StructuredChatCaller $caller,
@@ -100,23 +117,41 @@ class RunQuestionNarrator
     ) {
     }
 
-    public function generate(Activity $activity, ActivityDetail $detail, string $question): string
+    /**
+     * @return array{answer: string, follow_ups: list<string>}
+     */
+    public function generate(Activity $activity, ActivityDetail $detail, RunQuestion $question): array
     {
         $decoded = $this->caller->call(
             kind: 'run_question',
             systemPrompt: self::SYSTEM_PROMPT,
-            context: ['question' => $question],
+            context: ['question' => $question->question],
             schemaName: 'TemariRunQuestion',
-            requiredKeys: ['answer'],
+            requiredKeys: ['answer', 'follow_ups'],
             options: new ChatCallOptions(
                 temperature: 0.7,
                 userId: $activity->user_id,
                 maxTokens: 1200,
-                toolbox: $this->toolbox($activity, $detail),
+                toolbox: $this->toolbox($activity, $detail, $question->id),
             ),
+            propertySchema: self::FOLLOW_UPS_PROPERTY_SCHEMA,
         );
 
-        return (string) $decoded['answer'];
+        return [
+            'answer' => (string) $decoded['answer'],
+            'follow_ups' => self::followUps($decoded['follow_ups']),
+        ];
+    }
+
+    /** @return list<string> */
+    private static function followUps(mixed $raw): array
+    {
+        $questions = array_filter(
+            array_map(fn (mixed $item): string => is_string($item) ? trim($item) : '', (array) $raw),
+            fn (string $item): bool => $item !== '',
+        );
+
+        return array_slice(array_values($questions), 0, RunQuestionSeeds::MAX_FOLLOW_UPS);
     }
 
     /**
@@ -130,9 +165,10 @@ class RunQuestionNarrator
      * that window answers from the smaller toolbox and a later one answers from
      * the full set.
      */
-    public function toolbox(Activity $activity, ActivityDetail $detail): AgentToolbox
+    public function toolbox(Activity $activity, ActivityDetail $detail, int $answeringQuestionId): AgentToolbox
     {
         $asOf = $detail->start_date_local ?? Carbon::now();
+        $thread = new GetThreadTool($activity, $answeringQuestionId);
 
         $history = [
             new TrainingLoadTool($activity->user, $asOf, $this->trainingLoad),
@@ -142,11 +178,12 @@ class RunQuestionNarrator
         ];
 
         if ($activity->ingest_state !== IngestState::Detailed) {
-            return new AgentToolbox([new RunSummaryTool($activity, $detail), ...$history]);
+            return new AgentToolbox([new RunSummaryTool($activity, $detail), $thread, ...$history]);
         }
 
         return new AgentToolbox([
             new RunSummaryTool($activity, $detail),
+            $thread,
             new KmSplitsTool($activity, $detail),
             new LapsTool($activity, $detail),
             new HrZonesTool($activity, $detail),

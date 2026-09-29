@@ -15,6 +15,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\Narrators\RunQuestionNarrator;
+use App\Services\AI\RunQuestion\RunQuestionTopic;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Contracts\Queue\Job as JobContract;
@@ -45,7 +46,11 @@ function fakeQuestionNarrator(mixed $result): RunQuestionNarrator
 {
     $mock = Mockery::mock(RunQuestionNarrator::class);
     $expectation = $mock->shouldReceive('generate');
-    $result instanceof Throwable ? $expectation->andThrow($result) : $expectation->andReturn($result);
+    match (true) {
+        $result instanceof Throwable => $expectation->andThrow($result),
+        is_string($result) => $expectation->andReturn(['answer' => $result, 'follow_ups' => []]),
+        default => $expectation->andReturn($result),
+    };
 
     return $mock;
 }
@@ -81,7 +86,7 @@ function questionDelivery(int $rowId, int $attempts, ?ArrayObject $released = nu
 function countingQuestionNarrator(ArrayObject $calls, string $answer, ?Closure $during = null, ?Throwable $throw = null): RunQuestionNarrator
 {
     $mock = Mockery::mock(RunQuestionNarrator::class);
-    $mock->shouldReceive('generate')->andReturnUsing(function () use ($calls, $answer, $during, $throw): string {
+    $mock->shouldReceive('generate')->andReturnUsing(function () use ($calls, $answer, $during, $throw): array {
         $calls->append($answer);
         if ($during !== null && count($calls) === 1) {
             $during();
@@ -90,7 +95,7 @@ function countingQuestionNarrator(ArrayObject $calls, string $answer, ?Closure $
             throw $throw;
         }
 
-        return $answer;
+        return ['answer' => $answer, 'follow_ups' => []];
     });
 
     return $mock;
@@ -112,10 +117,10 @@ it('holds the question id for the length of the narrator call so its usage row c
     $row = questionRow();
     $seen = null;
     $narrator = Mockery::mock(RunQuestionNarrator::class);
-    $narrator->shouldReceive('generate')->andReturnUsing(function () use (&$seen): string {
+    $narrator->shouldReceive('generate')->andReturnUsing(function () use (&$seen): array {
         $seen = app(NarratedAnalysis::class)->currentRunQuestion();
 
-        return 'answer';
+        return ['answer' => 'answer', 'follow_ups' => []];
     });
 
     new AnswerRunQuestionJob($row->id)->handle(app(AnalysisService::class), $narrator);
@@ -124,14 +129,25 @@ it('holds the question id for the length of the narrator call so its usage row c
         ->and(app(NarratedAnalysis::class)->currentRunQuestion())->toBeNull();
 });
 
+it('keeps the follow-ups the answer offered on the row', function (): void {
+    $row = questionRow();
+
+    new AnswerRunQuestionJob($row->id)->handle(
+        app(AnalysisService::class),
+        fakeQuestionNarrator(['answer' => 'held steady.', 'follow_ups' => ['what about km 5?', 'was the heat a factor?']]),
+    );
+
+    expect($row->refresh()->follow_ups)->toBe(['what about km 5?', 'was the heat a factor?']);
+});
+
 it('passes athlete-supplied context to the narrator unchanged', function (): void {
     $question = 'Ga tidur malam';
     $row = questionRow(['question' => ['question' => $question]]);
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldReceive('generate')
         ->once()
-        ->withArgs(fn (mixed $activity, mixed $detail, string $received): bool => $received === $question)
-        ->andReturn('read from the supplied context');
+        ->withArgs(fn (mixed $activity, mixed $detail, RunQuestion $received): bool => $received->question === $question)
+        ->andReturn(['answer' => 'read from the supplied context', 'follow_ups' => []]);
 
     new AnswerRunQuestionJob($row->id)->handle(app(AnalysisService::class), $narrator);
 
@@ -186,6 +202,7 @@ it('serves the deterministic answer when the daily cost ceiling is the only stop
     expect($row->refresh()->status)->toBe(AnalysisStatus::Done)
         ->and($row->error)->toBeNull()
         ->and($row->answer)->toBeString()->not->toBeEmpty()
+        ->and($row->follow_ups)->toBe([RunQuestionTopic::Baseline->question()])
         ->and(app(CostCeilingLedger::class)->today()['degradedBreakdown'])->toBe([
             ['kind' => 'run_question', 'userId' => $row->user_id, 'count' => 1],
         ]);

@@ -21,9 +21,10 @@ use App\Services\AI\RunQuestion\RunQuestionTopic;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
- * "Ask about this run" — the scoped alternative to a chat surface.
+ * "Ask about this run" — a conversation about one run and nothing else.
  *
  * A question is bound to one activity at the door and stays bound: the answering
  * toolbox is built from that activity alone, so there is no phrasing that widens
@@ -33,9 +34,10 @@ use Illuminate\Http\Request;
  */
 class RunQuestionController extends Controller
 {
-    public function index(Request $request, int $activity): JsonResponse
+    public function index(Request $request, AnalysisService $service, int $activity): JsonResponse
     {
-        [, $detail] = $this->ownedRun($this->user($request), $activity);
+        $user = $this->user($request);
+        [, $detail] = $this->ownedRun($user, $activity);
 
         return response()->json([
             'questions' => RunQuestionResource::collection(
@@ -45,6 +47,7 @@ class RunQuestionController extends Controller
                 fn (RunQuestionTopic $topic): string => $topic->question(),
                 RunQuestionSeeds::for($detail),
             ),
+            'at_run_cap' => ! $service->shouldServeRuleBased($user) && $this->atRunCap($user, $activity),
         ]);
     }
 
@@ -64,6 +67,10 @@ class RunQuestionController extends Controller
         // the route. See docs/decisions/demo-triggers-served-rule-based.md.
         if ($service->shouldServeRuleBased($user)) {
             return $this->created($this->ruleBasedRow($user, $activity, $question, $detail));
+        }
+
+        if ($this->atRunCap($user, $activity)) {
+            return response()->json(['error' => 'run_cap'], 429);
         }
 
         if ($service->costCeilingDegraded($user->id)) {
@@ -87,7 +94,17 @@ class RunQuestionController extends Controller
         return $this->record($user, $activityId, $question, [
             'status' => AnalysisStatus::Done,
             'answer' => RuleBasedRunAnswer::for($detail, $question),
+            'follow_ups' => RunQuestionSeeds::unasked($detail, [...RunQuestion::askedAbout($activityId), $question]),
         ]);
+    }
+
+    private function atRunCap(User $user, int $activityId): bool
+    {
+        return RunQuestion::query()
+            ->where('user_id', $user->id)
+            ->where('activity_id', $activityId)
+            ->where('created_at', '>=', Carbon::today())
+            ->count() >= (int) config('ai.run_question_daily_cap_per_run');
     }
 
     /**

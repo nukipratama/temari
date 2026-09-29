@@ -237,11 +237,12 @@ narrate them once the window closes, which is why a pending recap row is not a b
   [`NarrationEligibility::forManualTrigger()`](../../app/Services/AI/NarrationEligibility.php) (demo,
   backfill age, unfinished history hydration), paused generation, then chain resumption. Each gate is described under
   *What stops a call*.
-- [`RunQuestionController::store()`](../../app/Http/Controllers/Api/RunQuestionController.php#L53) —
+- [`RunQuestionController::store()`](../../app/Http/Controllers/Api/RunQuestionController.php#L54) —
   the scoped run Q&A. **The one AI surface that is not an `Analysis` row**: one run holds many
   questions, which `(subject, type, discriminator)` cannot key, so it persists `RunQuestion` rows
   instead. It still goes through `StructuredChatCaller`, so persona, budget, retries and metering are
-  unchanged. See [[scoped-run-qa-not-an-analysis-row]].
+  unchanged. A per-run daily cap refuses the eleventh question on one run before anything could
+  dispatch. See [[scoped-run-qa-not-an-analysis-row]] and [[run-qa-is-a-conversation-about-one-run]].
 - **`PlanController::regenerate`** — the Plan page's own regenerate button runs the *same*
   `requestForCurrentWeek()` as the Monday command, which touches only the season row
   (`PlanSeasonVoice`). It is limited by its own 3600s cooldown inside `PlanNarrationRequester`, not by
@@ -356,7 +357,7 @@ whole prefix. That single fact drives everything below.
 | narrator | tools | max steps | max output | temp | deployment key |
 |---|---|---|---|---|---|
 | `RunInsightNarrator` | 11 | default (10) | 3000 | 0.7 | `run_insight` |
-| `RunQuestionNarrator` | up to 11 | default (10) | 1200 | 0.7 | `run_question` |
+| `RunQuestionNarrator` | up to 12 | default (10) | 1200 | 0.7 | `run_question` |
 | `CardFlavorNarrator` | up to 7 | default (10) | 400 | 0.8 | `card_flavor` |
 | `PostRunSpeechNarrator` | 7 | default (10) | 1500 | 0.8 | `post_run_speech` |
 | `BriefingMascotVoiceNarrator` | 6 | default (10) | 1800 | 0.8 | `briefing_mascot_voice` |
@@ -432,6 +433,7 @@ inline in its `toolbox()` method.
 | `PlanDayTool` · `get_day_plan` | `date`, `session_type`, `phase`, `distance_km`, `skipped`; plus `status`, `completed_km`, `ran_anyway` once the day is credited | `TrainingBaseline`, `SegmentGenerator::coreKmFor()`, `SessionMatcher::activityByDate()` for the km actually run |
 | `PlanSeasonTool` · `get_season` | `starts_at`, `ends_at`, `is_race_oriented`, `race_name`, `race_date`, `race_distance_m`, `goals` | stored `Season`, `RaceGoal` and `SeasonGoal` rows |
 | `PlanContextTool` · `get_planned_sessions` | `days[]` of `date`, `session_type`, `phase`, `distance_km`, `target_pace_sec`, `skipped`, `status`, `compliance_score`, `ran_anyway` | `PlannedSession` rows over the bound span; `SegmentGenerator::coreKmFor()` for days `ComplianceScorer` has not yet written `prescribed_km` on; `VdotEstimator` into `TrainingPaceCalculator` for the pace |
+| `GetThreadTool` · `get_thread` | `thread`: up to 6 × `{question, answer}`, this run's earlier settled exchanges, oldest first, without the question being answered | stored `RunQuestion` rows for the bound activity and its owner |
 | `PlanAdherenceTool` · `get_plan_adherence` | `from`, `through`, `prescribed`, `done`, `partial`, `missed`, `overreached`, `excused`, `ran_anyway`, `mean_compliance` | `PlannedSession` rows up to the as-of date, counted by `PlannedSessionStatus`; a null `from` means the athlete's whole history |
 
 **Which narrator carries which toolbox:**
@@ -439,7 +441,7 @@ inline in its `toolbox()` method.
 | narrator | tools |
 |---|---|
 | `RunInsightNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` |
-| `RunQuestionNarrator` | `RunSummaryTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` always; `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool` only once the run is `Detailed` |
+| `RunQuestionNarrator` | `RunSummaryTool`, `GetThreadTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` always; `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool` only once the run is `Detailed` |
 | `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `WeekStateTool`, `PlanContextTool` |
 | `CardFlavorNarrator` | `CardIdentityTool` always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool`, `PlanContextTool` when the run has detail |
 | `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `RecentBaselineTool`, `PlanContextTool` |

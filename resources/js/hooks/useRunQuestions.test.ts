@@ -9,6 +9,7 @@ function row(overrides: Partial<RunQuestion> = {}): RunQuestion {
         activity_id: 9,
         question: 'why did my heart rate drift up?',
         answer: null,
+        follow_ups: [],
         status: 'queued',
         asked_at: '2026-08-13T10:00:00+00:00',
         ...overrides,
@@ -178,6 +179,51 @@ describe('useRunQuestions', () => {
 
         expect(result.current.error).toBe(expected);
         expect(result.current.questions).toEqual([]);
+    });
+
+    it('locks the run instead of flagging an error when the daily cap refuses the ask', async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce(
+                jsonResponse({ questions: [], suggestions: [] }),
+            )
+            .mockResolvedValueOnce(jsonResponse({ error: 'run_cap' }, 429));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const { result } = renderHook(() => useRunQuestions(9));
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+        await act(async () => {
+            await result.current.ask('one more thing?');
+        });
+
+        expect(result.current.atRunCap).toBe(true);
+        expect(result.current.error).toBeNull();
+
+        let sent: boolean | undefined;
+        await act(async () => {
+            sent = await result.current.ask('and another?');
+        });
+
+        expect(sent).toBe(false);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('reads the cap off the thread so a reload stays locked', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue(
+                jsonResponse({
+                    questions: [],
+                    suggestions: [],
+                    at_run_cap: true,
+                }),
+            ),
+        );
+
+        const { result } = renderHook(() => useRunQuestions(9));
+
+        await waitFor(() => expect(result.current.atRunCap).toBe(true));
     });
 
     it('reports a network failure as a failed ask instead of rejecting', async () => {
