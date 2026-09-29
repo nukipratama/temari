@@ -214,11 +214,10 @@ it('grades an unclamped day against the stored session exactly as before', funct
 });
 
 /**
- * The eased distance is the one the athlete was actually told to run, so the
- * long day's single-run rule has to measure against that rather than against
- * the un-eased session it replaced.
+ * The eased distance is the one the athlete was actually told to run, so a
+ * long day is measured against it rather than the un-eased session it replaced.
  */
-it('applies the long day single-run rule to the eased distance, not the stored one', function (): void {
+it('measures an eased long day against the eased distance, not the stored one', function (): void {
     $user = User::factory()->create();
     $row = scorerDay($user, '2026-08-05', [
         'session_type' => SessionType::Long,
@@ -302,6 +301,35 @@ it('grades a tempo eased to easy and run easy as intent hit, on distance alone',
         ->and($verdict['score'])->toBe(83)
         ->and($verdict['distance_score'])->toBe(83);
 });
+
+it('grades a long day eased to an easy run as done when split across two runs', function (): void {
+    $user = User::factory()->create();
+    $paces = scorerPaces($user, '2026-08-05');
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Long, 'clamped_km' => 6.8]);
+    scorerPacedRun($user, '2026-08-05', 4.5, $paces['easy']);
+    scorerPacedRun($user, '2026-08-05', 3.6, $paces['easy']);
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($verdict['status'])->toBe(PlannedSessionStatus::Done)
+        ->and($verdict['distance_score'])->toBe(119)
+        ->and($verdict['prescribed_km'])->toBe(6.8);
+});
+
+it('keeps a long day split in two partial when the clamp left its size alone', function (array $attributes): void {
+    $user = User::factory()->create();
+    $paces = scorerPaces($user, '2026-08-05');
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Long, ...$attributes]);
+    $askedKm = (float) scorerVerdict($user, $row)['prescribed_km'];
+    scorerPacedRun($user, '2026-08-05', round($askedKm * 0.6, 1), $paces['easy']);
+    scorerPacedRun($user, '2026-08-05', round($askedKm * 0.6, 1), $paces['easy']);
+
+    expect(scorerVerdict($user, $row)['status'])->toBe(PlannedSessionStatus::Partial);
+})->with([
+    'pace eased at ModerateOk' => [['eased_pace_sec_per_km' => 420]],
+    'not clamped' => [[]],
+]);
 
 it('reads an uneased tempo run all easy as partial even at full distance', function (): void {
     $user = User::factory()->create();

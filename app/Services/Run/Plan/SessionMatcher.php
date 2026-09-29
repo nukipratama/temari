@@ -87,18 +87,18 @@ final readonly class SessionMatcher
         }
 
         $completed = $this->completedKmByDate($user, $plannedKmByDate);
-        $typeByDate = $this->sessionTypesByDate($user, array_keys($plannedKmByDate));
+        $sessionByDate = $this->sessionsByDate($user, array_keys($plannedKmByDate));
         $results = [];
         foreach ($plannedKmByDate as $date => $plannedKm) {
             $isPast = Carbon::parse($date)->lt($today);
             $day = $completed[$date] ?? ['sum' => 0.0, 'longest' => 0.0];
-            $type = $typeByDate[$date] ?? null;
+            $session = $sessionByDate[$date] ?? null;
             $results[$date] = self::scoreFor(
                 $plannedKm,
-                self::creditedKm($type, $day),
+                self::creditedKm($session?->session_type, $day),
                 $isPast,
                 $excusedByDate[$date] ?? false,
-                $type === SessionType::Long ? $day['longest'] : null,
+                self::asksForOneLongRun($session) ? $day['longest'] : null,
             );
         }
 
@@ -122,8 +122,9 @@ final readonly class SessionMatcher
      * by the hours left in it. See
      * `docs/decisions/today-credits-when-earned.md`.
      *
-     * `$longestRunKm`, supplied only on a `Long` day, can downgrade a
-     * cleared-km day to `partial` when no single run carried
+     * `$longestRunKm`, supplied only on a `Long` day the clamp did not ease
+     * ({@see self::asksForOneLongRun()}), can downgrade a cleared-km day to
+     * `partial` when no single run carried
      * {@see self::LONG_RUN_SINGLE_RUN_FRACTION} of the ask.
      *
      * @return array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}
@@ -238,6 +239,12 @@ final readonly class SessionMatcher
         }
 
         return $byDate;
+    }
+
+    /** A Long day's recorded eased distance only comes from the clamp's `EasyOnly` arm, which makes it an easy run. */
+    private static function asksForOneLongRun(?PlannedSession $session): bool
+    {
+        return $session?->session_type === SessionType::Long && $session->clamped_km === null;
     }
 
     /** Whether a long day's biggest single run covered enough of the ask to count as one. */
@@ -382,13 +389,13 @@ final readonly class SessionMatcher
      * drift out of step with the crediting rule.
      *
      * @param  non-empty-list<string>  $dates
-     * @return array<string, SessionType>
+     * @return array<string, PlannedSession>
      */
-    private function sessionTypesByDate(User $user, array $dates): array
+    private function sessionsByDate(User $user, array $dates): array
     {
         return ($this->plannedSessions)($user->id, min($dates), max($dates))
             ->filter(fn (PlannedSession $session): bool => in_array($session->date->toDateString(), $dates, true))
-            ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => $session->session_type])
+            ->keyBy(static fn (PlannedSession $session): string => $session->date->toDateString())
             ->all();
     }
 }

@@ -338,6 +338,39 @@ it('reads a long day as done once one run carried 70% of the ask', function (): 
     expect($statuses['2026-08-03'])->toBe(PlannedSessionStatus::Done);
 });
 
+it('grades a long day the clamp eased to an easy run on the day total alone', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-03',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Long,
+        'clamped_km' => 6.8,
+    ]);
+    logRun($user, '2026-08-03', 4.5);
+    logRun($user, '2026-08-03', 3.6);
+
+    $verdict = app(SessionMatcher::class)->scoreRange($user, ['2026-08-03' => 6.8], [], Carbon::parse('2026-08-10'))['2026-08-03'];
+
+    expect($verdict['status'])->toBe(PlannedSessionStatus::Done)
+        ->and($verdict['score'])->toBe(119);
+});
+
+it('keeps the single-run rule on a long day the clamp only eased the pace of', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-03',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Long,
+        'eased_pace_sec_per_km' => 420,
+    ]);
+    logRun($user, '2026-08-03', 6.0);
+    logRun($user, '2026-08-03', 6.0);
+
+    $statuses = app(SessionMatcher::class)->statuses($user, ['2026-08-03' => 12.0], [], Carbon::parse('2026-08-10'));
+
+    expect($statuses['2026-08-03'])->toBe(PlannedSessionStatus::Partial);
+});
+
 /**
  * The readiness clamp writes `rest_clamped_at`, and an excused day is never
  * graded whatever crediting rule the session type would otherwise apply.
