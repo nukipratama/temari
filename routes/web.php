@@ -38,6 +38,7 @@ use App\Http\Controllers\WebPush\PushSubscriptionController;
 use App\Http\Controllers\NarrationOverviewController;
 use App\Http\Controllers\TrainingPreferencesController;
 use App\Http\Controllers\TrendsController;
+use App\Support\LegalDocuments;
 use Illuminate\Support\Facades\Route;
 
 // Strava push subscription. Called by Strava unauthenticated — gated by the
@@ -68,7 +69,7 @@ Route::post('/client-errors', ClientErrorController::class)
 // their Strava has to be able to read these before there is an account.
 Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
-Route::permanentRedirect('/ai-use', '/privacy#notes')->name('legal.ai-use');
+Route::permanentRedirect('/ai-use', '/privacy#'.LegalDocuments::NOTES_SECTION_ID)->name('legal.ai-use');
 Route::get('/training-disclaimer', [LegalController::class, 'trainingDisclaimer'])->name('legal.training-disclaimer');
 
 Route::get('/', RootController::class)->middleware('onboarded')->name('dashboard');
