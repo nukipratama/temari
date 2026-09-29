@@ -21,6 +21,7 @@ const BUDGET: Budget = {
     currency: 'USD',
     trippedAt: null,
     degradedFills: 0,
+    degradedBreakdown: [],
 };
 
 const CONTENT_FILTER: ContentFilterSummary = { trips: 0, pct: null };
@@ -101,6 +102,7 @@ describe('FaultStrip', () => {
                 ...BUDGET,
                 trippedAt: '2026-09-17T14:22:00+07:00',
                 degradedFills: 41,
+                degradedBreakdown: [],
             },
         });
 
@@ -109,7 +111,7 @@ describe('FaultStrip', () => {
         ).toBeInTheDocument();
         expect(screen.getByText('14:22 today')).toBeInTheDocument();
         expect(
-            screen.getByText('41 blocks served rule-based since.'),
+            screen.getByText('41 answers served rule-based since.'),
         ).toBeInTheDocument();
     });
 
@@ -158,6 +160,7 @@ describe('FaultStrip', () => {
                 ...BUDGET,
                 trippedAt: '2026-09-17T14:22:00+07:00',
                 degradedFills: 41,
+                degradedBreakdown: [],
             },
             cappedToday: 1,
             athletes: [{ ...ATHLETE, capped: true, dead_lettered: 1 }],

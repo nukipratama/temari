@@ -15,6 +15,7 @@ const BUDGET: Budget = {
     currency: 'USD',
     trippedAt: null,
     degradedFills: 0,
+    degradedBreakdown: [],
 };
 
 const CHART: CostChart = {

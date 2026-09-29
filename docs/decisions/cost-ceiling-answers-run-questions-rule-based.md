@@ -20,6 +20,10 @@ code_refs:
 > `/pulse` is `/devtools/pulse` and `/horizon` is `/devtools/horizon`. The gate on them
 > also now skips outside production. Everything this decision says about behaviour stands.
 
+> **2026-09-29 — the ledger is now broken down.** `recordDegradedFill()` takes the fill's kind (an
+> `AnalysisType` value, or `run_question`) and athlete, and `today()` also returns `degradedBreakdown`
+> beside the total. The `/devtools/ai-usage` gauge now says "answers" rather than "blocks".
+
 ## Context
 
 [[cost-ceiling-degrades-to-rule-based]] established that a hit budget is policy, not fault: narration blocks are served from the deterministic filler rather than left empty, because waiting buys nothing when the stop resolves on a clock. That decision explicitly carved the Q&A surface out — "run questions are still refused" — on the reasoning that a hit budget should not become a bypass.

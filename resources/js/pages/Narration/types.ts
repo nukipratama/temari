@@ -83,6 +83,7 @@ export interface Budget {
     /** ISO8601 local time the ceiling first tripped today; null if it hasn't. */
     trippedAt: string | null;
     degradedFills: number;
+    degradedBreakdown: { kind: string; userId: number | null; count: number }[];
 }
 
 export interface ContentFilterSummary {

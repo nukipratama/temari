@@ -17,6 +17,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Facades\Log;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 class IngestActivityJob implements ShouldBeUnique, ShouldQueue
 {
@@ -99,6 +101,8 @@ class IngestActivityJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(ActivityPipeline $pipeline): void
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
+
         $activity = Activity::query()
             ->withStubs()
             ->with('user.stravaConnection')

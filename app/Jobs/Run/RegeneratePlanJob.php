@@ -13,6 +13,8 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 
 final class RegeneratePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -43,6 +45,8 @@ final class RegeneratePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQu
 
     public function handle(Periodizer $periodizer, PlanRegenerationService $regeneration): void
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+
         $user = User::query()->find($this->userId);
         if ($user === null) {
             return;

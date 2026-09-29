@@ -255,6 +255,7 @@ final readonly class StructuredChatCaller
             userId: $userId,
             origin: $this->origin->current(),
             analysisId: $this->narrated->current(),
+            runQuestionId: $this->narrated->currentRunQuestion(),
         );
     }
 

@@ -67,7 +67,7 @@ class RunQuestionController extends Controller
         }
 
         if ($service->costCeilingDegraded($user->id)) {
-            $ledger->recordDegradedFill();
+            $ledger->recordDegradedFill('run_question', $user->id);
 
             return $this->created($this->ruleBasedRow($user, $activity, $question, $detail));
         }

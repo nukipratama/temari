@@ -13,6 +13,7 @@ use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\Narrators\RunQuestionNarrator;
+use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RunQuestion\RuleBasedRunAnswer;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -77,7 +78,7 @@ class AnswerRunQuestionJob implements ShouldQueue
                 'answer' => RuleBasedRunAnswer::for($detail, $question->question),
                 'error' => null,
             ])) {
-                app(CostCeilingLedger::class)->recordDegradedFill();
+                app(CostCeilingLedger::class)->recordDegradedFill('run_question', $activity->user_id);
             }
 
             return;
@@ -92,7 +93,10 @@ class AnswerRunQuestionJob implements ShouldQueue
         try {
             $this->settle($question, $claimToken, [
                 'status' => AnalysisStatus::Done,
-                'answer' => $narrator->generate($activity, $detail, $question->question),
+                'answer' => app(NarratedAnalysis::class)->duringRunQuestion(
+                    $question->id,
+                    fn () => $narrator->generate($activity, $detail, $question->question),
+                ),
                 'error' => null,
             ]);
         } catch (TransientUpstreamException $e) {
