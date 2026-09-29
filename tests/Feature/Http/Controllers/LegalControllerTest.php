@@ -51,7 +51,7 @@ it('renders the data-use wording from the shared statement', function (): void {
             $paragraphs = collect($page->toArray()['props']['sections'])
                 ->flatMap(fn (array $section): array => $section['paragraphs']);
 
-            foreach (DataUseStatement::points() as $point) {
+            foreach (DataUseStatement::points(pointToPrivacyPolicy: false) as $point) {
                 expect($paragraphs)->toContain($point);
             }
         });

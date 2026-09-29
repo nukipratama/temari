@@ -53,7 +53,7 @@ it('serves the data-use wording from DataUseStatement rather than a second copy'
         fn (array $section): bool => $section['heading'] === DataUseStatement::HEADLINE,
     );
 
-    expect($privacyData['paragraphs'])->toBe(DataUseStatement::points());
+    expect($privacyData['paragraphs'])->toBe(DataUseStatement::points(pointToPrivacyPolicy: false));
 });
 
 it('folds how the notes get written into privacy, under the anchor the old page redirects to', function (): void {
@@ -86,7 +86,7 @@ it('discloses the one thing account deletion keeps, so the promise stays true', 
 it('states the cost-ledger retention in exactly one line, on privacy only', function (): void {
     $lines = collect(allLegalDocuments())
         ->flatMap(fn (array $document): array => array_merge(...array_column($document['sections'], 'paragraphs')))
-        ->merge(DataUseStatement::points())
+        ->merge(DataUseStatement::points(pointToPrivacyPolicy: false))
         ->filter(fn (string $line): bool => str_contains($line, 'Strava athlete id') && str_contains($line, 'cost'));
 
     expect($lines)->toHaveCount(1);

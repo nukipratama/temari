@@ -121,7 +121,7 @@ final class LegalDocuments
                 ],
                 [
                     'heading' => DataUseStatement::HEADLINE,
-                    'paragraphs' => DataUseStatement::points(),
+                    'paragraphs' => DataUseStatement::points(pointToPrivacyPolicy: false),
                 ],
                 [
                     'id' => self::NOTES_SECTION_ID,

@@ -24,6 +24,15 @@ it('points deletion details at the privacy policy instead of restating the retai
         ->and($statement)->not->toContain('athlete id');
 });
 
+it('drops the privacy-policy pointer where the statement is shown on the privacy page itself', function (): void {
+    $withPointer = implode(' ', DataUseStatement::points());
+    $onPrivacyPage = implode(' ', DataUseStatement::points(pointToPrivacyPolicy: false));
+
+    expect($withPointer)->toContain('The privacy policy spells out the details.')
+        ->and($onPrivacyPage)->not->toContain('privacy policy')
+        ->and($onPrivacyPage)->toEndWith('your Strava connection is unlinked.');
+});
+
 it('keeps the copy free of em-dashes like the rest of the voice', function (): void {
     expect(DataUseStatement::HEADLINE.' '.implode(' ', DataUseStatement::points()))
         ->not->toContain('—');
