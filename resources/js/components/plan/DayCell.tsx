@@ -61,17 +61,17 @@ export function DayCellBody({
             />
             {ran ? (
                 <>
-                    <span className="text-meta font-bold whitespace-nowrap tabular-nums text-foreground">
+                    <span className="text-meta font-bold tracking-tight whitespace-nowrap tabular-nums text-foreground">
                         {kmFigure(day.actual_km)} km
                     </span>
                     {!isRest && (
-                        <span className="text-meta leading-tight whitespace-nowrap text-text-2">
+                        <span className="text-meta leading-tight tracking-tight whitespace-nowrap text-text-2">
                             of {kmFigure(planned)}
                         </span>
                     )}
                 </>
             ) : (
-                <span className="text-meta whitespace-nowrap text-foreground">
+                <span className="text-meta tracking-tight whitespace-nowrap text-foreground">
                     {isRest ? 'rest' : `${kmFigure(planned)} km`}
                 </span>
             )}
