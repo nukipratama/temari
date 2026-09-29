@@ -360,7 +360,7 @@ function DataUseDisclosure({
                 className="focus-ring group flex w-full items-center justify-between gap-2 px-3.5 py-3.5 text-left text-xs leading-tight text-text-2"
             >
                 <span>
-                    read-only · only you see it · delete anytime ·{' '}
+                    how your data is used ·{' '}
                     <span className="font-bold text-foreground underline underline-offset-2">
                         details
                     </span>
