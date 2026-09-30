@@ -426,9 +426,7 @@ describe('WeekView', () => {
     it('skips the selected session through the caller', () => {
         const { onSkip } = renderWeek();
         fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
-        fireEvent.click(
-            screen.getByRole('button', { name: /skip this session/i }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
 
         expect(onSkip).toHaveBeenCalledWith(WEEK[3]);
     });
@@ -439,9 +437,7 @@ describe('WeekView', () => {
             days: WEEK.map((day) => (day.id === skipped.id ? skipped : day)),
         });
         fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
-        fireEvent.click(
-            screen.getByRole('button', { name: 'bring this session back' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'restore' }));
 
         expect(onUnskip).toHaveBeenCalledWith(skipped);
     });
@@ -449,9 +445,7 @@ describe('WeekView', () => {
     it('moves the selected session onto a later rest day in the same week', () => {
         const { onMove } = renderWeek();
         fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
-        fireEvent.click(
-            screen.getByRole('button', { name: /move this session/i }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
 
         expect(screen.getByRole('button', { name: 'Wed' })).toBeDisabled();
         fireEvent.click(screen.getByRole('button', { name: 'Fri' }));

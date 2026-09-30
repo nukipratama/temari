@@ -349,7 +349,7 @@ describe('calendar', () => {
     });
 
     describe('monthly recap card', () => {
-        it('places past and current month recaps before the consistency line and grid', () => {
+        it('places stats before the recap and the effort legend before the grid', () => {
             const { rerender } = render(
                 <Calendar
                     {...BASE_PROPS}
@@ -364,9 +364,12 @@ describe('calendar', () => {
             const pastMonthArea = screen.getByTestId('calendar-swipe-area');
             const consistency = screen.getByText(/3 runs · 16 km/);
             const grid = screen.getByText('week 1');
-            expect(pastRecap.compareDocumentPosition(consistency)).toBe(
+            expect(consistency.compareDocumentPosition(pastRecap)).toBe(
                 Node.DOCUMENT_POSITION_FOLLOWING,
             );
+            expect(
+                screen.getByText('effort').compareDocumentPosition(grid),
+            ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
             expect(pastRecap.compareDocumentPosition(grid)).toBe(
                 Node.DOCUMENT_POSITION_FOLLOWING,
             );
@@ -393,9 +396,9 @@ describe('calendar', () => {
                 "this month's recap isn't ready yet.",
             );
             expect(
-                awaitingRecap.compareDocumentPosition(
-                    screen.getByText(/3 runs · 16 km/),
-                ),
+                screen
+                    .getByText(/3 runs · 16 km/)
+                    .compareDocumentPosition(awaitingRecap),
             ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
             expect(
                 awaitingRecap.compareDocumentPosition(

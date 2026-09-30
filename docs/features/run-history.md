@@ -149,7 +149,8 @@ week (`is_current_week`) waits for the scheduler. See [[recaps]] and
 ## Calendar — the weekly bar-chart grid
 
 [Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx) renders in this order:
-month nav → monthly recap card → consistency line → grid → effort legend
+month nav → consistency line → monthly recap card → effort legend → grid
+(the grid has a rounded outer frame, without day-column borders).
 (#1343 replaced the former bordered-box + mood-dot grid, prototype variant C
 on `prototype/calendar-redesign`). The consistency line (`consistencyOf` in
 [calendarBars.ts](../../resources/js/pages/Activities/calendarBars.ts)) shows runs,
