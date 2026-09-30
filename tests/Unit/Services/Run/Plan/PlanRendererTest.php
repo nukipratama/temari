@@ -703,8 +703,8 @@ it('dayPayload explains a long day that covered its distance in pieces', functio
         'phase' => PlanPhase::Build,
         'date' => $today,
     ]);
-    $inPieces = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 10.0, 'seconds' => 3000, 'moving_time' => 3000, 'started_at' => '06:00'], ['id' => 2, 'km' => 10.0, 'seconds' => 3000, 'moving_time' => 3000, 'started_at' => '17:30']]];
-    $inOne = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 18.0, 'seconds' => 5400, 'moving_time' => 5400, 'started_at' => '06:00'], ['id' => 2, 'km' => 2.0, 'seconds' => 600, 'moving_time' => 600, 'started_at' => '17:30']]];
+    $inPieces = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 10.0, 'seconds' => 3000, 'started_at' => '06:00'], ['id' => 2, 'km' => 10.0, 'seconds' => 3000, 'started_at' => '17:30']]];
+    $inOne = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 18.0, 'seconds' => 5400, 'started_at' => '06:00'], ['id' => 2, 'km' => 2.0, 'seconds' => 600, 'started_at' => '17:30']]];
 
     $render = fn (array $activity, PlannedSessionStatus $status): ?string => PlanRenderer::dayPayload(
         $session,
@@ -733,7 +733,7 @@ it('dayPayload never asks a long day eased to an easy run for one go', function 
         'date' => Carbon::parse('2026-08-10'),
         'clamped_km' => 6.8,
     ]);
-    $split = ['km' => 8.1, 'runs' => [['id' => 1, 'km' => 4.5, 'seconds' => 1800, 'moving_time' => 1800, 'started_at' => '06:00'], ['id' => 2, 'km' => 3.6, 'seconds' => 1440, 'moving_time' => 1440, 'started_at' => '17:30']]];
+    $split = ['km' => 8.1, 'runs' => [['id' => 1, 'km' => 4.5, 'seconds' => 1800, 'started_at' => '06:00'], ['id' => 2, 'km' => 3.6, 'seconds' => 1440, 'started_at' => '17:30']]];
 
     $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-12'), null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Partial, $split);
 
@@ -915,6 +915,29 @@ it('buckets cross-boundary dates into the same Monday the frontend does', functi
     }
 });
 
+it('dayPayload quotes a stopped run on elapsed pace', function (): void {
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->make([
+        'date' => '2026-08-10',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Easy,
+    ]);
+    $run = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($run)->create([
+        'start_date_local' => Carbon::parse('2026-08-10 07:00:00'),
+        'distance' => 10_000.0,
+        'moving_time' => 3_300,
+        'elapsed_time' => 3_600,
+    ]);
+    $activity = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'))['2026-08-10'];
+
+    $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done, $activity);
+
+    expect($payload['ran_pace_sec_per_km'])->toBe(360)
+        ->and($payload['ran_pace_sec_per_km'])->toBe((int) $detail->paceSecPerKm())
+        ->and($payload['activities'][0]['seconds'])->toBe(3_600);
+});
+
 /**
  * The day payload's `ran_pace_sec_per_km` is computed over the identical
  * runs `SessionMatcher::creditedKmFor()` grades the km with, not re-derived
@@ -934,12 +957,14 @@ it("dayPayload computes a Tempo day's ran pace from its best single run only", f
         'start_date_local' => Carbon::parse('2026-08-10 07:00:00'),
         'distance' => 18_000.0,
         'moving_time' => 5_400,
+        'elapsed_time' => 5_400,
     ]);
     $other = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($other)->create([
         'start_date_local' => Carbon::parse('2026-08-10 17:00:00'),
         'distance' => 5_000.0,
         'moving_time' => 1_000,
+        'elapsed_time' => 1_000,
     ]);
 
     $activity = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'))['2026-08-10'];
@@ -955,7 +980,7 @@ it("dayPayload computes a Tempo day's ran pace from its best single run only", f
 /**
  * An Easy day sums what the whole day added up to — the same rule
  * `SessionMatcher::creditedKmFor()` grades it with — so its ran pace divides
- * the combined moving time by the combined distance rather than either run's
+ * the combined elapsed time by the combined distance rather than either run's
  * own pace.
  */
 it("dayPayload computes an Easy day's ran pace from the whole day, not one run", function (): void {
@@ -971,12 +996,14 @@ it("dayPayload computes an Easy day's ran pace from the whole day, not one run",
         'start_date_local' => Carbon::parse('2026-08-11 07:00:00'),
         'distance' => 6_000.0,
         'moving_time' => 1_800,
+        'elapsed_time' => 1_800,
     ]);
     $evening = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($evening)->create([
         'start_date_local' => Carbon::parse('2026-08-11 18:00:00'),
         'distance' => 4_000.0,
         'moving_time' => 1_600,
+        'elapsed_time' => 1_600,
     ]);
 
     $activity = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-11'), Carbon::parse('2026-08-11'))['2026-08-11'];
@@ -1019,9 +1046,9 @@ it('dayPayload says why a day ran hot, and stays quiet when the distance alone o
         ->toBeNull();
 });
 
-it('dayPayload quotes the card\'s moving pace in the hot note, naming the hill-adjusted one only when it differs', function (): void {
+it('dayPayload quotes the card\'s elapsed pace in the hot note, naming the hill-adjusted one only when it differs', function (): void {
     $today = Carbon::parse('2026-08-10');
-    $render = fn (int $movingTime): ?string => PlanRenderer::dayPayload(
+    $render = fn (int $elapsedTime): ?string => PlanRenderer::dayPayload(
         PlannedSession::factory()->create([
             'session_type' => SessionType::Easy,
             'phase' => PlanPhase::Build,
@@ -1040,7 +1067,7 @@ it('dayPayload quotes the card\'s moving pace in the hot note, naming the hill-a
         INF,
         RENDERER_PACES,
         PlannedSessionStatus::Overreached,
-        ['km' => 8.0, 'runs' => [['id' => 1, 'km' => 8.0, 'seconds' => $movingTime, 'moving_time' => $movingTime, 'started_at' => '06:00']]],
+        ['km' => 8.0, 'runs' => [['id' => 1, 'km' => 8.0, 'seconds' => $elapsedTime, 'started_at' => '06:00']]],
     )['hot_note'];
 
     expect($render(3_056))->toBe('averaged 6:22/km, past the 6:48/km ceiling for this run.')

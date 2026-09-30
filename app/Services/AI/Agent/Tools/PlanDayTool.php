@@ -48,7 +48,7 @@ final class PlanDayTool extends NoArgumentTool
         private readonly TrainingPaceCalculator $paceCalculator,
         /** Km actually run on this date, or null while nothing has been logged. */
         private readonly ?float $completedKm = null,
-        /** The moving pace the day's card shows, or null while nothing has been logged. */
+        /** The elapsed pace the day's card shows, or null while nothing has been logged. */
         private readonly ?int $ranPaceSecPerKm = null,
     ) {
     }

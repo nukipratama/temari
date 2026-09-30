@@ -198,7 +198,7 @@ final readonly class SessionMatcher
      * total distance with one run's duration, which read as a single
      * impossible run.
      *
-     * @return array<string, array{km: float, runs: list<array{id: int, km: float, seconds: int|null, moving_time: int|null, started_at: string}>}>
+     * @return array<string, array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}>
      */
     public function activityByDate(User $user, Carbon $from, Carbon $to): array
     {
@@ -213,7 +213,7 @@ final readonly class SessionMatcher
             ->whereNotNull('activity_details.start_date_local')
             ->whereBetween('activity_details.start_date_local', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
             ->orderBy('activity_details.start_date_local')
-            ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.elapsed_time', 'activity_details.moving_time']);
+            ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.elapsed_time']);
 
         $byDate = [];
         $metersByDate = [];
@@ -229,7 +229,6 @@ final readonly class SessionMatcher
                 'id' => (int) $row->activity_id,
                 'km' => $km,
                 'seconds' => $row->elapsed_time,
-                'moving_time' => $row->moving_time,
                 'started_at' => $row->start_date_local->format('H:i'),
             ];
         }
@@ -301,21 +300,21 @@ final readonly class SessionMatcher
     }
 
     /**
-     * The pace the credited runs actually averaged — moving time over
+     * The pace the credited runs actually averaged — elapsed time over
      * distance — over the identical best-run/day-total selection
      * {@see self::creditedKm()} grades the km with, so the two figures a
      * judged row shows always describe the same running. Takes a day's
      * already-loaded {@see self::activityByDate()} runs rather than
      * querying again: a renderer building a whole week of judged days would
      * otherwise pay for one query per credited day. Null on a day with no
-     * runs logged, or where the credited runs carry no moving time to divide
+     * runs logged, or where the credited runs carry no elapsed time to divide
      * by.
      *
-     * @param  list<array{id: int, km: float, seconds: int|null, moving_time: int|null, started_at: string}>  $runs
+     * @param  list<array{id: int, km: float, seconds: int|null, started_at: string}>  $runs
      */
     public static function ranPaceSecPerKmFromRuns(?SessionType $type, array $runs): ?int
     {
-        $timed = array_values(array_filter($runs, static fn (array $run): bool => ($run['moving_time'] ?? null) !== null));
+        $timed = array_values(array_filter($runs, static fn (array $run): bool => ($run['seconds'] ?? null) !== null));
         if ($timed === []) {
             return null;
         }
@@ -324,15 +323,15 @@ final readonly class SessionMatcher
 
         $pace = PaceCalculator::secPerKm(
             array_sum(array_column($credited, 'km')) * 1000,
-            array_sum(array_column($credited, 'moving_time')),
+            array_sum(array_column($credited, 'seconds')),
         );
 
         return $pace === null ? null : (int) round($pace);
     }
 
     /**
-     * @param  non-empty-list<array{km: float, moving_time: int|null}>  $runs
-     * @return array{km: float, moving_time: int|null}
+     * @param  non-empty-list<array{km: float, seconds: int|null}>  $runs
+     * @return array{km: float, seconds: int|null}
      */
     private static function longestByKm(array $runs): array
     {

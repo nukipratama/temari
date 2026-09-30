@@ -272,7 +272,7 @@ it('credits nothing on a day with no runs at all', function (): void {
     expect(app(SessionMatcher::class)->creditedKmFor($session))->toBeNull();
 });
 
-it('reads one day\'s moving pace the way its card does, and nothing on a day with no runs', function (): void {
+it('reads one day\'s elapsed pace the way its card does, and nothing on a day with no runs', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => '2026-08-03',
@@ -288,6 +288,7 @@ it('reads one day\'s moving pace the way its card does, and nothing on a day wit
         'start_date_local' => Carbon::parse('2026-08-03 06:00:00'),
         'distance' => 8_000.0,
         'moving_time' => 3_536,
+        'elapsed_time' => 3_536,
     ]);
 
     expect($matcher->ranPaceSecPerKmFor($session->fresh()))->toBe(442);
@@ -437,26 +438,20 @@ it('carries each run\'s local start time', function (): void {
     expect($byDate['2026-08-03']['runs'][0]['started_at'])->toBe('05:42');
 });
 
-/**
- * The ran pace beside a graded day is moving time over distance, not elapsed
- * time — a run's stoppage time never lands on a paused watch. Carried
- * alongside `seconds` rather than in place of it, since the two read
- * different things.
- */
-it('carries each run\'s moving time beside its elapsed time', function (): void {
+it('quotes a stopped run on elapsed pace', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->create([
         'activity_id' => $activity->id,
         'start_date_local' => Carbon::parse('2026-08-03 06:00:00'),
         'distance' => 10_000.0,
-        'moving_time' => 3_000,
+        'moving_time' => 3_300,
         'elapsed_time' => 3_600,
     ]);
 
     $byDate = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-03'), Carbon::parse('2026-08-03'));
 
-    expect($byDate['2026-08-03']['runs'][0]['moving_time'])->toBe(3_000);
+    expect(SessionMatcher::ranPaceSecPerKmFromRuns(SessionType::Easy, $byDate['2026-08-03']['runs']))->toBe(360);
 });
 
 it('reads a done day whose intent was missed as partial, its score capped under the done band', function (): void {
