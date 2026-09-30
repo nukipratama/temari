@@ -64,7 +64,7 @@ frankenphp
 # but keep machine-local overrides out of git.
 .claude/*
 !.claude/settings.json
-!.claude/skills/
+!.claude/skills
 !.claude/commands/
 !.claude/hooks/
 !.claude/workflows/
