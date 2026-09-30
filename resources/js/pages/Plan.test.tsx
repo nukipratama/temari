@@ -296,9 +296,7 @@ describe('Plan', () => {
 
     it('skips a session through the sessions endpoint', () => {
         renderPlan();
-        fireEvent.click(
-            screen.getByRole('button', { name: /skip this session/i }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/plan/sessions/1',
@@ -317,9 +315,7 @@ describe('Plan', () => {
             ],
         });
 
-        fireEvent.click(
-            screen.getByRole('button', { name: 'bring this session back' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'restore' }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/plan/sessions/1',
@@ -330,9 +326,7 @@ describe('Plan', () => {
 
     it('moves a session onto the day picked from the weekday grid', () => {
         renderPlan();
-        fireEvent.click(
-            screen.getByRole('button', { name: /move this session/i }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
         fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
 
         expect(router.patch).toHaveBeenCalledWith(

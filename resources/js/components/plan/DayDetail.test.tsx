@@ -120,13 +120,11 @@ describe('DayHeadline and DayDetail', () => {
     it('brings a skipped future session back through the caller', () => {
         const { onUnskip } = renderRow({ day: day({ skipped: true }) });
 
-        fireEvent.click(
-            screen.getByRole('button', { name: 'bring this session back' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'restore' }));
 
         expect(onUnskip).toHaveBeenCalledOnce();
         expect(
-            screen.queryByRole('button', { name: /skip this session/i }),
+            screen.queryByRole('button', { name: /^skip$/i }),
         ).not.toBeInTheDocument();
     });
 
@@ -139,7 +137,7 @@ describe('DayHeadline and DayDetail', () => {
         renderRow({ day: day(overrides) });
 
         expect(
-            screen.queryByRole('button', { name: 'bring this session back' }),
+            screen.queryByRole('button', { name: 'restore' }),
         ).not.toBeInTheDocument();
     });
 
@@ -152,7 +150,7 @@ describe('DayHeadline and DayDetail', () => {
         renderRow({ day: session, weekDays: [session] });
 
         expect(
-            screen.getByRole('button', { name: 'bring this session back' }),
+            screen.getByRole('button', { name: 'restore' }),
         ).toBeInTheDocument();
     });
 
@@ -421,10 +419,10 @@ describe('DayHeadline and DayDetail', () => {
         renderRow();
 
         expect(
-            screen.getByRole('button', { name: /move this session/i }),
+            screen.getByRole('button', { name: /^move$/i }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /skip this session/i }),
+            screen.getByRole('button', { name: /^skip$/i }),
         ).toBeInTheDocument();
     });
 
@@ -432,10 +430,10 @@ describe('DayHeadline and DayDetail', () => {
         renderRow({ day: day({ date: '2026-06-15', status: 'done' }) });
 
         expect(
-            screen.queryByRole('button', { name: /move this session/i }),
+            screen.queryByRole('button', { name: /^move$/i }),
         ).not.toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: /skip this session/i }),
+            screen.queryByRole('button', { name: /^skip$/i }),
         ).not.toBeInTheDocument();
     });
 
@@ -457,10 +455,10 @@ describe('DayHeadline and DayDetail', () => {
         });
 
         expect(
-            screen.queryByRole('button', { name: /move this session/i }),
+            screen.queryByRole('button', { name: /^move$/i }),
         ).not.toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: /skip this session/i }),
+            screen.queryByRole('button', { name: /^skip$/i }),
         ).not.toBeInTheDocument();
     });
 
@@ -468,24 +466,20 @@ describe('DayHeadline and DayDetail', () => {
         renderRow({ day: day({ skipped: true }) });
 
         expect(
-            screen.queryByRole('button', { name: /skip this session/i }),
+            screen.queryByRole('button', { name: /^skip$/i }),
         ).not.toBeInTheDocument();
     });
 
     it('skips through to the caller', () => {
         const { onSkip } = renderRow();
-        fireEvent.click(
-            screen.getByRole('button', { name: /skip this session/i }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
 
         expect(onSkip).toHaveBeenCalledOnce();
     });
 
     it('offers a weekday picker whose only enabled targets are later rest days', () => {
         renderRow();
-        fireEvent.click(
-            screen.getByRole('button', { name: /move this session/i }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
 
         expect(screen.getByRole('button', { name: 'Fri' })).toBeEnabled();
         expect(screen.getByRole('button', { name: 'Sat' })).toBeEnabled();
@@ -494,14 +488,12 @@ describe('DayHeadline and DayDetail', () => {
 
     it('moves onto the picked day and closes the picker', () => {
         const { onMove } = renderRow();
-        fireEvent.click(
-            screen.getByRole('button', { name: /move this session/i }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
         fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
 
         expect(onMove).toHaveBeenCalledWith('2026-06-19');
         expect(
-            screen.getByRole('button', { name: /move this session/i }),
+            screen.getByRole('button', { name: /^move$/i }),
         ).toBeInTheDocument();
     });
 
@@ -510,7 +502,7 @@ describe('DayHeadline and DayDetail', () => {
         renderRow({ day: noTargets[0], weekDays: noTargets });
 
         expect(
-            screen.queryByRole('button', { name: /move this session/i }),
+            screen.queryByRole('button', { name: /^move$/i }),
         ).not.toBeInTheDocument();
     });
 

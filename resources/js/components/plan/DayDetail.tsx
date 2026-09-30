@@ -19,7 +19,6 @@ import {
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
 import TemariTake from '@/components/plan/TemariTake';
 import { Icon } from '@/components/ui/Icon';
-import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import {
@@ -483,47 +482,47 @@ export default function DayDetail({
                     ) : (
                         <div className="flex flex-wrap gap-3">
                             {canMove && (
-                                <PillButton
-                                    tone="outline"
-                                    size="sm"
+                                <button
+                                    type="button"
                                     onClick={() => setPicking(true)}
+                                    className="focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
                                 >
                                     <Icon
                                         icon={ArrowRightLeft}
-                                        className="size-3.5"
+                                        className="size-3"
                                         aria-hidden
                                     />
-                                    move this session
-                                </PillButton>
+                                    move
+                                </button>
                             )}
                             {canSkip && (
                                 <button
                                     type="button"
                                     onClick={onSkip}
-                                    className="focus-ring flex items-center gap-1.5 text-label-micro text-text-2"
+                                    className="focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
                                 >
                                     <Icon
                                         icon={SkipForward}
                                         className="size-3"
                                         aria-hidden
                                     />
-                                    Skip this session
+                                    skip
                                 </button>
                             )}
                             {canUnskip && (
                                 <div className="w-full">
-                                    <PillButton
-                                        tone="outline"
-                                        size="sm"
+                                    <button
+                                        type="button"
                                         onClick={onUnskip}
+                                        className="focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
                                     >
                                         <Icon
                                             icon={RotateCcw}
-                                            className="size-3.5"
+                                            className="size-3"
                                             aria-hidden
                                         />
-                                        bring this session back
-                                    </PillButton>
+                                        restore
+                                    </button>
                                 </div>
                             )}
                         </div>

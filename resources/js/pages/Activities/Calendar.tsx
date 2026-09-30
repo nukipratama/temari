@@ -123,6 +123,20 @@ export default function Calendar({
                     {...touchHandlers}
                 >
                     <Deferred
+                        data={['cells']}
+                        fallback={
+                            <Skeleton className="mx-auto mb-3 h-3 w-56" />
+                        }
+                    >
+                        {() => (
+                            <ConsistencyLine
+                                stats={consistency}
+                                className="mb-3"
+                            />
+                        )}
+                    </Deferred>
+
+                    <Deferred
                         data={['monthlyRecap']}
                         fallback={<Skeleton className="mb-2.5 h-16 w-full" />}
                     >
@@ -142,37 +156,25 @@ export default function Calendar({
                         }
                     </Deferred>
 
-                    <Deferred
-                        data={['cells']}
-                        fallback={
-                            <Skeleton className="mx-auto mb-3 h-3 w-56" />
-                        }
-                    >
-                        {() => (
-                            <ConsistencyLine
-                                stats={consistency}
-                                className="mb-3"
-                            />
-                        )}
-                    </Deferred>
+                    <EffortLegend className="mt-3 mb-3" />
 
-                    <Deferred
-                        data={['cells', 'weeklySnapshots']}
-                        fallback={<SkeletonRows count={6} />}
-                    >
-                        {() => (
-                            <CalendarGrid
-                                weeks={weeks}
-                                snapshotsByWeek={snapshotsByWeek}
-                                onOpenDay={(cell) => {
-                                    setAskedDayRuns(true);
-                                    setOpenDay(cell);
-                                }}
-                            />
-                        )}
-                    </Deferred>
-
-                    <EffortLegend className="mt-3 mb-2" />
+                    <div className="rounded-md border border-border p-3">
+                        <Deferred
+                            data={['cells', 'weeklySnapshots']}
+                            fallback={<SkeletonRows count={6} />}
+                        >
+                            {() => (
+                                <CalendarGrid
+                                    weeks={weeks}
+                                    snapshotsByWeek={snapshotsByWeek}
+                                    onOpenDay={(cell) => {
+                                        setAskedDayRuns(true);
+                                        setOpenDay(cell);
+                                    }}
+                                />
+                            )}
+                        </Deferred>
+                    </div>
                 </div>
 
                 {askedDayRuns && (
