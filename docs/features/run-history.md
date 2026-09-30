@@ -144,12 +144,11 @@ week (`is_current_week`) waits for the scheduler. See [[recaps]] and
 
 ## Calendar — the weekly bar-chart grid
 
-[Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx) renders order
-header → grid → effort legend → monthly recap card (#1343, replacing the
-former bordered-box + mood-dot grid, prototype variant C on
-`prototype/calendar-redesign`). The header is month nav plus a consistency
-line (`consistencyOf` in
-[calendarBars.ts](../../resources/js/pages/Activities/calendarBars.ts)) — runs,
+[Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx) renders in this order:
+month nav → monthly recap card → consistency line → grid → effort legend
+(#1343 replaced the former bordered-box + mood-dot grid, prototype variant C
+on `prototype/calendar-redesign`). The consistency line (`consistencyOf` in
+[calendarBars.ts](../../resources/js/pages/Activities/calendarBars.ts)) shows runs,
 km, days run and the longest **consecutive-run-day streak within the visible
 month**, derived client-side from `cells`; TRIMP does not appear here.
 
@@ -201,7 +200,7 @@ P12) — a badge for the week's **rarest** earned card, tinted by rarity. A week
 with no snapshot leaves the column disabled. The badge lives here and nowhere
 else on the screen; it is not a day-cell affordance.
 
-**Month nav** is prev/next `Link`s plus a horizontal swipe on the grid on
+**Month nav** is prev/next `Link`s plus a horizontal swipe on the recap and grid on
 mobile (`useHorizontalSwipe`, which already starts its gesture away from the
 screen edges). Both paths do a **partial reload** (`only: [month, monthLabel,
 prevMonth, nextMonth, cells, weeklySnapshots, monthlyRecap]`) so the header
