@@ -483,18 +483,18 @@ export default function DayDetail({
                     ) : (
                         <div className="flex flex-wrap gap-3">
                             {canMove && (
-                                <button
-                                    type="button"
+                                <PillButton
+                                    tone="outline"
+                                    size="sm"
                                     onClick={() => setPicking(true)}
-                                    className="focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
                                 >
                                     <Icon
                                         icon={ArrowRightLeft}
-                                        className="size-3"
+                                        className="size-3.5"
                                         aria-hidden
                                     />
-                                    Move this session
-                                </button>
+                                    move this session
+                                </PillButton>
                             )}
                             {canSkip && (
                                 <button
