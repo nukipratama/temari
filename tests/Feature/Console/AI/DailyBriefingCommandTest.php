@@ -3,19 +3,69 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
+use App\Jobs\AI\SendMaintainerAlertJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\PlannedSession;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\HydrationBacklog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Config;
 
 uses(RefreshDatabase::class);
+
+it('continues dispatching later briefings after one athlete fails and alerts once', function (): void {
+    Bus::fake();
+    Config::set('services.telegram.bot_token', 'test-bot-token');
+    Carbon::setTestNow('2026-05-11 00:01:00');
+    $failing = User::factory()->seenToday()->create(['name' => 'Private Failed Athlete']);
+    $later = User::factory()->seenToday()->create(['name' => 'Private Later Athlete']);
+    PlannedSession::factory()->for($failing)->create(['date' => Carbon::today()]);
+    PlannedSession::factory()->for($later)->create(['date' => Carbon::today()]);
+
+    $realBacklog = app(HydrationBacklog::class);
+    $backlog = Mockery::mock(HydrationBacklog::class);
+    $backlog->shouldReceive('recentLoadAwaitsScoring')->andReturnUsing(
+        static function (int $userId, Carbon $today) use ($failing, $realBacklog): bool {
+            if ($userId === $failing->id) {
+                throw new LogicException('test briefing failure');
+            }
+
+            return $realBacklog->recentLoadAwaitsScoring($userId, $today);
+        },
+    );
+    $this->app->instance(HydrationBacklog::class, $backlog);
+
+    $requested = [];
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldReceive('requestBriefing')->andReturnUsing(
+        static function (User $user, string $day) use (&$requested): Analysis {
+            $requested[] = [$user->id, $day];
+
+            return new Analysis();
+        },
+    );
+    $this->app->instance(AnalysisService::class, $service);
+
+    $this->artisan('ai:daily-briefing')->assertSuccessful();
+
+    expect($requested)->toBe([[$later->id, Carbon::today()->toDateString()]]);
+    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
+    Bus::assertDispatched(SendMaintainerAlertJob::class, static fn (SendMaintainerAlertJob $job): bool =>
+        str_contains($job->message, 'ai:daily-briefing')
+        && str_contains($job->message, '1 athlete')
+        && ! str_contains($job->message, 'Private Failed Athlete')
+        && ! str_contains($job->message, 'Private Later Athlete'));
+
+    Carbon::setTestNow();
+});
 
 it('dispatches the briefing group for each active user, and nothing else', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');

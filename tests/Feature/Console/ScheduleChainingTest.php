@@ -69,6 +69,10 @@ it('does not let plan:regenerate pass its when() gate until both prerequisites f
 
     $scoreCompliance->finish(app(), 0);
 
+    expect($regenerate->filtersPass(app()))->toBeFalse('plan:score-compliance marks the chain only after its athlete loop');
+
+    SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE);
+
     expect($regenerate->filtersPass(app()))->toBeTrue();
 });
 

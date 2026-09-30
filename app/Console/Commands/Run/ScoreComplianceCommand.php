@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Run;
 
+use App\Console\SchedulerChain;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\PlanReconciliationService;
+use App\Services\AI\MaintainerAlerter;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -34,7 +38,7 @@ use App\Services\AI\NarrationOrigin;
 #[Description("Score every user's past-due Planned sessions and persist the verdict")]
 class ScoreComplianceCommand extends Command
 {
-    public function handle(ComplianceScorer $scorer, PlanReconciliationService $reconciliation): int
+    public function handle(ComplianceScorer $scorer, PlanReconciliationService $reconciliation, MaintainerAlerter $alerter): int
     {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
@@ -52,12 +56,32 @@ class ScoreComplianceCommand extends Command
             ->pluck('user_id');
 
         $scored = 0;
+        $completed = 0;
+        $failed = 0;
         foreach ($userIds as $userId) {
-            $user = User::query()->find((int) $userId);
-            if (! $user instanceof User) {
-                continue;
+            try {
+                $user = User::query()->find((int) $userId);
+                if (! $user instanceof User) {
+                    continue;
+                }
+                $scored += $this->scoreUser($scorer, $reconciliation, $user, $today);
+                $completed++;
+            } catch (Throwable $e) {
+                $failed++;
+                report($e);
+                Log::error('plan.score_compliance.user_failed', [
+                    'user_id' => $userId,
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
             }
-            $scored += $this->scoreUser($scorer, $reconciliation, $user, $today);
+        }
+
+        if ($failed === 0 || $completed > 0) {
+            SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE);
+        }
+        if ($failed > 0) {
+            $alerter->athletesFailed('plan:score-compliance', $failed);
         }
 
         $this->info(sprintf('Scored %d planned session(s) across %d user(s).', $scored, $userIds->count()));

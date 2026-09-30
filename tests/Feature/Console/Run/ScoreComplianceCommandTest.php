@@ -5,18 +5,118 @@ declare(strict_types=1);
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
+use App\Console\SchedulerChain;
+use App\Jobs\AI\SendMaintainerAlertJob;
 use App\Jobs\Run\ReconcilePlanJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Models\TrainingPreference;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Config;
 
 uses(RefreshDatabase::class);
+
+/** @param list<int> $failingUserIds */
+function failScoringFor(array $failingUserIds): void
+{
+    $realPreference = app(ResolveTrainingPreferenceAction::class);
+    $preference = Mockery::mock(ResolveTrainingPreferenceAction::class);
+    $preference->shouldReceive('__invoke')->andReturnUsing(
+        static function (int $userId) use ($failingUserIds, $realPreference): ?TrainingPreference {
+            if (in_array($userId, $failingUserIds, true)) {
+                throw new LogicException('test scoring failure');
+            }
+
+            return $realPreference($userId);
+        },
+    );
+    app()->instance(ResolveTrainingPreferenceAction::class, $preference);
+}
+
+it('continues scoring later athletes when one athlete throws', function (): void {
+    Carbon::setTestNow('2026-08-10');
+    $failing = User::factory()->create();
+    $later = User::factory()->create();
+    PlannedSession::factory()->for($failing)->rest()->create(['date' => Carbon::yesterday()]);
+    PlannedSession::factory()->for($later)->rest()->create(['date' => Carbon::yesterday()]);
+
+    failScoringFor([$failing->id]);
+
+    $this->artisan('plan:score-compliance')->assertSuccessful();
+
+    expect(PlannedSession::query()->where('user_id', $failing->id)->firstOrFail()->status)->toBe(PlannedSessionStatus::Planned)
+        ->and(PlannedSession::query()->where('user_id', $later->id)->firstOrFail()->status)->toBe(PlannedSessionStatus::Done);
+
+    Carbon::setTestNow();
+});
+
+it('opens the Monday regenerate gate after a partial scoring failure and alerts once', function (): void {
+    Bus::fake();
+    Config::set('services.telegram.bot_token', 'test-bot-token');
+    Carbon::setTestNow('2026-08-10');
+    $failing = User::factory()->create(['name' => 'Private Failed Athlete']);
+    $later = User::factory()->create(['name' => 'Private Later Athlete']);
+    PlannedSession::factory()->for($failing)->rest()->create(['date' => Carbon::yesterday()]);
+    PlannedSession::factory()->for($later)->rest()->create(['date' => Carbon::yesterday()]);
+    failScoringFor([$failing->id]);
+
+    SchedulerChain::markDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES);
+    expect(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeFalse();
+
+    $this->artisan('plan:score-compliance')->assertSuccessful();
+
+    expect(SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE))->toBeTrue()
+        ->and(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeTrue();
+    $regenerate = collect(app(Schedule::class)->events())->first(
+        static fn (Event $event): bool => str_contains((string) $event->command, 'plan:regenerate'),
+    );
+    expect($regenerate)->not->toBeNull()
+        ->and($regenerate->filtersPass(app()))->toBeTrue();
+    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
+    Bus::assertDispatched(SendMaintainerAlertJob::class, static fn (SendMaintainerAlertJob $job): bool =>
+        str_contains($job->message, 'plan:score-compliance')
+        && str_contains($job->message, '1 athlete')
+        && ! str_contains($job->message, 'Private Failed Athlete')
+        && ! str_contains($job->message, 'Private Later Athlete'));
+
+    Carbon::setTestNow();
+});
+
+it('keeps the Monday regenerate gate closed when every athlete fails scoring', function (): void {
+    Bus::fake();
+    Config::set('services.telegram.bot_token', 'test-bot-token');
+    Carbon::setTestNow('2026-08-10');
+    $first = User::factory()->create();
+    $second = User::factory()->create();
+    PlannedSession::factory()->for($first)->rest()->create(['date' => Carbon::yesterday()]);
+    PlannedSession::factory()->for($second)->rest()->create(['date' => Carbon::yesterday()]);
+    failScoringFor([$first->id, $second->id]);
+
+    SchedulerChain::markDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES);
+    $this->artisan('plan:score-compliance')->assertSuccessful();
+
+    expect(SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE))->toBeFalse()
+        ->and(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeFalse();
+    $regenerate = collect(app(Schedule::class)->events())->first(
+        static fn (Event $event): bool => str_contains((string) $event->command, 'plan:regenerate'),
+    );
+    expect($regenerate)->not->toBeNull()
+        ->and($regenerate->filtersPass(app()))->toBeFalse();
+    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
+    Bus::assertDispatched(SendMaintainerAlertJob::class, static fn (SendMaintainerAlertJob $job): bool =>
+        str_contains($job->message, 'plan:score-compliance') && str_contains($job->message, '2 athletes'));
+
+    Carbon::setTestNow();
+});
 
 function seedPastWeekOfSessions(User $user, Carbon $weekStart, PlanPhase $phase = PlanPhase::Base): void
 {
