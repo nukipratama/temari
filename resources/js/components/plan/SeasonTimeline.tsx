@@ -23,6 +23,7 @@ export default function SeasonTimeline({
     selectedDay = null,
     onMove,
     onSkip,
+    onUnskip,
 }: Readonly<{
     weeks: SeasonSummaryWeek[];
     detailByWeekStart: Record<string, PlanWeek>;
@@ -38,6 +39,7 @@ export default function SeasonTimeline({
     selectedDay?: string | null;
     onMove: (day: PlanDay, toDate: string) => void;
     onSkip: (day: PlanDay) => void;
+    onUnskip: (day: PlanDay) => void;
 }>) {
     const current = weeks.find((week) => week.type === 'current') ?? null;
     const initialDay = focusDay ?? selectedDay;
@@ -88,6 +90,7 @@ export default function SeasonTimeline({
                     }
                     onMove={onMove}
                     onSkip={onSkip}
+                    onUnskip={onUnskip}
                 />
             </div>
             <WeeksList

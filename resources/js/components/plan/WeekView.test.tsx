@@ -113,6 +113,7 @@ function summaryWeek(
 function renderWeek(overrides: Partial<Parameters<typeof WeekView>[0]> = {}) {
     const onMove = vi.fn();
     const onSkip = vi.fn();
+    const onUnskip = vi.fn();
     render(
         <WeekView
             week={summaryWeek()}
@@ -123,10 +124,11 @@ function renderWeek(overrides: Partial<Parameters<typeof WeekView>[0]> = {}) {
             dayNarration={{}}
             onMove={onMove}
             onSkip={onSkip}
+            onUnskip={onUnskip}
             {...overrides}
         />,
     );
-    return { onMove, onSkip };
+    return { onMove, onSkip, onUnskip };
 }
 
 const selectedTab = () =>
@@ -429,6 +431,19 @@ describe('WeekView', () => {
         );
 
         expect(onSkip).toHaveBeenCalledWith(WEEK[3]);
+    });
+
+    it('restores the selected skipped session through the caller', () => {
+        const skipped = { ...WEEK[3], skipped: true, pinned: true };
+        const { onUnskip } = renderWeek({
+            days: WEEK.map((day) => (day.id === skipped.id ? skipped : day)),
+        });
+        fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'bring this session back' }),
+        );
+
+        expect(onUnskip).toHaveBeenCalledWith(skipped);
     });
 
     it('moves the selected session onto a later rest day in the same week', () => {

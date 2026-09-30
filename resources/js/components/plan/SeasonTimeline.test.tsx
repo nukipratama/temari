@@ -105,6 +105,7 @@ function renderTimeline(
             dayNarration={{}}
             onMove={vi.fn()}
             onSkip={vi.fn()}
+            onUnskip={vi.fn()}
             {...overrides}
         />,
     );

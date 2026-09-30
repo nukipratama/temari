@@ -124,6 +124,14 @@ export default function Plan({
         );
     };
 
+    const unskipSession = (day: PlanDay) => {
+        router.patch(
+            `/plan/sessions/${day.id}`,
+            { skipped: false, pinned: false },
+            { preserveScroll: true },
+        );
+    };
+
     return (
         <>
             <Head title="Plan" />
@@ -253,6 +261,7 @@ export default function Plan({
                                     selectedDay={selectedDay}
                                     onMove={moveSession}
                                     onSkip={skipSession}
+                                    onUnskip={unskipSession}
                                 />
                             </div>
                         )
