@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Models\RunCard;
+use App\Enums\IngestState;
+use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Models\RunnerProfile;
 use App\Models\StoryLine;
 use App\Models\PersonalRecord;
@@ -54,6 +56,69 @@ function makeActivityWithConnection(): Activity
 
     return $activity;
 }
+
+it('replaces a disproved record with the next-best run on resync', function (): void {
+    $activity = makeActivityWithConnection();
+    $activity->update(['analyzed_at' => now(), 'ingest_state' => IngestState::Detailed]);
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => '2026-05-10 06:30:00',
+        'distance' => 5000,
+    ]);
+    PersonalRecord::factory()->for($activity->user)->create([
+        'activity_id' => $activity->id,
+        'category' => '5km',
+        'value_sec' => 840,
+    ]);
+    $survivor = Activity::factory()->for($activity->user)->analyzed()->create();
+    ActivityDetail::factory()->for($survivor)->create([
+        'start_date_local' => '2026-05-01 06:30:00',
+        'distance' => 5000,
+        'stream_summary' => ['per_km' => array_map(fn (int $km): array => [
+            'km' => $km, 'pace' => '5:00', 'elapsed_sec' => 300, 'distance_m' => 1000,
+        ], range(1, 5))],
+    ]);
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Corrected 5K', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+            'splits_metric' => array_map(fn (int $km): array => [
+                'split' => $km, 'distance' => 1000, 'moving_time' => 360, 'elapsed_time' => 360,
+            ], range(1, 5)),
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+    $milestones = $this->spy(DetectActivityMilestonesAction::class);
+    $this->mock(SettleEarlyNarrationAction::class)->shouldReceive('__invoke')->once();
+
+    app(ActivityPipeline::class)->ingest($activity);
+
+    $record = PersonalRecord::query()->where('user_id', $activity->user_id)->where('category', '5km')->firstOrFail();
+    expect($record->activity_id)->toBe($survivor->id)
+        ->and($record->value_sec)->toBe(1500.0)
+        ->and(RunCard::query()->where('activity_id', $activity->id)->value('pr_set'))->toBeFalse();
+    $milestones->shouldHaveReceived('__invoke')->once()->withArgs(fn (Activity $run, ActivityDetail $detail, array $categories): bool => $run->is($activity) && $categories === []);
+});
+
+it('keeps the cheap record detection path for a resynced run owning no record', function (): void {
+    $activity = makeActivityWithConnection();
+    $activity->update(['analyzed_at' => now(), 'ingest_state' => IngestState::Detailed]);
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => '2026-05-10 06:30:00']);
+    $records = $this->mock(PersonalRecords::class);
+    $records->shouldReceive('detectAndStore')->once()->withArgs(fn (Activity $run, ActivityDetail $detail): bool => $run->is($activity))->andReturn(['5km']);
+    $records->shouldNotReceive('rebuildForUser');
+    $this->mock(SettleEarlyNarrationAction::class)->shouldReceive('__invoke')->once();
+    $this->mock(DetectActivityMilestonesAction::class)
+        ->shouldReceive('__invoke')->once()->withArgs(fn (Activity $run, ActivityDetail $detail, array $categories): bool => $run->is($activity) && $categories === ['5km']);
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Resynced run', 'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+
+    app(ActivityPipeline::class)->ingest($activity);
+});
 
 it('stores detail and streams on successful fetch', function (): void {
     $activity = makeActivityWithConnection();

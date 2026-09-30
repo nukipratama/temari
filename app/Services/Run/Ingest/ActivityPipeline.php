@@ -143,7 +143,12 @@ class ActivityPipeline
                 'detail_fail_count' => 0,
             ]);
 
-            $newPrCategories = $deferPrDetection ? [] : $this->personalRecords->detectAndStore($activity, $detailModel);
+            if ($activity->personalRecords()->exists()) {
+                $this->personalRecords->rebuildForUser($activity->user);
+                $newPrCategories = [];
+            } else {
+                $newPrCategories = $deferPrDetection ? [] : $this->personalRecords->detectAndStore($activity, $detailModel);
+            }
 
             // Story layer must run after PR detection — Temari mood reads PR rows.
             $this->cardFactory->build($activity, $detailModel);
