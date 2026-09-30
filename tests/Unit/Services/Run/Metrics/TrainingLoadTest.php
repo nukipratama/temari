@@ -116,6 +116,13 @@ it('returns null when the user has no TRIMP-bearing activities', function (): vo
     expect($this->load->summary($user))->toBeNull();
 });
 
+it('does not roll future scored days into a pre-HR load date', function (): void {
+    $map = ['2026-05-11' => 120.0];
+    expect($this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::parse('2026-05-10')))->toBeNull()
+        ->and($this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::parse('2026-05-17'), Carbon::parse('2026-05-10')))->toBeNull()
+        ->and($this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::parse('2026-05-11'))['ctl_42d'])->toBeGreaterThan(0.0);
+});
+
 it('returns null from summaryFromDailyMap when the map is empty', function (): void {
     expect($this->load->summaryFromDailyMap([], [], Carbon::today()))->toBeNull();
 });

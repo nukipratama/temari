@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -209,6 +210,22 @@ it('reads the CTL slope over recent snapshots as a fitness trend', function (arr
     'falling' => [[40.0, 36.0, 33.0, 30.0], 'down'],
     'flat' => [[35.0, 35.2, 34.9, 35.1], 'plateau'],
 ]);
+
+it('does not infer rising fitness from weeks before the first HR reading', function (): void {
+    $user = User::factory()->create();
+    $asOf = Carbon::create(2026, 5, 21, 8);
+    Carbon::setTestNow($asOf);
+    foreach ([21 => null, 14 => null, 7 => null, 0 => 120.0] as $daysAgo => $trimp) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'trimp_edwards' => $trimp,
+            'start_date_local' => $asOf->copy()->subDays($daysAgo),
+        ]);
+    }
+    app(WeeklyAggregator::class)->rebuildFor($user);
+
+    expect(BriefingContext::forUser($user, $asOf)->fitnessTrend)->toBe('plateau');
+});
 
 it('exposes a deterministic readiness ceiling from the live load, capping quality on a red flag', function (): void {
     $asOf = Carbon::create(2026, 5, 21, 8);

@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\Notifications\UsualRunTime;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -188,6 +189,38 @@ it('leaves load unknown, not zero, when no run scored a TRIMP', function (): voi
         ->and($snapshot->monotony)->toBeNull()
         ->and($snapshot->strain)->toBeNull();
 });
+
+it('keeps pre-HR load unknown after later scored runs arrive', function (string $rebuild): void {
+    $user = User::factory()->create();
+    $preHrDay = Carbon::today()->subWeeks(3);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8000,
+        'trimp_edwards' => null,
+        'start_date_local' => $preHrDay,
+    ]);
+    $before = $this->aggregator->rebuildForWeekOf($user, $preHrDay);
+    $loadFields = ['atl_7d', 'ctl_42d', 'form', 'form_status'];
+    expect($before->only($loadFields))->toBe(array_fill_keys($loadFields, null));
+
+    $scored = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($scored)->create([
+        'trimp_edwards' => 120.0,
+        'start_date_local' => Carbon::today()->subWeek(),
+    ]);
+
+    match ($rebuild) {
+        'full' => $this->aggregator->rebuildFor($user),
+        'forward' => $this->aggregator->rebuildForwardFrom($user, $preHrDay),
+        'week' => $this->aggregator->rebuildForWeekOf($user, $preHrDay),
+    };
+
+    $snapshot = $before->fresh();
+    expect($snapshot->only($loadFields))->toBe(array_fill_keys($loadFields, null));
+    $recapTotals = new WeekTotalsTool($snapshot)->handle([]);
+    expect($recapTotals['form_status'])->toBeNull()
+        ->and($recapTotals['form'])->toBeNull();
+})->with(['full', 'forward', 'week']);
 
 it('persists a scored, a rest and an unscored week as three different facts', function (): void {
     $user = User::factory()->create();

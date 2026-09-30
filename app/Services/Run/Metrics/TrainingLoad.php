@@ -97,6 +97,10 @@ class TrainingLoad
 
         $weekAnchor = $asOf->copy()->startOfDay();
         $loadDate = ($loadAsOf ?? $asOf)->copy()->startOfDay();
+        if (array_key_first($dailyTrimp) > $loadDate->toDateString()) {
+            return null;
+        }
+
         [$atl, $ctl] = $this->rollLoads($dailyTrimp, $loadDate);
         $form = round($ctl - $atl, 1);
         [$weeklyTrimp, $monotony, $strain] = $this->weekStats($dailyTrimp, $runDays, $weekAnchor, $windowDays);
