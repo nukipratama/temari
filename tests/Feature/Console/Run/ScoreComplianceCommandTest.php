@@ -59,7 +59,7 @@ it('continues scoring later athletes when one athlete throws', function (): void
     Carbon::setTestNow();
 });
 
-it('opens the Monday regenerate gate after a partial scoring failure and alerts once', function (): void {
+it('lets the Monday scheduler open the regenerate gate after a partial scoring failure and alerts once', function (): void {
     Bus::fake();
     Config::set('services.telegram.bot_token', 'test-bot-token');
     Carbon::setTestNow('2026-08-10');
@@ -74,6 +74,13 @@ it('opens the Monday regenerate gate after a partial scoring failure and alerts 
 
     $this->artisan('plan:score-compliance')->assertSuccessful();
 
+    expect(SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE))->toBeFalse()
+        ->and(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeFalse();
+    $scoreCompliance = collect(app(Schedule::class)->events())->first(
+        static fn (Event $event): bool => str_contains((string) $event->command, 'plan:score-compliance'),
+    );
+    expect($scoreCompliance)->not->toBeNull();
+    $scoreCompliance->finish(app(), 0);
     expect(SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE))->toBeTrue()
         ->and(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeTrue();
     $regenerate = collect(app(Schedule::class)->events())->first(
@@ -102,7 +109,7 @@ it('keeps the Monday regenerate gate closed when every athlete fails scoring', f
     failScoringFor([$first->id, $second->id]);
 
     SchedulerChain::markDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES);
-    $this->artisan('plan:score-compliance')->assertSuccessful();
+    $this->artisan('plan:score-compliance')->assertFailed();
 
     expect(SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE))->toBeFalse()
         ->and(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeFalse();
@@ -111,9 +118,32 @@ it('keeps the Monday regenerate gate closed when every athlete fails scoring', f
     );
     expect($regenerate)->not->toBeNull()
         ->and($regenerate->filtersPass(app()))->toBeFalse();
+    $scoreCompliance = collect(app(Schedule::class)->events())->first(
+        static fn (Event $event): bool => str_contains((string) $event->command, 'plan:score-compliance'),
+    );
+    expect($scoreCompliance)->not->toBeNull();
+    $scoreCompliance->finish(app(), 1);
+    expect($regenerate->filtersPass(app()))->toBeFalse();
     Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
     Bus::assertDispatched(SendMaintainerAlertJob::class, static fn (SendMaintainerAlertJob $job): bool =>
-        str_contains($job->message, 'plan:score-compliance') && str_contains($job->message, '2 athletes'));
+        str_contains($job->message, 'plan:score-compliance')
+        && str_contains($job->message, 'Scheduler failed to run'));
+
+    Carbon::setTestNow();
+});
+
+it('does not open the Monday chain after a scoped manual scoring command', function (): void {
+    Carbon::setTestNow('2026-08-10');
+    $selected = User::factory()->create();
+    $other = User::factory()->create();
+    PlannedSession::factory()->for($selected)->rest()->create(['date' => Carbon::yesterday()]);
+    PlannedSession::factory()->for($other)->rest()->create(['date' => Carbon::yesterday()]);
+
+    $this->artisan('plan:score-compliance', ['--user' => $selected->id])->assertSuccessful();
+    expect(SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE))->toBeFalse();
+
+    $this->artisan('plan:score-compliance', ['--limit' => 1])->assertSuccessful();
+    expect(SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE))->toBeFalse();
 
     Carbon::setTestNow();
 });

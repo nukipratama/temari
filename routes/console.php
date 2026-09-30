@@ -81,7 +81,8 @@ $alertOnFailure(Schedule::command('plan:close-finished-races')->dailyAt('00:04')
 // also the one-time backfill mechanism for existing historical rows after
 // this feature ships — no separate backfill command needed. Must run before
 // plan:regenerate (Monday 00:26), which reads last week's average score.
-$alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:09')->withoutOverlapping(20)->onOneServer(), 'plan:score-compliance');
+$alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:09')->withoutOverlapping(20)->onOneServer(), 'plan:score-compliance')
+    ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE));
 
 // Monday 00:26: regenerate every user's plan today-forward against their
 // current fitness/race state. Past weeks and pinned rows are never touched.

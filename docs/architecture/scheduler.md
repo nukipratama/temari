@@ -115,11 +115,11 @@ step:
 The two hard dependencies — `streak:settle` → `ai:weekly-recap`, and
 `plan:close-finished-races` + `plan:score-compliance` → `plan:regenerate` — are now **chained**, not
 just spaced: [SchedulerChain](../../app/Console/SchedulerChain.php) is a tiny "prerequisite done
-today" cache flag. `plan:close-finished-races` marks done via `->onSuccess()` when its exit code is
-0. `plan:score-compliance` marks done after its athlete loop if any athlete's scoring pass completed (or
-there was nobody to score); an all-failed pass leaves the gate closed and alerts the maintainer.
-Streak settlement marks itself done from the final successful per-user job, after every
-athlete's durable cursor reaches the latest closed week. Each dependent's `->when()` gate refuses
+today" cache flag. The plan prerequisites mark themselves done via `->onSuccess()` when their exit
+code is 0. `plan:score-compliance` succeeds when at least one athlete's pass completes (or there
+was nobody to score); an all-failed pass leaves the gate closed and alerts the maintainer through
+the scheduler's failure callback. Streak settlement marks itself done from the final successful
+per-user job, after every athlete's durable cursor reaches the latest closed week. Each dependent's `->when()` gate refuses
 to run until every prerequisite it needs has marked itself done for the current date. Concretely,
 in `routes/console.php`:
 

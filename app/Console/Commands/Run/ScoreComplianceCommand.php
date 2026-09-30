@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Run;
 
-use App\Console\SchedulerChain;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -77,16 +76,14 @@ class ScoreComplianceCommand extends Command
             }
         }
 
-        if ($failed === 0 || $completed > 0) {
-            SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE);
-        }
-        if ($failed > 0) {
+        $allFailed = $failed > 0 && $completed === 0;
+        if ($failed > 0 && ! $allFailed) {
             $alerter->athletesFailed('plan:score-compliance', $failed);
         }
 
         $this->info(sprintf('Scored %d planned session(s) across %d user(s).', $scored, $userIds->count()));
 
-        return self::SUCCESS;
+        return $allFailed ? self::FAILURE : self::SUCCESS;
     }
 
     private function scoreUser(ComplianceScorer $scorer, PlanReconciliationService $reconciliation, User $user, Carbon $today): int
