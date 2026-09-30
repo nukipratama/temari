@@ -174,6 +174,13 @@ class MaintainerAlerter
         $this->broadcast("Scheduler failed to run `{$command}`. Check Horizon and the logs.");
     }
 
+    public function athletesFailed(string $command, int $count): void
+    {
+        $athletes = $count === 1 ? '1 athlete' : "{$count} athletes";
+
+        $this->broadcast("Scheduler `{$command}` skipped {$athletes} after errors. Check the logs.");
+    }
+
     /** A prod deploy failed its gate; pushed best-effort via the `deploy:alert` command. */
     public function deployFailed(string $reason): void
     {
