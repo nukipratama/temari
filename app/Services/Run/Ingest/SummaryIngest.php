@@ -152,7 +152,7 @@ class SummaryIngest
         return [
             'name' => $summary['name'] ?? null,
             'start_date_local' => is_string($start) && $start !== '' ? Carbon::parse($start)->toDateTimeString() : null,
-            'start_date_utc' => is_string($summary['start_date'] ?? null) ? Carbon::parse($summary['start_date'])->utc()->toDateTimeString() : null,
+            'start_date_utc' => is_string($summary['start_date'] ?? null) && $summary['start_date'] !== '' ? Carbon::parse($summary['start_date'])->utc()->toDateTimeString() : null,
             'distance' => $summary['distance'] ?? null,
             'moving_time' => $summary['moving_time'] ?? null,
             'elapsed_time' => $summary['elapsed_time'] ?? null,

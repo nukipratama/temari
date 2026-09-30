@@ -76,3 +76,16 @@ it('retains policy identity and rejects reusing a receipt for different advice',
     $history->shown($first, $receipt);
     expect(fn () => $history->shown($second, $receipt))->toThrow(HttpException::class);
 });
+
+it('orders advice in UTC while matching an activity across the local midnight boundary', function (): void {
+    $session = PlannedSession::factory()->create(['date' => '2026-10-02']);
+    $history = app(RecommendationHistory::class);
+    $revision = $history->record($session->user_id, '2026-10-02', [], ['session_type' => 'easy']);
+    Carbon::setTestNow('2026-10-01 17:00:00 UTC');
+    $history->shown($revision, (string) Str::uuid());
+    $run = ActivityDetail::factory()->for(Activity::factory()->for($session->user))->create([
+        'start_date_local' => '2026-10-02 01:00:00', 'start_date_utc' => '2026-10-01 18:00:00',
+    ]);
+    expect($history->beforeRun($session->user_id, $run)?->id)->toBe($revision->id);
+    Carbon::setTestNow();
+});
