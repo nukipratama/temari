@@ -116,20 +116,7 @@ final readonly class PlanNarrationRequester
         return true;
     }
 
-    /**
-     * Asks for a line explaining today's readiness step-down, if there is one.
-     *
-     * Called from the two places that already compute a ceiling — the ingest
-     * listener and the 00:01 briefing — and never from a render, so a GET never
-     * bills. A run landing is what moves the ceiling, so the event that
-     * invalidates this line is the event that regenerates it, and the line is
-     * usually ready before the app is next opened.
-     *
-     * Requesting resolves the clamp rather than assuming one: an athlete whose
-     * day already fits under the ceiling has nothing to explain, and a row
-     * requested for a clamp that has since lifted would be one the job could
-     * never fill.
-     */
+    /** Requests a current clamp's explanation through the shared briefing side effects. */
     public function requestClampVoice(User $user, Carbon $today): bool
     {
         $context = $this->clampContext->forUserOn($user->id, $today);

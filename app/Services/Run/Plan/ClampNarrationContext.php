@@ -14,10 +14,7 @@ use App\Services\Run\Story\BriefingContext;
 use Illuminate\Support\Carbon;
 
 /**
- * Resolves the facts a clamp explanation is written from, for whoever asks:
- * the two sites that request the narration, and the job that later generates
- * it. Sharing one resolver is what keeps a row from being requested for a
- * clamp the job then cannot find.
+ * Resolves the same clamp facts for the shared briefing side effects and the narration job.
  *
  * It deliberately reads the ceiling **fresh** rather than trusting what the
  * requester saw. The ceiling comes off {@see TrainingLoad}, which counts the

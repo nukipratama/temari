@@ -22,6 +22,7 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\WeeklySnapshot;
+use App\Notifications\DayClampedNotification;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\ServedBy;
 use App\Actions\AI\StaggerBackfillAction;
@@ -35,6 +36,8 @@ use App\Services\Run\Plan\PlanReconciliationService;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Story\BriefingContext;
 use App\Services\Run\Trend\TrendSnapshotRepairDispatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -78,6 +81,41 @@ function fire(Activity $activity): void
 {
     app(DispatchPostRunAnalysis::class)->handle(new ActivityIngested($activity->id));
 }
+
+it('never rest-clamps or requests clamp narration after an overreaching run today', function (): void {
+    Notification::fake();
+    $activity = analyzedActivity(Carbon::today()->setTime(7, 0)->toDateTimeString());
+    $activity->detail->update(['trimp_edwards' => 500.0]);
+    $session = PlannedSession::factory()->for($activity->user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Long,
+    ]);
+    $context = BriefingContext::forUser(
+        $activity->user,
+        Carbon::today(),
+        app(TrainingLoad::class)->summary($activity->user, Carbon::today()),
+    );
+    expect($context->ranToday)->toBeTrue()
+        ->and($context->formStatus)->toBe('overreaching')
+        ->and($context->readinessCeiling)->toBe('rest');
+
+    fire($activity);
+
+    expect($session->fresh()->rest_clamped_at)->toBeNull()
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanClampVoice)->exists())->toBeFalse();
+    Notification::assertNotSentTo($activity->user, DayClampedNotification::class);
+});
+
+it('never resolves the clamp recorder for a post-ingest run today', function (): void {
+    $activity = analyzedActivity(Carbon::today()->setTime(7, 0)->toDateTimeString());
+    $this->app->bind(RestClampRecorder::class, function (): never {
+        throw new LogicException('The post-ingest listener must not resolve the clamp recorder.');
+    });
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeActivityJob::class);
+});
 
 it('requests card flavor for the run card the ingest minted', function (): void {
     $activity = analyzedActivity();
@@ -675,7 +713,6 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         $weekly,
         app(StaggerBackfillAction::class),
         app(NarrationEligibility::class),
-        app(RestClampRecorder::class),
         app(PlanNarrationRequester::class),
         app(ComplianceScorer::class),
         app(PlanReconciliationDispatch::class),

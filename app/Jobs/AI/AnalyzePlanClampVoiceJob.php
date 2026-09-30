@@ -13,9 +13,7 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Plan\ClampNarrationContext;
 
 /**
- * Narrates a readiness clamp, and only ever a clamp: the row is requested from
- * the two places that already compute a {@see \App\Services\Run\Metrics\ReadinessCeiling}
- * — the ingest listener and the 00:01 briefing — never from a render.
+ * Narrates a readiness clamp requested by shared daily-briefing side effects, never from a render.
  *
  * A clamp cannot be reconstructed after the fact (the ceiling counts the day's
  * own runs, so the one that fired at 08:00 is gone by midnight), so a row whose

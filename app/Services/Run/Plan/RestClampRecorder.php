@@ -30,8 +30,7 @@ use Illuminate\Support\Carbon;
  * record, an athlete who took the rest the card prescribed is graded against
  * the session it replaced and scores `missed` for complying.
  *
- * Called wherever the ceiling is already being computed — the ingest listener
- * and the daily briefing — never from a render, so a GET never writes. Write
+ * Called by daily-briefing side effects, including catch-up replay, never from a render. Write
  * once and never cleared: readiness recovering later in the day does not
  * un-tell the athlete to rest, and excusing is the forgiving direction.
  */
@@ -98,22 +97,11 @@ final readonly class RestClampRecorder
             return false;
         }
 
-        // The ceiling has to reflect the activity that just triggered this call
-        // (the ingest listener's whole reason to run) or a carried-over cache
-        // from an earlier dashboard load this same window would compute against
-        // stale, pre-ingest load — and unlike a render, this write never
-        // self-corrects.
+        // A recorded clamp must use fresh load because this write never self-corrects.
         TrainingLoad::clearSummaryCache($user);
 
         $context = BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today));
         $ceiling = ReadinessCeiling::from($context->readinessCeiling);
-
-        if (ReadinessClamp::clampsToRest($session->session_type, $ceiling)) {
-            $session->update(['rest_clamped_at' => Carbon::now()]);
-            $this->tell($user, $today, SessionType::Rest, $session->session_type, $ceiling);
-
-            return true;
-        }
 
         // `Readiness::assess()` caps to `EasyOnly` on `ranToday` alone, so after
         // any run at all the ceiling reads easy — including on a day the
@@ -125,6 +113,13 @@ final readonly class RestClampRecorder
         // `docs/decisions/a-clamped-day-is-graded-on-what-it-asked.md`.
         if ($context->ranToday) {
             return false;
+        }
+
+        if (ReadinessClamp::clampsToRest($session->session_type, $ceiling)) {
+            $session->update(['rest_clamped_at' => Carbon::now()]);
+            $this->tell($user, $today, SessionType::Rest, $session->session_type, $ceiling);
+
+            return true;
         }
 
         // core_km comes from the same ReadinessClamp::apply() the render calls
@@ -171,12 +166,7 @@ final readonly class RestClampRecorder
         return false;
     }
 
-    /**
-     * The athlete's copy of what was just recorded. Sent from here rather than
-     * from the two call sites because the guards above make this the one place
-     * that fires once per athlete per day; a step-down otherwise existed only
-     * while the plan page still rendered it.
-     */
+    /** The recorder's guards keep this notification to once per athlete per day. */
     private function tell(User $user, Carbon $today, SessionType $clampedTo, SessionType $original, ReadinessCeiling $ceiling): void
     {
         $note = ReadinessClamp::noteFor($original, $ceiling);
