@@ -55,7 +55,7 @@ it('runs backend CI for every file the token-mirror test reads', function (): vo
 })->group('structure');
 
 it('runs backend CI for every doc the token-docs test reads', function (): void {
-    $docs = ['CLAUDE.md', 'README.md', 'docs/design-tokens.md', '.claude/skills/temari/SKILL.md'];
+    $docs = ['CLAUDE.md', 'README.md', 'docs/design-tokens.md', '.agents/skills/temari/SKILL.md'];
 
     $unguarded = collect($docs)->reject(ciClassifiesAsBackend(...))->values();
 

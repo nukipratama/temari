@@ -29,8 +29,8 @@ Full feature map: [docs/features/index.md](docs/features/index.md).
 - **Async**: Horizon (queues) · Scheduler
 - **Observability**: Pulse (perf) · Horizon (queues)
 - **LLM**: Azure OpenAI via `openai-php/laravel` for briefing/verdict narration; when credentials are unset, narration silently falls back to deterministic rule-based content. Per-block `AnalysisStatus` (pending / failed + a "Try again" retry button) is the source of truth — there is no global emergency-mode chip
-- **Tests**: Pest 4 (95% line coverage gate) · Vitest (95% lines + functions gate)
-- **AI dev**: Laravel Boost — `CLAUDE.md` + `.claude/skills/*` for AI-paired work; `laravel/claude-code` plugin enabled in `.claude/settings.json`
+- **Tests**: Pest 5 (95% line coverage gate) · Vitest (95% lines + functions gate)
+- **AI dev**: Laravel Boost — `CLAUDE.md` + `.agents/skills/*` for AI-paired work; `laravel/claude-code` plugin enabled in `.claude/settings.json`
 
 ## Quick start
 
@@ -88,7 +88,7 @@ The test stack (`mysql_test`, `redis_test`) runs on the compose network only —
 
 ## Testing
 
-**PHP** — Pest 4 against a dedicated test stack: `mysql_test` (tmpfs-backed, ephemeral) and `redis_test`, configured in `phpunit.xml`. Same image versions as prod for parity. `RefreshDatabase` resets schema per test class. 1:1 class↔test convention — every class file has its own test (mocking siblings is encouraged).
+**PHP** — Pest 5 against a dedicated test stack: `mysql_test` (tmpfs-backed, ephemeral) and `redis_test`, configured in `phpunit.xml`. Same image versions as prod for parity. `RefreshDatabase` resets schema per test class. 1:1 class↔test convention — every class file has its own test (mocking siblings is encouraged).
 
 **Frontend** — Vitest with jsdom against React 19 + Inertia components. Same 1:1 convention. Gates: 95% lines + 95% functions ([vitest.config.ts](vitest.config.ts)). Branches relaxed because hitting every `?? null` fallback in defensive code is contortionist, not signal.
 
