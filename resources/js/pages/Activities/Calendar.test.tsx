@@ -224,8 +224,16 @@ describe('calendar', () => {
     });
 
     it('swipes left to the next month via a partial reload', () => {
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        const target = screen.getByTestId('calendar-swipe-area');
+        render(
+            <Calendar
+                {...BASE_PROPS}
+                cells={TWO_WEEK_CELLS}
+                monthlyRecap={makeRecap()}
+            />,
+        );
+        const target = screen.getByText(
+            /May was full and the rhythm held steady\./,
+        );
 
         fireEvent.touchStart(target, {
             touches: [{ identifier: 1, clientX: 200, clientY: 100 }],
@@ -341,6 +349,79 @@ describe('calendar', () => {
     });
 
     describe('monthly recap card', () => {
+        it('places past and current month recaps before the consistency line and grid', () => {
+            const { rerender } = render(
+                <Calendar
+                    {...BASE_PROPS}
+                    todayMonth="2026-06"
+                    cells={TWO_WEEK_CELLS}
+                    monthlyRecap={makeRecap()}
+                />,
+            );
+            const pastRecap = screen.getByText(
+                /May was full and the rhythm held steady\./,
+            );
+            const pastMonthArea = screen.getByTestId('calendar-swipe-area');
+            const consistency = screen.getByText(/3 runs · 16 km/);
+            const grid = screen.getByText('week 1');
+            expect(pastRecap.compareDocumentPosition(consistency)).toBe(
+                Node.DOCUMENT_POSITION_FOLLOWING,
+            );
+            expect(pastRecap.compareDocumentPosition(grid)).toBe(
+                Node.DOCUMENT_POSITION_FOLLOWING,
+            );
+
+            rerender(
+                <Calendar
+                    {...BASE_PROPS}
+                    month="2026-06"
+                    monthLabel="June 2026"
+                    todayMonth="2026-06"
+                    cells={TWO_WEEK_CELLS}
+                    monthlyRecap={makeRecap({
+                        status: 'pending',
+                        content: null,
+                        discriminator: '2026-06',
+                    })}
+                />,
+            );
+            expect(screen.queryByText(/May was full/)).not.toBeInTheDocument();
+            expect(screen.getByTestId('calendar-swipe-area')).not.toBe(
+                pastMonthArea,
+            );
+            const awaitingRecap = screen.getByText(
+                "this month's recap isn't ready yet.",
+            );
+            expect(
+                awaitingRecap.compareDocumentPosition(
+                    screen.getByText(/3 runs · 16 km/),
+                ),
+            ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+            expect(
+                awaitingRecap.compareDocumentPosition(
+                    screen.getByText('week 1'),
+                ),
+            ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        });
+
+        it('shows the deferred recap skeleton above the loaded grid', () => {
+            setMockDeferred(['monthlyRecap']);
+            const { container } = render(
+                <Calendar
+                    {...BASE_PROPS}
+                    cells={TWO_WEEK_CELLS}
+                    monthlyRecap={makeRecap()}
+                />,
+            );
+            const recapSkeleton = container.querySelector('.skeleton');
+            expect(recapSkeleton).not.toBeNull();
+            expect(
+                recapSkeleton?.compareDocumentPosition(
+                    screen.getByText('week 1'),
+                ),
+            ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        });
+
         it("renders Temari's narrative when the recap is done", () => {
             render(
                 <Calendar

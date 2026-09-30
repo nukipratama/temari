@@ -7,10 +7,13 @@ namespace App\Console\Commands\AI;
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Actions\AI\RunDailyBriefingSideEffects;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\MaintainerAlerter;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 
@@ -22,6 +25,7 @@ class DailyBriefingCommand extends Command
         AnalysisService $service,
         RunDailyBriefingSideEffects $sideEffects,
         RecentlyActiveUsers $activeUsers,
+        MaintainerAlerter $alerter,
     ): int {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
@@ -29,13 +33,27 @@ class DailyBriefingCommand extends Command
 
         $users = $activeUsers();
 
+        $failed = 0;
         foreach ($users as $user) {
-            ($sideEffects)($user, Carbon::today());
+            try {
+                ($sideEffects)($user, Carbon::today());
 
-            // A first connect's still-draining backlog narrates right away
-            // too; markDone() flags the row for SettleEarlyNarrationAction's
-            // replay if it's still early.
-            $service->requestBriefing($user, $today);
+                // A first connect's still-draining backlog narrates right away
+                // too; markDone() flags the row for SettleEarlyNarrationAction's
+                // replay if it's still early.
+                $service->requestBriefing($user, $today);
+            } catch (Throwable $e) {
+                $failed++;
+                report($e);
+                Log::error('ai.daily_briefing.user_failed', [
+                    'user_id' => $user->id,
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+        if ($failed > 0) {
+            $alerter->athletesFailed('ai:daily-briefing', $failed);
         }
 
         $this->info("Dispatched daily kickoff (briefing) for {$users->count()} active users.");
