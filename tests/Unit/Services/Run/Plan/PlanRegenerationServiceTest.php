@@ -8,14 +8,14 @@ use App\Models\User;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\PlanRegenerationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
 it('queues a manual regeneration after lock contention and starts its cooldown', function (): void {
-    Carbon::setTestNow();
+    Sleep::fake(syncWithCarbon: true);
     Bus::fake();
     $user = User::factory()->create();
     $lock = Cache::lock("plan-reconciliation:{$user->id}", 3600);

@@ -37,6 +37,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Sleep;
 use Inertia\Testing\AssertableInertia as Assert;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -472,7 +473,7 @@ it('rejects a session edit when regeneration replaced its bound row', function (
 });
 
 it('does not report a session edit as saved while regeneration holds the per-user lock', function (): void {
-    Carbon::setTestNow();
+    Sleep::fake(syncWithCarbon: true);
     $user = User::factory()->create();
     $source = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDay()->toDateString(),
@@ -495,7 +496,7 @@ it('does not report a session edit as saved while regeneration holds the per-use
 });
 
 it('queues a manual regeneration when the per-user lock stays busy', function (): void {
-    Carbon::setTestNow();
+    Sleep::fake(syncWithCarbon: true);
     Bus::fake();
     $user = User::factory()->create();
     $lock = Cache::lock("plan-reconciliation:{$user->id}", 3600);
