@@ -261,7 +261,7 @@ describe('calendar', () => {
         );
     });
 
-    it('renders the effort and mood legend with words', () => {
+    it('renders the effort legend with words, replacing the old mood legend', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         for (const word of [
             'easy',
@@ -270,10 +270,9 @@ describe('calendar', () => {
             'unscored',
             'planned rest',
         ]) {
-            expect(screen.getAllByText(word).length).toBeGreaterThan(0);
+            expect(screen.getByText(word)).toBeInTheDocument();
         }
-        expect(screen.getByText('mood')).toBeInTheDocument();
-        expect(screen.getByText('blazing')).toBeInTheDocument();
+        expect(screen.queryByText('blazing')).not.toBeInTheDocument();
     });
 
     it('draws a run-less day as a plain numbered box', () => {
@@ -338,7 +337,7 @@ describe('calendar', () => {
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        expect(screen.getAllByText('easy').length).toBeGreaterThan(0);
+        expect(screen.getByText('easy')).toBeInTheDocument();
     });
 
     describe('monthly recap card', () => {

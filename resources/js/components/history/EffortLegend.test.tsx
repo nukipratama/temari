@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import EffortLegend from './EffortLegend';
 
 describe('EffortLegend', () => {
-    it('names every effort word', () => {
+    it('defaults to the calendar effort key without a mood key', () => {
         render(<EffortLegend />);
         for (const word of [
             'easy',
@@ -13,12 +13,14 @@ describe('EffortLegend', () => {
             'unscored',
             'planned rest',
         ]) {
-            expect(screen.getAllByText(word).length).toBeGreaterThan(0);
+            expect(screen.getByText(word)).toBeInTheDocument();
         }
+        expect(screen.queryByText('mood')).not.toBeInTheDocument();
+        expect(screen.queryByText('blazing')).not.toBeInTheDocument();
     });
 
-    it('names every mood with a dot', () => {
-        render(<EffortLegend />);
+    it('names every mood with a dot when requested by the feed', () => {
+        render(<EffortLegend withMood />);
         expect(screen.getByText('mood')).toBeInTheDocument();
         for (const word of [
             'blazing',

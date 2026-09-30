@@ -107,7 +107,7 @@ export default function RunsIndex({
                                         rangeFilter={rangeFilter}
                                     />
                                 )}
-                                <EffortLegend className="mt-8" />
+                                <EffortLegend withMood className="mt-8" />
                                 <div className={cn('mt-6', laneStack)}>
                                     {buckets.map((bucket, index) => (
                                         <div
