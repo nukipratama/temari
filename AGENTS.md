@@ -12,6 +12,8 @@ This is the canonical project guidance shared by agents. Runtime entrypoints may
 - Run long commands in the foreground, never background them; never `artisan tinker <file>`, use `--execute`. Stop tests, builds, and servers when their task ends.
 - Multi-slice work ships as a GitHub stack (`gh stack`): one PR per layer, merged by the owner. Read the `temari` skill's "Stacked PRs" section before starting one.
 - Work items, agent briefs and decisions live in GitHub issues and the [kanban board](https://github.com/users/nukipratama/projects/1), not in local files: find them with `gh issue list --label wave:*` and `gh issue view <n>`. Each settled decision is its own issue labelled `decision` (`gh issue list --label decision --state all`); an owner call still open is labelled `needs-decision`. A card moves Ready → In progress on dispatch → In review when its PR opens → Done on merge, and every PR carries `Closes #<n>`. `.planning/` is gitignored scratch space only.
+- For plan/coaching policy calls (redistribution, clamps, grading), decide from established coaching practice, record the rationale in the PR or ADR, and build; ask the owner only about product, UX or infra trade-offs.
+- Parallel briefs assign each agent its route paths and names, with no placeholder routes; the later PR checks `routes/` for duplicate paths after merging `main`.
 
 ### PR handoff standard
 
@@ -25,9 +27,11 @@ Every pull request is a reviewer handoff, not just a change list. Keep the descr
 
 Use `Closes #<n>` in the PR body, keep issue/PR text free of secrets and identifying athlete data, and update the description when later pushes change scope or verification. The repository is public: describe athlete ids, emails, hostnames and per-athlete costs rather than pasting them.
 
+A check blocks merging only when its job is in `ci.yml` under `ci-gate`'s `needs`; a standalone workflow is advisory. Give every new workflow job a `timeout-minutes`.
+
 ## External actions
 
-- Ask for permission for each SSH task. Permission does not carry to a later SSH task.
+- Read production runtime state from the live container (`artisan tinker --execute`, with per-use approval), never from the repo `.env` or config files.
 - Before an intentional local LLM-backed run, announce a hard call or spend cap. Run only the selected local job or jobs; never start a worker or queue-drain command that could consume unrelated pending work.
 
 
@@ -39,6 +43,10 @@ Use `Closes #<n>` in the PR body, keep issue/PR text free of secrets and identif
 - App ships **two grounds**, switched by `data-theme` on `<html>`: the default follows `prefers-color-scheme`, and Settings can store an explicit light/dark choice. Use the ground-reactive semantic classes (`text-foreground`, `bg-card`, `text-leaf-ink`); fixed-dark surfaces such as sky cards pin their text explicitly. The complete fixed-vs-reactive token rules live in the `temari` skill and [docs/design-tokens.md](docs/design-tokens.md).
 - Write UI copy, prompt strings, route paths, identifiers, enum values, and environment variable names in English; there is no i18n layer. Deliberate regression assertions retain the Indonesian phrases they prove absent: `maksimal 90 kata` / `maksimal 100 kata` in `NarratorsCoverageTest`. The badge-rename migration also retains old slugs as migration inputs.
 - A second **`analytics`** DB connection (separate schema, same MySQL server) holds metering tables (e.g. `ai_token_usages`). Its migrations live in `database/migrations/analytics/` and run via `--database=analytics --path=...`; in tests it shares the default test DB (see [tests/TestCase.php](tests/TestCase.php)). Beyond `AI`, backend logic is split by domain under `app/Services/` (`AI`, `Run`, `Gamification`, `Strava`, `Geo`, `Weather`); see the `temari` skill for the full map.
+- Don't add Inertia `prefetch`/`cacheFor` to links: prefetch runs the full controller on hover.
+- Cache only primitives/arrays or classes listed in `config/cache.php` `serializable_classes` (anything else comes back as `__PHP_Incomplete_Class`); read cached numbers with `is_numeric`, since Redis returns strings.
+- The CSP lives only in [docker/Caddyfile](docker/Caddyfile), so local runs never apply it; check its directives before shipping a new browser capability (blob URLs, workers, new origins, fonts).
+- The prod Redis healthcheck in [compose.prod.yaml](compose.prod.yaml) stays a `SET` write-probe, never `ping`, which answers during AOF replay.
 
 > **Design tokens, voice and tone, typography, the AI narrator pipeline, the 1:1 test convention, and the Sail toolchain live in the canonical `temari` skill at `.agents/skills/temari/`.** Activate it for UI, AI narration, or test work. Source-of-truth docs: [design-system/temari/MASTER.md](design-system/temari/MASTER.md) for screen composition, [docs/design-tokens.md](docs/design-tokens.md) for token values, [docs/voice-and-tone.md](docs/voice-and-tone.md) for copy.
 
@@ -50,11 +58,11 @@ The human-facing knowledge base lives in `docs/` as `[[wikilinked]]` notes (a fr
 - **Curated reference, not a diary.** Only features and *architecturally significant* decisions earn a note. No per-commit / work-log / changelog notes, that's git history + PR descriptions.
 - **Cite code by `path:line`, never transcribe it.** A CI guard ([scripts/check-doc-citations.php](scripts/check-doc-citations.php)) fails the build if a doc cites a path that no longer exists.
 - **Keep notes fresh in the same PR.** If a change makes an *existing* doc wrong, fix it alongside the code (don't write a new note per PR).
-- **ADRs in `docs/decisions/` are immutable**: supersede with a new dated note, don't rewrite history.
+- **ADRs in `docs/decisions/` are immutable**: a changed decision gets a new dated note that supersedes it; a changed fact may get a dated one-line "superseded" banner, never a rewrite.
 
 ## Common commands
 
-Everything runs in Docker via **Sail** (no host PHP/Node). Stop at the first failure on the fast-feedback ladder; the full skill toolchain has the rest.
+Everything runs in Docker via **Sail** (no host PHP/Node): run every container tool, npm included, through `./vendor/bin/sail` rather than `docker compose exec`, and don't run host python/perl over repo files. Stop at the first failure on the fast-feedback ladder; the full skill toolchain has the rest.
 
 ```bash
 ./vendor/bin/sail up -d                      # start the stack
@@ -77,6 +85,7 @@ Running several agents at once, each in its own `git worktree`? See the `temari`
 
 Merging `main` into a branch must be committed as `chore(<scope>): merge main into <branch>` —
 the commit-msg hook rejects git's default merge message and carries no exemption for merges.
+Every commit follows Conventional Commits, and the scope never contains a slash.
 
 ## LLM Integration
 
@@ -87,7 +96,7 @@ Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-ph
 - **Paused vs failed**: a paused block (`AiEnabled` off, Azure unset, breaker tripped) stays `pending` and the hourly `ai:self-heal` ([SelfHealCommand](app/Console/Commands/AI/SelfHealCommand.php)) re-kicks it; a `failed` block gets bounded retries (`Analysis::MAX_SELF_HEAL_ATTEMPTS`), then dead-letters to `/devtools/narration`. Kickoffs in [routes/console.php](routes/console.php) never re-dispatch a failed block. See [docs/decisions/bounded-self-heal-and-dead-letter.md](docs/decisions/bounded-self-heal-and-dead-letter.md).
 - **Cost ceilings**: past the per-athlete daily ceiling (`azure_openai.daily_cost_ceiling_per_user`), that athlete's `pending` blocks are filled by [RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php) and manual triggers are refused ([docs/decisions/cost-ceiling-degrades-to-rule-based.md](docs/decisions/cost-ceiling-degrades-to-rule-based.md)); past the app-wide total (`azure_openai.daily_cost_ceiling_total`), every athlete degrades the same way, generation pauses and one maintainer alert fires ([docs/decisions/app-wide-ceiling-above-the-per-athlete-one.md](docs/decisions/app-wide-ceiling-above-the-per-athlete-one.md)). `failed` blocks stay `failed`, and there is no global emergency-mode chip.
 - **Unconfigured env**: with `AZURE_OPENAI_URI` / `AZURE_OPENAI_API_KEY` empty, [AnalysisService](app/Services/AI/AnalysisService.php) skips dispatch and rows stay `pending`.
-- **Demo**: [DemoSeedCommand](app/Console/Commands/DemoSeedCommand.php) fills every row rule-based under `AnalysisService::withoutDispatching()`, and demo "Reread" triggers are served rule-based too, so the demo spends no tokens ([docs/decisions/demo-triggers-served-rule-based.md](docs/decisions/demo-triggers-served-rule-based.md)).
+- **Demo**: [DemoSeedCommand](app/Console/Commands/DemoSeedCommand.php) fills every row rule-based under `AnalysisService::withoutDispatching()`, and demo "Reread" triggers are served rule-based too, so the demo spends no tokens ([docs/decisions/demo-triggers-served-rule-based.md](docs/decisions/demo-triggers-served-rule-based.md)). Every billing kickoff or scheduler excludes the demo user (`User::notDemo()`), with no exceptions ([docs/decisions/demo-user-billing-exclusion.md](docs/decisions/demo-user-billing-exclusion.md)).
 
 ## Environment toggles
 
@@ -99,10 +108,13 @@ Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-ph
 
 ## Debugging
 
-When a bug or error is reported, ground the investigation in real state before hypothesising. Server errors: `./vendor/bin/sail logs -f` or `storage/logs/laravel-*.log` (daily rotation). Data: `./vendor/bin/sail artisan tinker --execute '...'`, or `sail mysql`. Schema: `sail artisan db:show --counts` / `db:table <name>`. React/Inertia console errors: the browser devtools console, or the `browser-review` skill's scripts, which capture `console`/`pageerror` per page.
+When a bug or error is reported, ground the investigation in real state before hypothesising. Server errors: `./vendor/bin/sail logs -f` or `storage/logs/laravel-*.log` (daily rotation). Data: `./vendor/bin/sail artisan tinker --execute '...'`, or `sail mysql`. Schema: `sail artisan db:show --counts` / `db:table <name>`. React/Inertia console errors: the browser devtools console, or the `browser-review` skill's scripts, which capture `console`/`pageerror` per page. When a local page 500s or a deferred prop never loads, check `migrate:status` for both migration sets first. Time app performance from inside the container; external timings include CDN and tunnel latency.
 
 ## Visual iteration
 
 Batch several visual changes before reviewing one screenshot for the round. Activate the
 `browser-review` skill for a viewport sweep or repeated image inspection; it owns the image-read,
 cropping, and live-verification rules. Run the narrowest check that can fail before widening.
+Confirm a localhost port is the local stack before interacting with it, since a tunnel can shadow
+it. Verify every touched UI surface on both grounds and at a ≥1280px viewport, and list that matrix
+in the PR.

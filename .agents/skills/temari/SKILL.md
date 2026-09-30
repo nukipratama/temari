@@ -93,6 +93,18 @@ Tailwind's neutral defaults), and padding names a role (`.pad-chip` / `.pad-pane
 off-scale radii; `/devtools/design` renders the whole set plus a live contrast audit read out of
 the shipped CSS.
 
+**Screen rules.**
+- Hide (don't disable) a control that can't act in the current state; enforce it at the server,
+  the shared prop and the UI, and never toast success for work that won't happen.
+- When unsure which computed value to show, show the raw facts (prescribed vs actual), each number
+  labelled with its own word.
+- Show layout options beside a neighbouring page and flag any that break the shared container; ask
+  what fields a row shows before building it.
+- Size and offset absolutely placed decorations in `rem`, never px attributes: the root font grows
+  at 1280px and 2048px.
+- `BareShell`/Login never imports framer-motion; animate it with CSS `@keyframes`
+  (`npm run check:chunks` enforces the entry-chunk budget).
+
 ### Strava brand mark
 
 Every Strava (and Telegram) connect/reconnect button uses the standard pill
@@ -178,6 +190,15 @@ Every narrated block flows: **Narrator → Analyze\*Job → Analysis row → Ana
 The failure model, idempotency guard, and unconfigured-env fallback are documented in the
 always-on guideline ("LLM Integration" in AGENTS.md).
 
+- Before fixing narration text, confirm which producer wrote it: the LLM narrator or
+  `RuleBasedNarrationFiller`.
+- Put a new narrator instruction inside the prompt's existing structure block (FLOW / pick-one /
+  REQUIRED STRUCTURE), never as a new top-level section, where the model ignores it.
+- Send narrators no signed numbers: pass a magnitude plus a relation word.
+- Verify narrator/prompt changes with a capped local call from the main checkout (worktrees have no
+  Azure keys): `tinker --execute` calling `generate()` inside a rolled-back transaction, then check
+  `narrator.ai.tool_step` in the log. Close a narration bug only after such a run shows it fixed.
+
 ### Adding a new narrated block — all 6 wires
 
 Miss one and it fails loudly: `php artisan` breaks on enum match exhaustiveness (PHPStan), or
@@ -217,6 +238,8 @@ before reaching for a new `AnalysisType` on anything user-initiated and free-for
 ## Testing
 
 - **1:1 class↔test.** Every concrete class has a `{Name}Test.php`, or is exempt in [tests/Unit/Architecture/EveryClassHasATestTest.php](../../../tests/Unit/Architecture/EveryClassHasATestTest.php). Frontend: co-located `{name}.test.tsx`, guarded by [resources/js/test/structure.test.ts](../../../resources/js/test/structure.test.ts).
+- **Unit tests avoid the DB** unless the class needs persisted state; mock collaborators instead.
+- **No mutation testing** (Infection or `pest --mutate`).
 - **Aggregate suites** cover whole families: narrators → `NarratorsCoverageTest`, AI jobs → `JobsCoverageTest`. A new narrator/job must be registered there.
 - Structure tests live in the `structure` group and run **before** coverage in CI (fast fail). Gate: 95% line+function coverage.
 - **DB isolation is per-file opt-in**, not global. A DB-touching test adds `uses(RefreshDatabase::class)`; the architecture/enum/geo/calculator tests stay DB-free on purpose, and the CI `structure` gate runs with **no DB** — so a suite-wide `uses(...)->in('Feature','Unit')` breaks them (they'd connect to an unreachable host and the gate fails). `RefreshDatabase` transacts both the default `mysql` and the second `analytics` connection (`$connectionsToTransact` in [tests/TestCase.php](../../../tests/TestCase.php), which rebinds `analytics` to the test DB in `setUpTraits`). Do **not** switch to `LazilyRefreshDatabase`: its deferred, manager-level trigger doesn't wrap the purged-and-rebound `analytics` connection, so `ai_token_usages` writes leak across tests.
@@ -295,7 +318,8 @@ records the environment invariants that every worktree setup must preserve.
 
 Slot numbering is a formula (`scripts/worktree`), not a fixed table, and `create` picks the slot —
 never hand-pick one: `APP_PORT = 7000 + slot*10 + 1`, `VITE_PORT = +2` (main stays 7001/7002, slot 1
-is 7011/7012, slot 2 is 7021/7022, and so on), `COMPOSE_PROJECT_NAME = temari-slot<N>`. The real
+is 7011/7012, slot 2 is 7021/7022, and so on), `COMPOSE_PROJECT_NAME = temari-slot<N>`. Every
+host-forwarded port stays in the 7000 range; a new forwarded service continues the sequence. The real
 ceiling is the shared Redis `--databases 256`: dev takes indices `slot*3..+2`, so slot 84 is the last
 one that fits. Setup writes an untracked `compose.override.yaml` mounting the shared git dir so the
 gate's changed-file steps work, and joining the shared-services network, brings the shared stack and this worktree's `app` up,
@@ -426,7 +450,8 @@ recommending the stack for related work and `main` for unrelated bugs.
 layer. Open each PR with a handwritten title and body (`gh pr create --base <layer below>`), then
 `gh stack submit --auto` links it into the stack (`--auto` on its own creates drafts with generated
 titles). Every layer's PR runs CI, since `pull_request` fires whatever the base; `deploy` fires only
-on `main`.
+on `main`. Run the full `./vendor/bin/sail bin pest --parallel` suite on the stack top before the
+final push, because the gate only runs changed-file tests.
 
 **Worktrees** (verified 2026-09-24): run every `gh stack` command from the main checkout, because
 inside a linked worktree the stack is invisible ("not part of a stack"). `gh stack rebase` stops on
