@@ -117,20 +117,45 @@ export default function Calendar({
                     />
                 </div>
 
-                <Deferred
-                    data={['cells']}
-                    fallback={<Skeleton className="mx-auto mb-3 h-3 w-56" />}
-                >
-                    {() => (
-                        <ConsistencyLine stats={consistency} className="mb-3" />
-                    )}
-                </Deferred>
-
                 <div
                     key={month}
                     data-testid="calendar-swipe-area"
                     {...touchHandlers}
                 >
+                    <Deferred
+                        data={['monthlyRecap']}
+                        fallback={<Skeleton className="mb-2.5 h-16 w-full" />}
+                    >
+                        {() =>
+                            monthlyRecap && (
+                                <RecapCard
+                                    mood={dominantMood}
+                                    analysis={monthlyRecap}
+                                    awaitingSchedule={isCurrentMonth}
+                                    awaitingScheduleLabel="this month's recap isn't ready yet."
+                                    isChainHead={monthlyRecap.is_chain_head}
+                                    size="month"
+                                    inertiaReloadProps={['monthlyRecap']}
+                                    className="mb-2.5"
+                                />
+                            )
+                        }
+                    </Deferred>
+
+                    <Deferred
+                        data={['cells']}
+                        fallback={
+                            <Skeleton className="mx-auto mb-3 h-3 w-56" />
+                        }
+                    >
+                        {() => (
+                            <ConsistencyLine
+                                stats={consistency}
+                                className="mb-3"
+                            />
+                        )}
+                    </Deferred>
+
                     <Deferred
                         data={['cells', 'weeklySnapshots']}
                         fallback={<SkeletonRows count={6} />}
@@ -148,26 +173,6 @@ export default function Calendar({
                     </Deferred>
 
                     <EffortLegend className="mt-3 mb-2" />
-
-                    <Deferred
-                        data={['monthlyRecap']}
-                        fallback={<Skeleton className="mb-2.5 h-16 w-full" />}
-                    >
-                        {() =>
-                            monthlyRecap && (
-                                <RecapCard
-                                    mood={dominantMood}
-                                    analysis={monthlyRecap}
-                                    awaitingSchedule={isCurrentMonth}
-                                    awaitingScheduleLabel="this month's recap isn't ready yet."
-                                    isChainHead={monthlyRecap.is_chain_head}
-                                    size="month"
-                                    inertiaReloadProps={['monthlyRecap']}
-                                    className="mt-2.5"
-                                />
-                            )
-                        }
-                    </Deferred>
                 </div>
 
                 {askedDayRuns && (
