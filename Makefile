@@ -28,8 +28,8 @@ logs-app: ## Tail the app container
 logs-horizon: ## Tail the Horizon worker
 	$(COMPOSE) logs -f --tail=200 horizon
 
-logs-pulse: ## Tail the Pulse daemons (check + work + redis)
-	$(COMPOSE) logs -f --tail=200 pulse-check pulse-work pulse-redis
+logs-pulse: ## Tail the Pulse service
+	$(COMPOSE) logs -f --tail=200 pulse
 
 tail: ## Tail the persisted daily log file (survives deploys via app_logs)
 	$(COMPOSE) exec app sh -c 'tail -f storage/logs/laravel-$$(date +%Y-%m-%d).log'
