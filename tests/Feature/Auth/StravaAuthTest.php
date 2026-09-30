@@ -249,6 +249,32 @@ it('creates a new user from the strava callback and logs them in', function (): 
     Bus::assertChained([SyncActivitiesJob::class, KickoffRecapsJob::class]);
 });
 
+it('refuses a strava callback matching a demo connection without changing its user or tokens', function (): void {
+    $demo = User::factory()->demo()->create();
+    $connection = StravaConnection::factory()->for($demo)->create();
+    $userBefore = $demo->refresh()->getAttributes();
+    $connectionBefore = $connection->refresh()->getAttributes();
+
+    $stravaUser = Mockery::mock(SocialiteUser::class);
+    $stravaUser->token = 'incoming-access-token';
+    $stravaUser->refreshToken = 'incoming-refresh-token';
+    $stravaUser->expiresIn = 21600;
+    $stravaUser->shouldReceive('getId')->andReturn((string) $connection->strava_athlete_id);
+    $stravaUser->shouldReceive('getName')->andReturn('Incoming Athlete');
+    $stravaUser->shouldReceive('getEmail')->andReturn('incoming@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/incoming.png');
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $response = $this->get(route('auth.strava.callback'));
+
+    $this->assertGuest();
+    expect($demo->fresh()->getAttributes())->toBe($userBefore)
+        ->and($connection->fresh()->getAttributes())->toBe($connectionBefore);
+    $response->assertRedirect(route('login'))
+        ->assertSessionHasErrors(['strava' => 'We can\'t connect this Strava account because it matches the shared demo account.']);
+    Bus::assertNothingDispatched();
+});
+
 it('records a maintenance refusal and hands the grant back to Strava', function (): void {
     Http::preventStrayRequests();
     Http::fake([
