@@ -107,6 +107,10 @@ reveals a plain explanation inline (no popover, so nothing gets clipped by
 default with a deterministic, rule-based read instead of the general
 explanation.
 
+Above the week sections, the shared [EffortLegend](../../resources/js/components/history/EffortLegend.tsx)
+names the effort stripe and mood dot colours. Each run row also names its effort,
+and its mood when present, for screen readers.
+
 The data comes from `HistoryController`'s list branch in
 [HistoryController.php](../../app/Http/Controllers/HistoryController.php). It
 returns `runs` and the per-week `weeklySnapshots`. The listing query itself is

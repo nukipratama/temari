@@ -58,6 +58,24 @@ beforeEach(() => {
 });
 
 describe('Activities/Feed', () => {
+    it('explains the effort stripe and mood dot above the weeks', () => {
+        const { container } = render(
+            <RunsIndex
+                runs={[run(101, 'Morning', '2026-05-19T06:00:00')]}
+                rangeFilter="8w"
+                weeklySnapshots={[]}
+            />,
+        );
+
+        expect(screen.getByText('effort')).toBeInTheDocument();
+        expect(screen.getByText('mood')).toBeInTheDocument();
+        expect(screen.getByText('hard')).toBeInTheDocument();
+        expect(screen.getByText('blazing')).toBeInTheDocument();
+        expect(container.textContent?.indexOf('effort')).toBeLessThan(
+            container.textContent?.indexOf('Morning') ?? 0,
+        );
+    });
+
     it('renders the Feed ⇄ Calendar nav with feed active', () => {
         render(<RunsIndex runs={[]} rangeFilter="8w" weeklySnapshots={[]} />);
         expect(screen.getByText('feed').closest('a')).toHaveClass('bg-card');

@@ -7,7 +7,7 @@ import type { ActivityDetail, Mood, RunCard } from '@/types/inertia';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { EFFORT_STRIPE_CLASS } from '@/lib/effort';
-import { MOOD_FILL } from '@/lib/mood';
+import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
 import {
     formatDurationHMS,
     formatKm,
@@ -19,6 +19,7 @@ import {
 import { renderBold } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
 import { RARITY_INK } from '@/lib/runcard';
+import { EFFORT_WORD } from '@/pages/Activities/calendarBars';
 
 export interface RunNote {
     oneline: string;
@@ -111,6 +112,10 @@ function RunListRow({
                     &quot;{renderBold(note.oneline)}&quot;
                 </p>
             )}
+            <span className="sr-only">
+                {`, ${EFFORT_WORD[detail.effort ?? 'unknown']} effort`}
+                {knownMood && `, ${MOOD_LABEL[knownMood]} mood`}
+            </span>
         </Link>
     );
 }
