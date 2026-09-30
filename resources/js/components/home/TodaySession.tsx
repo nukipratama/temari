@@ -1,4 +1,5 @@
 import { ArrowDown } from 'lucide-react';
+import { useRef } from 'react';
 
 import type {
     BriefingResult,
@@ -13,6 +14,7 @@ import MascotWatermark from '@/components/temari/MascotWatermark';
 import { type MascotPose, writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import { useRecommendationView } from '@/hooks/useRecommendationView';
 import { cn } from '@/lib/cn';
 import { formatPace } from '@/lib/pace';
 import {
@@ -242,6 +244,8 @@ export default function TodaySession({
     drawnAnchors?: ReadonlySet<string>;
 }>) {
     const voice = briefing.mascotVoice;
+    const recommendationRef = useRef<HTMLElement>(null);
+    useRecommendationView(recommendationRef, today?.recommendation_token);
     const showsVoice =
         briefing.firstRead ||
         (voice.status !== 'pending' &&
@@ -250,7 +254,10 @@ export default function TodaySession({
         today?.session_type === 'rest' ? 'sleepy' : briefing.mood;
 
     return (
-        <section className="relative isolate overflow-hidden">
+        <section
+            ref={recommendationRef}
+            className="relative isolate overflow-hidden"
+        >
             <MascotWatermark
                 pose={writingPose(pose, voice)}
                 className="-top-18 -right-14"

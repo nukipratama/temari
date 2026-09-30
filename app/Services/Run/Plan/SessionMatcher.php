@@ -79,8 +79,9 @@ final readonly class SessionMatcher
      * @param  array<string, bool>  $excusedByDate  Y-m-d => whether this day is excused — the athlete skipped it,
      *                                               or the readiness clamp downgraded it to a full rest
      * @return array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>
+     * @param array<string, SessionType> $sessionTypesByDate
      */
-    public function scoreRange(User $user, array $plannedKmByDate, array $excusedByDate, Carbon $today): array
+    public function scoreRange(User $user, array $plannedKmByDate, array $excusedByDate, Carbon $today, array $sessionTypesByDate = []): array
     {
         if ($plannedKmByDate === []) {
             return [];
@@ -93,12 +94,13 @@ final readonly class SessionMatcher
             $isPast = Carbon::parse($date)->lt($today);
             $day = $completed[$date] ?? ['sum' => 0.0, 'longest' => 0.0];
             $session = $sessionByDate[$date] ?? null;
+            $type = $sessionTypesByDate[$date] ?? $session?->session_type;
             $results[$date] = self::scoreFor(
                 $plannedKm,
-                self::creditedKm($session?->session_type, $day),
+                self::creditedKm($type, $day),
                 $isPast,
                 $excusedByDate[$date] ?? false,
-                self::asksForOneLongRun($session) ? $day['longest'] : null,
+                (array_key_exists($date, $sessionTypesByDate) ? $type === SessionType::Long : self::asksForOneLongRun($session)) ? $day['longest'] : null,
             );
         }
 

@@ -24,6 +24,7 @@ use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\RecommendationViewController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RootController;
@@ -127,6 +128,9 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::delete('/race', [RaceController::class, 'destroy'])->name('race.destroy');
 
     Route::get('/plan', [PlanController::class, 'index'])->name('plan');
+    Route::post('/plan/recommendations/shown', RecommendationViewController::class)
+        ->middleware('throttle:120,1')
+        ->name('plan.recommendations.shown');
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])->name('plan.sessions.update');
     Route::get('/inbox', InboxController::class)->name('inbox');

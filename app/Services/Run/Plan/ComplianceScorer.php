@@ -8,9 +8,12 @@ use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Enums\PaceBand;
+use App\Enums\SegmentKey;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
+use App\Models\RecommendationRevision;
 use App\Models\User;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
@@ -37,6 +40,7 @@ final readonly class ComplianceScorer
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
         private ResolveActiveRaceAction $activeRace,
+        private RecommendationHistory $recommendationHistory,
     ) {
     }
 
@@ -79,8 +83,25 @@ final readonly class ComplianceScorer
         $kmByBaseline = [];
         $plannedKmByDate = [];
         $effectiveByDate = [];
+        $recommendationsByDate = [];
+        $runsByDate = $this->runsByDate($user, $first->date, $rangeEnd);
+        $shownByActivity = $this->recommendationHistory->beforeRuns($user->id, array_merge(...array_values($runsByDate)));
         foreach ($rows as $row) {
             $date = $row->date->toDateString();
+            $anchor = collect($runsByDate[$date] ?? [])->sortByDesc('distance')->first();
+            $recommendation = $anchor === null ? null : ($shownByActivity[$anchor->id] ?? null);
+            if ($recommendation !== null) {
+                $recommendationsByDate[$date] = $recommendation;
+                $snapshot = clone $row;
+                $snapshot->session_type = SessionType::from($recommendation->effective['session_type']);
+                $snapshot->rest_clamped_at = null;
+                $snapshot->clamped_km = null;
+                $snapshot->eased_pace_sec_per_km = null;
+                $plannedKmByDate[$date] = (float) $recommendation->effective['distance_km'];
+                $effectiveByDate[$date] = EffectiveSession::of($snapshot, $plannedKmByDate[$date]);
+
+                continue;
+            }
             $baselineData = $longRunKmByDate[$date] ??= $this->baseline->forUser($user, $row->date);
             $longRunKm = (float) $baselineData['long_run_km'];
             $capKm = (float) $baselineData['long_run_cap_km'];
@@ -96,9 +117,13 @@ final readonly class ComplianceScorer
         $excusedByDate = $rows->mapWithKeys(
             static fn (PlannedSession $session): array => [$session->date->toDateString() => $session->isExcused()],
         )->all();
+        foreach ($recommendationsByDate as $date => $recommendation) {
+            $excusedByDate[$date] = $recommendation->effective['skipped'] === true || $recommendation->effective['session_type'] === SessionType::Rest->value;
+        }
 
-        $verdicts = $this->sessionMatcher->scoreRange($user, $plannedKmByDate, $excusedByDate, $today);
-        $intents = $this->intentsFor($user, $rows, $effectiveByDate, $verdicts, $raceByDate);
+        $typesByDate = array_map(static fn (RecommendationRevision $revision): SessionType => SessionType::from($revision->effective['session_type']), $recommendationsByDate);
+        $verdicts = $this->sessionMatcher->scoreRange($user, $plannedKmByDate, $excusedByDate, $today, $typesByDate);
+        $intents = $this->intentsFor($user, $rows, $effectiveByDate, $verdicts, $raceByDate, $recommendationsByDate);
 
         $graded = [];
         foreach ($verdicts as $date => $verdict) {
@@ -120,8 +145,9 @@ final readonly class ComplianceScorer
      * @param  array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>  $verdicts
      * @param  array<string, array{distance_m: int, goal_time_sec: int}|null>|null  $raceByDate
      * @return array<string, array{verdict: IntentVerdict, evidence: array<string, int|float|string>}>
+     * @param array<string, RecommendationRevision> $recommendationsByDate
      */
-    private function intentsFor(User $user, Collection $rows, array $effectiveByDate, array $verdicts, ?array $raceByDate = null): array
+    private function intentsFor(User $user, Collection $rows, array $effectiveByDate, array $verdicts, ?array $raceByDate = null, array $recommendationsByDate = []): array
     {
         $judged = $rows->filter(static fn (PlannedSession $row): bool => ($verdicts[$row->date->toDateString()]['status'] ?? null)?->isCredited() === true
             && in_array($effectiveByDate[$row->date->toDateString()]->sessionType, [SessionType::Easy, SessionType::Long, SessionType::Tempo, SessionType::Interval], true));
@@ -134,6 +160,22 @@ final readonly class ComplianceScorer
         foreach ($judged as $row) {
             $date = $row->date->toDateString();
             $effective = $effectiveByDate[$date];
+            $recommendation = $recommendationsByDate[$date] ?? null;
+            if ($recommendation !== null) {
+                $segments = array_map(static fn (array $segment): SessionSegment => new SessionSegment(
+                    SegmentKey::from($segment['key']),
+                    $segment['minutes'],
+                    $segment['zone'],
+                    PaceBand::from($segment['pace_label']),
+                    $segment['pace_sec_per_km'],
+                    $segment['km'],
+                ), array_values($recommendation->effective['segments']));
+                $intents[$date] = SessionIntentJudge::judge($effective->sessionType, $segments, $recommendation->effective['paces'], $runsByDate[$date] ?? []);
+                $intents[$date]['evidence']['recommendation_revision_id'] = $recommendation->id;
+                $intents[$date]['evidence']['advice_history'] = 'shown';
+
+                continue;
+            }
             $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $row->date));
             $race = $raceByDate !== null && array_key_exists($date, $raceByDate)
                 ? $raceByDate[$date]
@@ -153,6 +195,7 @@ final readonly class ComplianceScorer
                 default => SegmentGenerator::forCoreKm($effective->sessionType, $row->phase, $raceDistanceM === null ? null : (float) $raceDistanceM, $effective->coreKm, $paces, $raceGoalTimeSec),
             };
             $intents[$date] = SessionIntentJudge::judge($judgedType, $segments, $paces, $runsByDate[$date] ?? []);
+            $intents[$date]['evidence']['advice_history'] = 'unknown';
         }
 
         return $intents;
