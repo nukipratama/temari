@@ -128,14 +128,12 @@ class DispatchPostRunAnalysis implements ShouldQueue
         // Backfill of an older day is skipped — it would recompute today's
         // ceiling once per imported run for a verdict the daily briefing
         // already covers.
-        if ($isToday) {
-            $this->restClampRecorder->record($user, Carbon::today());
-        }
-        if ($isToday && ! $athleteAway) {
+        if ($isToday && $this->restClampRecorder->record($user, Carbon::today()) && ! $athleteAway) {
             // The run that just landed is what moved the ceiling, so the event
             // that invalidates the clamp's explanation regenerates it.
             $this->planNarration->requestClampVoice($user, Carbon::today());
-
+        }
+        if ($isToday && ! $athleteAway) {
             if ($user->is_demo) {
                 $this->planNarration->requestDayVoiceIfChanged($user, Carbon::today());
             }

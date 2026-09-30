@@ -22,6 +22,7 @@ use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
@@ -72,6 +73,21 @@ it('records a today the ceiling downgrades all the way to rest', function (): vo
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
         ->and($session->fresh()->rest_clamped_at)->not->toBeNull();
+});
+
+it('records the morning briefing rest clamp before the athlete runs', function (): void {
+    Carbon::withTestNow('2026-05-11 00:01:00', function (): void {
+        Bus::fake();
+        Notification::fake();
+        $user = User::factory()->seenToday()->create();
+        bottomOutReadiness($user);
+        $session = todaysSession($user);
+
+        $this->artisan('ai:daily-briefing')->assertSuccessful();
+
+        expect($session->fresh()->rest_clamped_at)->not->toBeNull();
+        Notification::assertSentToTimes($user, DayClampedNotification::class, 1);
+    });
 });
 
 /**
@@ -246,8 +262,8 @@ it('scopes to the given user', function (): void {
 
 /**
  * A dashboard load minutes earlier (the ordinary render path) warms
- * TrainingLoad's 5-minute summary cache. The run that should trip the clamp
- * is ingested inside that window, so an uninvalidated read would grade
+ * TrainingLoad's 5-minute summary cache. A yesterday run is backfilled inside
+ * that window, so an uninvalidated read would grade
  * against the pre-run load and silently skip the one write this class exists
  * to make.
  */
@@ -265,7 +281,7 @@ it('recomputes fresh training load instead of a pre-ingest cache entry', functio
 
     ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
         'trimp_edwards' => 500.0,
-        'start_date_local' => Carbon::today(),
+        'start_date_local' => Carbon::yesterday(),
     ]);
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()

@@ -108,13 +108,6 @@ final readonly class RestClampRecorder
         $context = BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today));
         $ceiling = ReadinessCeiling::from($context->readinessCeiling);
 
-        if (ReadinessClamp::clampsToRest($session->session_type, $ceiling)) {
-            $session->update(['rest_clamped_at' => Carbon::now()]);
-            $this->tell($user, $today, SessionType::Rest, $session->session_type, $ceiling);
-
-            return true;
-        }
-
         // `Readiness::assess()` caps to `EasyOnly` on `ranToday` alone, so after
         // any run at all the ceiling reads easy — including on a day the
         // athlete just correctly ran a tempo. Recording an eased target then
@@ -125,6 +118,13 @@ final readonly class RestClampRecorder
         // `docs/decisions/a-clamped-day-is-graded-on-what-it-asked.md`.
         if ($context->ranToday) {
             return false;
+        }
+
+        if (ReadinessClamp::clampsToRest($session->session_type, $ceiling)) {
+            $session->update(['rest_clamped_at' => Carbon::now()]);
+            $this->tell($user, $today, SessionType::Rest, $session->session_type, $ceiling);
+
+            return true;
         }
 
         // core_km comes from the same ReadinessClamp::apply() the render calls

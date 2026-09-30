@@ -17,6 +17,8 @@ code_refs:
 
 > **Superseded (2026-09-16) by [[the-eased-session-leads]].** A recorded ease is now the day's session: it leads the card, the week total sums it, and the narrator tools describe it, with the original as context. Only a clamp that was shown but never recorded keeps the advisory step-down described below.
 
+> **Correction (2026-09-30):** A day with a recorded run is excluded from rest-clamp writes, including the ingest listener. A ceiling reached after training is guidance for a second outing; it does not replace the session already run.
+
 # The readiness clamp is advisory, not a replacement
 
 **Status:** Accepted (2026-09-06)
