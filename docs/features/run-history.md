@@ -107,6 +107,10 @@ reveals a plain explanation inline (no popover, so nothing gets clipped by
 default with a deterministic, rule-based read instead of the general
 explanation.
 
+Above the week sections, the shared [EffortLegend](../../resources/js/components/history/EffortLegend.tsx)
+names the effort stripe and mood dot colours. Each run row also names its effort,
+and its mood when present, for screen readers.
+
 The data comes from `HistoryController`'s list branch in
 [HistoryController.php](../../app/Http/Controllers/HistoryController.php). It
 returns `runs` and the per-week `weeklySnapshots`. The listing query itself is
@@ -170,9 +174,9 @@ hardest-effort colour. Either way the day's summed distance prints above the
 bar and the date below it; today's date carries a lime ring. A planned rest
 day with no run gets a dashed marker instead of a bar; a day with neither a
 run nor a plan shows only the baseline and a muted date. **Mood left the
-grid** — it now appears only as a word in the multi-run sheet and the run
-detail page; an on-page `EffortLegend` (words, not colour alone) replaced the
-old mood legend.
+grid** — it now appears as a word in the multi-run sheet and the run
+detail page. The shared `EffortLegend` names the effort colours and mood dots
+below the grid, though the grid itself uses effort only.
 
 Tap behaviour is per-day: one run links straight to [[run-detail]], 2+ runs
 opens [DayRunsSheet](../../resources/js/components/history/DayRunsSheet.tsx)

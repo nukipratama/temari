@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import EffortLegend from './EffortLegend';
 
 describe('EffortLegend', () => {
-    it('names every effort word, replacing the old mood legend', () => {
+    it('names every effort word', () => {
         render(<EffortLegend />);
         for (const word of [
             'easy',
@@ -13,12 +13,22 @@ describe('EffortLegend', () => {
             'unscored',
             'planned rest',
         ]) {
-            expect(screen.getByText(word)).toBeInTheDocument();
+            expect(screen.getAllByText(word).length).toBeGreaterThan(0);
         }
     });
 
-    it('carries no mood label', () => {
+    it('names every mood with a dot', () => {
         render(<EffortLegend />);
-        expect(screen.queryByText('blazing')).not.toBeInTheDocument();
+        expect(screen.getByText('mood')).toBeInTheDocument();
+        for (const word of [
+            'blazing',
+            'easy',
+            'wobbly',
+            'gassed',
+            'overloaded',
+            'chill',
+        ]) {
+            expect(screen.getAllByText(word).length).toBeGreaterThan(0);
+        }
     });
 });

@@ -9,6 +9,7 @@ import type {
     WeeklySnapshotWithRecap,
 } from '@/types/inertia';
 
+import EffortLegend from '@/components/history/EffortLegend';
 import HistoryHeader from '@/components/history/HistoryHeader';
 import {
     RangeWidenedNote,
@@ -100,36 +101,38 @@ export default function RunsIndex({
                 >
                     {() =>
                         hasRuns ? (
-                            <div
-                                key={weekFilter ?? 'all'}
-                                className={cn('mt-8', laneStack)}
-                            >
+                            <div key={weekFilter ?? 'all'}>
                                 {rangeAutoWidened && (
                                     <RangeWidenedNote
                                         rangeFilter={rangeFilter}
                                     />
                                 )}
-                                {buckets.map((bucket, index) => (
-                                    <div
-                                        key={bucket.weekStart}
-                                        className="reveal"
-                                        style={revealDelay(index)}
-                                    >
-                                        <WeekSection
-                                            bucket={bucket}
-                                            snapshot={
-                                                snapshotsByWeek.get(
-                                                    bucket.weekEnding,
-                                                ) ?? null
-                                            }
-                                            notes={notes}
-                                            moods={moods}
+                                <EffortLegend className="mt-8" />
+                                <div className={cn('mt-6', laneStack)}>
+                                    {buckets.map((bucket, index) => (
+                                        <div
+                                            key={bucket.weekStart}
+                                            className="reveal"
+                                            style={revealDelay(index)}
+                                        >
+                                            <WeekSection
+                                                bucket={bucket}
+                                                snapshot={
+                                                    snapshotsByWeek.get(
+                                                        bucket.weekEnding,
+                                                    ) ?? null
+                                                }
+                                                notes={notes}
+                                                moods={moods}
+                                            />
+                                        </div>
+                                    ))}
+                                    {hasOlderWeeks && (
+                                        <LoadOlderWeeks
+                                            weeksShown={weeksShown}
                                         />
-                                    </div>
-                                ))}
-                                {hasOlderWeeks && (
-                                    <LoadOlderWeeks weeksShown={weeksShown} />
-                                )}
+                                    )}
+                                </div>
                             </div>
                         ) : (
                             <EmptyState />

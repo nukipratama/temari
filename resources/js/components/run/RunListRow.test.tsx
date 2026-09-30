@@ -155,6 +155,23 @@ describe('RunListRow', () => {
         expect(screen.getByRole('link')).toHaveClass('border-ember');
     });
 
+    it('names the effort and the visible mood dot for screen readers', () => {
+        render(
+            <RunListRow detail={detail({ effort: 'hard' })} mood="blazing" />,
+        );
+        expect(
+            screen.getByRole('link', { name: /hard effort, blazing mood/ }),
+        ).toBeInTheDocument();
+    });
+
+    it('names the effort without inventing a missing mood', () => {
+        render(<RunListRow detail={detail({ effort: 'easy' })} />);
+        expect(
+            screen.getByRole('link', { name: /easy effort/ }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('link')).not.toHaveAccessibleName(/mood/);
+    });
+
     it('falls back to the unknown stripe when the detail carries no effort', () => {
         render(<RunListRow detail={detail({ effort: undefined })} />);
         expect(screen.getByRole('link')).toHaveClass('border-border');
