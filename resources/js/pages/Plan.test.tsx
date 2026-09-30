@@ -307,6 +307,27 @@ describe('Plan', () => {
         );
     });
 
+    it('restores a skipped session and returns it to the generator', () => {
+        renderPlan({
+            weeks: [
+                {
+                    ...BASE_PROPS.weeks![0],
+                    days: [day({ skipped: true, pinned: true })],
+                },
+            ],
+        });
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'bring this session back' }),
+        );
+
+        expect(router.patch).toHaveBeenCalledWith(
+            '/plan/sessions/1',
+            { skipped: false, pinned: false },
+            { preserveScroll: true },
+        );
+    });
+
     it('moves a session onto the day picked from the weekday grid', () => {
         renderPlan();
         fireEvent.click(

@@ -95,6 +95,7 @@ function renderRow(overrides: Partial<Parameters<typeof DayDetail>[0]> = {}) {
         narration: null,
         onMove: vi.fn(),
         onSkip: vi.fn(),
+        onUnskip: vi.fn(),
         ...overrides,
     };
     render(
@@ -116,6 +117,45 @@ function renderRow(overrides: Partial<Parameters<typeof DayDetail>[0]> = {}) {
 const headline = () => screen.getByTestId('headline');
 
 describe('DayHeadline and DayDetail', () => {
+    it('brings a skipped future session back through the caller', () => {
+        const { onUnskip } = renderRow({ day: day({ skipped: true }) });
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'bring this session back' }),
+        );
+
+        expect(onUnskip).toHaveBeenCalledOnce();
+        expect(
+            screen.queryByRole('button', { name: /skip this session/i }),
+        ).not.toBeInTheDocument();
+    });
+
+    it.each([
+        { date: '2026-06-16', skipped: true },
+        { date: TODAY, skipped: true },
+        { skipped: false },
+        { skipped: true, session_type: 'rest' as const },
+    ])('does not offer restoration for an ineligible day %j', (overrides) => {
+        renderRow({ day: day(overrides) });
+
+        expect(
+            screen.queryByRole('button', { name: 'bring this session back' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('keeps restoration accessible without segments or move targets', () => {
+        const session = day({
+            session_type: 'easy',
+            skipped: true,
+            segments: [],
+        });
+        renderRow({ day: session, weekDays: [session] });
+
+        expect(
+            screen.getByRole('button', { name: 'bring this session back' }),
+        ).toBeInTheDocument();
+    });
+
     it('summarises the day in its headline', () => {
         renderRow();
 

@@ -3,6 +3,7 @@ import {
     ArrowDown,
     ArrowRight,
     ArrowRightLeft,
+    RotateCcw,
     SkipForward,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -18,6 +19,7 @@ import {
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
 import TemariTake from '@/components/plan/TemariTake';
 import { Icon } from '@/components/ui/Icon';
+import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import {
@@ -178,6 +180,7 @@ function dayActions(day: PlanDay, weekDays: PlanDay[], today: string) {
             editable &&
             weekDays.some((target) => isValidMoveTarget(day, target, today)),
         canSkip: editable && !day.skipped,
+        canUnskip: editable && day.skipped,
     };
 }
 
@@ -216,7 +219,7 @@ export function hasDayDetail(
 ): boolean {
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
     const { purpose, doseWhy } = dayPoint(day);
-    const { canMove, canSkip } = dayActions(day, weekDays, today);
+    const { canMove, canSkip, canUnskip } = dayActions(day, weekDays, today);
 
     return (
         day.segments.some((s) => (s.minutes ?? 0) > 0) ||
@@ -233,7 +236,8 @@ export function hasDayDetail(
         Boolean(day.hot_note) ||
         day.activities.length > 0 ||
         canMove ||
-        canSkip
+        canSkip ||
+        canUnskip
     );
 }
 
@@ -325,6 +329,7 @@ export default function DayDetail({
     narration,
     onMove,
     onSkip,
+    onUnskip,
 }: Readonly<{
     day: PlanDay;
     weekDays: PlanDay[];
@@ -332,12 +337,13 @@ export default function DayDetail({
     narration: AnalysisPayload | null;
     onMove: (toDate: string) => void;
     onSkip: () => void;
+    onUnskip: () => void;
 }>) {
     const [picking, setPicking] = useState(false);
 
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
     const { purpose, doseWhy } = dayPoint(day);
-    const { canMove, canSkip } = dayActions(day, weekDays, today);
+    const { canMove, canSkip, canUnskip } = dayActions(day, weekDays, today);
     const showsPoint = purpose !== null || doseWhy !== null;
 
     return (
@@ -445,7 +451,7 @@ export default function DayDetail({
             )}
             <SessionBarGraph segments={day.segments} />
             {day.activities.length > 0 && <RunList runs={day.activities} />}
-            {(canMove || canSkip) && (
+            {(canMove || canSkip || canUnskip) && (
                 <div className="mt-3">
                     {picking ? (
                         <div className="grid grid-cols-7 gap-1.5">
@@ -477,18 +483,18 @@ export default function DayDetail({
                     ) : (
                         <div className="flex flex-wrap gap-3">
                             {canMove && (
-                                <button
-                                    type="button"
+                                <PillButton
+                                    tone="outline"
+                                    size="sm"
                                     onClick={() => setPicking(true)}
-                                    className="focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
                                 >
                                     <Icon
                                         icon={ArrowRightLeft}
-                                        className="size-3"
+                                        className="size-3.5"
                                         aria-hidden
                                     />
-                                    Move this session
-                                </button>
+                                    move this session
+                                </PillButton>
                             )}
                             {canSkip && (
                                 <button
@@ -503,6 +509,22 @@ export default function DayDetail({
                                     />
                                     Skip this session
                                 </button>
+                            )}
+                            {canUnskip && (
+                                <div className="w-full">
+                                    <PillButton
+                                        tone="outline"
+                                        size="sm"
+                                        onClick={onUnskip}
+                                    >
+                                        <Icon
+                                            icon={RotateCcw}
+                                            className="size-3.5"
+                                            aria-hidden
+                                        />
+                                        bring this session back
+                                    </PillButton>
+                                </div>
                             )}
                         </div>
                     )}

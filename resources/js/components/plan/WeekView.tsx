@@ -84,6 +84,7 @@ export default function WeekView({
     onBack,
     onMove,
     onSkip,
+    onUnskip,
 }: Readonly<{
     week: SeasonSummaryWeek;
     weekNumber: number;
@@ -102,6 +103,7 @@ export default function WeekView({
     onBack?: () => void;
     onMove: (day: PlanDay, toDate: string) => void;
     onSkip: (day: PlanDay) => void;
+    onUnskip: (day: PlanDay) => void;
 }>) {
     const baseId = useId();
     const panelId = `${baseId}-panel`;
@@ -250,6 +252,7 @@ export default function WeekView({
                                         onMove(selected, toDate)
                                     }
                                     onSkip={() => onSkip(selected)}
+                                    onUnskip={() => onUnskip(selected)}
                                 />
                             </div>
                         )}

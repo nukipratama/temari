@@ -270,6 +270,57 @@ it('skips a day via the skipped flag, leaving the prescribed session in place', 
         ->and($fresh->session_type->value)->toBe('tempo');
 });
 
+it('restores a skipped future session to scoring and regeneration without requesting a day read', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $date = Carbon::today()->addDay()->toDateString();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => $date,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Planned,
+        'skipped' => true,
+        'pinned' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$session->id}", ['skipped' => false, 'pinned' => false])
+        ->assertRedirect();
+
+    $restored = $session->fresh();
+    expect($restored->skipped)->toBeFalse()
+        ->and($restored->pinned)->toBeFalse()
+        ->and($restored->isExcused())->toBeFalse();
+    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+
+    app(Periodizer::class)->regenerate($user);
+
+    $regenerated = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $date)->sole();
+    expect($regenerated->id)->not->toBe($session->id)
+        ->and($regenerated->skipped)->toBeFalse()
+        ->and($regenerated->pinned)->toBeFalse();
+});
+
+it('re-requests the day read when restoring a credited current-week session', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'status' => PlannedSessionStatus::Done,
+        'skipped' => true,
+        'pinned' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$session->id}", ['skipped' => false, 'pinned' => false])
+        ->assertRedirect();
+
+    expect($session->fresh()->skipped)->toBeFalse();
+    Bus::assertDispatched(
+        AnalyzePlanDayVoiceJob::class,
+        fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
+    );
+});
+
 it('cuts block and delete, per decision P23', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
