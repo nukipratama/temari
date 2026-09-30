@@ -51,8 +51,7 @@ it('names an eased day as eased rather than rested', function (): void {
         ->toBe('Today eases off');
 });
 
-// One row per day: the clamp can be recorded from either the ingest listener or
-// the briefing, and a second dispatch must not stack a second row.
+// A repeated morning briefing must not stack a second clamp row for the day.
 it('dedupes on the clamped date', function (): void {
     expect(clampNotification()->toInbox(User::factory()->create())->dedupeKey)
         ->toBe('plan_clamp:'.$this->date);

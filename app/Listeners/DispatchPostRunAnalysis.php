@@ -19,7 +19,6 @@ use App\Services\AI\NarrationEligibility;
 use App\Services\AI\NarrationVerdict;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\PlanReconciliationDispatch;
-use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -43,7 +42,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly StaggerBackfillAction $staggerBackfill,
         private readonly NarrationEligibility $eligibility,
-        private readonly RestClampRecorder $restClampRecorder,
         private readonly PlanNarrationRequester $planNarration,
         private readonly ComplianceScorer $complianceScorer,
         private readonly PlanReconciliationDispatch $planReconciliation,
@@ -122,17 +120,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $snapshot = $this->weeklyAggregator->rebuildForwardFrom($user, $detail->start_date_local);
         $this->trendSnapshots->forActivity($activity);
 
-        // After the rebuild, not before: a run today moves the readiness
-        // ceiling, and BriefingContext falls back to the WeeklySnapshot this
-        // line just rewrote when live load has no form status of its own.
-        // Backfill of an older day is skipped — it would recompute today's
-        // ceiling once per imported run for a verdict the daily briefing
-        // already covers.
-        if ($isToday && $this->restClampRecorder->record($user, Carbon::today()) && ! $athleteAway) {
-            // The run that just landed is what moved the ceiling, so the event
-            // that invalidates the clamp's explanation regenerates it.
-            $this->planNarration->requestClampVoice($user, Carbon::today());
-        }
         if ($isToday && ! $athleteAway) {
             if ($user->is_demo) {
                 $this->planNarration->requestDayVoiceIfChanged($user, Carbon::today());

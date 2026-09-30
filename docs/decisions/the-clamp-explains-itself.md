@@ -11,6 +11,8 @@ code_refs:
   - app/Services/AI/MaterialFingerprint.php
 ---
 
+> **Correction (2026-09-30):** Clamp writes and `plan_clamp_voice` requests now come from shared daily-briefing side effects (the 00:01 kickoff and hourly catch-up replay); the ingest listener does neither. A day with a recorded run is excluded from new clamp writes. If a clamp still shows on an uncredited day, it keeps the morning narration or templated explanation without regeneration by ingest. This overrides the two-sites trigger and post-run regeneration described below.
+
 # The clamp explains itself, in its own narration
 
 **Status:** Accepted (2026-09-07). **Since 2026-09-16** this line is also an eased day's voice until the day is credited, and its prompt names the eased session as the day's session; see [[the-eased-session-leads]].

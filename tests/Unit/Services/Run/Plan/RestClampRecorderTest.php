@@ -227,10 +227,7 @@ it('never records against a pinned row', function (): void {
         ->and($session->fresh()->rest_clamped_at)->toBeNull();
 });
 
-/**
- * Both the ingest listener and the daily briefing call this, and the listener
- * fires once per run — so a second call must not move the timestamp.
- */
+/** A repeated daily briefing must not move the recorded timestamp. */
 it('writes once and keeps the original timestamp on a second call', function (): void {
     $user = User::factory()->create();
     bottomOutReadiness($user);

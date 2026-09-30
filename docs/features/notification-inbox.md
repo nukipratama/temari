@@ -43,9 +43,12 @@ now also where they are told. Its guards make it the one place that fires once p
 so the row inherits that dedupe rather than adding its own, and a ceiling that recovers later does
 not delete what was already said. A recorded ease is the day's session ([[the-eased-session-leads]]), not an alarm, and the
 briefing path records it at 00:01, so a lock screen is the wrong place for it — and
-`notifications_enabled`, which enumerates what it governs, does not name it either. A day with a
-recorded run is excluded from new clamp writes, so fatigue reached after training sends no clamp
-notification; a morning clamp recorded before the run still notifies.
+`notifications_enabled`, which enumerates what it governs, does not name it either. Shared daily-briefing
+side effects (the 00:01 kickoff and hourly catch-up replay) record new clamps and send their
+notifications, before any run that day. The ingest
+listener records no clamp and requests no clamp narration, so fatigue reached after training
+sends no clamp notification. After a run, a clamp still shown on an uncredited today keeps its
+morning narration or templated explanation; ingest does not regenerate it.
 
 The body is the clamp's own explanation, in whichever voice has reached it: the `plan_clamp_voice`
 row once one is `done`, and otherwise the templated note that [[the-clamp-explains-itself]] keeps as

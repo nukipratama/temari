@@ -24,6 +24,8 @@ code_refs:
   - app/Jobs/Strava/HydrateBacklogForUserJob.php
 ---
 
+> **Correction (2026-09-30):** Clamp writes and `plan_clamp_voice` requests now come from shared daily-briefing side effects (the 00:01 kickoff and hourly catch-up replay); the ingest listener does neither. A day with a recorded run is excluded from new clamp writes. If a clamp still shows on an uncredited day, it keeps the morning narration or templated explanation without regeneration by ingest. This overrides the clamp's ingest trigger described below; the plan day read remains separate.
+
 # History narrates on demand
 
 **Status:** Accepted (documented 2026-09-15)

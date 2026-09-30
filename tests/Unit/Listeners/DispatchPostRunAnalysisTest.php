@@ -106,6 +106,17 @@ it('never rest-clamps or requests clamp narration after an overreaching run toda
     Notification::assertNotSentTo($activity->user, DayClampedNotification::class);
 });
 
+it('never resolves the clamp recorder for a post-ingest run today', function (): void {
+    $activity = analyzedActivity(Carbon::today()->setTime(7, 0)->toDateTimeString());
+    $this->app->bind(RestClampRecorder::class, function (): never {
+        throw new LogicException('The post-ingest listener must not resolve the clamp recorder.');
+    });
+
+    fire($activity);
+
+    Bus::assertDispatched(AnalyzeActivityJob::class);
+});
+
 it('requests card flavor for the run card the ingest minted', function (): void {
     $activity = analyzedActivity();
     $card = RunCard::factory()->create(['activity_id' => $activity->id]);
@@ -702,7 +713,6 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         $weekly,
         app(StaggerBackfillAction::class),
         app(NarrationEligibility::class),
-        app(RestClampRecorder::class),
         app(PlanNarrationRequester::class),
         app(ComplianceScorer::class),
         app(PlanReconciliationDispatch::class),
