@@ -1582,6 +1582,31 @@ it('ProfileVoiceNarrator lets the paragraph quote a mood percentage without a sl
     expect($narrator->generate($user->fresh()))->toBe('blazing takes 60% of your runs, and 6247.5 km says why.');
 });
 
+it('ProfileVoiceNarrator lets the paragraph quote persona window and total figures without a slot', function (string $paragraph): void {
+    $user = User::factory()->create();
+
+    foreach (['blazing', 'blazing', 'blazing', 'chill', 'chill'] as $mood) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subWeeks(2)]);
+        StoryLine::factory()->for($user)->create([
+            'activity_id' => $activity->id,
+            'mood' => $mood,
+        ]);
+    }
+
+    $client = new ClientFake([
+        fakeAzureResponse(profileVoiceJson($paragraph)),
+        fakeAzureResponse(profileVoiceJson($paragraph)),
+    ]);
+    $narrator = new ProfileVoiceNarrator(fakeStructuredCaller($client), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
+
+    expect($narrator->generate($user))->toBe($paragraph);
+})->with([
+    'full window' => 'over the last 12 weeks, blazing led the mix.',
+    'half window' => 'the last 6 weeks leaned blazing.',
+    'returned total' => 'across 5 runs, blazing led the mix.',
+]);
+
 it('ProfileVoiceNarrator re-asks once when the paragraph quotes a figure no slot holds', function (): void {
     $user = User::factory()->create();
     $client = new ClientFake([
