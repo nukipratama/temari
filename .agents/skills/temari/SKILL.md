@@ -11,27 +11,10 @@ them rather than re-copying, since copies drift.
 
 ## Tracking
 
-Work items, agent briefs and decisions live in GitHub issues and the
-[kanban board](https://github.com/users/nukipratama/projects/1) — not in local files. Find them with
-`gh issue list --label wave:*` and read the brief with `gh issue view <n>`; the decision log is issue
-#916. A card moves Ready → In progress on dispatch → In review when its PR opens → Done on merge, and
-every PR carries `Closes #<n>`. `.planning/` is gitignored scratch space only.
-
-Labels: `wave:tooling` / `wave:bugs` / `wave:engine-1` / `wave:engine-2` / `wave:refine` for the
-programme wave, `design-round` for design rounds, `area:*` for the subsystem, and `decision` for the
-log.
-
-The repository is public, so issue and PR text never carries athlete ids, emails, hostnames or
-per-athlete costs — describe them instead of pasting them.
-
-### PR handoff standard
-
-Treat every PR as a reviewer handoff. Its body should connect the user-visible outcome to the
-settled issue decision, identify affected files and data/queue/external-service effects, list exact
-verification commands and outcomes (including anything unavailable), give a reproducible reviewer
-path, and state rollout, privacy, failure/rollback, and follow-up notes. Keep `Closes #<n>` in the
-body, exclude secrets and identifying athlete data, and refresh the description when later pushes
-change the scope or verification.
+Issue tracking, decision labels, the kanban flow and the PR handoff standard are in
+[AGENTS.md](../../../AGENTS.md). Other labels: `wave:tooling` / `wave:bugs` / `wave:engine-1` /
+`wave:engine-2` / `wave:refine` for the programme wave, `design-round` for design rounds, and
+`area:*` for the subsystem.
 
 ## Codebase map
 
@@ -151,7 +134,7 @@ underneath but are fixed to the light value:
 - `text-text-2` (`#34373c` on light) — **supporting body**: page subtitles, briefing suggestion lines, descriptive paragraphs adjacent to a primary statement.
 - `text-text-3` (`#60666d` on light) — **labels-above-values, timestamps, footnotes, table column headers, secondary metadata**. Smallest contrast tier, never use for body prose.
 
-Sweep `grep text-text-3` before merging — if it's wrapping a `<p>` of running prose, it's probably wrong.
+`text-text-3` must not wrap running prose (`<p>`).
 
 ### Typography & fonts
 
@@ -269,7 +252,7 @@ so this is a debugging tool, not a routine step:
 The filtered run reports 0.0% for everything else, which is expected — read only your own class's row.
 
 Worktrees need **git inside the container** for the gate's changed-file steps (rector, `vitest
---changed`, `pest changed`). `worktree-setup.sh` writes a `compose.override.yaml` that bind-mounts the
+--changed`, `pest changed`). `scripts/worktree` setup writes a `compose.override.yaml` that bind-mounts the
 shared git dir **at the same absolute path it has on the host**. A worktree's `.git` is a *file*
 holding that host path, so mounting it anywhere else leaves the pointer dangling. Same path in and out
 means git resolves the repo from `/var/www/html` natively, with **no git environment variables at
@@ -339,7 +322,7 @@ separate, pinned-name Compose project: `temari-shared-services`) runs exactly on
 `mysql-test` and `redis-test`, and every worktree's `app` talks to those instead of its own —
 `compose.yaml`'s `mysql`/`redis`/`mysql_test`/`redis_test` are gated behind a `local-db` Compose
 profile that only the main checkout enables by default (`.env.example`'s `COMPOSE_PROFILES=local-db`);
-`worktree-setup.sh` clears it for a worktree, so `docker compose up` there never starts them.
+`scripts/worktree` setup clears it for a worktree, so `docker compose up` there never starts them.
 
 Isolation moves from *separate containers* to *separate schema* (MySQL: `temari_slot{N}` /
 `temari_slot{N}_analytics`) and *separate logical Redis DB index* (`3*N` for dev's
@@ -360,7 +343,7 @@ custom resolver needed. `docker/mysql-test-init.sh`'s grant is already a `` `tem
 wildcard, so paratest self-creates each per-worker schema exactly like before — the one thing that
 wildcard doesn't cover is the slot's own *unsuffixed* base schema (previously auto-created by
 `mysql_test`'s `MYSQL_DATABASE` env var at container boot, which the shared instance has no
-per-slot equivalent of), so `worktree-setup.sh` creates that one explicitly.
+per-slot equivalent of), so `scripts/worktree` setup creates that one explicitly.
 
 `vendor/`/`node_modules` stay per-worktree, unchanged — see below, this was deliberately not
 folded into the consolidation.
@@ -372,7 +355,7 @@ a config change to Compose even though the file content is identical — Compose
 the containers to match, and since `mysql-test`/`redis-test` are tmpfs, that recreate silently
 wipes every other worktree's test schema. Measured directly: benchmarking 3 concurrent worktrees
 lost 2 of 3 test schemas mid-run this way. Every call against `compose.shared-services.yml` in
-`worktree-setup.sh` goes through its `shared()` helper, which pins `--project-directory` to the
+`scripts/worktree` setup goes through its `shared()` helper, which pins `--project-directory` to the
 main checkout (stable across every worktree) specifically to prevent this — **any new call against
 that file must go through `shared()` too**, never a bare `docker compose -f compose.shared-services.yml`.
 
@@ -382,15 +365,11 @@ a plain `artisan migrate` does not touch it — the script also runs
 and `ai_token_usages` are missing and `/pulse` + `/devtools/narration` 500. This lived only in the script's
 printed next-steps until #614, which is exactly why every worktree skipped it.
 
-The PHP suites are ready at that point (they self-initialize their own `mysql_test`/`redis_test`).
-To *load a page in a browser*, also run `./vendor/bin/sail npm ci` plus `sail npm run dev` (or
-`npm run build`).
-
 Composer's and npm's **download caches** are shared across worktrees via fixed-name volumes
 (`temari_composer_cache`/`temari_npm_cache` in `compose.yaml`) — only `vendor/`/`node_modules`
 themselves stay per-worktree (each must reflect that branch's own lockfile), so the second+
 worktree's install just replays from cache instead of re-downloading over the network.
-`worktree-setup.sh` chowns all three cache-type volumes (`node_modules` included) to `www-data`
+`scripts/worktree` setup chowns all three cache-type volumes (`node_modules` included) to `www-data`
 right after bringing the stack up, since they're created root-owned on first boot and the container
 always runs as `www-data` — no manual fix needed.
 
@@ -409,12 +388,8 @@ version that checkout has on disk. A hook edited on a worktree branch is not exe
 worktree's commits — invoke the script directly to test it. (If the stored value is absolute, it
 pins every worktree to the main checkout; `composer install` re-sets it relative.)
 
-**`commit-msg` has no merge-commit exemption, on purpose.** Git's default merge message
-("Merge remote-tracking branch …") fails the Conventional Commits guard like any other message
-would. Merging `main` into a branch (e.g. after a rebase-adjacent conflict, or to pull in a
-sibling PR before opening your own) needs its own real commit message —
-`chore(<scope>): merge main into <branch>` — passed explicitly to `git merge`/`git commit`, not
-git's auto-generated one.
+**`commit-msg` has no merge-commit exemption, on purpose**; see the merge-message rule in
+[AGENTS.md](../../../AGENTS.md).
 
 **One fresh-worktree gotcha**, not concurrency-specific: if several worktrees cold-install at the
 same moment, one can occasionally fail mid-extraction on a transient bind-mount visibility race —
@@ -473,11 +448,6 @@ all-or-nothing (merge up to a single PR only when the owner names it). Landing t
 
 ## Inspecting real state
 
-No MCP server; use the toolchain directly. Prefer these over guessing:
-- **Data** — `./vendor/bin/sail artisan tinker --execute '...'`, or `./vendor/bin/sail mysql`.
-- **Schema** — `./vendor/bin/sail artisan db:show --counts`, `db:table <name>`.
-- **App errors** — `./vendor/bin/sail logs -f`, or `storage/logs/laravel-*.log` (daily rotation).
-- **React/Inertia console errors** — browser devtools, or the `browser-review` scripts, which
-  capture `console`/`pageerror` per page across the viewport matrix.
-- **Framework APIs** — read the installed source under `vendor/` rather than recalling; this
-  stack (Laravel 13 / Inertia v3 / React 19 / Tailwind v4 / Pest 4) drifts fast.
+Data, schema, log and console commands are under "Debugging" in [AGENTS.md](../../../AGENTS.md).
+For framework APIs, read the installed source under `vendor/` rather than recalling; this stack
+(Laravel 13 / Inertia v3 / React 19 / Tailwind v4 / Pest 5) drifts fast.

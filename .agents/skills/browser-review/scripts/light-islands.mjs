@@ -19,7 +19,6 @@ import { chromium } from 'playwright';
 import {
     BASE,
     login,
-    dismissReveal,
     discoverPageRoutes,
     DEVTOOLS_AUTH,
 } from './lib.mjs';
@@ -43,7 +42,6 @@ await page.evaluate((g) => {
     document.documentElement.setAttribute('data-theme', g);
 }, GROUND);
 await login(page);
-await dismissReveal(page);
 
 const SCAN = `(() => {
     ${HELPERS}

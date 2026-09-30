@@ -1,11 +1,11 @@
 // End-to-end screenshot sweep across a viewport matrix. Runs inside the Sail
-// `app` container:  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/shoot.mjs
+// `app` container:  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/shoot.mjs
 // Env: VIEWPORTS=mobile,se,tablet,laptop,desktop (default mobile,se,laptop,desktop)  BASE=http://localhost
 //      OUT=storage/app/browser-review  BATCH=<date>/<time> (override the run key)
 // Pages are discovered from `artisan route:list` (see lib.mjs) — nothing hardcoded.
 import { rmSync } from 'node:fs';
 import { chromium } from 'playwright';
-import { BASE, VIEWPORT_DEFS, parseViewports, login, dismissReveal, discoverPageRoutes, fullPageScreenshot, SHOT, EXT, DEVTOOLS_AUTH } from './lib.mjs';
+import { BASE, VIEWPORT_DEFS, parseViewports, login, discoverPageRoutes, fullPageScreenshot, SHOT, EXT, DEVTOOLS_AUTH } from './lib.mjs';
 
 // Each run lands in its own dir keyed by date + execution time. Prior batches are
 // cleared first, so only the latest sweep is kept (stale screenshots aren't needed):
@@ -67,14 +67,12 @@ for (const vp of selected) {
   await fullPageScreenshot(bootPage, `${dir}/00-login-full.${EXT}`, SHOT);
   if (!authCookies) {
     await login(bootPage);
-    await dismissReveal(bootPage);
     routes = await discoverPageRoutes(bootPage);
     console.log(`  discovered ${routes.length} pages`);
     ({ cookies: authCookies } = await context.storageState());
   } else {
     // Reuse the session from the first viewport instead of clicking through
-    // login again; dismissReveal is a server-side mutation on the shared
-    // demo account, so it's already cleared and doesn't need repeating.
+    // login again.
     await context.addCookies(authCookies);
   }
   await bootPage.close();

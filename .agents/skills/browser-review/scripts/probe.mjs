@@ -28,7 +28,7 @@
  *   node probe.mjs /settings dark --shot 'document.title'
  */
 import { chromium } from 'playwright';
-import { BASE, login, dismissReveal, fullPageScreenshot, SHOT, EXT, DEVTOOLS_AUTH } from './lib.mjs';
+import { BASE, login, fullPageScreenshot, SHOT, EXT, DEVTOOLS_AUTH } from './lib.mjs';
 
 const args = process.argv.slice(2);
 const clickArg = args.find((a) => a.startsWith('--click='));
@@ -63,7 +63,6 @@ await page.evaluate((g) => {
     document.documentElement.setAttribute('data-theme', g);
 }, ground);
 await login(page);
-await dismissReveal(page);
 
 await page.goto(`${BASE}${route}`, { waitUntil: 'load' });
 await page.waitForLoadState('networkidle').catch(() => {});

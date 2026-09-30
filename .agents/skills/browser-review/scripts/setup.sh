@@ -1,6 +1,6 @@
 #!/bin/sh
 # Idempotent browser-review setup. Run inside the Sail `app` container as ROOT
-# (apk needs root):  docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.sh
+# (apk needs root):  docker compose exec -u root app sh .agents/skills/browser-review/scripts/setup.sh
 #
 # The container is Alpine ARM64 (musl), so Playwright's bundled glibc Chromium
 # can't run — install Alpine's native chromium and let shoot.mjs/audit.mjs point

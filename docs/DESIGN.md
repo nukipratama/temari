@@ -51,4 +51,4 @@ Backend logic is split by domain under `app/Services/`:
 
 ## Where the conventions live
 
-Design tokens, voice & tone, the AI narrator pipeline detail, the 1:1 test convention, and the Sail toolchain live in the `temari` skill (`.claude/skills/temari/`) and in [[design-tokens]] / [[voice-and-tone]]. This knowledge base narrates and links to those — it does not duplicate them.
+Design tokens, voice & tone, the AI narrator pipeline detail, the 1:1 test convention, and the Sail toolchain live in the `temari` skill (`.agents/skills/temari/`) and in [[design-tokens]] / [[voice-and-tone]]. This knowledge base narrates and links to those — it does not duplicate them.

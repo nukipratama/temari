@@ -1,6 +1,6 @@
 #!/bin/sh
 # Restore the dev env after a browser-review run. Run inside the Sail `app`
-# container:  ./vendor/bin/sail exec app sh .claude/skills/browser-review/scripts/teardown.sh
+# container:  ./vendor/bin/sail exec app sh .agents/skills/browser-review/scripts/teardown.sh
 set -e
 
 # Screenshots are left in place (the latest sweep only — shoot.mjs clears prior

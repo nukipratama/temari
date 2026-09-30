@@ -11,7 +11,7 @@ description = "Known false positives — documentation examples, not real secret
 # The Laravel best-practices skill doc shows fake creds inside a "don't do this"
 # block (e.g. STRIPE_SECRET=sk_live_abc123, AWS's canonical wJalrXUtnFEMI example).
 paths = [
-  '''\.claude/skills/.*\.md''',
+  '''\.agents/skills/.*\.md''',
 ]
 regexes = [
   '''sk_live_abc123''',
