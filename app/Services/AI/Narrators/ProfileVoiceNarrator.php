@@ -215,7 +215,7 @@ class ProfileVoiceNarrator
 
         return 'The paragraph quotes '.implode(', ', $leaked).', which neither evidence slot holds. '
             .'It may only quote the figures in evidence_primary ("'.$primary.'") and evidence_secondary ("'.$secondary.'"), '
-            .'plus the mood percentages and run counts from get_persona_mix. '
+            .'plus the mood percentages, run counts, window lengths and total runs from get_persona_mix. '
             .'Rewrite profile_voice so every number is one of those and change nothing else.';
     }
 
@@ -228,7 +228,11 @@ class ProfileVoiceNarrator
     private function claimFigures(User $user): array
     {
         $mix = new PersonaMixTool($user, Carbon::now())->handle([]);
-        $figures = [];
+        $figures = [
+            (string) $mix['lookback_weeks'],
+            (string) ((int) $mix['lookback_weeks'] / 2),
+            (string) $mix['total_runs'],
+        ];
 
         foreach (['persona_mix', 'persona_mix_recent', 'persona_mix_earlier'] as $key) {
             /** @var list<array{mood: string, count: int, percent: float}> $rows */
