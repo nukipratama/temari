@@ -49,7 +49,8 @@ matrix is exhaustive.
 ./vendor/bin/sail npm run build               # fresh built assets — stale/missing build = Vite manifest errors or old UI
 ./vendor/bin/sail artisan demo:seed          # demo user + ~126 runs, deterministic
 ./vendor/bin/sail artisan demo:seed --with-edge-states   # + pending/processing/failed AI blocks
-# .env must have DEMO_LOGIN_ENABLED=true (the scripts log in via the /login demo button)
+# the scripts log in via the /login demo button: DEMO_LOGIN_ENABLED defaults to true
+# (config/demo.php); only a local override to false breaks login
 ```
 
 The app is reachable **inside the container at `http://localhost`** (host-forwarded port is
@@ -84,7 +85,7 @@ to ask about. Do not reintroduce that gate. `DEVTOOLS_PASSWORD` is needed only t
 scripts at a production host, where Basic Auth does apply:
 
 ```bash
-./vendor/bin/sail exec -e DEVTOOLS_PASSWORD=<pw> app node .claude/skills/browser-review/scripts/shoot.mjs
+./vendor/bin/sail exec -e DEVTOOLS_PASSWORD=<pw> app node .agents/skills/browser-review/scripts/shoot.mjs
 ```
 
 ## Before merging to the epic — the probes are not in CI
@@ -113,11 +114,11 @@ silently checks stale output.
 ./vendor/bin/sail npm run build
 ./vendor/bin/sail artisan demo:seed --with-edge-states
 for g in dark light; do
-  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs $g
-  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/edges.mjs $g
-  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/states.mjs $g
+  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/contrast.mjs $g
+  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/edges.mjs $g
+  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/states.mjs $g
 done
-./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/light-islands.mjs dark
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/light-islands.mjs dark
 ```
 
 Compare against the baselines each section below documents. A number that moved is the finding;
@@ -143,31 +144,31 @@ binaries or edits `package.json`.
 
 ```bash
 # 1. one-time setup per container lifetime (apk needs root)
-docker compose exec -u root app sh .claude/skills/browser-review/scripts/setup.sh
+docker compose exec -u root app sh .agents/skills/browser-review/scripts/setup.sh
 
 # 2. screenshots across the viewport matrix (default mobile,se,laptop,desktop — see Viewport matrix above)
-./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/shoot.mjs
-#    e.g. just phone:    VIEWPORTS=mobile ./vendor/bin/sail exec -e VIEWPORTS=mobile app node .../shoot.mjs
-#    e.g. full 5-way:    VIEWPORTS=mobile,se,tablet,laptop,desktop ./vendor/bin/sail exec -e VIEWPORTS=mobile,se,tablet,laptop,desktop app node .../shoot.mjs
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/shoot.mjs
+#    e.g. just phone:    ./vendor/bin/sail exec -e VIEWPORTS=mobile app node .../shoot.mjs
+#    e.g. full 5-way:    ./vendor/bin/sail exec -e VIEWPORTS=mobile,se,tablet,laptop,desktop app node .../shoot.mjs
 
 # 3. horizontal-overflow audit across the matrix (run BEFORE Inspect — its output gates which
-#    pages get the expensive vision read, see "Inspect in parallel" below)
-./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/audit.mjs
+#    pages get the expensive vision read, see "Inspect" below)
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/audit.mjs
 
-# 4. rendered-contrast audit, once per ground (dark is the app's default)
-./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs dark
-./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs light
+# 4. rendered-contrast audit, once per ground
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/contrast.mjs dark
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/contrast.mjs light
 
 # 5. on demand: is a design-page shortfall real, and is any surface wearing the wrong ground?
-./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/mounts.mjs dark 'bg-leaf/15,...'
-./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/light-islands.mjs dark
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/mounts.mjs dark 'bg-leaf/15,...'
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/light-islands.mjs dark
 
-./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/edges.mjs dark
-./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/states.mjs dark
-./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs / dark 'document.title'
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/edges.mjs dark
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/states.mjs dark
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/probe.mjs / dark 'document.title'
 
 # 6. teardown (restore node_modules; screenshots are kept as history)
-./vendor/bin/sail exec app sh .claude/skills/browser-review/scripts/teardown.sh
+./vendor/bin/sail exec app sh .agents/skills/browser-review/scripts/teardown.sh
 ```
 
 ### Why `contrast.mjs` exists, and why it is not the design page's audit
@@ -178,7 +179,7 @@ applied to the wrong surface. `contrast.mjs` scores what the browser actually pa
 with its own text node, its background resolved by walking ancestors, against the WCAG minimum for
 its computed font size and weight.
 
-Run it per ground. The two disagree, and the dark ground is the default — three real bugs shipped
+Run it once per ground, because the two disagree — three real bugs shipped
 under a token audit that read green on light, all of them a fixed-identity token used where the
 ground flips (a `mood-*` fill is fixed, `foreground` is not, so `text-foreground` on a mood chip is
 near-white on pale green).
@@ -261,12 +262,9 @@ identity by design. Light ground is clean.
 `light-islands.mjs` was still parsing colours with a regex and silently dropping every `oklab()`
 background until it was pulled onto the shared canvas resolver.
 
-> **Reading screenshots costs more than it looks.** An image read into the main context is re-billed
-> as a cache read on *every* later turn, so cost is `size x remaining turns`, not size. A full-page
-> mobile shot is ~1170x2532 real pixels (deviceScaleFactor 3). Three rules:
+> **Reading screenshots.** A full-page mobile shot is ~1170x2532 real pixels (deviceScaleFactor 3).
 > 1. **Read each image at most once.** If you need it again, re-read your own notes, not the file.
-> 2. **Let a subagent look and report in text** — that is what the Inspect phase below does, and why
->    it is structured as disjoint per-viewport sets rather than several agents over the same files.
+> 2. **Give each inspector a disjoint page set** (see Inspect below), so no two read the same files.
 > 3. **Cropping for a closer look: crop AND downscale in one step, and write `.jpg`.** Never write a
 >    full-resolution intermediate you then read. `sips -Z 900 -s format jpeg -s formatOptions 80 in.jpg
 >    --out crop.jpg` (or one PIL call). Ad-hoc `crops/*.png` have historically been the single largest
@@ -275,7 +273,7 @@ background until it was pulled onto the shared canvas resolver.
 Each run lands in its own batch dir, keyed by date + execution time:
 `storage/app/browser-review/<YYYY-MM-DD>/<HHMMSS>/<viewport>/NN-<page>-{viewport,full}.jpg`. `shoot.mjs`
 clears prior batches at the start, so only the latest sweep is on disk, and prints the resolved dir as
-`BATCH_DIR=...` on its last line — **capture that and pass it to the inspect workflow.** The script also
+`BATCH_DIR=...` on its last line — **capture that and pass it to the inspectors.** The script also
 prints any console/`pageerror` per page. The audit prints a human-readable `HORIZ-OVERFLOW=true/false`
 line per page per viewport (ignoring intentional `overflow-x-auto` scroll containers and decorative
 `pointer-events-none` glow blobs) plus a machine-parseable `AUDIT vp=<viewport> name=<page-slug>
@@ -289,19 +287,19 @@ latter alone still flags a page, since an `overflow-hidden` ancestor can clip a 
 > These PNGs are gitignored (`storage/app/.gitignore` ignores `*`) and your IDE may hide gitignored
 > files — they're on disk under `storage/app/browser-review/`, not in a temp dir.
 
-## Inspect in parallel (audit-gated, isolated, keep the main context lean)
+## Inspect (audit-gated)
 
-A sweep produces a lot of images. Keep them out of the orchestrating context and give each inspector
-a disjoint page set. `audit.mjs` already found horizontal overflow programmatically for every page;
-reserve open-ended visual judgment for what code cannot check.
+`audit.mjs` already found horizontal overflow for every page, so reserve visual judgment for what
+code cannot check. Per viewport, inspect two page sets: every audit-flagged page, to confirm what is
+actually broken so the overflow finding is actionable; and four evenly spaced non-flagged pages, as a
+sample for overlapping, clipped or truncated text, wrong nav chrome, off-screen elements, awkward
+spacing, and hierarchy problems.
 
-For each viewport, split inspection into two independent calls:
-
-- **Audit-flagged pages:** confirm what is actually broken on each known-flagged PNG so the overflow
-  finding is actionable.
-- **Four evenly spaced non-flagged pages:** inspect a small sample for overlapping, clipped or
-  truncated text, wrong nav chrome, off-screen elements, awkward spacing, and hierarchy problems
-  that code cannot detect.
+You can do this yourself, one viewport at a time, reading each screenshot once and noting findings
+as you go. If your runtime supports subagents, you may hand it off instead: at most three concurrent
+inspectors, each owning one viewport pair (for example `mobile`+`se`, `laptop`+`desktop`) with both
+its flagged and sampled pages, and each reporting findings in text. Either way every finding follows
+the evidence contract below.
 
 Treat width-capped content (`PageContainer` / `max-w-page-2xl`), the fixed bottom-nav mid-page
 artifact, sparse demo-data grids, and intentional `overflow-x-auto` as designed behavior.
@@ -317,7 +315,7 @@ Every inspector **must verify before returning a finding**, and the result requi
 so the requirement cannot be quietly skipped. `probe.mjs` makes that one command:
 
 ```bash
-./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] [--shot] '<expression>'
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] [--shot] '<expression>'
 ```
 
 It logs in, sets the ground, optionally drives one control, evaluates the expression in the page and
@@ -364,17 +362,12 @@ summary so the screenshots are easy to open.
   (e.g. `/activities/{activity}` → `/activities/126`). If a detail page can't be sampled, the data is
   thin — **re-run `./vendor/bin/sail artisan demo:seed`** and try again.
 - **Redirect dedupe:** pages reached via a 301 alias are screenshotted once (keyed by the landed URL).
-- **Card-reveal modal:** the demo user can have a `pending_reveal_card_id` that pops a `New card`
-  dialog over every page; the script dismisses it once after login so the pages underneath are
-  reviewable. (To inspect the reveal itself, set the user's `pending_reveal_card_id` and run a
-  one-off with Playwright's `reducedMotion: 'reduce'` to jump straight to its opened state.)
 
 ## Notes
 
 - Defaults to the **local** app. Driving production (`temari.caffeinecommit.my.id`) needs real
   Strava auth — out of scope here.
-- This sweeps **pages**. Interactive states (the avatar logout menu, the card-reveal CTAs, equipping
-  an accessory) aren't auto-driven — spot-check those with a short one-off Playwright script that
+- This sweeps **pages**. Interactive states (e.g. the avatar logout menu) aren't auto-driven — spot-check those with a short one-off Playwright script that
   clicks the element, screenshots, and asserts its `boundingBox()` is within the viewport.
 - Scripts: `lib.mjs` (shared: viewports, login, route discovery), `shoot.mjs` (screenshots),
   `audit.mjs` (overflow), `contrast.mjs` (rendered contrast, per ground), `mounts.mjs` (what a panel

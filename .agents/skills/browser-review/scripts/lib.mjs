@@ -69,20 +69,6 @@ export async function login(page) {
   await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 15000 });
 }
 
-// The demo user may have a pending card reveal overlaying every page. The sealed
-// dialog still renders a "Close" button — click it once to clear it server-side.
-// CardReveal is lazy-loaded (see AppShell.tsx), so it isn't in the DOM yet right
-// after login: an instant isVisible() check races the chunk load and misses it,
-// leaving the reveal stuck open for the rest of the run. Wait for it instead.
-export async function dismissReveal(page) {
-  const dialog = page.getByRole('dialog', { name: /new card/i });
-  const appeared = await dialog.waitFor({ state: 'visible', timeout: 2000 }).then(() => true).catch(() => false);
-  if (appeared) {
-    await page.getByRole('button', { name: /close/i }).first().click().catch(() => {});
-    await dialog.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {});
-  }
-}
-
 // Chromium can't rasterize a screenshot taller than ~32,767 physical pixels —
 // past that it doesn't throw, it silently writes a 0-byte file. A long
 // unpaginated list (e.g. /activities with enough seeded runs) times deviceScaleFactor

@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { BASE, VIEWPORT_DEFS, login, dismissReveal, discoverPageRoutes } from './lib.mjs';
+import { BASE, VIEWPORT_DEFS, login, discoverPageRoutes } from './lib.mjs';
 
 const theme = globalThis.process.argv[2] ?? 'dark';
 
@@ -91,7 +91,6 @@ await ctx.addInitScript((t) => {
 }, theme);
 const page = await ctx.newPage();
 await login(page);
-await dismissReveal(page);
 
 const pages = await discoverPageRoutes(page);
 let total = 0;
