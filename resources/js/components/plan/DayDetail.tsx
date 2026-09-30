@@ -3,6 +3,7 @@ import {
     ArrowDown,
     ArrowRight,
     ArrowRightLeft,
+    RotateCcw,
     SkipForward,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -18,6 +19,7 @@ import {
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
 import TemariTake from '@/components/plan/TemariTake';
 import { Icon } from '@/components/ui/Icon';
+import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import {
@@ -509,13 +511,20 @@ export default function DayDetail({
                                 </button>
                             )}
                             {canUnskip && (
-                                <button
-                                    type="button"
-                                    onClick={onUnskip}
-                                    className="focus-ring flex items-center gap-1.5 text-label-micro text-text-2"
-                                >
-                                    bring this session back
-                                </button>
+                                <div className="w-full">
+                                    <PillButton
+                                        tone="outline"
+                                        size="sm"
+                                        onClick={onUnskip}
+                                    >
+                                        <Icon
+                                            icon={RotateCcw}
+                                            className="size-3.5"
+                                            aria-hidden
+                                        />
+                                        bring this session back
+                                    </PillButton>
+                                </div>
                             )}
                         </div>
                     )}
