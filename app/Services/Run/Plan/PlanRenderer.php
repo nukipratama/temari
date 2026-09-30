@@ -230,7 +230,7 @@ final class PlanRenderer
      * @param  array<string, float>  $volumeScaleByDate  date => scale, from {@see VolumeRedistributor::redistribute()}
      * @param  bool  $isPrimaryEasy  whether this is the week's first (bigger) Easy day — see {@see SegmentGenerator::coreKmFor()}
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
-     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, moving_time: int|null, started_at: string}>}|null  $activity  every run logged that day, for the planned-vs-actual bar and the links out
+     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}|null  $activity  every run logged that day, for the planned-vs-actual bar and the links out
      * @param  ?int  $raceGoalTimeSec  the active race's `goal_time_sec` — what race day is prescribed at
      * @param  ?bool  $ranAnyway  live verdict override for an unscored day; null keeps the row's own stored value
      * @return array<string, mixed>
@@ -516,7 +516,7 @@ final class PlanRenderer
      * volume arrived in pieces. Only that case has something to explain —
      * every other verdict is already said by its own numbers.
      *
-     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, moving_time: int|null, started_at: string}>}|null  $activity
+     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}|null  $activity
      */
     private static function creditNote(SessionType $sessionType, PlannedSessionStatus $status, float $askedKm, ?array $activity): ?string
     {
