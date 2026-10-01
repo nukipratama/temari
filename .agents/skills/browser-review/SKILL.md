@@ -12,35 +12,17 @@ Then read the PNGs back to spot layout bugs. Everything runs **inside the Sail `
 (no host browser needed), so the page list is never hardcoded — it comes from
 `php artisan route:list` each run and auto-includes new pages.
 
-## Viewport matrix (default)
+## Reference index
 
-The app has **one** nav chrome at every width — `MobileTopBar` + `MobileBottomNav`. The port deleted
-the desktop `TopNav`, so no viewport here swaps chrome; what they cover is width-driven layout and
-the two type steps (`1280px` -> 19.2px, `2048px` -> 21.6px):
+Read only the file the step needs; each holds its section verbatim.
 
-| key | size | what it covers | in default sweep? |
-|-----|------|-----------|--------------------|
-| `mobile`  | 390×844  (iPhone 13)   | base type (16px) | yes |
-| `se`      | 320×568  (iPhone SE)   | base type (16px) | yes — narrowest real device, catches width-driven bugs `mobile` misses |
-| `tablet`  | 834×1112 (iPad portrait) | base type (16px) | no — nothing disagrees with `mobile` here, opt in explicitly |
-| `laptop`  | 1920×1080              | first type step (19.2px), past every column breakpoint | yes |
-| `desktop` | 2560×1440 (2K)         | **second type step (21.6px)** — the only viewport past 2048px | yes |
-
-Default is `mobile,se,laptop,desktop` — two phones and the two real desktop sizes. `laptop` and
-`desktop` differ only by the 2048px type step, which is the point: one takes 19.2px, the other
-21.6px. The old 1280 and 1536 entries are gone because 1920 is already past every breakpoint they
-tested (`lg`, the 1280 column widening, and the `2xl` page cap), so they only cost screenshots.
-
-`tablet` is dropped from the default because nothing disagrees with `mobile` there. `se`, in
-contrast, is kept despite sharing `mobile`'s chrome: its narrower 320px width has caught real
-overflow that 390px missed entirely — a CSS grid track sized to its widest child instead of shrinking
-to fit, a fluid font clamp whose floor was tuned for a wider column and silently ellipsis-truncated
-real values. Those are width-driven bugs, not breakpoint-driven ones, so they don't reproduce at
-390px. Narrow with `VIEWPORTS=mobile`, or take the full five-way matrix with
-`VIEWPORTS=mobile,se,tablet,laptop,desktop` before a release.
-
-Nothing covers 900–1279px, and nothing did before either — worth knowing rather than assuming the
-matrix is exhaustive.
+- [Viewport matrix (default)](references/viewports.md): before narrowing or widening `VIEWPORTS`.
+- [States the demo does not produce, and the operator console](references/edge-states-and-devtools.md): before auditing loading, empty or failed states, or sweeping `/devtools`, `/pulse` or a production host.
+- [Before merging to the epic — the probes are not in CI](references/pre-merge-probes.md): before merging UI work to the epic.
+- [The Alpine/Playwright gotcha](references/alpine-playwright.md): when `setup.sh` or Chromium fails to launch.
+- [Scanners](references/scanners.md) (`contrast.mjs`, `mounts.mjs`, `light-islands.mjs`, `edges.mjs`, `states.mjs`, `scans.mjs`): before running step 4 or 5, or judging their baselines.
+- [Reading the output and inspecting](references/inspect.md) ("Reading screenshots", "Inspect (audit-gated)", "Verify before reporting", the probe-evidence contract): after steps 2–3, before reading any screenshot.
+- [What the scripts handle for you, and notes](references/scripts.md): when a page is missing from the sweep, or before editing a script.
 
 ## Prerequisites
 
@@ -56,103 +38,19 @@ matrix is exhaustive.
 The app is reachable **inside the container at `http://localhost`** (host-forwarded port is
 `APP_PORT=7001`, but the scripts run in the container, so use `localhost`).
 
-### States the demo does not produce
-
-`demo:seed` marks every Analysis row **done** — honest for a public demo, and exactly why no sweep
-ever rendered a pending, processing or failed block. A near-white `.skeleton` shipped on the dark
-ground behind that gap and survived three sweeps, because the state that would have shown it never
-existed in the seed.
-
-`--with-edge-states` opts in: a failed block and a pending one on the newest activity, and a
-processing one on the dashboard briefing. Idempotent, and off by default so the public demo stays
-pristine. Run it before an audit that cares about loading, empty or failed states.
-
-It has its **own baseline**, because it makes pages render that otherwise do not: `contrast.mjs`
-reports **dark 1** with it on, the "Attempts" header on `/devtools/pulse` at 3.67:1. That is Pulse's
-own `<x-pulse::th>` styling showing through our `self-heal-attempts` card, which only has rows once a
-failed Analysis exists. Vendor component internals on an operator page, recorded rather than chased.
-
-### The operator console (`/devtools`, `/devtools/design`, `/devtools/narration`, `/pulse`)
-
-**All four are swept by default, and locally they need no password.**
-[EnsureDevtoolsAccess](../../../app/Http/Middleware/EnsureDevtoolsAccess.php) returns early when
-the app is not in production, so an unauthenticated request to `/devtools/design` answers **200**.
-`/pulse` is a vendor route `route:list --except-vendor` never reports, so it is appended by hand.
-
-This skill used to gate all four on `DEVTOOLS_PASSWORD` being set, which kept `/devtools/design`
-out of every audit it runs — the one page that renders the token swatches an audit is most likely
-to ask about. Do not reintroduce that gate. `DEVTOOLS_PASSWORD` is needed only to point these
-scripts at a production host, where Basic Auth does apply:
-
-```bash
-./vendor/bin/sail exec -e DEVTOOLS_PASSWORD=<pw> app node .agents/skills/browser-review/scripts/shoot.mjs
-```
-
-## Before merging to the epic — the probes are not in CI
-
-CI is pest + vitest. There is no browser, and there will not be one: the runner is 4 cores shared
-with prod. So of the five ways a value can wear the wrong ground, **only two are enforced
-automatically**:
-
-| what | covered by | in CI |
-|---|---|---|
-| `bg-<token>` and its alpha panels | `grounds.json` + `DesignTokenContrastTest` | yes |
-| gradient stops | `npm run check:palette` | yes |
-| `text-*` on a painted surface | `contrast.mjs` | **no** |
-| `border-*` / `ring-*` | `edges.mjs` | **no** |
-| anything only visible once opened | `states.mjs` | **no** |
-
-The bottom three found every wrong-ground bug of the audit that produced them, including two at
-**1.00:1**, and every one was findable only by someone running these by hand. Treat that as the
-standing cost of the constraint, not as coverage.
-
-**Run this before merging a branch that touches tokens, `app.css`, or any component's surface,
-border or text classes.** Build first — the review server serves `public/build`, so an unbuilt run
-silently checks stale output.
-
-```bash
-./vendor/bin/sail npm run build
-./vendor/bin/sail artisan demo:seed --with-edge-states
-for g in dark light; do
-  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/contrast.mjs $g
-  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/edges.mjs $g
-  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/states.mjs $g
-done
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/light-islands.mjs dark
-```
-
-Compare against the baselines each section below documents. A number that moved is the finding;
-a number that held is the result. Neither is "clean" on its own — `contrast.mjs` read **dark 0**
-through three sweeps while a 316x280 near-white block shipped in a state the seed could not produce.
-
-## The Alpine/Playwright gotcha (do not rediscover this)
-
-The `app` container is **Alpine Linux (musl), ARM64**. Playwright's bundled Chromium is a glibc
-build and fails to launch with a misleading `spawn ... ENOENT`. Fix: use Alpine's **native** musl
-Chromium and point Playwright at it. `setup.sh` does this:
-
-- `apk add --no-cache chromium nss freetype harfbuzz ttf-freefont` (needs **root**) → `/usr/bin/chromium`
-- `npm i playwright --no-save` for the JS driver only, run as the **app user** (not root, or the
-  unprivileged teardown can't remove it); `teardown.sh` deletes the playwright dirs to restore the
-  lockfile state
-- launch with `executablePath: '/usr/bin/chromium'` + `--no-sandbox --disable-dev-shm-usage`
-
-Both are **ephemeral** (gone when the container is recreated) — this skill never commits browser
-binaries or edits `package.json`.
-
 ## Run it
 
 ```bash
 # 1. one-time setup per container lifetime (apk needs root)
 docker compose exec -u root app sh .agents/skills/browser-review/scripts/setup.sh
 
-# 2. screenshots across the viewport matrix (default mobile,se,laptop,desktop — see Viewport matrix above)
+# 2. screenshots across the viewport matrix (default mobile,se,laptop,desktop — see references/viewports.md)
 ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/shoot.mjs
 #    e.g. just phone:    ./vendor/bin/sail exec -e VIEWPORTS=mobile app node .../shoot.mjs
 #    e.g. full 5-way:    ./vendor/bin/sail exec -e VIEWPORTS=mobile,se,tablet,laptop,desktop app node .../shoot.mjs
 
 # 3. horizontal-overflow audit across the matrix (run BEFORE Inspect — its output gates which
-#    pages get the expensive vision read, see "Inspect" below)
+#    pages get the expensive vision read, see references/inspect.md)
 ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/audit.mjs
 
 # 4. rendered-contrast audit, once per ground
@@ -170,208 +68,3 @@ docker compose exec -u root app sh .agents/skills/browser-review/scripts/setup.s
 # 6. teardown (restore node_modules; screenshots are kept as history)
 ./vendor/bin/sail exec app sh .agents/skills/browser-review/scripts/teardown.sh
 ```
-
-### Why `contrast.mjs` exists, and why it is not the design page's audit
-
-`/devtools/design` scores *token pairings* declared in `grounds.json`. That answers "is this pair
-readable", not "is anything on screen unreadable" — a token can be perfectly specified and still be
-applied to the wrong surface. `contrast.mjs` scores what the browser actually painted: every element
-with its own text node, its background resolved by walking ancestors, against the WCAG minimum for
-its computed font size and weight.
-
-Run it once per ground, because the two disagree — three real bugs shipped
-under a token audit that read green on light, all of them a fixed-identity token used where the
-ground flips (a `mood-*` fill is fixed, `foreground` is not, so `text-foreground` on a mood chip is
-near-white on pale green).
-
-An element whose background is a gradient, image, map tile or video is **skipped, not scored** —
-there is no flat colour to compare against, and scoring it against an ancestor's colour invents
-failures that are not on screen. That was the difference between four reported failures and the
-three that were real.
-
-**One known false positive remains**, on the light ground only: the "Activate map" overlay on
-`/activities/{id}`. Nothing in its ancestor chain paints an opaque background, so the resolver falls
-back to white and scores `text-cream` against white (1.13). In the browser it sits on a dark
-`bg-ink/70` pill over the map placeholder and is perfectly legible. Treat a **dark-ground total of 0
-and a light-ground total of 1** as the clean baseline; anything above that is new.
-
-### `mounts.mjs` and `light-islands.mjs` — the two questions a ratio can't answer
-
-`/devtools/design` worst-cases every translucent panel against every ground the app paints, because
-`grounds.json` records the mount as `paper` and `paper` is a *set*. That answers "could this pairing
-fail", never "does it". **`mounts.mjs`** resolves the other half: for each `bg-<token>/<alpha>` spec
-you pass it, it walks the rendered DOM of every discovered page and reports the nearest opaque
-ancestor background per call site. A shortfall scored against the worst ground can then be re-scored
-against the ground the component is actually mounted on. Run it before tuning a token: of 11 dark
-shortfalls it was pointed at, six rendered only on `background`/`card` and passed there (4.6-5.9),
-three came from an unused vendored variant, and two rendered only on `/devtools/design` itself.
-
-Two traps it has already sprung. Alpha panels are written **both** ways, `bg-leaf/15` and
-`bg-leaf/[0.18]`, so a grep for one silently misses the other and reports a live panel as dead. And a
-`hover:` surface has to be hovered to exist — `contrast.mjs` never hovers, so several panels that
-read as "never rendered" are simply never rested on.
-
-**`light-islands.mjs`** reports geometry rather than contrast, which is the gap both audits share: a
-fixed-light token (`cream`, `cream-deep`, `line`, the `.skeleton` utility, a `mood-*-bg` cell) used
-where a reactive one was meant renders as a bright island on a near-black page and **nothing fails**,
-because the dark text on it still clears AA. It flags every element whose own background is far
-lighter than the ground beneath it, hovering anything that carries a `hover:bg-` utility on the way.
-Read the head of its output: vivid accent fills (`horizon`, `citrus`, `mood-*` dots) are fixed
-identity by design and legitimately sit near the top, so what you want is anything *near-white*.
-`/devtools/design` dominates the list and should be ignored wholesale — rendering every token as a
-swatch, fixed-light ones included, is that page's entire job.
-
-**`edges.mjs`** asks `light-islands.mjs`'s question of a *border* rather than a surface, which is the
-other half nothing scores: the token audit scans `bg-<token>` only, so a fixed-light border token on
-a dark ground fails nothing. It does not go unreadable, it goes **absent** — `border-ink/[0.18]` over
-a Sky card measured 1.02:1, and the selected-colorway indicator in `ShareCardModal` was `#171f28` on
-`#171f28`. Two things it gets right that are easy to get wrong: an edge is resolved against what is
-**outside** the element, since scoring it against the element's own background reports the deliberate
-`border-x bg-x` sizing trick as invisible; and colours go through a **canvas** rather than a regex,
-because computed styles come back as `oklab()` and `color-mix()` as often as `rgb()` and a regex that
-only knows `rgb()` reads a 1.02:1 border as "no data" instead of "invisible".
-
-It scores **borders**; ring/box-shadow detection is best-effort and misses Tailwind's composed shadow
-chain, so the elevation rim is not scored — deliberately, since elevation sits below the separator
-floor on both grounds (1.28:1 dark rim, 1.11:1 light cast, against a 1.4 minimum meant for dividers).
-
-Its known-clean baseline is **Leaflet's own zoom control on both grounds**, plus `border-border/60` on
-`/settings` at 1.31 on light — `--color-border` is derived to land exactly on 1.4:1, so any alpha
-below full is inherently under the floor.
-
-**`states.mjs`** runs those scans in states a page load never reaches, which is where the coverage
-keeps failing: the `.skeleton` bug lived in a loading state, and three of #723's invisible edges lived
-inside a collapsed accordion and an unopened modal. All of them passed clean sweeps.
-
-It **discovers its own triggers** — `aria-expanded`, `aria-haspopup`, `aria-controls`, `summary` — so
-a new modal is covered the day it ships. A maintained list would drift the moment nobody updated it,
-which is the same failure mode as the `onSky` prop nine of nine call sites forgot. Findings present
-before the click are subtracted, so it reports what the *state* introduced.
-
-It immediately found the worst bug of the audit: `MetricExplainer`'s popover painted a near-white
-gradient with near-white body text at **1.00:1** on the dark ground, across three call sites on the
-dashboard and history. Invisible to everything else twice over — it only exists when opened, and its
-background is a **gradient**, which `contrast.mjs` skips by design and an island scan misses because
-`backgroundColor` on a gradient element is transparent. A gradient is still a blind spot; the driver
-only caught this one via its border.
-
-Its known-clean baseline is **one island on `/race`**: the selected date cell's `bg-horizon`, fixed
-identity by design. Light ground is clean.
-
-`scans.mjs` holds the colour maths all three scanners share, so a fix lands everywhere at once —
-`light-islands.mjs` was still parsing colours with a regex and silently dropping every `oklab()`
-background until it was pulled onto the shared canvas resolver.
-
-> **Reading screenshots.** A full-page mobile shot is ~1170x2532 real pixels (deviceScaleFactor 3).
-> 1. **Read each image at most once.** If you need it again, re-read your own notes, not the file.
-> 2. **Give each inspector a disjoint page set** (see Inspect below), so no two read the same files.
-> 3. **Cropping for a closer look: crop AND downscale in one step, and write `.jpg`.** Never write a
->    full-resolution intermediate you then read. `sips -Z 900 -s format jpeg -s formatOptions 80 in.jpg
->    --out crop.jpg` (or one PIL call). Ad-hoc `crops/*.png` have historically been the single largest
->    source of oversized reads after the sweep itself.
-
-Each run lands in its own batch dir, keyed by date + execution time:
-`storage/app/browser-review/<YYYY-MM-DD>/<HHMMSS>/<viewport>/NN-<page>-{viewport,full}.jpg`. `shoot.mjs`
-clears prior batches at the start, so only the latest sweep is on disk, and prints the resolved dir as
-`BATCH_DIR=...` on its last line — **capture that and pass it to the inspectors.** The script also
-prints any console/`pageerror` per page. The audit prints a human-readable `HORIZ-OVERFLOW=true/false`
-line per page per viewport (ignoring intentional `overflow-x-auto` scroll containers and decorative
-`pointer-events-none` glow blobs) plus a machine-parseable `AUDIT vp=<viewport> name=<page-slug>
-overflow=<true|false>` line for every page — **capture and parse these too**, they gate the Inspect
-phase below (`name` matches the `-<name>-full.jpg` slug in `shoot.mjs`'s filenames, so the two scripts'
-independent page orderings don't need to line up). The overflow flag is `true` if *either* the
-document's `scrollWidth` exceeds the viewport *or* any individual element's box extends past it — the
-latter alone still flags a page, since an `overflow-hidden` ancestor can clip a child without growing
-`scrollWidth`, which would otherwise hide real off-screen content from the check entirely.
-
-> These PNGs are gitignored (`storage/app/.gitignore` ignores `*`) and your IDE may hide gitignored
-> files — they're on disk under `storage/app/browser-review/`, not in a temp dir.
-
-## Inspect (audit-gated)
-
-`audit.mjs` already found horizontal overflow for every page, so reserve visual judgment for what
-code cannot check. Per viewport, inspect two page sets: every audit-flagged page, to confirm what is
-actually broken so the overflow finding is actionable; and four evenly spaced non-flagged pages, as a
-sample for overlapping, clipped or truncated text, wrong nav chrome, off-screen elements, awkward
-spacing, and hierarchy problems.
-
-You can do this yourself, one viewport at a time, reading each screenshot once and noting findings
-as you go. If your runtime supports subagents, you may hand it off instead: at most three concurrent
-inspectors, each owning one viewport pair (for example `mobile`+`se`, `laptop`+`desktop`) with both
-its flagged and sampled pages, and each reporting findings in text. Either way every finding follows
-the evidence contract below.
-
-Treat width-capped content (`PageContainer` / `max-w-page-2xl`), the fixed bottom-nav mid-page
-artifact, sparse demo-data grids, and intentional `overflow-x-auto` as designed behavior.
-
-### Verify before reporting — the rate is worse than "some"
-
-A screenshot is a weak source, and the numbers are not hypothetical. One pass produced 20 findings and
-roughly a third did not survive checking. A later pass produced **3, and all 3 were wrong**: a fixed
-bottom nav read as an element collision, a notification bell read as an empty box, a token-correct
-inverted pill read as a wrong-ground bug. Every one cost a round of someone's attention.
-
-Every inspector **must verify before returning a finding**, and the result requires the evidence
-so the requirement cannot be quietly skipped. `probe.mjs` makes that one command:
-
-```bash
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] [--shot] '<expression>'
-```
-
-It logs in, sets the ground, optionally drives one control, evaluates the expression in the page and
-prints JSON — `{ result, console, shot }`, where `console` is any console/pageerror messages captured
-during the run (always on, a live substitute for a browser devtools console mid-coding) and `shot` is
-a saved screenshot path when `--shot` is passed. A claim that content is *missing* is answered by
-querying for it; a claim that something is *invisible* is answered by `getComputedStyle`; a claim
-about *size* is answered by `getBoundingClientRect`. That is how a flex-shrink bug squeezing a 6px
-dot to 0px was confirmed —
-invisible in a screenshot, obvious in one call.
-
-Two standing sources of false positives to weigh before reporting at all:
-
-- **Screenshots come from separate logins.** `shoot.mjs` opens a fresh context per viewport, so mobile
-  and desktop shots of the "same" page are independent server requests. Any `Analysis`-backed content
-  can legitimately differ for reasons unrelated to responsive CSS.
-- **"Missing" is a much stronger claim than "small/faint/different."** It is also the claim most often
-  wrong, and the one most likely to be acted on without re-checking. It always needs a probe.
-
-Give every inspector the batch dir, its viewport, and the parsed `AUDIT` records, for example:
-```json
-{
-  "dir": "storage/app/browser-review/2026-06-19/143022",
-  "viewports": ["mobile", "desktop"],
-  "pages": {
-    "mobile": [{ "name": "today", "overflow": false }, { "name": "activities-detail", "overflow": true }],
-    "desktop": [{ "name": "today", "overflow": false }, { "name": "activities-detail", "overflow": false }]
-  }
-}
-```
-Here `dir` is the `BATCH_DIR=` line from `shoot.mjs`, and `pages[viewport]` comes from step 3's
-`AUDIT` lines. Each inspector returns `viewport` plus findings containing `page`, `severity`,
-`issue`, and `evidence`; `evidence` includes the `probe.mjs` command and result. Merge the results,
-discard every unverified claim, and allow an empty findings list. State the batch dir in the final
-summary so the screenshots are easy to open.
-
-## What the scripts handle for you
-
-- **Page discovery:** `lib.mjs` runs `php artisan route:list --json --except-vendor` and keeps the
-  GET `web` pages — dropping apis, oauth handshakes, webhooks, assets, and legacy 301 redirects.
-  Add a page and it's covered automatically; nothing to maintain by hand.
-- **Auth:** clicks the demo button on `/login` (no Strava needed) — fresh per viewport context.
-- **`{param}` pages:** resolved at runtime by scraping the first matching link off the list page
-  (e.g. `/activities/{activity}` → `/activities/126`). If a detail page can't be sampled, the data is
-  thin — **re-run `./vendor/bin/sail artisan demo:seed`** and try again.
-- **Redirect dedupe:** pages reached via a 301 alias are screenshotted once (keyed by the landed URL).
-
-## Notes
-
-- Defaults to the **local** app. Driving production (`temari.caffeinecommit.my.id`) needs real
-  Strava auth — out of scope here.
-- This sweeps **pages**. Interactive states (e.g. the avatar logout menu) aren't auto-driven — spot-check those with a short one-off Playwright script that
-  clicks the element, screenshots, and asserts its `boundingBox()` is within the viewport.
-- Scripts: `lib.mjs` (shared: viewports, login, route discovery), `shoot.mjs` (screenshots),
-  `audit.mjs` (overflow), `contrast.mjs` (rendered contrast, per ground), `mounts.mjs` (what a panel
-  is actually mounted on), `light-islands.mjs` (surfaces wearing the wrong ground), `edges.mjs`
-  (borders and rings that are not there), `states.mjs` (those scans, in states a page load never
-  reaches), `scans.mjs` (the shared colour maths), `probe.mjs` (one live DOM question, answered),
-  `setup.sh` / `teardown.sh`.
