@@ -20,7 +20,7 @@ final readonly class CurrentWeekVolumeProjector
     /**
      * @param Collection<int, PlannedSession> $sessions
      * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null $clamp
-     * @return array{scale_by_date: array<string, float>, activity_by_date: array<string, array{km: float, meters: float, runs: list<array{id: int, km: float, seconds: int|null, moving_time: int|null, started_at: string}>}>}
+     * @return array{scale_by_date: array<string, float>, activity_by_date: array<string, array{km: float, meters: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}>}
      */
     public function project(
         User $user,
