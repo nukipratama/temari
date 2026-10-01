@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
+use Symfony\Component\Finder\SplFileInfo;
 use Symfony\Component\Process\Process;
 
 const CI_WORKFLOW = '.github/workflows/ci.yml';
@@ -55,7 +56,11 @@ it('runs backend CI for every file the token-mirror test reads', function (): vo
 })->group('structure');
 
 it('runs backend CI for every doc the token-docs test reads', function (): void {
-    $docs = ['CLAUDE.md', 'README.md', 'docs/design-tokens.md', '.agents/skills/temari/SKILL.md'];
+    $skillDocs = collect(File::allFiles(base_path('.agents/skills/temari')))
+        ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'md')
+        ->map(fn (SplFileInfo $file): string => '.agents/skills/temari/'.$file->getRelativePathname());
+
+    $docs = ['CLAUDE.md', 'README.md', 'docs/design-tokens.md', ...$skillDocs];
 
     $unguarded = collect($docs)->reject(ciClassifiesAsBackend(...))->values();
 

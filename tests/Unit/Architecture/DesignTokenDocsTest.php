@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
+use Symfony\Component\Finder\SplFileInfo;
 
 /**
  * Keeps the design-system docs honest. The Threadwork palette / type scale drifted
@@ -33,7 +34,11 @@ it('keeps the design docs free of removed token names', function (): void {
     // Names that were deleted from the codebase and must not reappear in docs.
     $forbidden = ['text-ink-soft', 'text-ink-meta', 'GradientNumber', '--gradient-subuh', '--color-phase-'];
 
-    foreach (['CLAUDE.md', 'README.md', 'docs/design-tokens.md', '.agents/skills/temari/SKILL.md'] as $relativePath) {
+    $skillDocs = collect(File::allFiles(base_path('.agents/skills/temari')))
+        ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'md')
+        ->map(fn (SplFileInfo $file): string => '.agents/skills/temari/'.$file->getRelativePathname());
+
+    foreach (['CLAUDE.md', 'README.md', 'docs/design-tokens.md', ...$skillDocs] as $relativePath) {
         $content = File::get(base_path($relativePath));
         foreach ($forbidden as $needle) {
             expect(str_contains($content, $needle))->toBeFalse(
