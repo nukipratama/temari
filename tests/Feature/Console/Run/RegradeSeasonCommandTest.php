@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\IntentVerdict;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -59,17 +60,17 @@ afterEach(function (): void {
     Carbon::setTestNow();
 });
 
-it('regrades the current season\'s past days on distance and intent', function (): void {
+it('regrades the current season\'s past days on distance, leaving intent unknown without shown advice', function (): void {
     $row = regradeFastEasyDay($this->user, '2026-08-05', PlannedSessionStatus::Done);
 
     $this->artisan('plan:regrade-season')
         ->expectsOutputToContain('Regraded 1 planned session(s) across 1 season(s), backfilling 1 rule-based read(s).')
         ->assertSuccessful();
 
-    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Overreached)
+    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Done)
         ->and($row->compliance_score)->toBe(100)
         ->and($row->distance_score)->toBe(100)
-        ->and($row->intent_verdict)->not->toBeNull();
+        ->and($row->intent_verdict)->toBe(IntentVerdict::Unknown);
 });
 
 it('changes nothing the second time it runs', function (): void {

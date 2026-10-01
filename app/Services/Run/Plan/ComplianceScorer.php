@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -15,8 +14,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RecommendationRevision;
 use App\Models\User;
-use App\Services\Run\Metrics\TrainingPaceCalculator;
-use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Metrics\ReadinessCeiling;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
@@ -34,12 +32,11 @@ use Illuminate\Support\Carbon;
  */
 final readonly class ComplianceScorer
 {
+    private const array STRONG_CONCERN_REASONS = ['severe_fatigue_or_soreness_reported', 'concerning_pain_reported', 'illness_reported'];
+
     public function __construct(
         private SessionMatcher $sessionMatcher,
         private TrainingBaseline $baseline,
-        private VdotEstimator $vdotEstimator,
-        private TrainingPaceCalculator $paceCalculator,
-        private ResolveActiveRaceAction $activeRace,
         private RecommendationHistory $recommendationHistory,
     ) {
     }
@@ -123,7 +120,7 @@ final readonly class ComplianceScorer
 
         $typesByDate = array_map(static fn (RecommendationRevision $revision): SessionType => SessionType::from($revision->effective['session_type']), $recommendationsByDate);
         $verdicts = $this->sessionMatcher->scoreRange($user, $plannedKmByDate, $excusedByDate, $today, $typesByDate);
-        $intents = $this->intentsFor($user, $rows, $effectiveByDate, $verdicts, $raceByDate, $recommendationsByDate);
+        $intents = $this->intentsFor($user, $rows, $effectiveByDate, $verdicts, $recommendationsByDate);
 
         $graded = [];
         foreach ($verdicts as $date => $verdict) {
@@ -143,11 +140,10 @@ final readonly class ComplianceScorer
      * @param  Collection<int, PlannedSession>  $rows
      * @param  array<string, EffectiveSession>  $effectiveByDate
      * @param  array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>  $verdicts
-     * @param  array<string, array{distance_m: int, goal_time_sec: int}|null>|null  $raceByDate
+     * @param  array<string, RecommendationRevision>  $recommendationsByDate
      * @return array<string, array{verdict: IntentVerdict, evidence: array<string, int|float|string>}>
-     * @param array<string, RecommendationRevision> $recommendationsByDate
      */
-    private function intentsFor(User $user, Collection $rows, array $effectiveByDate, array $verdicts, ?array $raceByDate = null, array $recommendationsByDate = []): array
+    private function intentsFor(User $user, Collection $rows, array $effectiveByDate, array $verdicts, array $recommendationsByDate = []): array
     {
         $judged = $rows->filter(static fn (PlannedSession $row): bool => ($verdicts[$row->date->toDateString()]['status'] ?? null)?->isCredited() === true
             && in_array($effectiveByDate[$row->date->toDateString()]->sessionType, [SessionType::Easy, SessionType::Long, SessionType::Tempo, SessionType::Interval], true));
@@ -159,48 +155,95 @@ final readonly class ComplianceScorer
         $intents = [];
         foreach ($judged as $row) {
             $date = $row->date->toDateString();
-            $effective = $effectiveByDate[$date];
             $recommendation = $recommendationsByDate[$date] ?? null;
-            if ($recommendation !== null) {
-                $segments = array_map(static fn (array $segment): SessionSegment => new SessionSegment(
-                    SegmentKey::from($segment['key']),
-                    $segment['minutes'],
-                    $segment['zone'],
-                    PaceBand::from($segment['pace_label']),
-                    $segment['pace_sec_per_km'],
-                    $segment['km'],
-                ), array_values($recommendation->effective['segments']));
-                $intents[$date] = SessionIntentJudge::judge($effective->sessionType, $segments, $recommendation->effective['paces'], $runsByDate[$date] ?? []);
-                $intents[$date]['evidence']['recommendation_revision_id'] = $recommendation->id;
-                $intents[$date]['evidence']['advice_history'] = 'shown';
-
-                continue;
-            }
-            $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $row->date));
-            $race = $raceByDate !== null && array_key_exists($date, $raceByDate)
-                ? $raceByDate[$date]
-                : null;
-            $activeRace = $raceByDate !== null && array_key_exists($date, $raceByDate)
-                ? null
-                : ($this->activeRace)($user->id);
-            $raceDistanceM = $race['distance_m'] ?? $activeRace?->distance_m;
-            $raceGoalTimeSec = $race['goal_time_sec'] ?? $activeRace?->goal_time_sec;
-            $prescription = IntensityPrescription::fromSession($row);
-            $qualityPrescription = $effective->qualityPrescription();
-            $judgedType = $prescription?->isEasy() === true && in_array($effective->sessionType, [SessionType::Tempo, SessionType::Interval], true)
-                ? SessionType::Easy
-                : $effective->sessionType;
-            $segments = match (true) {
-                $qualityPrescription !== null => SegmentGenerator::forPrescription($effective->sessionType, $row->phase, $effective->coreKm, $paces, $qualityPrescription),
-                $effective->isEased() => SegmentGenerator::easyBlock($effective->coreKm, $paces),
-                $prescription !== null => SegmentGenerator::forPrescription($effective->sessionType, $row->phase, $effective->coreKm, $paces, $prescription),
-                default => SegmentGenerator::forCoreKm($effective->sessionType, $row->phase, $raceDistanceM === null ? null : (float) $raceDistanceM, $effective->coreKm, $paces, $raceGoalTimeSec),
-            };
-            $intents[$date] = SessionIntentJudge::judge($judgedType, $segments, $paces, $runsByDate[$date] ?? []);
-            $intents[$date]['evidence']['advice_history'] = 'unknown';
+            $intents[$date] = $recommendation === null
+                ? ['verdict' => IntentVerdict::Unknown, 'evidence' => ['advice_history' => 'unknown']]
+                : self::shownIntent($recommendation, $runsByDate[$date] ?? []);
         }
 
         return $intents;
+    }
+
+    /**
+     * Grades the effective advice the athlete saw, and carries what the
+     * original session was and what the runs actually did beside it, so an
+     * eased session that got run hard, or an easy day with hard work added,
+     * stays distinguishable from a plain miss.
+     *
+     * @param  list<ActivityDetail>  $runs
+     * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
+     */
+    private static function shownIntent(RecommendationRevision $recommendation, array $runs): array
+    {
+        $effectiveType = SessionType::from($recommendation->effective['session_type']);
+        $effectiveSegments = self::segmentsOf($recommendation->effective['segments'] ?? []);
+        $paces = $recommendation->effective['paces'] ?? null;
+        $originalType = SessionType::tryFrom($recommendation->original['session_type'] ?? '') ?? $effectiveType;
+        $originalSegments = self::segmentsOf($recommendation->original['segments'] ?? []);
+        $originalHardMinutes = self::hardMinutes($originalSegments);
+        $eased = $originalHardMinutes > 0.0
+            && ($originalType !== $effectiveType || self::hardMinutes($effectiveSegments) < $originalHardMinutes);
+
+        $reading = SessionIntentJudge::judge($effectiveType, $effectiveSegments, $paces, $runs);
+        $evidence = $reading['evidence'] + ['recommendation_revision_id' => $recommendation->id, 'advice_history' => 'shown'];
+        $verdict = $reading['verdict'];
+
+        if (! $eased) {
+            $evidence['concern'] = 'none';
+            if ($originalHardMinutes > 0.0 && $verdict !== IntentVerdict::Unknown) {
+                $evidence['quality_progression'] = 'eligible';
+            }
+
+            return ['verdict' => $verdict, 'evidence' => $evidence];
+        }
+
+        $evidence['eased_from'] = $originalType->value;
+        $evidence['concern'] = self::concernOf($recommendation->effective['readiness_assessment'] ?? null);
+        $original = SessionIntentJudge::judge($originalType, $originalSegments, $paces, $runs);
+        if (in_array($original['verdict'], [IntentVerdict::Hit, IntentVerdict::TooHard], true)) {
+            $evidence['original_completed'] = $original['evidence']['control'] ?? 'controlled';
+            $evidence = array_diff_key($evidence, ['stimulus_family' => 0, 'stimulus_minutes' => 0, 'stimulus_source' => 0])
+                + array_intersect_key($original['evidence'], ['stimulus_family' => 0, 'stimulus_minutes' => 0, 'stimulus_source' => 0]);
+            $verdict = IntentVerdict::TooHard;
+        }
+
+        return ['verdict' => $verdict, 'evidence' => $evidence];
+    }
+
+    /**
+     * A concern is strong only when the shown readiness ceiling was rest or
+     * easy-only on a reported severe symptom; every other ease is mild.
+     *
+     * @param  array<string, mixed>|null  $assessment
+     */
+    private static function concernOf(?array $assessment): string
+    {
+        $stoppingCeiling = in_array($assessment['ceiling'] ?? null, [ReadinessCeiling::Rest->value, ReadinessCeiling::EasyOnly->value], true);
+        $severe = array_intersect(self::STRONG_CONCERN_REASONS, $assessment['reasons'] ?? []) !== [];
+
+        return $stoppingCeiling && $severe ? 'strong' : 'mild';
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $segments
+     * @return list<SessionSegment>
+     */
+    private static function segmentsOf(array $segments): array
+    {
+        return array_map(static fn (array $segment): SessionSegment => new SessionSegment(
+            SegmentKey::from($segment['key']),
+            $segment['minutes'],
+            $segment['zone'],
+            PaceBand::from($segment['pace_label']),
+            $segment['pace_sec_per_km'],
+            $segment['km'],
+        ), $segments);
+    }
+
+    /** @param list<SessionSegment> $segments */
+    private static function hardMinutes(array $segments): float
+    {
+        return array_sum(array_map(static fn (SessionSegment $segment): float => $segment->paceLabel === PaceBand::Easy ? 0.0 : ($segment->minutes ?? 0.0), $segments));
     }
 
     /**
@@ -250,14 +293,40 @@ final readonly class ComplianceScorer
         }
 
         $verdict = $this->verdictsFor($user, Collection::wrap([$row]), $today)[$date->toDateString()] ?? null;
-        if ($verdict === null || ! $verdict['status']->isCredited()) {
+        if ($verdict === null) {
+            return;
+        }
+        if (! $verdict['status']->isCredited()) {
+            self::rewriteIntent($row, null);
+
             return;
         }
         if ($verdict['score'] !== null && $row->compliance_score !== null && $verdict['score'] <= $row->compliance_score) {
+            self::rewriteIntent($row, $verdict['intent'] ?? null);
+
             return;
         }
 
         self::applyVerdict($row, $verdict);
+    }
+
+    /**
+     * The earned score never moves down, but the intent and stimulus read
+     * from the day's current runs replace what was stored when they differ,
+     * so a revised, split, delayed or deleted recording cannot leave stale
+     * evidence behind.
+     *
+     * @param  array{verdict: IntentVerdict, evidence: array<string, int|float|string>}|null  $intent
+     */
+    private static function rewriteIntent(PlannedSession $row, ?array $intent): void
+    {
+        $verdict = $intent['verdict'] ?? null;
+        $evidence = $intent['evidence'] ?? null;
+        if ($row->intent_verdict === $verdict && $row->intent_evidence == $evidence) {
+            return;
+        }
+
+        $row->update(['intent_verdict' => $verdict, 'intent_evidence' => $evidence]);
     }
 
     /**
