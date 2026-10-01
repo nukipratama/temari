@@ -68,6 +68,9 @@ final readonly class Periodizer
      */
     public const int HORIZON_WEEKS = 12;
 
+    /** The usual weekly ramp guideline, matching the long run's 1.1x progression cap. */
+    private const float RESUME_WEEKLY_GROWTH = 1.10;
+
     public function __construct(
         private PhaseSchedule $phaseSchedule,
         private WeekPlanBuilder $weekPlanBuilder,
@@ -184,6 +187,7 @@ final readonly class Periodizer
 
         $rows = [];
         $fixedDates = $inputs->pinnedDates + $inputs->settledDates;
+        $ceilingKm = $inputs->resumeTrailingMeanKm === null ? null : $inputs->resumeTrailingMeanKm * self::RESUME_WEEKLY_GROWTH;
         foreach ($weeks as $week) {
             $weekRows = $this->weekPlanBuilder->build(
                 $week['week_start'],
@@ -201,6 +205,9 @@ final readonly class Periodizer
                 $week['zone'],
                 $inputs->twoRunQualityEligible,
             );
+            if ($ceilingKm !== null) {
+                [$week['multiplier'], $ceilingKm] = self::boundResumedWeek($weekRows, $week['multiplier'], $inputs, $ceilingKm);
+            }
             $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows);
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier']];
@@ -208,6 +215,58 @@ final readonly class Periodizer
         }
 
         return $rows;
+    }
+
+    /**
+     * Lowers a week resumed after a race revision to the volume ceiling, never raising it. Returns the
+     * multiplier to use and the next week's ceiling, or a null ceiling once the arc's own value is reached.
+     *
+     * @param array<string, array{session_type: SessionType, ...}> $weekRows
+     * @return array{0: float, 1: float|null}
+     */
+    private static function boundResumedWeek(array $weekRows, float $multiplier, PlanInputs $inputs, float $ceilingKm): array
+    {
+        $weekKm = static fn (float $m): float => array_sum(self::plannedKmByDate($weekRows, $m, $inputs));
+        if (array_any($weekRows, static fn (array $row): bool => $row['session_type'] === SessionType::Race)
+            || $weekKm($multiplier) <= $ceilingKm) {
+            return [$multiplier, null];
+        }
+
+        $low = 0.0;
+        $high = $multiplier;
+        for ($i = 0; $i < 30; $i++) {
+            $middle = ($low + $high) / 2;
+            if ($weekKm($middle) <= $ceilingKm) {
+                $low = $middle;
+            } else {
+                $high = $middle;
+            }
+        }
+
+        return [$low, $weekKm($low) * self::RESUME_WEEKLY_GROWTH];
+    }
+
+    /**
+     * @param array<string, array{session_type: SessionType, ...}> $rows
+     * @return array<string, float>
+     */
+    private static function plannedKmByDate(array $rows, float $multiplier, PlanInputs $inputs): array
+    {
+        $firstEasy = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Easy);
+        $kmByDate = [];
+        foreach ($rows as $date => $row) {
+            $kmByDate[$date] = SegmentGenerator::coreKmFor(
+                $row['session_type'],
+                $date === $firstEasy,
+                $inputs->longRunBaselineKm,
+                $multiplier,
+                $inputs->longRunCapKm,
+                $inputs->raceDistanceM,
+                $inputs->longRunProgressionCapKm,
+            );
+        }
+
+        return $kmByDate;
     }
 
     private function persist(User $user, PlanInputs $inputs): void
@@ -383,19 +442,7 @@ final readonly class Periodizer
             $date >= $weekStart->toDateString() && $date <= $weekEnd
             && array_key_exists('hard_minutes', $session) && $session['hard_minutes'] === null
             && self::isHardDay($session));
-        $firstEasy = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Easy);
-        $kmByDate = [];
-        foreach ($rows as $date => $row) {
-            $kmByDate[$date] = SegmentGenerator::coreKmFor(
-                $row['session_type'],
-                $date === $firstEasy,
-                $inputs->longRunBaselineKm,
-                $multiplier,
-                $inputs->longRunCapKm,
-                $inputs->raceDistanceM,
-                $inputs->longRunProgressionCapKm,
-            );
-        }
+        $kmByDate = self::plannedKmByDate($rows, $multiplier, $inputs);
 
         $prescriptions = [];
         foreach ($rows as $date => $row) {

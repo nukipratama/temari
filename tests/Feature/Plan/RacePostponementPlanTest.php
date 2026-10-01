@@ -59,5 +59,65 @@ it('keeps the season and asks for no catch-up when a race is postponed out of it
         ->and(Season::query()->where('user_id', $this->user->id)->count())->toBe(1)
         ->and($season->fresh()->ends_at->toDateString())->toBe('2026-11-07')
         ->and(currentWeekKm($this->user))->toBeGreaterThan($taperKm)
-        ->and(currentWeekKm($this->user))->toBeLessThanOrEqual(40.0 * 1.4);
+        ->and(currentWeekKm($this->user))->toBeLessThanOrEqual(40.0 * 1.10);
+});
+
+function planTaperThenMoveRace(User $user, bool $viaRevision = true): array
+{
+    $races = app(RaceGoalService::class);
+    $season = Season::factory()->for($user)->create([
+        'starts_at' => '2026-06-08', 'ends_at' => '2026-11-07', 'anchor_weekly_volume_km' => 40.0, 'volume_floor_km' => 40.0,
+    ]);
+    $race = $races->submit($user, ['race_date' => '2026-10-10', 'distance_m' => 10_000, 'goal_time_sec' => 3000, 'name' => null], RaceIntent::Update);
+    $season->update(['race_goal_id' => $race->id]);
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    $taperKm = currentWeekKm($user);
+
+    if ($viaRevision) {
+        $races->submit($user, ['race_date' => '2026-11-07', 'distance_m' => 10_000, 'goal_time_sec' => 3000, 'name' => null], RaceIntent::Update);
+    } else {
+        $race->update(['race_date' => '2026-11-07']);
+    }
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+
+    return [$taperKm, currentWeekKm($user)];
+}
+
+function weekKm(User $user, string $weekStart): float
+{
+    $week = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))->firstWhere('week_start', $weekStart);
+
+    return (float) collect($week['days'])->sum(fn (array $day): float => (float) ($day['distance_km'] ?? 0));
+}
+
+it('resumes a postponed taper no higher than 10% above the recent actual weeks', function (): void {
+    [$taperKm, $resumedKm] = planTaperThenMoveRace($this->user);
+
+    expect($taperKm)->toBeLessThan(25.0)
+        ->and($resumedKm)->toBeGreaterThan($taperKm)
+        ->and($resumedKm)->toBeLessThanOrEqual(40.0 * 1.10);
+});
+
+it('ramps each later week by no more than 10% until the arc value is reached', function (): void {
+    planTaperThenMoveRace($this->user);
+
+    $first = weekKm($this->user, '2026-10-05');
+    $second = weekKm($this->user, '2026-10-12');
+
+    expect($second)->toBeGreaterThan($first)
+        ->and($second)->toBeLessThanOrEqual($first * 1.10 + 0.1);
+});
+
+it('leaves a plan regenerated without a recent revision as the arc says', function (): void {
+    [, $uncapped] = planTaperThenMoveRace($this->user, viaRevision: false);
+
+    expect($uncapped)->toBeGreaterThan(40.0 * 1.10);
+});
+
+it('does not clamp a revision when there is too little recent history to bound it', function (): void {
+    WeeklySnapshot::query()->where('user_id', $this->user->id)->orderBy('week_ending')->limit(5)->delete();
+
+    [, $resumedKm] = planTaperThenMoveRace($this->user);
+
+    expect($resumedKm)->toBeGreaterThan(40.0 * 1.10);
 });

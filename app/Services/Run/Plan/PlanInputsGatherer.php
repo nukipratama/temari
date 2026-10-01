@@ -9,8 +9,11 @@ use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\RaceChangeKind;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
+use App\Models\RaceGoalChange;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\RiegelProjector;
@@ -20,6 +23,7 @@ use App\Services\Run\Metrics\RecentTrainingStress;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * The database side of a regeneration: the athlete's season, active race,
@@ -30,6 +34,10 @@ use Illuminate\Support\Carbon;
  */
 final readonly class PlanInputsGatherer
 {
+    private const int RESUME_TRAILING_WEEKS = 4;
+
+    private const int RESUME_MIN_WEEKS = 2;
+
     public function __construct(
         private TrainingBaseline $baseline,
         private SeasonService $seasonService,
@@ -109,7 +117,27 @@ final readonly class PlanInputsGatherer
             actualSessions: $actualSessions,
             twoRunQualityEligible: $paces !== null && $weeks->count() >= 6
                 && $weeks->every(static fn (WeeklySnapshot $week): bool => $week->runs >= 2),
+            resumeTrailingMeanKm: $this->resumeTrailingMeanKm($race, $weeks, $currentWeekStart),
         );
+    }
+
+    /**
+     * @param  Collection<int, WeeklySnapshot>  $weeks
+     */
+    private function resumeTrailingMeanKm(?RaceGoal $race, Collection $weeks, Carbon $currentWeekStart): ?float
+    {
+        $recent = $weeks->take(self::RESUME_TRAILING_WEEKS);
+        if ($race === null || $recent->count() < self::RESUME_MIN_WEEKS) {
+            return null;
+        }
+
+        $revised = RaceGoalChange::query()
+            ->where('race_goal_id', $race->id)
+            ->whereIn('kind', [RaceChangeKind::Revised, RaceChangeKind::Postponed])
+            ->where('created_at', '>=', $currentWeekStart->copy()->subWeeks(self::RESUME_TRAILING_WEEKS - 1))
+            ->exists();
+
+        return $revised ? (float) $recent->avg(static fn (WeeklySnapshot $week): float => (float) $week->distance_km) : null;
     }
 
     /**

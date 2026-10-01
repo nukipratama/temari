@@ -25,6 +25,7 @@ final readonly class PlanInputs
      * @param  array<string, true>  $settledDates  Y-m-d already carrying a verdict
      * @param  float|null  $volumeFloorKm  the race season's weekly volume floor, which an adapter deload is allowed to break
      * @param  bool  $increasesHeld  the race block holds flat at its floor until the load guard's recent runs are scored
+     * @param  float|null  $resumeTrailingMeanKm  the trailing four-week mean of actual weekly km, set only while a race revision is being planned around
      * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      * @param array<string, array{verdict: IntentVerdict, hard_minutes: int}> $recentPrescriptions
      * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float, demanding?: bool}> $fixedSessions
@@ -56,6 +57,7 @@ final readonly class PlanInputs
         public array $fixedSessions = [],
         public array $actualSessions = [],
         public bool $twoRunQualityEligible = false,
+        public ?float $resumeTrailingMeanKm = null,
     ) {
     }
 
