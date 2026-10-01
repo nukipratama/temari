@@ -169,6 +169,7 @@ it('caps the long run by race distance, the ratio inverting as the race lengthen
     '5K' => [5_000, 16.0],
     '10K' => [10_000, 20.0],
     'half' => [21_097, 22.0],
+    '25K stays half-marathon class' => [25_000, 22.0],
     'marathon' => [42_195, 35.0],
 ]);
 

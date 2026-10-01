@@ -109,8 +109,9 @@ final class TrainingBaseline
     private const array LONG_RUN_CAP_BANDS = [
         [6000.0, 16.0],
         [12000.0, 20.0],
-        [25000.0, 22.0],
     ];
+
+    private const float LONG_RUN_CAP_UP_TO_MARATHON_CLASS_KM = 22.0;
 
     private const float LONG_RUN_CAP_MARATHON_KM = 35.0;
 
@@ -145,7 +146,7 @@ final class TrainingBaseline
      * marathon is exempt in the other direction: 0.7-0.85x race distance is
      * the coaching, and {@see self::LONG_RUN_CAP_BANDS} already says so.
      */
-    private const float RACE_DISTANCE_FLOOR_THRESHOLD_M = 25_000.0;
+    private const float RACE_DISTANCE_FLOOR_THRESHOLD_M = RaceSupport::MARATHON_CLASS_ABOVE_M;
 
     /**
      * The long run may never be more than half the week, whatever the floor
@@ -457,7 +458,7 @@ final class TrainingBaseline
 
         $distanceM = (float) $race->distance_m;
         $targetKm = max(
-            $distanceM < self::RACE_DISTANCE_FLOOR_THRESHOLD_M ? $distanceM / 1000.0 : 0.0,
+            $distanceM <= self::RACE_DISTANCE_FLOOR_THRESHOLD_M ? $distanceM / 1000.0 : 0.0,
             min(self::readinessLongRunKm($distanceM), $capKm),
         );
 
@@ -591,7 +592,9 @@ final class TrainingBaseline
             }
         }
 
-        return self::LONG_RUN_CAP_MARATHON_KM;
+        return RaceSupport::isMarathonClass((float) $race->distance_m)
+            ? self::LONG_RUN_CAP_MARATHON_KM
+            : self::LONG_RUN_CAP_UP_TO_MARATHON_CLASS_KM;
     }
 
     /** INF when the athlete has no VDOT estimate, so only the band cap applies. */
