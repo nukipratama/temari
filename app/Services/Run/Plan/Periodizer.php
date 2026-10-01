@@ -231,7 +231,8 @@ final readonly class Periodizer
             // near-term race — doesn't leave orphaned rows from the old mode.
             $toDelete = $current->filter(
                 fn (PlannedSession $session): bool =>
-                ! $session->pinned && $session->status === PlannedSessionStatus::Planned,
+                ! $session->pinned && $session->status === PlannedSessionStatus::Planned
+                    && ! isset($inputs->settledDates[$session->date->toDateString()]),
             );
 
             // Today's row may carry a readiness clamp {@see RestClampRecorder}
@@ -622,9 +623,6 @@ final readonly class Periodizer
                 continue;
             }
             $hard = array_key_exists('hard_minutes', $session) ? $session['hard_minutes'] : $session['prescribed_hard_minutes'];
-            if ($hard === null && self::isHardDay($session)) {
-                return 0;
-            }
             $spentHardMinutes += $hard ?? 0;
             $totalMinutes += $session['duration_minutes'] ?? 0;
         }

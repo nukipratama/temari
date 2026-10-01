@@ -146,6 +146,9 @@ final readonly class PlanInputsGatherer
             if ($row->skipped || in_array($row->status, [PlannedSessionStatus::Skip, PlannedSessionStatus::Missed], true) || ($row->date->lt($today) && $row->status === PlannedSessionStatus::Planned)) {
                 if (! $row->date->lt($today)) {
                     $settled[$date] = true;
+                    if ($row->pinned) {
+                        $pinned[$date] = true;
+                    }
                 }
                 continue;
             }
