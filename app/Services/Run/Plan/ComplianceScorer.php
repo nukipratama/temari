@@ -185,7 +185,7 @@ final readonly class ComplianceScorer
             && ($originalType !== $effectiveType || self::hardMinutes($effectiveSegments) < $originalHardMinutes);
 
         $reading = SessionIntentJudge::judge($effectiveType, $effectiveSegments, $paces, $runs);
-        $evidence = $reading['evidence'] + ['recommendation_revision_id' => $recommendation->id, 'advice_history' => 'shown'];
+        $evidence = $reading['evidence'] + ['recommendation_revision_id' => $recommendation->id, 'advice_history' => 'shown', 'effective_type' => $effectiveType->value];
         $verdict = $reading['verdict'];
 
         if (! $eased) {

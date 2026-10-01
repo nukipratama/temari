@@ -281,7 +281,7 @@ final readonly class PlanAdapter
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->whereIn('session_type', [SessionType::Long, SessionType::Tempo, SessionType::Interval])
             ->whereIn('status', [PlannedSessionStatus::Done, PlannedSessionStatus::Partial, PlannedSessionStatus::Overreached])
-            ->where('intent_evidence->advice_history', 'shown')
+            ->where('intent_evidence->quality_progression', 'eligible')
             ->whereIn('intent_verdict', [IntentVerdict::Hit->value, IntentVerdict::Missed->value, IntentVerdict::TooHard->value])
             ->get(['intent_verdict']);
     }
@@ -311,8 +311,8 @@ final readonly class PlanAdapter
         $prescribed = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$previousStart->toDateString(), $previousEnd->toDateString()])
-            ->get(['date', 'session_type'])
-            ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => $session->session_type]);
+            ->get(['date', 'session_type', 'rest_clamped_at', 'clamped_km', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'prescription_race_context', 'intent_evidence'])
+            ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => EffectiveSession::settledTypeOf($session)]);
 
         if ($prescribed->isEmpty()) {
             return ['ragged' => 0, 'egregious_easy' => 0, 'egregious_decoupling' => 0];

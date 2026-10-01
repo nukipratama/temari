@@ -342,7 +342,7 @@ final readonly class Periodizer
             ->lockForUpdate()
             ->get([
                 'id', 'date', 'pinned', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band',
-                'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km', 'readiness_assessment',
+                'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescribed_pace_sec_per_km', 'prescription_race_context', 'intent_evidence',
             ]);
     }
 
@@ -357,9 +357,12 @@ final readonly class Periodizer
             }
 
             $fixed = $inputs->fixedSessions[$date] ?? null;
-            if ($fixed !== null && ($fixed['session_type'] !== $session->session_type
-                || $fixed['prescribed_hard_minutes'] !== $session->prescribed_hard_minutes
-                || $fixed['prescribed_pace_band'] !== $session->prescribed_pace_band)) {
+            $stored = $session->status->isCredited()
+                ? EffectiveSession::budgetProfileOf($session)
+                : ['session_type' => $session->session_type, 'prescribed_hard_minutes' => $session->prescribed_hard_minutes, 'prescribed_pace_band' => $session->prescribed_pace_band];
+            if ($fixed !== null && ($fixed['session_type'] !== $stored['session_type']
+                || $fixed['prescribed_hard_minutes'] !== $stored['prescribed_hard_minutes']
+                || $fixed['prescribed_pace_band'] !== $stored['prescribed_pace_band'])) {
                 return true;
             }
         }

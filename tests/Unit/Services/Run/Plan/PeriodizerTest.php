@@ -434,7 +434,7 @@ it('reconciles when a settled key-session verdict changes the adaptation fingerp
         'distance_score' => 100,
         'compliance_score' => 84,
         'intent_verdict' => 'missed',
-        'intent_evidence' => ['advice_history' => 'shown'],
+        'intent_evidence' => ['advice_history' => 'shown', 'quality_progression' => 'eligible'],
     ]);
 
     $changed = $this->periodizer->regenerateIfChanged($user, Carbon::today());
@@ -471,14 +471,14 @@ it('does not restore a quality slot removed by an earlier repeated miss', functi
             'distance_score' => 100,
             'compliance_score' => 60,
             'intent_verdict' => 'missed',
-            'intent_evidence' => ['advice_history' => 'shown'],
+            'intent_evidence' => ['advice_history' => 'shown', 'quality_progression' => 'eligible'],
         ]);
     }
 
     $this->periodizer->regenerate($user, Carbon::today());
     PlannedSession::query()->where('user_id', $user->id)->whereIn('date', ['2026-07-27', '2026-08-03'])->update([
         'intent_verdict' => 'hit',
-        'intent_evidence' => json_encode(['advice_history' => 'shown']),
+        'intent_evidence' => json_encode(['advice_history' => 'shown', 'quality_progression' => 'eligible']),
     ]);
 
     expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
@@ -501,7 +501,7 @@ it('reconciles a settled key-session verdict from the current week', function ()
             'distance_score' => 100,
             'compliance_score' => 60,
             'intent_verdict' => 'missed',
-            'intent_evidence' => ['advice_history' => 'shown'],
+            'intent_evidence' => ['advice_history' => 'shown', 'quality_progression' => 'eligible'],
         ]);
 
     if (! PlannedSession::query()->where('user_id', $user->id)->where('date', '2026-08-11')->exists()) {
@@ -512,7 +512,7 @@ it('reconciles a settled key-session verdict from the current week', function ()
             'distance_score' => 100,
             'compliance_score' => 60,
             'intent_verdict' => 'missed',
-            'intent_evidence' => ['advice_history' => 'shown'],
+            'intent_evidence' => ['advice_history' => 'shown', 'quality_progression' => 'eligible'],
         ]);
     }
 
@@ -999,3 +999,32 @@ it('keeps today\'s row when the day has already been scored', function (): void 
         ->and($fresh->compliance_score)->toBe(104)
         ->and($fresh->session_type)->toBe(SessionType::Long);
 });
+
+it('plans the week around the day an eased tempo became, not the tempo it abandoned', function (bool $eased, bool $qualityPlanned): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    WeeklySnapshot::query()->where('user_id', $user->id)->update(['distance_km' => 60.0]);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
+    $this->periodizer->regenerate($user, Carbon::today());
+    PlannedSession::query()->updateOrCreate(['user_id' => $user->id, 'date' => '2026-08-10'], [
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Done,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'clamped_km' => $eased ? 6.0 : null,
+        'intent_verdict' => 'hit',
+        'intent_evidence' => $eased
+            ? ['advice_history' => 'shown', 'effective_type' => 'easy', 'eased_from' => 'tempo', 'concern' => 'mild', 'stimulus_family' => 'easy']
+            : ['advice_history' => 'shown', 'effective_type' => 'tempo', 'concern' => 'none', 'quality_progression' => 'eligible'],
+    ]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-13')->firstOrFail()->prescribed_hard_minutes > 0)->toBe($qualityPlanned);
+})->with([
+    'eased tempo run easy' => [true, true],
+    'tempo run without hard-minute measurement' => [false, false],
+]);

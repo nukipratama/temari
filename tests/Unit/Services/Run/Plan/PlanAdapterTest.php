@@ -305,7 +305,7 @@ it('carries a full-distance key-session intent miss separately from volume adher
         'compliance_score' => 84,
         'distance_score' => 100,
         'intent_verdict' => 'missed',
-        'intent_evidence' => ['advice_history' => 'shown'],
+        'intent_evidence' => ['advice_history' => 'shown', 'quality_progression' => 'eligible'],
     ]);
 
     $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
@@ -329,7 +329,7 @@ it('uses a settled current-week miss without judging today before the day closes
         'status' => PlannedSessionStatus::Partial,
         'distance_score' => 100,
         'intent_verdict' => 'missed',
-        'intent_evidence' => ['advice_history' => 'shown'],
+        'intent_evidence' => ['advice_history' => 'shown', 'quality_progression' => 'eligible'],
     ]);
     PlannedSession::factory()->for($user)->create([
         'date' => '2026-08-12',
@@ -338,7 +338,7 @@ it('uses a settled current-week miss without judging today before the day closes
         'status' => PlannedSessionStatus::Partial,
         'distance_score' => 100,
         'intent_verdict' => 'missed',
-        'intent_evidence' => ['advice_history' => 'shown'],
+        'intent_evidence' => ['advice_history' => 'shown', 'quality_progression' => 'eligible'],
     ]);
 
     $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::today(), null);
@@ -730,6 +730,92 @@ it('drops the behind-pace verdict once the athlete\'s finished block leaves the 
     Carbon::setTestNow('2026-09-21 08:00:00');
     expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-09-21'), Carbon::parse('2026-09-21'), $race)['reason'])
         ->not->toBe(AdaptationReason::BehindRacePace);
+
+    Carbon::setTestNow();
+});
+
+it('leaves an eased tempo that was run easy out of stimulus adherence', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-03',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Partial,
+        'compliance_score' => 84,
+        'distance_score' => 100,
+        'intent_verdict' => 'missed',
+        'intent_evidence' => ['advice_history' => 'shown', 'quality_progression' => 'eligible'],
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-05',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Done,
+        'clamped_km' => 6.0,
+        'compliance_score' => 100,
+        'distance_score' => 100,
+        'intent_verdict' => 'hit',
+        'intent_evidence' => ['advice_history' => 'shown', 'effective_type' => 'easy', 'eased_from' => 'tempo', 'concern' => 'mild', 'stimulus_family' => 'easy'],
+    ]);
+
+    $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::today(), null);
+
+    expect($decision['stimulus_adherence_pct'])->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('judges how last week was run against the effective advice, not the stored session type', function (bool $eased, AdaptationReason $expected): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    $hard = ['time_in_zone_pct' => ['Z1' => 10, 'Z2' => 60, 'Z3' => 30]];
+
+    planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
+    planAdapterRunOn($user, '2026-08-03', $hard);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-05',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Done,
+        'clamped_km' => $eased ? 6.0 : null,
+        'compliance_score' => 100,
+        'distance_score' => 100,
+    ]);
+    planAdapterRunOn($user, '2026-08-05', $hard);
+
+    $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
+
+    expect($decision['reason'])->toBe($expected);
+
+    Carbon::setTestNow();
+})->with([
+    'tempo eased to easy then run hard' => [true, AdaptationReason::RanTooHard],
+    'tempo run as prescribed' => [false, AdaptationReason::Steady],
+]);
+
+it('reads the shown effective type over the stored one when the advice history recorded it', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    $hard = ['time_in_zone_pct' => ['Z1' => 10, 'Z2' => 60, 'Z3' => 30]];
+
+    planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
+    planAdapterRunOn($user, '2026-08-03', $hard);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-05',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Overreached,
+        'compliance_score' => 100,
+        'distance_score' => 100,
+        'intent_verdict' => 'too_hard',
+        'intent_evidence' => ['advice_history' => 'shown', 'effective_type' => 'easy', 'eased_from' => 'tempo', 'concern' => 'mild', 'original_completed' => 'controlled'],
+    ]);
+    planAdapterRunOn($user, '2026-08-05', $hard);
+
+    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null)['reason'])
+        ->toBe(AdaptationReason::RanTooHard);
 
     Carbon::setTestNow();
 });

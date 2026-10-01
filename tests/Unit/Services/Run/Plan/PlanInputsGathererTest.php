@@ -201,7 +201,7 @@ it('uses each historical row race context when finding comparable hard work', fu
         'session_type' => 'tempo',
         'status' => PlannedSessionStatus::Done,
         'intent_verdict' => IntentVerdict::Hit,
-        'intent_evidence' => ['advice_history' => 'shown'],
+        'intent_evidence' => ['advice_history' => 'shown', 'quality_progression' => 'eligible'],
         'prescribed_hard_minutes' => 20,
         'prescription_race_context' => null,
     ]);
@@ -237,7 +237,7 @@ it('ignores a newer unknown-history overreach and keeps the latest shown quality
         'session_type' => SessionType::Tempo,
         'status' => PlannedSessionStatus::Done,
         'intent_verdict' => IntentVerdict::Hit,
-        'intent_evidence' => ['advice_history' => 'shown'],
+        'intent_evidence' => ['advice_history' => 'shown', 'quality_progression' => 'eligible'],
         'prescribed_hard_minutes' => 20,
     ]);
     PlannedSession::factory()->for($user)->create([
@@ -254,5 +254,103 @@ it('ignores a newer unknown-history overreach and keeps the latest shown quality
     expect($inputs->recentPrescriptions['tempo'])->toBe([
         'verdict' => IntentVerdict::Hit,
         'hard_minutes' => 20,
+    ]);
+});
+
+it('does not progress the abandoned tempo dose from an eased tempo completed easy', function (): void {
+    $user = gathererAthlete();
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->subDay(),
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Done,
+        'clamped_km' => 6.4,
+        'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['advice_history' => 'shown', 'effective_type' => 'easy', 'eased_from' => 'tempo', 'concern' => 'mild', 'stimulus_family' => 'easy'],
+        'prescribed_hard_minutes' => 20,
+    ]);
+
+    expect($this->gatherer->forUser($user, Carbon::today())->recentPrescriptions)->not->toHaveKey('tempo');
+});
+
+it('budgets a settled eased tempo as the easy day it became, without the abandoned tempo minutes', function (): void {
+    $user = gathererAthlete();
+    $yesterday = Carbon::today()->subDay()->toDateString();
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => $yesterday,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Done,
+        'clamped_km' => 6.4,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['advice_history' => 'shown', 'effective_type' => 'easy', 'eased_from' => 'tempo', 'concern' => 'mild', 'stimulus_family' => 'easy'],
+    ]);
+
+    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions[$yesterday])->toBe([
+        'session_type' => SessionType::Easy,
+        'prescribed_hard_minutes' => 0,
+        'prescribed_pace_band' => null,
+    ]);
+});
+
+it('budgets a settled eased tempo with no shown-advice evidence by its recorded clamp', function (): void {
+    $user = gathererAthlete();
+    $yesterday = Carbon::today()->subDay()->toDateString();
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => $yesterday,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Done,
+        'clamped_km' => 6.4,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+    ]);
+
+    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions[$yesterday]['session_type'])->toBe(SessionType::Easy);
+});
+
+it('counts self-added hard work on a settled easy day as demanding, with its measured minutes', function (): void {
+    $user = gathererAthlete();
+    $yesterday = Carbon::today()->subDay()->toDateString();
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => $yesterday,
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Overreached,
+        'intent_verdict' => IntentVerdict::TooHard,
+        'intent_evidence' => ['advice_history' => 'shown', 'effective_type' => 'easy', 'concern' => 'none', 'stimulus_family' => 'hard', 'stimulus_minutes' => 23.0, 'stimulus_source' => 'heart_rate'],
+    ]);
+
+    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions[$yesterday])->toBe([
+        'session_type' => SessionType::Easy,
+        'prescribed_hard_minutes' => 0,
+        'prescribed_pace_band' => null,
+        'hard_minutes' => 23.0,
+        'demanding' => true,
+    ]);
+});
+
+it('counts a controlled original tempo completed against eased advice as a demanding day', function (): void {
+    $user = gathererAthlete();
+    $yesterday = Carbon::today()->subDay()->toDateString();
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => $yesterday,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Overreached,
+        'clamped_km' => 6.4,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'intent_verdict' => IntentVerdict::TooHard,
+        'intent_evidence' => ['advice_history' => 'shown', 'effective_type' => 'easy', 'eased_from' => 'tempo', 'concern' => 'mild', 'original_completed' => 'controlled', 'stimulus_family' => 'tempo', 'stimulus_minutes' => 20.0, 'stimulus_source' => 'window'],
+    ]);
+
+    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions[$yesterday])->toMatchArray([
+        'session_type' => SessionType::Easy,
+        'prescribed_hard_minutes' => 0,
+        'hard_minutes' => 20.0,
+        'demanding' => true,
     ]);
 });
