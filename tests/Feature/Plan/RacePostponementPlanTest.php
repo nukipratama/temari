@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\PlanPhase;
 use App\Enums\RaceIntent;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\TrainingPreference;
@@ -27,6 +29,7 @@ beforeEach(function (): void {
             'distance_km' => 40.0,
         ]);
     }
+    ActivityDetail::factory()->for(Activity::factory()->for($this->user)->analyzed()->create())->create(['start_date_local' => '2026-10-03 07:00:00', 'distance' => 16_000]);
     TrainingPreference::factory()->for($this->user)->create(['sessions_per_week' => 4]);
 });
 afterEach(fn () => Carbon::setTestNow());
