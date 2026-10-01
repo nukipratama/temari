@@ -39,3 +39,9 @@ export const ANCHOR_KIND_VALUES = ['split', 'zone', 'metric', 'session'] as cons
 
 export type PerformanceEvidenceKind = 'race' | 'test';
 export const PERFORMANCE_EVIDENCE_KIND_VALUES = ['race', 'test'] as const;
+
+export type RecoveryConcernLevel = 'none' | 'mild' | 'moderate' | 'severe';
+export const RECOVERY_CONCERN_LEVEL_VALUES = ['none', 'mild', 'moderate', 'severe'] as const;
+
+export type SleepQuality = 'good' | 'fair' | 'poor';
+export const SLEEP_QUALITY_VALUES = ['good', 'fair', 'poor'] as const;
