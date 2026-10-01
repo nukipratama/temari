@@ -13,6 +13,8 @@ code_refs:
 
 > **Partly superseded (2026-09-18) by [[a-race-block-never-prescribes-below-habit]].** A scheduled recovery week that would land on the ramp's last week now moves one week earlier, so a Build week always precedes Peak. The rest of this decision stands.
 
+> **Fact update, 2026-10-01.** "Threshold pace is roughly what can be held for an hour" is now what the app prescribes: until [[guide-paces-follow-the-vdot-race-equivalents]], the threshold guide pace ran at about 21-minute race pace. The decision stands unchanged.
+
 # The plan follows the coaching, not just the arithmetic
 
 **Status:** Accepted (2026-09-07)
