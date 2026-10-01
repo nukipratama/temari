@@ -18,7 +18,6 @@ use App\Models\RaceGoal;
 use App\Models\RaceGoalChange;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Metrics\RecentTrainingStress;
@@ -44,7 +43,6 @@ final readonly class PlanInputsGatherer
         private TrainingBaseline $baseline,
         private SeasonService $seasonService,
         private PlanAdapter $planAdapter,
-        private RiegelProjector $riegelProjector,
         private ResolveActiveRaceAction $activeRace,
         private ResolveTrainingPreferenceAction $trainingPreference,
         private VdotEstimator $vdotEstimator,
@@ -104,10 +102,8 @@ final readonly class PlanInputsGatherer
             settledDates: $settledDates,
             // How long the race will take this athlete, not how far it is: the
             // same 10K is a VO2max event for one runner and a threshold event
-            // for another, and only the projection can tell them apart.
-            projectedRaceSeconds: $race === null
-                ? null
-                : $this->riegelProjector->project($user, (float) $race->distance_m)['predicted_sec'] ?? null,
+            // for another, and only the time the plan trains for can tell them apart.
+            projectedRaceSeconds: $ambition === null ? null : (float) $ambition->prescribedTimeSec(),
             volumeFloorKm: $season->volume_floor_km,
             increasesHeld: $season->increases_held,
             raceGoalTimeSec: $ambition?->prescribedTimeSec(),

@@ -354,3 +354,16 @@ it('counts a controlled original tempo completed against eased advice as a deman
         'demanding' => true,
     ]);
 });
+
+it('sizes the race by the time the plan trains for, not a separate Riegel projection', function (): void {
+    $user = gathererAthlete();
+    RaceGoal::factory()->for($user)->create([
+        'race_date' => '2026-10-31',
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3_540,
+    ]);
+
+    $inputs = $this->gatherer->forUser($user, Carbon::today());
+
+    expect($inputs->projectedRaceSeconds)->toBe((float) $inputs->raceGoalTimeSec);
+});
