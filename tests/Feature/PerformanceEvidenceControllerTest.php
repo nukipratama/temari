@@ -26,7 +26,7 @@ it('accepts a purposeful test and rejects another athletes activity', function (
 
 it('rejects future performances and distances outside the qualifying range', function (): void {
     $user = User::factory()->create();
-    $payload = ['kind' => 'race', 'distance_m' => 5000, 'elapsed_time_sec' => 1500, 'performed_on' => '2026-10-02'];
+    $payload = ['kind' => 'race', 'distance_m' => 5000, 'elapsed_time_sec' => 1500, 'performed_on' => now()->addDay()->toDateString()];
 
     $this->actingAs($user)->postJson(route('fitness.evidence.store'), $payload)->assertUnprocessable();
     $this->postJson(route('fitness.evidence.store'), [...$payload, 'performed_on' => '2026-10-01', 'distance_m' => 500])->assertUnprocessable();
