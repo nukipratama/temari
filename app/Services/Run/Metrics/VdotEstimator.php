@@ -488,12 +488,38 @@ class VdotEstimator
 
         $vo2 = self::VO2_COEFFICIENT_C + self::VO2_COEFFICIENT_B * $velocity + self::VO2_COEFFICIENT_A * $velocity * $velocity;
 
-        // pmax is mathematically always > 0.8 (both exponential terms are positive),
-        // so no defensive divide-by-zero check is needed here.
-        $pmax = 0.80
-            + 0.1894393 * exp(-0.012778 * $timeMin)
-            + 0.2989558 * exp(-0.1932605 * $timeMin);
+        return $vo2 > 0 ? $vo2 / self::sustainableVo2Fraction($timeMin) : null;
+    }
 
-        return $vo2 > 0 ? $vo2 / $pmax : null;
+    /**
+     * The share of VDOT an all-out effort of this many minutes runs at. It is
+     * always above 0.8 (both exponential terms are positive), so dividing by it is safe.
+     */
+    public static function sustainableVo2Fraction(float $minutes): float
+    {
+        return 0.80
+            + 0.1894393 * exp(-0.012778 * $minutes)
+            + 0.2989558 * exp(-0.1932605 * $minutes);
+    }
+
+    public function raceTimeForVdot(float $vdot, float $distanceMeters): ?float
+    {
+        if ($vdot <= 0 || $distanceMeters <= 0) {
+            return null;
+        }
+
+        $fastest = 60.0;
+        $slowest = 604_800.0;
+        for ($i = 0; $i < 60; $i++) {
+            $middle = ($fastest + $slowest) / 2;
+            $middleVdot = $this->vdotFromTimeAndDistance($middle, $distanceMeters);
+            if ($middleVdot !== null && $middleVdot > $vdot) {
+                $fastest = $middle;
+            } else {
+                $slowest = $middle;
+            }
+        }
+
+        return ($fastest + $slowest) / 2;
     }
 }

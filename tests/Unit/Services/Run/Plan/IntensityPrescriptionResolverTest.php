@@ -6,6 +6,8 @@ use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\IntensityPrescriptionResolver;
 
 const PRESCRIPTION_PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
@@ -97,3 +99,13 @@ it('stores no reason for a day that prescribes no quality', function (): void {
         ->and($this->resolver->resolve(SessionType::Easy, PlanPhase::Build, null, null, null)->reason)->toBeNull()
         ->and($this->resolver->resolve(SessionType::Long, PlanPhase::Base, null, null, null)->reason)->toBeNull();
 });
+
+it('never prescribes a Peak threshold block longer than the athlete could race at its pace', function (float $vdot): void {
+    $paces = app(TrainingPaceCalculator::class)->fromVdot($vdot);
+    $peak = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Peak, null, null, $paces, IntentVerdict::Hit, 35);
+    $blockMeters = $peak->hardMinutes * 60 / $peak->paceSecPerKm * 1000;
+
+    expect($peak->hardMinutes)->toBe(35)
+        ->and($peak->paceBand)->toBe(PaceBand::Threshold)
+        ->and(app(VdotEstimator::class)->raceTimeForVdot($vdot, $blockMeters))->toBeLessThanOrEqual($peak->hardMinutes * 60.0);
+})->with([35.0, 55.0]);

@@ -425,3 +425,14 @@ it('keeps a provisional anchor unchanged when a faster easy activity replaces it
         ->and($afterPaces['threshold'])->toBe($beforePaces['threshold'])
         ->and($afterPaces['interval'])->toBe($beforePaces['interval']);
 });
+
+it('inverts a VDOT back to the race time it supports at a distance', function (float $timeSec, float $distanceM): void {
+    $vdot = $this->estimator->vdotFromTimeAndDistance($timeSec, $distanceM);
+
+    expect($this->estimator->raceTimeForVdot($vdot, $distanceM))->toEqualWithDelta($timeSec, 1.0);
+})->with([[1500.0, 5000.0], [4200.0, 10000.0], [11_400.0, 42195.0]]);
+
+it('supports no race time for a non-positive VDOT or distance', function (): void {
+    expect($this->estimator->raceTimeForVdot(0.0, 10_000.0))->toBeNull()
+        ->and($this->estimator->raceTimeForVdot(50.0, 0.0))->toBeNull();
+});
