@@ -17,6 +17,8 @@ code_refs:
 
 # Grading follows the shown advice and learns the stimulus actually done
 
+> **Partly superseded (2026-10-02) by [[decoupling-describes-a-run-and-a-deletion-re-grades-its-day]].** A deleted run now re-grades its day from the surviving runs in either direction, so a deletion can lower the score. Ingests, re-ingests, revisions and late uploads still only move it up, and the rest of this decision stands.
+
 **Status:** Accepted (2026-10-01). Amends [[a-day-is-graded-on-distance-and-intent]] and the stimulus half of [[plan-adaptation-responds-to-stimulus]].
 
 ## Context

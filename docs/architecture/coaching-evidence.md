@@ -16,6 +16,7 @@ code_refs:
   - app/Services/Run/Plan/TrainingBaseline.php
   - app/Services/Run/Plan/SeasonService.php
   - app/Services/Run/Plan/PhaseSchedule.php
+  - app/Services/Run/Plan/ComplianceScorer.php
 ---
 
 # Coaching evidence
@@ -43,13 +44,15 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | The form threshold rises continuously with CTL, so more load never reads fresher | [TrainingLoad.php:361](app/Services/Run/Metrics/TrainingLoad.php#L361) | heuristic | [[#AllenCoggan]], [[#Vermeire2022]], [[#Imbach2022]] |
 | The personal-range guard compares unrounded load against the weeks before the current one, and only when the athlete is ahead of the prescription | [Readiness.php:62](app/Services/Run/Metrics/Readiness.php#L62), [TrainingLoad.php:143](app/Services/Run/Metrics/TrainingLoad.php#L143) | evidence-supported | [[#Frandsen2025]], [[#Nakaoka2021]], [[#Impellizzeri2020]] |
 | The volume guard compares actual km-to-date with prescribed km-to-date, never with last week | [Readiness.php:61](app/Services/Run/Metrics/Readiness.php#L61), [BriefingContext.php:309](app/Services/Run/Story/BriefingContext.php#L309) | evidence-supported | [[#Frandsen2025]], [[#Buist2008]], [[#Soligard2016]] |
-| Readiness and adaptation read load as unknown while the CTL window still awaits hydration | [PlanAdapter.php:82](app/Services/Run/Plan/PlanAdapter.php#L82) | product choice | — |
-| Monotony and strain describe a week; neither deloads it nor caps readiness | [PlanAdapter.php:142](app/Services/Run/Plan/PlanAdapter.php#L142), [Readiness.php:139](app/Services/Run/Metrics/Readiness.php#L139) | evidence-supported | [[#Foster1998]], [[#JonesCM2017]] |
-| A return after a gap is handled once, by the missed-week adaptation and the ramp, never as a separate strain deload | [PlanAdapter.php:142](app/Services/Run/Plan/PlanAdapter.php#L142) | evidence-supported | [[#Frandsen2025]], [[#Impellizzeri2020]] |
+| Readiness and adaptation read load as unknown while the CTL window still awaits hydration | [PlanAdapter.php:70](app/Services/Run/Plan/PlanAdapter.php#L70) | product choice | — |
+| Monotony and strain describe a week; neither deloads it nor caps readiness | [PlanAdapter.php:135](app/Services/Run/Plan/PlanAdapter.php#L135), [Readiness.php:139](app/Services/Run/Metrics/Readiness.php#L139) | evidence-supported | [[#Foster1998]], [[#JonesCM2017]] |
+| A return after a gap is handled once, by the missed-week adaptation and the ramp, never as a separate strain deload | [PlanAdapter.php:135](app/Services/Run/Plan/PlanAdapter.php#L135) | evidence-supported | [[#Frandsen2025]], [[#Impellizzeri2020]] |
 | No generated running session exceeds 110% of the longest run in the prior 30 days; with none, the cap is the cold-start long run | [SegmentGenerator.php:119](app/Services/Run/Plan/SegmentGenerator.php#L119), [TrainingBaseline.php:378](app/Services/Run/Plan/TrainingBaseline.php#L378) | evidence-supported | [[#Frandsen2025]] |
 | A goal-less season's four-week cycle averages its frozen anchor, unless a long-run cap binds | [TrainingBaseline.php:511](app/Services/Run/Plan/TrainingBaseline.php#L511) | heuristic | [[#Doherty2020]], [[#Coyle1984]], [[#MujikaPadilla2000a]] |
 | Following the prescription never lowers the anchor; only running well short of it re-anchors mid-season or at rollover | [SeasonService.php:240](app/Services/Run/Plan/SeasonService.php#L240) | heuristic | [[#Coyle1984]], [[#MujikaPadilla2000a]], [[#MujikaPadilla2000b]] |
 | The Build ramp is a heuristic, not a safety rule | [PhaseSchedule.php:46](app/Services/Run/Plan/PhaseSchedule.php#L46) | heuristic | [[#Buist2008]] |
+| Steady-segment decoupling describes a run; only easy days run above Z2 count a week as run too hard | [PlanAdapter.php:286](app/Services/Run/Plan/PlanAdapter.php#L286) | evidence-supported | [[#Smyth2022]], [[#CoyleGonzalezAlonso2001]], [[#Maunder2021]], [[#Racinais2015]] |
+| Deleting a run re-grades its day from the surviving runs in either direction; an excused day keeps its verdict | [ComplianceScorer.php:321](app/Services/Run/Plan/ComplianceScorer.php#L321) | product choice | — |
 
 ## Sources
 
@@ -121,3 +124,15 @@ Mujika I, Padilla S. Detraining: loss of training-induced physiological and perf
 
 ### Doherty2020
 Doherty C, Keogh A, Davenport J, et al. An evaluation of the training determinants of marathon performance: a meta-analysis with meta-regression. *J Sci Med Sport* 2020;23(2):182–188. https://doi.org/10.1016/j.jsams.2019.09.013. Weekly distance, frequency and longest run were associated with faster times, as cohort-level associations confounded by ability. Grade MA · access ABS.
+
+### Smyth2022
+Smyth B, Maunder E, Meyler S, Hunter B, Muniz-Pumares D. Decoupling of internal and external workload during a marathon: an analysis of durability in 82,303 recreational runners. *Sports Med* 2022;52(9):2283–2295. https://doi.org/10.1007/s40279-022-01680-5. Decoupling appeared around 25 km; low-decoupling runners raced at a higher fraction of critical speed and finished faster. Grade COH · access ABS.
+
+### CoyleGonzalezAlonso2001
+Coyle EF, González-Alonso J. Cardiovascular drift during prolonged exercise: new perspectives. *Exerc Sport Sci Rev* 2001;29(2):88–92. https://doi.org/10.1097/00003677-200104000-00009. Stroke volume falls and heart rate rises after 10–20 minutes, linked to rising body temperature and dehydration. Grade REV · access ABS.
+
+### Maunder2021
+Maunder E, Seiler S, Mildenhall MJ, Kilding AE, Plews DJ. The importance of "durability" in the physiological profiling of endurance athletes. *Sports Med* 2021;51(8):1619–1628. https://doi.org/10.1007/s40279-021-01459-0. Durability, how physiological profiles degrade over prolonged exercise, is a distinct performance trait. Grade REV · access ABS.
+
+### Racinais2015
+Racinais S, Alonso JM, Coutts AJ, et al. Consensus recommendations on training and competing in the heat. *Sports Med* 2015;45(7):925–938. https://doi.org/10.1007/s40279-015-0343-6. Heat raises heart rate at a given pace; training in heat should be regulated by heart rate or effort, not pace. Grade CON · access FT.
