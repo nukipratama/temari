@@ -9,6 +9,7 @@ use App\Enums\StravaReadPriority;
 use App\Enums\StravaReadSource;
 use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
+use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Strava\Exceptions\StravaCircuitOpenException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use DateTimeInterface;
@@ -16,6 +17,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
@@ -71,18 +73,26 @@ class ResyncActivityJob implements ShouldBeUnique, ShouldQueue
         return now()->addHours(self::RETRY_WINDOW_HOURS);
     }
 
-    public function handle(ActivityPipeline $pipeline): void
+    public function handle(ActivityPipeline $pipeline, ComplianceScorer $complianceScorer): void
     {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
 
         $activity = Activity::query()
             ->withStubs()
+            ->with('detail')
             ->find($this->activityId);
         if ($activity === null) {
             return;
         }
 
+        $previousDate = $activity->detail?->start_date_local?->toDateString();
+
         $pipeline->ingest($activity, StravaReadSource::WebhookUpdate);
+
+        $currentDate = $activity->detail()->first()?->start_date_local?->toDateString();
+        if ($previousDate !== null && $previousDate !== $currentDate) {
+            $complianceScorer->creditIfEarned($activity->user, Carbon::parse($previousDate), Carbon::today());
+        }
     }
 
     public function failed(Throwable $exception): void

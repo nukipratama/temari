@@ -726,3 +726,17 @@ it('clears stale intent evidence once the day has no credited run left, keeping 
         ->and($row->intent_evidence)->toBeNull()
         ->and($row->compliance_score)->toBe(100);
 });
+
+it('does not read an easy run as the original completed when the eased session was a marathon-paced long run', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Long, 'clamped_km' => 6.4]);
+    $marathonLong = [new SessionSegment(SegmentKey::Main, 90.0, 'Z3', PaceBand::Marathon, 340, 16.0)->toArray()];
+    showAdvice($user, '2026-08-05', ['session_type' => 'long', 'phase' => 'peak', 'hard_minutes' => 90, 'distance_km' => 16.0, 'reason' => null, 'segments' => $marathonLong], shownEasyEffective());
+    shownRun($user, '2026-08-05', 6.4, 2580);
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($verdict['intent']['evidence'])->toMatchArray(['eased_from' => 'long', 'stimulus_family' => 'easy'])
+        ->not->toHaveKeys(['original_completed', 'quality_progression']);
+});

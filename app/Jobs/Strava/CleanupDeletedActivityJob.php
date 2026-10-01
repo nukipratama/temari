@@ -103,9 +103,13 @@ class CleanupDeletedActivityJob implements ShouldQueue
         // card id, no FK) does not — capture the id now to purge it below.
         $cardId = $activity->runCard?->id;
 
-        DB::transaction(function () use ($activity, $weekAnchor, $user, $weekly, $personalRecords, $localId, $cardId, $weeklySnapshots): void {
+        DB::transaction(function () use ($activity, $weekAnchor, $user, $weekly, $personalRecords, $localId, $cardId, $weeklySnapshots, $complianceScorer): void {
             // Cascades detail / stream / card / post-run storyline via FK.
             $activity->delete();
+
+            if ($weekAnchor !== null) {
+                $complianceScorer->creditIfEarned($user, $weekAnchor, Carbon::today());
+            }
 
             if ($weekAnchor !== null) {
                 $rebuilt = $weekly->rebuildForwardFrom($user, $weekAnchor);
@@ -147,10 +151,6 @@ class CleanupDeletedActivityJob implements ShouldQueue
                     ->delete();
             }
         });
-
-        if ($weekAnchor !== null) {
-            $complianceScorer->creditIfEarned($user, $weekAnchor, Carbon::today());
-        }
 
         // Deleting the last row in the athlete's backlog can leave it empty
         // same as a successful hydration would — see SettleEarlyNarrationAction.

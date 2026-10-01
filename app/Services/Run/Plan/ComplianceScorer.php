@@ -52,10 +52,9 @@ final readonly class ComplianceScorer
      * day that was never credited.
      *
      * @param  Collection<int, PlannedSession>  $rows  the rows to judge
-     * @param  array<string, array{distance_m: int, goal_time_sec: int}|null>|null  $raceByDate
      * @return array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool, distance_score: int|null, prescribed_km: float|null, intent: array{verdict: IntentVerdict, evidence: array<string, int|float|string>}|null}>  Y-m-d => verdict
      */
-    public function verdictsFor(User $user, Collection $rows, Carbon $today, ?array $raceByDate = null): array
+    public function verdictsFor(User $user, Collection $rows, Carbon $today): array
     {
         $first = $rows->first();
         if ($first === null) {
@@ -120,7 +119,7 @@ final readonly class ComplianceScorer
 
         $typesByDate = array_map(static fn (RecommendationRevision $revision): SessionType => SessionType::from($revision->effective['session_type']), $recommendationsByDate);
         $verdicts = $this->sessionMatcher->scoreRange($user, $plannedKmByDate, $excusedByDate, $today, $typesByDate);
-        $intents = $this->intentsFor($user, $rows, $effectiveByDate, $verdicts, $recommendationsByDate);
+        $intents = $this->intentsFor($rows, $effectiveByDate, $verdicts, $recommendationsByDate, $runsByDate);
 
         $graded = [];
         foreach ($verdicts as $date => $verdict) {
@@ -141,9 +140,10 @@ final readonly class ComplianceScorer
      * @param  array<string, EffectiveSession>  $effectiveByDate
      * @param  array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>  $verdicts
      * @param  array<string, RecommendationRevision>  $recommendationsByDate
+     * @param  array<string, list<ActivityDetail>>  $runsByDate
      * @return array<string, array{verdict: IntentVerdict, evidence: array<string, int|float|string>}>
      */
-    private function intentsFor(User $user, Collection $rows, array $effectiveByDate, array $verdicts, array $recommendationsByDate = []): array
+    private function intentsFor(Collection $rows, array $effectiveByDate, array $verdicts, array $recommendationsByDate, array $runsByDate): array
     {
         $judged = $rows->filter(static fn (PlannedSession $row): bool => ($verdicts[$row->date->toDateString()]['status'] ?? null)?->isCredited() === true
             && in_array($effectiveByDate[$row->date->toDateString()]->sessionType, [SessionType::Easy, SessionType::Long, SessionType::Tempo, SessionType::Interval], true));
@@ -151,7 +151,6 @@ final readonly class ComplianceScorer
             return [];
         }
 
-        $runsByDate = $this->runsByDate($user, $judged->first()->date, $judged->last()->date);
         $intents = [];
         foreach ($judged as $row) {
             $date = $row->date->toDateString();
@@ -200,7 +199,8 @@ final readonly class ComplianceScorer
         $evidence['eased_from'] = $originalType->value;
         $evidence['concern'] = self::concernOf($recommendation->effective['readiness_assessment'] ?? null);
         $original = SessionIntentJudge::judge($originalType, $originalSegments, $paces, $runs);
-        if (in_array($original['verdict'], [IntentVerdict::Hit, IntentVerdict::TooHard], true)) {
+        if (in_array($original['verdict'], [IntentVerdict::Hit, IntentVerdict::TooHard], true)
+            && in_array($original['evidence']['stimulus_family'] ?? null, ['tempo', 'interval', 'hard'], true)) {
             $evidence['original_completed'] = $original['evidence']['control'] ?? 'controlled';
             $evidence = array_diff_key($evidence, ['stimulus_family' => 0, 'stimulus_minutes' => 0, 'stimulus_source' => 0])
                 + array_intersect_key($original['evidence'], ['stimulus_family' => 0, 'stimulus_minutes' => 0, 'stimulus_source' => 0]);
