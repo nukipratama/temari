@@ -14,6 +14,7 @@ use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RecommendationRevision;
 use App\Models\RecommendationView;
+use App\Models\RunnerProfile;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -593,6 +594,28 @@ it('reads self-added hard work on an easy day as an unplanned hard effort that t
         ->and($verdict['intent']['evidence'])->toMatchArray(['concern' => 'none', 'stimulus_family' => 'hard', 'stimulus_minutes' => 23.0])
         ->not->toHaveKeys(['eased_from', 'quality_progression']);
 });
+
+it('marks a heart-rate verdict as resting on estimated zones until the athlete measures or syncs them', function (?string $source, bool $estimated): void {
+    $user = User::factory()->create();
+    if ($source !== null) {
+        RunnerProfile::factory()->for($user)->create(['source' => $source]);
+    }
+    $row = scorerDay($user, '2026-08-05');
+    showAdvice($user, '2026-08-05', ['session_type' => 'easy', 'phase' => 'build', 'hard_minutes' => null, 'distance_km' => 6.4, 'reason' => null, 'segments' => shownEasySegments()], [
+        'session_type' => 'easy', 'distance_km' => 6.4, 'segments' => shownEasySegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 6.4, 2100, ['time_in_zone_min' => ['Z1' => 2, 'Z2' => 10, 'Z3' => 15, 'Z4' => 8, 'Z5' => 0]]);
+
+    $evidence = scorerVerdict($user, $row)['intent']['evidence'];
+
+    expect($evidence['stimulus_source'])->toBe('heart_rate')
+        ->and(($evidence['zones'] ?? null) === 'estimated')->toBe($estimated);
+})->with([
+    'no profile, default max' => [null, true],
+    'raised to an observed peak' => ['observed', true],
+    'synced from Strava' => ['strava', false],
+    'set by hand' => ['manual', false],
+]);
 
 it('marks a shown quality session graded on complete evidence as eligible to teach progression', function (array $summary, IntentVerdict $expected): void {
     $user = User::factory()->create();

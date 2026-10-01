@@ -67,11 +67,42 @@ describe('HrZonesDisclosure', () => {
     it('stays collapsed until the trigger is clicked, naming the current source', () => {
         render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
         expect(screen.getByText('heart-rate zones')).toBeInTheDocument();
-        expect(screen.getByText('using default estimates')).toBeInTheDocument();
+        expect(
+            screen.getByText('estimated from a default max HR'),
+        ).toBeInTheDocument();
         expect(screen.queryByLabelText('Max HR')).not.toBeInTheDocument();
 
         open();
         expect(screen.getByLabelText('Max HR')).toBeInTheDocument();
+    });
+
+    it('labels zones from the highest recorded heart rate as estimated and prompts for a measured max', () => {
+        render(
+            <HrZonesDisclosure
+                hrZones={{ ...DEFAULT_PAYLOAD, source: 'observed' }}
+            />,
+        );
+        expect(
+            screen.getByText('estimated from your highest recorded heart rate'),
+        ).toBeInTheDocument();
+
+        open();
+        expect(
+            screen.getByText(/enter a max HR from a race or hard test/),
+        ).toBeInTheDocument();
+    });
+
+    it('drops the estimate prompt once zones are synced or set by hand', () => {
+        render(
+            <HrZonesDisclosure
+                hrZones={{ ...DEFAULT_PAYLOAD, source: 'manual' }}
+            />,
+        );
+
+        open();
+        expect(
+            screen.queryByText(/enter a max HR from a race or hard test/),
+        ).not.toBeInTheDocument();
     });
 
     it('names Strava as the source with its last-synced label when collapsed', () => {

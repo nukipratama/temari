@@ -30,7 +30,7 @@ type ZoneKey = (typeof ZONE_KEYS)[number];
 const ZONE_BREAKPOINTS = [0.488, 0.664, 0.792, 0.904, 0.968] as const;
 const Z5_SENTINEL_HI = 999;
 
-type ZoneSource = 'default' | 'strava' | 'manual';
+type ZoneSource = 'default' | 'observed' | 'strava' | 'manual';
 
 interface Zone {
     lo: number;
@@ -91,6 +91,11 @@ function boundsFromProfile(zones: HrZones): ZoneBounds {
     return bounds;
 }
 
+/** Zones without a measured max or synced bands are estimates. */
+function zonesEstimated(source: ZoneSource): boolean {
+    return source === 'default' || source === 'observed';
+}
+
 function collapsedCopy(hrZones: HrZonesPayload): string {
     if (hrZones.source === 'strava') {
         return hrZones.stravaSyncedLabel
@@ -100,7 +105,9 @@ function collapsedCopy(hrZones: HrZonesPayload): string {
     if (hrZones.source === 'manual') {
         return "you've set your own zones";
     }
-    return 'using default estimates';
+    return hrZones.source === 'observed'
+        ? 'estimated from your highest recorded heart rate'
+        : 'estimated from a default max HR';
 }
 
 /**
@@ -264,6 +271,12 @@ export default function HrZonesDisclosure({
 
             {open && (
                 <div className="border-t border-border-strong px-4 pb-4">
+                    {zonesEstimated(hrZones.source) && (
+                        <p className="mt-3.5 font-sans text-xs leading-relaxed text-text-2">
+                            enter a max HR from a race or hard test, or sync
+                            your Strava zones, to replace the estimate.
+                        </p>
+                    )}
                     <div className="mt-3.5 grid grid-cols-2 gap-2.5 min-[900px]:grid-cols-4">
                         <NumberField
                             label="Max HR"

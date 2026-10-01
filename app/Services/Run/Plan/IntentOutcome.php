@@ -61,15 +61,17 @@ final class IntentOutcome
         if ($verdict === IntentVerdict::Unknown) {
             return null;
         }
-        if (isset($evidence['original_completed'])) {
-            return self::stimulusDetail($evidence);
-        }
+        $detail = isset($evidence['original_completed'])
+            ? self::stimulusDetail($evidence)
+            : match (self::family($evidence)) {
+                self::STEADY => self::steadyDetail($verdict, $evidence, $ranPaceSec),
+                self::BLOCK, self::REPS => self::qualityDetail($verdict, $evidence),
+                default => null,
+            };
 
-        return match (self::family($evidence)) {
-            self::STEADY => self::steadyDetail($verdict, $evidence, $ranPaceSec),
-            self::BLOCK, self::REPS => self::qualityDetail($verdict, $evidence),
-            default => null,
-        };
+        return ($evidence['zones'] ?? null) === 'estimated'
+            ? ($detail === null ? '' : "{$detail}; ").'the heart-rate zones behind this are estimated, so it is a rough read'
+            : $detail;
     }
 
     /**

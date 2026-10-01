@@ -141,3 +141,14 @@ it('states the stimulus measured when the original session was completed anyway'
         ->and(IntentOutcome::detail(IntentVerdict::TooHard, [...$evidence, 'stimulus_source' => 'heart_rate'], 350))->toBe('about 20 minutes of tempo effort were measured from heart rate')
         ->and(IntentOutcome::detail(IntentVerdict::TooHard, array_diff_key($evidence, ['stimulus_minutes' => 0]), 350))->toBeNull();
 });
+
+it('marks a heart-rate read on estimated zones as rough, with or without a numeric detail', function (): void {
+    $steady = ['basis' => 'heart_rate', 'zone' => 'Z2', 'above_zone_pct' => 30, 'pace_sec' => 400, 'ceiling_pace_sec' => 420, 'zones' => 'estimated'];
+
+    expect(IntentOutcome::detail(IntentVerdict::TooHard, $steady, 400))
+        ->toBe('averaged 6:40/km, and 30% of the run sat above Z2; the heart-rate zones behind this are estimated, so it is a rough read')
+        ->and(IntentOutcome::detail(IntentVerdict::TooHard, ['basis' => 'heart_rate', 'zones' => 'estimated'], null))
+        ->toBe('the heart-rate zones behind this are estimated, so it is a rough read')
+        ->and(IntentOutcome::detail(IntentVerdict::TooHard, array_diff_key($steady, ['zones' => 0]), 400))
+        ->toBe('averaged 6:40/km, and 30% of the run sat above Z2');
+});
