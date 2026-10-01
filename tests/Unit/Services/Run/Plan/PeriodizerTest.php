@@ -40,6 +40,35 @@ beforeEach(function (): void {
 });
 afterEach(fn () => Carbon::setTestNow());
 
+it('keeps carried readiness doses under new workload limits during reconciliation and regeneration', function (bool $fullRegeneration): void {
+    Carbon::setTestNow('2026-08-13 08:00:00');
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    WeeklySnapshot::query()->where('user_id', $user->id)->update(['distance_km' => 60.0]);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
+    $this->periodizer->regenerate($user, Carbon::today());
+    $session = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->firstOrFail();
+    $assessment = ['adjustment' => ['quality_dose' => ['hard_minutes' => 15, 'original_hard_minutes' => 20, 'pace_band' => 'threshold', 'pace_sec_per_km' => 270]]];
+    $session->update(['clamped_km' => 12.0, 'readiness_assessment' => $assessment]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'start_date_local' => '2026-08-10 07:00:00', 'elapsed_time' => 10800,
+        'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 0, 'Z3' => 0, 'Z4' => 180, 'Z5' => 0]],
+    ]);
+    if ($fullRegeneration) {
+        $this->periodizer->regenerate($user, Carbon::today());
+    } else {
+        expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeTrue();
+    }
+    $session = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->firstOrFail();
+    $effective = EffectiveSession::of($session, 10.0);
+    expect($session->prescribed_hard_minutes)->toBe(0)
+        ->and($session->readiness_assessment)->toEqual($assessment)
+        ->and($effective->qualityPrescription())->toBeNull()
+        ->and($effective->sessionType)->toBe(SessionType::Easy)
+        ->and($effective->coreKm)->toBe(12.0);
+})->with(['reconciliation' => false, 'full regeneration' => true]);
+
 it('reconciles new actual workload only into affected current-week prescriptions', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
