@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\StravaClient;
@@ -64,6 +65,7 @@ class CleanupDeletedActivityJob implements ShouldQueue
         StravaClient $client,
         ResolveTrailingWeeksAction $weeklySnapshots,
         SettleEarlyNarrationAction $settleEarlyNarration,
+        ComplianceScorer $complianceScorer,
     ): void {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
 
@@ -145,6 +147,10 @@ class CleanupDeletedActivityJob implements ShouldQueue
                     ->delete();
             }
         });
+
+        if ($weekAnchor !== null) {
+            $complianceScorer->creditIfEarned($user, $weekAnchor, Carbon::today());
+        }
 
         // Deleting the last row in the athlete's backlog can leave it empty
         // same as a successful hydration would — see SettleEarlyNarrationAction.
