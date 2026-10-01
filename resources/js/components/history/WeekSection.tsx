@@ -102,7 +102,7 @@ function ruleBasedFallback(snap: WeeklySnapshotWithRecap): string {
     if (snap.form !== null && snap.form_status) {
         const formLabel = formStatusLabel(snap.form_status);
         parts.push(
-            `Readiness ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, ${formLabel.toLowerCase()}.`,
+            `Load balance ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, ${formLabel.toLowerCase()}.`,
         );
     }
     return parts.join(' ') || 'No data for this week yet, hang tight.';

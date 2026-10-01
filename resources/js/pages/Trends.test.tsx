@@ -101,7 +101,7 @@ describe('Trends', () => {
 
         expect(headings).toEqual([
             'vs last week',
-            'vs a month ago',
+            'long-term load',
             'vs your own year',
         ]);
     });
@@ -160,7 +160,7 @@ describe('Trends', () => {
 
         expect(screen.getByText('am I getting fitter,')).toBeInTheDocument();
         expect(screen.queryByText('vs last week')).not.toBeInTheDocument();
-        expect(screen.queryByText('vs a month ago')).not.toBeInTheDocument();
+        expect(screen.queryByText('long-term load')).not.toBeInTheDocument();
         expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
             0,
         );

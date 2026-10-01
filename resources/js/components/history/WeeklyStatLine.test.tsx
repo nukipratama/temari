@@ -43,7 +43,7 @@ describe('WeeklyStatLine', () => {
         render(<WeeklyStatLine snapshot={snapshot()} />);
 
         expect(
-            screen.getByRole('button', { name: 'fatigue' }),
+            screen.getByRole('button', { name: 'short-term load' }),
         ).toBeInTheDocument();
         expect(screen.getByText('73.6')).toBeInTheDocument();
         expect(
@@ -55,9 +55,9 @@ describe('WeeklyStatLine', () => {
         ).toBeInTheDocument();
         expect(screen.getByText('3.2%')).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'form' }),
+            screen.getByRole('button', { name: 'load balance' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('balanced')).toBeInTheDocument();
+        expect(screen.getByText('steady')).toBeInTheDocument();
     });
 
     it('never shows load/TRIMP: the week header already carries it', () => {
@@ -103,31 +103,33 @@ describe('WeeklyStatLine', () => {
         render(<WeeklyStatLine snapshot={snapshot({ form_status: null })} />);
 
         expect(
-            screen.queryByRole('button', { name: 'form' }),
+            screen.queryByRole('button', { name: 'load balance' }),
         ).not.toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'fatigue' }),
+            screen.getByRole('button', { name: 'short-term load' }),
         ).toBeInTheDocument();
     });
 
     it('reveals a plain explanation when a metric word is tapped', () => {
         render(<WeeklyStatLine snapshot={snapshot()} />);
 
-        const fatigue = screen.getByRole('button', { name: 'fatigue' });
-        expect(fatigue).toHaveAttribute('aria-expanded', 'false');
+        const shortTerm = screen.getByRole('button', {
+            name: 'short-term load',
+        });
+        expect(shortTerm).toHaveAttribute('aria-expanded', 'false');
 
-        fireEvent.click(fatigue);
+        fireEvent.click(shortTerm);
 
-        expect(fatigue).toHaveAttribute('aria-expanded', 'true');
+        expect(shortTerm).toHaveAttribute('aria-expanded', 'true');
         expect(
-            screen.getByText(/your training load over the last 7 days/),
+            screen.getByText(/your running load over about the last week/),
         ).toBeInTheDocument();
 
-        fireEvent.click(fatigue);
+        fireEvent.click(shortTerm);
 
-        expect(fatigue).toHaveAttribute('aria-expanded', 'false');
+        expect(shortTerm).toHaveAttribute('aria-expanded', 'false');
         expect(
-            screen.queryByText(/your training load over the last 7 days/),
+            screen.queryByText(/your running load over about the last week/),
         ).not.toBeInTheDocument();
     });
 
@@ -146,6 +148,7 @@ describe('WeeklyStatLine', () => {
         expect(drift).toHaveAttribute('aria-expanded', 'true');
 
         expect(screen.getByText(/variety 1.80:/)).toBeInTheDocument();
+        expect(screen.queryByText(/injury/)).not.toBeInTheDocument();
         expect(screen.getByText(/drift 13.4%:/)).toBeInTheDocument();
     });
 
@@ -163,19 +166,19 @@ describe('WeeklyStatLine', () => {
         expect(screen.queryByText(/drift 13.4%:/)).not.toBeInTheDocument();
     });
 
-    it('does not flag fatigue, which has no alarm threshold', () => {
+    it('does not flag short-term load, which has no alarm threshold', () => {
         render(<WeeklyStatLine snapshot={snapshot()} />);
 
-        expect(screen.getByRole('button', { name: 'fatigue' })).not.toHaveClass(
-            'text-ember-ink',
-        );
+        expect(
+            screen.getByRole('button', { name: 'short-term load' }),
+        ).not.toHaveClass('text-ember-ink');
     });
 
     it.each([
         ['fresh', 'fresh'],
-        ['optimal', 'balanced'],
-        ['fatigued', 'tired'],
-        ['overreaching', 'overreaching'],
+        ['optimal', 'steady'],
+        ['fatigued', 'heavy'],
+        ['overreaching', 'heavy'],
     ] as const)('shows the form-status word for %s as "%s"', (status, word) => {
         const { unmount } = render(
             <WeeklyStatLine snapshot={snapshot({ form_status: status })} />,
@@ -184,27 +187,27 @@ describe('WeeklyStatLine', () => {
         unmount();
     });
 
-    it('flags an overreaching form status in ember, open by default with its meaning', () => {
+    it('flags a heavy load balance in ember, open by default with its meaning', () => {
         render(
             <WeeklyStatLine
                 snapshot={snapshot({ form_status: 'overreaching' })}
             />,
         );
 
-        const form = screen.getByRole('button', { name: 'form' });
+        const form = screen.getByRole('button', { name: 'load balance' });
         expect(form).toHaveClass('text-ember-ink');
         expect(form).toHaveAttribute('aria-expanded', 'true');
         expect(
-            screen.getByText(/piled well past your six-week average/),
+            screen.getByText(/above your longer-term load/),
         ).toBeInTheDocument();
     });
 
-    it('does not flag a non-overreaching form status', () => {
+    it('does not flag a fresh or steady load balance', () => {
         render(
             <WeeklyStatLine snapshot={snapshot({ form_status: 'fresh' })} />,
         );
 
-        const form = screen.getByRole('button', { name: 'form' });
+        const form = screen.getByRole('button', { name: 'load balance' });
         expect(form).not.toHaveClass('text-ember-ink');
         expect(form).toHaveAttribute('aria-expanded', 'false');
     });
@@ -214,12 +217,10 @@ describe('WeeklyStatLine', () => {
             <WeeklyStatLine snapshot={snapshot({ form_status: 'fresh' })} />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'form' }));
+        fireEvent.click(screen.getByRole('button', { name: 'load balance' }));
 
         expect(
-            screen.getByText(
-                /the last week has been lighter than your six-week average/,
-            ),
+            screen.getByText(/lighter than your longer-term load/),
         ).toBeInTheDocument();
     });
 });

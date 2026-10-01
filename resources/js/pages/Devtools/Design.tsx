@@ -47,7 +47,7 @@ const TYPE_SPECIMENS: ReadonlyArray<[string, string, string]> = [
  * common block that names no session in its body and cites nothing.
  */
 const SESSION_CITATION_NARRATION =
-    '13.5 km this week, down from 23.6 last week.\n\nyou’re on a 12-week streak, but the last few days have been heavy and your form’s sitting at -8.4, so I’m keeping this to [an easy run, 30-40 minutes](session:today). Hold it around your normal 7:02/km, easy enough to talk, with a steady warmup and no urge to force the middle.';
+    '13.5 km this week, down from 23.6 last week.\n\nyou’re on a 12-week streak, but the last few days have been heavy and your load balance is sitting at -8.4, so I’m keeping this to [an easy run, 30-40 minutes](session:today). Hold it around your normal 7:02/km, easy enough to talk, with a steady warmup and no urge to force the middle.';
 
 const CITATION_SPECIMENS: ReadonlyArray<{
     label: string;

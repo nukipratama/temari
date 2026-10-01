@@ -7,44 +7,46 @@ describe('MetricExplainer', () => {
     it('renders a trigger button labelled by the metric', () => {
         render(<MetricExplainer metricKey="ctl" />);
         expect(
-            screen.getByRole('button', { name: 'Explain fitness' }),
+            screen.getByRole('button', { name: 'Explain long-term load' }),
         ).toBeInTheDocument();
     });
 
     it('opens the popover on click and shows the glossary body', () => {
         render(<MetricExplainer metricKey="ctl" />);
         fireEvent.click(
-            screen.getByRole('button', { name: 'Explain fitness' }),
+            screen.getByRole('button', { name: 'Explain long-term load' }),
         );
         expect(
-            screen.getByRole('dialog', { name: 'fitness' }),
+            screen.getByRole('dialog', { name: 'long-term load' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/Your average fitness over the last 42 days/i),
+            screen.getByText(
+                /Your running load averaged over about six weeks/i,
+            ),
         ).toBeInTheDocument();
     });
 
     it('shows acronym alongside label when one exists', () => {
         render(<MetricExplainer metricKey="ctl" />);
         fireEvent.click(
-            screen.getByRole('button', { name: 'Explain fitness' }),
+            screen.getByRole('button', { name: 'Explain long-term load' }),
         );
-        expect(screen.getByText('fitness · CTL')).toBeInTheDocument();
+        expect(screen.getByText('long-term load · CTL')).toBeInTheDocument();
     });
 
     it('omits the acronym separator for metrics without one', () => {
         render(<MetricExplainer metricKey="form" />);
         fireEvent.click(
-            screen.getByRole('button', { name: 'Explain readiness' }),
+            screen.getByRole('button', { name: 'Explain load balance' }),
         );
-        // Heading is just "Readiness" — no " · " separator
-        expect(screen.queryByText(/Readiness ·/)).not.toBeInTheDocument();
+        // Heading is just "load balance" — no " · " separator
+        expect(screen.queryByText(/load balance ·/)).not.toBeInTheDocument();
     });
 
     it('closes the popover on second trigger click', async () => {
         render(<MetricExplainer metricKey="ctl" />);
         const trigger = screen.getByRole('button', {
-            name: 'Explain fitness',
+            name: 'Explain long-term load',
         });
         fireEvent.click(trigger);
         expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -57,7 +59,7 @@ describe('MetricExplainer', () => {
     it('closes on Escape', async () => {
         render(<MetricExplainer metricKey="ctl" />);
         fireEvent.click(
-            screen.getByRole('button', { name: 'Explain fitness' }),
+            screen.getByRole('button', { name: 'Explain long-term load' }),
         );
         fireEvent.keyDown(document, { key: 'Escape' });
         await waitFor(() =>
@@ -68,7 +70,7 @@ describe('MetricExplainer', () => {
     it('returns focus to the trigger button when Escape is pressed', async () => {
         render(<MetricExplainer metricKey="ctl" />);
         const trigger = screen.getByRole('button', {
-            name: 'Explain fitness',
+            name: 'Explain long-term load',
         });
         trigger.focus();
         fireEvent.click(trigger);
@@ -87,7 +89,7 @@ describe('MetricExplainer', () => {
             </div>,
         );
         fireEvent.click(
-            screen.getByRole('button', { name: 'Explain fitness' }),
+            screen.getByRole('button', { name: 'Explain long-term load' }),
         );
         fireEvent.pointerDown(screen.getByTestId('outside'));
         await waitFor(() =>
@@ -105,7 +107,7 @@ describe('MetricExplainer', () => {
         (size, pullIn) => {
             render(<MetricExplainer metricKey="ctl" size={size} />);
             const trigger = screen.getByRole('button', {
-                name: 'Explain fitness',
+                name: 'Explain long-term load',
             });
             expect(trigger).toHaveClass(
                 'h-6',
@@ -154,7 +156,7 @@ describe('MetricExplainer', () => {
             render(<MetricExplainer metricKey="ctl" />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: 'Explain fitness' }),
+                screen.getByRole('button', { name: 'Explain long-term load' }),
             );
 
             expect(screen.getByRole('dialog')).toHaveAttribute(
@@ -169,7 +171,7 @@ describe('MetricExplainer', () => {
             render(<MetricExplainer metricKey="ctl" />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: 'Explain fitness' }),
+                screen.getByRole('button', { name: 'Explain long-term load' }),
             );
 
             expect(screen.getByRole('dialog')).toHaveAttribute(
@@ -184,7 +186,7 @@ describe('MetricExplainer', () => {
             render(<MetricExplainer metricKey="ctl" />);
 
             fireEvent.click(
-                screen.getByRole('button', { name: 'Explain fitness' }),
+                screen.getByRole('button', { name: 'Explain long-term load' }),
             );
 
             expect(screen.getByRole('dialog')).toHaveAttribute(
@@ -198,7 +200,7 @@ describe('MetricExplainer', () => {
             stubPopoverRect(-60);
             render(<MetricExplainer metricKey="ctl" />);
             const trigger = screen.getByRole('button', {
-                name: 'Explain fitness',
+                name: 'Explain long-term load',
             });
 
             fireEvent.click(trigger);

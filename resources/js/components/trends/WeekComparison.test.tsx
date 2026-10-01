@@ -50,7 +50,9 @@ describe('WeekComparison', () => {
         expect(
             screen.getByText('last 7 days · 8–14 may 2026'),
         ).toBeInTheDocument();
-        expect(screen.getByText('form as of 14 may 2026')).toBeInTheDocument();
+        expect(
+            screen.getByText('load balance as of 14 may 2026'),
+        ).toBeInTheDocument();
     });
 
     it('shows a one-day window once', () => {
@@ -99,7 +101,9 @@ describe('WeekComparison', () => {
         expect(
             screen.getByText('last 7 days · 28 dec 2026–3 jan 2027'),
         ).toBeInTheDocument();
-        expect(screen.getByText('form as of 3 jan 2027')).toBeInTheDocument();
+        expect(
+            screen.getByText('load balance as of 3 jan 2027'),
+        ).toBeInTheDocument();
     });
 
     it("states this week's km and runs with a delta against last week", () => {
@@ -132,9 +136,11 @@ describe('WeekComparison', () => {
     it('states the form chip, its signed number and a plain-language meaning', () => {
         render(<WeekComparison weekComparison={payload()} load={load()} />);
 
-        expect(screen.getByText('tired')).toBeInTheDocument();
+        expect(screen.getByText('heavy')).toBeInTheDocument();
         expect(screen.getByText('-18.5')).toBeInTheDocument();
-        expect(screen.getByText(/legs are carrying it/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/above your longer-term load/),
+        ).toBeInTheDocument();
     });
 
     it('states load, sameness and total cost, each with a plain label and its own normal-range meaning line', () => {

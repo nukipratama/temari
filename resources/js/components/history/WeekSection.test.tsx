@@ -177,7 +177,7 @@ describe('WeekSection', () => {
             screen.queryByRole('button', { name: 'drift' }),
         ).not.toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: 'fatigue' }),
+            screen.queryByRole('button', { name: 'short-term load' }),
         ).not.toBeInTheDocument();
     });
 

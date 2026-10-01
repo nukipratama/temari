@@ -56,7 +56,7 @@ export default function RaceComparison({
                     vs your own year
                 </Eyebrow>
                 <p className="mt-1 text-xs text-text-3">
-                    the highest your fitness got in 365 days.
+                    the highest your long-term load got in 365 days.
                 </p>
                 <p className="mt-3 text-sm leading-relaxed text-text-2">
                     no race set, so there&apos;s nothing to count down to. the
@@ -78,7 +78,7 @@ export default function RaceComparison({
                     size="sm"
                     label="best this year"
                     value={peak !== null ? peak.toFixed(1) : '—'}
-                    sub="the highest fitness got in 365 days"
+                    sub="the highest your long-term load got in 365 days"
                 />
                 <Link
                     href="/race"
@@ -136,7 +136,7 @@ export default function RaceComparison({
             <hr className="my-4 border-dashed border-border" />
             <Stat
                 size="sm"
-                label="form today"
+                label="load balance today"
                 value={
                     load === null
                         ? '—'

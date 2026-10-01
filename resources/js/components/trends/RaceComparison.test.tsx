@@ -73,8 +73,8 @@ describe('RaceComparison', () => {
         expect(screen.getByText('52:00')).toBeInTheDocument();
         expect(screen.getByText(/10\.0 km at 5:12\/km/)).toBeInTheDocument();
         expect(screen.getByText('fitness now')).toBeInTheDocument();
-        expect(screen.getByText('form today')).toBeInTheDocument();
-        expect(screen.getByText('tired')).toBeInTheDocument();
+        expect(screen.getByText('load balance today')).toBeInTheDocument();
+        expect(screen.getByText('heavy')).toBeInTheDocument();
     });
 
     it('falls back to "vs your own year" with a set-a-race link when there is no race', () => {
@@ -103,7 +103,7 @@ describe('RaceComparison', () => {
 });
 
 describe('RaceComparison during the form warm-up', () => {
-    it('reads form today as learning rather than a verdict', () => {
+    it('reads load balance today as learning rather than a verdict', () => {
         render(
             <RaceComparison
                 activeRace={race()}

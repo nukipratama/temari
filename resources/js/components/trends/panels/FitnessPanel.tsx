@@ -47,29 +47,26 @@ interface FitnessPanelProps {
     className?: string;
 }
 
-type BandBucket = 'fresh' | 'balanced' | 'tired' | 'learning';
+type BandBucket = 'fresh' | 'steady' | 'heavy' | 'learning';
 
-// Fatigued and overreaching share one bucket: the strip is a glance, not a
-// second read of the fitness numbers, and the cost section above already
-// carries the finer-grained form_status word.
 const BAND_BUCKET: Record<FormStatus, BandBucket> = {
     fresh: 'fresh',
-    optimal: 'balanced',
-    fatigued: 'tired',
-    overreaching: 'tired',
+    optimal: 'steady',
+    fatigued: 'heavy',
+    overreaching: 'heavy',
 };
 
 const BAND_COLOR: Record<BandBucket, string> = {
     fresh: PALETTE.leaf,
-    balanced: PALETTE.stone,
-    tired: PALETTE.ember,
+    steady: PALETTE.stone,
+    heavy: PALETTE.ember,
     learning: PALETTE.line,
 };
 
 const BAND_LABEL: Record<BandBucket, string> = {
     fresh: 'fresh',
-    balanced: 'in balance',
-    tired: 'tired',
+    steady: 'steady',
+    heavy: 'heavy',
     learning: 'still learning your load',
 };
 
@@ -99,7 +96,7 @@ function bandRuns(trend: ReadonlyArray<FitnessTrendPoint>): BandRun[] {
     return runs;
 }
 
-/** Draws a vertical line at each deload-week index — the fitness chart's one
+/** Draws a vertical line at each deload-week index — the long-term load chart's one
  *  marker in direction A (race day lives in its own comparison instead). */
 function deloadMarkerPlugin(indices: number[], color: string): Plugin<'line'> {
     return {
@@ -194,8 +191,8 @@ function monthShort(iso: string): string {
 }
 
 /**
- * The fitness line "vs a month ago" owns: one CTL series with a categorical
- * form band beneath it, a range chip (1M/3M/1Y, default 3M) choosing how
+ * The long-term load line "vs a month ago" owns: one CTL series with a categorical
+ * load balance band beneath it, a range chip (1M/3M/1Y, default 3M) choosing how
  * much of the 365-day history is drawn, a headline reading the value now and
  * the change since the range's start, and a scrub cursor (hover or touch
  * drag) that swaps the headline for a per-day readout. No ATL line, no stat
@@ -257,7 +254,7 @@ export default function FitnessPanel({
             labels,
             datasets: [
                 {
-                    label: 'fitness',
+                    label: 'long-term load',
                     data: visible.map((p) => p.ctl),
                     borderColor: ground.line,
                     backgroundColor: 'transparent',
@@ -334,8 +331,8 @@ export default function FitnessPanel({
             <div className="flex flex-wrap items-baseline justify-between gap-2">
                 {activePoint ? (
                     <p className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                        {formatNaiveMonthDayId(activePoint.date)} · fitness{' '}
-                        {Math.round(activePoint.ctl)}
+                        {formatNaiveMonthDayId(activePoint.date)} · long-term
+                        load {Math.round(activePoint.ctl)}
                     </p>
                 ) : (
                     <p className="flex items-baseline gap-2 font-mono tabular-nums text-foreground">
@@ -378,7 +375,7 @@ export default function FitnessPanel({
             </div>
             <div
                 role="img"
-                aria-label={`Fitness over ${visible.length} days, now at ${latest.ctl.toFixed(1)}.`}
+                aria-label={`Long-term load over ${visible.length} days, now at ${latest.ctl.toFixed(1)}.`}
                 className="mt-2 h-[168px]"
                 style={{ touchAction: 'pan-y' }}
             >
@@ -402,15 +399,15 @@ export default function FitnessPanel({
                         style={{
                             flexGrow: run.length,
                             backgroundColor: BAND_COLOR[run.bucket],
-                            opacity: run.bucket === 'balanced' ? 0.35 : 0.7,
+                            opacity: run.bucket === 'steady' ? 0.35 : 0.7,
                         }}
                     />
                 ))}
             </div>
             <div className="mt-2.5 flex flex-wrap items-end justify-between gap-3">
                 <p className="max-w-[34ch] text-xs leading-relaxed text-text-2">
-                    the line is your fitness. the strip under it shows how you
-                    were holding up along the way.
+                    the line is your long-term load. the strip under it shows
+                    your load balance along the way.
                 </p>
                 <div className="flex flex-wrap gap-3 text-label-micro text-text-2">
                     {bucketsPresent.map((bucket) => (
