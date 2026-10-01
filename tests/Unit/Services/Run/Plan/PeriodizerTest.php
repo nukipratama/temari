@@ -91,20 +91,33 @@ it('reconciles new actual workload only into affected current-week prescriptions
         ->and($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse();
 });
 
-it('keeps today\'s planned row when a run is already logged today', function (): void {
+it('still plans today when a run is already logged today', function (): void {
     Carbon::setTestNow('2026-08-13 18:00:00');
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
-    $this->periodizer->regenerate($user, Carbon::today());
-    $today = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->firstOrFail();
     ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
         'start_date_local' => '2026-08-13 07:00:00', 'elapsed_time' => 2400, 'moving_time' => 2400, 'distance' => 7000,
     ]);
 
     $this->periodizer->regenerate($user, Carbon::today());
 
-    expect(PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->pluck('id')->all())->toBe([$today->id]);
+    expect(PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->count())->toBe(1);
+});
+
+it('keeps a day the athlete skipped in advance when the plan regenerates', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    $this->periodizer->regenerate($user, Carbon::today());
+    $future = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-14')->firstOrFail();
+    $future->update(['skipped' => true]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    expect($future->fresh()?->skipped)->toBeTrue()
+        ->and(PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-14')->count())->toBe(1);
 });
 
 function seedPeriodizerBaseline(User $user): void

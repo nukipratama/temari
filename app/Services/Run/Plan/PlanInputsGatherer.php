@@ -67,11 +67,6 @@ final readonly class PlanInputsGatherer
             'hard_minutes' => $session['non_easy_minutes'] ?? $session['lap_threshold_minutes'] ?? $session['gap_threshold_minutes'],
             'demanding' => $session['demanding'] || ($session['non_easy_minutes'] ?? 0) >= 10,
         ], $this->trainingStress->forUser($user, $today, 14)['sessions']);
-        foreach ($actualSessions as $session) {
-            if ($session['date'] === $today->toDateString()) {
-                $settledDates[$session['date']] = true;
-            }
-        }
         $weeks = ($this->trailingWeeks)($user->id, $currentWeekStart->copy()->subDay()->toDateString(), 6)
             ->filter(static fn (WeeklySnapshot $week): bool => $week->week_ending->gte($currentWeekStart->copy()->subWeeks(6)));
 
