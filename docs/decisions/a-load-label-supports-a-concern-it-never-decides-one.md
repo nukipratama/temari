@@ -12,6 +12,8 @@ code_refs:
   - app/Services/Run/Plan/ReadinessClamp.php
 ---
 
+> **Partly superseded (2026-10-02) by [[monotony-and-strain-describe-a-week-they-never-deload-it]].** Strain is no longer a deload trigger, so decision 5's strain-ratio warm-up guard is gone. The hydration gate stands, as does the rest of this decision.
+
 # A load label supports a concern, it never decides one
 
 **Status:** Accepted (2026-10-02)

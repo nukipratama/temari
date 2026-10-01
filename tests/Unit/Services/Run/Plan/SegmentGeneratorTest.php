@@ -415,3 +415,14 @@ it('builds the same session from an already-sized core distance as generate() do
     expect(SegmentGenerator::forCoreKm(SessionType::Race, PlanPhase::Taper, 10_000.0, 10.0, PACES, 3_000))
         ->toEqual(SegmentGenerator::generate(SessionType::Race, PlanPhase::Taper, 10_000.0, false, 16.0, 1.0, INF, PACES, 1.0, 3_000));
 });
+
+it('bounds every running session by the recent single-run cap, not only the long run', function (SessionType $type, bool $isPrimaryEasy): void {
+    expect(SegmentGenerator::coreKmFor($type, $isPrimaryEasy, 20.0, 1.0, INF, longRunProgressionCapKm: 11.0))
+        ->toBeLessThanOrEqual(11.0);
+})->with([
+    'long' => [SessionType::Long, false],
+    'tempo' => [SessionType::Tempo, false],
+    'interval' => [SessionType::Interval, false],
+    'primary easy' => [SessionType::Easy, true],
+    'easy' => [SessionType::Easy, false],
+]);

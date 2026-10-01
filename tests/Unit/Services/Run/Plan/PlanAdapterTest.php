@@ -28,9 +28,6 @@ uses(RefreshDatabase::class);
 
 function decide(
     ReadinessCeiling $ceiling = ReadinessCeiling::QualityOk,
-    ?float $monotony = 1.2,
-    ?float $strain = 400.0,
-    ?float $ctl = 40.0,
     int $adherencePct = 100,
     int $stimulusAdherencePct = 100,
     int $stimulusMisses = 0,
@@ -40,7 +37,7 @@ function decide(
     int $egregiousDecouplingDays = 0,
     ?float $raceGapRatio = null,
 ): array {
-    return PlanAdapter::decide($ceiling, $monotony, $strain, $ctl, $adherencePct, $stimulusAdherencePct, $stimulusMisses, $stimulusMissesInWindow ?: $stimulusMisses, $raggedDays, $egregiousEasyDays, $egregiousDecouplingDays, $raceGapRatio);
+    return PlanAdapter::decide($ceiling, $adherencePct, $stimulusAdherencePct, $stimulusMisses, $stimulusMissesInWindow ?: $stimulusMisses, $raggedDays, $egregiousEasyDays, $egregiousDecouplingDays, $raceGapRatio);
 }
 
 it('leaves a healthy, fully adhered week alone', function (): void {
@@ -58,24 +55,6 @@ it('deloads when readiness bottoms out at rest', function (): void {
 
     expect($decision['reason'])->toBe(AdaptationReason::LowReadiness)
         ->and($decision['deload'])->toBeTrue();
-});
-
-it('deloads at the monotony injury-risk threshold', function (): void {
-    expect(decide(monotony: PlanAdapter::MONOTONY_DELOAD)['reason'])->toBe(AdaptationReason::HighMonotony)
-        ->and(decide(monotony: PlanAdapter::MONOTONY_DELOAD - 0.01)['reason'])->toBe(AdaptationReason::Steady);
-});
-
-it('deloads when strain runs past what the athlete\'s fitness supports', function (): void {
-    $decision = decide(strain: 40.0 * PlanAdapter::STRAIN_TO_CTL_DELOAD + 1, ctl: 40.0);
-
-    expect($decision['reason'])->toBe(AdaptationReason::HighStrain)
-        ->and($decision['deload'])->toBeTrue();
-});
-
-it('ignores the strain ratio below the CTL floor, where it is noise', function (): void {
-    $ctl = PlanAdapter::MIN_CTL_FOR_STRAIN - 1;
-
-    expect(decide(strain: $ctl * 100, ctl: $ctl)['reason'])->toBe(AdaptationReason::Steady);
 });
 
 it('treats a mostly missed week as a re-entry deload, not a catch-up', function (): void {
@@ -246,10 +225,6 @@ it('never lets chasing a goal time override a safety deload', function (): void 
 
     expect($decision['reason'])->toBe(AdaptationReason::LowReadiness)
         ->and($decision['quality_delta'])->toBe(0);
-});
-
-it('tolerates unknown load numbers', function (): void {
-    expect(decide(monotony: null, strain: null, ctl: null)['reason'])->toBe(AdaptationReason::Steady);
 });
 
 it('clamps the reported adherence into 0-100 percent', function (): void {
@@ -779,20 +754,20 @@ it('neither rests nor deloads a steady four-run athlete in the six weeks after h
     Carbon::setTestNow();
 });
 
-it('decides nothing from load while the window it reads still awaits hydration', function (bool $pending, AdaptationReason $expected): void {
+it('reads no load while the window it decides from still awaits hydration', function (bool $pending, int $summaryReads): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
     planAdapterLoadRun($user, Carbon::parse('2026-08-03'), 0, 80.0, pending: $pending);
+    $trainingLoad = Mockery::mock(TrainingLoad::class);
+    $trainingLoad->shouldReceive('summary')->times($summaryReads)->andReturn(['form' => 5.0, 'form_status' => 'optimal']);
 
-    $decision = planAdapterFor(['monotony' => 2.5, 'strain' => 3000.0, 'ctl_42d' => 30.0, 'form' => -40.0, 'form_status' => 'overreaching', 'form_known_from' => '2026-01-01'])
+    new PlanAdapter($trainingLoad, app(RiegelProjector::class), app(HydrationBacklog::class))
         ->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
-
-    expect($decision['reason'])->toBe($expected);
 
     Carbon::setTestNow();
 })->with([
-    'a quarter of the runs analysed' => [true, AdaptationReason::Steady],
-    'full history analysed' => [false, AdaptationReason::HighMonotony],
+    'a run in the window awaits hydration' => [true, 0],
+    'the window is fully analysed' => [false, 1],
 ]);
 
 it('stores no low-readiness deload for a race season opened mid-backfill, and reads the full series once it lands', function (): void {
@@ -824,6 +799,62 @@ it('stores no low-readiness deload for a race season opened mid-backfill, and re
         ->and($fullHistory['form_status'])->not->toBeNull()
         ->and($fullHistory['ctl_42d'])->toBeGreaterThan(70.0)
         ->and(app(PlanAdapter::class)->forWeek($user, $monday, $monday, null)['deload'])->toBeFalse();
+
+    Carbon::setTestNow();
+});
+
+it('adapts a steady plan-shaped six-session week and a steady daily runner as steady', function (array $runDays, float $trimp): void {
+    $user = User::factory()->create();
+    $start = Carbon::parse('2026-05-04');
+    for ($week = 0; $week < 12; $week++) {
+        foreach ($runDays as $offset => $multiple) {
+            planAdapterLoadRun($user, $start, $week * 7 + $offset, $trimp * $multiple);
+        }
+    }
+    $monday = $start->copy()->addWeeks(12);
+    Carbon::setTestNow($monday->copy()->setTime(8, 0));
+
+    expect(app(PlanAdapter::class)->forWeek($user, $monday, $monday, null)['reason'])->toBe(AdaptationReason::Steady);
+
+    Carbon::setTestNow();
+})->with([
+    'six sessions, rest on Monday, long run on Sunday' => [[1 => 1.0, 2 => 1.0, 3 => 1.0, 4 => 1.0, 5 => 1.0, 6 => 2.0], 70.0],
+    'daily runner' => [[0 => 1.0, 1 => 1.0, 2 => 1.0, 3 => 1.0, 4 => 1.0, 5 => 1.0, 6 => 1.0], 60.0],
+]);
+
+it('handles a return after a two-week gap once, as a re-entry, not again as strain', function (): void {
+    $user = User::factory()->create();
+    $start = Carbon::parse('2026-05-04');
+    for ($week = 0; $week < 10; $week++) {
+        foreach ([0, 2, 4, 6] as $offset) {
+            planAdapterLoadRun($user, $start, $week * 7 + $offset, 90.0);
+        }
+    }
+    $gapStart = $start->copy()->addWeeks(10);
+    foreach ([0, 2, 4, 6] as $offset) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $gapStart->copy()->addWeek()->addDays($offset)->toDateString(),
+            'phase' => PlanPhase::Build,
+            'session_type' => SessionType::Easy,
+            'status' => PlannedSessionStatus::Missed,
+            'compliance_score' => 0,
+            'distance_score' => 0,
+        ]);
+    }
+    $returnWeek = $gapStart->copy()->addWeeks(2);
+    foreach ([1, 2, 4, 6] as $offset) {
+        planAdapterLoadRun($user, $returnWeek, $offset, 150.0);
+        planAdapterCreditedDay($user, $returnWeek->copy()->addDays($offset)->toDateString(), SessionType::Easy);
+    }
+    $afterReturn = $returnWeek->copy()->addWeek();
+
+    Carbon::setTestNow($returnWeek->copy()->setTime(8, 0));
+    $onReturn = app(PlanAdapter::class)->forWeek($user, $returnWeek, $returnWeek, null);
+    Carbon::setTestNow($afterReturn->copy()->setTime(8, 0));
+    $weekAfter = app(PlanAdapter::class)->forWeek($user, $afterReturn, $afterReturn, null);
+
+    expect($onReturn['reason'])->toBe(AdaptationReason::MissedWeek)
+        ->and($weekAfter['reason'])->toBe(AdaptationReason::Steady);
 
     Carbon::setTestNow();
 });

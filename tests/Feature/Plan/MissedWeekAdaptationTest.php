@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Enums\AdaptationReason;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -35,6 +37,11 @@ function athleteWithFourWeekBaseline(): User
             'distance_km' => 30.0,
         ]);
     }
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 12_000,
+        'start_date_local' => Carbon::parse(LAST_MONDAY)->subDays(2)->setTime(7, 0),
+    ]);
 
     return $user;
 }
@@ -178,7 +185,7 @@ it('does not add a missed session to future easy runs or the long run', function
     $remainingEasyKm = $remainingTargetKm - $sunOriginalKm;
     $scale = VolumeRedistributor::redistribute([$saturday => $satOriginalKm], $remainingEasyKm)[$saturday];
 
-    expect($days[$saturday]['distance_km'])->toBe(round($satOriginalKm, 1))
+    expect($days[$saturday]['distance_km'])->toEqual(round($satOriginalKm, 1))
         ->and($days[$sunday]['distance_km'])->toBe($days[$sunday]['asked_km'])
         ->and($remainingEasyKm)->toBeGreaterThan($satOriginalKm)
         ->and($scale)->toBe(1.0);

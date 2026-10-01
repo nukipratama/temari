@@ -48,6 +48,10 @@ function flooredAthlete(): User
             'form_status' => 'optimal',
         ]);
     }
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'distance' => 10_000,
+        'start_date_local' => Carbon::parse('2026-09-19 07:00:00'),
+    ]);
     TrainingPreference::query()->create([
         'user_id' => $user->id,
         'experience_level' => ExperienceLevel::Experienced,

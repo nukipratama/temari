@@ -197,7 +197,7 @@ it('steps a tempo day eased to easy down on the Plan row today, tempo still lead
         'session_type' => SessionType::Tempo,
     ]);
     $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
-    $storedKm = PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled']);
+    $storedKm = PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled'], $baseline['long_run_progression_cap_km']);
     $row->update(['clamped_km' => $storedKm]);
 
     $day = collect($this->assembler->weeks($user, Carbon::today()))

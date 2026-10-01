@@ -67,8 +67,8 @@ class TrendReadNarrator
           if either is null, that means not enough history yet, don't
           guess a direction from missing data.
         - `shape`: avg_monotony above 2 means the load was unusually
-          uniform (a known injury-risk pattern), worth naming once if it
-          stands out, not a default thing to mention. Call it "monotony"
+          uniform, worth naming once if it stands out, not a default thing
+          to mention. Call it "monotony"
           in your words; `avg_monotony` is the field name and field names
           never reach the reader.
         - `adherence`: get_plan_adherence's counts. A stretch where

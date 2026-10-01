@@ -93,7 +93,7 @@ it('falls back to the floor of 3 sessions/week and a default volume with no hist
     expect($result['sessions_per_week'])->toBe(3)
         ->and($result['weekly_volume_km'])->toBe(15.0)
         ->and($result['long_run_km'])->toBeGreaterThan(0.0)
-        ->and($result['long_run_progression_cap_km'])->toBe(INF);
+        ->and($result['long_run_progression_cap_km'])->toBe(5.3);
 });
 
 it('clamps sessions_per_week to the trailing average, floored at 3 and capped at 6', function (): void {
@@ -254,7 +254,7 @@ it('ignores runs older than the recent-capacity window', function (): void {
 
     expect($result['long_run_km'])->toBe(12.0)
         ->and($result['long_run_cap_km'])->toBe(20.0)
-        ->and($result['long_run_progression_cap_km'])->toBe(INF);
+        ->and($result['long_run_progression_cap_km'])->toBe(5.3);
 });
 
 it('keeps the minimum viable long run with only a very short recent run', function (): void {
@@ -542,6 +542,7 @@ function blockMeanKm(User $user, Season $season): float
 function flooredRaceSeason(User $user, float $anchorKm, ?float $floorKm, string $raceDate = '2026-11-01'): Season
 {
     weeksOf($user, array_fill(0, 6, $anchorKm));
+    completedRun($user, 14.0, Carbon::today()->subDays(3));
     $race = RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => $raceDate]);
 
     return Season::factory()->for($user)->create([
@@ -657,3 +658,47 @@ it('recomputes the block and floor when a key input changes', function (): void 
 
     expect(trainingBaselineMemo($this->baseline, 'volumeFloorMemo'))->toHaveCount(2);
 });
+
+it('sizes a self-scaled cycle so its four weeks average the anchor unless a long-run cap binds', function (float $anchorKm, int $sessions): void {
+    $user = User::factory()->create();
+    weeksOf($user, array_fill(0, 6, $anchorKm), $sessions);
+    completedRun($user, $anchorKm * 0.45, Carbon::today()->subDays(5));
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => $sessions]);
+    $season = Season::factory()->for($user)->create([
+        'anchor_weekly_volume_km' => $anchorKm,
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2026-09-06',
+        'opens_with_recovery' => false,
+    ]);
+
+    $plannedKm = array_column(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season), 'planned_km');
+    $meanKm = array_sum($plannedKm) / count($plannedKm);
+    $baseline = $this->baseline->forUser($user, Carbon::today());
+
+    if ($baseline['long_run_km'] < $baseline['long_run_cap_km']) {
+        expect($meanKm)->toBeGreaterThanOrEqual($anchorKm * 0.95)->toBeLessThanOrEqual($anchorKm * 1.05);
+    } else {
+        expect($meanKm)->toBeLessThan($anchorKm * 1.05);
+    }
+})->with([20.0, 40.0, 70.0])->with([2, 3, 4, 5, 6]);
+
+it('lets a long-run cap hold a self-scaled cycle under its anchor', function (float $anchorKm, int $sessions): void {
+    $user = User::factory()->create();
+    weeksOf($user, array_fill(0, 6, $anchorKm), $sessions);
+    completedRun($user, $anchorKm * 0.45, Carbon::today()->subDays(5));
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => $sessions]);
+    Season::factory()->for($user)->create([
+        'anchor_weekly_volume_km' => $anchorKm,
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2026-09-06',
+        'opens_with_recovery' => false,
+    ]);
+
+    $baseline = $this->baseline->forUser($user, Carbon::today());
+
+    expect($baseline['long_run_km'])->toBe($baseline['long_run_cap_km']);
+})->with([
+    'two sessions at 20 km' => [20.0, 2],
+    'two sessions at 40 km' => [40.0, 2],
+    'four sessions at 70 km' => [70.0, 4],
+]);

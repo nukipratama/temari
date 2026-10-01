@@ -64,7 +64,6 @@ final readonly class Readiness
             && $weeklyTrimp > $weeklyTrimpRange['high']
             && ($aheadOfPlanPct === null || $aheadOfPlanPct > 0.0);
         $supportingLoad = in_array($formStatus, ['fatigued', 'overreaching'], true)
-            || ($monotony !== null && $monotony >= 1.8)
             || $aheadOfPlan
             || $recentDemanding
             || $closelySpacedDemanding
@@ -88,10 +87,6 @@ final readonly class Readiness
         if ($ranToday) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::EasyOnly);
             $reasons[] = 'already_ran_today';
-        }
-        if ($monotony !== null && $monotony > 2.0) {
-            $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
-            $reasons[] = 'high_training_monotony';
         }
         if ($aheadOfPlan) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);

@@ -12,6 +12,10 @@ code_refs:
   - app/Services/Run/Metrics/TrainingLoad.php
   - app/Services/Run/Plan/PlanAdapter.php
   - app/Services/Run/Story/BriefingContext.php
+  - app/Services/Run/Plan/SegmentGenerator.php
+  - app/Services/Run/Plan/TrainingBaseline.php
+  - app/Services/Run/Plan/SeasonService.php
+  - app/Services/Run/Plan/PhaseSchedule.php
 ---
 
 # Coaching evidence
@@ -34,12 +38,18 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | The easy guide pace is the midpoint of the VDOT calculator's E band | [TrainingPaceCalculator.php:86](app/Services/Run/Metrics/TrainingPaceCalculator.php#L86) | heuristic | [[#DanielsGilbert1979]] |
 | A continuous threshold block (Peak, 35 minutes) never runs longer than the athlete's own model says they could race at its pace | [IntensityPrescriptionResolver.php:15](app/Services/Run/Plan/IntensityPrescriptionResolver.php#L15) | evidence-supported | [[#Jones2010]], [[#Jamnick2020]] |
 | A CTL/ATL form label never forces rest or a deload; "fatigued" or "overreaching" only supports a mild reported concern toward a ModerateOk advisory | [Readiness.php:66](app/Services/Run/Metrics/Readiness.php#L66) | evidence-supported | [[#Meeusen2013]], [[#Saw2016]] |
-| Rest is reserved for reported concerning pain or illness | [Readiness.php:78](app/Services/Run/Metrics/Readiness.php#L78) | evidence-supported | [[#Meeusen2013]] |
+| Rest is reserved for reported concerning pain or illness | [Readiness.php:76](app/Services/Run/Metrics/Readiness.php#L76) | evidence-supported | [[#Meeusen2013]] |
 | Form is unknown until 42 days of scored history follow the first scored day | [TrainingLoad.php:351](app/Services/Run/Metrics/TrainingLoad.php#L351) | heuristic | [[#AllenCoggan]], [[#Hellard2006]] |
 | The form threshold rises continuously with CTL, so more load never reads fresher | [TrainingLoad.php:361](app/Services/Run/Metrics/TrainingLoad.php#L361) | heuristic | [[#AllenCoggan]], [[#Vermeire2022]], [[#Imbach2022]] |
 | The personal-range guard compares unrounded load against the weeks before the current one, and only when the athlete is ahead of the prescription | [Readiness.php:62](app/Services/Run/Metrics/Readiness.php#L62), [TrainingLoad.php:143](app/Services/Run/Metrics/TrainingLoad.php#L143) | evidence-supported | [[#Frandsen2025]], [[#Nakaoka2021]], [[#Impellizzeri2020]] |
 | The volume guard compares actual km-to-date with prescribed km-to-date, never with last week | [Readiness.php:61](app/Services/Run/Metrics/Readiness.php#L61), [BriefingContext.php:309](app/Services/Run/Story/BriefingContext.php#L309) | evidence-supported | [[#Frandsen2025]], [[#Buist2008]], [[#Soligard2016]] |
-| Readiness and adaptation read load as unknown while the CTL window still awaits hydration, and the strain ratio is unknown during the form warm-up | [PlanAdapter.php:91](app/Services/Run/Plan/PlanAdapter.php#L91), [PlanAdapter.php:95](app/Services/Run/Plan/PlanAdapter.php#L95) | product choice | — |
+| Readiness and adaptation read load as unknown while the CTL window still awaits hydration | [PlanAdapter.php:82](app/Services/Run/Plan/PlanAdapter.php#L82) | product choice | — |
+| Monotony and strain describe a week; neither deloads it nor caps readiness | [PlanAdapter.php:142](app/Services/Run/Plan/PlanAdapter.php#L142), [Readiness.php:139](app/Services/Run/Metrics/Readiness.php#L139) | evidence-supported | [[#Foster1998]], [[#JonesCM2017]] |
+| A return after a gap is handled once, by the missed-week adaptation and the ramp, never as a separate strain deload | [PlanAdapter.php:142](app/Services/Run/Plan/PlanAdapter.php#L142) | evidence-supported | [[#Frandsen2025]], [[#Impellizzeri2020]] |
+| No generated running session exceeds 110% of the longest run in the prior 30 days; with none, the cap is the cold-start long run | [SegmentGenerator.php:119](app/Services/Run/Plan/SegmentGenerator.php#L119), [TrainingBaseline.php:378](app/Services/Run/Plan/TrainingBaseline.php#L378) | evidence-supported | [[#Frandsen2025]] |
+| A goal-less season's four-week cycle averages its frozen anchor, unless a long-run cap binds | [TrainingBaseline.php:511](app/Services/Run/Plan/TrainingBaseline.php#L511) | heuristic | [[#Doherty2020]], [[#Coyle1984]], [[#MujikaPadilla2000a]] |
+| Following the prescription never lowers the anchor; only running well short of it re-anchors mid-season or at rollover | [SeasonService.php:240](app/Services/Run/Plan/SeasonService.php#L240) | heuristic | [[#Coyle1984]], [[#MujikaPadilla2000a]], [[#MujikaPadilla2000b]] |
+| The Build ramp is a heuristic, not a safety rule | [PhaseSchedule.php:46](app/Services/Run/Plan/PhaseSchedule.php#L46) | heuristic | [[#Buist2008]] |
 
 ## Sources
 
@@ -93,3 +103,21 @@ Buist I, Bredeweg SW, van Mechelen W, et al. No effect of a graded training prog
 
 ### Soligard2016
 Soligard T, Schwellnus M, Alonso JM, et al. How much is too much? (Part 1) IOC consensus statement on load in sport and risk of injury. *Br J Sports Med* 2016;50(17):1030–1041. https://doi.org/10.1136/bjsports-2016-096581. Flags rapid load change without giving thresholds. Grade CON · access ABS.
+
+### Foster1998
+Foster C. Monitoring training in athletes with reference to overtraining syndrome. *Med Sci Sports Exerc* 1998;30(7):1164–1168. https://doi.org/10.1097/00005768-199807000-00023. Monotony and strain came from 25 athletes with individual illness thresholds; the abstract states no universal monotony cutoff. Grade COH · access ABS.
+
+### JonesCM2017
+Jones CM, Griffiths PC, Mellalieu SD. Training load and fatigue marker associations with injury and illness: a systematic review of longitudinal studies. *Sports Med* 2017;47(5):943–974. https://doi.org/10.1007/s40279-016-0619-5. Monotony and strain associations with injury and illness were mixed across studies. Grade SR · access FT.
+
+### Coyle1984
+Coyle EF, Martin WH, Sinacore DR, et al. Time course of loss of adaptations after stopping prolonged intense endurance training. *J Appl Physiol* 1984;57(6):1857–1864. https://doi.org/10.1152/jappl.1984.57.6.1857. VO2max fell 7% in 21 days and settled 16% below trained by 56 days. Grade LAB · access ABS.
+
+### MujikaPadilla2000a
+Mujika I, Padilla S. Detraining: loss of training-induced physiological and performance adaptations. Part I: short term insufficient training stimulus. *Sports Med* 2000;30(2):79–87. https://doi.org/10.2165/00007256-200030020-00002. Grade REV · access ABS.
+
+### MujikaPadilla2000b
+Mujika I, Padilla S. Detraining: loss of training-induced physiological and performance adaptations. Part II: long term insufficient training stimulus. *Sports Med* 2000;30(3):145–154. https://doi.org/10.2165/00007256-200030030-00001. Grade REV · access ABS.
+
+### Doherty2020
+Doherty C, Keogh A, Davenport J, et al. An evaluation of the training determinants of marathon performance: a meta-analysis with meta-regression. *J Sci Med Sport* 2020;23(2):182–188. https://doi.org/10.1016/j.jsams.2019.09.013. Weekly distance, frequency and longest run were associated with faster times, as cohort-level associations confounded by ability. Grade MA · access ABS.

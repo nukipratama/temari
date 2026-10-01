@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Enums\ExperienceLevel;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
@@ -21,8 +23,14 @@ afterEach(fn () => Carbon::setTestNow());
 
 const FLOOR_ARC_START = '2026-09-07';
 
-function logFloorWeek(User $user, string $weekEnding, float $km): void
+function logFloorWeek(User $user, string $weekEnding, float $km, float $longKm = 9.0): void
 {
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => $longKm * 1000,
+        'start_date_local' => Carbon::parse($weekEnding)->subDay()->setTime(7, 0),
+    ]);
+
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => $weekEnding,
         'distance_km' => $km,
@@ -96,7 +104,7 @@ function longRunSeries(User $user, int $weeks): array
             'week_km' => $week['planned_km_this_week'],
         ];
 
-        logFloorWeek($user, $monday->copy()->addDays(6)->toDateString(), 26.0);
+        logFloorWeek($user, $monday->copy()->addDays(6)->toDateString(), 26.0, max(9.0, (float) ($longDay['distance_km'] ?? 0.0)));
     }
 
     return $series;

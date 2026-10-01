@@ -6,10 +6,12 @@ namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\SessionType;
+use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\SeasonGoal;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Services\AI\HydrationBacklog;
 use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -55,6 +57,8 @@ final readonly class SeasonService
      * far, so a single down week never trips it.
      */
     private const float REANCHOR_COLLAPSE_FRACTION = 0.25;
+
+    private const int FOLLOW_THROUGH_WEEKS = 6;
 
     /** Every week count short of the longest block, spelled out for the under-ready line. */
     private const array WEEK_COUNT_WORDS = [
@@ -110,6 +114,9 @@ final readonly class SeasonService
         }
 
         $anchorKm = $this->baseline->trailingWeeklyVolumeKm($user, $today);
+        if ($current?->anchor_weekly_volume_km !== null && $this->followedPrescription($user, $today) === true) {
+            $anchorKm = max($anchorKm, $current->anchor_weekly_volume_km);
+        }
         $volumeFloorKm = $race !== null ? $this->baseline->recentWeeklyMeanKm($user, $today) : null;
         $increasesHeld = $race !== null && $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
         $opensWithRecovery = $race === null && self::followsARaceAlreadyRun($current, $today);
@@ -194,9 +201,9 @@ final readonly class SeasonService
      * anchored carries nothing to ramp off and would stay flat forever, so it
      * is backfilled to where the athlete stands now; an anchored one moves
      * only when the athlete has fallen {@see self::REANCHOR_COLLAPSE_FRACTION}
-     * below it. A replan, a page load or a manual regeneration reaches here
-     * every time and must leave the arc alone — only a race change (which
-     * opens a new season) resets it outright.
+     * below it and below what the plan asked of them. A replan, a page load
+     * or a manual regeneration reaches here every time and must leave the arc
+     * alone — only a race change (which opens a new season) resets it outright.
      *
      * A race season's volume floor follows the same two rules: backfilled
      * from the weeks before the season opened when it has none, and brought
@@ -207,7 +214,8 @@ final readonly class SeasonService
     {
         $anchor = $season->anchor_weekly_volume_km;
         $trailing = $this->baseline->trailingWeeklyVolumeKm($user, $today);
-        $collapsed = $anchor !== null && $trailing < $anchor * (1 - self::REANCHOR_COLLAPSE_FRACTION);
+        $collapsed = $anchor !== null && $trailing < $anchor * (1 - self::REANCHOR_COLLAPSE_FRACTION)
+            && $this->followedPrescription($user, $today) !== true;
 
         if ($anchor === null || $collapsed) {
             $season->update(['anchor_weekly_volume_km' => $trailing]);
@@ -222,6 +230,35 @@ final readonly class SeasonService
         } elseif ($season->volume_floor_km === null) {
             $season->update(['volume_floor_km' => $this->baseline->recentWeeklyMeanKm($user, $season->starts_at)]);
         }
+    }
+
+    /**
+     * Whether the athlete ran at least what the plan asked of them over the
+     * last completed weeks it prescribed, so a plan that eased them down never
+     * reads as a collapse. Null when no settled week carries a prescription.
+     */
+    private function followedPrescription(User $user, Carbon $today): ?bool
+    {
+        $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $from = $weekStart->copy()->subWeeks(self::FOLLOW_THROUGH_WEEKS);
+
+        $prescribedKmByWeek = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$from->toDateString(), $weekStart->copy()->subDay()->toDateString()])
+            ->whereNotNull('prescribed_km')
+            ->get(['date', 'prescribed_km'])
+            ->groupBy(fn (PlannedSession $session): string => $session->date->copy()->endOfWeek(Carbon::SUNDAY)->toDateString())
+            ->map(fn ($sessions): float => (float) $sessions->sum('prescribed_km'));
+        if ($prescribedKmByWeek->isEmpty()) {
+            return null;
+        }
+
+        $actualKm = (float) WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->whereIn('week_ending', $prescribedKmByWeek->keys()->all())
+            ->sum('distance_km');
+
+        return $actualKm >= $prescribedKmByWeek->sum() * (1 - self::REANCHOR_COLLAPSE_FRACTION);
     }
 
     /**

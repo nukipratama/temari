@@ -18,6 +18,8 @@ code_refs:
 
 > **Partly superseded (2026-10-02) by [[a-load-label-supports-a-concern-it-never-decides-one]].** Rule 5's "an overreaching form … still deloads the current week" no longer holds: a load label never forces a deload. Monotony, strain and a missed week still do. The rest of this decision stands.
 
+> **Partly superseded (2026-10-02) by [[monotony-and-strain-describe-a-week-they-never-deload-it]].** Monotony and strain no longer deload a week either; reported concerning pain or illness, and a missed week, still do.
+
 # A race block never prescribes below habit, and the load guard outranks that
 
 **Status:** Accepted (2026-09-18)

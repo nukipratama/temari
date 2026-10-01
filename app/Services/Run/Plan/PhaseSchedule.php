@@ -43,7 +43,7 @@ final class PhaseSchedule
 
     private const float PEAK_FRACTION = 0.25;
 
-    /** Weekly compounding ramp during Build, the midpoint of the 5-10% "10% rule" range. */
+    /** Weekly compounding ramp during Build, a heuristic: the weekly "10% rule" did not lower injuries (Buist 2008). */
     private const float BUILD_WEEKLY_RAMP = 1.075;
 
     /** Ceiling on how far the compounding {@see self::BUILD_WEEKLY_RAMP} may climb over a long arc. */
