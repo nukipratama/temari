@@ -1005,6 +1005,7 @@ it('plans the week around the day an eased tempo became, not the tempo it abando
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
     WeeklySnapshot::query()->where('user_id', $user->id)->update(['distance_km' => 60.0]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create(['start_date_local' => '2026-08-08 07:00:00', 'distance' => 20_000]);
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
     PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
     $this->periodizer->regenerate($user, Carbon::today());
