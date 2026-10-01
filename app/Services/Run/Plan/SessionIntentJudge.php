@@ -26,6 +26,12 @@ final class SessionIntentJudge
 {
     public const int PACE_TOLERANCE_SEC = 10;
 
+    /** A quality block quicker than its target by more than this share of the target pace is excessive, not controlled. */
+    public const float EXCESSIVE_FRACTION = 0.05;
+
+    /** The share of a requested block or rep a window, lap or recording must cover before it can prove the work was done. */
+    public const float MIN_COVERAGE = 0.9;
+
     /**
      * @param  list<SessionSegment>  $segments  the effective session's prescription
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
@@ -62,7 +68,8 @@ final class SessionIntentJudge
             return self::reading(IntentVerdict::Unknown);
         }
 
-        $summary = self::summaryOf(self::longest($runs));
+        $anchor = self::longest($runs);
+        $summary = self::summaryOf($anchor);
         $totalMinutes = array_sum(array_map(static fn (SessionSegment $segment): float => $segment->minutes ?? 0.0, $blocks));
         $longestMinutes = 0.0;
         foreach ($blocks as $candidate) {
@@ -70,15 +77,26 @@ final class SessionIntentJudge
         }
         $evidence = ['block_minutes' => $totalMinutes, 'target_pace_sec' => $block->paceSecPerKm, 'tolerance_sec' => self::PACE_TOLERANCE_SEC];
 
-        [$window, $windowPace] = self::bestWindow($summary, $longestMinutes);
+        if (self::cannotCover($runs, $anchor, $longestMinutes)) {
+            return self::unknownWithHeartRate($evidence, $runs, $block->zone, 'tempo');
+        }
+
+        [$window, $windowPace, $windowSeconds] = self::bestWindow($summary, $longestMinutes);
+        $coveredSeconds = $windowSeconds !== null && $windowSeconds >= $longestMinutes * 60 * self::MIN_COVERAGE ? $windowSeconds : null;
         if ($window !== null && $windowPace !== null) {
             $evidence += ['window' => $window, 'window_pace_sec' => $windowPace];
+        }
+        if ($coveredSeconds !== null && $windowPace !== null) {
+            $stimulus = self::stimulus('tempo', $coveredSeconds / 60, 'window');
+            if ($windowPace < $block->paceSecPerKm * (1 - self::EXCESSIVE_FRACTION)) {
+                return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'pace', 'control' => 'excessive'] + $stimulus);
+            }
             if ($windowPace <= $block->paceSecPerKm + self::PACE_TOLERANCE_SEC) {
-                return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'pace']);
+                return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'pace', 'control' => 'controlled'] + $stimulus);
             }
         }
 
-        return self::onHeartRate($summary, $block->zone, $totalMinutes, $windowPace !== null, $evidence);
+        return self::onHeartRate($summary, $runs, $block->zone, $totalMinutes, $coveredSeconds !== null && $windowPace !== null, $evidence, 'tempo', 'window');
     }
 
     /** @param list<SessionSegment> $segments */
@@ -104,7 +122,8 @@ final class SessionIntentJudge
 
         $ceiling = $repPace + self::PACE_TOLERANCE_SEC;
         $needed = max(1, count($reps) - 1);
-        $summary = self::summaryOf(self::longest($runs));
+        $anchor = self::longest($runs);
+        $summary = self::summaryOf($anchor);
         $evidence = [
             'reps_prescribed' => count($reps),
             'reps_needed' => $needed,
@@ -113,27 +132,47 @@ final class SessionIntentJudge
             'tolerance_sec' => self::PACE_TOLERANCE_SEC,
         ];
 
-        $lapPaces = self::lapPaces($summary->laps() ?? []);
+        if (self::cannotCover($runs, $anchor, $needed * $repMinutes)) {
+            return self::unknownWithHeartRate($evidence, $runs, $rep->zone, 'interval');
+        }
+
+        $laps = $summary->laps() ?? [];
+        $lapPaces = self::lapPaces($laps);
         $work = IntervalDetector::detect($lapPaces);
         if ($work !== []) {
-            $atPace = count(array_filter($work, static fn (int $position): bool => $lapPaces[$position] <= $ceiling));
-            $evidence['reps_at_pace'] = $atPace;
-            if ($atPace >= $needed) {
-                return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'laps']);
+            $counted = array_values(array_filter($work, static fn (int $position): bool => $lapPaces[$position] <= $ceiling
+                && is_numeric($laps[$position]['elapsed_sec'] ?? null)
+                && (float) $laps[$position]['elapsed_sec'] >= $repMinutes * 60 * self::MIN_COVERAGE));
+            $evidence['reps_at_pace'] = count($counted);
+            if (count($counted) >= $needed) {
+                $meanPace = array_sum(array_map(static fn (int $position): float => $lapPaces[$position], $counted)) / count($counted);
+                $stimulus = self::stimulus('interval', count($counted) * $repMinutes, 'laps');
+                if ($meanPace < $repPace * (1 - self::EXCESSIVE_FRACTION)) {
+                    return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'laps', 'control' => 'excessive'] + $stimulus);
+                }
+
+                return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'laps', 'control' => 'controlled'] + $stimulus);
             }
 
-            return self::onHeartRate($summary, $rep->zone, $needed * $repMinutes, true, $evidence);
+            return self::onHeartRate($summary, $runs, $rep->zone, $needed * $repMinutes, true, $evidence, 'interval', 'laps');
         }
 
-        [$window, $windowPace] = self::bestWindow($summary, $repMinutes);
+        [$window, $windowPace, $windowSeconds] = self::bestWindow($summary, $repMinutes);
+        $coveredSeconds = $windowSeconds !== null && $windowSeconds >= $repMinutes * 60 * self::MIN_COVERAGE ? $windowSeconds : null;
         if ($window !== null && $windowPace !== null) {
             $evidence += ['window' => $window, 'window_pace_sec' => $windowPace];
+        }
+        if ($coveredSeconds !== null && $windowPace !== null) {
+            $stimulus = self::stimulus('interval', $coveredSeconds / 60, 'window');
+            if ($windowPace < $repPace * (1 - self::EXCESSIVE_FRACTION)) {
+                return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'window', 'control' => 'excessive'] + $stimulus);
+            }
             if ($windowPace <= $ceiling) {
-                return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'window']);
+                return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'window', 'control' => 'controlled'] + $stimulus);
             }
         }
 
-        return self::onHeartRate($summary, $rep->zone, $needed * $repMinutes, $windowPace !== null, $evidence);
+        return self::onHeartRate($summary, $runs, $rep->zone, $needed * $repMinutes, $coveredSeconds !== null && $windowPace !== null, $evidence, 'interval', 'window');
     }
 
     /**
@@ -156,7 +195,7 @@ final class SessionIntentJudge
             $evidence['limit'] = 'marathon';
         }
         if ($pace >= $ceiling) {
-            return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'pace']);
+            return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'pace'] + self::stimulus('easy', null, 'pace'));
         }
 
         $total = 0.0;
@@ -168,54 +207,121 @@ final class SessionIntentJudge
             }
         }
         if ($total <= 0.0) {
-            return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'pace']);
+            return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'pace'] + self::stimulus('hard', null, 'pace'));
         }
 
         $share = $above / $total;
         $evidence += ['basis' => 'heart_rate', 'zone' => $main->zone, 'above_zone_pct' => (int) round($share * 100)];
 
-        return self::reading($share <= PlanAdapter::EASY_DAY_HARD_SHARE ? IntentVerdict::Hit : IntentVerdict::TooHard, $evidence);
+        return $share <= PlanAdapter::EASY_DAY_HARD_SHARE
+            ? self::reading(IntentVerdict::Hit, $evidence + self::stimulus('easy', null, 'heart_rate'))
+            : self::reading(IntentVerdict::TooHard, $evidence + self::stimulus('hard', $above, 'heart_rate'));
+    }
+
+    /**
+     * @param  non-empty-list<ActivityDetail>  $runs
+     * @param  array<string, int|float|string>  $evidence
+     * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
+     */
+    private static function onHeartRate(StreamSummary $summary, array $runs, string $zone, float $minutesNeeded, bool $paceRead, array $evidence, string $family, string $paceSource): array
+    {
+        $zoneMinutes = $summary->zoneMinutes();
+        if ($zoneMinutes === null) {
+            return self::reading(
+                $paceRead ? IntentVerdict::Missed : IntentVerdict::Unknown,
+                $evidence + ['basis' => 'pace'] + ($paceRead ? self::stimulus('easy', null, $paceSource) : self::stimulus('unknown', null, 'none')),
+            );
+        }
+
+        $minutes = self::minutesAtOrAbove($zoneMinutes, $zone);
+        $dayMinutes = self::dayMinutesAtOrAbove($runs, $zone) ?? $minutes;
+
+        return self::reading(
+            $minutes >= $minutesNeeded ? IntentVerdict::Hit : IntentVerdict::Missed,
+            $evidence + ['basis' => 'heart_rate', 'zone' => $zone, 'zone_minutes' => round($minutes, 1)]
+                + self::stimulus($dayMinutes > 0.0 ? $family : 'easy', $dayMinutes > 0.0 ? $dayMinutes : null, 'heart_rate'),
+        );
     }
 
     /**
      * @param  array<string, int|float|string>  $evidence
+     * @param  non-empty-list<ActivityDetail>  $runs
      * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
      */
-    private static function onHeartRate(StreamSummary $summary, string $zone, float $minutesNeeded, bool $paceRead, array $evidence): array
+    private static function unknownWithHeartRate(array $evidence, array $runs, string $zone, string $family): array
     {
-        $zoneMinutes = $summary->zoneMinutes();
-        if ($zoneMinutes === null) {
-            return self::reading($paceRead ? IntentVerdict::Missed : IntentVerdict::Unknown, $evidence + ['basis' => 'pace']);
-        }
+        $minutes = self::dayMinutesAtOrAbove($runs, $zone);
 
+        return self::reading(IntentVerdict::Unknown, $evidence + ($minutes === null || $minutes <= 0.0
+            ? self::stimulus('unknown', null, 'none')
+            : self::stimulus($family, $minutes, 'heart_rate')));
+    }
+
+    /**
+     * A day of several recordings cannot prove a block when none of them is long enough to hold it.
+     *
+     * @param  non-empty-list<ActivityDetail>  $runs
+     */
+    private static function cannotCover(array $runs, ActivityDetail $anchor, float $requestedMinutes): bool
+    {
+        return count($runs) > 1 && (float) ($anchor->moving_time ?? $anchor->elapsed_time ?? 0) / 60 < $requestedMinutes * self::MIN_COVERAGE;
+    }
+
+    /**
+     * @param  array<string, float|int>  $zoneMinutes
+     */
+    private static function minutesAtOrAbove(array $zoneMinutes, string $zone): float
+    {
         $minutes = 0.0;
         foreach ($zoneMinutes as $key => $value) {
             $minutes += self::zoneIndex((string) $key) >= self::zoneIndex($zone) ? (float) $value : 0.0;
         }
 
-        return self::reading(
-            $minutes >= $minutesNeeded ? IntentVerdict::Hit : IntentVerdict::Missed,
-            $evidence + ['basis' => 'heart_rate', 'zone' => $zone, 'zone_minutes' => round($minutes, 1)],
-        );
+        return $minutes;
     }
 
-    /** @return array{0: string|null, 1: int|null} */
+    /**
+     * @param  non-empty-list<ActivityDetail>  $runs
+     */
+    private static function dayMinutesAtOrAbove(array $runs, string $zone): ?float
+    {
+        $minutes = null;
+        foreach ($runs as $run) {
+            $zoneMinutes = self::summaryOf($run)->zoneMinutes();
+            if ($zoneMinutes !== null) {
+                $minutes = ($minutes ?? 0.0) + self::minutesAtOrAbove($zoneMinutes, $zone);
+            }
+        }
+
+        return $minutes;
+    }
+
+    /** @return array<string, int|float|string> */
+    private static function stimulus(string $family, ?float $minutes, string $source): array
+    {
+        return ['stimulus_family' => $family, 'stimulus_source' => $source]
+            + ($minutes === null ? [] : ['stimulus_minutes' => round($minutes, 1)]);
+    }
+
+    /** @return array{0: string|null, 1: int|null, 2: int|null} label, pace sec/km and length in seconds of the longest window that fits inside the block */
     private static function bestWindow(StreamSummary $summary, float $minutes): array
     {
         $label = null;
+        $length = null;
         foreach (StreamAnalysis::BEST_EFFORT_WINDOWS as $seconds => $candidate) {
             if ($seconds <= $minutes * 60) {
                 $label = $candidate;
+                $length = $seconds;
             }
         }
         if ($label === null) {
-            return [null, null];
+            return [null, null, null];
         }
 
         $pace = $summary->bestPace($label);
         $seconds = $pace === null ? null : PaceFormatter::parse($pace);
 
-        return [$label, $seconds === null ? null : (int) round($seconds)];
+        return [$label, $seconds === null ? null : (int) round($seconds), $length];
     }
 
     /**
