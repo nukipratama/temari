@@ -3,7 +3,7 @@ title: Race — goal race and Riegel projection
 description: The first user-authored object in the app — a race the user is training for and a fitted-Riegel finish-time projection
 tags: [feature, run]
 status: living
-reviewed: 2026-10-01
+reviewed: 2026-10-02
 code_refs:
   - app/Models/RaceGoal.php
   - app/Http/Controllers/RaceController.php
@@ -18,7 +18,9 @@ code_refs:
   - app/Services/Run/Metrics/TrainingLoad.php
   - app/Services/Inertia/GamificationProps.php
   - resources/js/components/race/RaceDuel.tsx
-  - resources/js/components/race/ProjectionRangeBar.tsx
+  - resources/js/lib/raceGoal.ts
+  - resources/js/components/trends/RaceComparison.tsx
+  - app/Http/Controllers/TrendsController.php
   - resources/js/components/race/RaceGoalForm.tsx
   - resources/js/pages/Race.tsx
 ---
@@ -49,7 +51,7 @@ A passed date is not participation. `plan:close-finished-races` retires the row 
 - **1 usable PR** → falls back to the default 1.06 exponent, anchored on that one PR, with the widest uncertainty band the projector ever produces.
 - **≥2 usable PRs** → fits both the exponent and intercept via log-log regression, clamped to `[1.0, 1.30]` ([MIN_EXPONENT](app/Services/Run/Metrics/RiegelProjector.php#L52)) so a noisy 2-point fit can't extrapolate into a physiologically meaningless slope. Efforts shorter than 210 s (3.5 min) are excluded from the fit ([MIN_EFFORT_SEC](app/Services/Run/Metrics/RiegelProjector.php#L57)).
 
-The projection is for display. It no longer drives planning: a projection slower than the goal adds no quality session, and race-day pace comes from the athlete's supported fitness ([[one-race-model-drives-the-plan]]).
+The projection is no longer shown on the Race page or Trends; only the race form's typed-goal warning reads it ([[the-race-page-sets-the-target-beside-supported-time]]). It does not drive planning either: a projection slower than the goal adds no quality session, and race-day pace comes from the athlete's supported fitness ([[one-race-model-drives-the-plan]]).
 
 The uncertainty band (`low_sec`/`high_sec`) widens as the sample thins — see `HALF_WIDTH_BY_SAMPLE` in the projector — so the UI never claims false precision from one or two data points.
 
@@ -57,15 +59,17 @@ The uncertainty band (`low_sec`/`high_sec`) widens as the sample thins — see `
 
 `personal_records` has no time-series, so a category keeps whichever record was set last — a spring 10 km can still be on file after an autumn block has moved the athlete well past it. Regressing today's shape against those rows fits the exponent to a fade that has since been trained out: for one athlete a stale spring set pulled the fitted exponent to 1.1075 and the 10 km projection to 64:21, against 57:49 from their current block alone, which was enough for [PlanAdapter](app/Services/Run/Plan/PlanAdapter.php) to keep prescribing an extra quality session every week, until [[one-race-model-drives-the-plan]] took Riegel out of planning.
 
-`RiegelProjector::RECENT_MONTHS` (4) bounds the fit on `set_at`, as of the projection date. Fewer than two records survive that window and the fit falls back to the whole record rather than dropping to a single-PR default — a thin recent sample is worse evidence than a complete stale one. The chosen window travels with the payload as `window` (`recent` / `all`) and renders as the projection's provenance in [RaceDuel](resources/js/components/race/RaceDuel.tsx), beside the sample size.
+`RiegelProjector::RECENT_MONTHS` (4) bounds the fit on `set_at`, as of the projection date. Fewer than two records survive that window and the fit falls back to the whole record rather than dropping to a single-PR default — a thin recent sample is worse evidence than a complete stale one. The chosen window travels with the payload as `window` (`recent` / `all`), beside the sample size.
 
 Effort-window PRs (`Best5Min` etc.) store a **pace** (sec/km), not elapsed time — `RiegelProjector` converts each to a `(distance, time)` pair (`distance_m = window_sec / pace_sec_per_km * 1000`, `time_sec = window_sec`) before fitting alongside distance-category rows.
 
 This is deliberately **not** reconciled with [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php), which solves training-pace prescription (a `min()` reduction across PRs), not race-time projection — different questions, no shared math.
 
-## The page: goal against projection
+## The page: target against supported time
 
-The page leads with one duel card, [RaceDuel](resources/js/components/race/RaceDuel.tsx), under a compact "your race." header with a "plan →" link. It sets the goal time against the projected finish with the gap in words ("8:29 behind", "2:10 ahead", "on goal" within 5 seconds), a straight [ProjectionRangeBar](resources/js/components/race/ProjectionRangeBar.tsx) marking the goal against the projected range, then the race line and the PR basis. A Temari watermark is posed from the gap relative to the goal time. With no projection the card shows the goal alone. Why this shape: [[race-page-leads-with-goal-vs-projection]].
+The page leads with one duel card, [RaceDuel](resources/js/components/race/RaceDuel.tsx#L42), under a compact "your race." header with a "plan →" link. It sets "your target" against `race.ambition.supported_time_sec`, the VDOT race equivalent the plan trains at. The right eyebrow reads "on track for" only when the band is on track and the supported time is not behind the target ([supportedEyebrow()](resources/js/lib/raceGoal.ts#L169)), and "supported" otherwise. The gap pill states the difference in words, and one sentence from [ambitionNote()](resources/js/lib/raceGoal.ts#L144) names the band (on track, ambitious, unsupported, low evidence) or, with an unknown state, the honest limit. Times wrap at 320px rather than clip. A Temari watermark is posed from the gap. With no supported time the card shows the target alone. Why this shape: [[the-race-page-sets-the-target-beside-supported-time]].
+
+Trends shows the same comparison. [TrendsController::raceOutlook()](app/Http/Controllers/TrendsController.php#L55) serves `ambition` and `support` from the same `RacePresenter`, and [RaceComparison](resources/js/components/trends/RaceComparison.tsx#L40) renders "your target", "supported by your recent runs" and the same sentence, so the two pages cannot disagree ([[trends]]).
 
 Under the card, a row behind a hairline holds "edit race" and a quiet ember "clear race". "edit race" expands [RaceGoalForm](resources/js/components/race/RaceGoalForm.tsx) inline, collapsed by default; with a race set it first asks "Update this race" (the default, distance held) or "Add a new race" (a blank form that posts `intent: new`). A successful save collapses it again, and reopening remounts it on the saved values. "clear race" confirms through the concerned-pose `TemariNudgeModal` before `DELETE /race`, which retires the race and regenerates the plan onto its self-scaled arc. With no race set, the page shows only a one-line prompt and a "set a race" button that expands the same form.
 

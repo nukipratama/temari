@@ -21,6 +21,8 @@ code_refs:
   - resources/js/components/plan/WeekView.tsx
 ---
 
+> **Amendment moot (2026-10-02).** [[the-advised-session-leads-every-day]] makes today lead with the ease too, so the today-before-credit exception no longer applies.
+
 # The eased session leads, and the week total agrees with it
 
 **Status:** Accepted (2026-09-16). Supersedes [[readiness-clamp-is-advisory]].

@@ -3,7 +3,7 @@ title: Trends
 description: /trends — Temari's 7-day verdict, then three stacked comparisons (vs last week, vs a month ago, vs race day)
 tags: [feature, trends]
 status: living
-reviewed: 2026-09-17
+reviewed: 2026-10-02
 code_refs:
   - resources/js/pages/Trends.tsx
   - app/Http/Controllers/TrendsController.php
@@ -81,11 +81,13 @@ no new backend query, so the card and the line can never disagree.
 
 ## vs race day
 
-[RaceComparison](resources/js/components/trends/RaceComparison.tsx) closes the page: days out, the
-target time and pace, and where long-term load sits today, read from the `activeRace` shared prop
-([GamificationProps](app/Services/Inertia/GamificationProps.php)) rather than a page-specific
-query. With no race set it renders **vs your own year** instead — today against the highest CTL in
-the same 365-day series — plus a "set a race" link to `/race`.
+[RaceComparison](resources/js/components/trends/RaceComparison.tsx#L40) closes the page: days out, then
+"your target" with its time and pace beside "supported by your recent runs", the VDOT race equivalent,
+and the one sentence that states the band, all from the same `RacePresenter` as `/race`
+([TrendsController::raceOutlook()](app/Http/Controllers/TrendsController.php#L55), [[race-projection]],
+[[the-race-page-sets-the-target-beside-supported-time]]). It repeats no long-term load hero: a single
+"load balance today" line closes the section. With no race set it is one line and a "set a race" link
+to `/race`, with no repeated long-term load.
 
 ## Removed (#967)
 

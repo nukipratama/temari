@@ -7,9 +7,10 @@ reviewed: 2026-09-24
 code_refs:
   - resources/js/pages/Race.tsx
   - resources/js/components/race/RaceDuel.tsx
-  - resources/js/components/race/ProjectionRangeBar.tsx
   - resources/js/lib/raceGoal.ts
 ---
+
+> **Superseded (2026-10-02) by [[the-race-page-sets-the-target-beside-supported-time]].** The page now compares the target with the supported time, not a Riegel projection, and the range bar is gone.
 
 # The Race page leads with the goal against the projection
 
@@ -28,7 +29,7 @@ The options were rendered as pictures on both grounds, and the owner picked each
 
 - **Compact header.** The title "your race." with a "plan →" link, which replaces the schedule/race-goal tabs, the same way the Plan page links back with "race goal →".
 - **The duel (R3) is the hero.** [RaceDuel](resources/js/components/race/RaceDuel.tsx) sets "your goal" against "on track for", with the gap in words between them: "8:29 behind" in the ember family, "2:10 ahead" in the leaf family, and "on goal" within `ON_GOAL_TOLERANCE_SEC` (5 seconds) either way ([goalGap](resources/js/lib/raceGoal.ts)).
-- **A straight range bar replaces the gauge.** [ProjectionRangeBar](resources/js/components/race/ProjectionRangeBar.tsx) marks the goal against the projected range and the best estimate, on an axis spanning both with a little padding. It draws no number the projection payload does not already carry.
+- **A straight range bar replaces the gauge.** `ProjectionRangeBar` (deleted 2026-10-02) marks the goal against the projected range and the best estimate, on an axis spanning both with a little padding. It draws no number the projection payload does not already carry.
 - **The race line and the PR basis sit below it**: name · date · days to go, then what the projection rests on.
 - **Temari watermarks the card, posed from the gap** by a coach's reading relative to the goal time ([goalGapPose](resources/js/lib/raceGoal.ts)): ahead or within 1% is `blazing`, up to 3% behind is `easy`, 3–8% is `wobbly`, more is `gassed`. The watermark sits bottom-right, where the basis line ends.
 - **Too few runs to project** leaves the goal alone on the card with "not enough recent runs to project yet": no gap, no bar, a neutral Temari.

@@ -11,6 +11,8 @@ code_refs:
   - app/Services/AI/HydrationBacklog.php
 ---
 
+> **Superseded (2026-10-02) by [[the-advised-session-leads-every-day]].** Today now leads with the recorded ease or the advisory, like every other day, and the separate step-down is gone.
+
 # Today's ease stays a step-down, recorded or not
 
 **Status:** Accepted (2026-09-19). Amends [[the-eased-session-leads]] for TODAY only.
