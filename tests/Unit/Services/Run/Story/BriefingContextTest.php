@@ -245,6 +245,22 @@ it('exposes a deterministic readiness ceiling from the live load, never resting 
     expect($ctx->readinessCeiling)->toBe('quality_ok');
 });
 
+it('presents the stored form status as a three-state load balance in the LLM payload only', function (): void {
+    $asOf = Carbon::create(2026, 5, 21, 8);
+    Carbon::setTestNow($asOf);
+    $user = User::factory()->create();
+
+    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => 'overreaching', 'monotony' => 1.0]);
+    $payload = $ctx->toArray();
+
+    expect($payload['load_balance'])->toBe('heavy')
+        ->and($payload['readiness_assessment']['inputs']['load_balance'])->toBe('heavy')
+        ->and($payload['readiness_assessment']['inputs']['long_term_load_trend'])->toBe($ctx->fitnessTrend)
+        ->and($payload)->not->toHaveKeys(['form_status', 'fitness_trend'])
+        ->and($payload['readiness_assessment']['inputs'])->not->toHaveKeys(['form_status', 'fitness_trend'])
+        ->and($ctx->readinessAssessment['inputs']['form_status'])->toBe('overreaching');
+});
+
 it('uses current recovery feedback and actual demanding activity, not the latest run clock', function (): void {
     $asOf = Carbon::parse('2026-10-01 08:00');
     Carbon::setTestNow($asOf);
@@ -351,7 +367,7 @@ it('falls back to last-week form_status when this week has no snapshot yet', fun
     $ctx = BriefingContext::forUser($user, $asOf);
 
     expect($ctx->formStatus)->toBe('fatigued');
-    expect($ctx->toArray()['form_status'])->toBeNull()
+    expect($ctx->toArray()['load_balance'])->toBeNull()
         ->and($ctx->readinessAssessment['inputs']['form_status'])->toBeNull();
 });
 
@@ -420,8 +436,8 @@ it('serialises to a compact array suitable for the LLM user message', function (
 
     expect($ctx->toArray())->toHaveKeys([
         'this_week_runs', 'last_week_runs', 'this_week_km', 'last_week_km',
-        'recovery_hours', 'ran_today', 'days_since_last_run', 'form_status',
-        'time_bucket', 'consecutive_weeks_active', 'fitness_trend',
+        'recovery_hours', 'ran_today', 'days_since_last_run', 'load_balance',
+        'time_bucket', 'consecutive_weeks_active', 'long_term_load_trend',
         'volume_ramp', 'readiness_ceiling', 'build_nudge', 'readiness_reasons', 'readiness_assessment',
     ]);
 });

@@ -121,7 +121,7 @@ final readonly class RuleBasedNarrationFiller
             'load has been stacking up. today gives it somewhere to go.',
             "you've been carrying a lot this week, so today steps back a little.",
             'a heavier stretch than usual, so this one comes down a notch.',
-            'nothing wrong here, just a tired week. easy keeps it intact.',
+            'nothing wrong here, just a heavy week. easy keeps it intact.',
         ], $seed);
     }
 
@@ -354,14 +354,13 @@ final readonly class RuleBasedNarrationFiller
         }
 
         $closer = match ($snapshot->form_status) {
-            'fresh' => "you're fresh, with room to add a little on top of that.",
+            'fresh' => "your recent running is lighter than your longer-term load, so there's room to add a little.",
             'optimal' => match ($this->volumeBand((float) $snapshot->distance_km, $this->usualWeeklyKm($snapshot))) {
                 'light' => "well below your usual week. that's the number, not a verdict on it.",
-                'big' => "well above your usual week, and the form's still fine with it.",
-                default => "that's the range where the work actually banks.",
+                'big' => "well above your usual week, and your load balance is still steady.",
+                default => "right around your usual week.",
             },
-            'fatigued' => 'the fatigue is showing. bank some recovery next week.',
-            'overreaching' => "your load is above what you've been carrying lately. worth pulling something back.",
+            'fatigued', 'overreaching' => "your recent running is above your longer-term load, which is normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be behind it too, so tell me how you feel.",
             default => "steady. that's the read.",
         };
 
@@ -647,7 +646,7 @@ final readonly class RuleBasedNarrationFiller
 
         return $this->select([
             "no race on the books right now, so this one's about building a base.",
-            'a self-scaled block, building fitness with no countdown attached.',
+            'a self-scaled block, building your running with no countdown attached.',
         ], $this->seedFor($row));
     }
 

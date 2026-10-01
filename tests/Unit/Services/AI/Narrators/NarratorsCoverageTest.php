@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\TemariPersona;
 use App\Services\AI\Agent\Tools\LifetimeStatsTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
@@ -741,15 +742,16 @@ it('does not fall back to the historical weekly average when v2 is unavailable',
     expect(new WeekTotalsTool($snap)->handle([])['avg_decoupling'])->toBeNull();
 });
 
-it('WeekTotalsTool reads form with no signed field, relation=fatigued on negative form', function (): void {
+it('WeekTotalsTool reads the load balance as a state with no signed field', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-17', 'form' => -8.0,
+        'week_ending' => '2026-05-17', 'form' => -8.0, 'form_status' => 'fatigued',
     ]);
 
     $context = new WeekTotalsTool($snap)->handle([]);
 
-    expect($context['form'])->toBe(['value' => 8.0, 'relation' => 'fatigued']);
+    expect($context['load_balance'])->toBe('heavy')
+        ->and($context)->not->toHaveKeys(['form', 'form_status']);
 });
 
 // ── TrendReadNarrator ─────────────────────────────────────────────────
@@ -1048,7 +1050,7 @@ it('TrendReadNarrator offers exactly the readings its prompt describes', functio
     $schema = new ReflectionClass(TrendReadNarrator::class)->getConstant('READING_PROPERTY_SCHEMA');
     $prompt = narratorPrompt(TrendReadNarrator::class);
 
-    expect($schema['reading']['enum'])->toBe(['load', 'fitness', 'vdot', 'shape', 'adherence']);
+    expect($schema['reading']['enum'])->toBe(['load', 'long_term_load', 'vdot', 'shape', 'adherence']);
 
     foreach ($schema['reading']['enum'] as $reading) {
         expect($prompt)->toContain("`{$reading}`:");
@@ -1262,7 +1264,7 @@ it('MonthTotalsTool counts PRs and buckets distance by week within the month', f
         ->and($context['weekly_distance_km'][2])->toBe(10.0);
 });
 
-it('MonthTotalsTool reads the CTL fitness arc from the month snapshots', function (): void {
+it('MonthTotalsTool reads the long-term load arc from the month snapshots', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => '2026-05-03', 'ctl_42d' => 30.0, 'form_status' => 'optimal',
@@ -1273,19 +1275,19 @@ it('MonthTotalsTool reads the CTL fitness arc from the month snapshots', functio
 
     $context = new MonthTotalsTool($user, '2026-05')->handle([]);
 
-    expect($context['fitness'])->toMatchArray([
+    expect($context['long_term_load'])->toMatchArray([
         'ctl_start' => 30.0,
         'ctl_end' => 38.0,
-        'form_status_end' => 'fresh',
+        'load_balance_end' => 'fresh',
     ]);
 });
 
-it('MonthTotalsTool leaves fitness null when the month has no snapshots', function (): void {
+it('MonthTotalsTool leaves long-term load null when the month has no snapshots', function (): void {
     $user = User::factory()->create();
 
     $context = new MonthTotalsTool($user, '2026-05')->handle([]);
 
-    expect($context['fitness'])->toBeNull();
+    expect($context['long_term_load'])->toBeNull();
 });
 
 it('MonthTotalsTool resolves a shorter month correctly when the clock sits on the 31st', function (): void {
@@ -1484,7 +1486,7 @@ it('ProfileVoiceNarrator reads the weekly streak and the most common run time', 
         ->and($context['favorite_time'])->toBe('night');
 });
 
-it('ProfileVoiceNarrator feeds the latest form_status as the consistency spine', function (): void {
+it('ProfileVoiceNarrator feeds the latest load_balance as the consistency spine', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
@@ -1493,7 +1495,7 @@ it('ProfileVoiceNarrator feeds the latest form_status as the consistency spine',
 
     $context = new LifetimeStatsTool($user->fresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
 
-    expect($context['form_status'])->toBe('overreaching');
+    expect($context['load_balance'])->toBe('heavy');
 });
 
 it('ProfileVoiceNarrator throws on missing profile_voice key', function (): void {
@@ -1881,6 +1883,36 @@ function narratorPrompt(string $class): string
 
     return (string) $reflection->getConstant($name);
 }
+
+it('keeps diagnosis and fitness claims out of the load-reading narrator prompts', function (string $class): void {
+    $prompt = narratorPrompt($class);
+
+    expect($prompt)->not->toContain('injury-risk')
+        ->and($prompt)->not->toContain('fitness is fading')
+        ->and($prompt)->not->toContain('fitness slid')
+        ->and($prompt)->not->toContain('fitness drifts')
+        ->and($prompt)->not->toContain('overreaching')
+        ->and($prompt)->not->toContain('fully back');
+})->with([
+    TrendReadNarrator::class,
+    MonthlyRecapNarrator::class,
+    WeeklyRecapNarrator::class,
+    BriefingMascotVoiceNarrator::class,
+]);
+
+it('has the recap and briefing narrators read the three load balance states', function (string $class): void {
+    expect(narratorPrompt($class))->toContain('load_balance')
+        ->and(narratorPrompt($class))->not->toContain('form_status');
+})->with([WeeklyRecapNarrator::class, MonthlyRecapNarrator::class, BriefingMascotVoiceNarrator::class]);
+
+it('has the persona call the load numbers long-term load, short-term load and load balance', function (): void {
+    expect(TemariPersona::SYSTEM_PROMPT)
+        ->toContain('long-term load')
+        ->toContain('short-term load')
+        ->toContain('load balance')
+        ->toContain('Never call them fitness, fatigue, readiness or overreaching')
+        ->not->toContain('overreaching, too much for too long');
+});
 
 /**
  * Absolute path under app/, derived from this file rather than app_path().

@@ -32,7 +32,7 @@ it('calls moderate decoupling normal and stays silent below the floor', function
     expect(RuleBasedRunInsights::claims(detailWith(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 8.4]]))[0]['text'])
         ->toContain('normal range')
         ->and(RuleBasedRunInsights::claims(detailWith(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 1.1]]))[0]['text'])
-        ->toContain('held up well');
+        ->toContain('held steady against pace');
 });
 
 it('does not turn a versionless historical figure into a new drift claim', function (): void {

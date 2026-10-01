@@ -6,6 +6,7 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Models\User;
 use App\Services\AI\HistoryNarrationGate;
+use App\Services\Run\Metrics\LoadBalance;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
@@ -26,9 +27,10 @@ final class TrainingLoadTool extends UserTool
 
     public function description(): string
     {
-        return "The user's training load state: acute_7d, chronic_42d, form (value plus its own "
-            .'relation: fresh/fatigued/balanced -- no sign to read, that\'s the call already made), '
-            .'and the finer form_status (fresh/optimal/fatigued/overreaching). Call this before '
+        return "The user's running load: acute_7d (short-term load, the last 7 days), chronic_42d "
+            .'(long-term load, about six weeks) and load_balance (fresh/steady/heavy, long-term '
+            .'minus short-term -- no sign to read, that\'s the call already made). These count '
+            .'running only. Call this before '
             ."suggesting recovery or the next session. If training_load is missing, their TRIMP "
             .'history isn\'t enough yet, or (history_loading: true) it is still being imported.';
     }
@@ -48,8 +50,7 @@ final class TrainingLoadTool extends UserTool
             'training_load' => $load === null ? null : [
                 'acute_7d' => $load['atl_7d'],
                 'chronic_42d' => $load['ctl_42d'],
-                'form' => ['value' => abs($load['form']), 'relation' => TrainingLoad::formRelation($load['form'])],
-                'form_status' => $load['form_status'],
+                'load_balance' => LoadBalance::fromStored($load['form_status'])?->value,
             ],
         ];
     }

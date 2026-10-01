@@ -62,7 +62,7 @@ class TrendReadNarrator
         - `load`: current vs comparison distance_km, runs, or
           trimp_total (trimp_total is null on an unscored stretch, that
           means "no reading", not zero, don't narrate it as a rest period).
-        - `fitness`: ctl_start vs ctl_end.
+        - `long_term_load`: ctl_start vs ctl_end, the long-term load (about six weeks of running load, running only).
         - `vdot`: vdot_start vs vdot_end, skip this angle entirely
           if either is null, that means not enough history yet, don't
           guess a direction from missing data.
@@ -74,7 +74,7 @@ class TrendReadNarrator
         - `adherence`: get_plan_adherence's counts. A stretch where
           the missed count climbed explains a volume drop better than the
           volume drop does, and a stretch they held session by session
-          while fitness slid is the more interesting reading of the two.
+          while long-term load slid is the more interesting reading of the two.
           Its counts cover the WHOLE range you were asked to read, so
           never pair an adherence count with a current-vs-comparison
           figure as though the two describe the same stretch of time.
@@ -105,7 +105,7 @@ class TrendReadNarrator
     private const array READING_PROPERTY_SCHEMA = [
         'reading' => [
             'type' => 'string',
-            'enum' => ['load', 'fitness', 'vdot', 'shape', 'adherence'],
+            'enum' => ['load', 'long_term_load', 'vdot', 'shape', 'adherence'],
         ],
     ];
 

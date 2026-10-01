@@ -675,9 +675,9 @@ it('reads the 28-day baseline and the load state from a prior run', function ():
         'avg_decoupling' => ['pct' => 6.0, 'relation' => 'up'],
     ])
         ->and($baseline)->not->toHaveKey('avg_decoupling_pct')
-        ->and($load)->toHaveKeys(['acute_7d', 'chronic_42d', 'form', 'form_status'])
-        // Regression for #1009 (reopened): no bare signed `form`.
-        ->and($load['form'])->toHaveKeys(['value', 'relation']);
+        ->and($load)->toHaveKeys(['acute_7d', 'chronic_42d', 'load_balance'])
+        ->and($load)->not->toHaveKeys(['form', 'form_status'])
+        ->and($load['load_balance'])->toBeIn(['fresh', 'steady', 'heavy', null]);
 });
 
 it('reads a null training load rather than inventing one with no TRIMP history', function (): void {
@@ -800,8 +800,8 @@ it('reads the whole week picture in one call, since it is produced in one query 
 
     expect($reading)->toHaveKeys([
         'this_week_runs', 'last_week_runs', 'this_week_km', 'last_week_km',
-        'recovery_hours', 'ran_today', 'days_since_last_run', 'form_status',
-        'time_bucket', 'consecutive_weeks_active', 'fitness_trend',
+        'recovery_hours', 'ran_today', 'days_since_last_run', 'load_balance',
+        'time_bucket', 'consecutive_weeks_active', 'long_term_load_trend',
         'volume_ramp', 'readiness_ceiling', 'build_nudge',
     ]);
 });

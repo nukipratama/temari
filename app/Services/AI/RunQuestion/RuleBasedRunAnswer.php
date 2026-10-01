@@ -121,7 +121,7 @@ final class RuleBasedRunAnswer
             : '';
 
         return "it was {$detail->weather_temp_c} degrees{$humidity}. "
-            .'heat like that buys you a higher heart rate for the same pace, so read this one as a warm-day effort, not a fitness reading.';
+            .'heat like that buys you a higher heart rate for the same pace, so read this one as a warm-day effort, not a read on your running.';
     }
 
     private static function climb(StreamSummary $summary): string

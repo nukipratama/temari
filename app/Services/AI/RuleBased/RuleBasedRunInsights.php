@@ -71,7 +71,7 @@ final class RuleBasedRunInsights
         $text = match (true) {
             $decoupling > DecouplingBands::HIGH => self::decouplingHighText($detail),
             $decoupling > DecouplingBands::TIGHT => 'Decoupling stayed within a normal range, HR tracked pace pretty well.',
-            default => 'Decoupling stayed tight, your aerobic fitness held up well across the run.',
+            default => 'Decoupling stayed tight, your heart rate held steady against pace across the run.',
         };
 
         $claims[] = ['anchor' => 'metric:decoupling', 'text' => $text, 'value' => $value, 'delta' => null];

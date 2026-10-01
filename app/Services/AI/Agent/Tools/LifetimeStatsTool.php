@@ -9,6 +9,7 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\HistoryNarrationGate;
+use App\Services\Run\Metrics\LoadBalance;
 use App\Services\Run\LifetimeStats;
 use Illuminate\Support\Carbon;
 
@@ -34,8 +35,8 @@ final class LifetimeStatsTool extends UserTool
     {
         return "The user's whole running history: name, total runs and km, longest run, how many "
             .'months they\'ve been running, PR count, weekly streak, their favorite time to run, '
-            ."whether Strava's connected, and the latest form_status. Start here. If history_loading "
-            .'is true, their history is still being imported and form_status is withheld rather than '
+            ."whether Strava's connected, and the latest load_balance. Start here. If history_loading "
+            .'is true, their history is still being imported and load_balance is withheld rather than '
             .'read off a partial past.';
     }
 
@@ -61,7 +62,7 @@ final class LifetimeStatsTool extends UserTool
             'weekly_streak' => WeeklySnapshot::consecutiveWeekStreak($this->user->id),
             'favorite_time' => $this->favoriteTimeBucket(),
             'strava_connected' => $this->user->stravaConnection !== null,
-            'form_status' => $historyLoading ? null : WeeklySnapshot::latestFormStatus($this->user->id),
+            'load_balance' => $historyLoading ? null : LoadBalance::fromStored(WeeklySnapshot::latestFormStatus($this->user->id))?->value,
             ...($historyLoading ? ['history_loading' => true] : []),
         ];
     }

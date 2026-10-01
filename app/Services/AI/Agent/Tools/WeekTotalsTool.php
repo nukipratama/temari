@@ -6,9 +6,9 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\DecouplingBands;
+use App\Services\Run\Metrics\LoadBalance;
 use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\PaceFormatter;
-use App\Services\Run\Metrics\TrainingLoad;
 
 /**
  * The week a recap is about, and the calendar week before it to measure
@@ -28,13 +28,13 @@ final class WeekTotalsTool extends NoArgumentTool
     public function description(): string
     {
         return "The week you're telling: number of runs, distance, average pace, TRIMP, "
-            .'ctl_42d/atl_7d/form/form_status, monotony, strain, avg_decoupling, plus the previous '
+            .'ctl_42d (long-term load)/atl_7d (short-term load)/load_balance (fresh/steady/heavy, '
+            .'running load only), monotony, strain, avg_decoupling, plus the previous '
             ."week's numbers to compare against. pace_formatted and prev_pace_formatted (mm:ss/km) "
             .'are the only forms to quote -- matches what the app shows; the _sec_per_km twins are '
-            .'raw seconds, for judging size, never for quoting. form and avg_decoupling each carry '
-            .'their own relation (form: fresh/fatigued/balanced; avg_decoupling is the version 2 '
-            .'steady-segment average and carries up/down/flat) -- '
-            .'there is no sign to read on either, that call is already made. If prev_* is missing, '
+            .'raw seconds, for judging size, never for quoting. avg_decoupling carries its own '
+            .'relation (the version 2 steady-segment average, up/down/flat) -- '
+            .'there is no sign to read, that call is already made. If prev_* is missing, '
             ."there's no comparison week yet. weekly_trimp, monotony and strain are null when no "
             .'run that week carried heart rate: the load is unknown, which is not the same as zero.';
     }
@@ -59,11 +59,7 @@ final class WeekTotalsTool extends NoArgumentTool
             'weekly_trimp' => $this->snapshot->weekly_trimp,
             'ctl_42d' => $this->snapshot->ctl_42d,
             'atl_7d' => $this->snapshot->atl_7d,
-            'form' => $this->snapshot->form === null ? null : [
-                'value' => abs($this->snapshot->form),
-                'relation' => TrainingLoad::formRelation($this->snapshot->form),
-            ],
-            'form_status' => $this->snapshot->form_status,
+            'load_balance' => LoadBalance::fromStored($this->snapshot->form_status)?->value,
             'monotony' => $this->snapshot->monotony,
             'strain' => $this->snapshot->strain,
             'avg_decoupling' => $this->snapshot->avg_decoupling_v2 === null ? null : [

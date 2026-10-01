@@ -183,8 +183,8 @@ class RunInsightNarrator
         average) and relative_effort (this session's load vs the 28-day
         average) are the best delta material you have ("today's pace 5:30 vs
         your 28-day average 5:48" -> delta "-0:18 vs 28d avg"). training_load's
-        form/form_status is useful framing for a decoupling or HR-drift claim
-        on a fatigued day, never a reason to invent a claim with no real
+        load_balance is useful framing for a decoupling or HR-drift claim
+        when it reads heavy, never a reason to invent a claim with no real
         number behind it.
 
         LANGUAGE: keep it plain and conversational, not clinical ("steady"
