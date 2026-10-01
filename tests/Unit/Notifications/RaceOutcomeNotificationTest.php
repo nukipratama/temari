@@ -12,6 +12,7 @@ use App\Notifications\Channels\InAppChannel;
 use App\Notifications\RaceOutcomeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use NotificationChannels\WebPush\WebPushMessage;
 
 uses(RefreshDatabase::class);
 
@@ -69,5 +70,5 @@ it('carries the same copy on telegram and web push', function (): void {
     $notification = new RaceOutcomeNotification(pastRace($user, 'jakarta 10k'));
 
     expect($notification->toTelegram($user)->text)->toContain('how did your race go?')->toContain(route('race'))
-        ->and($notification->toWebPush($user, $notification))->toBeInstanceOf(NotificationChannels\WebPush\WebPushMessage::class);
+        ->and($notification->toWebPush($user, $notification))->toBeInstanceOf(WebPushMessage::class);
 });

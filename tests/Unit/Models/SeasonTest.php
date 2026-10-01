@@ -83,5 +83,5 @@ it('reads a legacy season without a settled record as null, and casts a settled 
         ->and($legacy->fresh()->record_settled_at)->toBeNull()
         ->and($settled->fresh()->process_pct)->toBeInt()->toBe(82)
         ->and($settled->fresh()->performance_state)->toBe(SeasonPerformance::Pending)
-        ->and($settled->fresh()->record_settled_at)->toBeInstanceOf(Illuminate\Support\Carbon::class);
+        ->and($settled->fresh()->record_settled_at)->toBeInstanceOf(Carbon::class);
 });
