@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { RaceAmbition, RaceSupport } from '@/types/inertia';
+
 import RaceDuel from './RaceDuel';
 
 const RACE = {
@@ -9,14 +11,32 @@ const RACE = {
     goal_time_sec: 3_000,
 };
 
-const PROJECTION = {
-    predicted_sec: 3_100,
-    low_sec: 2_900,
-    high_sec: 3_300,
-    sample_size: 2,
-    confidence: 'medium' as const,
-    window: 'recent' as const,
+const AMBITION: RaceAmbition = {
+    state: 'ambitious',
+    target_time_sec: 3_000,
+    target_pace_sec_per_km: 300,
+    supported_time_sec: 3_150,
+    supported_pace_sec_per_km: 315,
+    prescribed_time_sec: 3_000,
+    gap_pct: 4.8,
+    evidence_confidence: 'confirmed',
 };
+
+const SUPPORT: RaceSupport = {
+    mode: 'road',
+    dedicated_preparation: true,
+    limitation: null,
+};
+
+function renderDuel(ambition: Partial<RaceAmbition> = {}, support = SUPPORT) {
+    return render(
+        <RaceDuel
+            race={RACE}
+            ambition={{ ...AMBITION, ...ambition }}
+            support={support}
+        />,
+    );
+}
 
 describe('RaceDuel', () => {
     beforeEach(() => {
@@ -28,99 +48,147 @@ describe('RaceDuel', () => {
         vi.useRealTimers();
     });
 
-    it('faces the goal off against the projection with the gap in words', () => {
-        render(<RaceDuel race={RACE} projection={PROJECTION} />);
+    it('faces the target off against the time recent runs support', () => {
+        renderDuel();
 
-        expect(screen.getByText('your goal')).toBeInTheDocument();
+        expect(screen.getByText('your target')).toBeInTheDocument();
         expect(screen.getByText('50:00')).toBeInTheDocument();
+        expect(screen.getByText('supported')).toBeInTheDocument();
+        expect(screen.getByText('52:30')).toBeInTheDocument();
+        expect(screen.getByText('2:30 behind')).toHaveClass('text-ember-ink');
+        expect(
+            screen.getByText(
+                /ambitious: your target is 4\.8% faster than your recent runs support/,
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('never says on track when the supported time is behind the target outside the on-track band', () => {
+        renderDuel({
+            state: 'unsupported',
+            supported_time_sec: 3_400,
+            gap_pct: 11.8,
+        });
+
+        expect(screen.queryByText(/on track/)).not.toBeInTheDocument();
+        expect(screen.getByText('supported')).toBeInTheDocument();
+        expect(
+            screen.getByText(/so the plan trains at the supported effort/),
+        ).toBeInTheDocument();
+    });
+
+    it('reads on track for only in the on-track band with the supported time not behind', () => {
+        renderDuel({
+            state: 'on_track',
+            supported_time_sec: 2_950,
+            gap_pct: -1.7,
+        });
+
         expect(screen.getByText('on track for')).toBeInTheDocument();
-        expect(screen.getByText('51:40')).toBeInTheDocument();
-        expect(screen.getByText('1:40 behind')).toHaveClass('text-ember-ink');
-        expect(screen.getByText('51:40')).toHaveClass('text-ember-ink');
+        expect(screen.getByText('0:50 ahead')).toHaveClass('text-leaf-ink');
     });
 
-    it('draws an ahead gap in the leaf family', () => {
-        render(
-            <RaceDuel
-                race={RACE}
-                projection={{ ...PROJECTION, predicted_sec: 2_870 }}
-            />,
-        );
+    it('keeps the on-track band neutral when the supported time trails slightly', () => {
+        renderDuel({
+            state: 'on_track',
+            supported_time_sec: 3_060,
+            gap_pct: 2,
+        });
 
-        expect(screen.getByText('2:10 ahead')).toHaveClass('text-leaf-ink');
-        expect(screen.getByText('47:50')).toHaveClass('text-leaf-ink');
+        expect(screen.queryByText('on track for')).not.toBeInTheDocument();
+        expect(screen.getByText('supported')).toBeInTheDocument();
+        expect(screen.getByText('1:00 behind')).toHaveClass('text-foreground');
+        expect(screen.getByText(/^on track:/)).toBeInTheDocument();
     });
 
-    it('says on goal when the projection sits within a few seconds', () => {
-        render(
-            <RaceDuel
-                race={RACE}
-                projection={{ ...PROJECTION, predicted_sec: 3_003 }}
-            />,
-        );
+    it('shows low evidence without a band or gap pill', () => {
+        renderDuel({ state: 'low_evidence', supported_time_sec: 3_150 });
 
-        expect(screen.getByText('on goal')).toBeInTheDocument();
+        expect(screen.getByText('52:30')).toBeInTheDocument();
+        expect(
+            screen.queryByText(/behind|ahead|on goal/),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /low evidence: your recent results cover less than half this distance/,
+            ),
+        ).toBeInTheDocument();
     });
 
-    it('poses the watermark from the gap', () => {
-        const { container } = render(
-            <RaceDuel
-                race={RACE}
-                projection={{ ...PROJECTION, predicted_sec: 3_300 }}
-            />,
+    it('explains an unknown comparison and the honest limit for long goals', () => {
+        const { container } = renderDuel(
+            {
+                state: 'unknown',
+                supported_time_sec: null,
+                supported_pace_sec_per_km: null,
+                gap_pct: null,
+            },
+            {
+                mode: 'general_maintenance',
+                dedicated_preparation: false,
+                limitation:
+                    'beyond the marathon, the plan keeps general aerobic training.',
+            },
         );
+
+        expect(screen.getByText('50:00')).toBeInTheDocument();
+        expect(screen.queryByText('supported')).not.toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'beyond the marathon, the plan keeps general aerobic training.',
+            ),
+        ).toBeInTheDocument();
+        expect(container.querySelector('svg[data-mascot]')).toHaveAttribute(
+            'data-mascot',
+            'neutral',
+        );
+    });
+
+    it('says there are not enough recent results when nothing supports a time yet', () => {
+        renderDuel({
+            state: 'unknown',
+            supported_time_sec: null,
+            supported_pace_sec_per_km: null,
+            gap_pct: null,
+        });
+
+        expect(
+            screen.getByText('not enough recent results to compare yet.'),
+        ).toBeInTheDocument();
+    });
+
+    it('poses the watermark from the gap and carries the race line', () => {
+        const { container } = renderDuel({
+            state: 'unsupported',
+            supported_time_sec: 3_300,
+        });
 
         expect(container.querySelector('svg[data-mascot]')).toHaveAttribute(
             'data-mascot',
             'gassed',
         );
-    });
-
-    it('carries the race line and what the projection rests on', () => {
-        render(<RaceDuel race={RACE} projection={PROJECTION} />);
-
         expect(screen.getByText('Jakarta 10K')).toBeInTheDocument();
         expect(screen.getByText(/· 10 days to go/)).toBeInTheDocument();
-        expect(
-            screen.getByText(
-                /from 2 PRs in the last 4 months \(moderate range\)/,
-            ),
-        ).toBeInTheDocument();
-        expect(screen.getByRole('img')).toBeInTheDocument();
     });
 
-    it('says "1 PR" and names the whole record when that is what it rests on', () => {
+    it('lets the times and eyebrows wrap instead of clipping in a narrow column', () => {
         render(
             <RaceDuel
-                race={{ ...RACE, name: null }}
-                projection={{ ...PROJECTION, sample_size: 1, window: 'all' }}
+                race={{ ...RACE, goal_time_sec: 13_000 }}
+                ambition={{
+                    ...AMBITION,
+                    state: 'on_track',
+                    target_time_sec: 13_000,
+                    supported_time_sec: 12_912,
+                    gap_pct: -0.7,
+                }}
+                support={SUPPORT}
             />,
         );
 
-        expect(screen.getByText('your race')).toBeInTheDocument();
-        expect(
-            screen.getByText(/from 1 PR across your whole record/),
-        ).toBeInTheDocument();
-    });
-
-    it('shows the goal alone with a neutral Temari when there is no projection', () => {
-        const { container } = render(
-            <RaceDuel race={RACE} projection={null} />,
+        expect(screen.getByText('on track for')).not.toHaveClass(
+            'whitespace-nowrap',
         );
-
-        expect(screen.getByText('50:00')).toBeInTheDocument();
-        expect(
-            screen.getByText('not enough recent runs to project yet'),
-        ).toBeInTheDocument();
-        expect(screen.queryByText('on track for')).not.toBeInTheDocument();
-        expect(
-            screen.queryByText(/behind|ahead|on goal/),
-        ).not.toBeInTheDocument();
-        expect(screen.queryByRole('img')).not.toBeInTheDocument();
-        expect(screen.queryByText(/best estimate/)).not.toBeInTheDocument();
-        expect(container.querySelector('svg[data-mascot]')).toHaveAttribute(
-            'data-mascot',
-            'neutral',
-        );
+        expect(screen.getByText('3:35:12')).toHaveClass('break-all');
     });
 });

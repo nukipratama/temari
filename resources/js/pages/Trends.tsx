@@ -6,6 +6,8 @@ import type {
 } from '@/components/trends/panels/FitnessPanel';
 import type {
     AnalysisPayload,
+    RaceAmbition,
+    RaceSupport,
     SharedProps,
     TrainingLoad,
     WeekComparison as WeekComparisonPayload,
@@ -33,13 +35,14 @@ interface TrendsProps {
     weekComparison?: WeekComparisonPayload;
     load?: TrainingLoad | null;
     chartAnnotations?: FitnessChartAnnotations;
+    raceOutlook?: { ambition: RaceAmbition; support: RaceSupport } | null;
 }
 
 /**
  * Trends answers one question: "am I getting fitter, and at what cost?"
  * Temari's 7-day verdict runs first — the only place a call is stated —
  * then three stacked comparisons carry the evidence, in the order a runner
- * would ask for it: vs last week, vs a month ago (the fitness chart lives
+ * would ask for it: vs last week, long-term load (the CTL chart lives
  * here), then vs race day (or, with no race, vs the athlete's own year).
  * Direction A of the #914 design round, filed as #967. Replaces the range
  * toggle, badges and streak (profile and run pages keep those) and the ATL
@@ -52,6 +55,7 @@ export default function Trends({
     weekComparison,
     load,
     chartAnnotations,
+    raceOutlook,
 }: Readonly<TrendsProps>) {
     const { activeRace } = usePage<SharedProps>().props;
 
@@ -110,7 +114,7 @@ export default function Trends({
                     </Deferred>
 
                     <Deferred
-                        data={['ctlTrend', 'load']}
+                        data={['load', 'raceOutlook']}
                         fallback={
                             <div>
                                 <div className="h-4 w-32 rounded bg-muted" />
@@ -121,7 +125,7 @@ export default function Trends({
                         {() => (
                             <RaceComparison
                                 activeRace={activeRace ?? null}
-                                trend={ctlTrend!}
+                                outlook={raceOutlook ?? null}
                                 load={load ?? null}
                             />
                         )}

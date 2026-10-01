@@ -8,9 +8,11 @@ use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Plan\RacePresenter;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -18,17 +20,17 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * /trends — "am I getting fitter, and at what cost?" Temari's 7-day verdict
- * up top, then three stacked comparisons: this week against last (the gain
- * and the cost), fitness now against a month ago (the CTL chart lives here),
- * and now against race day — or, with no race set, against the athlete's own
- * year.
+ * /trends — Temari's 7-day verdict up top, then three stacked comparisons:
+ * this week against last (the gain and the cost), long-term load (the CTL
+ * chart lives here), and the race target against the time recent runs
+ * support — or, with no race set, the athlete's own year.
  */
 class TrendsController extends Controller
 {
     public function __invoke(
         Request $request,
         TrainingLoad $trainingLoad,
+        RacePresenter $racePresenter,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -40,7 +42,25 @@ class TrendsController extends Controller
             'ctlTrend' => Inertia::defer(fn (): array => $trainingLoad->ctlTrend($user, 365)),
             'chartAnnotations' => Inertia::defer(fn (): array => $this->chartAnnotations($user, $today)),
             'narration' => Inertia::defer(fn (): array => $this->narration($user)),
+            'raceOutlook' => Inertia::defer(fn (): ?array => $this->raceOutlook($user, $racePresenter)),
         ]);
+    }
+
+    /**
+     * The active race's ambition and support, from the same presenter /race
+     * uses, so the two pages show one supported time.
+     *
+     * @return array{ambition: array<string, mixed>, support: array<string, mixed>}|null
+     */
+    private function raceOutlook(User $user, RacePresenter $racePresenter): ?array
+    {
+        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
+        if ($race === null) {
+            return null;
+        }
+        $presented = $racePresenter->present($user, $race);
+
+        return ['ambition' => $presented['ambition'], 'support' => $presented['support']];
     }
 
     /**

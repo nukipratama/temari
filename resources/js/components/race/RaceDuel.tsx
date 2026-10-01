@@ -1,18 +1,16 @@
-import ProjectionRangeBar from '@/components/race/ProjectionRangeBar';
+import type { RaceAmbition, RaceSupport } from '@/types/inertia';
+
 import MascotWatermark from '@/components/temari/MascotWatermark';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import { daysUntilId, formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
-import { type GoalGapVerdict, goalGap, goalGapPose } from '@/lib/raceGoal';
-
-export interface RaceProjection {
-    predicted_sec: number;
-    low_sec: number;
-    high_sec: number;
-    sample_size: number;
-    confidence: 'low' | 'medium' | 'high';
-    window: 'recent' | 'all';
-}
+import {
+    ambitionNote,
+    type GoalGapVerdict,
+    goalGap,
+    goalGapPose,
+    supportedEyebrow,
+} from '@/lib/raceGoal';
 
 interface RaceDuelProps {
     race: {
@@ -20,20 +18,10 @@ interface RaceDuelProps {
         race_date: string;
         goal_time_sec: number;
     };
-    projection: RaceProjection | null;
+    ambition: RaceAmbition;
+    support: RaceSupport;
     className?: string;
 }
-
-const CONFIDENCE_COPY: Record<RaceProjection['confidence'], string> = {
-    low: 'wide range, thin PR sample',
-    medium: 'moderate range',
-    high: 'narrow range, well-fitted',
-};
-
-const WINDOW_COPY: Record<RaceProjection['window'], string> = {
-    recent: 'in the last 4 months',
-    all: 'across your whole record',
-};
 
 const GAP_PILL: Record<GoalGapVerdict, string> = {
     behind: 'bg-ember/15 text-ember-ink',
@@ -41,90 +29,80 @@ const GAP_PILL: Record<GoalGapVerdict, string> = {
     on: 'bg-muted text-foreground',
 };
 
-const PROJECTED_TONE: Record<GoalGapVerdict, string> = {
+const SUPPORTED_TONE: Record<GoalGapVerdict, string> = {
     behind: 'text-ember-ink',
     ahead: 'text-leaf-ink',
     on: 'text-foreground',
 };
 
-const TIME = 'mt-1 font-mono text-headline-xs font-extrabold tabular-nums';
+const TIME =
+    'mt-1 font-mono text-headline-xs font-extrabold break-all tabular-nums';
 
-/** The race's goal time facing the projected finish, with the gap between them in words. */
+/** The race's target facing the time recent runs support, with the gap and the ambition band in words. */
 export default function RaceDuel({
     race,
-    projection,
+    ambition,
+    support,
     className,
 }: Readonly<RaceDuelProps>) {
     const goalSec = race.goal_time_sec;
-    const gap = projection && goalGap(goalSec, projection.predicted_sec);
+    const supportedSec = ambition.supported_time_sec;
+    const banded =
+        supportedSec !== null &&
+        ambition.state !== 'unknown' &&
+        ambition.state !== 'low_evidence';
+    const gap = banded ? goalGap(goalSec, supportedSec) : null;
+    const tone: GoalGapVerdict =
+        gap === null ||
+        (ambition.state === 'on_track' && gap.verdict === 'behind')
+            ? 'on'
+            : gap.verdict;
     const daysToGo = daysUntilId(race.race_date);
 
     return (
         <section className={cn('relative isolate overflow-hidden', className)}>
             <MascotWatermark
-                pose={
-                    projection
-                        ? goalGapPose(goalSec, projection.predicted_sec)
-                        : 'neutral'
-                }
+                pose={banded ? goalGapPose(goalSec, supportedSec) : 'neutral'}
                 className="-right-14 -bottom-15"
             />
             <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
                 <div className="min-w-0">
                     <Eyebrow token="micro" tone="ink-2">
-                        your goal
+                        your target
                     </Eyebrow>
                     <p className={cn(TIME, 'text-foreground')}>
                         {formatDurationHMS(goalSec)}
                     </p>
                 </div>
-                {projection && gap ? (
-                    <>
-                        <span
-                            className={cn(
-                                'mb-0.5 rounded-full pad-chip font-mono text-xs font-bold whitespace-nowrap tabular-nums',
-                                GAP_PILL[gap.verdict],
-                            )}
-                        >
-                            {gap.label}
-                        </span>
-                        <div className="min-w-0 text-right">
-                            <Eyebrow
-                                token="micro"
-                                tone="ink-2"
-                                className="whitespace-nowrap"
-                            >
-                                on track for
-                            </Eyebrow>
-                            <p
-                                className={cn(
-                                    TIME,
-                                    PROJECTED_TONE[gap.verdict],
-                                )}
-                            >
-                                {formatDurationHMS(projection.predicted_sec)}
-                            </p>
-                        </div>
-                    </>
+                {gap ? (
+                    <span
+                        className={cn(
+                            'mb-0.5 rounded-full pad-chip font-mono text-xs font-bold whitespace-nowrap tabular-nums',
+                            GAP_PILL[tone],
+                        )}
+                    >
+                        {gap.label}
+                    </span>
                 ) : (
-                    <p className="col-span-2 self-end text-right text-xs leading-relaxed text-text-2">
-                        not enough recent runs to project yet
-                    </p>
+                    <span aria-hidden />
+                )}
+                {supportedSec !== null && (
+                    <div className="min-w-0 text-right">
+                        <Eyebrow token="micro" tone="ink-2">
+                            {supportedEyebrow(ambition)}
+                        </Eyebrow>
+                        <p className={cn(TIME, SUPPORTED_TONE[tone])}>
+                            {formatDurationHMS(supportedSec)}
+                        </p>
+                    </div>
                 )}
             </div>
 
-            {projection && (
-                <div className="mt-5">
-                    <ProjectionRangeBar
-                        goalSec={goalSec}
-                        lowSec={projection.low_sec}
-                        predictedSec={projection.predicted_sec}
-                        highSec={projection.high_sec}
-                    />
-                </div>
-            )}
+            <p className="mt-4 text-xs leading-relaxed text-text-2">
+                {ambitionNote(ambition, support)}
+            </p>
 
-            <p className="mt-5 font-mono text-xs tabular-nums text-text-2">
+            <p className="mt-4 font-mono text-xs tabular-nums text-text-2">
                 <span className="font-sans text-sm font-semibold text-foreground">
                     {race.name ?? 'your race'}
                 </span>
@@ -132,16 +110,6 @@ export default function RaceDuel({
                 {formatNaiveIdDate(race.race_date)} · {daysToGo}{' '}
                 {daysToGo === 1 ? 'day' : 'days'} to go
             </p>
-            {projection && (
-                <p className="mt-1 text-xs leading-relaxed text-text-2">
-                    best estimate from{' '}
-                    {projection.sample_size === 1
-                        ? '1 PR'
-                        : `${projection.sample_size} PRs`}{' '}
-                    {WINDOW_COPY[projection.window]} (
-                    {CONFIDENCE_COPY[projection.confidence]}).
-                </p>
-            )}
         </section>
     );
 }

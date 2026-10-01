@@ -68,8 +68,8 @@ describe('Race', () => {
             'Race',
             'your race.',
             'plan',
-            'your goal',
-            'on track for',
+            'your target',
+            'supported',
             'Jakarta 10K',
             'edit race',
             'clear race',
@@ -85,9 +85,9 @@ describe('Race', () => {
         render(<Race race={null} projection={null} />);
 
         expect(
-            screen.getByText(/set a race and temari projects your finish/),
+            screen.getByText(/set a race and temari compares your target/),
         ).toBeInTheDocument();
-        expect(screen.queryByText('your goal')).not.toBeInTheDocument();
+        expect(screen.queryByText('your target')).not.toBeInTheDocument();
         expect(screen.queryByText('set your race')).not.toBeInTheDocument();
         expect(
             screen.queryByRole('button', { name: /clear race/i }),
@@ -146,11 +146,25 @@ describe('Race', () => {
         expect(screen.queryByText('race goal')).not.toBeInTheDocument();
     });
 
-    it('shows the goal alone when the race has no projection yet', () => {
-        render(<Race race={RACE} projection={null} />);
+    it('shows the target alone when recent runs support no time yet', () => {
+        render(
+            <Race
+                race={{
+                    ...RACE,
+                    ambition: {
+                        ...RACE.ambition,
+                        state: 'unknown',
+                        supported_time_sec: null,
+                        supported_pace_sec_per_km: null,
+                        gap_pct: null,
+                    },
+                }}
+                projection={null}
+            />,
+        );
 
         expect(
-            screen.getByText('not enough recent runs to project yet'),
+            screen.getByText('not enough recent results to compare yet.'),
         ).toBeInTheDocument();
     });
 
@@ -180,10 +194,10 @@ describe('Race', () => {
         expect(container.querySelector('svg[data-mascot]')).toBeNull();
     });
 
-    it('states the gap between the goal and the projection', () => {
+    it('states the gap between the target and the supported time', () => {
         render(<Race race={RACE} projection={PROJECTION} />);
 
-        expect(screen.getByText('1:40 behind')).toBeInTheDocument();
+        expect(screen.getByText('0:50 behind')).toBeInTheDocument();
     });
 
     it('asks through a concerned Temari before clearing the race', async () => {

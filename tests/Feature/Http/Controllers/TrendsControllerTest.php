@@ -8,6 +8,7 @@ use App\Models\AI\Analysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
@@ -266,4 +267,23 @@ it('never surfaces another user\'s plan annotations', function (): void {
     $this->actingAs($user)
         ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'chartAnnotations'))
         ->assertJsonPath('props.chartAnnotations.deload', []);
+});
+
+it('serves the active race outlook from the same presenter as /race, and null with no race', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'raceOutlook'))
+        ->assertJsonPath('props.raceOutlook', null);
+
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(10)->toDateString(), 'distance_m' => 10_000, 'goal_time_sec' => 3_000]);
+
+    $outlook = $this->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'raceOutlook'))
+        ->json('props.raceOutlook');
+    $race = $this->actingAs($user)->get('/race')->assertInertia(fn ($page) => $page->has('race.ambition'));
+
+    expect($outlook['ambition']['state'])->toBe('unknown')
+        ->and($outlook['support']['dedicated_preparation'])->toBeTrue()
+        ->and($outlook['ambition'])->toBe($race->viewData('page')['props']['race']['ambition']);
 });
