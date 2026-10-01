@@ -434,6 +434,7 @@ it('reconciles when a settled key-session verdict changes the adaptation fingerp
         'distance_score' => 100,
         'compliance_score' => 84,
         'intent_verdict' => 'missed',
+        'intent_evidence' => ['advice_history' => 'shown'],
     ]);
 
     $changed = $this->periodizer->regenerateIfChanged($user, Carbon::today());
@@ -470,11 +471,15 @@ it('does not restore a quality slot removed by an earlier repeated miss', functi
             'distance_score' => 100,
             'compliance_score' => 60,
             'intent_verdict' => 'missed',
+            'intent_evidence' => ['advice_history' => 'shown'],
         ]);
     }
 
     $this->periodizer->regenerate($user, Carbon::today());
-    PlannedSession::query()->where('user_id', $user->id)->whereIn('date', ['2026-07-27', '2026-08-03'])->update(['intent_verdict' => 'hit']);
+    PlannedSession::query()->where('user_id', $user->id)->whereIn('date', ['2026-07-27', '2026-08-03'])->update([
+        'intent_verdict' => 'hit',
+        'intent_evidence' => json_encode(['advice_history' => 'shown']),
+    ]);
 
     expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->quality_delta)
@@ -496,6 +501,7 @@ it('reconciles a settled key-session verdict from the current week', function ()
             'distance_score' => 100,
             'compliance_score' => 60,
             'intent_verdict' => 'missed',
+            'intent_evidence' => ['advice_history' => 'shown'],
         ]);
 
     if (! PlannedSession::query()->where('user_id', $user->id)->where('date', '2026-08-11')->exists()) {
@@ -506,6 +512,7 @@ it('reconciles a settled key-session verdict from the current week', function ()
             'distance_score' => 100,
             'compliance_score' => 60,
             'intent_verdict' => 'missed',
+            'intent_evidence' => ['advice_history' => 'shown'],
         ]);
     }
 

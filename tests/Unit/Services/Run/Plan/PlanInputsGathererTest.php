@@ -201,6 +201,7 @@ it('uses each historical row race context when finding comparable hard work', fu
         'session_type' => 'tempo',
         'status' => PlannedSessionStatus::Done,
         'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['advice_history' => 'shown'],
         'prescribed_hard_minutes' => 20,
         'prescription_race_context' => null,
     ]);
@@ -209,4 +210,49 @@ it('uses each historical row race context when finding comparable hard work', fu
 
     expect($inputs->recentPrescriptions)->toHaveKey('tempo')
         ->and($inputs->recentPrescriptions)->not->toHaveKey('race_tempo');
+});
+
+it('does not progress hard minutes from a hit without shown-advice history', function (): void {
+    $user = gathererAthlete();
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->subDay(),
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['advice_history' => 'unknown'],
+        'prescribed_hard_minutes' => 20,
+    ]);
+
+    $inputs = $this->gatherer->forUser($user, Carbon::today());
+
+    expect($inputs->recentPrescriptions)->not->toHaveKey('tempo');
+});
+
+it('ignores a newer unknown-history overreach and keeps the latest shown quality grade', function (): void {
+    $user = gathererAthlete();
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->subDays(2),
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['advice_history' => 'shown'],
+        'prescribed_hard_minutes' => 20,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->subDay(),
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Overreached,
+        'intent_verdict' => IntentVerdict::TooHard,
+        'intent_evidence' => ['advice_history' => 'unknown'],
+        'prescribed_hard_minutes' => 26,
+    ]);
+
+    $inputs = $this->gatherer->forUser($user, Carbon::today());
+
+    expect($inputs->recentPrescriptions['tempo'])->toBe([
+        'verdict' => IntentVerdict::Hit,
+        'hard_minutes' => 20,
+    ]);
 });

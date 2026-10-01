@@ -305,6 +305,7 @@ it('carries a full-distance key-session intent miss separately from volume adher
         'compliance_score' => 84,
         'distance_score' => 100,
         'intent_verdict' => 'missed',
+        'intent_evidence' => ['advice_history' => 'shown'],
     ]);
 
     $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
@@ -328,6 +329,7 @@ it('uses a settled current-week miss without judging today before the day closes
         'status' => PlannedSessionStatus::Partial,
         'distance_score' => 100,
         'intent_verdict' => 'missed',
+        'intent_evidence' => ['advice_history' => 'shown'],
     ]);
     PlannedSession::factory()->for($user)->create([
         'date' => '2026-08-12',
@@ -336,12 +338,47 @@ it('uses a settled current-week miss without judging today before the day closes
         'status' => PlannedSessionStatus::Partial,
         'distance_score' => 100,
         'intent_verdict' => 'missed',
+        'intent_evidence' => ['advice_history' => 'shown'],
     ]);
 
     $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::today(), null);
 
     expect($decision['stimulus_adherence_pct'])->toBe(0)
         ->and($decision['reason'])->toBe(AdaptationReason::MissedStimulus);
+
+    Carbon::setTestNow();
+});
+
+it('does not adapt quality from missed intent without shown-advice history while retaining distance credit', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-03',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Partial,
+        'compliance_score' => 84,
+        'distance_score' => 100,
+        'intent_verdict' => 'missed',
+        'intent_evidence' => ['advice_history' => 'unknown'],
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-04',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Partial,
+        'compliance_score' => 84,
+        'distance_score' => 100,
+        'intent_verdict' => 'missed',
+    ]);
+
+    $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::today(), null);
+
+    expect($decision['adherence_pct'])->toBe(100)
+        ->and($decision['stimulus_adherence_pct'])->toBe(100)
+        ->and($decision['reason'])->toBe(AdaptationReason::Steady)
+        ->and($decision['quality_delta'])->toBe(0);
 
     Carbon::setTestNow();
 });

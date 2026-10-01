@@ -189,6 +189,7 @@ final readonly class PlanInputsGatherer
             ->where('user_id', $user->id)
             ->whereBetween('date', [$today->copy()->subDays(42)->toDateString(), $today->copy()->subDay()->toDateString()])
             ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval, SessionType::Long])
+            ->where('intent_evidence->advice_history', 'shown')
             ->whereNotNull('intent_verdict')
             ->whereNotNull('prescribed_hard_minutes')
             ->where('prescribed_hard_minutes', '>', 0)

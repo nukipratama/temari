@@ -281,6 +281,7 @@ final readonly class PlanAdapter
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->whereIn('session_type', [SessionType::Long, SessionType::Tempo, SessionType::Interval])
             ->whereIn('status', [PlannedSessionStatus::Done, PlannedSessionStatus::Partial, PlannedSessionStatus::Overreached])
+            ->where('intent_evidence->advice_history', 'shown')
             ->whereIn('intent_verdict', [IntentVerdict::Hit->value, IntentVerdict::Missed->value, IntentVerdict::TooHard->value])
             ->get(['intent_verdict']);
     }
