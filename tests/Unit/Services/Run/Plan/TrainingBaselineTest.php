@@ -702,3 +702,18 @@ it('lets a long-run cap hold a self-scaled cycle under its anchor', function (fl
     'two sessions at 40 km' => [40.0, 2],
     'four sessions at 70 km' => [70.0, 4],
 ]);
+
+it('caps the long run for a race beyond the marathon at the general aerobic ceiling, not the marathon one', function (): void {
+    $marathoner = User::factory()->create();
+    weeksOf($marathoner, array_fill(0, 6, 90.0));
+    RaceGoal::factory()->for($marathoner)->create(['distance_m' => 42_195, 'race_date' => Carbon::today()->addWeeks(10)]);
+    Season::factory()->for($marathoner)->create(['anchor_weekly_volume_km' => 90.0, 'starts_at' => Carbon::today(), 'ends_at' => Carbon::today()->addWeeks(10)]);
+
+    $ultraRunner = User::factory()->create();
+    weeksOf($ultraRunner, array_fill(0, 6, 90.0));
+    RaceGoal::factory()->for($ultraRunner)->create(['distance_m' => 80_000, 'race_date' => Carbon::today()->addWeeks(10)]);
+    Season::factory()->for($ultraRunner)->create(['anchor_weekly_volume_km' => 90.0, 'starts_at' => Carbon::today(), 'ends_at' => Carbon::today()->addWeeks(10)]);
+
+    expect($this->baseline->forUser($marathoner, Carbon::today())['long_run_cap_km'])->toBe(35.0)
+        ->and($this->baseline->forUser($ultraRunner, Carbon::today())['long_run_cap_km'])->toBe(22.0);
+});

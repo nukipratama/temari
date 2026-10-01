@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -398,7 +399,7 @@ final readonly class SeasonService
     public function takeUnderReadyLine(Season $season): ?string
     {
         $race = $season->raceGoal;
-        if ($race === null || $season->under_ready_noted_at !== null) {
+        if ($race === null || $season->under_ready_noted_at !== null || ! RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()) {
             return null;
         }
 
@@ -418,7 +419,8 @@ final readonly class SeasonService
 
     private static function blockHasOpened(RaceGoal $race, Carbon $today): bool
     {
-        return ! $today->lessThan(PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m));
+        return RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()
+            && ! $today->lessThan(PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m));
     }
 
     /**

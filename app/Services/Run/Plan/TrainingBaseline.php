@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PlanPhase;
+use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveRecentLongestRunAction;
@@ -580,7 +581,7 @@ final class TrainingBaseline
 
     private static function raceBandCapKm(?RaceGoal $race): float
     {
-        if ($race === null) {
+        if ($race === null || ! RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()) {
             return self::LONG_RUN_CAP_NO_RACE_KM;
         }
 

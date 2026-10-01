@@ -55,7 +55,7 @@ it('clips every quality type to whole work units when the weekly reserve binds',
         ->and($long->isEasy())->toBeTrue();
 });
 
-it('uses the slower supported marathon pace and a credible ultra goal pace', function (): void {
+it('uses the slower supported marathon pace and no race-specific work beyond the marathon', function (): void {
     $marathon = $this->resolver->resolve(SessionType::Long, PlanPhase::Peak, 42_195, 12_000, PRESCRIPTION_PACES);
     $slowerMarathon = $this->resolver->resolve(SessionType::Long, PlanPhase::Peak, 42_195, 15_000, PRESCRIPTION_PACES);
     $marathonWithoutVdot = $this->resolver->resolve(SessionType::Long, PlanPhase::Peak, 42_195, 12_000, null);
@@ -67,7 +67,7 @@ it('uses the slower supported marathon pace and a credible ultra goal pace', fun
         ->and($marathonWithoutVdot->paceSecPerKm)->toBeNull()
         ->and($ultra->hardMinutes)->toBe(0)
         ->and($ultra->isEasy())->toBeTrue()
-        ->and($ultra->raceContext['kind'])->toBe('ultra');
+        ->and($ultra->raceContext)->toBeNull();
 });
 
 it('keeps phase and hard-day caps when VDOT is absent, but downgrades when room is absent', function (): void {
@@ -81,7 +81,7 @@ it('keeps phase and hard-day caps when VDOT is absent, but downgrades when room 
         ->and($noRoom->isEasy())->toBeTrue();
 });
 
-it('does not count a slower-than-easy ultra goal as a hard day', function (): void {
+it('prescribes no race-specific hard work for an ultra goal', function (): void {
     $prescription = $this->resolver->resolve(SessionType::Long, PlanPhase::Peak, 50_000, 21_000, PRESCRIPTION_PACES);
 
     expect($prescription->isEasy())->toBeTrue()
@@ -91,7 +91,8 @@ it('does not count a slower-than-easy ultra goal as a hard day', function (): vo
 it('keeps comparable evidence separate for threshold and race-specific work', function (): void {
     expect(IntensityPrescriptionResolver::familyKey(SessionType::Tempo, null, null))->toBe('tempo')
         ->and(IntensityPrescriptionResolver::familyKey(SessionType::Tempo, 42_195, 12_000))->toBe('race_tempo')
-        ->and(IntensityPrescriptionResolver::familyKey(SessionType::Long, 50_000, 21_000))->toBe('race_long');
+        ->and(IntensityPrescriptionResolver::familyKey(SessionType::Long, 42_195, 12_000))->toBe('race_long')
+        ->and(IntensityPrescriptionResolver::familyKey(SessionType::Long, 50_000, 21_000))->toBe('long');
 });
 
 it('stores no reason for a day that prescribes no quality', function (): void {

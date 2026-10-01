@@ -7,6 +7,7 @@ namespace App\Services\Run\Plan;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
+use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 
 final class IntensityPrescriptionResolver
@@ -43,7 +44,7 @@ final class IntensityPrescriptionResolver
             return new IntensityPrescription(0, null, null, null);
         }
 
-        [$target, $band, $raceContext] = $this->target($type, $phase, $raceDistanceM, $raceGoalTimeSec, $paces);
+        [$target, $band, $raceContext] = $this->target($type, $phase, $raceDistanceM, $raceGoalTimeSec);
         if ($target === 0 || $band === null) {
             return new IntensityPrescription(0, null, null, null, $raceContext);
         }
@@ -82,26 +83,16 @@ final class IntensityPrescriptionResolver
     }
 
     /**
-     * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
-     * @return array{0: int, 1: PaceBand|null, 2: array{distance_m: int, goal_pace_sec_per_km: int, kind: 'marathon'|'ultra'}|null}
+     * @return array{0: int, 1: PaceBand|null, 2: array{distance_m: int, goal_pace_sec_per_km: int, kind: 'marathon'}|null}
      */
-    private function target(SessionType $type, PlanPhase $phase, ?float $distanceM, ?int $goalTimeSec, ?array $paces): array
+    private function target(SessionType $type, PlanPhase $phase, ?float $distanceM, ?int $goalTimeSec): array
     {
-        $raceSpecific = $distanceM !== null && $distanceM >= WeekPlanBuilder::MARATHON_DISTANCE_THRESHOLD_M && $goalTimeSec !== null && $goalTimeSec > 0;
+        $raceSpecific = $distanceM !== null && RaceSupport::isMarathonClass($distanceM) && $goalTimeSec !== null && $goalTimeSec > 0;
         $context = $raceSpecific ? [
             'distance_m' => (int) round($distanceM),
             'goal_pace_sec_per_km' => (int) round($goalTimeSec / ($distanceM / 1000)),
-            'kind' => $distanceM > 42_195.0 ? 'ultra' : 'marathon',
+            'kind' => 'marathon',
         ] : null;
-
-        $ultraGoalIsEasy = $raceSpecific
-            && $context !== null
-            && $distanceM > 42_195.0
-            && $paces !== null
-            && $context['goal_pace_sec_per_km'] >= $paces['easy'];
-        if ($ultraGoalIsEasy && in_array($type, [SessionType::Tempo, SessionType::Long], true)) {
-            return [0, PaceBand::Easy, $context];
-        }
 
         if ($type === SessionType::Long) {
             return [$raceSpecific ? (self::RACE_LONG_TARGETS[$phase->value] ?? 0) : 0, $raceSpecific ? PaceBand::Marathon : null, $context];
@@ -145,7 +136,7 @@ final class IntensityPrescriptionResolver
     }
 
     /**
-     * @param array{distance_m: int, goal_pace_sec_per_km: int, kind: 'marathon'|'ultra'}|null $context
+     * @param array{distance_m: int, goal_pace_sec_per_km: int, kind: 'marathon'}|null $context
      * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      */
     private function pace(PaceBand $band, ?array $context, ?array $paces): ?int
@@ -160,22 +151,17 @@ final class IntensityPrescriptionResolver
 
         $goalPace = (int) $context['goal_pace_sec_per_km'];
 
-        if ($context['kind'] === 'ultra') {
-            return $goalPace;
-        }
-
         return max($goalPace, $paces['marathon']);
     }
 
     /**
      * Comparable evidence is keyed by stimulus, not only by the broad row
      * type. A marathon-specific Tempo must not teach a threshold Tempo, and
-     * an ultra Long must not teach an ordinary Long.
+     * a marathon-specific Long must not teach an ordinary Long.
      */
     public static function familyKey(SessionType $type, ?float $distanceM, ?int $goalTimeSec): string
     {
-        $raceSpecific = $distanceM !== null
-            && $distanceM >= WeekPlanBuilder::MARATHON_DISTANCE_THRESHOLD_M
+        $raceSpecific = $distanceM !== null && RaceSupport::isMarathonClass($distanceM)
             && $goalTimeSec !== null
             && $goalTimeSec > 0;
         if ($raceSpecific) {

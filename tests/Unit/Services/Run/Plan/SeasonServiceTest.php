@@ -589,3 +589,15 @@ it('opens the next season at the trailing actual when the athlete fell short of 
 
     expect($this->service->ensureCurrent($user, Carbon::today())->anchor_weekly_volume_km)->toBe(18.0);
 });
+
+it('keeps a race beyond the marathon on general goals with no block goals or under-ready line', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['distance_m' => 80_000, 'race_date' => Carbon::today()->addWeeks(3)->toDateString()]);
+
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $metrics = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
+
+    expect($metrics)->not->toContain('season_race_goal_met')->not->toContain('season_peak_weekly_km')
+        ->and($season->block_goals_appended_at)->toBeNull()
+        ->and($this->service->takeUnderReadyLine($season))->toBeNull();
+});
