@@ -14,7 +14,6 @@ use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\AI\HydrationBacklog;
-use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -34,10 +33,9 @@ function decide(
     int $stimulusMissesInWindow = 0,
     int $raggedDays = 0,
     int $egregiousEasyDays = 0,
-    int $egregiousDecouplingDays = 0,
     ?float $raceGapRatio = null,
 ): array {
-    return PlanAdapter::decide($ceiling, $adherencePct, $stimulusAdherencePct, $stimulusMisses, $stimulusMissesInWindow ?: $stimulusMisses, $raggedDays, $egregiousEasyDays, $egregiousDecouplingDays, $raceGapRatio);
+    return PlanAdapter::decide($ceiling, $adherencePct, $stimulusAdherencePct, $stimulusMisses, $stimulusMissesInWindow ?: $stimulusMisses, $raggedDays, $egregiousEasyDays, $raceGapRatio);
 }
 
 it('leaves a healthy, fully adhered week alone', function (): void {
@@ -119,24 +117,6 @@ it('lets one easy day far enough above Z2 speak for the week on its own', functi
 
     expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
         ->and($decision['quality_delta'])->toBe(-1);
-});
-
-it('does not let one decoupled day speak for the week, however far past the line', function (): void {
-    expect(decide(raggedDays: 1, egregiousDecouplingDays: 1)['reason'])->toBe(AdaptationReason::Steady);
-});
-
-it('reads a second egregiously decoupled day as how the week was run', function (): void {
-    $decision = decide(egregiousDecouplingDays: PlanAdapter::EGREGIOUS_DECOUPLING_DAYS_MIN);
-
-    expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
-        ->and($decision['quality_delta'])->toBe(-1);
-});
-
-// The verdict on how the week was run sits above the race-pace arms, so a
-// premature RanTooHard used to hide whichever of those the athlete needed.
-it('still reaches the race-gap verdict when one decoupled day is all there is', function (): void {
-    expect(decide(egregiousDecouplingDays: 1, raceGapRatio: 1.5)['reason'])->toBe(AdaptationReason::BehindRacePace)
-        ->and(decide(egregiousDecouplingDays: 1, raceGapRatio: 0.9)['reason'])->toBe(AdaptationReason::AheadOfRacePace);
 });
 
 it('keeps a safety deload ahead of how the week was run', function (): void {
@@ -525,13 +505,14 @@ it('ignores the race projection when the athlete has no usable PR to anchor it',
  *
  * @param  array<string, mixed>  $streamSummary
  */
-function planAdapterRunOn(User $user, string $date, array $streamSummary): void
+function planAdapterRunOn(User $user, string $date, array $streamSummary, array $attributes = []): void
 {
     ActivityDetail::factory()
         ->for(Activity::factory()->for($user))
         ->create([
             'start_date_local' => Carbon::parse($date.' 06:00:00'),
             'stream_summary' => $streamSummary,
+            ...$attributes,
         ]);
 }
 
@@ -557,37 +538,21 @@ function planAdapterFor(array $load = ['monotony' => 1.1, 'strain' => 300.0, 'ct
     return new PlanAdapter($trainingLoad, app(RiegelProjector::class), app(HydrationBacklog::class));
 }
 
-it('reads an easy day run above Z2 and a long day that decoupled as how the week was run', function (): void {
+it('reads two easy days run above Z2 as how the week was run', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
 
     planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
-    planAdapterCreditedDay($user, '2026-08-05', SessionType::Long);
+    planAdapterCreditedDay($user, '2026-08-05', SessionType::Easy);
 
     planAdapterRunOn($user, '2026-08-03', ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 55, 'Z3' => 25]]);
-    planAdapterRunOn($user, '2026-08-05', [
-        'drift_metric_version' => 2,
-        'steady_effort_decoupling_pct' => DecouplingBands::HIGH + 2.5,
-    ]);
+    planAdapterRunOn($user, '2026-08-05', ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 55, 'Z3' => 25]]);
 
     $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
 
     expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
         ->and($decision['quality_delta'])->toBe(-1)
         ->and($decision['adherence_pct'])->toBe(100);
-
-    Carbon::setTestNow();
-});
-
-it('does not treat versionless legacy drift as a new plan verdict', function (): void {
-    Carbon::setTestNow('2026-08-10 08:00:00');
-    $user = User::factory()->create();
-
-    planAdapterCreditedDay($user, '2026-08-05', SessionType::Long);
-    planAdapterRunOn($user, '2026-08-05', ['decoupling_pct' => DecouplingBands::EGREGIOUS + 20.0]);
-
-    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null)['reason'])
-        ->toBe(AdaptationReason::Steady);
 
     Carbon::setTestNow();
 });
@@ -641,27 +606,7 @@ it('leaves a rest day unjudged, however it was run', function (): void {
     Carbon::setTestNow();
 });
 
-// The reading that started this: one Sunday long run stored at 47.1% decoupling
-// took a whole week's quality session away on its own.
-it('does not let one long run that came apart speak for the week', function (): void {
-    Carbon::setTestNow('2026-08-10 08:00:00');
-    $user = User::factory()->create();
-
-    planAdapterCreditedDay($user, '2026-08-05', SessionType::Long);
-    planAdapterRunOn($user, '2026-08-05', [
-        'drift_metric_version' => 2,
-        'steady_effort_decoupling_pct' => DecouplingBands::EGREGIOUS + 20.0,
-    ]);
-
-    $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
-
-    expect($decision['reason'])->toBe(AdaptationReason::Steady)
-        ->and($decision['quality_delta'])->toBe(0);
-
-    Carbon::setTestNow();
-});
-
-it('reads two egregiously decoupled days as how the week was run', function (): void {
+it('keeps next week\'s quality after a hot long run and a threshold session that both decoupled past 15%', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
 
@@ -669,15 +614,15 @@ it('reads two egregiously decoupled days as how the week was run', function (): 
     planAdapterCreditedDay($user, '2026-08-07', SessionType::Tempo);
     $drift = [
         'drift_metric_version' => 2,
-        'steady_effort_decoupling_pct' => DecouplingBands::EGREGIOUS + 0.1,
+        'steady_effort_decoupling_pct' => 20.0,
     ];
-    planAdapterRunOn($user, '2026-08-05', $drift);
+    planAdapterRunOn($user, '2026-08-05', $drift, ['weather_temp_c' => 33]);
     planAdapterRunOn($user, '2026-08-07', $drift);
 
     $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
 
-    expect($decision['reason'])->toBe(AdaptationReason::RanTooHard)
-        ->and($decision['quality_delta'])->toBe(-1);
+    expect($decision['reason'])->toBe(AdaptationReason::Steady)
+        ->and($decision['quality_delta'])->toBe(0);
 
     Carbon::setTestNow();
 });
