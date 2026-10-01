@@ -23,7 +23,8 @@ it('blames the heat rather than the aerobic base when a hot run decouples', func
     expect(RuleBasedRunInsights::claims($hot)[0])
         ->toMatchArray(['anchor' => 'metric:decoupling', 'value' => '+14.2%'])
         ->and(RuleBasedRunInsights::claims($hot)[0]['text'])->toContain('heat talking')
-        ->and(RuleBasedRunInsights::claims($mild)[0]['text'])->toContain("aerobic base isn't quite solid yet");
+        ->and(RuleBasedRunInsights::claims($mild)[0]['text'])->toContain('not drinking enough')
+        ->and(RuleBasedRunInsights::claims($mild)[0]['text'])->not->toContain('aerobic base');
 });
 
 // 8.4% sits inside the band ordinary runs occupy, so it reads as normal rather

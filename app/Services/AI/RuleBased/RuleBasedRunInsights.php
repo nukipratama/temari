@@ -83,7 +83,7 @@ final class RuleBasedRunInsights
 
         return $temp !== null && $temp >= self::DECOUPLING_HOT_TEMP_C
             ? "Decoupling climbed, but that's the ~{$temp} degree heat talking, not your aerobic base slipping."
-            : "Decoupling drifted up, your aerobic base isn't quite solid yet.";
+            : 'Decoupling drifted up. A long run, warmth and not drinking enough all raise it, so read it next to how the run went.';
     }
 
     /**

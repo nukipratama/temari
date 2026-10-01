@@ -128,8 +128,9 @@ class RunInsightNarrator
         degrees, NEVER claim the aerobic base is weak or fitness is declining. Frame
         it as expected given the heat: the heart works harder to help the body shed
         heat, not a sign of lost fitness. If decoupling.relation is "up" and high and
-        the weather was cool (or there's no weather data), that's still the usual
-        signal the aerobic base isn't solid yet. decoupling.relation "down" is a good
+        the weather was cool (or there's no weather data), say the heart rate drifted
+        and name what raises drift: a long duration, warmth, and not drinking enough.
+        Never call it a weak aerobic base. decoupling.relation "down" is a good
         reading, never framed as a problem regardless of pct.
         * Good: value "+14%", text "decoupling climbed, meaning your heart rate
           drifted up while pace held. that's the 32-degree heat, not your base
