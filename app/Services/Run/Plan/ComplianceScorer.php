@@ -280,7 +280,9 @@ final readonly class ComplianceScorer
      * after the daily pass has already written `missed` finds a row that is
      * no longer `Planned`, which nothing else would ever revisit, and lifts
      * it — while a second run on an already-credited day can raise `done` to
-     * `overreached` but never the reverse.
+     * `overreached` but never the reverse. This holds for ingests,
+     * re-ingests, revisions and late uploads; a deleted run goes through
+     * {@see self::regradeAfterDelete()} instead.
      */
     public function creditIfEarned(User $user, Carbon $date, Carbon $today): void
     {
@@ -311,10 +313,32 @@ final readonly class ComplianceScorer
     }
 
     /**
-     * The earned score never moves down, but the intent and stimulus read
-     * from the day's current runs replace what was stored when they differ,
-     * so a revised, split, delayed or deleted recording cannot leave stale
-     * evidence behind.
+     * Re-grades a day from the runs that survive a deletion, in either
+     * direction: an overreached duplicate can drop to `done`, and a past day
+     * whose only run was deleted drops to `missed`. An excused day keeps its
+     * verdict.
+     */
+    public function regradeAfterDelete(User $user, Carbon $date, Carbon $today): void
+    {
+        $row = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->where('date', $date->toDateString())
+            ->first();
+        if ($row === null || $row->status === PlannedSessionStatus::Skip) {
+            return;
+        }
+
+        $verdict = $this->verdictsFor($user, Collection::wrap([$row]), $today)[$date->toDateString()] ?? null;
+        if ($verdict !== null) {
+            self::applyVerdict($row, $verdict);
+        }
+    }
+
+    /**
+     * Outside a deletion the earned score never moves down, but the intent
+     * and stimulus read from the day's current runs replace what was stored
+     * when they differ, so a revised, split or delayed recording cannot leave
+     * stale evidence behind.
      *
      * @param  array{verdict: IntentVerdict, evidence: array<string, int|float|string>}|null  $intent
      */
