@@ -12,9 +12,12 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Metrics\RecentTrainingStress;
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
@@ -36,6 +39,8 @@ final readonly class PlanInputsGatherer
         private ResolveTrainingPreferenceAction $trainingPreference,
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
+        private RecentTrainingStress $trainingStress,
+        private ResolveTrailingWeeksAction $trailingWeeks,
     ) {
     }
 
@@ -53,10 +58,22 @@ final readonly class PlanInputsGatherer
 
         $race = ($this->activeRace)($user->id);
         $preference = ($this->trainingPreference)($user->id);
-        ['pinned' => $pinnedDates, 'settled' => $settledDates, 'fixed' => $fixedSessions] = $this->fixedPlanDaysIn($user, $currentWeekStart, $today, $horizonEnd);
-
         $baseline = $this->baseline->forUser($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
+        ['pinned' => $pinnedDates, 'settled' => $settledDates, 'fixed' => $fixedSessions] = $this->fixedPlanDaysIn($user, $currentWeekStart->copy()->subWeek(), $today, $horizonEnd, $baseline, $paces);
+        $actualSessions = array_map(static fn (array $session): array => [
+            'date' => $session['date'],
+            'duration_minutes' => $session['duration_minutes'],
+            'hard_minutes' => $session['non_easy_minutes'] ?? $session['lap_threshold_minutes'] ?? $session['gap_threshold_minutes'],
+            'demanding' => $session['demanding'] || ($session['non_easy_minutes'] ?? 0) >= 10,
+        ], $this->trainingStress->forUser($user, $today, 14)['sessions']);
+        foreach ($actualSessions as $session) {
+            if ($session['date'] === $today->toDateString()) {
+                $settledDates[$session['date']] = true;
+            }
+        }
+        $weeks = ($this->trailingWeeks)($user->id, $currentWeekStart->copy()->subDay()->toDateString(), 6)
+            ->filter(static fn (WeeklySnapshot $week): bool => $week->week_ending->gte($currentWeekStart->copy()->subWeeks(6)));
 
         return new PlanInputs(
             userId: $user->id,
@@ -92,42 +109,67 @@ final readonly class PlanInputsGatherer
             longRunProgressionCapKm: $baseline['long_run_progression_cap_km'],
             recentPrescriptions: $this->recentPrescriptions($user, $today),
             fixedSessions: $fixedSessions,
+            actualSessions: $actualSessions,
+            twoRunQualityEligible: $paces !== null && $weeks->count() >= 6
+                && $weeks->every(static fn (WeeklySnapshot $week): bool => $week->runs >= 2),
         );
     }
 
     /**
+     * @param array{long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, ...} $baseline
+     * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      * @return array{
      *     pinned: array<string, true>,
      *     settled: array<string, true>,
-     *     fixed: array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null}>
+     *     fixed: array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float}>
      * }
      *
-     * Fixed rows share one query across the plan horizon; past rows can only
-     * fall in the current week because the query starts at that week's Monday.
      */
-    private function fixedPlanDaysIn(User $user, Carbon $weekStart, Carbon $today, Carbon $to): array
+    private function fixedPlanDaysIn(User $user, Carbon $weekStart, Carbon $today, Carbon $to, array $baseline, ?array $paces): array
     {
         $rows = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$weekStart->toDateString(), $to->toDateString()])
             ->where(fn (Builder $query): Builder => $query
                 ->where('pinned', true)
+                ->orWhere('skipped', true)
                 ->orWhere('status', '!=', PlannedSessionStatus::Planned)
                 ->orWhere('date', '<', $today->toDateString()))
             ->orderBy('date')
-            ->get(['date', 'pinned', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band']);
+            ->get(['date', 'pinned', 'skipped', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'phase', 'volume_multiplier', 'race_distance_m', 'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km']);
 
         $pinned = [];
         $settled = [];
         $fixed = [];
         foreach ($rows as $row) {
             $date = $row->date->toDateString();
+            if ($row->skipped || in_array($row->status, [PlannedSessionStatus::Skip, PlannedSessionStatus::Missed], true) || ($row->date->lt($today) && $row->status === PlannedSessionStatus::Planned)) {
+                if (! $row->date->lt($today)) {
+                    $settled[$date] = true;
+                }
+                continue;
+            }
             if ($row->date->lt($today) || $row->pinned || $row->status !== PlannedSessionStatus::Planned) {
                 $fixed[$date] = [
                     'session_type' => $row->session_type,
                     'prescribed_hard_minutes' => $row->prescribed_hard_minutes ?? 0,
                     'prescribed_pace_band' => $row->prescribed_pace_band,
                 ];
+                if (($row->status !== PlannedSessionStatus::Planned && $row->session_type->isQuality())
+                    || $row->session_type === SessionType::Race
+                    || (in_array($row->session_type, [SessionType::Tempo, SessionType::Interval], true) && $row->prescribed_hard_minutes === null)) {
+                    $fixed[$date]['hard_minutes'] = null;
+                }
+                if ($row->status === PlannedSessionStatus::Planned && $paces !== null) {
+                    $km = SegmentGenerator::coreKmFor($row->session_type, false, $baseline['long_run_km'], (float) $row->volume_multiplier, $baseline['long_run_cap_km'], $row->race_distance_m === null ? null : (float) $row->race_distance_m, $baseline['long_run_progression_cap_km']);
+                    $km = $row->clamped_km === null ? $km : min($km, (float) $row->clamped_km);
+                    $prescription = new IntensityPrescription($row->prescribed_hard_minutes ?? 0, $row->prescribed_pace_band, $row->prescribed_pace_sec_per_km ?? ($row->prescribed_pace_band === null ? null : $paces[$row->prescribed_pace_band->value]), null);
+                    $segments = SegmentGenerator::forPrescription($row->session_type, $row->phase, $km, $paces, $prescription);
+                    $fixed[$date]['duration_minutes'] = array_sum(array_map(static fn (SessionSegment $segment): float => $segment->minutes ?? 0.0, $segments));
+                    if ($row->rest_clamped_at !== null || $row->eased_pace_sec_per_km !== null) {
+                        $fixed[$date] = ['session_type' => SessionType::Easy, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'duration_minutes' => $row->rest_clamped_at === null ? $km * $paces['easy'] / 60 : 0.0];
+                    }
+                }
             }
             if (! $row->date->lt($today)) {
                 if ($row->pinned) {

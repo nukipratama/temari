@@ -16,6 +16,19 @@ uses(RefreshDatabase::class);
 
 afterEach(fn () => Carbon::setTestNow());
 
+it('keeps measured marathon-band time separate from threshold readiness stress', function (): void {
+    Carbon::setTestNow('2026-10-01 08:00');
+    $user = User::factory()->create();
+    recentStressRun($user, '2026-09-30 07:00', [
+        'elapsed_time' => 3600,
+        'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 30, 'Z3' => 30, 'Z4' => 0, 'Z5' => 0]],
+    ]);
+    $session = app(RecentTrainingStress::class)->forUser($user, Carbon::today())['sessions'][0];
+    expect($session['non_easy_minutes'])->toBe(30.0)
+        ->and($session['threshold_minutes'])->toBe(0.0)
+        ->and($session['demanding'])->toBeFalse();
+});
+
 it('excludes future starts and gives no recovery credit before a session ends', function (): void {
     $asOf = Carbon::parse('2026-10-01 08:00');
     Carbon::setTestNow($asOf);

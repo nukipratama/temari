@@ -40,6 +40,7 @@ final readonly class RecentTrainingStress
      *         personal_typical_duration_minutes: float|null,
      *         trimp: float|null,
      *         threshold_minutes: float|null,
+     *         non_easy_minutes: float|null,
      *         threshold_pace_sec_per_km: int|null,
      *         lap_threshold_minutes: float|null,
      *         gap_pace_sec_per_km: int|null,
@@ -55,11 +56,11 @@ final readonly class RecentTrainingStress
      *     demanding_within_48h: int
      * }
      */
-    public function forUser(User $user, Carbon $asOf): array
+    public function forUser(User $user, Carbon $asOf, int $windowDays = self::WINDOW_DAYS): array
     {
         $today = $asOf->copy()->startOfDay();
         $now = $today->isSameDay(Carbon::now()) ? Carbon::now() : $today->copy()->endOfDay();
-        $start = $today->copy()->subDays(self::WINDOW_DAYS - 1)->startOfDay();
+        $start = $today->copy()->subDays($windowDays - 1)->startOfDay();
 
         $activities = Activity::analyzedJoinConstraint(
             ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
@@ -150,6 +151,7 @@ final readonly class RecentTrainingStress
                 'personal_typical_duration_minutes' => $typicalDuration === null ? null : round($typicalDuration / 60, 1),
                 'trimp' => $detail->trimp_edwards,
                 'threshold_minutes' => $thresholdMinutes === null ? null : round($thresholdMinutes, 1),
+                'non_easy_minutes' => $zoneMinutes === null ? null : round((float) ($zoneMinutes['Z3'] ?? 0) + $thresholdMinutes, 1),
                 'threshold_pace_sec_per_km' => $thresholdPace,
                 'lap_threshold_minutes' => $lapThresholdMinutes === null ? null : round($lapThresholdMinutes, 1),
                 'gap_pace_sec_per_km' => $gapPace,

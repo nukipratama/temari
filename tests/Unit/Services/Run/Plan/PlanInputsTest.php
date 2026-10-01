@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
 use App\Enums\IntentVerdict;
+use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Services\Run\Plan\IntensityPrescription;
@@ -229,3 +230,139 @@ it('keeps prescribed hard work inside the real weekly time budget', function ():
     expect($hardMinutes)->toBeLessThanOrEqual((int) floor($totalMinutes * 0.3))
         ->and($hardDays)->toBeLessThanOrEqual(2);
 });
+
+it('spends completed off-menu hard minutes before allocating remaining quality', function (): void {
+    $inputs = new PlanInputs(...[
+        ...get_object_vars(arcInputs(today: '2026-09-23')),
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+        'actualSessions' => [
+            ['date' => '2026-09-21', 'duration_minutes' => 40, 'hard_minutes' => 40.0, 'demanding' => true],
+            ['date' => '2026-09-22', 'duration_minutes' => 40, 'hard_minutes' => 40.0, 'demanding' => true],
+        ],
+    ]);
+    $rows = app(Periodizer::class)->rowsFor($inputs);
+    expect($rows['2026-09-23']['prescribed_hard_minutes'])->toBe(0);
+});
+
+it('uses prior-week demanding actuals without a circular hypothetical long-run veto', function (): void {
+    $inputs = new PlanInputs(...[
+        ...get_object_vars(arcInputs(today: '2026-09-21')),
+        'runDays' => [0, 2, 4],
+        'longRunDay' => 4,
+        'actualSessions' => [['date' => '2026-09-20', 'duration_minutes' => 90, 'hard_minutes' => null, 'demanding' => true]],
+    ]);
+    $rows = app(Periodizer::class)->rowsFor($inputs);
+    expect($rows['2026-09-21']['session_type'])->toBe(SessionType::Easy);
+});
+
+it('allows established two-run athletes only a modest tempo and an easy long run', function (): void {
+    $inputs = new PlanInputs(...[
+        ...get_object_vars(arcInputs(today: '2026-09-21', raceDay: null)),
+        'sessionsPerWeek' => 2, 'runDays' => [2, 5], 'longRunDay' => 5,
+        'twoRunQualityEligible' => true,
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 10.0,
+    ]);
+    $rows = app(Periodizer::class)->rowsFor($inputs);
+    expect($rows['2026-09-23']['session_type'])->toBe(SessionType::Tempo)
+        ->and($rows['2026-09-23']['prescribed_hard_minutes'])->toBe(10)
+        ->and($rows['2026-09-26']['prescribed_hard_minutes'])->toBe(0);
+});
+
+it('uses performed easy effort instead of the original settled tempo dose', function (): void {
+    $inputs = new PlanInputs(...[
+        ...get_object_vars(arcInputs(today: '2026-09-23')),
+        'runDays' => [0, 3, 5], 'longRunDay' => 5,
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+        'fixedSessions' => ['2026-09-21' => ['session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 100, 'prescribed_pace_band' => PaceBand::Threshold]],
+        'actualSessions' => [['date' => '2026-09-21', 'duration_minutes' => 40, 'hard_minutes' => 0.0, 'demanding' => false]],
+    ]);
+    $rows = app(Periodizer::class)->rowsFor($inputs);
+    expect($rows['2026-09-24']['prescribed_hard_minutes'])->toBeGreaterThan(0);
+});
+
+it('includes measured hard minutes even when only one completed hard day exists', function (): void {
+    $inputs = new PlanInputs(...[
+        ...get_object_vars(arcInputs(today: '2026-09-23')),
+        'runDays' => [0, 3, 5], 'longRunDay' => 5,
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 10.0,
+        'actualSessions' => [['date' => '2026-09-21', 'duration_minutes' => 80, 'hard_minutes' => 80.0, 'demanding' => true]],
+    ]);
+    expect(app(Periodizer::class)->rowsFor($inputs)['2026-09-24']['prescribed_hard_minutes'])->toBe(0);
+});
+
+it('reserves unknown demanding work without inventing measured hard minutes', function (bool $hasPaces): void {
+    $inputs = new PlanInputs(...[
+        ...get_object_vars(arcInputs(today: '2026-09-23')),
+        'runDays' => [0, 3, 5], 'longRunDay' => 5,
+        'paces' => $hasPaces ? ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240] : null,
+        'longRunBaselineKm' => 12.0,
+        'actualSessions' => [['date' => '2026-09-21', 'duration_minutes' => 100, 'hard_minutes' => null, 'demanding' => true]],
+    ]);
+    expect(app(Periodizer::class)->rowsFor($inputs)['2026-09-24']['prescribed_hard_minutes'])->toBe(0);
+})->with(['known paces' => true, 'unknown paces' => false]);
+
+it('respects known demanding days beyond the next week boundary', function (): void {
+    $inputs = new PlanInputs(...[
+        ...get_object_vars(arcInputs(today: '2026-09-21')),
+        'runDays' => [3, 5, 6], 'longRunDay' => 3,
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+        'fixedSessions' => ['2026-09-28' => ['session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Threshold]],
+    ]);
+    expect(app(Periodizer::class)->rowsFor($inputs)['2026-09-27']['prescribed_hard_minutes'])->toBe(0);
+});
+
+it('keeps current-week quality reductions out of later weeks', function (): void {
+    $inputs = arcInputs(today: '2026-09-21', raceDay: null);
+    $inputs = new PlanInputs(...[...get_object_vars($inputs), 'adaptation' => [...$inputs->adaptation, 'quality_delta' => -1], 'longRunBaselineKm' => 12.0]);
+    $rows = app(Periodizer::class)->rowsFor($inputs);
+    expect($rows['2026-09-24']['session_type'])->toBe(SessionType::Easy)
+        ->and($rows['2026-10-08']['session_type'])->toBe(SessionType::Tempo);
+});
+
+it('releases a race-pace long prescription budget after credible easy execution', function (): void {
+    $inputs = new PlanInputs(...[
+        ...get_object_vars(arcInputs(today: '2026-09-23')),
+        'runDays' => [0, 3, 5], 'longRunDay' => 5,
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+        'fixedSessions' => ['2026-09-21' => ['session_type' => SessionType::Long, 'prescribed_hard_minutes' => 100, 'prescribed_pace_band' => PaceBand::Marathon]],
+        'actualSessions' => [['date' => '2026-09-21', 'duration_minutes' => 60, 'hard_minutes' => 0.0, 'demanding' => false]],
+    ]);
+    expect(app(Periodizer::class)->rowsFor($inputs)['2026-09-24']['prescribed_hard_minutes'])->toBeGreaterThan(0);
+});
+
+it('spends retained future prescription minutes together with generated work', function (): void {
+    $inputs = new PlanInputs(...[
+        ...get_object_vars(arcInputs(today: '2026-09-23')),
+        'runDays' => [0, 3, 5], 'longRunDay' => 5,
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+        'pinnedDates' => ['2026-09-27' => true],
+        'fixedSessions' => ['2026-09-27' => ['session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 100, 'prescribed_pace_band' => PaceBand::Threshold, 'duration_minutes' => 100.0]],
+    ]);
+    expect(app(Periodizer::class)->rowsFor($inputs)['2026-09-24']['prescribed_hard_minutes'])->toBe(0);
+});
+
+it('distinguishes credible easy race execution from unknown completed race effort', function (?float $minutes, bool $withheld): void {
+    $inputs = new PlanInputs(...[
+        ...get_object_vars(arcInputs(today: '2026-09-23')),
+        'runDays' => [0, 3, 5], 'longRunDay' => 5,
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+        'fixedSessions' => array_fill_keys(['2026-09-21', '2026-09-22'], ['session_type' => SessionType::Race, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'hard_minutes' => null]),
+        'actualSessions' => [
+            ['date' => '2026-09-21', 'duration_minutes' => 40, 'hard_minutes' => $minutes, 'demanding' => false],
+            ['date' => '2026-09-22', 'duration_minutes' => 40, 'hard_minutes' => $minutes, 'demanding' => false],
+        ],
+    ]);
+    $row = app(Periodizer::class)->rowsFor($inputs)['2026-09-24'];
+    expect($row['prescribed_hard_minutes'] === 0)->toBe($withheld);
+    if ($withheld) {
+        expect($row['prescription_reason'])->toContain('unmeasured hard minutes');
+    }
+})->with(['credible easy' => [0.0, false], 'unknown completed race' => [null, true]]);

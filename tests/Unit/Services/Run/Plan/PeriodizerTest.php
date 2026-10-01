@@ -8,6 +8,8 @@ use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Feedback;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
@@ -37,6 +39,28 @@ beforeEach(function (): void {
     $this->periodizer = app(Periodizer::class);
 });
 afterEach(fn () => Carbon::setTestNow());
+
+it('reconciles new actual workload only into affected current-week prescriptions', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    WeeklySnapshot::query()->where('user_id', $user->id)->update(['distance_km' => 60.0]);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
+    $this->periodizer->regenerate($user, Carbon::today());
+    $thursday = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-13')->firstOrFail();
+    $nextWeek = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-20')->firstOrFail();
+    expect($thursday->prescribed_hard_minutes)->toBeGreaterThan(0);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'start_date_local' => '2026-08-10 07:00:00', 'elapsed_time' => 10800,
+        'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 0, 'Z3' => 0, 'Z4' => 180, 'Z5' => 0]],
+    ]);
+
+    expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeTrue()
+        ->and($thursday->fresh()->prescribed_hard_minutes)->toBe(0)
+        ->and($nextWeek->fresh()->id)->toBe($nextWeek->id)
+        ->and($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse();
+});
 
 function seedPeriodizerBaseline(User $user): void
 {
@@ -639,6 +663,11 @@ it('caps future quality around a settled tempo and a race-pace Long in the curre
         'prescribed_hard_minutes' => 20,
         'prescribed_pace_band' => PaceBand::Threshold,
     ]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'start_date_local' => $tuesday->copy()->setTime(7, 0),
+        'elapsed_time' => 3600,
+        'stream_summary' => ['time_in_zone_min' => ['Z1' => 10, 'Z2' => 30, 'Z3' => 0, 'Z4' => 20, 'Z5' => 0]],
+    ]);
 
     $this->periodizer->regenerate($user, Carbon::today());
 
@@ -655,7 +684,7 @@ it('caps future quality around a settled tempo and a race-pace Long in the curre
         ->and($sunday->prescribed_hard_minutes)->toBeGreaterThan(0);
 });
 
-it('counts a pinned quality type in a later week without stored hard minutes', function (): void {
+it('reserves unknown pinned quality without inventing a remaining hard-minute allowance', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
     foreach (range(0, 3) as $i) {
@@ -685,8 +714,8 @@ it('counts a pinned quality type in a later week without stored hard minutes', f
 
     expect($pinned->fresh()->session_type)->toBe(SessionType::Interval)
         ->and($thursday->session_type)->toBe(SessionType::Easy)
-        ->and($sunday->prescribed_pace_band)->toBe(PaceBand::Marathon)
-        ->and($sunday->prescribed_hard_minutes)->toBeGreaterThan(0);
+        ->and($sunday->prescribed_pace_band)->toBeNull()
+        ->and($sunday->prescribed_hard_minutes)->toBe(0);
 });
 
 it('lets the race projection move prescribed quality work in both directions', function (): void {

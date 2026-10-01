@@ -39,13 +39,6 @@ final class WeekPlanBuilder
 
     private const int MIN_SESSIONS = 2;
 
-    /**
-     * Below this, a week has no room for quality at all: at two sessions the
-     * long run plus one quality day IS the week, leaving no easy running
-     * whatsoever. Base already refused quality below four; the other phases
-     * refused it nowhere, so an explicitly-chosen two-session week came out
-     * half hard.
-     */
     private const int MIN_SESSIONS_FOR_QUALITY = 3;
 
     /**
@@ -108,6 +101,7 @@ final class WeekPlanBuilder
         ?float $projectedRaceSeconds = null,
         ?Carbon $raceDate = null,
         string $zone = PhaseSchedule::ZONE_BLOCK,
+        bool $twoRunQualityEligible = false,
     ): array {
         if ($preferredOffsets !== null && $preferredLongOffset !== null) {
             $trainingOffsets = $preferredOffsets;
@@ -140,6 +134,9 @@ final class WeekPlanBuilder
             $projectedRaceSeconds,
             $zone,
         );
+        if ($sessionsPerWeek === 2 && $twoRunQualityEligible && in_array($phase, [PlanPhase::Base, PlanPhase::Build, PlanPhase::Peak], true) && $qualityDelta >= 0) {
+            $qualitySlots = [['session_type' => SessionType::Tempo]];
+        }
         $selectedQualityOffsets = self::spreadOffsets($qualityPool, count($qualitySlots), $longOffset);
         $qualitySlots = array_slice($qualitySlots, 0, count($selectedQualityOffsets));
         $qualityByOffset = [];

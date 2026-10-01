@@ -102,19 +102,49 @@ final readonly class Periodizer
                 ->first();
 
             if ($adaptation !== null && self::adaptationMatches($adaptation, $inputs)) {
-                return false;
+                return $this->reconcileCurrentWeekWorkload($inputs);
             }
 
             // Ingest reconciliation can only move safety in one direction inside
             // an open week. A newly healthy reading must not erase a deload or
             // restore quality that an earlier settled verdict removed.
             if ($adaptation !== null && self::wouldRelaxSafety($adaptation, $inputs)) {
-                return false;
+                return $this->reconcileCurrentWeekWorkload($inputs);
             }
 
             $this->persist($user, $inputs);
 
             return true;
+        });
+    }
+
+    private function reconcileCurrentWeekWorkload(PlanInputs $inputs): bool
+    {
+        $rows = $this->rowsFor($inputs);
+
+        return DB::transaction(function () use ($inputs, $rows): bool {
+            $changed = false;
+            $sessions = PlannedSession::query()
+                ->where('user_id', $inputs->userId)
+                ->whereBetween('date', [$inputs->today->toDateString(), $inputs->currentWeekStart()->addDays(6)->toDateString()])
+                ->where('pinned', false)
+                ->where('status', PlannedSessionStatus::Planned)
+                ->lockForUpdate()
+                ->get();
+            foreach ($sessions as $session) {
+                $row = $rows[$session->date->toDateString()] ?? null;
+                if ($row === null || ! $session->session_type->isQuality()
+                    || $row['prescribed_hard_minutes'] >= ($session->prescribed_hard_minutes ?? 0)) {
+                    continue;
+                }
+                $session->update(array_intersect_key($row, array_flip([
+                    'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band',
+                    'prescribed_pace_sec_per_km', 'prescription_reason', 'prescription_race_context',
+                ])));
+                $changed = true;
+            }
+
+            return $changed;
         });
     }
 
@@ -163,14 +193,15 @@ final readonly class Periodizer
                 $inputs->raceDistanceM,
                 $inputs->isSelfScaled(),
                 $inputs->today,
-                $inputs->adaptation['quality_delta'],
+                $week['week_start']->isSameDay($inputs->currentWeekStart()) ? $inputs->adaptation['quality_delta'] : 0,
                 $inputs->runDays,
                 $inputs->longRunDay,
                 $inputs->projectedRaceSeconds,
                 $inputs->raceDate,
                 $week['zone'],
+                $inputs->twoRunQualityEligible,
             );
-            $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start']);
+            $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows);
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier']];
             }
@@ -337,10 +368,17 @@ final readonly class Periodizer
 
     /**
      * @param array<string, array{phase: PlanPhase, session_type: SessionType, ...}> $rows
+     * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, ...}> $priorRows
      * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
-    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart): array
+    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart, array $priorRows): array
     {
+        $workloadSessions = self::workloadSessions($inputs);
+        $weekEnd = $weekStart->copy()->addDays(6)->toDateString();
+        $unknownDemandingMinutes = array_any($workloadSessions, static fn (array $session, string $date): bool =>
+            $date >= $weekStart->toDateString() && $date <= $weekEnd
+            && array_key_exists('hard_minutes', $session) && $session['hard_minutes'] === null
+            && self::isHardDay($session));
         $firstEasy = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Easy);
         $kmByDate = [];
         foreach ($rows as $date => $row) {
@@ -372,11 +410,17 @@ final readonly class Periodizer
                 $recent['verdict'] ?? null,
                 $recent['hard_minutes'] ?? null,
             );
+            if (($inputs->runDays === null ? $inputs->sessionsPerWeek : count($inputs->runDays)) === 2) {
+                $prescription = $prescriptions[$date];
+                $prescriptions[$date] = $row['session_type'] === SessionType::Tempo
+                    ? new IntensityPrescription(min(10, $prescription->hardMinutes), $prescription->paceBand, $prescription->paceSecPerKm, 'modest quality for an established two-run week', $prescription->raceContext)
+                    : new IntensityPrescription(0, null, null, null);
+            }
         }
 
         // Without VDOT there is no trustworthy time denominator. Keep the
         // phase/day caps, but do not invent a weekly percentage ceiling.
-        $hardCeiling = $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs);
+        $hardCeiling = $unknownDemandingMinutes ? 0 : $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs, $weekStart, $workloadSessions);
         while ($hardCeiling !== null && array_sum(array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions)) > $hardCeiling) {
             $hardMinutes = array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions);
             $largestHardMinutes = $hardMinutes === [] ? 0 : max($hardMinutes);
@@ -407,7 +451,7 @@ final readonly class Periodizer
                 break;
             }
 
-            $hardCeiling = $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs);
+            $hardCeiling = $unknownDemandingMinutes ? 0 : $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs, $weekStart, $workloadSessions);
         }
 
         foreach ($rows as $date => &$row) {
@@ -419,16 +463,22 @@ final readonly class Periodizer
                     $prescription = new IntensityPrescription(0, null, null, 'easy because the outing cannot safely fit the minimum quality structure', $prescription->raceContext);
                 }
             }
+            if ($prescription->isEasy() && $row['session_type']->isQuality() && $unknownDemandingMinutes) {
+                $prescription = new IntensityPrescription(0, null, null, 'easy because demanding work this week has unmeasured hard minutes', $prescription->raceContext);
+            }
+            if ($prescription->isEasy() && in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)) {
+                $row['session_type'] = SessionType::Easy;
+            }
             $row = [...$row, ...$prescription->toArray()];
         }
         unset($row);
 
-        return self::capQualityAroundWeeklyHardDays($rows, $inputs->fixedSessions, $weekStart);
+        return self::capQualityAroundWeeklyHardDays($rows, $workloadSessions + $priorRows, $weekStart);
     }
 
     /**
      * @param array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}> $rows
-     * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null}> $fixedSessions
+     * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float, demanding?: bool, ...}> $fixedSessions
      * @param Carbon $weekStart
      * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
@@ -436,26 +486,25 @@ final readonly class Periodizer
     {
         $weekStartDate = $weekStart->toDateString();
         $weekEndDate = $weekStart->copy()->addDays(6)->toDateString();
-        $fixedSessions = array_filter(
-            $fixedSessions,
-            static fn (string $date): bool => $date >= $weekStartDate && $date <= $weekEndDate,
-            ARRAY_FILTER_USE_KEY,
-        );
         $fixedHardOffsets = [];
         $longOffsets = [];
         foreach ($fixedSessions as $date => $session) {
-            $offset = Carbon::parse($date)->dayOfWeekIso - 1;
             if (self::isHardDay($session)) {
-                $fixedHardOffsets[] = $offset;
+                if ($date >= $weekStartDate && $date <= $weekEndDate) {
+                    $fixedHardOffsets[] = $date;
+                }
             }
-            if ($session['session_type'] === SessionType::Long) {
-                $longOffsets[] = $offset;
+            if (self::isHardDay($session) || $session['session_type'] === SessionType::Long) {
+                $longOffsets[] = $date;
             }
         }
 
         foreach ($rows as $date => $row) {
+            if ($row['session_type'] === SessionType::Race) {
+                $fixedHardOffsets[] = $date;
+            }
             if ($row['session_type'] === SessionType::Long) {
-                $longOffsets[] = Carbon::parse($date)->dayOfWeekIso - 1;
+                $longOffsets[] = $date;
             }
         }
 
@@ -463,22 +512,23 @@ final readonly class Periodizer
             $row['session_type'] === SessionType::Long
             && $row['prescribed_pace_band'] === PaceBand::Marathon
             && $row['prescribed_hard_minutes'] > 0));
-        if (count($fixedHardOffsets) >= 2) {
-            foreach ($generatedHardLongDates as $date) {
+        foreach ($generatedHardLongDates as $date) {
+            $tooCloseToHardDay = array_any($longOffsets, static fn (string $other): bool => $other !== $date && abs(Carbon::parse($date)->diffInDays(Carbon::parse($other))) < 2);
+            if (count($fixedHardOffsets) >= 2 || $tooCloseToHardDay) {
                 $rows[$date] = [
                     ...$rows[$date],
                     'prescribed_hard_minutes' => 0,
                     'prescribed_pace_band' => null,
                     'prescribed_pace_sec_per_km' => null,
-                    'prescription_reason' => 'easy because the weekly hard-day budget is already full',
+                    'prescription_reason' => $tooCloseToHardDay ? 'easy to preserve recovery between hard days' : 'easy because the weekly hard-day budget is already full',
                     'prescription_race_context' => null,
                 ];
+                $generatedHardLongDates = array_values(array_diff($generatedHardLongDates, [$date]));
             }
-            $generatedHardLongDates = [];
         }
 
         $qualityDates = array_keys(array_filter($rows, static fn (array $row): bool =>
-            in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)));
+            in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true) && $row['prescribed_hard_minutes'] > 0));
         if ($qualityDates === []) {
             return $rows;
         }
@@ -486,10 +536,9 @@ final readonly class Periodizer
         $protectedOffsets = array_values(array_unique([...$fixedHardOffsets, ...$longOffsets]));
         $recoveryByDate = [];
         foreach ($qualityDates as $date) {
-            $offset = Carbon::parse($date)->dayOfWeekIso - 1;
             $recoveryByDate[$date] = $protectedOffsets === []
                 ? PHP_INT_MAX
-                : min(array_map(static fn (int $protected): int => WeekPlanBuilder::longRunRecoveryDays($offset, $protected), $protectedOffsets));
+                : min(array_map(static fn (string $protected): float => abs(Carbon::parse($date)->diffInDays(Carbon::parse($protected))), $protectedOffsets));
         }
         usort($qualityDates, static fn (string $left, string $right): int =>
             ($recoveryByDate[$right] <=> $recoveryByDate[$left]) ?: strcmp($right, $left));
@@ -498,14 +547,13 @@ final readonly class Periodizer
         $keptHardOffsets = [];
         $keptQualityCount = 0;
         foreach ($qualityDates as $date) {
-            $offset = Carbon::parse($date)->dayOfWeekIso - 1;
             $tooCloseToHardDay = array_any(
                 [...$protectedOffsets, ...$keptHardOffsets],
-                static fn (int $hardOffset): bool => WeekPlanBuilder::longRunRecoveryDays($offset, $hardOffset) < 2,
+                static fn (string $hardDate): bool => abs(Carbon::parse($date)->diffInDays(Carbon::parse($hardDate))) < 2,
             );
             if ($keptQualityCount < $qualityLimit && ! $tooCloseToHardDay) {
                 $keptQualityCount++;
-                $keptHardOffsets[] = $offset;
+                $keptHardOffsets[] = $date;
 
                 continue;
             }
@@ -527,14 +575,14 @@ final readonly class Periodizer
     }
 
     /**
-     * Tempo and Interval sessions spend one hard day each; only a race-pace
-     * Long with prescribed hard minutes spends one too.
-     *
-     * @param array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null} $row
+     * @param array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, demanding?: bool, ...} $row
      */
     private static function isHardDay(array $row): bool
     {
-        return in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)
+        return ($row['demanding'] ?? false)
+            || $row['session_type'] === SessionType::Race
+            || (in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)
+                && ($row['prescribed_hard_minutes'] > 0 || (array_key_exists('hard_minutes', $row) && $row['hard_minutes'] === null)))
             || ($row['session_type'] === SessionType::Long
                 && $row['prescribed_pace_band'] === PaceBand::Marathon
                 && $row['prescribed_hard_minutes'] > 0);
@@ -543,14 +591,16 @@ final readonly class Periodizer
     /** @param array<string, array{session_type: SessionType, phase: PlanPhase, ...}> $rows
      *  @param array<string, float> $kmByDate
      *  @param array<string, IntensityPrescription> $prescriptions
+     *  @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float, demanding?: bool}> $workloadSessions
      */
-    private function hardCeiling(array $rows, array $kmByDate, array $prescriptions, PlanInputs $inputs): ?int
+    private function hardCeiling(array $rows, array $kmByDate, array $prescriptions, PlanInputs $inputs, Carbon $weekStart, array $workloadSessions): ?int
     {
         if ($inputs->paces === null) {
             return null;
         }
 
         $totalMinutes = 0.0;
+        $spentHardMinutes = 0.0;
         foreach ($rows as $date => $row) {
             $segments = $row['session_type']->isQuality()
                 ? SegmentGenerator::forPrescription($row['session_type'], $row['phase'], $kmByDate[$date], $inputs->paces, $prescriptions[$date])
@@ -559,11 +609,52 @@ final readonly class Periodizer
             foreach ($segments as $segment) {
                 if ($segment->minutes !== null) {
                     $totalMinutes += $segment->minutes;
+                    if ($row['session_type'] === SessionType::Race) {
+                        $spentHardMinutes += $segment->minutes;
+                    }
                 }
             }
         }
 
-        return (int) floor($totalMinutes * 0.3);
+        $end = $weekStart->copy()->addDays(6)->toDateString();
+        foreach ($workloadSessions as $date => $session) {
+            if ($date < $weekStart->toDateString() || $date > $end || isset($rows[$date])) {
+                continue;
+            }
+            $hard = array_key_exists('hard_minutes', $session) ? $session['hard_minutes'] : $session['prescribed_hard_minutes'];
+            if ($hard === null && self::isHardDay($session)) {
+                return 0;
+            }
+            $spentHardMinutes += $hard ?? 0;
+            $totalMinutes += $session['duration_minutes'] ?? 0;
+        }
+
+        return max(0, (int) floor($totalMinutes * 0.3 - $spentHardMinutes));
+    }
+
+    /** @return array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float, demanding?: bool}> */
+    private static function workloadSessions(PlanInputs $inputs): array
+    {
+        $sessions = $inputs->fixedSessions;
+        $actuals = [];
+        foreach ($inputs->actualSessions as $actual) {
+            $date = $actual['date'];
+            if (! isset($actuals[$date])) {
+                $actuals[$date] = ['session_type' => SessionType::Easy, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'hard_minutes' => 0.0, 'duration_minutes' => 0, 'demanding' => false];
+            }
+            $actuals[$date]['duration_minutes'] += $actual['duration_minutes'] ?? 0;
+            $actuals[$date]['demanding'] = $actuals[$date]['demanding'] || $actual['demanding'];
+            $actuals[$date]['hard_minutes'] = $actuals[$date]['hard_minutes'] === null || ($actual['hard_minutes'] === null && $actual['demanding'])
+                ? null
+                : $actuals[$date]['hard_minutes'] + ($actual['hard_minutes'] ?? 0);
+            if (($sessions[$date]['session_type'] ?? null) === SessionType::Race && $actual['hard_minutes'] === null) {
+                $actuals[$date]['session_type'] = SessionType::Race;
+                $actuals[$date]['demanding'] = true;
+                $actuals[$date]['hard_minutes'] = null;
+            }
+        }
+
+        return $actuals + $sessions;
     }
 
     /**
