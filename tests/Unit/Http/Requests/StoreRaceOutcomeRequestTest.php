@@ -3,15 +3,34 @@
 declare(strict_types=1);
 
 use App\Http\Requests\StoreRaceOutcomeRequest;
+use App\Models\RaceGoal;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
+
+uses(RefreshDatabase::class);
 
 function validateRaceOutcome(array $payload): Illuminate\Validation\Validator
 {
     return Validator::make($payload, new StoreRaceOutcomeRequest()->rules());
 }
 
-it('authorizes the request', function (): void {
-    expect(new StoreRaceOutcomeRequest()->authorize())->toBeTrue();
+it('authorizes only the athlete who owns the race', function (): void {
+    $owner = User::factory()->create();
+    $race = RaceGoal::factory()->for($owner)->completed()->create();
+    $request = StoreRaceOutcomeRequest::create("/race/{$race->id}/outcome", 'POST');
+    $request->setRouteResolver(fn () => Route::getRoutes()->match($request));
+
+    $request->setUserResolver(fn () => $owner);
+    $ownerAllowed = $request->authorize();
+    $request->setUserResolver(fn () => User::factory()->create());
+    $strangerAllowed = $request->authorize();
+    $request->setUserResolver(fn () => null);
+
+    expect($ownerAllowed)->toBeTrue()
+        ->and($strangerAllowed)->toBeFalse()
+        ->and($request->authorize())->toBeFalse();
 });
 
 it('accepts every outcome state', function (string $outcome): void {

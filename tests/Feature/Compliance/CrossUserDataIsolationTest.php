@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\InboxNotification;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -33,6 +34,7 @@ beforeEach(function (): void {
     $this->victimSession = PlannedSession::factory()->for($this->victim)->create();
     $this->victimSnapshot = WeeklySnapshot::factory()->for($this->victim)->create();
     $this->victimNotification = InboxNotification::factory()->for($this->victim)->create();
+    $this->victimRace = RaceGoal::factory()->for($this->victim)->completed()->create();
 });
 
 /**
@@ -94,6 +96,7 @@ it('refuses every authenticated route that is handed another user\'s resource id
         'plannedSession' => fn (): int => $this->victimSession->id,
         'notification' => fn (): int => $this->victimNotification->id,
         'snapshot' => fn (): int => $this->victimSnapshot->id,
+        'race' => fn (): int => $this->victimRace->id,
         'subjectId' => fn (): int => $this->victimActivity->id,
     ];
 

@@ -10,6 +10,7 @@ use App\Enums\RaceOutcome;
 use App\Models\PerformanceEvidence;
 use App\Models\RaceGoal;
 use App\Models\User;
+use App\Services\Gamification\SeasonRecordBuilder;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,7 @@ final readonly class RaceOutcomeService
         private RaceOutcomeMatcher $matcher,
         private RaceGoalService $races,
         private PerformanceEvidenceRecorder $evidence,
+        private SeasonRecordBuilder $seasonRecords,
     ) {
     }
 
@@ -69,6 +71,7 @@ final readonly class RaceOutcomeService
         });
 
         if ($changed) {
+            $this->seasonRecords->settleForRace($race);
             $this->evidence->retractForRace($user, $race);
         }
         if ($outcome === RaceOutcome::Confirmed) {

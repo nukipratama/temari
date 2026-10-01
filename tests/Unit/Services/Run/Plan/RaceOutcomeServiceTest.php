@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 use App\Enums\RaceChangeKind;
 use App\Enums\RaceOutcome;
+use App\Enums\SeasonPerformance;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PerformanceEvidence;
 use App\Models\RaceGoal;
+use App\Models\Season;
 use App\Models\User;
+use App\Services\Gamification\SeasonRecordBuilder;
 use App\Services\Run\Plan\RaceOutcomeService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -169,4 +172,16 @@ it('refuses another athlete\'s race', function (): void {
 
     expect(fn () => $this->service->record($intruder, $this->race, RaceOutcome::DidNotRun))->toThrow(AuthorizationException::class);
     expect($this->race->fresh()->outcome)->toBe(RaceOutcome::Pending);
+});
+
+it('carries a late confirmation into the performance of the season that was already settled', function (): void {
+    $season = Season::factory()->for($this->user)->create(['race_goal_id' => $this->race->id, 'starts_at' => '2026-09-01', 'ends_at' => '2026-10-04']);
+    app(SeasonRecordBuilder::class)->settle($this->user, $season->load('goals', 'raceGoal'), Carbon::today());
+    expect($season->fresh()->performance_state)->toBe(SeasonPerformance::Pending);
+
+    $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, finishTimeSec: 3_100);
+    expect($season->fresh()->performance_state)->toBe(SeasonPerformance::Met);
+
+    $this->service->record($this->user, $this->race->fresh(), RaceOutcome::DidNotRun);
+    expect($season->fresh()->performance_state)->toBe(SeasonPerformance::DidNotRun);
 });

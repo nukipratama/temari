@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Enums\RaceOutcome;
+use App\Models\RaceGoal;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -12,7 +13,10 @@ class StoreRaceOutcomeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        return $user !== null
+            && RaceGoal::query()->where('user_id', $user->id)->whereKey($this->route('race'))->exists();
     }
 
     /**

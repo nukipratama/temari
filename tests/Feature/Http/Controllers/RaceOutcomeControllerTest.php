@@ -77,7 +77,7 @@ it('never lets one athlete confirm another athlete\'s race', function (): void {
 
     $this->actingAs($intruder)
         ->post("/race/{$this->race->id}/outcome", ['outcome' => 'did_not_run'])
-        ->assertNotFound();
+        ->assertForbidden();
 
     expect($this->race->fresh()->outcome)->toBe(RaceOutcome::Pending);
 });

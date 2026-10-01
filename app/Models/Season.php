@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\SeasonPerformance;
 use App\Models\AI\Analysis;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 use Database\Factories\SeasonFactory;
@@ -58,12 +59,15 @@ use Override;
  * @property bool $opens_with_recovery
  * @property Carbon|null $under_ready_noted_at
  * @property Carbon|null $block_goals_appended_at
+ * @property int|null $process_pct
+ * @property SeasonPerformance|null $performance_state
+ * @property Carbon|null $record_settled_at
  * @property Carbon $starts_at
  * @property Carbon $ends_at
  * @property-read User $user
  * @property-read RaceGoal|null $raceGoal
  */
-#[Fillable(['user_id', 'race_goal_id', 'anchor_weekly_volume_km', 'volume_floor_km', 'increases_held', 'opens_with_recovery', 'under_ready_noted_at', 'block_goals_appended_at', 'starts_at', 'ends_at'])]
+#[Fillable(['user_id', 'race_goal_id', 'anchor_weekly_volume_km', 'volume_floor_km', 'increases_held', 'opens_with_recovery', 'under_ready_noted_at', 'block_goals_appended_at', 'process_pct', 'performance_state', 'record_settled_at', 'starts_at', 'ends_at'])]
 class Season extends Model
 {
     /** @use HasFactory<SeasonFactory> */
@@ -125,6 +129,9 @@ class Season extends Model
             'opens_with_recovery' => 'boolean',
             'under_ready_noted_at' => 'datetime',
             'block_goals_appended_at' => 'datetime',
+            'process_pct' => 'integer',
+            'performance_state' => SeasonPerformance::class,
+            'record_settled_at' => 'datetime',
             'starts_at' => 'date:Y-m-d',
             'ends_at' => 'date:Y-m-d',
         ];

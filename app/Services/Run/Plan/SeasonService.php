@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\HydrationBacklog;
 use App\Services\Gamification\SeasonGamificationContext;
+use App\Services\Gamification\SeasonRecordBuilder;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
@@ -81,6 +82,7 @@ final readonly class SeasonService
         private ResolveSeasonAction $season,
         private SeasonSummaryBuilder $seasonSummaryBuilder,
         private HydrationBacklog $hydrationBacklog,
+        private SeasonRecordBuilder $records,
     ) {
     }
 
@@ -153,6 +155,10 @@ final readonly class SeasonService
             // set/cleared) — close it early rather than leave it claiming
             // a window it no longer covers.
             $current->update(['ends_at' => $today->copy()->subDay()]);
+        }
+
+        if ($current !== null) {
+            $this->records->settle($user, $current, $today);
         }
 
         $season = Season::query()->create([

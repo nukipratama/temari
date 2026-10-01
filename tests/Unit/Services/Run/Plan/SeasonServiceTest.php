@@ -19,6 +19,8 @@ use App\Services\Run\Plan\SeasonSummaryBuilder;
 use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
+use App\Enums\RaceOutcome;
+use App\Enums\SeasonPerformance;
 use App\Enums\SessionType;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -600,4 +602,33 @@ it('keeps a race beyond the marathon on general goals with no block goals or und
     expect($metrics)->not->toContain('season_race_goal_met')->not->toContain('season_peak_weekly_km')
         ->and($season->block_goals_appended_at)->toBeNull()
         ->and($this->service->takeUnderReadyLine($season))->toBeNull();
+});
+
+it('settles the closing season\'s record when the next one opens, with a pending race reading as pending', function (): void {
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addWeeks(2)->toDateString(),
+        'outcome' => RaceOutcome::Pending,
+    ]);
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+
+    Carbon::setTestNow($race->race_date->copy()->addDay()->setTime(8, 0));
+    $race->update(['completed_at' => now()]);
+    $next = $this->service->ensureCurrent($user, Carbon::today());
+
+    expect($next->id)->not->toBe($season->id)
+        ->and($season->fresh()->record_settled_at)->not->toBeNull()
+        ->and($season->fresh()->performance_state)->toBe(SeasonPerformance::Pending)
+        ->and($season->fresh()->process_pct)->toBeInt()
+        ->and($next->performance_state)->toBeNull();
+});
+
+it('does not settle anything for the season it keeps', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(9)->toDateString()]);
+
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $this->service->ensureCurrent($user, Carbon::today());
+
+    expect($season->fresh()->record_settled_at)->toBeNull();
 });
