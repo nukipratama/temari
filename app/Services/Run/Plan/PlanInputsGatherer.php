@@ -41,6 +41,7 @@ final readonly class PlanInputsGatherer
         private TrainingPaceCalculator $paceCalculator,
         private RecentTrainingStress $trainingStress,
         private ResolveTrailingWeeksAction $trailingWeeks,
+        private RaceAmbitionAssessor $ambition,
     ) {
     }
 
@@ -57,6 +58,7 @@ final readonly class PlanInputsGatherer
         $this->seasonService->releaseHeldIncreases($season, $user, $today);
 
         $race = ($this->activeRace)($user->id);
+        $ambition = $race === null ? null : $this->ambition->assess($user, $race, $today);
         $preference = ($this->trainingPreference)($user->id);
         $baseline = $this->baseline->forUser($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
@@ -81,7 +83,7 @@ final readonly class PlanInputsGatherer
             sessionsPerWeek: $baseline['sessions_per_week'],
             runDays: $preference?->run_days,
             longRunDay: $preference?->long_run_day,
-            adaptation: $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race),
+            adaptation: $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race, $ambition),
             pinnedDates: $pinnedDates,
             // A day that already carries a verdict is the record of what was
             // run, not a slot left to plan. Since compliance lands at ingest
@@ -97,7 +99,7 @@ final readonly class PlanInputsGatherer
                 : $this->riegelProjector->project($user, (float) $race->distance_m)['predicted_sec'] ?? null,
             volumeFloorKm: $season->volume_floor_km,
             increasesHeld: $season->increases_held,
-            raceGoalTimeSec: $race?->goal_time_sec,
+            raceGoalTimeSec: $ambition?->prescribedTimeSec(),
             paces: $paces,
             longRunBaselineKm: $baseline['long_run_km'],
             longRunCapKm: $baseline['long_run_cap_km'],

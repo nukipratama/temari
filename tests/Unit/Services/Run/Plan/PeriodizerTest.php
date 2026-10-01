@@ -699,7 +699,7 @@ it('caps future quality around a settled tempo and a race-pace Long in the curre
     RaceGoal::factory()->for($user)->create([
         'race_date' => Carbon::today()->addDays(25)->toDateString(),
         'distance_m' => 42_195,
-        'goal_time_sec' => 10_800,
+        'goal_time_sec' => 12_000,
     ]);
     PersonalRecord::factory()->for($user)->create([
         'category' => '10km',

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
 use App\Enums\IngestState;
+use App\Enums\RaceAmbitionState;
+use App\Services\Run\Plan\RaceAmbition;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -476,6 +478,35 @@ it('turns a race projection slower than the goal time into a behind-pace verdict
 
     expect($decision['reason'])->toBe(AdaptationReason::BehindRacePace)
         ->and($decision['quality_delta'])->toBe(1);
+
+    Carbon::setTestNow();
+});
+
+it('does not chase an unsupported race ambition with extra quality', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create([
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3000,
+        'race_date' => '2026-09-07',
+    ]);
+
+    $trainingLoad = Mockery::mock(TrainingLoad::class);
+    $trainingLoad->shouldReceive('summary')->andReturn([
+        'monotony' => 1.1, 'strain' => 100.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
+    ]);
+    $riegel = Mockery::mock(RiegelProjector::class);
+    $riegel->shouldReceive('project')->andReturn([
+        'predicted_sec' => 4200.0, 'low_sec' => 4000.0, 'high_sec' => 4400.0,
+        'exponent' => 1.06, 'sample_size' => 3, 'confidence' => 'medium',
+    ]);
+    $unsupported = new RaceAmbition(RaceAmbitionState::Unsupported, 3000, 300, 4200, 420, 28.6, 'confirmed');
+
+    $adapter = new PlanAdapter($trainingLoad, $riegel, app(HydrationBacklog::class));
+    $decision = $adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), $race, $unsupported);
+
+    expect($decision['reason'])->toBe(AdaptationReason::Steady)
+        ->and($decision['quality_delta'])->toBe(0);
 
     Carbon::setTestNow();
 });

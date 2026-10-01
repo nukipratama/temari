@@ -40,6 +40,7 @@ final readonly class CurrentWeekPlanBuilder
         private ResolveActiveRaceAction $activeRace,
         private ResolvePlannedSessionsAction $plannedSessions,
         private HydrationBacklog $hydrationBacklog,
+        private RaceAmbitionAssessor $ambition,
     ) {
     }
 
@@ -187,7 +188,7 @@ final readonly class CurrentWeekPlanBuilder
             $resolvedStatuses[$s->date->toDateString()] ?? PlannedSessionStatus::Planned,
             $activityByDate[$s->date->toDateString()] ?? null,
             $clampVoice,
-            $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
+            $race !== null && $s->date->isSameDay($race->race_date) ? $this->ambition->assess($user, $race, $today)->prescribedTimeSec() : null,
             $baselineData['long_run_progression_cap_km'],
             $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
             $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,

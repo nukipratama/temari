@@ -7,6 +7,7 @@ namespace App\Services\Run\Plan;
 use App\Enums\AdaptationReason;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\RaceAmbitionState;
 use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
@@ -65,7 +66,7 @@ final readonly class PlanAdapter
      *
      * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int, stimulus_adherence_pct: int}
      */
-    public function forWeek(User $user, Carbon $weekStart, Carbon $today, ?RaceGoal $race): array
+    public function forWeek(User $user, Carbon $weekStart, Carbon $today, ?RaceGoal $race, ?RaceAmbition $ambition = null): array
     {
         $loadPending = $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
         $load = $loadPending ? null : $this->trainingLoad->summary($user, $today);
@@ -84,7 +85,7 @@ final readonly class PlanAdapter
             $stimulus['reduction_misses'],
             $execution['ragged'],
             $execution['egregious_easy'],
-            $this->raceGapRatio($user, $race),
+            $this->raceGapRatio($user, $race, $ambition),
         );
     }
 
@@ -335,9 +336,9 @@ final readonly class PlanAdapter
         return [$previousStart, $previousStart->copy()->addDays(6)];
     }
 
-    private function raceGapRatio(User $user, ?RaceGoal $race): ?float
+    private function raceGapRatio(User $user, ?RaceGoal $race, ?RaceAmbition $ambition): ?float
     {
-        if ($race === null || $race->goal_time_sec <= 0) {
+        if ($race === null || $race->goal_time_sec <= 0 || $ambition?->state === RaceAmbitionState::Unsupported) {
             return null;
         }
 
