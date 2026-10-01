@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Enums\RaceAmbitionState;
 use App\Enums\RaceSupport;
+use App\Enums\PrCategory;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\Run\Metrics\VdotEstimator;
@@ -36,9 +37,11 @@ final readonly class RaceAmbitionAssessor
 
         $supportedSec = (int) round($supportedSec);
         $gap = 1 - $race->goal_time_sec / $supportedSec;
+        $evidenceM = $estimate['distance_m'] ?? PrCategory::tryFrom($estimate['source_category'])?->distanceMeters();
 
         return new RaceAmbition(
             match (true) {
+                $evidenceM === null || $evidenceM < $race->distance_m / 2 => RaceAmbitionState::LowEvidence,
                 $gap <= self::ON_TRACK_WITHIN => RaceAmbitionState::OnTrack,
                 $gap <= self::AMBITIOUS_WITHIN => RaceAmbitionState::Ambitious,
                 default => RaceAmbitionState::Unsupported,

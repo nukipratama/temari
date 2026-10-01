@@ -21,9 +21,12 @@ final readonly class RaceAmbition
 
     public function prescribedTimeSec(): int
     {
-        return $this->state === RaceAmbitionState::Unsupported && $this->supportedTimeSec !== null
-            ? $this->supportedTimeSec
-            : $this->targetTimeSec;
+        return match (true) {
+            $this->supportedTimeSec === null => $this->targetTimeSec,
+            $this->state === RaceAmbitionState::Unsupported => $this->supportedTimeSec,
+            $this->state === RaceAmbitionState::LowEvidence => max($this->targetTimeSec, $this->supportedTimeSec),
+            default => $this->targetTimeSec,
+        };
     }
 
     /**

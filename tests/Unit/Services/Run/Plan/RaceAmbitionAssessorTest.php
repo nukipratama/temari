@@ -81,3 +81,44 @@ it('does not classify a race beyond the marathon', function (): void {
 
     expect($this->assessor->assess($this->user, $race)->state)->toBe(RaceAmbitionState::Unknown);
 });
+
+function evidenceAt(User $user, int $distanceM, int $seconds): void
+{
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => $distanceM, 'elapsed_time_sec' => $seconds,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+}
+
+function marathonRace(User $user, int $goalSec): RaceGoal
+{
+    return RaceGoal::factory()->for($user)->create([
+        'distance_m' => 42_195, 'goal_time_sec' => $goalSec, 'race_date' => Carbon::today()->addWeeks(16)->toDateString(),
+    ]);
+}
+
+it('reads a marathon assessed from 10K evidence alone as low evidence and prescribes the supported time', function (): void {
+    tenKEvidence($this->user, 2_700);
+    $ambition = $this->assessor->assess($this->user, marathonRace($this->user, 12_000));
+
+    expect($ambition->state)->toBe(RaceAmbitionState::LowEvidence)
+        ->and($ambition->supportedTimeSec)->not->toBeNull()
+        ->and($ambition->prescribedTimeSec())->toBe($ambition->supportedTimeSec);
+});
+
+it('never prescribes a low-evidence time faster than the athlete\'s own target', function (): void {
+    tenKEvidence($this->user, 2_700);
+    $ambition = $this->assessor->assess($this->user, marathonRace($this->user, 18_000));
+
+    expect($ambition->state)->toBe(RaceAmbitionState::LowEvidence)
+        ->and($ambition->prescribedTimeSec())->toBe(18_000);
+});
+
+it('applies the bands once the evidence covers at least half the race distance', function (int $evidenceM, RaceAmbitionState $state): void {
+    evidenceAt($this->user, $evidenceM, (int) round($evidenceM * 0.27));
+
+    expect($this->assessor->assess($this->user, tenKRace($this->user, 2_000))->state)->toBe($state);
+})->with([
+    'a 5K covers half a 10K' => [5_000, RaceAmbitionState::Unsupported],
+    'a 3K does not' => [3_000, RaceAmbitionState::LowEvidence],
+]);

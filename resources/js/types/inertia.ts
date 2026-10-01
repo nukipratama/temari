@@ -82,7 +82,7 @@ export interface ActiveRace {
 }
 
 export type RaceAmbitionState =
-    'on_track' | 'ambitious' | 'unsupported' | 'unknown';
+    'on_track' | 'ambitious' | 'unsupported' | 'low_evidence' | 'unknown';
 
 /**
  * The athlete's stated target beside the effort their recent running supports.

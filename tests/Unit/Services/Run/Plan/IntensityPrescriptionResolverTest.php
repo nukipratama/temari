@@ -110,3 +110,10 @@ it('never prescribes a Peak threshold block longer than the athlete could race a
         ->and($peak->paceBand)->toBe(PaceBand::Threshold)
         ->and(app(VdotEstimator::class)->raceTimeForVdot($vdot, $blockMeters))->toBeLessThanOrEqual($peak->hardMinutes * 60.0);
 })->with([35.0, 55.0]);
+
+it('never prescribes a marathon-pace block faster than the VDOT marathon equivalent, whatever the goal time', function (SessionType $type, PlanPhase $phase): void {
+    $prescription = $this->resolver->resolve($type, $phase, 42_195, 10_800, PRESCRIPTION_PACES);
+
+    expect($prescription->paceBand === PaceBand::Marathon ? $prescription->paceSecPerKm : PRESCRIPTION_PACES['marathon'])
+        ->toBeGreaterThanOrEqual(PRESCRIPTION_PACES['marathon']);
+})->with([SessionType::Long, SessionType::Tempo])->with([PlanPhase::Base, PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper]);
