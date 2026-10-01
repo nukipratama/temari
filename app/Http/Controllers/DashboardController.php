@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -58,6 +60,16 @@ class DashboardController extends Controller
             'hasRuns' => fn (): bool => ActivityDetail::query()->forUser($user->id)->exists(),
             'pastYouTrend' => fn (): array => $pastYouTrend->payload($user, $today),
             'weekPlan' => fn (): ?array => $weekPlanBuilder->forUser($user, $today),
+            'pendingRaceOutcome' => function () use ($user, $today): ?array {
+                $race = RaceGoal::query()
+                    ->where('user_id', $user->id)
+                    ->where('outcome', RaceOutcome::Pending)
+                    ->whereDate('race_date', '<=', $today->toDateString())
+                    ->orderByDesc('race_date')
+                    ->first();
+
+                return $race === null ? null : ['id' => $race->id, 'name' => $race->name, 'race_date' => $race->race_date->toDateString()];
+            },
         ];
 
         // Only a planned rest day pays for this: every other day skips both

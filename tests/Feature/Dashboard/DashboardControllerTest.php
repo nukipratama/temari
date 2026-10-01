@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -439,7 +440,8 @@ it('paints Home inside its query budget', function (): void {
     // 19: the controller reads today's own session_type once to decide
     // whether restDayEasePace's deferred prop is worth adding at all.
     // 24: BriefingContext::prescribedKmToDate reads this week's planned sessions.
-    expect($queries)->toBeLessThanOrEqual(24);
+    // 25: Home asks about a passed race still waiting on its outcome.
+    expect($queries)->toBeLessThanOrEqual(25);
     expect($fitnessQueries)->toBe(['performance_evidence' => 1, 'fitness_anchors' => 1]);
     expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
 
@@ -594,3 +596,25 @@ function steadyHomeQueries(object $test, User $user): int
 
     return $queries;
 }
+
+it('asks Home about the newest passed race still waiting on its outcome, never another athlete\'s', function (): void {
+    Carbon::setTestNow('2026-10-06 08:00:00');
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-04', 'name' => 'Bandung Half', 'outcome' => RaceOutcome::Pending, 'completed_at' => '2026-10-04 23:00:00']);
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-09-06', 'name' => 'Old 10K', 'outcome' => RaceOutcome::Confirmed, 'completed_at' => '2026-09-06 23:00:00']);
+    RaceGoal::factory()->for(User::factory())->create(['race_date' => '2026-10-05', 'outcome' => RaceOutcome::Pending, 'completed_at' => '2026-10-05 23:00:00']);
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pendingRaceOutcome.name', 'Bandung Half')
+            ->where('pendingRaceOutcome.race_date', '2026-10-04'));
+
+    Carbon::setTestNow();
+});
+
+it('ships no race-outcome prompt once every passed race has its outcome', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page->where('pendingRaceOutcome', null));
+});

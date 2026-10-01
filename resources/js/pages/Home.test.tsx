@@ -148,11 +148,12 @@ const weekPlan: WeekPlan = {
             ran_anyway: false,
             prescribed_km: null,
             prescription_reason: null,
-            clamp: null,
+            advice_note: null,
             eased_from: null,
             pace_eased_from: null,
             credit_note: null,
-            hot_note: null,
+            ran_hot: false,
+            result_note: null,
             ran_pace_sec_per_km: null,
             actual_km: null,
             credited_km: null,
@@ -189,6 +190,29 @@ describe('Home', () => {
                 ).toBeTruthy();
             }
         });
+    });
+
+    it('asks about a passed race with no outcome yet, and stays quiet otherwise', () => {
+        const { rerender } = renderHome();
+        expect(screen.queryByText(/^how did /)).not.toBeInTheDocument();
+
+        rerender(
+            <Home
+                briefing={briefing}
+                snapshot={snapshot}
+                hasRuns
+                pastYouTrend={trend()}
+                weekPlan={null}
+                pendingRaceOutcome={{
+                    id: 9,
+                    name: 'Bandung Half',
+                    race_date: '2026-10-04',
+                }}
+            />,
+        );
+        expect(
+            screen.getByText('how did Bandung Half go?'),
+        ).toBeInTheDocument();
     });
 
     it("draws the prototype's no-plan card when the backend shipped no plan", () => {
