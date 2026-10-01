@@ -522,25 +522,4 @@ class VdotEstimator
 
         return ($fastest + $slowest) / 2;
     }
-
-    public function raceTimeForVdot(float $vdot, float $distanceMeters): ?float
-    {
-        if ($vdot <= 0 || $distanceMeters <= 0) {
-            return null;
-        }
-
-        $fastest = 60.0;
-        $slowest = 604_800.0;
-        for ($i = 0; $i < 60; $i++) {
-            $middle = ($fastest + $slowest) / 2;
-            $middleVdot = $this->vdotFromTimeAndDistance($middle, $distanceMeters);
-            if ($middleVdot !== null && $middleVdot > $vdot) {
-                $fastest = $middle;
-            } else {
-                $slowest = $middle;
-            }
-        }
-
-        return ($fastest + $slowest) / 2;
-    }
 }
