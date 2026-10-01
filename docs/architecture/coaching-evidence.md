@@ -26,6 +26,8 @@ code_refs:
   - app/Services/Gamification/SeasonGamificationContext.php
   - app/Services/Run/Metrics/TrainingFormStatus.php
   - app/Services/Run/Plan/PlanRenderer.php
+  - app/Services/Run/Plan/PlanRecalibrationService.php
+  - app/Services/Run/Plan/CoachingReset.php
   - app/Services/Run/Story/Temari.php
   - resources/js/components/settings/HrZonesDisclosure.tsx
   - resources/js/lib/raceGoal.ts
@@ -77,6 +79,8 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | The Race page and Trends show the target beside the supported time, and "on track for" only in the on-track band with the supported time not behind the target | [raceGoal.ts:169](resources/js/lib/raceGoal.ts#L169), [TrendsController.php:55](app/Http/Controllers/TrendsController.php#L55) | product choice | [[#VickersVertosick2016]] |
 | The advised session (a recorded ease, or today's advisory) leads the day on every surface; a pinned or Race day keeps its prescription and carries the advice as a note | [PlanRenderer.php:238](app/Services/Run/Plan/PlanRenderer.php#L238) | product choice | — |
 | A run's fallback mood follows the same effort scale as its colour | [Temari.php:109](app/Services/Run/Story/Temari.php#L109) | product choice | — |
+| Ordinary recalibration recomputes metrics and the future plan but keeps past prescriptions and shown-advice grades | [PlanRecalibrationService.php:47](app/Services/Run/Plan/PlanRecalibrationService.php#L47) | product choice (#1511) | — |
+| One pre-launch reset rebuilds derived history once under the current policy | [CoachingReset.php:64](app/Services/Run/Plan/CoachingReset.php#L64) | product choice (#1541) | — |
 
 ## Sources
 

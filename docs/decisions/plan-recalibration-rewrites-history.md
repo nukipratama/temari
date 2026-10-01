@@ -2,7 +2,8 @@
 title: Plan recalibration rewrites derived training history
 description: HR-zone and intensity-policy changes recompute derived metrics and plan verdicts as one per-user recalibration, while old narration remains visibly stale.
 tags: [decision, run, plan]
-status: accepted
+status: superseded
+superseded_by: a-one-time-reset-rebuilds-history-before-launch
 reviewed: 2026-09-22
 code_refs:
   - app/Services/Run/Plan/PlanRecalibrationService.php
@@ -13,6 +14,8 @@ code_refs:
 ---
 
 # Plan recalibration rewrites derived training history
+
+> **Superseded (2026-10-02) by [[a-one-time-reset-rebuilds-history-before-launch]].** Ordinary recalibration no longer rewrites past prescriptions or re-grades past days; only the one-time `coaching:reset` does.
 
 **Status:** Accepted (2026-09-22). Supersedes the "nothing is rescored; past verdicts stand" consequence and the rejected historical-rescore alternative in [[a-session-is-the-whole-outing]]. Its whole-outing and no-cooldown decisions remain unchanged.
 
