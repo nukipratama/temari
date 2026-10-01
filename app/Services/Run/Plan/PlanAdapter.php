@@ -50,7 +50,7 @@ final readonly class PlanAdapter
     /** Number of settled weeks that can contribute to a repeated-stimulus reduction. */
     public const int STIMULUS_HISTORY_WEEKS = 3;
 
-    /** Projection within this fraction of the goal time is on track; neither direction fires. */
+    /** A projection faster than the goal time by more than this fraction reads ahead of pace. */
     public const float RACE_GAP_MARGIN = 0.02;
 
     public function __construct(
@@ -96,7 +96,7 @@ final readonly class PlanAdapter
      * @param  int  $stimulusMissesInWindow  missed key sessions across the settled three-week window
      * @param  int  $raggedDays  days last week whose runs came in harder than the day was written for
      * @param  int  $egregiousEasyDays  of those, easy days so far above Z2 that one is the whole verdict
-     * @param  float|null  $raceGapRatio  projected finish / goal time; above 1.0 the athlete is behind their goal
+     * @param  float|null  $raceGapRatio  projected finish / goal time; only a reading inside the goal is named, and it changes no work
      * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int, stimulus_adherence_pct: int}
      */
     public static function decide(
@@ -115,7 +115,6 @@ final readonly class PlanAdapter
             'reason' => $reason,
             'deload' => $reason->isDeload(),
             'quality_delta' => match ($reason) {
-                AdaptationReason::BehindRacePace => 1,
                 AdaptationReason::RanTooHard => -1,
                 AdaptationReason::MissedStimulus => self::stimulusNeedsReduction($stimulusMissesInWindow) ? -1 : 0,
                 default => 0,
@@ -145,15 +144,9 @@ final readonly class PlanAdapter
         if ($stimulusMisses > 0) {
             return AdaptationReason::MissedStimulus;
         }
-        if ($raceGapRatio === null) {
-            return AdaptationReason::Steady;
-        }
-
-        return match (true) {
-            $raceGapRatio > 1.0 + self::RACE_GAP_MARGIN => AdaptationReason::BehindRacePace,
-            $raceGapRatio < 1.0 - self::RACE_GAP_MARGIN => AdaptationReason::AheadOfRacePace,
-            default => AdaptationReason::Steady,
-        };
+        return $raceGapRatio !== null && $raceGapRatio < 1.0 - self::RACE_GAP_MARGIN
+            ? AdaptationReason::AheadOfRacePace
+            : AdaptationReason::Steady;
     }
 
     private static function stimulusNeedsReduction(int $misses): bool

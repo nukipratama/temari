@@ -726,7 +726,7 @@ it('caps future quality around a settled tempo and a race-pace Long in the curre
     $thursday = PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->copy()->addDays(3)->toDateString())->firstOrFail();
     $sunday = PlannedSession::query()->where('user_id', $user->id)->where('date', $weekStart->copy()->addDays(6)->toDateString())->firstOrFail();
 
-    expect(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->quality_delta)->toBe(1)
+    expect(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->quality_delta)->toBe(0)
         ->and($settledTempo->fresh()->session_type)->toBe(SessionType::Tempo)
         ->and($thursday->session_type)->toBe(SessionType::Easy)
         ->and($thursday->prescribed_hard_minutes)->toBe(0)
