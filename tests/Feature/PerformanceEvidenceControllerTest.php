@@ -34,6 +34,19 @@ it('rejects future performances and distances outside the qualifying range', fun
     expect(PerformanceEvidence::query()->count())->toBe(0);
 });
 
+it('rejects implausible times that would corrupt every pace', function (int $distance, int $seconds): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->postJson(route('fitness.evidence.store'), [
+        'kind' => 'test', 'distance_m' => $distance, 'elapsed_time_sec' => $seconds, 'performed_on' => '2026-10-01',
+    ])->assertUnprocessable()->assertJsonValidationErrors('elapsed_time_sec');
+    expect(PerformanceEvidence::query()->count())->toBe(0);
+})->with([
+    'a 5k in a minute' => [5000, 60],
+    'a marathon in an hour' => [42_195, 3600],
+    'a 5k in a day' => [5000, 86_400],
+]);
+
 it('treats activity confirmation as idempotent and preserves the first confirmed details', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();

@@ -17,9 +17,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PerformanceEvidenceController extends Controller
 {
+    private const float MIN_PLAUSIBLE_VDOT = 15.0;
+
+    private const float MAX_PLAUSIBLE_VDOT = 90.0;
+
     public function __construct(
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $trainingPaceCalculator,
@@ -39,6 +44,11 @@ class PerformanceEvidenceController extends Controller
             'activity_id' => ['nullable', 'integer', Rule::exists('activities', 'id')->where('user_id', $user->id)],
             'race_goal_id' => ['nullable', 'integer', Rule::exists('race_goals', 'id')->where('user_id', $user->id)],
         ]);
+
+        $performanceVdot = $this->vdotEstimator->vdotFromTimeAndDistance($attributes['elapsed_time_sec'], $attributes['distance_m']);
+        if ($performanceVdot === null || $performanceVdot < self::MIN_PLAUSIBLE_VDOT || $performanceVdot > self::MAX_PLAUSIBLE_VDOT) {
+            throw ValidationException::withMessages(['elapsed_time_sec' => 'This time is not plausible for the distance.']);
+        }
 
         $before = $this->vdotEstimator->estimate($user);
         $evidenceAttributes = [...$attributes, 'user_id' => $user->id, 'confirmed_at' => now()];
