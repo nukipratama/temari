@@ -283,6 +283,20 @@ it('uses performed easy effort instead of the original settled tempo dose', func
     expect($rows['2026-09-24']['prescribed_hard_minutes'])->toBeGreaterThan(0);
 });
 
+it('does not treat missing effort evidence on a completed quality slot as measured easy work', function (): void {
+    $inputs = new PlanInputs(...[
+        ...get_object_vars(arcInputs(today: '2026-09-23')),
+        'runDays' => [0, 3, 5], 'longRunDay' => 5,
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+        'fixedSessions' => ['2026-09-21' => ['session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Threshold, 'hard_minutes' => null]],
+        'actualSessions' => [['date' => '2026-09-21', 'duration_minutes' => 40, 'hard_minutes' => null, 'demanding' => false]],
+    ]);
+    $rows = app(Periodizer::class)->rowsFor($inputs);
+    expect($rows['2026-09-24']['prescribed_hard_minutes'])->toBe(0)
+        ->and($rows['2026-09-24']['prescription_reason'])->toContain('unmeasured hard minutes');
+});
+
 it('includes measured hard minutes even when only one completed hard day exists', function (): void {
     $inputs = new PlanInputs(...[
         ...get_object_vars(arcInputs(today: '2026-09-23')),

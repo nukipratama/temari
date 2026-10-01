@@ -647,9 +647,10 @@ final readonly class Periodizer
             $actuals[$date]['hard_minutes'] = $actuals[$date]['hard_minutes'] === null || ($actual['hard_minutes'] === null && $actual['demanding'])
                 ? null
                 : $actuals[$date]['hard_minutes'] + ($actual['hard_minutes'] ?? 0);
-            if (($sessions[$date]['session_type'] ?? null) === SessionType::Race && $actual['hard_minutes'] === null) {
-                $actuals[$date]['session_type'] = SessionType::Race;
-                $actuals[$date]['demanding'] = true;
+            if ($actual['hard_minutes'] === null && isset($sessions[$date]) && self::isHardDay($sessions[$date])) {
+                $actuals[$date]['session_type'] = $sessions[$date]['session_type'];
+                $actuals[$date]['prescribed_hard_minutes'] = $sessions[$date]['prescribed_hard_minutes'];
+                $actuals[$date]['prescribed_pace_band'] = $sessions[$date]['prescribed_pace_band'];
                 $actuals[$date]['hard_minutes'] = null;
             }
         }
