@@ -29,7 +29,7 @@ final readonly class ClampNarrationContext
     }
 
     /**
-     * @return array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool}|null
+     * @return array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool, readiness_reasons: list<string>, readiness_inputs: array<string, mixed>, decision_source: string}|null
      *                                                                                                                   null when the day has no session, or already fits under the ceiling
      */
     public function forUserOn(int $userId, Carbon $date): ?array
@@ -48,9 +48,20 @@ final readonly class ClampNarrationContext
             return null;
         }
 
-        $ceiling = ReadinessCeiling::from(
-            BriefingContext::forUser($user, $date, $this->trainingLoad->summary($user, $date))->readinessCeiling,
-        );
+        $recordedAssessment = $session->readiness_assessment;
+        $hasRecordedAdjustment = $session->rest_clamped_at !== null || $session->clamped_km !== null;
+        if ($hasRecordedAdjustment && is_array($recordedAssessment) && is_string($recordedAssessment['ceiling'] ?? null)) {
+            $assessment = $recordedAssessment;
+            $decisionSource = 'recorded';
+        } else {
+            $assessment = BriefingContext::forUser($user, $date, $this->trainingLoad->summary($user, $date))->readinessAssessment;
+            $decisionSource = 'live';
+        }
+        $ceiling = ReadinessCeiling::from($assessment['ceiling']);
+        if ($ceiling === ReadinessCeiling::ModerateOk
+            && ($session->session_type === SessionType::Race || IntensityPrescription::fromSession($session)?->isEasy() === false)) {
+            return null;
+        }
 
         $clampedTo = ReadinessClamp::downgradeFor($session->session_type, $ceiling);
         if ($clampedTo === null) {
@@ -65,6 +76,9 @@ final readonly class ClampNarrationContext
                 ->where('user_id', $userId)
                 ->whereHas('detail', fn ($q) => $q->whereDate('start_date_local', $date->toDateString()))
                 ->exists(),
+            'readiness_reasons' => $assessment['reasons'],
+            'readiness_inputs' => $assessment['inputs'],
+            'decision_source' => $decisionSource,
         ];
     }
 }

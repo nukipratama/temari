@@ -60,10 +60,22 @@ final readonly class PlanNarrationRequester
      */
     public function clampVoiceFor(User $user, Carbon $today): ?string
     {
-        return Analysis::query()
+        $context = $this->clampContext->forUserOn($user->id, $today);
+        if ($context === null) {
+            return null;
+        }
+
+        $analysis = Analysis::query()
             ->forSubject(AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanClampVoice, $today->toDateString())
             ->where('status', AnalysisStatus::Done)
-            ->value('content');
+            ->first(['content', 'content_fingerprint']);
+        if ($analysis === null) {
+            return null;
+        }
+
+        $expected = MaterialFingerprint::forClamp($context['ceiling'], $context['clamped_to'], $context['has_run_today'], $context['readiness_reasons']);
+
+        return $analysis->content_fingerprint === $expected ? $analysis->content : null;
     }
 
     /**
@@ -129,7 +141,7 @@ final readonly class PlanNarrationRequester
             ->forSubject(AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanClampVoice, $discriminator)
             ->where('status', AnalysisStatus::Done)
             ->value('content_fingerprint');
-        $expected = MaterialFingerprint::forClamp($context['ceiling'], $context['clamped_to'], $context['has_run_today']);
+        $expected = MaterialFingerprint::forClamp($context['ceiling'], $context['clamped_to'], $context['has_run_today'], $context['readiness_reasons']);
 
         $this->analysisService->request(
             subjectOrType: AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,

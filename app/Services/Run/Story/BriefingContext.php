@@ -8,10 +8,12 @@ use NoDiscard;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\RecoveryFeedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\DistanceFormatter;
+use App\Services\Run\Metrics\RecentTrainingStress;
 use App\Services\Run\Metrics\Readiness;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
@@ -33,6 +35,7 @@ use Illuminate\Support\Carbon;
  */
 final readonly class BriefingContext
 {
+    /** @param array<string, mixed> $readinessAssessment */
     public function __construct(
         public ?int $thisWeekRuns,
         /** Last week's real runs through the same weekday $asOf falls on this week, not the full week. */
@@ -56,6 +59,8 @@ final readonly class BriefingContext
         public string $readinessCeiling,
         /** Gentle "build, don't coast" flag for the fresh-but-detraining case. */
         public bool $buildNudge,
+        /** The immutable decision facts exposed to narration and recommendation history. */
+        public array $readinessAssessment,
         /** A fresh connect's early pass: older history is still hydrating. */
         public bool $historyLoading = false,
     ) {
@@ -108,27 +113,29 @@ final readonly class BriefingContext
         $volumeRampPct = self::volumeRampPct($thisWeek?->distance_km, $lastWeekToDate['km']);
         $fitnessTrend = self::fitnessTrend($byDate);
 
-        // Readiness keys off the live load when we have it (same numbers the LLM
-        // sees), falling back to the weekly snapshot otherwise.
-        $snapshotMonotony = null;
-        if ($thisWeek !== null && $thisWeek->monotony !== null) {
-            $snapshotMonotony = $thisWeek->monotony;
-        } elseif ($lastWeek !== null) {
-            $snapshotMonotony = $lastWeek->monotony;
-        }
-        // The form_status shown to the LLM and the one readiness caps off must
-        // be the same source, or the prompt sees a snapshot form that
-        // contradicts the ceiling. Prefer the live load, fall back to snapshot.
-        $formStatus = self::stringOrNull($load['form_status'] ?? null) ?? $snapshotFormStatus;
-        $readinessMonotony = self::floatOrNull($load['monotony'] ?? null) ?? $snapshotMonotony;
+        $liveFormStatus = self::stringOrNull($load['form_status'] ?? null);
+        $formStatus = $liveFormStatus ?? $snapshotFormStatus;
+        $readinessMonotony = self::floatOrNull($load['monotony'] ?? null);
+        $stressProfile = $historyLoading ? null : app(RecentTrainingStress::class)->forUser($user, $asOf);
+        $feedback = self::recoveryFeedback($user, $asOf);
+        $weeklyTrimp = self::floatOrNull($load['weekly_trimp'] ?? null);
+        $weeklyTrimpRange = self::trimpRange($load['weekly_trimp_range'] ?? null);
+        $formConflict = $liveFormStatus !== null
+            && $snapshotFormStatus !== null
+            && $liveFormStatus !== $snapshotFormStatus;
 
         $readiness = Readiness::assess(
-            formStatus: $formStatus,
+            formStatus: $liveFormStatus,
             recoveryHours: $recovery->recoveryHours,
             ranToday: $recovery->ranToday,
             monotony: $readinessMonotony,
             volumeRampPct: $volumeRampPct,
             fitnessTrend: $fitnessTrend,
+            stressProfile: $stressProfile,
+            feedback: $feedback,
+            weeklyTrimp: $weeklyTrimp,
+            weeklyTrimpRange: $weeklyTrimpRange,
+            formConflict: $formConflict,
         );
 
         return new self(
@@ -146,6 +153,7 @@ final readonly class BriefingContext
             volumeRampPct: $volumeRampPct,
             readinessCeiling: $readiness->ceiling->value,
             buildNudge: $readiness->buildNudge,
+            readinessAssessment: $readiness->toArray(),
             historyLoading: $historyLoading,
         );
     }
@@ -283,6 +291,40 @@ final readonly class BriefingContext
         return is_int($value) || is_float($value) ? (float) $value : null;
     }
 
+    /** @return array{low: float, high: float}|null */
+    private static function trimpRange(mixed $value): ?array
+    {
+        if (! is_array($value) || ! is_numeric($value['low'] ?? null) || ! is_numeric($value['high'] ?? null)) {
+            return null;
+        }
+
+        return ['low' => (float) $value['low'], 'high' => (float) $value['high']];
+    }
+
+    /** @return array<string, mixed>|null */
+    private static function recoveryFeedback(User $user, Carbon $asOf): ?array
+    {
+        $feedback = RecoveryFeedback::query()
+            ->where('user_id', $user->id)
+            ->where('date', '<=', $asOf->toDateString())
+            ->orderByDesc('date')
+            ->first();
+
+        if ($feedback === null) {
+            return null;
+        }
+
+        return [
+            'date' => $feedback->date->toDateString(),
+            'freshness' => $feedback->date->isSameDay($asOf) ? 'current' : 'stale',
+            'sleep_quality' => $feedback->sleep_quality?->value,
+            'fatigue' => $feedback->fatigue?->value,
+            'soreness' => $feedback->soreness?->value,
+            'concerning_pain' => $feedback->concerning_pain,
+            'illness' => $feedback->illness,
+        ];
+    }
+
     /**
      * @param  array<string, WeeklySnapshot>  $byDate  Keyed by week_ending ISO date.
      */
@@ -335,7 +377,7 @@ final readonly class BriefingContext
             'recovery_hours' => $this->recoveryHours,
             'ran_today' => $this->ranToday,
             'days_since_last_run' => $this->daysSinceLastRun,
-            'form_status' => $this->formStatus,
+            'form_status' => $this->readinessAssessment['inputs']['form_status'],
             'time_bucket' => $this->timeBucket,
             'consecutive_weeks_active' => $this->consecutiveWeeksActive,
             'fitness_trend' => $this->fitnessTrend,
@@ -345,6 +387,8 @@ final readonly class BriefingContext
             ],
             'readiness_ceiling' => $this->readinessCeiling,
             'build_nudge' => $this->buildNudge,
+            'readiness_reasons' => $this->readinessAssessment['reasons'],
+            'readiness_assessment' => $this->readinessAssessment,
             ...($this->historyLoading ? ['history_loading' => true] : []),
         ];
     }

@@ -75,12 +75,14 @@ final class MaterialFingerprint
      * athlete has already run are the whole substance of the sentence — a
      * ceiling that slides within its own band changes nothing worth saying.
      */
-    public static function forClamp(ReadinessCeiling $ceiling, SessionType $clampedTo, bool $hasRunToday): string
+    /** @param list<string> $readinessReasons */
+    public static function forClamp(ReadinessCeiling $ceiling, SessionType $clampedTo, bool $hasRunToday, array $readinessReasons = []): string
     {
         return self::digest([
             'ceiling' => $ceiling->value,
             'clamped_to' => $clampedTo->value,
             'has_run_today' => $hasRunToday,
+            ...($readinessReasons === [] ? [] : ['readiness_reasons' => $readinessReasons]),
         ]);
     }
 

@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
+use App\Models\RecoveryFeedback;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
@@ -211,7 +212,7 @@ it('steps a tempo day eased to easy down on the Plan row today, tempo still lead
         ->and($day['clamp']['note'])->not->toBeNull();
 });
 
-it('holds todays advisory clamp on the Plan row while a run inside the load window still awaits hydration, and resumes once it lands', function (): void {
+it('holds todays advisory clamp while a demanding run awaits hydration, then applies its evidence', function (): void {
     $user = assemblerAthlete();
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
@@ -223,11 +224,13 @@ it('holds todays advisory clamp on the Plan row while a run inside the load wind
         'session_type' => SessionType::Interval,
     ]);
     $activity = Activity::factory()->summaryOnly()->for($user)->create();
-    // No heart rate, so hydrating this run doesn't introduce a competing live form_status.
     ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::today()->copy()->subDays(41)->setTime(7, 0),
-        'has_heartrate' => false,
-        'trimp_edwards' => null,
+        'start_date_local' => Carbon::today()->copy()->subDay()->setTime(12, 0),
+        'elapsed_time' => 3600,
+        'distance' => 10_000,
+        'has_heartrate' => true,
+        'trimp_edwards' => 130.0,
+        'stream_summary' => ['time_in_zone_min' => ['Z2' => 20, 'Z4' => 12]],
     ]);
 
     $held = collect($this->assembler->weeks($user, Carbon::today()))
@@ -239,7 +242,34 @@ it('holds todays advisory clamp on the Plan row while a run inside the load wind
         ->firstWhere('type', 'current')['days'][0];
 
     expect($held['clamp'])->toBeNull()
-        ->and($resumed['clamp'])->not->toBeNull();
+        ->and($resumed['clamp']['session_type'])->toBe('rest')
+        ->and($resumed['readiness_assessment']['reasons'])->toContain('demanding_session_within_24h');
+});
+
+it('shows current pain advice while other recent training history is hydrating', function (): void {
+    $user = assemblerAthlete();
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => SessionType::Interval,
+    ]);
+    $activity = Activity::factory()->summaryOnly()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->copy()->subDays(41)->setTime(7, 0),
+        'has_heartrate' => false,
+        'trimp_edwards' => null,
+    ]);
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'concerning_pain' => true,
+    ]);
+
+    $day = collect($this->assembler->weeks($user, Carbon::today()))
+        ->firstWhere('type', 'current')['days'][0];
+
+    expect($day['clamp']['session_type'])->toBe('rest')
+        ->and($day['readiness_assessment']['inputs']['recent_training_stress']['sessions'])->toBe([])
+        ->and($day['readiness_assessment']['inputs']['weekly_trimp'])->toBeNull();
 });
 
 it('reports the baseline session count the plan is built on', function (): void {

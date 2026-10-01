@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\RecoveryConcernLevel;
 use App\Enums\SleepQuality;
+use App\Jobs\AI\AnalyzePlanClampVoiceJob;
+use App\Models\PlannedSession;
 use App\Models\RecoveryFeedback;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
@@ -30,6 +33,31 @@ it('stores recovery feedback for the authenticated user', function (): void {
 
     expect(RecoveryFeedback::query()->where('user_id', $user->id)->count())->toBe(1)
         ->and(RecoveryFeedback::query()->where('user_id', $otherUser->id)->count())->toBe(0);
+});
+
+it('reassesses the current uncompleted session immediately when feedback changes', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => today()->toDateString(),
+        'session_type' => 'interval',
+    ]);
+
+    $this->actingAs($user)->postJson(route('recovery.feedback.store'), [
+        'concerning_pain' => true,
+    ])->assertCreated();
+
+    expect($session->fresh()->rest_clamped_at)->not->toBeNull()
+        ->and($session->fresh()->readiness_assessment['reasons'])->toContain('concerning_pain_reported');
+
+    $this->actingAs($user)->postJson(route('recovery.feedback.store'), [
+        'concerning_pain' => false,
+    ])->assertOk();
+
+    expect($session->fresh()->rest_clamped_at)->toBeNull()
+        ->and($session->fresh()->clamped_km)->toBeNull()
+        ->and($session->fresh()->readiness_assessment)->toBeNull();
+    Bus::assertNotDispatched(AnalyzePlanClampVoiceJob::class);
 });
 
 it('creates an all-unknown row without requiring a run', function (): void {

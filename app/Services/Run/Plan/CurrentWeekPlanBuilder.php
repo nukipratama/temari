@@ -75,9 +75,14 @@ final readonly class CurrentWeekPlanBuilder
         $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
 
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
-        $ceiling = ReadinessCeiling::from(
-            BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today))->readinessCeiling,
+        $loadPending = $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
+        $briefingContext = BriefingContext::forUser(
+            $user,
+            $today,
+            $loadPending ? null : $this->trainingLoad->summary($user, $today),
+            historyLoading: $loadPending,
         );
+        $ceiling = ReadinessCeiling::from($briefingContext->readinessCeiling);
         $race = ($this->activeRace)($user->id);
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
         $primaryEasyDate = PlanRenderer::primaryEasyDate($currentWeekSessions);
@@ -127,19 +132,24 @@ final readonly class CurrentWeekPlanBuilder
         }
         $easedAwayKm = array_sum($easedAwayKmByDate);
 
-        // Held back while recent load is still unscored, same guard as RestClampRecorder::record().
         $todaySession = $currentWeekSessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
-        $clamp = ($todaySession !== null && ! $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today))
+        $strongHealthConcern = array_intersect(
+            $briefingContext->readinessAssessment['reasons'],
+            ['concerning_pain_reported', 'illness_reported'],
+        ) !== [];
+        $clamp = ($todaySession !== null && (! $loadPending || $strongHealthConcern))
             ? ReadinessClamp::apply(
                 $todaySession->session_type,
                 $todaySession->phase,
-                $raceDistanceM,
+                $todaySession->race_distance_m === null ? $raceDistanceM : (float) $todaySession->race_distance_m,
                 $baselineData['long_run_km'],
                 $currentWeekMultiplier,
                 $baselineData['long_run_cap_km'],
                 $paces,
                 $ceiling,
                 $baselineData['long_run_progression_cap_km'],
+                $briefingContext->readinessAssessment['reasons'],
+                IntensityPrescription::fromSession($todaySession),
             )
             : null;
 
@@ -165,6 +175,7 @@ final readonly class CurrentWeekPlanBuilder
             $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
             $baselineData['long_run_progression_cap_km'],
             $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
+            $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,
         ))->values()->all();
 
         // A rest day asks for nothing and always scores Done, so counting it

@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Enums\IngestState;
+use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
+use App\Models\RecoveryFeedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Notifications\DayClampedNotification;
@@ -19,6 +21,8 @@ use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\RestClampRecorder;
+use App\Services\Run\Plan\EffectiveSession;
+use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -27,23 +31,68 @@ use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
-/** The readiness state that bottoms the ceiling out at Rest. */
+it('persists the interval minutes that its reduced repetitions actually render', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    moderateReadiness($user);
+    $session = todaysSession($user);
+    $session->update(['prescribed_hard_minutes' => 14, 'prescribed_pace_band' => 'interval', 'prescribed_pace_sec_per_km' => 240]);
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+    $session->refresh();
+    $effective = EffectiveSession::of($session, $session->clamped_km);
+    $segments = SegmentGenerator::forPrescription($effective->sessionType, $session->phase, $effective->coreKm, null, $effective->qualityPrescription());
+    $minutes = array_sum(array_map(static fn ($segment): float => $segment->paceLabel === PaceBand::Easy ? 0.0 : ($segment->minutes ?? 0.0), $segments));
+
+    expect($session->readiness_assessment['adjustment']['quality_dose']['hard_minutes'])->toBe(9)
+        ->and($minutes)->toBe(9.0);
+    Notification::assertSentTo($user, DayClampedNotification::class, static fn (DayClampedNotification $notification): bool => str_contains($notification->note, '9 hard minutes'));
+});
+
+it('records a smaller quality dose and clears it when current feedback recovers', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    moderateReadiness($user);
+    $session = todaysSession($user, 'tempo');
+    $session->update(['prescribed_hard_minutes' => 20, 'prescribed_pace_band' => 'threshold', 'prescribed_pace_sec_per_km' => 270]);
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue();
+    $session->refresh();
+    expect($session->readiness_assessment['adjustment']['quality_dose']['hard_minutes'])->toBe(15)
+        ->and($session->prescribed_hard_minutes)->toBe(20)
+        ->and($session->session_type)->toBe(SessionType::Tempo);
+
+    RecoveryFeedback::query()->where('user_id', $user->id)->update(['fatigue' => 'none']);
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue();
+    $session->refresh();
+    expect($session->clamped_km)->toBeNull()->and($session->readiness_assessment)->toBeNull();
+});
+
+/** A current pain report is a strong readiness concern. */
 function bottomOutReadiness(User $user): void
 {
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-        'form_status' => 'overreaching',
-        'monotony' => 1.0,
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'concerning_pain' => true,
     ]);
 }
 
-/** The readiness state that caps the ceiling at EasyOnly without bottoming out further. */
+/** Strong fatigue lowers quality while retaining an easy option. */
 function easyOnlyReadiness(User $user): void
 {
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-        'form_status' => 'fatigued',
-        'monotony' => 1.0,
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'fatigue' => 'severe',
+    ]);
+}
+
+function moderateReadiness(User $user): void
+{
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'fatigue' => 'moderate',
     ]);
 }
 
@@ -97,6 +146,7 @@ it('records the morning briefing rest clamp before the athlete runs', function (
  */
 it('records the eased distance on a downgrade that still asks for a run', function (): void {
     $user = User::factory()->create();
+    moderateReadiness($user);
     $session = todaysSession($user);
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
@@ -158,11 +208,7 @@ it('records no eased target once the athlete has already run today', function ()
  */
 it('records the eased distance the render itself would show, not a fixed formula', function (): void {
     $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-        'form_status' => 'fatigued',
-        'monotony' => 1.0,
-    ]);
+    easyOnlyReadiness($user);
 
     $currentWeekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
     foreach ([3, 2, 1] as $weeksAgo) {
@@ -208,14 +254,14 @@ it('records the eased distance the render itself would show, not a fixed formula
         ->and($session->fresh()?->clamped_km)->toBe($coreKm);
 });
 
-/** Write once: readiness moving later in the day does not re-set the target. */
-it('never overwrites an eased target it already recorded', function (): void {
+it('clears a current adjustment when readiness no longer calls for it', function (): void {
     $user = User::factory()->create();
     $session = todaysSession($user);
     $session->forceFill(['clamped_km' => 4.2])->save();
 
-    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
-        ->and($session->fresh()->clamped_km)->toBe(4.2);
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
+        ->and($session->fresh()->clamped_km)->toBeNull()
+        ->and($session->fresh()->readiness_assessment)->toBeNull();
 });
 
 it('never records against a pinned row', function (): void {
@@ -302,13 +348,14 @@ it('tells the athlete once when the day is clamped to a full rest', function ():
         DayClampedNotification::class,
         fn (DayClampedNotification $n): bool => $n->clampedTo === SessionType::Rest
             && $n->date === Carbon::today()->toDateString()
-            && $n->note === ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::Rest),
+            && $n->note === ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::Rest, ['concerning_pain_reported']),
     );
 });
 
 it('tells the athlete when the day is only eased, naming what it eased to', function (): void {
     Notification::fake();
     $user = User::factory()->create();
+    moderateReadiness($user);
     todaysSession($user);
 
     app(RestClampRecorder::class)->record($user, Carbon::today());
@@ -317,7 +364,7 @@ it('tells the athlete when the day is only eased, naming what it eased to', func
         $user,
         DayClampedNotification::class,
         fn (DayClampedNotification $n): bool => $n->clampedTo === SessionType::Easy
-            && $n->note === ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::ModerateOk),
+            && $n->note === ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::ModerateOk, ['moderate_fatigue_or_soreness_reported']),
     );
 });
 
@@ -348,9 +395,10 @@ it('records a pace ease on an Easy day at an EasyOnly ceiling', function (): voi
         ->and($session->fresh()->rest_clamped_at)->toBeNull();
 });
 
-/** A Long day only needs ModerateOk clearance, which a data-less athlete already sits at. */
+/** A moderate concern leaves a Long day at its intensity threshold. */
 it('records a pace ease on a Long day at a ModerateOk ceiling', function (): void {
     $user = User::factory()->create();
+    moderateReadiness($user);
     givePaceHistory($user);
     $session = todaysSession($user, 'long');
 
@@ -393,15 +441,16 @@ it('records no pace ease once the athlete has already run today', function (): v
     expect($session->fresh()->eased_pace_sec_per_km)->toBeNull();
 });
 
-it('never overwrites a recorded pace ease', function (): void {
+it('recalculates a current pace ease from current readiness and fitness', function (): void {
     $user = User::factory()->create();
     easyOnlyReadiness($user);
     givePaceHistory($user);
     $session = todaysSession($user, 'easy');
     $session->forceFill(['eased_pace_sec_per_km' => 400])->save();
 
-    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
-        ->and($session->fresh()->eased_pace_sec_per_km)->toBe(400);
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
+        ->and($session->fresh()->eased_pace_sec_per_km)->toBe($expectedPace = app(TrainingPaceCalculator::class)->easySlowEndFromVdotResult(app(VdotEstimator::class)->estimate($user, Carbon::today())))
+        ->and($session->fresh()->readiness_assessment['reasons'])->toContain('severe_fatigue_or_soreness_reported');
 });
 
 /** One lever per day: a day apply() already downgraded never also gets a pace ease. */
@@ -441,15 +490,17 @@ function unscoredLoadRunOn(User $user, Carbon $day): Activity
     return $activity;
 }
 
-it('records nothing while a run inside the trailing load window still awaits hydration', function (): void {
+it('records a strong health rest recommendation while recent training history awaits hydration', function (): void {
     $user = User::factory()->create();
     bottomOutReadiness($user);
     $session = todaysSession($user);
     unscoredLoadRunOn($user, Carbon::today()->subDays(41));
 
-    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
-        ->and($session->fresh()->rest_clamped_at)->toBeNull()
-        ->and($session->fresh()->clamped_km)->toBeNull();
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
+        ->and($session->fresh()->rest_clamped_at)->not->toBeNull()
+        ->and($session->fresh()->readiness_assessment['reasons'])->toContain('concerning_pain_reported')
+        ->and($session->fresh()->readiness_assessment['inputs']['recent_training_stress']['sessions'])->toBe([])
+        ->and($session->fresh()->readiness_assessment['inputs']['weekly_trimp'])->toBeNull();
 });
 
 it('resumes recording once the run it was held for has hydrated', function (): void {

@@ -186,10 +186,12 @@ final readonly class ComplianceScorer
             $raceDistanceM = $race['distance_m'] ?? $activeRace?->distance_m;
             $raceGoalTimeSec = $race['goal_time_sec'] ?? $activeRace?->goal_time_sec;
             $prescription = IntensityPrescription::fromSession($row);
+            $qualityPrescription = $effective->qualityPrescription();
             $judgedType = $prescription?->isEasy() === true && in_array($effective->sessionType, [SessionType::Tempo, SessionType::Interval], true)
                 ? SessionType::Easy
                 : $effective->sessionType;
             $segments = match (true) {
+                $qualityPrescription !== null => SegmentGenerator::forPrescription($effective->sessionType, $row->phase, $effective->coreKm, $paces, $qualityPrescription),
                 $effective->isEased() => SegmentGenerator::easyBlock($effective->coreKm, $paces),
                 $prescription !== null => SegmentGenerator::forPrescription($effective->sessionType, $row->phase, $effective->coreKm, $paces, $prescription),
                 default => SegmentGenerator::forCoreKm($effective->sessionType, $row->phase, $raceDistanceM === null ? null : (float) $raceDistanceM, $effective->coreKm, $paces, $raceGoalTimeSec),

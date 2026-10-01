@@ -265,6 +265,7 @@ final readonly class Periodizer
                         'clamped_km' => $carriedClamp?->clamped_km,
                         'rest_clamped_at' => $carriedClamp?->rest_clamped_at,
                         'eased_pace_sec_per_km' => $carriedClamp?->eased_pace_sec_per_km,
+                        'readiness_assessment' => $carriedClamp?->readiness_assessment,
                     ],
                 );
             }
@@ -309,7 +310,7 @@ final readonly class Periodizer
             ->lockForUpdate()
             ->get([
                 'id', 'date', 'pinned', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band',
-                'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km',
+                'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km', 'readiness_assessment',
             ]);
     }
 

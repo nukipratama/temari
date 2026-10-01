@@ -7,7 +7,6 @@ use App\Jobs\AI\AnalyzePlanClampVoiceJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\ClampNarrationContext;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Models\AI\Analysis;
@@ -16,6 +15,7 @@ use App\Services\AI\ServedBy;
 use App\Services\AI\AnalysisService;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
+use App\Models\RecoveryFeedback;
 use App\Models\Season;
 use App\Enums\SessionType;
 use App\Models\User;
@@ -228,10 +228,10 @@ describe('requestClampVoice', function (): void {
     function tiredUserWithClampedDay(): User
     {
         $user = User::factory()->create();
-        WeeklySnapshot::factory()->for($user)->create([
-            'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-            'form_status' => 'overreaching',
-            'monotony' => 1.0,
+        RecoveryFeedback::query()->create([
+            'user_id' => $user->id,
+            'date' => Carbon::today()->toDateString(),
+            'concerning_pain' => true,
         ]);
         PlannedSession::factory()->for($user)->create([
             'date' => Carbon::today()->toDateString(),
@@ -260,7 +260,7 @@ describe('requestClampVoice', function (): void {
             $row,
             'eased.',
             ServedBy::Llm,
-            fingerprint: MaterialFingerprint::forClamp($context['ceiling'], $context['clamped_to'], $context['has_run_today']),
+            fingerprint: MaterialFingerprint::forClamp($context['ceiling'], $context['clamped_to'], $context['has_run_today'], $context['readiness_reasons']),
         );
 
         Bus::fake();

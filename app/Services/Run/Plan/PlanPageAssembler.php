@@ -171,9 +171,14 @@ final class PlanPageAssembler
         $race = ($this->activeRace)($user->id);
         $baselineData = $this->baseline->forUser($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user));
-        $ceiling = ReadinessCeiling::from(
-            BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today))->readinessCeiling,
+        $loadPending = $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
+        $briefingContext = BriefingContext::forUser(
+            $user,
+            $today,
+            $loadPending ? null : $this->trainingLoad->summary($user, $today),
+            historyLoading: $loadPending,
         );
+        $ceiling = ReadinessCeiling::from($briefingContext->readinessCeiling);
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
 
         $sessionsByWeek = $sessions->groupBy(
@@ -188,20 +193,25 @@ final class PlanPageAssembler
         $fallbackVerdicts = $this->fallbackVerdicts($user, $sessions, $today, $baselineData, $multiplierByWeek, $primaryEasyDateByWeek);
 
         // Readiness clamp: TODAY's row only — a future day's readiness isn't
-        // knowable today, so clamping never reaches past this one row. Held
-        // back while recent load is still unscored, same guard as RestClampRecorder::record().
+        // knowable today, so clamping never reaches past this one row.
         $todaySession = $sessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
-        $clamp = ($todaySession !== null && ! $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today))
+        $strongHealthConcern = array_intersect(
+            $briefingContext->readinessAssessment['reasons'],
+            ['concerning_pain_reported', 'illness_reported'],
+        ) !== [];
+        $clamp = ($todaySession !== null && (! $loadPending || $strongHealthConcern))
             ? ReadinessClamp::apply(
                 $todaySession->session_type,
                 $todaySession->phase,
-                $raceDistanceM,
+                $todaySession->race_distance_m === null ? $raceDistanceM : (float) $todaySession->race_distance_m,
                 $baselineData['long_run_km'],
                 $multiplierByWeek[$currentWeekKey] ?? 1.0,
                 $baselineData['long_run_cap_km'],
                 $paces,
                 $ceiling,
                 $baselineData['long_run_progression_cap_km'],
+                $briefingContext->readinessAssessment['reasons'],
+                IntensityPrescription::fromSession($todaySession),
             )
             : null;
 
@@ -257,6 +267,7 @@ final class PlanPageAssembler
                     $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
                     $baselineData['long_run_progression_cap_km'],
                     $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
+                    $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,
                 ))->all(),
             ];
         }

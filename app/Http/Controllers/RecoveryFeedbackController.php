@@ -8,6 +8,7 @@ use App\Enums\RecoveryConcernLevel;
 use App\Enums\SleepQuality;
 use App\Models\RecoveryFeedback;
 use App\Models\User;
+use App\Services\Run\Plan\RestClampRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -36,6 +37,10 @@ class RecoveryFeedbackController extends Controller
             ],
             Arr::except($validated, ['date']),
         );
+
+        if ($feedback->date->isSameDay(today())) {
+            app(RestClampRecorder::class)->record($user, $feedback->date);
+        }
 
         return response()->json([
             'date' => $feedback->date->toDateString(),

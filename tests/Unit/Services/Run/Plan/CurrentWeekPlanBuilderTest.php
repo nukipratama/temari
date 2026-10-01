@@ -8,6 +8,7 @@ use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
+use App\Models\RecoveryFeedback;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -302,7 +303,7 @@ it('reports the km it renders, so a clamped today cannot disagree with the headl
     Carbon::setTestNow();
 });
 
-it('holds todays advisory clamp while a run inside the load window still awaits hydration, and resumes once it lands', function (): void {
+it('holds todays advisory clamp while a demanding run awaits hydration, then applies its evidence', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
     seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
@@ -313,11 +314,13 @@ it('holds todays advisory clamp while a run inside the load window still awaits 
         'monotony' => 1.0,
     ]);
     $activity = Activity::factory()->summaryOnly()->for($user)->create();
-    // No heart rate, so hydrating this run doesn't introduce a competing live form_status.
     ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::today()->copy()->subDays(41)->setTime(7, 0),
-        'has_heartrate' => false,
-        'trimp_edwards' => null,
+        'start_date_local' => Carbon::today()->copy()->subDay()->setTime(12, 0),
+        'elapsed_time' => 3600,
+        'distance' => 10_000,
+        'has_heartrate' => true,
+        'trimp_edwards' => 130.0,
+        'stream_summary' => ['time_in_zone_min' => ['Z2' => 20, 'Z4' => 12]],
     ]);
 
     $held = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])
@@ -329,7 +332,38 @@ it('holds todays advisory clamp while a run inside the load window still awaits 
         ->firstWhere('date', Carbon::today()->toDateString());
 
     expect($held['clamp'])->toBeNull()
-        ->and($resumed['clamp'])->not->toBeNull();
+        ->and($resumed['clamp']['session_type'])->toBe('rest')
+        ->and($resumed['readiness_assessment']['reasons'])->toContain('demanding_session_within_24h');
+
+    Carbon::setTestNow();
+});
+
+it('shows current illness advice while other recent training history is hydrating', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    seedWeekOfSessions($user, $weekStart);
+    PlannedSession::query()->where('user_id', $user->id)
+        ->whereDate('date', Carbon::today()->toDateString())
+        ->update(['session_type' => SessionType::Interval]);
+    $activity = Activity::factory()->summaryOnly()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::today()->copy()->subDays(41)->setTime(7, 0),
+        'has_heartrate' => false,
+        'trimp_edwards' => null,
+    ]);
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'illness' => true,
+    ]);
+
+    $today = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])
+        ->firstWhere('date', Carbon::today()->toDateString());
+
+    expect($today['clamp']['session_type'])->toBe('rest')
+        ->and($today['readiness_assessment']['inputs']['recent_training_stress']['sessions'])->toBe([])
+        ->and($today['readiness_assessment']['inputs']['weekly_trimp'])->toBeNull();
 
     Carbon::setTestNow();
 });

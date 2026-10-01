@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\RecoveryFeedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -29,8 +30,8 @@ it('returns nulls when the user has no snapshots or activities', function (): vo
         ->and($ctx->consecutiveWeeksActive)->toBe(0)
         ->and($ctx->fitnessTrend)->toBe('plateau')
         ->and($ctx->volumeRampPct)->toBeNull()
-        // No form + no recovery data -> conservative moderate cap, no build nudge.
-        ->and($ctx->readinessCeiling)->toBe('moderate_ok')
+        // No form + no recovery data is unknown, not a fatigue signal.
+        ->and($ctx->readinessCeiling)->toBe('quality_ok')
         ->and($ctx->buildNudge)->toBeFalse();
 });
 
@@ -238,6 +239,98 @@ it('exposes a deterministic readiness ceiling from the live load, capping qualit
     expect($ctx->readinessCeiling)->toBe('rest');
 });
 
+it('uses current recovery feedback and actual demanding activity, not the latest run clock', function (): void {
+    $asOf = Carbon::parse('2026-10-01 08:00');
+    Carbon::setTestNow($asOf);
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-09-30 12:00'),
+        'elapsed_time' => 3600,
+        'trimp_edwards' => 120.0,
+        'stream_summary' => ['time_in_zone_min' => ['Z2' => 20, 'Z4' => 12]],
+    ]);
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => '2026-10-01',
+        'sleep_quality' => 'good',
+        'fatigue' => 'none',
+        'soreness' => 'none',
+        'concerning_pain' => false,
+        'illness' => false,
+    ]);
+
+    $ctx = BriefingContext::forUser($user, $asOf, [
+        'form_status' => 'optimal',
+        'monotony' => 1.0,
+    ]);
+
+    expect($ctx->recoveryHours)->toBe(20)
+        ->and($ctx->readinessCeiling)->toBe('moderate_ok')
+        ->and($ctx->readinessAssessment['reasons'])->toBe(['demanding_session_within_24h'])
+        ->and($ctx->readinessAssessment['inputs']['recent_training_stress']['sessions'][0]['demanding'])->toBeTrue()
+        ->and($ctx->readinessAssessment['inputs']['recovery_feedback']['freshness'])->toBe('current');
+});
+
+it('does not restart demand spacing after an ordinary easy run or treat 45 hours as fatigue', function (): void {
+    $asOf = Carbon::parse('2026-10-01 08:00');
+    Carbon::setTestNow($asOf);
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-09-30 20:00'),
+        'elapsed_time' => 2400,
+        'trimp_edwards' => 65.0,
+        'stream_summary' => ['time_in_zone_min' => ['Z1' => 20, 'Z2' => 20]],
+    ]);
+
+    $ctx = BriefingContext::forUser($user, $asOf, [
+        'form_status' => 'optimal',
+        'monotony' => 1.0,
+    ]);
+
+    expect($ctx->recoveryHours)->toBe(12)
+        ->and($ctx->readinessCeiling)->toBe('quality_ok')
+        ->and($ctx->readinessAssessment['reasons'])->toBe([]);
+});
+
+it('records stale feedback but does not apply it to current readiness', function (): void {
+    $asOf = Carbon::parse('2026-10-01 08:00');
+    $user = User::factory()->create();
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => '2026-09-28',
+        'fatigue' => 'severe',
+        'concerning_pain' => true,
+        'illness' => true,
+    ]);
+
+    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => 'optimal', 'monotony' => 1.0]);
+
+    expect($ctx->readinessCeiling)->toBe('quality_ok')
+        ->and($ctx->readinessAssessment['reasons'])->toContain('stale_recovery_feedback_not_applied')
+        ->and($ctx->readinessAssessment['inputs']['recovery_feedback']['freshness'])->toBe('stale');
+});
+
+it('keeps current pain and illness advice while training history is hydrating', function (): void {
+    $asOf = Carbon::parse('2026-10-01 08:00');
+    $user = User::factory()->create();
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => '2026-10-01',
+        'concerning_pain' => true,
+        'illness' => false,
+    ]);
+
+    $ctx = BriefingContext::forUser($user, $asOf, null, historyLoading: true);
+
+    expect($ctx->readinessCeiling)->toBe('rest')
+        ->and($ctx->readinessAssessment['reasons'])->toContain('concerning_pain_reported')
+        ->and($ctx->readinessAssessment['inputs']['recovery_feedback']['freshness'])->toBe('current')
+        ->and($ctx->readinessAssessment['inputs']['recent_training_stress']['sessions'])->toBe([])
+        ->and($ctx->readinessAssessment['inputs']['weekly_trimp'])->toBeNull();
+});
+
 it('falls back to last-week form_status when this week has no snapshot yet', function (): void {
     $user = User::factory()->create();
     $asOf = Carbon::create(2026, 5, 21, 8); // week ending 2026-05-24
@@ -252,6 +345,8 @@ it('falls back to last-week form_status when this week has no snapshot yet', fun
     $ctx = BriefingContext::forUser($user, $asOf);
 
     expect($ctx->formStatus)->toBe('fatigued');
+    expect($ctx->toArray()['form_status'])->toBeNull()
+        ->and($ctx->readinessAssessment['inputs']['form_status'])->toBeNull();
 });
 
 it('falls back to last-week form_status when this week has a snapshot but no form_status yet', function (): void {
@@ -321,6 +416,6 @@ it('serialises to a compact array suitable for the LLM user message', function (
         'this_week_runs', 'last_week_runs', 'this_week_km', 'last_week_km',
         'recovery_hours', 'ran_today', 'days_since_last_run', 'form_status',
         'time_bucket', 'consecutive_weeks_active', 'fitness_trend',
-        'volume_ramp', 'readiness_ceiling', 'build_nudge',
+        'volume_ramp', 'readiness_ceiling', 'build_nudge', 'readiness_reasons', 'readiness_assessment',
     ]);
 });

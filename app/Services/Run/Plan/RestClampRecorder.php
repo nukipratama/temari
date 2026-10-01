@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\SessionType;
+use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Notifications\DayClampedNotification;
@@ -30,9 +31,7 @@ use Illuminate\Support\Carbon;
  * record, an athlete who took the rest the card prescribed is graded against
  * the session it replaced and scores `missed` for complying.
  *
- * Called by daily-briefing side effects, including catch-up replay, never from a render. Write
- * once and never cleared: readiness recovering later in the day does not
- * un-tell the athlete to rest, and excusing is the forgiving direction.
+ * Called by daily-briefing side effects and current-day feedback saves.
  */
 final readonly class RestClampRecorder
 {
@@ -86,49 +85,32 @@ final readonly class RestClampRecorder
             ->where('date', $today->toDateString())
             ->first();
 
-        // A pinned row is the athlete's own call: the step-down is advised beside it, never recorded.
-        if ($session === null || $session->pinned || $session->rest_clamped_at !== null
-            || $session->clamped_km !== null || $session->eased_pace_sec_per_km !== null) {
+        if ($session === null || $session->pinned || $session->session_type === SessionType::Race
+            || $session->status !== PlannedSessionStatus::Planned || $session->skipped) {
             return false;
         }
 
-        // A half-hydrated history reads as no recent load, bottoming the ceiling out at Rest for the wrong reason.
-        if ($this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today)) {
-            return false;
-        }
-
-        // A recorded clamp must use fresh load because this write never self-corrects.
+        $loadPending = $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
         TrainingLoad::clearSummaryCache($user);
 
-        $context = BriefingContext::forUser($user, $today, $this->trainingLoad->summary($user, $today));
-        $ceiling = ReadinessCeiling::from($context->readinessCeiling);
-
-        // `Readiness::assess()` caps to `EasyOnly` on `ranToday` alone, so after
-        // any run at all the ceiling reads easy — including on a day the
-        // athlete just correctly ran a tempo. Recording an eased target then
-        // would tell the scorer the day only ever asked for 3.6 km, and grade a
-        // properly-executed 6 km tempo as an overreach. A cap caused by having
-        // already trained is guidance for a SECOND outing, never an instruction
-        // that replaced the session, so it is not a target anyone was set. See
-        // `docs/decisions/a-clamped-day-is-graded-on-what-it-asked.md`.
-        if ($context->ranToday) {
+        $context = BriefingContext::forUser(
+            $user,
+            $today,
+            $loadPending ? null : $this->trainingLoad->summary($user, $today),
+            historyLoading: $loadPending,
+        );
+        $strongHealthConcern = array_intersect(
+            $context->readinessAssessment['reasons'],
+            ['concerning_pain_reported', 'illness_reported'],
+        ) !== [];
+        if (($loadPending && ! $strongHealthConcern) || $context->ranToday) {
             return false;
         }
 
-        if (ReadinessClamp::clampsToRest($session->session_type, $ceiling)) {
-            $session->update(['rest_clamped_at' => Carbon::now()]);
-            $this->tell($user, $today, SessionType::Rest, $session->session_type, $ceiling);
-
-            return true;
-        }
-
-        // core_km comes from the same ReadinessClamp::apply() the render calls
-        // (paces are irrelevant to it, so null is safe) rather than a hand-rolled
-        // SegmentGenerator::coreKmFor(): apply()'s ModerateOk arm sizes a downgraded
-        // Tempo/Interval by the ORIGINAL session type, not by SessionType::Easy, and
-        // its EasyOnly arm sizes a downgraded Long day by the primary-easy fraction —
-        // two distinctions a hardcoded (Easy, isPrimaryEasy: false) call collapses.
+        $ceiling = ReadinessCeiling::from($context->readinessCeiling);
         $baselineData = $this->baseline->forUser($user, $today);
+        $prescription = IntensityPrescription::fromSession($session);
+        $paces = $prescription === null ? null : $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
         $clamp = ReadinessClamp::apply(
             $session->session_type,
             $session->phase,
@@ -136,44 +118,79 @@ final readonly class RestClampRecorder
             (float) $baselineData['long_run_km'],
             $this->volumeMultiplierFor($user, $today, $baselineData['self_scaled']),
             (float) $baselineData['long_run_cap_km'],
-            null,
+            $paces,
             $ceiling,
             (float) $baselineData['long_run_progression_cap_km'],
+            $context->readinessAssessment['reasons'],
+            $prescription,
         );
+
+        $adjustment = [
+            'rest_clamped_at' => null,
+            'clamped_km' => null,
+            'eased_pace_sec_per_km' => null,
+        ];
+        $notification = null;
         if ($clamp !== null) {
-            $session->update(['clamped_km' => $clamp['core_km']]);
-            $this->tell($user, $today, $clamp['session_type'], $session->session_type, $ceiling);
-
-            return true;
-        }
-
-        // The one lever `apply()` leaves untouched: an Easy day at EasyOnly or
-        // a Long day at ModerateOk already clears the ceiling, but only just.
-        // Type and distance stay; only the pace comes down, rule-based only —
-        // no notification, no `plan_clamp_voice` request (see
-        // `ReadinessClamp::paceEaseApplies()`).
-        if (ReadinessClamp::paceEaseApplies($session->session_type, $ceiling)) {
-            $easedPace = $this->paceCalculator->easySlowEndFromVdotResult($this->vdotEstimator->estimate($user, $today));
-            if ($easedPace === null) {
-                return false;
+            if ($clamp['session_type'] === SessionType::Rest) {
+                $adjustment['rest_clamped_at'] = $session->rest_clamped_at ?? Carbon::now();
+            } else {
+                $adjustment['clamped_km'] = $clamp['core_km'];
             }
-
-            $session->update(['eased_pace_sec_per_km' => $easedPace]);
-
-            return true;
+            $notification = ['session_type' => $clamp['session_type'], 'note' => $clamp['note']];
+        } elseif (ReadinessClamp::paceEaseApplies($session->session_type, $ceiling)) {
+            $easedPace = $this->paceCalculator->easySlowEndFromVdotResult($this->vdotEstimator->estimate($user, $today));
+            if ($easedPace !== null) {
+                $adjustment['eased_pace_sec_per_km'] = $easedPace;
+            } elseif ($session->eased_pace_sec_per_km !== null) {
+                $adjustment['eased_pace_sec_per_km'] = $session->eased_pace_sec_per_km;
+            }
         }
 
-        return false;
+        $assessment = $context->readinessAssessment;
+        if (isset($clamp['quality_dose'])) {
+            $assessment['adjustment'] = ['quality_dose' => $clamp['quality_dose']];
+        }
+        if ($session->readiness_assessment !== null
+            && $session->readiness_assessment['ceiling'] === $assessment['ceiling']
+            && ($session->readiness_assessment['adjustment'] ?? null) === ($assessment['adjustment'] ?? null)
+            && $session->readiness_assessment['reasons'] === $assessment['reasons']) {
+            $assessment = $session->readiness_assessment;
+        }
+        $hasAdjustment = $adjustment['rest_clamped_at'] !== null
+            || $adjustment['clamped_km'] !== null
+            || $adjustment['eased_pace_sec_per_km'] !== null;
+        $attributes = [
+            ...$adjustment,
+            'readiness_assessment' => $hasAdjustment ? $assessment : null,
+        ];
+        $changed = $session->rest_clamped_at != $attributes['rest_clamped_at']
+            || $session->clamped_km != $attributes['clamped_km']
+            || $session->eased_pace_sec_per_km !== $attributes['eased_pace_sec_per_km']
+            || $session->readiness_assessment !== $attributes['readiness_assessment'];
+        if (! $changed) {
+            return false;
+        }
+
+        $oldClampedKm = $session->clamped_km;
+        $oldDose = $session->readiness_assessment['adjustment']['quality_dose'] ?? null;
+        $oldSessionType = $session->rest_clamped_at !== null
+            ? SessionType::Rest
+            : ($session->clamped_km !== null ? SessionType::Easy : $session->session_type);
+        $newSessionType = $adjustment['rest_clamped_at'] !== null
+            ? SessionType::Rest
+            : ($adjustment['clamped_km'] !== null ? SessionType::Easy : $session->session_type);
+        $session->update($attributes);
+
+        if ($notification !== null && ($oldSessionType !== $newSessionType || $oldClampedKm != $adjustment['clamped_km'] || $oldDose !== ($assessment['adjustment']['quality_dose'] ?? null))) {
+            $this->tell($user, $today, $notification['session_type'], $notification['note']);
+        }
+
+        return true;
     }
 
-    /** The recorder's guards keep this notification to once per athlete per day. */
-    private function tell(User $user, Carbon $today, SessionType $clampedTo, SessionType $original, ReadinessCeiling $ceiling): void
+    private function tell(User $user, Carbon $today, SessionType $clampedTo, string $note): void
     {
-        $note = ReadinessClamp::noteFor($original, $ceiling);
-        if ($note === null) {
-            return;
-        }
-
         $user->notify(new DayClampedNotification($today->toDateString(), $clampedTo, $note));
     }
 }

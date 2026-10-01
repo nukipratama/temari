@@ -5,31 +5,29 @@ declare(strict_types=1);
 namespace App\Services\Run\Metrics;
 
 /**
- * Turns the runner's load + recovery signals into a deterministic, unit-testable
- * safety decision: how hard a session to encourage today ({@see ReadinessCeiling})
- * and whether to gently nudge them to build rather than coast into detraining.
- *
- * Do-no-harm design (the safety mandate for this signal):
- * - Asymmetric caution. Backing off needs ONE red flag; reaching quality needs
- *   every green signal to line up. Each guardrail can only lower the ceiling.
- * - A progression/build signal never overrides a red flag: {@see $buildNudge}
- *   is only allowed once the ceiling already permits moderate-or-harder work.
+ * A deterministic ceiling plus the evidence that produced it. Missing data is
+ * recorded as unknown; it does not become a fatigue signal.
  */
 final readonly class Readiness
 {
+    /**
+     * @param  list<string>  $reasons
+     * @param  array<string, mixed>  $inputs
+     */
     public function __construct(
         public ReadinessCeiling $ceiling,
         public bool $buildNudge,
+        public array $reasons,
+        public array $inputs,
     ) {
     }
 
     /**
-     * @param  string|null  $formStatus  fresh|optimal|fatigued|overreaching (null = unknown)
-     * @param  int|null  $recoveryHours  recovery available for the next session
-     * @param  bool  $ranToday  already trained today (own session in the bag)
-     * @param  float|null  $monotony  Foster monotony (>2 = injury-risk uniformity)
-     * @param  float|null  $volumeRampPct  week-over-week volume change, % (null = no baseline)
-     * @param  string  $fitnessTrend  up|plateau|down (CTL slope)
+     * @param  string|null  $formStatus  Current form status; null means unknown.
+     * @param  int|null  $recoveryHours  Literal hours since any run, retained as context only.
+     * @param  array<string, mixed>|null  $stressProfile  Actual recent activities, regardless of the planned session label.
+     * @param  array<string, mixed>|null  $feedback  Latest recovery feedback and its freshness.
+     * @param  array{low: float, high: float}|null  $weeklyTrimpRange  Personal typical range when available.
      */
     public static function assess(
         ?string $formStatus,
@@ -38,59 +36,135 @@ final readonly class Readiness
         ?float $monotony,
         ?float $volumeRampPct,
         string $fitnessTrend,
+        ?array $stressProfile = null,
+        ?array $feedback = null,
+        ?float $weeklyTrimp = null,
+        ?array $weeklyTrimpRange = null,
+        bool $formConflict = false,
     ): self {
-        // Start optimistic; every guardrail can only cap it down.
-        $ceiling = ReadinessCeiling::QualityOk;
+        $stressProfile ??= [
+            'sessions' => [],
+            'last_demanding_hours' => null,
+            'demanding_within_24h' => 0,
+            'demanding_within_48h' => 0,
+        ];
+        $currentFeedback = ($feedback['freshness'] ?? null) === 'current' ? $feedback : null;
+        $fatigue = $currentFeedback['fatigue'] ?? null;
+        $soreness = $currentFeedback['soreness'] ?? null;
+        $sleep = $currentFeedback['sleep_quality'] ?? null;
+        $mildConcern = $fatigue === 'mild' || $soreness === 'mild' || $sleep === 'fair' || $sleep === 'poor';
+        $moderateConcern = $fatigue === 'moderate' || $soreness === 'moderate';
+        $recentDemanding = (int) ($stressProfile['demanding_within_24h'] ?? 0) > 0;
+        $closelySpacedDemanding = (int) ($stressProfile['demanding_within_48h'] ?? 0) > 1;
+        $loadAboveTypical = $weeklyTrimp !== null
+            && $weeklyTrimpRange !== null
+            && $weeklyTrimp > $weeklyTrimpRange['high'];
+        $supportingLoad = in_array($formStatus, ['fatigued', 'overreaching'], true)
+            || ($monotony !== null && $monotony >= 1.8)
+            || ($volumeRampPct !== null && $volumeRampPct > 15.0)
+            || $recentDemanding
+            || $closelySpacedDemanding
+            || $loadAboveTypical;
 
-        // --- Hard red flags: any ONE backs the runner off. ---
+        $ceiling = ReadinessCeiling::QualityOk;
+        $reasons = [];
+
+        if (($currentFeedback['concerning_pain'] ?? false) === true) {
+            $ceiling = $ceiling->capTo(ReadinessCeiling::Rest);
+            $reasons[] = 'concerning_pain_reported';
+        }
+        if (($currentFeedback['illness'] ?? false) === true) {
+            $ceiling = $ceiling->capTo(ReadinessCeiling::Rest);
+            $reasons[] = 'illness_reported';
+        }
         if ($formStatus === 'overreaching') {
             $ceiling = $ceiling->capTo(ReadinessCeiling::Rest);
+            $reasons[] = 'training_form_overreaching';
+        }
+        if ($fatigue === 'severe' || $soreness === 'severe') {
+            $ceiling = $ceiling->capTo(ReadinessCeiling::EasyOnly);
+            $reasons[] = 'severe_fatigue_or_soreness_reported';
         }
         if ($ranToday) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::EasyOnly);
+            $reasons[] = 'already_ran_today';
         }
         if ($formStatus === 'fatigued') {
-            $ceiling = $ceiling->capTo(ReadinessCeiling::EasyOnly);
+            $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
+            $reasons[] = 'training_form_fatigued';
         }
         if ($monotony !== null && $monotony > 2.0) {
-            $ceiling = $ceiling->capTo(ReadinessCeiling::EasyOnly);
-        }
-        if ($recoveryHours !== null && $recoveryHours < 24) {
-            $ceiling = $ceiling->capTo(ReadinessCeiling::EasyOnly);
-        }
-
-        // --- Softer caps: allow moderate, withhold quality. ---
-        if ($monotony !== null && $monotony >= 1.8) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
-        }
-        if ($recoveryHours !== null && $recoveryHours < 48) {
-            $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
+            $reasons[] = 'high_training_monotony';
         }
         if ($volumeRampPct !== null && $volumeRampPct > 15.0) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
+            $reasons[] = 'volume_increased_sharply';
         }
-
-        // Quality needs fitness not to be a KNOWN negative. A null form_status
-        // is absence of evidence, not evidence of fatigue: an athlete whose runs
-        // carry no heart rate has no CTL or ATL at all, so this capped every
-        // quality session they were ever prescribed — permanently, and
-        // invisibly, since the plan still stored the session it never showed.
-        // 'fatigued' and 'overreaching' are already capped harder above, so
-        // this arm now only guards an unrecognised value.
-        if ($formStatus !== null && $formStatus !== 'fresh' && $formStatus !== 'optimal') {
+        if ($loadAboveTypical) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
+            $reasons[] = 'weekly_load_above_personal_range';
         }
-        if ($recoveryHours === null) {
+        if ($recentDemanding) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
+            $reasons[] = 'demanding_session_within_24h';
         }
-
-        // --- Anti-detraining nudge: only when nothing above capped us to
-        // easy/rest, so a build signal never contradicts a red flag. ---
+        if ($closelySpacedDemanding) {
+            $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
+            $reasons[] = 'closely_spaced_demanding_sessions';
+        }
+        if ($moderateConcern) {
+            $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
+            $reasons[] = 'moderate_fatigue_or_soreness_reported';
+        } elseif ($mildConcern) {
+            $reasons[] = $supportingLoad
+                ? (in_array($fatigue, ['mild', 'moderate'], true) || in_array($soreness, ['mild', 'moderate'], true)
+                    ? 'mild_fatigue_or_soreness_with_load_support'
+                    : "{$sleep}_sleep_with_load_support")
+                : 'mild_feedback_without_load_support';
+            if ($supportingLoad) {
+                $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
+            }
+        }
+        if ($feedback !== null && ($feedback['freshness'] ?? null) === 'stale') {
+            $reasons[] = 'stale_recovery_feedback_not_applied';
+        }
+        if ($formConflict) {
+            $reasons[] = 'conflicting_form_signals';
+        }
         $buildNudge = $formStatus === 'fresh'
             && $fitnessTrend !== 'up'
             && ! $ranToday
-            && $ceiling->rank() >= ReadinessCeiling::ModerateOk->rank();
+            && $reasons === [];
 
-        return new self($ceiling, $buildNudge);
+        return new self(
+            ceiling: $ceiling,
+            buildNudge: $buildNudge,
+            reasons: array_values(array_unique($reasons)),
+            inputs: [
+                'form_status' => $formStatus,
+                'recovery_hours_since_any_run' => $recoveryHours,
+                'ran_today' => $ranToday,
+                'monotony' => $monotony,
+                'volume_ramp_pct' => $volumeRampPct,
+                'fitness_trend' => $fitnessTrend,
+                'recent_training_stress' => $stressProfile,
+                'recovery_feedback' => $feedback,
+                'weekly_trimp' => $weeklyTrimp,
+                'weekly_trimp_range' => $weeklyTrimpRange,
+                'form_signals_conflict' => $formConflict,
+            ],
+        );
     }
+
+    /** @return array{ceiling: string, reasons: list<string>, inputs: array<string, mixed>} */
+    public function toArray(): array
+    {
+        return [
+            'ceiling' => $this->ceiling->value,
+            'reasons' => $this->reasons,
+            'inputs' => $this->inputs,
+        ];
+    }
+
 }

@@ -423,6 +423,9 @@ export interface PlanSessionSegment {
  *  Carries one pace rather than a segment list: the step-down renders as a
  *  single line and only ever shows the core set's pace. */
 export interface PlanDayClamp {
+    hard_minutes?: number;
+    original_hard_minutes?: number;
+    pace_band?: string;
     session_type: string;
     distance_km: number;
     pace_sec_per_km: number | null;
@@ -456,6 +459,11 @@ export interface PlanDayPaceEasedFrom {
  *  it — the same shape Plan's own day rows use. */
 export interface WeekPlanDay {
     recommendation_token?: string;
+    readiness_assessment?: {
+        ceiling: string;
+        reasons: string[];
+        inputs: Record<string, unknown>;
+    } | null;
     id: number;
     date: string;
     phase: string;

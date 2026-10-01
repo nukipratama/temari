@@ -26,7 +26,7 @@ use Override;
  * around and never overwrite; volume redistribution and segment structure
  * ({@see \App\Services\Run\Plan\SegmentGenerator}) are render-time-only and
  * never stored, but the readiness clamp outcome (`clamped_km`/
- * `rest_clamped_at`/`eased_pace_sec_per_km`) is persisted once by
+ * `rest_clamped_at`/`eased_pace_sec_per_km`) and its assessment are persisted by
  * {@see \App\Services\Run\Plan\RestClampRecorder} (see
  * `docs/features/plan-periodizer.md`). `status`/`compliance_score`/
  * `ran_anyway` are written once, by `plan:score-compliance`
@@ -53,6 +53,7 @@ use Override;
  * @property float|null $prescribed_km
  * @property float|null $clamped_km
  * @property int|null $eased_pace_sec_per_km
+ * @property array<string, mixed>|null $readiness_assessment
  * @property float|null $volume_multiplier
  * @property int|null $race_distance_m
  * @property int|null $prescribed_hard_minutes
@@ -92,6 +93,7 @@ use Override;
     'prescribed_km',
     'clamped_km',
     'eased_pace_sec_per_km',
+    'readiness_assessment',
     'volume_multiplier',
     'ran_anyway',
     'rest_clamped_at',
@@ -210,6 +212,7 @@ class PlannedSession extends Model
             'prescribed_km' => 'float',
             'clamped_km' => 'float',
             'eased_pace_sec_per_km' => 'integer',
+            'readiness_assessment' => 'array',
             'volume_multiplier' => 'float',
             'ran_anyway' => 'boolean',
             'rest_clamped_at' => 'datetime',

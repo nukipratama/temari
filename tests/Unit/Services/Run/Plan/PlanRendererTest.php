@@ -6,6 +6,7 @@ use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
 use App\Enums\IntentVerdict;
 use App\Enums\PlanPhase;
+use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -23,6 +24,7 @@ use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\SessionSegment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 
 // PlannedSession::factory()->make() never persists the session itself, but
 // its 'user_id' => User::factory() default still resolves (and creates a
@@ -237,6 +239,57 @@ it('dayPayload carries the clamp beside today\'s own prescription, never in plac
 
     expect($unaffected['session_type'])->toBe('long')
         ->and($unaffected['clamp'])->toBeNull();
+});
+
+it('keeps a pinned race prescription beside strong-concern advice and snapshots its facts', function (): void {
+    $today = Carbon::parse('2026-10-01');
+    $assessment = [
+        'ceiling' => 'rest',
+        'reasons' => ['concerning_pain_reported'],
+        'inputs' => ['recovery_feedback' => ['concerning_pain' => true]],
+    ];
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Race,
+        'race_distance_m' => 10_000,
+        'pinned' => true,
+    ]);
+    $clamp = ReadinessClamp::apply(
+        SessionType::Race,
+        PlanPhase::Build,
+        10_000,
+        20.0,
+        1.0,
+        INF,
+        RENDERER_PACES,
+        ReadinessCeiling::Rest,
+        reasons: $assessment['reasons'],
+    );
+
+    $payload = PlanRenderer::dayPayload(
+        $session,
+        $today,
+        $clamp,
+        [],
+        10_000,
+        false,
+        20.0,
+        1.0,
+        INF,
+        RENDERER_PACES,
+        PlannedSessionStatus::Planned,
+        readinessAssessment: $assessment,
+    );
+    $recommendation = json_decode(Crypt::decryptString($payload['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['session_type'])->toBe('race')
+        ->and($payload['pinned'])->toBeTrue()
+        ->and($payload['clamp']['session_type'])->toBe('rest')
+        ->and($payload['clamp']['note'])->toContain('reported concerning pain')
+        ->and($payload['readiness_assessment'])->toBe($assessment)
+        ->and($recommendation['policy_version'])->toBe(2)
+        ->and($recommendation['effective']['readiness_assessment'])->toBe($assessment);
 });
 
 it('dayPayload applies a redistributed volume scale for a non-today day', function (): void {
@@ -515,6 +568,43 @@ it('dayPayload renders todays recorded ease as a step-down, the original session
             'note' => $voice,
             'label' => 'eased today',
         ]);
+});
+
+it('renders a recorded readiness dose beside the unchanged prescribed quality session', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    $qualityDose = [
+        'hard_minutes' => 15,
+        'original_hard_minutes' => 20,
+        'pace_band' => PaceBand::Threshold->value,
+        'pace_sec_per_km' => 270,
+    ];
+    $assessment = [
+        'ceiling' => ReadinessCeiling::ModerateOk->value,
+        'reasons' => ['mild_fatigue_or_soreness_with_load_support'],
+        'inputs' => [],
+        'adjustment' => ['quality_dose' => $qualityDose],
+    ];
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'prescribed_pace_sec_per_km' => 270,
+        'clamped_km' => 6.4,
+        'readiness_assessment' => $assessment,
+    ]);
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 9.8, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $token = json_decode(Crypt::decryptString($payload['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['session_type'])->toBe('tempo')
+        ->and($payload['clamp']['session_type'])->toBe('tempo')
+        ->and($payload['clamp']['hard_minutes'])->toBe(15)
+        ->and($payload['clamp']['original_hard_minutes'])->toBe(20)
+        ->and($payload['readiness_assessment']['adjustment']['quality_dose'])->toBe($qualityDose)
+        ->and($token['original']['hard_minutes'])->toBe(20)
+        ->and($token['effective']['readiness_assessment']['adjustment']['quality_dose'])->toBe($qualityDose)
+        ->and($session->prescribed_hard_minutes)->toBe(20);
 });
 
 it('dayPayload steps a distance-eased today down from the tempo it recorded no advisory clamp for', function (): void {
