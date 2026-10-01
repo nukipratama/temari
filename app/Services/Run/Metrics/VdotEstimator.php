@@ -454,6 +454,30 @@ class VdotEstimator
         ];
     }
 
+    /**
+     * @param VdotEstimate $estimate
+     * @return array{category: string, set_at: string, stale: bool, confidence: string, evidence_id: int|null, evidence_kind: string|null, distance_m: int|null, corroborating_quality_count: int, quality_category: string|null, quality_set_at: string|null, quality_evidence_kind: string|null, quality_distance_m: int|null}
+     */
+    public static function sourceSummary(array $estimate): array
+    {
+        return [
+            'category' => $estimate['source_category'],
+            'set_at' => $estimate['set_at']->toDateString(),
+            'stale' => $estimate['stale'],
+            'confidence' => $estimate['confidence'],
+            'evidence_id' => $estimate['evidence_id'],
+            'evidence_kind' => $estimate['evidence_kind'] ?? null,
+            'distance_m' => $estimate['distance_m'] ?? null,
+            'corroborating_quality_count' => $estimate['corroborating_quality_count'],
+            'quality_category' => $estimate['quality_source']['source_category'] ?? null,
+            'quality_set_at' => isset($estimate['quality_source'])
+                ? $estimate['quality_source']['set_at']->toDateString()
+                : null,
+            'quality_evidence_kind' => $estimate['quality_source']['evidence_kind'] ?? null,
+            'quality_distance_m' => $estimate['quality_source']['distance_m'] ?? null,
+        ];
+    }
+
     public function vdotFromTimeAndDistance(float $elapsedSec, float $distanceMeters): ?float
     {
         if ($elapsedSec <= 0 || $distanceMeters <= 0) {

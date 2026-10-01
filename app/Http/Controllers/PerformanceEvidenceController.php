@@ -85,22 +85,7 @@ class PerformanceEvidenceController extends Controller
             'fitness' => $after === null ? null : [
                 'vdot' => $after['vdot'],
                 'quality_vdot' => $after['quality_vdot'],
-                'vdot_source' => [
-                    'category' => $after['source_category'],
-                    'set_at' => $after['set_at']->toDateString(),
-                    'stale' => $after['stale'],
-                    'confidence' => $after['confidence'],
-                    'evidence_id' => $after['evidence_id'],
-                    'evidence_kind' => $after['evidence_kind'] ?? null,
-                    'distance_m' => $after['distance_m'] ?? null,
-                    'corroborating_quality_count' => $after['corroborating_quality_count'],
-                    'quality_category' => $after['quality_source']['source_category'] ?? null,
-                    'quality_set_at' => isset($after['quality_source'])
-                        ? $after['quality_source']['set_at']->toDateString()
-                        : null,
-                    'quality_evidence_kind' => $after['quality_source']['evidence_kind'] ?? null,
-                    'quality_distance_m' => $after['quality_source']['distance_m'] ?? null,
-                ],
+                'vdot_source' => VdotEstimator::sourceSummary($after),
                 'training_paces' => $paces,
             ],
             'plan_updated' => $planUpdated,

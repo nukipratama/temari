@@ -148,22 +148,7 @@ class ProfileController extends Controller
         return [
             'vdot' => $vdot['vdot'] ?? null,
             'quality_vdot' => $vdot['quality_vdot'] ?? null,
-            'vdot_source' => $vdot === null ? null : [
-                'category' => $vdot['source_category'],
-                'set_at' => $vdot['set_at']->toDateString(),
-                'stale' => $vdot['stale'],
-                'confidence' => $vdot['confidence'],
-                'evidence_id' => $vdot['evidence_id'],
-                'evidence_kind' => $vdot['evidence_kind'] ?? null,
-                'distance_m' => $vdot['distance_m'] ?? null,
-                'corroborating_quality_count' => $vdot['corroborating_quality_count'],
-                'quality_category' => $vdot['quality_source']['source_category'] ?? null,
-                'quality_set_at' => isset($vdot['quality_source'])
-                    ? $vdot['quality_source']['set_at']->toDateString()
-                    : null,
-                'quality_evidence_kind' => $vdot['quality_source']['evidence_kind'] ?? null,
-                'quality_distance_m' => $vdot['quality_source']['distance_m'] ?? null,
-            ],
+            'vdot_source' => $vdot === null ? null : VdotEstimator::sourceSummary($vdot),
             'threshold_pace_sec' => $threshold['pace_sec'] ?? null,
             'threshold_confidence' => $threshold['confidence'] ?? null,
             'training_paces' => $paces,
