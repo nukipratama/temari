@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\PerformanceEvidence;
 use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Services\Run\Trend\TrendSnapshotWriter;
@@ -126,18 +127,18 @@ it('accepts an explicit date so a row can be written for a day other than today'
 
 it('backfills a snapshot with the VDOT the athlete had proven by that date, not by today', function (): void {
     $user = User::factory()->create();
-    // Slow marathon two years back, fast kilometre last month. Today only the
-    // kilometre is inside the estimator's window; on a 2024 date both are, and
-    // the min-across-categories rule hands the marathon the lower VDOT.
     PersonalRecord::factory()->for($user)->create([
         'category' => 'marathon',
         'value_sec' => 20_292.0,
         'set_at' => Carbon::parse('2024-01-01'),
     ]);
-    PersonalRecord::factory()->for($user)->create([
-        'category' => '1km',
-        'value_sec' => 278.0,
-        'set_at' => Carbon::parse('2026-07-01'),
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id,
+        'kind' => 'test',
+        'distance_m' => 5000,
+        'elapsed_time_sec' => 1500,
+        'performed_on' => Carbon::parse('2026-07-01'),
+        'confirmed_at' => Carbon::parse('2026-07-01 12:00:00'),
     ]);
 
     $this->writer->writeToday($user);
