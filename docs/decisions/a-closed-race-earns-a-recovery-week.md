@@ -16,6 +16,8 @@ code_refs:
 
 **Status:** Accepted (2026-09-09)
 
+> **Superseded in part (noted 2026-10-01) by [[a-race-outcome-is-confirmed-not-assumed]].** The trigger below is no longer the race date: the recovery week follows only a race the athlete confirmed having run.
+
 ## Context
 
 [CloseFinishedRacesCommand](app/Console/Commands/Run/CloseFinishedRacesCommand.php) retires a race the morning after it is run, at 00:04, so the plan falls back to the self-scaled arc rather than counting down to a day in the past ([[the-plan-knows-its-race-day]]). Later in the same Monday window `plan:regenerate` runs at 00:26, and [PhaseSchedule::selfScaled()](app/Services/Run/Plan/PhaseSchedule.php) opens its cycle at `Build`, multiplier `1.0`.

@@ -3,7 +3,7 @@ title: Gamification (cards, rarities, badges, milestones)
 description: The reward engine — how a run becomes a card with rarity, badges and a special move, plus milestones, PRs, season goals and the weekly streak.
 tags: [feature, gamification]
 status: living
-reviewed: 2026-09-17
+reviewed: 2026-10-01
 code_refs:
   - app/Services/Run/Story/RunCardFactory.php
   - app/Services/Run/Story/CardContext.php
@@ -14,6 +14,7 @@ code_refs:
   - app/Services/Run/Story/Temari.php
   - app/Actions/Gamification/DetectActivityMilestonesAction.php
   - app/Services/Gamification/SeasonGoalResolver.php
+  - app/Services/Gamification/SeasonRecordBuilder.php
   - app/Services/Gamification/SeasonGamificationContext.php
   - resources/js/components/trends/panels/FitnessPanel.tsx
   - app/Models/RunCard.php
@@ -81,7 +82,7 @@ already cut the rail that drew them. Git history holds the catalog.
 
 ## Season goals and the rest-day reward
 
-A [Season](../../app/Models/Season.php) is the training arc `Season IS the training block` refers to — race-oriented (ends on `race_date`) or self-scaled (a fixed rolling 12-week block, matching `Periodizer::HORIZON_WEEKS`). [SeasonService::ensureCurrent()](../../app/Services/Run/Plan/SeasonService.php) auto-cycles it: called from both `Periodizer::regenerate()` and `PlanController::index()`, it closes the current season early and opens the other mode when a `RaceGoal` is set or cleared mid-season (mirroring `Periodizer`'s own "mode switch takes effect at the next call" rule), and rolls a self-scaled season into a fresh one once its 12 weeks expire — always without a gap or overlap. Every user gets a real season from their first Plan-tab view, before any plan has even been regenerated.
+A [Season](../../app/Models/Season.php) is the training arc `Season IS the training block` refers to — race-oriented (ends on `race_date`) or self-scaled (a fixed rolling 12-week block, matching `Periodizer::HORIZON_WEEKS`). [SeasonService::ensureCurrent()](../../app/Services/Run/Plan/SeasonService.php) auto-cycles it: called from both `Periodizer::regenerate()` and `PlanController::index()`, it closes the current season early and opens the other mode when a `RaceGoal` is set or cleared mid-season (mirroring `Periodizer`'s own "mode switch takes effect at the next call" rule), and rolls a self-scaled season into a fresh one once its 12 weeks expire — always without a gap or overlap. Every user gets a real season from their first Plan-tab view, before any plan has even been regenerated. Editing the race keeps its season; only a new race, a cleared race or an expiry opens another ([[a-race-event-keeps-its-season]]). A season's record keeps process (the training goals) and performance (the race result against its target) apart, stores both when the season closes, and reads a race that is still unconfirmed as pending, never as a miss ([[a-race-outcome-is-confirmed-not-assumed]]).
 
 [SeasonGoal](../../app/Models/SeasonGoal.php) rows generate at season creation (a stable checklist, unlike the day-by-day plan): total sessions completed, total quality (Tempo/Interval) sessions completed, a longest-long-run goal and rest days honored. A self-scaled season adds CTL growth as a 5th. The long-run target is the season's longest planned long run in both modes, so no goal asks for a session the plan never schedules; a race season's plan climbs to a readiness distance by race length ([[a-race-block-never-prescribes-below-habit]]). Its race-margin and `season_peak_weekly_km` goals are appended once, on the first call on or after block open, so a race season holds four goals before the block and six inside it ([[the-block-opens-on-a-computed-date]]). [SeasonGoalResolver](../../app/Services/Gamification/SeasonGoalResolver.php) resolves `current` live by reading each goal's `metric` string against a [SeasonGamificationContext](../../app/Services/Gamification/SeasonGamificationContext.php), scoped to the season's date range. Rendered on the Plan tab, see [[plan-periodizer]].
 

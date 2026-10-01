@@ -15,6 +15,8 @@ code_refs:
 
 > **Fact update, 2026-10-01.** "Threshold pace is roughly what can be held for an hour" is now what the app prescribes: until [[guide-paces-follow-the-vdot-race-equivalents]], the threshold guide pace ran at about 21-minute race pace. The decision stands unchanged.
 
+> **One threshold superseded (noted 2026-10-01) by [[road-preparation-ends-at-the-marathon]].** Marathon-class work now starts above 25 km and stops at the marathon, not at 30 km with no upper bound.
+
 # The plan follows the coaching, not just the arithmetic
 
 **Status:** Accepted (2026-09-07)

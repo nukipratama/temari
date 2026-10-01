@@ -3,11 +3,16 @@ title: Race — goal race and Riegel projection
 description: The first user-authored object in the app — a race the user is training for and a fitted-Riegel finish-time projection
 tags: [feature, run]
 status: living
-reviewed: 2026-09-24
+reviewed: 2026-10-01
 code_refs:
   - app/Models/RaceGoal.php
   - app/Http/Controllers/RaceController.php
   - app/Http/Requests/StoreRaceGoalRequest.php
+  - app/Services/Run/Plan/RaceGoalService.php
+  - app/Services/Run/Plan/RaceOutcomeService.php
+  - app/Services/Run/Plan/RaceAmbitionAssessor.php
+  - app/Http/Controllers/RaceOutcomeController.php
+  - resources/js/components/race/RaceOutcomeCard.tsx
   - app/Services/Run/Metrics/RiegelProjector.php
   - app/Services/Run/Metrics/TrainingLoad.php
   - app/Services/Inertia/GamificationProps.php
@@ -27,7 +32,11 @@ A `GoalResolver` already meant something else entirely when this feature landed:
 
 ## Schema: one active race, history retained
 
-`race_goals` has no `unique(user_id, ...)` constraint — that shape only fits "at-most-one-ever" (like `personal_records`' `unique(user_id, category)`), not "at-most-one-active-but-keep-history". Instead, a nullable `completed_at` marks a row inactive, and "one active per user" is enforced at the application layer inside [RaceController::store()](app/Http/Controllers/RaceController.php): every submission transactionally marks the current active row `completed_at = now()` and inserts a new one. This is also how "edit" works from the user's side — there's no separate update endpoint; resubmitting the form supersedes the active race while the old row stays on record.
+`race_goals` has no `unique(user_id, ...)` constraint — that shape only fits "at-most-one-ever" (like `personal_records`' `unique(user_id, category)`), not "at-most-one-active-but-keep-history". Instead, a nullable `completed_at` marks a row inactive, and "one active per user" is enforced at the application layer by [RaceGoalService](../../app/Services/Run/Plan/RaceGoalService.php), under the athlete's row lock. The row is the event: with a race active the form submits an explicit `intent`. `update` (the default) revises that row in place, so a new target or a postponed date keeps the race and its season; `new` retires it and inserts another, which starts a new season. Every creation, revision, postponement, replacement, cancellation and outcome appends a [RaceGoalChange](../../app/Models/RaceGoalChange.php) row, so past dates and targets stay on record ([[a-race-event-keeps-its-season]]).
+
+## Outcome, ambition and support
+
+A passed date is not participation. `plan:close-finished-races` retires the row and leaves its `outcome` `pending`; `race:ask-outcome` asks the next morning, and the Race page lists passed races with [RaceOutcomeCard](../../resources/js/components/race/RaceOutcomeCard.tsx): confirm the matched run ([RaceOutcomeMatcher](../../app/Services/Run/Plan/RaceOutcomeMatcher.php), 10% distance tolerance, closest then longest), enter a time, or mark it not run. `POST /race/{race}/outcome` ([RaceOutcomeController](../../app/Http/Controllers/RaceOutcomeController.php)) records it through [RaceOutcomeService](../../app/Services/Run/Plan/RaceOutcomeService.php), reopenable at any time ([[a-race-outcome-is-confirmed-not-assumed]]). The `race` prop also carries `ambition` (the stated target beside the supported time and pace, banded on track / ambitious / unsupported, [[race-ambition-is-shown-and-capacity-is-prescribed]]), `support` (road or general maintenance beyond the marathon, [[road-preparation-ends-at-the-marathon]]) and `history`; the stable TypeScript shapes are in [inertia.ts](../../resources/js/types/inertia.ts).
 
 ## Riegel projection: fitted, not assumed
 
@@ -55,7 +64,7 @@ This is deliberately **not** reconciled with [VdotEstimator](app/Services/Run/Me
 
 The page leads with one duel card, [RaceDuel](resources/js/components/race/RaceDuel.tsx), under a compact "your race." header with a "plan →" link. It sets the goal time against the projected finish with the gap in words ("8:29 behind", "2:10 ahead", "on goal" within 5 seconds), a straight [ProjectionRangeBar](resources/js/components/race/ProjectionRangeBar.tsx) marking the goal against the projected range, then the race line and the PR basis. A Temari watermark is posed from the gap relative to the goal time. With no projection the card shows the goal alone. Why this shape: [[race-page-leads-with-goal-vs-projection]].
 
-Under the card, a row behind a hairline holds "edit race" and a quiet ember "clear race". "edit race" expands [RaceGoalForm](resources/js/components/race/RaceGoalForm.tsx) inline, collapsed by default; a successful save collapses it again, and reopening remounts it on the saved values. "clear race" confirms through the concerned-pose `TemariNudgeModal` before `DELETE /race`, which retires the race and regenerates the plan onto its self-scaled arc. With no race set, the page shows only a one-line prompt and a "set a race" button that expands the same form.
+Under the card, a row behind a hairline holds "edit race" and a quiet ember "clear race". "edit race" expands [RaceGoalForm](resources/js/components/race/RaceGoalForm.tsx) inline, collapsed by default; with a race set it first asks "Update this race" (the default, distance held) or "Add a new race" (a blank form that posts `intent: new`). A successful save collapses it again, and reopening remounts it on the saved values. "clear race" confirms through the concerned-pose `TemariNudgeModal` before `DELETE /race`, which retires the race and regenerates the plan onto its self-scaled arc. With no race set, the page shows only a one-line prompt and a "set a race" button that expands the same form.
 
 ## No fitness trend here any more
 
@@ -63,4 +72,4 @@ Under the card, a row behind a hairline holds "edit race" and a quiet ember "cle
 
 ## Sharing and cache busting
 
-The active race is shared app-wide via `activeRace` in [GamificationProps](app/Services/Inertia/GamificationProps.php), deliberately thin (no projection math on every page load — that's computed only on `/race` itself). Cached per user behind [SharedPropCacheKey::ActiveRace](app/Support/SharedPropCacheKey.php), busted on every `RaceGoal` write via its `saved`/`deleted` model hooks, plus an explicit post-commit bust in `RaceController::store()` (the same pattern as `AccessoryController::equip()` — the model hook alone fires mid-transaction, before commit, which could let a concurrent read re-cache stale state).
+The active race is shared app-wide via `activeRace` in [GamificationProps](app/Services/Inertia/GamificationProps.php), deliberately thin (no projection math on every page load — that's computed only on `/race` itself). Cached per user behind [SharedPropCacheKey::ActiveRace](app/Support/SharedPropCacheKey.php), busted on every `RaceGoal` write via its `saved`/`deleted` model hooks, plus an explicit post-commit bust in `RaceGoalService` (the same pattern as `AccessoryController::equip()` — the model hook alone fires mid-transaction, before commit, which could let a concurrent read re-cache stale state).
