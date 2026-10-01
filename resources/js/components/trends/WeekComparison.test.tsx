@@ -24,6 +24,7 @@ function load(overrides: Partial<TrainingLoad> = {}): TrainingLoad {
     return {
         form: -18.5,
         form_status: 'fatigued',
+        form_known_from: '2026-01-01',
         ctl_42d: 42.8,
         atl_7d: 61.3,
         weekly_trimp: 246,
@@ -198,5 +199,25 @@ describe('WeekComparison', () => {
             screen.getByText(/not enough training history yet/),
         ).toBeInTheDocument();
         expect(screen.queryByText('load')).not.toBeInTheDocument();
+    });
+});
+
+describe('WeekComparison during the form warm-up', () => {
+    it('shows a neutral learning state with the days left instead of a verdict', () => {
+        render(
+            <WeekComparison
+                weekComparison={payload()}
+                load={load({
+                    form_status: null,
+                    form_known_from: '2026-05-26',
+                })}
+            />,
+        );
+
+        expect(screen.getByText('learning')).toBeInTheDocument();
+        expect(
+            screen.getByText('still learning your load · 12 days to go'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('-18.5')).not.toBeInTheDocument();
     });
 });

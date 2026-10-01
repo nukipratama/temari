@@ -438,7 +438,8 @@ it('paints Home inside its query budget', function (): void {
     // hydration-backlog read runs here as it does for any other today.
     // 19: the controller reads today's own session_type once to decide
     // whether restDayEasePace's deferred prop is worth adding at all.
-    expect($queries)->toBeLessThanOrEqual(23);
+    // 24: BriefingContext::prescribedKmToDate reads this week's planned sessions.
+    expect($queries)->toBeLessThanOrEqual(24);
     expect($fitnessQueries)->toBe(['performance_evidence' => 1, 'fitness_anchors' => 1]);
     expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
 

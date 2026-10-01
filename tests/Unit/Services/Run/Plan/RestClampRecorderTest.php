@@ -313,13 +313,16 @@ it('scopes to the given user', function (): void {
 it('recomputes fresh training load instead of a pre-ingest cache entry', function (): void {
     $user = User::factory()->create();
     $session = todaysSession($user);
+    RecoveryFeedback::query()->create(['user_id' => $user->id, 'date' => Carbon::today()->toDateString(), 'fatigue' => 'mild']);
 
-    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
-        'trimp_edwards' => 10.0,
-        'start_date_local' => Carbon::yesterday(),
-    ]);
-    // Warms the cache with the pre-ingest (non-overreaching) reading, exactly
-    // as a dashboard render would moments before the run comes in.
+    for ($daysAgo = 60; $daysAgo >= 2; $daysAgo -= 2) {
+        ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+            'trimp_edwards' => 40.0,
+            'start_date_local' => Carbon::today()->subDays($daysAgo),
+        ]);
+    }
+    // Warms the cache with the pre-ingest reading, where mild fatigue has no
+    // load to support it, exactly as a dashboard render would moments before the run comes in.
     app(TrainingLoad::class)->summary($user, Carbon::today());
 
     ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
@@ -328,7 +331,8 @@ it('recomputes fresh training load instead of a pre-ingest cache entry', functio
     ]);
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
-        ->and($session->fresh()->rest_clamped_at)->not->toBeNull();
+        ->and($session->fresh()->readiness_assessment['inputs']['form_status'])->toBeIn(['fatigued', 'overreaching'])
+        ->and($session->fresh()->readiness_assessment['reasons'])->toContain('mild_fatigue_or_soreness_with_load_support');
 });
 
 // The recorder's own guards make it the one place that fires once per athlete

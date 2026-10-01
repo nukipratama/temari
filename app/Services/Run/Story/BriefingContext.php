@@ -8,6 +8,7 @@ use NoDiscard;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\RecoveryFeedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -16,6 +17,9 @@ use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\RecentTrainingStress;
 use App\Services\Run\Metrics\Readiness;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Plan\EffectiveSession;
+use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
 
 /**
@@ -119,7 +123,11 @@ final readonly class BriefingContext
         $stressProfile = $historyLoading ? null : app(RecentTrainingStress::class)->forUser($user, $asOf);
         $feedback = self::recoveryFeedback($user, $asOf);
         $weeklyTrimp = self::floatOrNull($load['weekly_trimp'] ?? null);
-        $weeklyTrimpRange = self::trimpRange($load['weekly_trimp_range'] ?? null);
+        $weeklyTrimpReference = self::trimpRange($load['weekly_trimp_reference'] ?? null);
+        $prescribedKmToDate = $historyLoading ? null : self::prescribedKmToDate($user, $asOf);
+        $aheadOfPlanPct = $prescribedKmToDate === null || $prescribedKmToDate <= 0.0
+            ? null
+            : round(((($thisWeek->distance_km ?? 0.0) - $prescribedKmToDate) / $prescribedKmToDate) * 100, 1);
         $formConflict = $liveFormStatus !== null
             && $snapshotFormStatus !== null
             && $liveFormStatus !== $snapshotFormStatus;
@@ -134,8 +142,9 @@ final readonly class BriefingContext
             stressProfile: $stressProfile,
             feedback: $feedback,
             weeklyTrimp: $weeklyTrimp,
-            weeklyTrimpRange: $weeklyTrimpRange,
+            weeklyTrimpRange: $weeklyTrimpReference,
             formConflict: $formConflict,
+            aheadOfPlanPct: $aheadOfPlanPct,
         );
 
         return new self(
@@ -289,6 +298,38 @@ final readonly class BriefingContext
     private static function floatOrNull(mixed $value): ?float
     {
         return is_int($value) || is_float($value) ? (float) $value : null;
+    }
+
+    /**
+     * This week's prescribed km from Monday through $asOf, sized the way
+     * grading sizes a day ({@see \App\Services\Run\Plan\ComplianceScorer});
+     * null when the week has no planned sessions.
+     */
+    public static function prescribedKmToDate(User $user, Carbon $asOf): ?float
+    {
+        $weekStart = $asOf->copy()->startOfWeek(Carbon::MONDAY);
+        $weekRows = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
+            ->orderBy('date')
+            ->get();
+        if ($weekRows->isEmpty()) {
+            return null;
+        }
+
+        $baseline = app(TrainingBaseline::class)->forUser($user, $asOf);
+        $kmByDate = PlanRenderer::plannedKmByDate(
+            $weekRows,
+            (float) $baseline['long_run_km'],
+            (float) $baseline['long_run_cap_km'],
+            $baseline['self_scaled'],
+            (float) $baseline['long_run_progression_cap_km'],
+        );
+        $throughToday = $asOf->toDateString();
+
+        return round($weekRows
+            ->filter(fn (PlannedSession $session): bool => $session->date->toDateString() <= $throughToday)
+            ->sum(fn (PlannedSession $session): float => EffectiveSession::of($session, $kmByDate[$session->date->toDateString()])->coreKm), 1);
     }
 
     /** @return array{low: float, high: float}|null */

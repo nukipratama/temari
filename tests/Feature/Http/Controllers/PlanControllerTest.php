@@ -758,7 +758,8 @@ it('resolves the deferred Plan props inside their query budget', function (): vo
     // SeasonGamificationContext's grouped read over the season range never
     // ran. The fixture now carries 9 weeks of them (see planBudgetFixture),
     // adding that one query.
-    expect($queries)->toBeLessThanOrEqual(19);
+    // 20: BriefingContext::prescribedKmToDate reads this week's planned sessions.
+    expect($queries)->toBeLessThanOrEqual(20);
     expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
 });
 

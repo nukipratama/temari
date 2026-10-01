@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\PlanPhase;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\RecoveryFeedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -232,15 +235,14 @@ it('does not infer rising fitness from weeks before the first HR reading', funct
     expect(BriefingContext::forUser($user, $asOf)->fitnessTrend)->toBe('plateau');
 });
 
-it('exposes a deterministic readiness ceiling from the live load, capping quality on a red flag', function (): void {
+it('exposes a deterministic readiness ceiling from the live load, never resting on a load label alone', function (): void {
     $asOf = Carbon::create(2026, 5, 21, 8);
     Carbon::setTestNow($asOf);
     $user = User::factory()->create();
 
-    // Overreaching load is a hard red flag -> rest, regardless of anything else.
     $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => 'overreaching', 'monotony' => 1.0]);
 
-    expect($ctx->readinessCeiling)->toBe('rest');
+    expect($ctx->readinessCeiling)->toBe('quality_ok');
 });
 
 it('uses current recovery feedback and actual demanding activity, not the latest run clock', function (): void {
@@ -422,4 +424,46 @@ it('serialises to a compact array suitable for the LLM user message', function (
         'time_bucket', 'consecutive_weeks_active', 'fitness_trend',
         'volume_ramp', 'readiness_ceiling', 'build_nudge', 'readiness_reasons', 'readiness_assessment',
     ]);
+});
+
+it('keeps quality in a compliant post-deload Build week and caps only a week run well ahead of its plan', function (float $actualShareOfPlan, string $ceiling): void {
+    $asOf = Carbon::create(2026, 5, 21, 8);
+    Carbon::setTestNow($asOf);
+    $user = User::factory()->create();
+    $week = [
+        '2026-05-18' => SessionType::Easy,
+        '2026-05-19' => SessionType::Tempo,
+        '2026-05-20' => SessionType::Rest,
+        '2026-05-21' => SessionType::Easy,
+        '2026-05-22' => SessionType::Rest,
+        '2026-05-23' => SessionType::Easy,
+        '2026-05-24' => SessionType::Long,
+    ];
+    foreach ($week as $date => $type) {
+        PlannedSession::factory()->for($user)->create(['date' => $date, 'phase' => PlanPhase::Build, 'session_type' => $type, 'volume_multiplier' => 1.1]);
+    }
+    $deloadRun = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($deloadRun)->create([
+        'start_date_local' => Carbon::create(2026, 5, 12, 7),
+        'distance' => 6000.0,
+    ]);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 2, 'distance_km' => 12.0]);
+    $prescribedToDate = BriefingContext::prescribedKmToDate($user, $asOf);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-24', 'runs' => 3, 'distance_km' => round($prescribedToDate * $actualShareOfPlan, 1)]);
+
+    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => 'optimal', 'monotony' => 1.0]);
+
+    expect($prescribedToDate)->toBeGreaterThan(0.0)
+        ->and($ctx->volumeRampPct)->toBeGreaterThan(15.0)
+        ->and($ctx->readinessCeiling)->toBe($ceiling);
+})->with([
+    'run as prescribed' => [1.0, 'quality_ok'],
+    'run 30% past the prescription' => [1.3, 'moderate_ok'],
+]);
+
+it('has no prescription to compare against without planned sessions this week', function (): void {
+    $asOf = Carbon::create(2026, 5, 21, 8);
+    Carbon::setTestNow($asOf);
+
+    expect(BriefingContext::prescribedKmToDate(User::factory()->create(), $asOf))->toBeNull();
 });

@@ -321,7 +321,10 @@ export type FormStatus = 'fresh' | 'optimal' | 'fatigued' | 'overreaching';
  *  history and stay numbers through an unscored stretch. */
 export interface TrainingLoad {
     form: number;
-    form_status: FormStatus;
+    /** Null until 42 days of scored history follow the first scored day. */
+    form_status: FormStatus | null;
+    /** Y-m-d the form status becomes readable. */
+    form_known_from: string;
     ctl_42d: number;
     atl_7d: number;
     weekly_trimp: number | null;

@@ -27,7 +27,8 @@ final readonly class Readiness
      * @param  int|null  $recoveryHours  Literal hours since any run, retained as context only.
      * @param  array<string, mixed>|null  $stressProfile  Actual recent activities, regardless of the planned session label.
      * @param  array<string, mixed>|null  $feedback  Latest recovery feedback and its freshness.
-     * @param  array{low: float, high: float}|null  $weeklyTrimpRange  Personal typical range when available.
+     * @param  array{low: float, high: float}|null  $weeklyTrimpRange  Personal reference range, excluding the current window, when available.
+     * @param  float|null  $aheadOfPlanPct  Actual km-to-date against prescribed km-to-date this week; null without a prescription.
      */
     public static function assess(
         ?string $formStatus,
@@ -41,6 +42,7 @@ final readonly class Readiness
         ?float $weeklyTrimp = null,
         ?array $weeklyTrimpRange = null,
         bool $formConflict = false,
+        ?float $aheadOfPlanPct = null,
     ): self {
         $stressProfile ??= [
             'sessions' => [],
@@ -56,12 +58,14 @@ final readonly class Readiness
         $moderateConcern = $fatigue === 'moderate' || $soreness === 'moderate';
         $recentDemanding = (int) ($stressProfile['demanding_within_24h'] ?? 0) > 0;
         $closelySpacedDemanding = (int) ($stressProfile['demanding_within_48h'] ?? 0) > 1;
+        $aheadOfPlan = $aheadOfPlanPct !== null && $aheadOfPlanPct > 15.0;
         $loadAboveTypical = $weeklyTrimp !== null
             && $weeklyTrimpRange !== null
-            && $weeklyTrimp > $weeklyTrimpRange['high'];
+            && $weeklyTrimp > $weeklyTrimpRange['high']
+            && ($aheadOfPlanPct === null || $aheadOfPlanPct > 0.0);
         $supportingLoad = in_array($formStatus, ['fatigued', 'overreaching'], true)
             || ($monotony !== null && $monotony >= 1.8)
-            || ($volumeRampPct !== null && $volumeRampPct > 15.0)
+            || $aheadOfPlan
             || $recentDemanding
             || $closelySpacedDemanding
             || $loadAboveTypical;
@@ -77,10 +81,6 @@ final readonly class Readiness
             $ceiling = $ceiling->capTo(ReadinessCeiling::Rest);
             $reasons[] = 'illness_reported';
         }
-        if ($formStatus === 'overreaching') {
-            $ceiling = $ceiling->capTo(ReadinessCeiling::Rest);
-            $reasons[] = 'training_form_overreaching';
-        }
         if ($fatigue === 'severe' || $soreness === 'severe') {
             $ceiling = $ceiling->capTo(ReadinessCeiling::EasyOnly);
             $reasons[] = 'severe_fatigue_or_soreness_reported';
@@ -89,17 +89,13 @@ final readonly class Readiness
             $ceiling = $ceiling->capTo(ReadinessCeiling::EasyOnly);
             $reasons[] = 'already_ran_today';
         }
-        if ($formStatus === 'fatigued') {
-            $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
-            $reasons[] = 'training_form_fatigued';
-        }
         if ($monotony !== null && $monotony > 2.0) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
             $reasons[] = 'high_training_monotony';
         }
-        if ($volumeRampPct !== null && $volumeRampPct > 15.0) {
+        if ($aheadOfPlan) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
-            $reasons[] = 'volume_increased_sharply';
+            $reasons[] = 'running_ahead_of_plan';
         }
         if ($loadAboveTypical) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
@@ -151,7 +147,8 @@ final readonly class Readiness
                 'recent_training_stress' => $stressProfile,
                 'recovery_feedback' => $feedback,
                 'weekly_trimp' => $weeklyTrimp,
-                'weekly_trimp_range' => $weeklyTrimpRange,
+                'weekly_trimp_reference' => $weeklyTrimpRange,
+                'ahead_of_plan_pct' => $aheadOfPlanPct,
                 'form_signals_conflict' => $formConflict,
             ],
         );

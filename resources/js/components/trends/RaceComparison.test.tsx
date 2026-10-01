@@ -31,6 +31,7 @@ function load(overrides: Partial<TrainingLoad> = {}): TrainingLoad {
     return {
         form: -18.5,
         form_status: 'fatigued',
+        form_known_from: '2026-01-01',
         ctl_42d: 42.8,
         atl_7d: 61.3,
         weekly_trimp: 246,
@@ -98,5 +99,19 @@ describe('RaceComparison', () => {
         render(<RaceComparison activeRace={null} trend={[]} load={null} />);
 
         expect(screen.getAllByText('—')).toHaveLength(2);
+    });
+});
+
+describe('RaceComparison during the form warm-up', () => {
+    it('reads form today as learning rather than a verdict', () => {
+        render(
+            <RaceComparison
+                activeRace={race()}
+                trend={series([40, 41, 42])}
+                load={load({ form_status: null })}
+            />,
+        );
+
+        expect(screen.getByText('learning')).toBeInTheDocument();
     });
 });

@@ -137,7 +137,13 @@ export default function RaceComparison({
             <Stat
                 size="sm"
                 label="form today"
-                value={load !== null ? formStatusWord(load.form_status) : '—'}
+                value={
+                    load === null
+                        ? '—'
+                        : load.form_status === null
+                          ? 'learning'
+                          : formStatusWord(load.form_status)
+                }
                 sub="where you are now, not a race-week forecast"
             />
         </section>

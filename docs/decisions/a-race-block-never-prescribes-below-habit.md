@@ -16,6 +16,8 @@ code_refs:
   - app/Services/AI/HydrationBacklog.php
 ---
 
+> **Partly superseded (2026-10-02) by [[a-load-label-supports-a-concern-it-never-decides-one]].** Rule 5's "an overreaching form … still deloads the current week" no longer holds: a load label never forces a deload. Monotony, strain and a missed week still do. The rest of this decision stands.
+
 # A race block never prescribes below habit, and the load guard outranks that
 
 **Status:** Accepted (2026-09-18)

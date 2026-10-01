@@ -35,12 +35,12 @@ it('caps at the most restrictive guardrail', function (
         ->toBe($expected);
 })->with([
     // Hard red flags -> easy/rest, regardless of any positive signal.
-    'overreaching forces rest even while ramping' => ['overreaching', 72, false, 1.0, 0.0, 'up', ReadinessCeiling::Rest],
+    'overreaching form alone is not a concern' => ['overreaching', 72, false, 1.0, 0.0, 'up', ReadinessCeiling::QualityOk],
     'already ran today caps at easy even if fresh + rested' => ['fresh', 60, true, 1.0, 0.0, 'up', ReadinessCeiling::EasyOnly],
-    'fatigued form withholds quality' => ['fatigued', 60, false, 1.0, 0.0, 'plateau', ReadinessCeiling::ModerateOk],
+    'fatigued form alone is not a concern' => ['fatigued', 60, false, 1.0, 0.0, 'plateau', ReadinessCeiling::QualityOk],
     'high monotony withholds quality' => ['fresh', 60, false, 2.5, 0.0, 'up', ReadinessCeiling::ModerateOk],
     // Softer caps -> moderate, quality withheld.
-    'volume jump over 15% withholds quality' => ['fresh', 60, false, 1.0, 20.0, 'up', ReadinessCeiling::ModerateOk],
+    'a week-over-week jump alone does not withhold quality' => ['fresh', 60, false, 1.0, 65.0, 'up', ReadinessCeiling::QualityOk],
     'ordinary run recency does not withhold quality' => ['fresh', 12, false, 1.0, 0.0, 'up', ReadinessCeiling::QualityOk],
     'borderline monotony alone remains uncertain' => ['optimal', 60, false, 1.9, 0.0, 'plateau', ReadinessCeiling::QualityOk],
     'unknown form and recency remain unknown' => [null, null, false, null, null, 'plateau', ReadinessCeiling::QualityOk],
@@ -236,13 +236,14 @@ it('treats sleep, fatigue, and soreness as independent feedback dimensions', fun
     ]],
 ]);
 
-it('treats mild soreness alongside a sharp volume rise as moderate rather than a full hard-day replacement', function (): void {
+it('treats mild soreness while running well ahead of plan as moderate rather than a full hard-day replacement', function (): void {
     $readiness = Readiness::assess(
         formStatus: 'optimal',
         recoveryHours: 48,
         ranToday: false,
         monotony: 1.0,
         volumeRampPct: 22.0,
+        aheadOfPlanPct: 22.0,
         fitnessTrend: 'up',
         feedback: [
             'freshness' => 'current',
@@ -253,6 +254,50 @@ it('treats mild soreness alongside a sharp volume rise as moderate rather than a
     );
 
     expect($readiness->ceiling)->toBe(ReadinessCeiling::ModerateOk)
-        ->and($readiness->reasons)->toContain('volume_increased_sharply')
+        ->and($readiness->reasons)->toContain('running_ahead_of_plan')
         ->and($readiness->reasons)->toContain('mild_fatigue_or_soreness_with_load_support');
+});
+
+it('lets a load-based form label only support a mild concern, never force rest', function (string $form): void {
+    $alone = Readiness::assess($form, 60, false, 1.0, 0.0, 'plateau');
+    $withMildFatigue = Readiness::assess($form, 60, false, 1.0, 0.0, 'plateau', feedback: ['freshness' => 'current', 'fatigue' => 'mild']);
+
+    expect($alone->ceiling)->toBe(ReadinessCeiling::QualityOk)
+        ->and($alone->reasons)->not->toContain('training_form_overreaching')
+        ->and($withMildFatigue->ceiling)->toBe(ReadinessCeiling::ModerateOk)
+        ->and($withMildFatigue->reasons)->toContain('mild_fatigue_or_soreness_with_load_support');
+})->with(['fatigued', 'overreaching']);
+
+it('reserves rest for reported concerning pain or illness', function (): void {
+    expect(Readiness::assess('overreaching', 10, false, 2.5, 0.0, 'up', weeklyTrimp: 900.0, weeklyTrimpRange: ['low' => 300.0, 'high' => 400.0], aheadOfPlanPct: 60.0)->ceiling)
+        ->toBe(ReadinessCeiling::ModerateOk)
+        ->and(Readiness::assess('fresh', 60, false, 1.0, 0.0, 'up', feedback: ['freshness' => 'current', 'illness' => true])->ceiling)
+        ->toBe(ReadinessCeiling::Rest);
+});
+
+it('withholds quality only when actual km-to-date runs well ahead of the prescription', function (?float $aheadOfPlanPct, ReadinessCeiling $expected): void {
+    $readiness = Readiness::assess('optimal', 60, false, 1.0, 65.0, 'plateau', aheadOfPlanPct: $aheadOfPlanPct);
+
+    expect($readiness->ceiling)->toBe($expected)
+        ->and($readiness->inputs['ahead_of_plan_pct'])->toBe($aheadOfPlanPct);
+})->with([
+    'on plan after a deload week' => [0.0, ReadinessCeiling::QualityOk],
+    'slightly ahead' => [15.0, ReadinessCeiling::QualityOk],
+    'well ahead' => [15.1, ReadinessCeiling::ModerateOk],
+    'no prescription to compare' => [null, ReadinessCeiling::QualityOk],
+]);
+
+it('reads the personal range as a concern only when the athlete is also ahead of the prescription', function (?float $aheadOfPlanPct, ReadinessCeiling $expected): void {
+    $readiness = Readiness::assess('optimal', 60, false, 1.0, 0.0, 'plateau', weeklyTrimp: 700.0, weeklyTrimpRange: ['low' => 500.0, 'high' => 592.0], aheadOfPlanPct: $aheadOfPlanPct);
+
+    expect($readiness->ceiling)->toBe($expected);
+})->with([
+    'matches the prescription' => [0.0, ReadinessCeiling::QualityOk],
+    'ahead of the prescription' => [5.0, ReadinessCeiling::ModerateOk],
+    'no prescription' => [null, ReadinessCeiling::ModerateOk],
+]);
+
+it('does not read a steady week exactly at its reference as above range', function (): void {
+    expect(Readiness::assess('optimal', 60, false, 1.0, 0.0, 'plateau', weeklyTrimp: 592.0, weeklyTrimpRange: ['low' => 592.0, 'high' => 592.0])->ceiling)
+        ->toBe(ReadinessCeiling::QualityOk);
 });

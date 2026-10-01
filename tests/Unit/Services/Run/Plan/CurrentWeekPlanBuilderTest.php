@@ -332,7 +332,7 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
         ->firstWhere('date', Carbon::today()->toDateString());
 
     expect($held['clamp'])->toBeNull()
-        ->and($resumed['clamp']['session_type'])->toBe('rest')
+        ->and($resumed['clamp']['session_type'])->toBe('easy')
         ->and($resumed['readiness_assessment']['reasons'])->toContain('demanding_session_within_24h');
 
     Carbon::setTestNow();

@@ -30,6 +30,7 @@ const NARRATION = narrationPayload(
 const LOAD: TrainingLoad = {
     form: -2.5,
     form_status: 'optimal',
+    form_known_from: '2026-01-01',
     ctl_42d: 42,
     atl_7d: 44.5,
     weekly_trimp: 320,

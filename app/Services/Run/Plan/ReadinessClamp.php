@@ -188,6 +188,7 @@ final class ReadinessClamp
             'weekly_load_above_personal_range' => 'your recent measured training load is above your usual range, so keep this one at the slower end of easy.',
             'high_training_monotony' => 'your recent training load has been unusually uniform, so keep this one at the slower end of easy.',
             'volume_increased_sharply' => "this week's running volume is well above last week's, so keep this one at the slower end of easy.",
+            'running_ahead_of_plan' => "you've run well past this week's plan so far, so keep this one at the slower end of easy.",
         ] as $reason => $note) {
             if (in_array($reason, $reasons, true)) {
                 return $note;
@@ -260,6 +261,7 @@ final class ReadinessClamp
             'training_form_fatigued' => "your current training form is showing fatigue, so quality can wait.",
             'high_training_monotony' => 'your recent training load has been unusually uniform, so quality can wait.',
             'volume_increased_sharply' => "this week's running volume is well above last week's, so quality can wait.",
+            'running_ahead_of_plan' => "you've run well past this week's plan so far, so quality can wait.",
             'moderate_fatigue_or_soreness_reported' => 'you reported moderate fatigue or soreness, so quality can wait.',
             'mild_fatigue_or_soreness_with_load_support' => 'you reported mild fatigue or soreness alongside elevated recent load, so ease this one.',
             'fair_sleep_with_load_support' => 'you reported fair sleep alongside elevated recent load, so ease this one.',
