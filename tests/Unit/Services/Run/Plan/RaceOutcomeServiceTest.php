@@ -167,6 +167,17 @@ it('keeps a result beyond the evidence range on the race without feeding fitness
         ->and(PerformanceEvidence::query()->count())->toBe(0);
 });
 
+it('feeds a rounded 42.2 km marathon to fitness at the marathon distance', function (): void {
+    $marathon = RaceGoal::factory()->for($this->user)->completed()->create([
+        'race_date' => '2026-10-04', 'distance_m' => 42_200, 'goal_time_sec' => 13_000, 'outcome' => RaceOutcome::Pending,
+    ]);
+
+    $race = $this->service->record($this->user, $marathon, RaceOutcome::Confirmed, finishTimeSec: 13_200);
+
+    expect($race->finish_time_sec)->toBe(13_200)
+        ->and(PerformanceEvidence::query()->sole()->distance_m)->toBe(42_195);
+});
+
 it('refuses another athlete\'s race', function (): void {
     $intruder = User::factory()->create();
 

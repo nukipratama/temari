@@ -7,6 +7,7 @@ namespace App\Services\Run\Plan;
 use App\Enums\PerformanceEvidenceKind;
 use App\Enums\RaceChangeKind;
 use App\Enums\RaceOutcome;
+use App\Enums\RaceSupport;
 use App\Models\PerformanceEvidence;
 use App\Models\RaceGoal;
 use App\Models\User;
@@ -103,6 +104,9 @@ final readonly class RaceOutcomeService
             throw ValidationException::withMessages(['outcome' => 'Confirm a race with either its run or a finish time.']);
         }
 
+        if (RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()) {
+            $result['distance_m'] = min($result['distance_m'], PerformanceEvidenceRecorder::MAX_DISTANCE_M);
+        }
         if (PerformanceEvidenceRecorder::qualifies((float) $result['distance_m'])) {
             $this->evidence->assertPlausible($result['distance_m'], $result['finish_time_sec']);
         }
