@@ -185,20 +185,14 @@ final class PhaseSchedule
     }
 
     /**
-     * `$opensWithRecovery` puts a single recovery week at the head of the arc,
-     * before the cycle starts, for an athlete who has just raced. The cycle
-     * then runs from the week after it, so the recovery week is an extra week
-     * rather than one borrowed from the first build block.
-     *
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
      */
-    public function selfScaled(Carbon $arcStart, int $weeks, bool $opensWithRecovery = false): array
+    public function selfScaled(Carbon $arcStart, int $weeks): array
     {
         $currentWeekStart = $arcStart->copy()->startOfWeek(Carbon::MONDAY);
 
-        $phases = $opensWithRecovery ? [PlanPhase::Deload] : [];
-        $cycleWeeks = $weeks - count($phases);
-        for ($i = 0; $i < $cycleWeeks; $i++) {
+        $phases = [];
+        for ($i = 0; $i < $weeks; $i++) {
             $cyclePosition = $i % self::SELF_SCALED_CYCLE_WEEKS;
             $phases[] = $cyclePosition < self::SELF_SCALED_CYCLE_WEEKS - 1 ? PlanPhase::Build : PlanPhase::Deload;
         }

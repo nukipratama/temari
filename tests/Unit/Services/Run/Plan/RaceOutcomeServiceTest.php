@@ -8,6 +8,7 @@ use App\Enums\SeasonPerformance;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PerformanceEvidence;
+use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
@@ -195,4 +196,16 @@ it('carries a late confirmation into the performance of the season that was alre
 
     $this->service->record($this->user, $this->race->fresh(), RaceOutcome::DidNotRun);
     expect($season->fresh()->performance_state)->toBe(SeasonPerformance::DidNotRun);
+});
+
+it('regenerates the plan when an outcome changes, and not on a repeat of the same answer', function (): void {
+    $run = raceDayRun($this->user);
+
+    $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, activityId: $run->id);
+    $plannedAfterConfirm = PlannedSession::query()->where('user_id', $this->user->id)->count();
+    PlannedSession::query()->where('user_id', $this->user->id)->delete();
+    $this->service->record($this->user, $this->race->fresh(), RaceOutcome::Confirmed, activityId: $run->id);
+
+    expect($plannedAfterConfirm)->toBeGreaterThan(0)
+        ->and(PlannedSession::query()->where('user_id', $this->user->id)->count())->toBe(0);
 });

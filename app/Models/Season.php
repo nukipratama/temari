@@ -44,19 +44,12 @@ use Override;
  * runs were still unscored: its block holds at the floor, with no ramp and no
  * climb to the readiness long run, until a regeneration finds them scored.
  *
- * `opens_with_recovery` marks a self-scaled arc that follows a race the
- * athlete has actually run: its first week is a recovery week rather than the
- * cycle's usual Build. Frozen at creation for the same reason the anchor is —
- * the season chain behind it may change, the arc it already prescribed may
- * not. See `docs/decisions/a-closed-race-earns-a-recovery-week.md`.
- *
  * @property int $id
  * @property int $user_id
  * @property int|null $race_goal_id
  * @property float|null $anchor_weekly_volume_km
  * @property float|null $volume_floor_km
  * @property bool $increases_held
- * @property bool $opens_with_recovery
  * @property Carbon|null $under_ready_noted_at
  * @property Carbon|null $block_goals_appended_at
  * @property int|null $process_pct
@@ -67,7 +60,7 @@ use Override;
  * @property-read User $user
  * @property-read RaceGoal|null $raceGoal
  */
-#[Fillable(['user_id', 'race_goal_id', 'anchor_weekly_volume_km', 'volume_floor_km', 'increases_held', 'opens_with_recovery', 'under_ready_noted_at', 'block_goals_appended_at', 'process_pct', 'performance_state', 'record_settled_at', 'starts_at', 'ends_at'])]
+#[Fillable(['user_id', 'race_goal_id', 'anchor_weekly_volume_km', 'volume_floor_km', 'increases_held', 'under_ready_noted_at', 'block_goals_appended_at', 'process_pct', 'performance_state', 'record_settled_at', 'starts_at', 'ends_at'])]
 class Season extends Model
 {
     /** @use HasFactory<SeasonFactory> */
@@ -126,7 +119,6 @@ class Season extends Model
             'anchor_weekly_volume_km' => 'float',
             'volume_floor_km' => 'float',
             'increases_held' => 'boolean',
-            'opens_with_recovery' => 'boolean',
             'under_ready_noted_at' => 'datetime',
             'block_goals_appended_at' => 'datetime',
             'process_pct' => 'integer',

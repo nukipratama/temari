@@ -181,9 +181,9 @@ final readonly class Periodizer
             ? $this->phaseSchedule->forRace($arcStart, $inputs->raceDate, $inputs->raceDistanceM)
             // The season's own window, not a fresh horizon, so the arc
             // SeasonSummaryBuilder draws is the one the athlete trains.
-            : $this->phaseSchedule->selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($inputs->seasonEnd) + 1), $inputs->seasonOpensWithRecovery);
+            : $this->phaseSchedule->selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($inputs->seasonEnd) + 1));
 
-        $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $inputs->currentWeekStart(), $inputs->adaptation['deload'], $inputs->isSelfScaled() || $inputs->increasesHeld);
+        $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $inputs->currentWeekStart(), $inputs->adaptation['deload'], $inputs->isSelfScaled() || $inputs->increasesHeld, $inputs->recovery);
 
         $rows = [];
         $fixedDates = $inputs->pinnedDates + $inputs->settledDates;
@@ -466,6 +466,9 @@ final readonly class Periodizer
                 $prescriptions[$date] = $row['session_type'] === SessionType::Tempo
                     ? new IntensityPrescription(min(10, $prescription->hardMinutes), $prescription->paceBand, $prescription->paceSecPerKm, 'modest quality for an established two-run week', $prescription->raceContext)
                     : new IntensityPrescription(0, null, null, null);
+            }
+            if ($inputs->recovery !== null && $inputs->recovery->excludesQualityOn($date) && ! $prescriptions[$date]->isEasy()) {
+                $prescriptions[$date] = new IntensityPrescription(0, null, null, 'easy while recovering from the race', $prescriptions[$date]->raceContext);
             }
         }
 
@@ -752,7 +755,7 @@ final readonly class Periodizer
      * @param  list<array{week_start: Carbon, phase: PlanPhase, zone: string}>  $arc
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string, multiplier: float}>
      */
-    private static function sliceFromCurrentWeek(array $arc, Carbon $arcStart, Carbon $currentWeekStart, bool $deload, bool $flat): array
+    private static function sliceFromCurrentWeek(array $arc, Carbon $arcStart, Carbon $currentWeekStart, bool $deload, bool $flat, ?PostRaceRecovery $recovery): array
     {
         if ($arc === []) {
             return [];
@@ -763,6 +766,11 @@ final readonly class Periodizer
         $phases = array_map(static fn (array $week): PlanPhase => $week['phase'], $arc);
         if ($deload && $phases[$offset] !== PlanPhase::Taper) {
             $phases[$offset] = PlanPhase::Deload;
+        }
+        foreach ($arc as $index => $week) {
+            if ($recovery !== null && $recovery->deloadsWeek($week['week_start']) && $phases[$index] !== PlanPhase::Taper) {
+                $phases[$index] = PlanPhase::Deload;
+            }
         }
         $multipliers = PhaseSchedule::volumeMultipliers($phases, $flat, array_column($arc, 'zone'));
 

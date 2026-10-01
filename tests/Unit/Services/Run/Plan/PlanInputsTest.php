@@ -35,7 +35,7 @@ function arcInputs(
         today: Carbon::parse($today),
         seasonStart: Carbon::parse(ARC_OPENS),
         seasonEnd: Carbon::parse($raceDay ?? '2026-11-29'),
-        seasonOpensWithRecovery: false,
+        recovery: null,
         raceDate: $raceDay === null ? null : Carbon::parse($raceDay),
         raceDistanceM: $raceDay === null ? null : 10_000.0,
         sessionsPerWeek: 4,

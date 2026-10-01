@@ -10,7 +10,9 @@ use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\RaceChangeKind;
+use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\RaceGoalChange;
@@ -50,6 +52,7 @@ final readonly class PlanInputsGatherer
         private RecentTrainingStress $trainingStress,
         private ResolveTrailingWeeksAction $trailingWeeks,
         private RaceAmbitionAssessor $ambition,
+        private RaceOutcomeMatcher $raceOutcomes,
     ) {
     }
 
@@ -85,7 +88,7 @@ final readonly class PlanInputsGatherer
             today: $today,
             seasonStart: $season->starts_at,
             seasonEnd: $season->ends_at,
-            seasonOpensWithRecovery: $season->opens_with_recovery,
+            recovery: $this->postRaceRecovery($user, $today),
             raceDate: $race?->race_date,
             raceDistanceM: $race === null ? null : (float) $race->distance_m,
             sessionsPerWeek: $baseline['sessions_per_week'],
@@ -119,6 +122,27 @@ final readonly class PlanInputsGatherer
                 && $weeks->every(static fn (WeeklySnapshot $week): bool => $week->runs >= 2),
             resumeTrailingMeanKm: $this->resumeTrailingMeanKm($race, $weeks, $currentWeekStart),
         );
+    }
+
+    private function postRaceRecovery(User $user, Carbon $today): ?PostRaceRecovery
+    {
+        $races = RaceGoal::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('race_date', [$today->copy()->subDays(14)->toDateString(), $today->toDateString()])
+            ->where(static fn (Builder $query): Builder => $query->whereNull('outcome')->orWhereNotIn('outcome', [RaceOutcome::DidNotRun->value, RaceOutcome::Cancelled->value]))
+            ->orderByDesc('race_date')
+            ->get();
+
+        foreach ($races as $race) {
+            $distanceRunM = $race->outcome === RaceOutcome::Confirmed
+                ? (float) (ActivityDetail::query()->where('activity_id', $race->outcome_activity_id)->value('distance') ?? $race->distance_m)
+                : $this->raceOutcomes->candidates($race)->first()['distance_m'] ?? null;
+            if ($distanceRunM !== null) {
+                return PostRaceRecovery::after($race->race_date, $distanceRunM);
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
-use App\Enums\RaceOutcome;
 use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
@@ -123,7 +122,6 @@ final readonly class SeasonService
         }
         $volumeFloorKm = $race !== null ? $this->baseline->recentWeeklyMeanKm($user, $today) : null;
         $increasesHeld = $race !== null && $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
-        $opensWithRecovery = $race === null && self::followsARaceAlreadyRun($current, $today);
         $endsAt = $race !== null
             ? $race->race_date->toDateString()
             : $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
@@ -140,7 +138,6 @@ final readonly class SeasonService
                 'anchor_weekly_volume_km' => $anchorKm,
                 'volume_floor_km' => $volumeFloorKm,
                 'increases_held' => $increasesHeld,
-                'opens_with_recovery' => $opensWithRecovery,
                 'block_goals_appended_at' => $blockGoalsAppendedAt,
                 'ends_at' => $endsAt,
             ]);
@@ -167,7 +164,6 @@ final readonly class SeasonService
             'anchor_weekly_volume_km' => $anchorKm,
             'volume_floor_km' => $volumeFloorKm,
             'increases_held' => $increasesHeld,
-            'opens_with_recovery' => $opensWithRecovery,
             'block_goals_appended_at' => $blockGoalsAppendedAt,
             'starts_at' => $today->toDateString(),
             'ends_at' => $endsAt,
@@ -282,27 +278,6 @@ final readonly class SeasonService
     }
 
     /**
-     * Whether the arc being opened comes straight off a race the athlete
-     * confirmed having run. `plan:close-finished-races` retires the goal the
-     * morning after race day and the plan falls back to the self-scaled arc,
-     * which used to open at Build x1.0, a full training week from a runner who
-     * raced on Saturday.
-     *
-     * Read off the confirmed outcome, never the race date: a passed date is
-     * not participation, and a race that was called off, missed or never
-     * answered leaves nothing to recover from. Day-to-day freshness after a
-     * race that was run is the readiness assessment's job.
-     */
-    private static function followsARaceAlreadyRun(?Season $previous, Carbon $today): bool
-    {
-        $race = $previous?->raceGoal;
-
-        return $race !== null
-            && $race->outcome === RaceOutcome::Confirmed
-            && ! $race->race_date->startOfDay()->isAfter($today);
-    }
-
-    /**
      * A race-oriented season ends on its race day per
      * `docs/features/plan-periodizer.md`. `race_goal_id` staying the same
      * (the athlete's active race row was edited in place rather than
@@ -336,7 +311,7 @@ final readonly class SeasonService
 
         $weeks = $race !== null
             ? $this->phaseSchedule->forRace($today, $race->race_date, (float) $race->distance_m)
-            : $this->phaseSchedule->selfScaled($today, self::SELF_SCALED_WEEKS, $season->opens_with_recovery);
+            : $this->phaseSchedule->selfScaled($today, self::SELF_SCALED_WEEKS);
         $weekCount = count($weeks);
 
         $phases = array_column($weeks, 'phase');

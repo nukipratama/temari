@@ -36,7 +36,7 @@ final readonly class PlanInputs
         public Carbon $today,
         public Carbon $seasonStart,
         public Carbon $seasonEnd,
-        public bool $seasonOpensWithRecovery,
+        public ?PostRaceRecovery $recovery,
         public ?Carbon $raceDate,
         public ?float $raceDistanceM,
         public int $sessionsPerWeek,

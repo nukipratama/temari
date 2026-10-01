@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PerformanceEvidenceKind;
+use App\Enums\PlanRegenerationReason;
 use App\Enums\RaceChangeKind;
 use App\Enums\RaceOutcome;
 use App\Enums\RaceSupport;
@@ -30,6 +31,7 @@ final readonly class RaceOutcomeService
         private RaceGoalService $races,
         private PerformanceEvidenceRecorder $evidence,
         private SeasonRecordBuilder $seasonRecords,
+        private PlanRegenerationService $regeneration,
     ) {
     }
 
@@ -77,6 +79,9 @@ final readonly class RaceOutcomeService
         }
         if ($outcome === RaceOutcome::Confirmed) {
             $this->ensureEvidence($user, $race, $result);
+        }
+        if ($changed) {
+            $this->regeneration->regenerateForRequest($user, PlanRegenerationReason::Settings);
         }
         SharedPropCacheKey::ActiveRace->forget($user->id);
 

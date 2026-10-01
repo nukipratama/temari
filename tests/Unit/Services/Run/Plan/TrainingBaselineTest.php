@@ -669,7 +669,6 @@ it('sizes a self-scaled cycle so its four weeks average the anchor unless a long
         'anchor_weekly_volume_km' => $anchorKm,
         'starts_at' => '2026-08-10',
         'ends_at' => '2026-09-06',
-        'opens_with_recovery' => false,
     ]);
 
     $plannedKm = array_column(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season), 'planned_km');
@@ -692,7 +691,6 @@ it('lets a long-run cap hold a self-scaled cycle under its anchor', function (fl
         'anchor_weekly_volume_km' => $anchorKm,
         'starts_at' => '2026-08-10',
         'ends_at' => '2026-09-06',
-        'opens_with_recovery' => false,
     ]);
 
     $baseline = $this->baseline->forUser($user, Carbon::today());
