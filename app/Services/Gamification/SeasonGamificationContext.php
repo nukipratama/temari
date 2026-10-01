@@ -34,6 +34,9 @@ final readonly class SeasonGamificationContext
     /** How close to the goal time counts as "met" — see {@see \App\Services\Run\Plan\SeasonService}'s matching goal title. */
     public const float RACE_MARGIN_FRACTION = 0.05;
 
+    /** Share of a week's prescribed volume that counts the week as consistent. */
+    public const float CONSISTENT_WEEK_FRACTION = 0.85;
+
     public function __construct(
         public int $sessionsCompleted,
         public int $qualityCompleted,
@@ -41,6 +44,7 @@ final readonly class SeasonGamificationContext
         public int $restHonored,
         public bool $raceGoalMet,
         public float $ctlGrowth,
+        public int $consistentWeeks,
         public float $peakWeeklyKm,
     ) {
     }
@@ -51,7 +55,7 @@ final readonly class SeasonGamificationContext
         $rangeEnd = $season->ends_at->lessThan($boundary) ? $season->ends_at->copy() : $boundary;
 
         if ($rangeEnd->lessThan($season->starts_at)) {
-            return new self(0, 0, 0.0, 0, false, 0.0, 0.0);
+            return new self(0, 0, 0.0, 0, false, 0.0, 0, 0.0);
         }
 
         $sessions = PlannedSession::query()
@@ -97,6 +101,7 @@ final readonly class SeasonGamificationContext
             restHonored: $restHonored,
             raceGoalMet: $season->race_goal_id !== null && self::raceGoalMet($user->id, $season),
             ctlGrowth: $season->race_goal_id === null ? self::ctlGrowth($user, $season, $today, $trainingLoad) : 0.0,
+            consistentWeeks: $season->race_goal_id === null ? self::consistentWeeks($user->id, $season, $rangeEnd) : 0,
             peakWeeklyKm: $season->race_goal_id !== null ? self::peakWeeklyKm($user->id, $season) : 0.0,
         );
     }
@@ -166,6 +171,29 @@ final readonly class SeasonGamificationContext
         $timeOk = (int) $detail->elapsed_time <= $race->goal_time_sec * (1 + self::RACE_MARGIN_FRACTION);
 
         return $distanceOk && $timeOk;
+    }
+
+    private static function consistentWeeks(int $userId, Season $season, Carbon $rangeEnd): int
+    {
+        $actualByWeekEnding = WeeklySnapshot::query()
+            ->where('user_id', $userId)
+            ->whereBetween('week_ending', [$season->starts_at->toDateString(), $rangeEnd->toDateString()])
+            ->pluck('distance_km', 'week_ending')
+            ->mapWithKeys(static fn (mixed $km, string $weekEnding): array => [Carbon::parse($weekEnding)->toDateString() => (float) $km]);
+
+        $prescribedByWeekEnding = PlannedSession::query()
+            ->where('user_id', $userId)
+            ->whereNotNull('prescribed_km')
+            ->whereBetween('date', [$season->starts_at->copy()->startOfWeek(Carbon::MONDAY)->toDateString(), $rangeEnd->toDateString()])
+            ->get(['date', 'prescribed_km'])
+            ->groupBy(static fn (PlannedSession $session): string => $session->date->copy()->endOfWeek(Carbon::SUNDAY)->toDateString())
+            ->map(static fn ($week): float => (float) $week->sum('prescribed_km'));
+
+        return $prescribedByWeekEnding
+            ->filter(static fn (float $prescribed, string $weekEnding): bool => $prescribed > 0.0
+                && $actualByWeekEnding->has($weekEnding)
+                && $actualByWeekEnding[$weekEnding] >= $prescribed * self::CONSISTENT_WEEK_FRACTION)
+            ->count();
     }
 
     private static function ctlGrowth(User $user, Season $season, Carbon $today, TrainingLoad $trainingLoad): float

@@ -63,17 +63,20 @@ it('generates exactly 5 season goals', function (): void {
     expect(SeasonGoal::query()->where('season_id', $season->id)->count())->toBe(5);
 });
 
-it('generates a race-margin goal for a race-oriented season and a CTL-growth goal for self-scaled', function (): void {
+it('generates a race-margin goal for a race-oriented season and a consistency goal for self-scaled', function (): void {
     $user = User::factory()->create();
     $season = $this->service->ensureCurrent($user, Carbon::today());
     $metrics = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
-    expect($metrics)->toContain('season_ctl_growth')->not->toContain('season_race_goal_met');
+    $consistency = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_consistent_weeks')->first();
+    expect($metrics)->not->toContain('season_ctl_growth')->not->toContain('season_race_goal_met')
+        ->and($consistency?->target)->toBe(12.0)
+        ->and($consistency?->unit)->toBe('weeks');
 
     $userWithRace = User::factory()->create();
     RaceGoal::factory()->for($userWithRace)->create(['race_date' => Carbon::today()->addWeeks(9)->toDateString()]);
     $raceSeason = $this->service->ensureCurrent($userWithRace, Carbon::today());
     $raceMetrics = SeasonGoal::query()->where('season_id', $raceSeason->id)->pluck('metric')->all();
-    expect($raceMetrics)->toContain('season_race_goal_met')->not->toContain('season_ctl_growth');
+    expect($raceMetrics)->toContain('season_race_goal_met')->not->toContain('season_consistent_weeks');
 });
 
 it('returns the same season on a second call the same day, without duplicating goals', function (): void {

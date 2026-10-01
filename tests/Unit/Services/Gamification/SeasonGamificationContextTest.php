@@ -334,3 +334,17 @@ it('keeps reading a legacy race without an outcome by its run, with no retroacti
 
     expect(ctxFor($user, seasonForRaceOutcome($user, null))->raceGoalMet)->toBeTrue();
 });
+
+it('counts the completed weeks run at 85% or more of their prescribed volume', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create(['starts_at' => '2026-07-20', 'ends_at' => '2026-10-11']);
+    foreach (['2026-07-21', '2026-07-23', '2026-07-25', '2026-07-28', '2026-07-30', '2026-08-01'] as $date) {
+        PlannedSession::factory()->for($user)->create(['date' => $date, 'prescribed_km' => 10.0]);
+    }
+    PlannedSession::factory()->for($user)->create(['date' => '2026-08-05']);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-07-26', 'distance_km' => 26.0]);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-08-02', 'distance_km' => 24.0]);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-08-09', 'distance_km' => 40.0]);
+
+    expect(ctxFor($user, $season)->consistentWeeks)->toBe(1);
+});

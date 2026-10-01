@@ -16,7 +16,6 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\HydrationBacklog;
 use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Gamification\SeasonRecordBuilder;
-use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -42,11 +41,6 @@ final readonly class SeasonService
 {
     /** Self-scaled seasons match the periodizer's own materialization horizon. */
     public const int SELF_SCALED_WEEKS = Periodizer::HORIZON_WEEKS;
-
-    /** Floor so a brand-new athlete (CTL ~0) still gets a meaningful, non-zero growth target. */
-    private const float MIN_CTL_GROWTH_TARGET = 3.0;
-
-    private const float CTL_GROWTH_FRACTION = 0.10;
 
     /**
      * How far the athlete's own trailing volume has to fall BELOW the stored
@@ -76,7 +70,6 @@ final readonly class SeasonService
         private TrainingBaseline $baseline,
         private PhaseSchedule $phaseSchedule,
         private WeekPlanBuilder $weekPlanBuilder,
-        private TrainingLoad $trainingLoad,
         private ResolveActiveRaceAction $activeRace,
         private ResolveSeasonAction $season,
         private SeasonSummaryBuilder $seasonSummaryBuilder,
@@ -362,7 +355,7 @@ final readonly class SeasonService
         ];
 
         if ($race === null) {
-            $goals[] = $this->ctlGrowthGoal($user, $today);
+            $goals[] = self::consistencyGoal($season);
         } elseif (self::blockHasOpened($race, $today)) {
             $goals[] = self::raceMarginGoal();
             $goals[] = $this->peakWeeklyKmGoal($season, $race, $user);
@@ -474,33 +467,22 @@ final readonly class SeasonService
         ];
     }
 
-    private static function floatOrNull(mixed $value): ?float
-    {
-        return is_numeric($value) ? (float) $value : null;
-    }
-
     /**
      * @return array{title: string, metric: string, metric_key: null, target: float, unit: string}
      */
-    private function ctlGrowthGoal(User $user, Carbon $today): array
+    private static function consistencyGoal(Season $season): array
     {
-        $summary = $this->trainingLoad->summary($user, $today);
-
-        // An unscored load curve is null, never zero — see
-        // docs/decisions/unscored-load-is-null-not-zero.md. Coercing it here
-        // would claim the athlete has no fitness rather than that we cannot see
-        // it; both land on the floor, but only one of them says something false.
-        $startCtl = self::floatOrNull($summary['ctl_42d'] ?? null);
-        $target = $startCtl === null
-            ? self::MIN_CTL_GROWTH_TARGET
-            : max(self::MIN_CTL_GROWTH_TARGET, round($startCtl * self::CTL_GROWTH_FRACTION, 1));
+        $weeks = 0;
+        for ($sunday = $season->starts_at->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay(); $sunday->lte($season->ends_at); $sunday->addWeek()) {
+            $weeks++;
+        }
 
         return [
-            'title' => 'Grow your fitness (CTL) this season',
-            'metric' => 'season_ctl_growth',
+            'title' => 'Run your planned volume week by week',
+            'metric' => 'season_consistent_weeks',
             'metric_key' => null,
-            'target' => $target,
-            'unit' => 'CTL pts',
+            'target' => (float) max(1, $weeks),
+            'unit' => 'weeks',
         ];
     }
 }
