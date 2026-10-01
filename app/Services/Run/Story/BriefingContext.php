@@ -369,6 +369,13 @@ final readonly class BriefingContext
      */
     public function toArray(): array
     {
+        $volumeRamp = $this->volumeRampPct === null ? null : [
+            'pct' => abs($this->volumeRampPct),
+            'relation' => self::volumeRampRelation($this->volumeRampPct),
+        ];
+        $readinessInputs = $this->readinessAssessment['inputs'];
+        unset($readinessInputs['volume_ramp_pct']);
+
         return [
             'this_week_runs' => $this->thisWeekRuns,
             'last_week_runs' => $this->lastWeekRuns,
@@ -381,14 +388,14 @@ final readonly class BriefingContext
             'time_bucket' => $this->timeBucket,
             'consecutive_weeks_active' => $this->consecutiveWeeksActive,
             'fitness_trend' => $this->fitnessTrend,
-            'volume_ramp' => $this->volumeRampPct === null ? null : [
-                'pct' => abs($this->volumeRampPct),
-                'relation' => self::volumeRampRelation($this->volumeRampPct),
-            ],
+            'volume_ramp' => $volumeRamp,
             'readiness_ceiling' => $this->readinessCeiling,
             'build_nudge' => $this->buildNudge,
             'readiness_reasons' => $this->readinessAssessment['reasons'],
-            'readiness_assessment' => $this->readinessAssessment,
+            'readiness_assessment' => [
+                ...$this->readinessAssessment,
+                'inputs' => [...$readinessInputs, 'volume_ramp' => $volumeRamp],
+            ],
             ...($this->historyLoading ? ['history_loading' => true] : []),
         ];
     }

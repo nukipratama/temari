@@ -5,12 +5,15 @@ declare(strict_types=1);
 use App\Enums\NotificationKind;
 use App\Enums\SessionType;
 use App\Models\AI\Analysis;
+use App\Models\PlannedSession;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\Channels\InAppChannel;
 use App\Notifications\DayClampedNotification;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\MaterialFingerprint;
+use App\Services\Run\Metrics\ReadinessCeiling;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -59,17 +62,42 @@ it('dedupes on the clamped date', function (): void {
 
 it('prefers the clamp narration once one has landed', function (): void {
     $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => $this->date,
+        'session_type' => SessionType::Interval,
+        'rest_clamped_at' => Carbon::parse($this->date),
+        'readiness_assessment' => [
+            'ceiling' => 'rest',
+            'reasons' => ['illness_reported'],
+            'inputs' => ['form_status' => null],
+        ],
+    ]);
     Analysis::factory()->create([
         'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::PlanClampVoice,
         'discriminator' => $this->date,
         'status' => AnalysisStatus::Done,
-        'content' => 'you have been stacking hard days, so today is a genuine day off.',
+        'content' => 'you reported feeling ill, so today is a full rest.',
+        'content_fingerprint' => MaterialFingerprint::forClamp(ReadinessCeiling::Rest, SessionType::Rest, false, ['illness_reported']),
     ]);
 
     expect(clampNotification()->toInbox($user)->body)
-        ->toBe('you have been stacking hard days, so today is a genuine day off.');
+        ->toBe('you reported feeling ill, so today is a full rest.');
+});
+
+it('keeps the factual fallback when a completed narration has no matching decision', function (): void {
+    $user = User::factory()->create();
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::PlanClampVoice,
+        'discriminator' => $this->date,
+        'status' => AnalysisStatus::Done,
+        'content' => 'old advice from a different assessment.',
+    ]);
+
+    expect(clampNotification()->toInbox($user)->body)->toBe($this->note);
 });
 
 // The templated note is the permanent floor `the-clamp-explains-itself` keeps

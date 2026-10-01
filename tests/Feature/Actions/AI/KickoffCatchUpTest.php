@@ -7,6 +7,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
+use App\Models\RecoveryFeedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
@@ -82,10 +83,10 @@ it('creates nothing on a second run', function (): void {
 it('records and stages a current-day readiness clamp during catch-up', function (): void {
     $user = User::factory()->seenToday()->create();
     $lastWeek = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-05-24',
-        'form_status' => 'overreaching',
-        'monotony' => 1.0,
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'concerning_pain' => true,
     ]);
     $user->forceFill(['streak_settled_through' => $lastWeek->week_ending])->saveQuietly();
     $session = PlannedSession::factory()->for($user)->create([

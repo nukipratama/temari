@@ -12,6 +12,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\RecoveryFeedback;
 use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
@@ -86,16 +87,12 @@ it('holds the race block at the athlete\'s own recent mean when load is fine', f
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->value('volume_floor_km'))->toBeNull();
 });
 
-it('backs off under the floor when the athlete is overreaching, and says so on the plan', function (): void {
+it('backs off under the floor for a strong current concern, and says so on the plan', function (): void {
     $user = flooredAthlete();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-09-27',
-        'form_status' => 'overreaching',
-        'monotony' => 1.0,
-        'distance_km' => 30.0,
-        'weekly_trimp' => 300.0,
-        'atl_7d' => 50.0,
-        'ctl_42d' => 40.0,
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'illness' => true,
     ]);
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
@@ -112,19 +109,19 @@ it('backs off under the floor when the athlete is overreaching, and says so on t
 
 it('returns to the floor the week after the guard lets go', function (): void {
     $user = flooredAthlete();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => '2026-09-27',
-        'form_status' => 'overreaching',
-        'monotony' => 1.0,
-        'distance_km' => 30.0,
-        'weekly_trimp' => 300.0,
-        'atl_7d' => 50.0,
-        'ctl_42d' => 40.0,
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'illness' => true,
     ]);
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
     Carbon::setTestNow('2026-09-28 08:00:00');
-    WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', '2026-09-27')->update(['form_status' => 'optimal', 'distance_km' => 16.0]);
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'illness' => false,
+    ]);
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
     expect(thisWeekPhase($user))->not->toBe(PlanPhase::Deload)

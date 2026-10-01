@@ -16,6 +16,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\RecoveryFeedback;
 use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
@@ -569,10 +570,10 @@ it('queues a manual regeneration when the per-user lock stays busy', function ()
 
 it('clamps today\'s session against the readiness ceiling without mutating the stored row', function (): void {
     $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-        'form_status' => 'overreaching',
-        'monotony' => 1.0,
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'concerning_pain' => true,
     ]);
     $today = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
@@ -603,10 +604,10 @@ it('clamps today\'s session against the readiness ceiling without mutating the s
 
 it('never clamps a future day, only today, even at the worst readiness ceiling', function (): void {
     $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-        'form_status' => 'overreaching',
-        'monotony' => 1.0,
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'concerning_pain' => true,
     ]);
     PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDays(2)->toDateString(),
@@ -739,8 +740,16 @@ it('resolves the deferred Plan props inside their query budget', function (): vo
     );
 
     $queries = 0;
-    DB::listen(function () use (&$queries): void {
+    $readinessQueries = ['stress' => 0, 'feedback' => 0];
+    DB::listen(function (QueryExecuted $query) use (&$queries, &$readinessQueries): void {
         $queries++;
+        if (str_contains($query->sql, '`activity_details`.`stream_summary`')
+            && str_contains($query->sql, '`activity_details`.`has_heartrate`')) {
+            $readinessQueries['stress']++;
+        }
+        if (str_contains($query->sql, '`recovery_feedback`')) {
+            $readinessQueries['feedback']++;
+        }
     });
 
     $this->actingAs($user)->get('/plan', $headers)->assertSuccessful();
@@ -749,7 +758,8 @@ it('resolves the deferred Plan props inside their query budget', function (): vo
     // SeasonGamificationContext's grouped read over the season range never
     // ran. The fixture now carries 9 weeks of them (see planBudgetFixture),
     // adding that one query.
-    expect($queries)->toBeLessThanOrEqual(16);
+    expect($queries)->toBeLessThanOrEqual(19);
+    expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
 });
 
 function planBudgetFixture(): User
@@ -822,10 +832,10 @@ it('refuses to move a session onto a day that is not a rest day', function (): v
 
 it('still advises the step-down beside a session the athlete pinned to today', function (): void {
     $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-        'form_status' => 'overreaching',
-        'monotony' => 1.0,
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'concerning_pain' => true,
     ]);
     PlannedSession::factory()->for($user)->pinned()->create([
         'date' => Carbon::today()->toDateString(),

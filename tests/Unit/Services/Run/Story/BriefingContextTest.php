@@ -157,7 +157,11 @@ it('exposes volume_ramp with relation=down and no signed field on a real drop in
 
     $ctx = BriefingContext::forUser($user, $asOf);
 
-    expect($ctx->toArray()['volume_ramp'])->toBe(['pct' => 50.0, 'relation' => 'down']);
+    $payload = $ctx->toArray();
+    expect($payload['volume_ramp'])->toBe(['pct' => 50.0, 'relation' => 'down'])
+        ->and($payload['readiness_assessment']['inputs'])->not->toHaveKey('volume_ramp_pct')
+        ->and($payload['readiness_assessment']['inputs']['volume_ramp'])->toBe(['pct' => 50.0, 'relation' => 'down'])
+        ->and($ctx->readinessAssessment['inputs']['volume_ramp_pct'])->toBe(-50.0);
 });
 
 it('computes recovery hours from the most recent activity start', function (): void {
