@@ -451,7 +451,9 @@ it('resolves the deferred Profile props inside their query budget', function ():
     // exit (no past days yet) skip its race-goal, peak-week and grouped
     // activity reads entirely. The fixture now carries 9 real past weeks (see
     // seedPastSeasonWeeks), so that work actually runs — once, not per day.
-    expect($queries)->toBeLessThanOrEqual(21);
+    // 27: the current week's row reads the held week from
+    // CurrentWeekPlanBuilder once, so the season list shows Home's week total.
+    expect($queries)->toBeLessThanOrEqual(27);
 });
 
 // The threshold estimator reads stream_summary and nothing else. A bare get()
