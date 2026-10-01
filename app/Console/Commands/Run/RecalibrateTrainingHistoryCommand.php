@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
 use Throwable;
 
 #[Signature('plan:recalibrate-history {--user= : Limit to one user id} {--dry-run : Roll back every recalibration write}')]
-#[Description('Recompute stored run metrics and training plans under the current HR zones and intensity policy')]
+#[Description('Recompute stored run metrics, weekly snapshots and the future plan under the current HR zones; past prescriptions and grades are kept')]
 final class RecalibrateTrainingHistoryCommand extends Command
 {
     public function handle(PlanRecalibrationService $recalibration): int
@@ -32,12 +32,10 @@ final class RecalibrateTrainingHistoryCommand extends Command
                 $result = $recalibration->recalibrate($user, $dryRun);
                 $completed++;
                 $this->line(sprintf(
-                    'user %d: %d activities, %d snapshots, %d sessions, %d stale narrations%s',
+                    'user %d: %d activities, %d snapshots%s',
                     $user->id,
                     $result['activities'],
                     $result['snapshots'],
-                    $result['sessions'],
-                    $result['stale_narrations'],
                     $dryRun ? ' (dry run)' : '',
                 ));
             } catch (Throwable $exception) {

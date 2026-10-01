@@ -8,12 +8,9 @@ use Throwable;
 use App\Enums\IntentVerdict;
 use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Models\Activity;
-use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
-use App\Services\AI\AnalysisStatus;
-use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -40,9 +37,35 @@ final readonly class PlanRecalibrationService
     }
 
     /**
-     * @return array{activities: int, snapshots: int, sessions: int, stale_narrations: int}
+     * Ordinary recalibration after a zone change or ingest: run metrics, weekly
+     * snapshots and the future plan follow the current zones. Past
+     * prescriptions and the grades given against shown advice are kept; only
+     * the one-time reset ({@see CoachingReset}) rewrites them.
+     *
+     * @return array{activities: int, snapshots: int}
      */
     public function recalibrate(User $user, bool $dryRun = false, int $lockTtlSeconds = 3600): array
+    {
+        return $this->exclusively($user, $dryRun, $lockTtlSeconds, function (User $user): array {
+            $activities = $this->recomputeSummaries($user);
+            $snapshots = $this->weeklyAggregator->rebuildFor($user);
+            $this->periodizer->regenerateWithinLock($user);
+
+            return ['activities' => $activities, 'snapshots' => $snapshots];
+        });
+    }
+
+    /**
+     * Runs $work for one non-demo user under the recalibration and plan
+     * regeneration locks, inside one transaction that a dry run rolls back,
+     * with the recalibration progress markers around it.
+     *
+     * @template T
+     *
+     * @param  callable(User): T  $work
+     * @return T
+     */
+    public function exclusively(User $user, bool $dryRun, int $lockTtlSeconds, callable $work): mixed
     {
         if ($user->is_demo) {
             throw new InvalidArgumentException('Demo users must be refreshed with demo:seed.');
@@ -50,12 +73,11 @@ final readonly class PlanRecalibrationService
 
         $dirty = false;
         $result = Cache::lock(RecalibrateTrainingHistoryJob::overlapLockKey($user->id), $lockTtlSeconds)
-            ->block(30, function () use ($user, $dryRun, $lockTtlSeconds, &$dirty): array {
-                return $this->periodizer->withRegenerationLock($user, function () use ($user, $dryRun, &$dirty): array {
-                    $startedAt = Carbon::now();
+            ->block(30, function () use ($user, $dryRun, $lockTtlSeconds, $work, &$dirty): mixed {
+                return $this->periodizer->withRegenerationLock($user, function () use ($user, $dryRun, $work, &$dirty): mixed {
                     if (! $dryRun) {
                         $user->forceFill([
-                            'plan_recalibration_started_at' => $startedAt,
+                            'plan_recalibration_started_at' => Carbon::now(),
                             'plan_recalibration_completed_at' => null,
                         ])->saveQuietly();
                     }
@@ -64,7 +86,7 @@ final readonly class PlanRecalibrationService
 
                     try {
                         $result = PlanRecalibrationDispatch::withoutDispatching(
-                            fn (): array => $this->perform($user->fresh() ?? $user, $startedAt),
+                            fn (): mixed => $work($user->fresh() ?? $user),
                         );
 
                         if ($dryRun) {
@@ -97,10 +119,8 @@ final readonly class PlanRecalibrationService
         return $result;
     }
 
-    /**
-     * @return array{activities: int, snapshots: int, sessions: int, stale_narrations: int}
-     */
-    private function perform(User $user, Carbon $startedAt): array
+    /** Recomputes every stored run's summary and TRIMP under the current zones, oldest first. */
+    public function recomputeSummaries(User $user): int
     {
         $activities = Activity::query()
             ->select('activities.*')
@@ -126,27 +146,16 @@ final readonly class PlanRecalibrationService
             }
         }
 
-        $snapshots = $this->weeklyAggregator->rebuildFor($user);
-        $sessions = $this->rewriteAndRegradeHistory($user);
-        $this->periodizer->regenerateWithinLock($user);
-
-        $staleNarrations = Analysis::query()
-            ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
-            ->where('subject_id', $user->id)
-            ->where('analysis_type', AnalysisType::PlanDayVoice)
-            ->where('status', AnalysisStatus::Done)
-            ->whereDate('discriminator', '<', Carbon::today())
-            ->update(['stale_at' => $startedAt]);
-
-        return [
-            'activities' => $recomputed,
-            'snapshots' => $snapshots,
-            'sessions' => $sessions,
-            'stale_narrations' => $staleNarrations,
-        ];
+        return $recomputed;
     }
 
-    private function rewriteAndRegradeHistory(User $user): int
+    /**
+     * Rewrites every past prescription under the current policy and re-grades
+     * it, oldest first, so each verdict feeds the next prescription of its
+     * family. Only the one-time reset calls this; it is never part of ordinary
+     * recalibration.
+     */
+    public function rewriteHistory(User $user): int
     {
         /** @var Collection<int, PlannedSession> $rows */
         $rows = PlannedSession::query()
