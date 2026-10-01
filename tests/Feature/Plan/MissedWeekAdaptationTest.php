@@ -143,7 +143,7 @@ it('marks last week\'s untouched sessions as missed on the Plan tab', function (
     expect($days->where('session_type', '!=', 'rest')->pluck('status')->unique()->all())->toBe(['missed']);
 });
 
-it('redistributes a half-missed week into the easy days that remain, up to the cap, and never into the long run', function (): void {
+it('does not add a missed session to future easy runs or the long run', function (): void {
     $user = athleteWithFourWeekBaseline();
 
     Carbon::setTestNow(THIS_MONDAY.' 08:00:00');
@@ -165,10 +165,6 @@ it('redistributes a half-missed week into the easy days that remain, up to the c
     $weeks = $this->actingAs($user)->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))->json('props.weeks');
     $days = collect(collect($weeks)->firstWhere('week_start', THIS_MONDAY)['days'])->keyBy('date');
 
-    // Reproduce the app's own week-target math (no completed/pinned km, one
-    // freshly-generated Build week so the volume multiplier is 1.0) to prove
-    // the redistribution scale is exactly what VolumeRedistributor should
-    // produce — not just "bigger than before".
     $longRunKm = app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'];
     $kmFor = fn (SessionType $type, bool $isPrimaryEasy) => SegmentGenerator::coreKmFor($type, $isPrimaryEasy, $longRunKm, 1.0, INF);
 
@@ -179,9 +175,11 @@ it('redistributes a half-missed week into the easy days that remain, up to the c
 
     $satOriginalKm = $kmFor(SessionType::Easy, false);
     $sunOriginalKm = $kmFor(SessionType::Long, false);
-    $scale = min(VolumeRedistributor::MAX_SCALE, ($remainingTargetKm - $sunOriginalKm) / $satOriginalKm);
+    $remainingEasyKm = $remainingTargetKm - $sunOriginalKm;
+    $scale = VolumeRedistributor::redistribute([$saturday => $satOriginalKm], $remainingEasyKm)[$saturday];
 
-    expect($days[$saturday]['distance_km'])->toBe(round($satOriginalKm * $scale, 1))
+    expect($days[$saturday]['distance_km'])->toBe(round($satOriginalKm, 1))
         ->and($days[$sunday]['distance_km'])->toBe($days[$sunday]['asked_km'])
-        ->and($scale)->toBeGreaterThan(1.0);
+        ->and($remainingEasyKm)->toBeGreaterThan($satOriginalKm)
+        ->and($scale)->toBe(1.0);
 });

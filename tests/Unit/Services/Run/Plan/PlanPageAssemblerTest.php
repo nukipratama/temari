@@ -280,27 +280,6 @@ it('asks for no cooldown when the athlete has not just replanned', function (): 
     expect($this->assembler->regenerateCooldownSeconds(assemblerAthlete()))->toBeNull();
 });
 
-it('counts only analyzed activities toward the week already run', function (): void {
-    $user = User::factory()->create();
-    $from = Carbon::today()->subDays(3);
-    $to = Carbon::today()->subDay();
-
-    $analyzed = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($analyzed)->create([
-        'start_date_local' => $from->copy()->addDay(),
-        'distance' => 8_000.0,
-    ]);
-    $stub = Activity::factory()->for($user)->stub()->create();
-    ActivityDetail::factory()->for($stub)->create([
-        'start_date_local' => $from->copy()->addDay(),
-        'distance' => 20_000.0,
-    ]);
-
-    $method = new ReflectionMethod(PlanPageAssembler::class, 'completedKmInRange');
-
-    expect($method->invoke($this->assembler, $user, $from, $to))->toBe(8.0);
-});
-
 /**
  * A plan generated mid-week only stores rows from that day on, so its week
  * target sums three days while the completed figure was subtracted from the

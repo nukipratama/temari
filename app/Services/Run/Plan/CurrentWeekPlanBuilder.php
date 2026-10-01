@@ -21,10 +21,9 @@ use Illuminate\Support\Carbon;
 use LogicException;
 
 /**
- * Home's "this week's plan" widget — the current week only, no lookahead and
- * no volume redistribution (Home never shows a future day's resized
- * distance, only its status glyph), but the same trailing-history window
- * {@see PlanPageAssembler} queries, so
+ * Home's "this week's plan" widget — the current week only, no lookahead,
+ * with the same current-week volume projection as {@see PlanPageAssembler}.
+ * Both callers query the same trailing-history window, so
  * {@see PlanRenderer::weekPhasesAndMultipliers()} computes an identical
  * multiplier for the shared week.
  */
@@ -36,6 +35,7 @@ final readonly class CurrentWeekPlanBuilder
         private TrainingPaceCalculator $paceCalculator,
         private VdotEstimator $vdotEstimator,
         private SessionMatcher $sessionMatcher,
+        private CurrentWeekVolumeProjector $volumeProjector,
         private PlanNarrationRequester $planNarration,
         private ResolveActiveRaceAction $activeRace,
         private ResolvePlannedSessionsAction $plannedSessions,
@@ -153,7 +153,22 @@ final readonly class CurrentWeekPlanBuilder
             )
             : null;
 
-        $activityByDate = $this->sessionMatcher->activityByDate($user, $currentWeekStart, $today);
+        $weekProjection = $this->volumeProjector->project(
+            $user,
+            $currentWeekSessions,
+            $currentWeekStart,
+            $today,
+            $baselineData['long_run_km'],
+            $currentWeekMultiplier,
+            $baselineData['long_run_cap_km'],
+            $baselineData['long_run_progression_cap_km'],
+            $primaryEasyDate,
+            $todaySession,
+            $clamp,
+        );
+        $volumeScaleByDate = $weekProjection['scale_by_date'];
+        $activityByDate = $weekProjection['activity_by_date'];
+
         $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $todaySession)
             ? $this->planNarration->clampVoiceFor($user, $today)
             : null;
@@ -162,7 +177,7 @@ final readonly class CurrentWeekPlanBuilder
             $s,
             $today,
             $clamp,
-            [],
+            $volumeScaleByDate,
             $raceDistanceM,
             $s->date->toDateString() === $primaryEasyDate,
             $baselineData['long_run_km'],

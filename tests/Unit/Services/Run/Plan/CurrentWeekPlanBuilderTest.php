@@ -13,6 +13,7 @@ use App\Models\RaceGoal;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
+use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
@@ -60,6 +61,106 @@ it('builds sessions_this_week, phase, and one day payload per planned session', 
 
     Carbon::setTestNow();
 });
+
+it('shares the current week surplus projection between Home and Plan without writing it', function (): void {
+    Carbon::setTestNow('2026-08-13 08:00:00');
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+
+    foreach ([
+        [0, SessionType::Easy, false],
+        [1, SessionType::Rest, false],
+        [2, SessionType::Rest, false],
+        [3, SessionType::Rest, false],
+        [4, SessionType::Easy, true],
+        [5, SessionType::Easy, false],
+        [6, SessionType::Long, false],
+    ] as [$offset, $type, $pinned]) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $weekStart->copy()->addDays($offset),
+            'phase' => PlanPhase::Base,
+            'session_type' => $type,
+            'pinned' => $pinned,
+            'volume_multiplier' => 1.0,
+        ]);
+    }
+
+    $assembler = app(PlanPageAssembler::class);
+    $initialWeek = collect($assembler->weeks($user, Carbon::today()))->firstWhere('type', 'current');
+    $monday = collect($initialWeek['days'])
+        ->firstWhere('date', $weekStart->toDateString());
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $weekStart->copy()->setTime(6, 0),
+        'distance' => ($monday['asked_km'] + 10.0) * 1000,
+    ]);
+
+    $planWeek = collect($assembler->weeks($user, Carbon::today()))->firstWhere('type', 'current');
+    $planDays = collect($planWeek['days'])->keyBy('date');
+    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $homeDays = collect($home['days'])->keyBy('date');
+    $saturday = $weekStart->copy()->addDays(5)->toDateString();
+    $friday = $weekStart->copy()->addDays(4)->toDateString();
+    $sunday = $weekStart->copy()->addDays(6)->toDateString();
+    $futureSaturday = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $saturday)->firstOrFail();
+    $homeTotal = round(array_sum(array_column($home['days'], 'distance_km')), 1);
+    $planTotal = round(array_sum(array_column($planDays->all(), 'distance_km')), 1);
+
+    expect($homeDays[$saturday]['session_type'])->toBe($planDays[$saturday]['session_type'])
+        ->and($homeDays[$saturday]['distance_km'])->toBe($planDays[$saturday]['distance_km'])
+        ->and($homeDays[$saturday]['segments'])->toEqual($planDays[$saturday]['segments'])
+        ->and($planDays[$saturday]['distance_km'])->toBeLessThan($planDays[$saturday]['asked_km'])
+        ->and($homeDays[$friday]['distance_km'])->toBe($homeDays[$friday]['asked_km'])
+        ->and($homeDays[$sunday]['distance_km'])->toBe($homeDays[$sunday]['asked_km'])
+        ->and($home['planned_km_this_week'])->toBe($homeTotal)
+        ->and($planTotal)->toBe($homeTotal)
+        ->and($homeDays[$saturday]['clamp'])->toBeNull()
+        ->and($planDays[$saturday]['clamp'])->toBeNull()
+        ->and($futureSaturday->clamped_km)->toBeNull();
+
+    Carbon::setTestNow();
+});
+
+it('does not add missed or readiness-reduced volume to future easy runs', function (?float $clampedKm): void {
+    Carbon::setTestNow('2026-08-13 08:00:00');
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+
+    foreach ([
+        [0, SessionType::Easy, false],
+        [1, SessionType::Rest, false],
+        [2, SessionType::Rest, false],
+        [3, SessionType::Rest, false],
+        [4, SessionType::Easy, true],
+        [5, SessionType::Easy, false],
+        [6, SessionType::Long, false],
+    ] as [$offset, $type, $pinned]) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $weekStart->copy()->addDays($offset),
+            'phase' => PlanPhase::Deload,
+            'session_type' => $type,
+            'pinned' => $pinned,
+            'volume_multiplier' => 1.0,
+            'clamped_km' => $offset === 0 ? $clampedKm : null,
+        ]);
+    }
+
+    $planWeek = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))->firstWhere('type', 'current');
+    $planDays = collect($planWeek['days'])->keyBy('date');
+    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $homeDays = collect($home['days'])->keyBy('date');
+    $saturday = $weekStart->copy()->addDays(5)->toDateString();
+
+    expect($homeDays[$saturday]['distance_km'])->toBe($planDays[$saturday]['distance_km'])
+        ->and($planDays[$saturday]['distance_km'])->toBe($planDays[$saturday]['asked_km'])
+        ->and($planDays[$saturday]['clamp'])->toBeNull()
+        ->and(PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $saturday)->value('clamped_km'))->toBeNull();
+
+    Carbon::setTestNow();
+})->with([
+    'missed day' => [null],
+    'readiness-reduced day' => [1.0],
+]);
 
 it('never prices an old race day at a newer race goal\'s time', function (): void {
     Carbon::setTestNow('2026-08-12'); // a Wednesday

@@ -200,7 +200,7 @@ final readonly class SessionMatcher
      * total distance with one run's duration, which read as a single
      * impossible run.
      *
-     * @return array<string, array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}>
+     * @return array<string, array{km: float, meters: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}>
      */
     public function activityByDate(User $user, Carbon $from, Carbon $to): array
     {
@@ -237,6 +237,7 @@ final readonly class SessionMatcher
 
         foreach ($byDate as $date => $day) {
             $byDate[$date]['km'] = DistanceFormatter::km($metersByDate[$date]);
+            $byDate[$date]['meters'] = $metersByDate[$date];
         }
 
         return $byDate;

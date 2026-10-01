@@ -7,16 +7,12 @@ namespace App\Services\Run\Plan;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 use App\Enums\PlannedSessionStatus;
-use App\Enums\SessionType;
-use App\Models\Activity;
-use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
 use App\Services\AI\HydrationBacklog;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Gamification\SeasonStreakSummaryBuilder;
-use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -56,6 +52,7 @@ final class PlanPageAssembler
         private readonly ResolveActiveRaceAction $activeRace,
         private readonly ResolveWeekAdaptationAction $weekAdaptation,
         private readonly HydrationBacklog $hydrationBacklog,
+        private readonly CurrentWeekVolumeProjector $volumeProjector,
     ) {
     }
 
@@ -221,11 +218,11 @@ final class PlanPageAssembler
             ? $this->narrationRequester->clampVoiceFor($user, $today)
             : null;
 
-        $volumeScaleByDate = $this->redistributeCurrentWeek(
+        $weekProjection = $this->volumeProjector->project(
             $user,
             $sessionsByWeek->get($currentWeekKey, collect()),
+            $rangeStart,
             $today,
-            $currentWeekStart,
             $baselineData['long_run_km'],
             $multiplierByWeek[$currentWeekKey] ?? 1.0,
             $baselineData['long_run_cap_km'],
@@ -234,8 +231,8 @@ final class PlanPageAssembler
             $todaySession,
             $clamp,
         );
-
-        $activityByDate = $this->sessionMatcher->activityByDate($user, $rangeStart, $today);
+        $volumeScaleByDate = $weekProjection['scale_by_date'];
+        $activityByDate = $weekProjection['activity_by_date'];
 
         $weeks = [];
         foreach ($sessionsByWeek as $weekStartKey => $weekSessions) {
@@ -333,96 +330,4 @@ final class PlanPageAssembler
         return $this->sessionMatcher->scoreRange($user, $stalePlannedKm, $staleExcused, $today);
     }
 
-    /**
-     * A `Race` day carries no redistributable volume — `$kmFor` is deliberately
-     * race-blind, so the event contributes nothing to the week's target and is
-     * never scaled itself. Only easy running absorbs the week's surplus or
-     * shortfall: long, tempo and interval days keep their size.
-     *
-     * @param  Collection<int, PlannedSession>  $currentWeekSessions
-     * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null $clamp
-     * @return array<string, float>  date => volume scale, from {@see VolumeRedistributor::redistribute()}
-     */
-    private function redistributeCurrentWeek(
-        User $user,
-        Collection $currentWeekSessions,
-        Carbon $today,
-        Carbon $currentWeekStart,
-        float $longRunKm,
-        float $multiplier,
-        float $longRunCapKm,
-        float $longRunProgressionCapKm,
-        ?string $primaryEasyDate,
-        ?PlannedSession $todaySession,
-        ?array $clamp,
-    ): array {
-        if ($currentWeekSessions->isEmpty()) {
-            return [];
-        }
-
-        $kmFor = fn (PlannedSession $s): float => EffectiveSession::of($s, SegmentGenerator::coreKmFor(
-            $s->session_type,
-            $s->date->toDateString() === $primaryEasyDate,
-            $longRunKm,
-            $multiplier,
-            $longRunCapKm,
-            longRunProgressionCapKm: $longRunProgressionCapKm,
-        ))->coreKm;
-
-        $weekTargetKm = $currentWeekSessions->sum($kmFor);
-        // The target sums the days the plan actually stored, so the completed
-        // figure has to start where they do. A plan generated mid-week holds
-        // no rows for the days before it, and deducting those days' running
-        // from a target that never asked for them left the rest of the week
-        // at a fraction of its prescription.
-        $planStart = $currentWeekSessions->min(fn (PlannedSession $s): string => $s->date->toDateString());
-        $completedKm = $this->completedKmInRange($user, Carbon::parse($planStart), $today->copy()->subDay());
-        $pinnedKm = $currentWeekSessions->filter(fn (PlannedSession $s): bool => $s->pinned && ! $s->date->lt($today))->sum($kmFor);
-
-        $todayFixedKm = 0.0;
-        if ($todaySession !== null && ! $todaySession->pinned) {
-            $todayFixedKm = $clamp !== null && ! EffectiveSession::isRecordedOn($todaySession) ? $clamp['core_km'] : $kmFor($todaySession);
-        }
-
-        $easyDaysKm = [];
-        $keySessionsKm = 0.0;
-        foreach ($currentWeekSessions as $s) {
-            if ($s->pinned || ! $s->date->isAfter($today)) {
-                continue;
-            }
-            if (self::runsEasy($s)) {
-                $easyDaysKm[$s->date->toDateString()] = $kmFor($s);
-            } else {
-                $keySessionsKm += $kmFor($s);
-            }
-        }
-
-        $remainingEasyKm = max(0.0, $weekTargetKm - $completedKm - $pinnedKm - $todayFixedKm - $keySessionsKm);
-
-        return VolumeRedistributor::redistribute($easyDaysKm, $remainingEasyKm);
-    }
-
-    private static function runsEasy(PlannedSession $s): bool
-    {
-        return $s->session_type === SessionType::Easy
-            || (in_array($s->session_type, [SessionType::Tempo, SessionType::Interval], true)
-                && IntensityPrescription::fromSession($s)?->isEasy() === true);
-    }
-
-    private function completedKmInRange(User $user, Carbon $from, Carbon $to): float
-    {
-        if ($to->lessThan($from)) {
-            return 0.0;
-        }
-
-        $meters = Activity::analyzedJoinConstraint(
-            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
-        )
-            ->where('activities.user_id', $user->id)
-            ->whereNotNull('activity_details.start_date_local')
-            ->whereBetween('activity_details.start_date_local', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
-            ->sum('activity_details.distance');
-
-        return DistanceFormatter::km((float) $meters);
-    }
 }
