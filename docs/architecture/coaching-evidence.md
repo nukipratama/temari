@@ -186,10 +186,10 @@ Riegel PS. Athletic records and human endurance. *Am Sci* 1981;69(3):285–290. 
 Mountjoy M, Ackerman KE, Bailey DM, et al. 2023 International Olympic Committee's (IOC) consensus statement on Relative Energy Deficiency in Sport (REDs). *Br J Sports Med* 2023;57(17):1073–1097. https://doi.org/10.1136/bjsports-2023-106994. Low energy availability has health and performance effects that no training-load number identifies. Grade CON · access ABS.
 
 ### Tanaka2001
-Tanaka H, Monahan KD, Seals DR. Age-predicted maximal heart rate revisited. *J Am Coll Cardiol* 2001;37:153–156. https://doi.org/10.1016/s0735-1097(00)01054-8. A meta-analysis giving HRmax = 208 − 0.7 × age, with an individual spread that makes the prediction an estimate, not a measurement. Grade MA · access ABS.
+Tanaka H, Monahan KD, Seals DR. Age-predicted maximal heart rate revisited. *J Am Coll Cardiol* 2001;37:153–156. https://doi.org/10.1016/s0735-1097(00)01054-8. A meta-analysis of 351 studies (18,712 subjects) giving HRmax = 208 − 0.7 × age, independent of sex and activity level; any age formula is an estimate, not a measurement. Grade MA · access ABS.
 
 ### Nes2013
-Nes BM, Janszky I, Wisløff U, Støylen A, Karlsen T. Age-predicted maximal heart rate in healthy subjects: the HUNT Fitness Study. *Scand J Med Sci Sports* 2013;23(6):697–704. https://doi.org/10.1111/j.1600-0838.2012.01445.x. In a large healthy cohort a new age equation fitted better than 220 − age, yet individual max heart rate still varied widely around it. Grade COH · access ABS.
+Nes BM, Janszky I, Wisløff U, Støylen A, Karlsen T. Age-predicted maximal heart rate in healthy subjects: the HUNT Fitness Study. *Scand J Med Sci Sports* 2013;23(6):697–704. https://doi.org/10.1111/j.1600-0838.2012.01445.x. In a large healthy cohort HRmax = 211 − 0.64 × age fitted better than 220 − age, with individual error still around ±10 bpm. Grade COH · access ABS.
 
 ### RobergsLandwehr2002
-Robergs RA, Landwehr R. The surprising history of the "HRmax = 220 − age" equation. *J Exerc Physiol Online* 2002;5(2):1–10. https://www.asep.org/asep/asep/Robergs2.pdf (no DOI). The 220 − age equation has no formal derivation and a large individual error. Grade REV · access ABS.
+Robergs RA, Landwehr R. The surprising history of the "HRmax = 220 − age" equation. *J Exerc Physiol Online* 2002;5(2):1–10. https://www.asep.org/asep/asep/Robergs2.pdf (no DOI). The 220 − age equation was fitted by eye to about eleven heterogeneous sources and carries a 7–11 bpm prediction error. Grade REV · access ABS.
