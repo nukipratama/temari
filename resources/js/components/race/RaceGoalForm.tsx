@@ -17,6 +17,8 @@ import {
 } from '@/lib/raceGoal';
 import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
+type RaceIntent = 'update' | 'new';
+
 interface RaceGoalFormProps {
     race: {
         race_date: string;
@@ -62,6 +64,22 @@ export default function RaceGoalForm({
     const [seconds, setSeconds] = useState(race ? race.goal_time_sec % 60 : 0);
     const [name, setName] = useState(race?.name ?? '');
     const [processing, setProcessing] = useState(false);
+    const [intent, setIntent] = useState<RaceIntent>('update');
+
+    const updating = race !== null && intent === 'update';
+
+    const chooseIntent = (next: RaceIntent) => {
+        setIntent(next);
+        const source = next === 'update' ? race : null;
+        setRaceDate(source?.race_date ?? '');
+        setDistanceKm(source ? source.distance_m / 1_000 : 10);
+        setHours(source ? Math.floor(source.goal_time_sec / 3_600) : 0);
+        setMinutes(
+            source ? Math.floor((source.goal_time_sec % 3_600) / 60) : 50,
+        );
+        setSeconds(source ? source.goal_time_sec % 60 : 0);
+        setName(source?.name ?? '');
+    };
 
     const goalTimeSec = hours * 3_600 + minutes * 60 + seconds;
     const goalTimeIssue = goalTimeError(goalTimeSec);
@@ -89,6 +107,7 @@ export default function RaceGoalForm({
                 distance_m: Math.round(distanceKm * 1_000),
                 goal_time_sec: goalTimeSec,
                 name: name.trim() === '' ? null : name.trim(),
+                ...(race ? { intent } : {}),
             },
             {
                 preserveScroll: true,
@@ -110,6 +129,31 @@ export default function RaceGoalForm({
                 {race ? 'edit your race' : 'set your race'}
             </Eyebrow>
             <form onSubmit={submit} className="mt-3.5 flex flex-col gap-3.5">
+                {race && (
+                    <fieldset className="flex flex-col gap-1.5">
+                        <legend className={FIELD_LABEL}>
+                            What are you changing?
+                        </legend>
+                        <label className="flex items-center gap-2 text-sm text-foreground">
+                            <input
+                                type="radio"
+                                name="race_intent"
+                                checked={intent === 'update'}
+                                onChange={() => chooseIntent('update')}
+                            />
+                            Update this race
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-foreground">
+                            <input
+                                type="radio"
+                                name="race_intent"
+                                checked={intent === 'new'}
+                                onChange={() => chooseIntent('new')}
+                            />
+                            Add a new race
+                        </label>
+                    </fieldset>
+                )}
                 <div>
                     <label htmlFor="race_name" className={FIELD_LABEL}>
                         Name (optional)
@@ -145,6 +189,7 @@ export default function RaceGoalForm({
                             <button
                                 key={preset.label}
                                 type="button"
+                                disabled={updating}
                                 onClick={() => setDistanceKm(preset.km)}
                                 className={outlineChipVariants({
                                     selected: distanceKm === preset.km,
@@ -162,6 +207,7 @@ export default function RaceGoalForm({
                             max={300}
                             step={0.1}
                             required
+                            disabled={updating}
                             value={distanceKm}
                             onChange={(e) =>
                                 setDistanceKm(Number(e.target.value))
@@ -174,6 +220,12 @@ export default function RaceGoalForm({
                         />
                         <span className={FIELD_LABEL}>km</span>
                     </div>
+                    {updating && (
+                        <p className="mt-1.5 font-sans text-xs text-text-2">
+                            A different distance is a different race. Choose
+                            &ldquo;Add a new race&rdquo; to start one.
+                        </p>
+                    )}
                 </div>
 
                 <div>
@@ -250,7 +302,13 @@ export default function RaceGoalForm({
                     disabled={processing || goalTimeIssue !== null}
                     className="mt-0.5 w-full justify-center"
                 >
-                    {processing ? 'saving…' : race ? 'update race' : 'set race'}
+                    {processing
+                        ? 'saving…'
+                        : race
+                          ? updating
+                              ? 'update race'
+                              : 'add race'
+                          : 'set race'}
                 </PillButton>
             </form>
         </div>

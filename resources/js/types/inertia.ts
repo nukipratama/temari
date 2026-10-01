@@ -81,6 +81,103 @@ export interface ActiveRace {
     name: string | null;
 }
 
+export type RaceAmbitionState =
+    'on_track' | 'ambitious' | 'unsupported' | 'unknown';
+
+/**
+ * The athlete's stated target beside the effort their recent running supports.
+ * The plan prescribes `prescribed_time_sec`, never an unsupported target.
+ */
+export interface RaceAmbition {
+    state: RaceAmbitionState;
+    target_time_sec: number;
+    target_pace_sec_per_km: number;
+    supported_time_sec: number | null;
+    supported_pace_sec_per_km: number | null;
+    prescribed_time_sec: number;
+    /** Percent the target pace is faster than the supported pace; negative when slower. */
+    gap_pct: number | null;
+    evidence_confidence: string | null;
+}
+
+export interface RaceSupport {
+    mode: 'road' | 'general_maintenance';
+    dedicated_preparation: boolean;
+    /** Honest limit wording; null when the race has dedicated preparation. */
+    limitation: string | null;
+}
+
+export type RaceChangeKind =
+    'created' | 'revised' | 'postponed' | 'replaced' | 'cancelled' | 'outcome';
+
+export interface RaceHistoryEntry {
+    kind: RaceChangeKind;
+    race_date: string | null;
+    goal_time_sec: number | null;
+    recorded_at: string;
+}
+
+/** The active race on the Race page, with capacity and history. */
+export interface RaceDetails extends ActiveRace {
+    ambition: RaceAmbition;
+    support: RaceSupport;
+    history: RaceHistoryEntry[];
+}
+
+export type RaceOutcomeState =
+    'pending' | 'confirmed' | 'did_not_run' | 'cancelled';
+
+export interface RaceOutcomeCandidate {
+    activity_id: number;
+    name: string | null;
+    distance_m: number;
+    elapsed_time_sec: number;
+    started_at: string;
+}
+
+export interface RaceOutcomeSummary {
+    state: RaceOutcomeState;
+    finish_time_sec: number | null;
+    activity_id: number | null;
+    recorded_at: string | null;
+    /** The owned race-day run to offer; null once a result is confirmed. */
+    suggestion: RaceOutcomeCandidate | null;
+}
+
+/** A race whose date has passed, with what became of it. */
+export interface PastRace {
+    id: number;
+    race_date: string;
+    distance_m: number;
+    goal_time_sec: number;
+    name: string | null;
+    outcome: RaceOutcomeSummary;
+}
+
+export type SeasonPerformanceState =
+    | 'none'
+    | 'unrecorded'
+    | 'pending'
+    | 'met'
+    | 'not_met'
+    | 'did_not_run'
+    | 'cancelled';
+
+/** Season process (training done) and performance (race result), reported apart. */
+export interface SeasonRecord {
+    process: {
+        pct: number | null;
+        goals_met: number;
+        goals_total: number;
+    };
+    performance: {
+        state: SeasonPerformanceState;
+        target_time_sec: number | null;
+        finish_time_sec: number | null;
+        margin_pct: number | null;
+    };
+}
+
 export interface PlanRecalibrationState {
     pending: boolean;
     started_at: string | null;
