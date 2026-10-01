@@ -71,7 +71,7 @@ final readonly class RacePresenter
                 'finish_time_sec' => $race->finish_time_sec,
                 'activity_id' => $race->outcome_activity_id,
                 'recorded_at' => $race->outcome_recorded_at?->toIso8601String(),
-                'suggestion' => $outcome === RaceOutcome::Confirmed ? null : $this->matcher->suggest($race),
+                'suggestion' => $outcome === RaceOutcome::Confirmed ? null : $this->matcher->candidates($race)->first(),
             ],
         ];
     }

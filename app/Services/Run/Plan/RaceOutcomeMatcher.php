@@ -44,12 +44,4 @@ final readonly class RaceOutcomeMatcher
                 'started_at' => $detail->start_date_local?->toDateTimeString() ?? $raceDay,
             ]);
     }
-
-    /**
-     * @return Candidate|null
-     */
-    public function suggest(RaceGoal $race): ?array
-    {
-        return $this->candidates($race)->first();
-    }
 }

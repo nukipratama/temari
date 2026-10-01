@@ -59,7 +59,7 @@ final readonly class PerformanceEvidenceRecorder
     {
         $this->assertPlausible($attributes['distance_m'], $attributes['elapsed_time_sec']);
 
-        $before = $this->trainingPaceCalculator->fromVdotResult($this->vdotEstimator->estimate($user));
+        $before = $this->currentPaces($user);
         $evidenceAttributes = [...$attributes, 'user_id' => $user->id, 'confirmed_at' => now()];
         $activityId = $attributes['activity_id'] ?? null;
         $evidence = $activityId === null
@@ -79,7 +79,7 @@ final readonly class PerformanceEvidenceRecorder
             return;
         }
 
-        $before = $this->trainingPaceCalculator->fromVdotResult($this->vdotEstimator->estimate($user));
+        $before = $this->currentPaces($user);
         PerformanceEvidence::query()->whereKey($evidence->modelKeys())->delete();
         $this->vdotEstimator->forget($user);
         $this->regenerateIfPacesChanged($user, $before, $this->currentPaces($user));

@@ -24,7 +24,10 @@ class RaceOutcomeAskCommand extends Command
         $races = RaceGoal::query()
             ->where('outcome', RaceOutcome::Pending)
             ->whereDate('race_date', Carbon::yesterday())
-            ->whereIn('user_id', User::query()->notDemo()->where($this->wantsNotifications(...))->select('id'))
+            ->whereIn('user_id', User::query()
+                ->notDemo()
+                ->whereDoesntHave('notificationPreference', fn (Builder $preference): Builder => $preference->where('notifications_enabled', false))
+                ->select('id'))
             ->with('user')
             ->get();
 
@@ -42,17 +45,6 @@ class RaceOutcomeAskCommand extends Command
         $this->info("Asked {$sent} users how their race went.");
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @param  Builder<User>  $query
-     */
-    private function wantsNotifications(Builder $query): void
-    {
-        $query->whereDoesntHave(
-            'notificationPreference',
-            fn (Builder $preference): Builder => $preference->where('notifications_enabled', false),
-        );
     }
 
     private function alreadyAsked(RaceGoal $race): bool
