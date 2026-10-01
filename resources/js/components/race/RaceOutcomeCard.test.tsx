@@ -92,6 +92,14 @@ describe('RaceOutcomeCard', () => {
         });
     });
 
+    it('lets the time fields and save button wrap instead of running past a narrow card', () => {
+        render(<RaceOutcomeCard race={pastRace()} />);
+
+        expect(
+            screen.getByRole('button', { name: 'save time' }).parentElement,
+        ).toHaveClass('flex-wrap');
+    });
+
     it('marks did not run', () => {
         render(<RaceOutcomeCard race={pastRace()} />);
 
