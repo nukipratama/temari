@@ -1,6 +1,5 @@
 import { Link } from '@inertiajs/react';
 import {
-    ArrowDown,
     ArrowRight,
     ArrowRightLeft,
     RotateCcw,
@@ -9,7 +8,7 @@ import {
 import { useState } from 'react';
 
 import type { PlanDay } from '@/lib/plan';
-import type { AnalysisPayload, PlanDayClamp } from '@/types/inertia';
+import type { AnalysisPayload } from '@/types/inertia';
 
 import {
     AskedRanResult,
@@ -22,7 +21,6 @@ import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import {
-    clampSummary,
     dayStatusGlyph,
     deltaDirection,
     easedFromDelta,
@@ -116,29 +114,6 @@ function complianceLabel(day: PlanDay): string {
     return `${day.compliance_score}%`;
 }
 
-/**
- * The readiness step-down, rendered beneath the day's own prescription rather
- * than replacing it. The plan still asks for what it asked for; this is the
- * eased version offered for today, and the note says why.
- */
-function ClampStepDown({
-    clamp,
-    plannedKm,
-}: Readonly<{ clamp: PlanDayClamp; plannedKm: number }>) {
-    return (
-        <div className="mt-2 border-l-2 border-border-strong pl-3">
-            <p className="flex items-center gap-1.5 text-label-micro text-text-2">
-                <Icon icon={ArrowDown} className="size-3" aria-hidden />
-                {clamp.label}
-            </p>
-            <p className="mt-0.5 text-xs font-semibold text-foreground">
-                {clampSummary(clamp, plannedKm)}
-            </p>
-            <p className="mt-1 text-xs italic text-text-2">{clamp.note}</p>
-        </div>
-    );
-}
-
 function dayChanges(day: PlanDay) {
     const adjustedFrom = volumeAdjustedFrom(day);
     const trimmed = adjustedFrom !== null && adjustedFrom > day.distance_km;
@@ -230,9 +205,9 @@ export function hasDayDetail(
         showsNarration(narration) ||
         purpose !== null ||
         doseWhy !== null ||
-        day.clamp !== null ||
+        day.advice_note !== null ||
         Boolean(day.credit_note) ||
-        Boolean(day.hot_note) ||
+        Boolean(day.result_note) ||
         day.activities.length > 0 ||
         canMove ||
         canSkip ||
@@ -435,17 +410,19 @@ export default function DayDetail({
                     }
                 />
             )}
-            {day.clamp && (
-                <ClampStepDown clamp={day.clamp} plannedKm={day.distance_km} />
+            {day.advice_note !== null && (
+                <p className="mt-2 border-l-2 border-border-strong pl-3 text-xs italic text-text-2">
+                    {day.advice_note}
+                </p>
             )}
             {day.credit_note && (
                 <p className="mt-2 text-xs italic text-text-2">
                     {day.credit_note}
                 </p>
             )}
-            {day.hot_note && (
+            {day.result_note && (
                 <p className="mt-2 text-xs italic text-text-2">
-                    {day.hot_note}
+                    {day.result_note}
                 </p>
             )}
             <SessionBarGraph segments={day.segments} />

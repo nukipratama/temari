@@ -55,11 +55,12 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
-        clamp: null,
+        advice_note: null,
         eased_from: null,
         pace_eased_from: null,
         credit_note: null,
-        hot_note: null,
+        ran_hot: false,
+        result_note: null,
         ran_pace_sec_per_km: null,
         actual_km: null,
         credited_km: null,
@@ -263,34 +264,25 @@ describe('TodaySession', () => {
         expectSession('15', 'long run · 6:00/km');
     });
 
-    it('states the eased session beside the one the plan asked for, and why', () => {
+    it('keeps a pinned day leading and shows the safety advice as one line, not a second session', () => {
         render(
             <TodaySession
                 briefing={briefing('Easy 6k.')}
                 today={day({
                     session_type: 'long',
                     distance_km: 15,
-                    clamp: {
-                        session_type: 'easy',
-                        distance_km: 5.9,
-                        pace_sec_per_km: 450,
-                        note: 'Quality work waits until you are fresher.',
-                        label: 'eased today',
-                    },
+                    pinned: true,
+                    advice_note:
+                        'Rest is the advice after the pain you reported.',
                 })}
             />,
         );
 
         expectSession('15', 'long run · 6:00/km');
-        expect(screen.getByText('eased today')).toBeInTheDocument();
-        expect(screen.getByText('easy · 5.9 km · 7:30/km')).toBeInTheDocument();
-
-        const note = screen.getByText(
-            'Quality work waits until you are fresher.',
-        );
-        expect(note).toBeInTheDocument();
-        expect(note).toHaveClass('text-text-2');
-        expect(note).not.toHaveClass('italic');
+        expect(screen.queryByText('eased today')).not.toBeInTheDocument();
+        expect(
+            screen.getByText('Rest is the advice after the pain you reported.'),
+        ).toHaveClass('text-text-2');
     });
 
     /** The real case: a tempo eased to easy with its distance held leads as the easy run. */
@@ -495,6 +487,31 @@ describe('TodaySession', () => {
         expect(screen.getByText('easy')).toBeInTheDocument();
         expect(screen.getByText('asked 6 km · 6:00/km')).toBeInTheDocument();
         expect(screen.getByText('ran 6.4 km · 6:20/km')).toBeInTheDocument();
+    });
+
+    it('explains what a judged run came to against the advice, in the grading words', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    status: 'overreached',
+                    compliance_score: 103,
+                    distance_km: 4,
+                    prescribed_km: 4,
+                    actual_km: 6.9,
+                    ran_pace_sec_per_km: 433,
+                    ran_hot: true,
+                    result_note:
+                        'an unplanned hard effort, harder than the easy effort the day asked for.',
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                'an unplanned hard effort, harder than the easy effort the day asked for.',
+            ),
+        ).toBeInTheDocument();
     });
 
     /** #1269: once today has a run logged but hasn't been graded yet, the

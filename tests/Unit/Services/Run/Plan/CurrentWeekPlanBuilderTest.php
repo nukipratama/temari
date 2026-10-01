@@ -114,8 +114,8 @@ it('shares the current week surplus projection between Home and Plan without wri
         ->and($homeDays[$sunday]['distance_km'])->toBe($homeDays[$sunday]['asked_km'])
         ->and($home['planned_km_this_week'])->toBe($homeTotal)
         ->and($planTotal)->toBe($homeTotal)
-        ->and($homeDays[$saturday]['clamp'])->toBeNull()
-        ->and($planDays[$saturday]['clamp'])->toBeNull()
+        ->and($homeDays[$saturday]['eased_from'])->toBeNull()
+        ->and($planDays[$saturday]['eased_from'])->toBeNull()
         ->and($futureSaturday->clamped_km)->toBeNull();
 
     Carbon::setTestNow();
@@ -153,7 +153,7 @@ it('does not add missed or readiness-reduced volume to future easy runs', functi
 
     expect($homeDays[$saturday]['distance_km'])->toBe($planDays[$saturday]['distance_km'])
         ->and($planDays[$saturday]['distance_km'])->toBe($planDays[$saturday]['asked_km'])
-        ->and($planDays[$saturday]['clamp'])->toBeNull()
+        ->and($planDays[$saturday]['eased_from'])->toBeNull()
         ->and(PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $saturday)->value('clamped_km'))->toBeNull();
 
     Carbon::setTestNow();
@@ -432,8 +432,8 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
     $resumed = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])
         ->firstWhere('date', Carbon::today()->toDateString());
 
-    expect($held['clamp'])->toBeNull()
-        ->and($resumed['clamp']['session_type'])->toBe('easy')
+    expect($held['eased_from'])->toBeNull()
+        ->and($resumed['session_type'])->toBe('easy')
         ->and($resumed['readiness_assessment']['reasons'])->toContain('demanding_session_within_24h');
 
     Carbon::setTestNow();
@@ -462,7 +462,7 @@ it('shows current illness advice while other recent training history is hydratin
     $today = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])
         ->firstWhere('date', Carbon::today()->toDateString());
 
-    expect($today['clamp']['session_type'])->toBe('rest')
+    expect($today['session_type'])->toBe('rest')
         ->and($today['readiness_assessment']['inputs']['recent_training_stress']['sessions'])->toBe([])
         ->and($today['readiness_assessment']['inputs']['weekly_trimp'])->toBeNull();
 
@@ -479,8 +479,8 @@ function tempoToday(User $user): array
     return [$row, PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled'])];
 }
 
-/** A tempo day eased to easy at 00:01, distance held: today's card still headlines tempo, easy as the step-down. */
-it('steps a tempo day eased to easy down on Home today, tempo still leading', function (): void {
+/** A tempo day eased to easy at 00:01, distance held: today's card leads with the easy run, tempo as context. */
+it('leads Home today with a tempo day eased to easy, tempo only as context', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
     seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
@@ -490,18 +490,17 @@ it('steps a tempo day eased to easy down on Home today, tempo still leading', fu
     $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
     $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
 
-    expect($today['session_type'])->toBe('tempo')
+    expect($today['session_type'])->toBe('easy')
         ->and($today['distance_km'])->toBe($storedKm)
-        ->and($today['eased_from'])->toBeNull()
-        ->and($today['clamp']['session_type'])->toBe('easy')
-        ->and($today['clamp']['distance_km'])->toBe($storedKm)
+        ->and($today['eased_from']['session_type'])->toBe('tempo')
+        ->and($today['eased_from']['distance_km'])->toBeNull()
         ->and($result['planned_km_eased_from'])->toBeNull();
 
     Carbon::setTestNow();
 });
 
-/** Today's step-down no longer subtracts from the week's forecast total. */
-it('keeps the week total at the un-eased distance while todays ease is only a step-down', function (): void {
+/** The week total is the sum of the days the plan shows, today's ease included. */
+it('takes todays recorded ease off the week total, with the un-eased total as eased-from', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
     seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
@@ -512,9 +511,9 @@ it('keeps the week total at the un-eased distance while todays ease is only a st
     $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
     $total = round(array_sum(array_column($result['days'], 'distance_km')), 1);
 
-    expect($today['distance_km'])->toBe($storedKm)
+    expect($today['distance_km'])->toBe(1.0)
         ->and($result['planned_km_this_week'])->toBe($total)
-        ->and($result['planned_km_eased_from'])->toBeNull();
+        ->and($result['planned_km_eased_from'])->toBe(round($total + $storedKm - 1.0, 1));
 
     Carbon::setTestNow();
 });

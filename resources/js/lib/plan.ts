@@ -13,7 +13,6 @@ import {
 import type { IconComponent } from '@/components/ui/Icon';
 import type {
     AnalysisPayload,
-    PlanDayClamp,
     PlanDayEasedFrom,
     PlanDayPaceEasedFrom,
     PlanSessionSegment,
@@ -212,7 +211,7 @@ export const STATUS_GLYPH: Partial<Record<string, IconComponent>> = {
 
 /** An overreached day graded on intent, not distance: it ran too hard, not too far. */
 export function ranHot(day: PlanDay): boolean {
-    return day.status === 'overreached' && day.hot_note !== null;
+    return day.status === 'overreached' && day.ran_hot;
 }
 
 /**
@@ -341,25 +340,6 @@ export function easedFromDelta(
                 ? 'down'
                 : deltaDirection(easedFrom.distance_km, day.distance_km),
     };
-}
-
-/**
- * The eased session on one line. The distance is dropped when the clamp left
- * it alone — an intensity-only step-down (Tempo/Interval to Easy keeps the
- * same core km) otherwise prints the identical figure twice, which reads as a
- * rendering bug rather than as "same distance, easier pace".
- */
-export function clampSummary(clamp: PlanDayClamp, plannedKm: number): string {
-    const parts = [
-        SESSION_TYPE_LABEL[clamp.session_type] ?? clamp.session_type,
-    ];
-    if (clamp.distance_km !== plannedKm) {
-        parts.push(`${clamp.distance_km} km`);
-    }
-    if (clamp.pace_sec_per_km !== null) {
-        parts.push(`${formatPace(clamp.pace_sec_per_km)}/km`);
-    }
-    return parts.join(' · ');
 }
 
 /**

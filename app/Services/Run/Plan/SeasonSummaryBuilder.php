@@ -28,10 +28,12 @@ use Illuminate\Support\Carbon;
  * `Periodizer::HORIZON_WEEKS`) and get deleted/recreated by every weekly
  * regeneration, so they're the wrong source for a stable, whole-season
  * figure — the same reasoning that already keeps `SeasonGoal` targets off
- * of them. This does mean a week's `planned_km` won't reflect a real-time
- * adaptation (e.g. an in-week deload) the way the day-by-day schedule below
- * it on the page does; that's an accepted trade-off already made for this
- * exact page's season goals.
+ * of them. Future weeks therefore won't reflect a real-time adaptation; they
+ * are forecasts. The current week is the exception: it takes the km, phase
+ * and eased-from figure of the days the plan holds
+ * ({@see CurrentWeekPlanBuilder}), so Plan's header, the season list and
+ * Home's week total agree, with the arc's figure as "eased from" for a
+ * reactive deload.
  */
 final readonly class SeasonSummaryBuilder
 {
@@ -39,6 +41,7 @@ final readonly class SeasonSummaryBuilder
         private TrainingBaseline $baseline,
         private PhaseSchedule $phaseSchedule,
         private WeekPlanBuilder $weekPlanBuilder,
+        private CurrentWeekPlanBuilder $currentWeekPlan,
     ) {
     }
 
@@ -79,27 +82,42 @@ final readonly class SeasonSummaryBuilder
             ->all();
 
         $currentWeekKey = $today->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
-        $easedAwayKm = $this->currentWeekEasedAwayKm($user, $today);
+        $seasonHasCurrentWeek = in_array($currentWeekKey, array_map(fn (array $w): string => $w['week_start']->toDateString(), $weeks), true);
+        $currentWeek = $seasonHasCurrentWeek ? $this->currentWeekPlan->forUser($user, $today) : null;
 
         $result = [];
         foreach ($weeks as $i => $week) {
             $weekStartKey = $week['week_start']->toDateString();
-            $plannedKm = $week['planned_km'];
-            $eased = $weekStartKey === $currentWeekKey && round($easedAwayKm, 1) > 0.0;
+            $arcKm = round($week['planned_km'], 1);
+            $held = $weekStartKey === $currentWeekKey ? $currentWeek : null;
 
             $result[] = [
                 'week_start' => $weekStartKey,
-                'phase' => $week['phase']->value,
+                'phase' => $held['phase'] ?? $week['phase']->value,
                 'zone' => $week['zone'],
                 'type' => $weekStartKey < $currentWeekKey ? 'history' : ($weekStartKey === $currentWeekKey ? 'current' : 'lookahead'),
-                'planned_km' => round($eased ? $plannedKm - $easedAwayKm : $plannedKm, 1),
-                'eased_from_km' => $eased ? round($plannedKm, 1) : null,
+                'planned_km' => $held['planned_km_this_week'] ?? $arcKm,
+                'eased_from_km' => $held === null ? null : self::easedFromKm($held, $week['phase'], $arcKm),
                 'actual_km' => $actualKmByWeekEnding[$weekEndings[$i]] ?? null,
                 'sessions' => $week['sessions'],
             ];
         }
 
         return $result;
+    }
+
+    /**
+     * The figure the current week came down from: the arc's own km when the
+     * week runs as a reactive deload the arc did not schedule, else the km
+     * this week's eases took off.
+     *
+     * @param  array{phase: string, planned_km_this_week: float, planned_km_eased_from: float|null}  $held
+     */
+    private static function easedFromKm(array $held, PlanPhase $arcPhase, float $arcKm): ?float
+    {
+        $reactiveDeload = $held['phase'] === PlanPhase::Deload->value && $arcPhase !== PlanPhase::Deload;
+
+        return $reactiveDeload && $arcKm > $held['planned_km_this_week'] ? $arcKm : $held['planned_km_eased_from'];
     }
 
     /**
@@ -151,41 +169,6 @@ final readonly class SeasonSummaryBuilder
         }
 
         return $result;
-    }
-
-    /**
-     * The km this week's recorded eases took off the stored sessions, sized the
-     * way the day rows are, so the forecast header moves by what the day cells moved.
-     */
-    private function currentWeekEasedAwayKm(User $user, Carbon $today): float
-    {
-        $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
-        $rows = PlannedSession::query()
-            ->where('user_id', $user->id)
-            ->whereBetween('date', [
-                $weekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS)->toDateString(),
-                $weekStart->copy()->addDays(6)->toDateString(),
-            ])
-            ->orderBy('date')
-            ->get();
-        $eased = $rows->filter(
-            fn (PlannedSession $row): bool => ! $row->date->lessThan($weekStart) && EffectiveSession::isRecordedOn($row),
-        );
-        if ($eased->isEmpty()) {
-            return 0.0;
-        }
-
-        $baselineData = $this->baseline->forUser($user, $today);
-        $storedKmByDate = PlanRenderer::plannedKmByDate($rows, $baselineData['long_run_km'], $baselineData['long_run_cap_km'], $baselineData['self_scaled'], $baselineData['long_run_progression_cap_km']);
-
-        return $eased->sum(function (PlannedSession $row) use ($today, $storedKmByDate): float {
-            // Today's uncredited ease is only a step-down, so it shouldn't shrink the week total.
-            if ($row->date->isSameDay($today) && ! $row->status->isCredited()) {
-                return 0.0;
-            }
-
-            return EffectiveSession::of($row, $storedKmByDate[$row->date->toDateString()])->easedAwayKm();
-        });
     }
 
     /**

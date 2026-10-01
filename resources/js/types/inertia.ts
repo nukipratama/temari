@@ -100,6 +100,16 @@ export interface RaceAmbition {
     evidence_confidence: string | null;
 }
 
+/** The Riegel fit over the athlete's PRs, used by the race form's typed-goal warning. */
+export interface RaceProjection {
+    predicted_sec: number;
+    low_sec: number;
+    high_sec: number;
+    sample_size: number;
+    confidence: 'low' | 'medium' | 'high';
+    window: 'recent' | 'all';
+}
+
 export interface RaceSupport {
     mode: 'road' | 'general_maintenance';
     dedicated_preparation: boolean;
@@ -519,22 +529,6 @@ export interface PlanSessionSegment {
     pace_sec_per_km: number | null;
 }
 
-/** `PlanRenderer::clampPayload()` — the eased version of today's session.
- *  Carries one pace rather than a segment list: the step-down renders as a
- *  single line and only ever shows the core set's pace. */
-export interface PlanDayClamp {
-    hard_minutes?: number;
-    original_hard_minutes?: number;
-    pace_band?: string;
-    session_type: string;
-    distance_km: number;
-    pace_sec_per_km: number | null;
-    note: string;
-    /** From `PlanRenderer::clampPayload()`, so Plan and Home cannot disagree
-     *  about what the step-down is for. A credited day ships no clamp at all. */
-    label: string;
-}
-
 /** What a readiness-eased day was eased from, from `PlanRenderer::easedFromPayload()`. */
 export interface PlanDayEasedFrom {
     session_type: string;
@@ -596,13 +590,11 @@ export interface WeekPlanDay {
     prescribed_km: number | null;
     /** Deterministic explanation of why this hard-work dose was selected. */
     prescription_reason: string | null;
-    /** Today's readiness step-down when one shows but was never recorded, a
-     *  modification *beside* the day's own prescription. Null on every other
-     *  day, on a day whose ease was recorded (see `eased_from`), and once today
-     *  is credited: a finished day shows what it came to, not a second menu. */
-    clamp: PlanDayClamp | null;
-    /** Set on a day whose ease was recorded: the fields above are then the
-     *  eased session, and this is the session it replaced. */
+    /** Today's safety advice on a pinned or race day, whose prescription
+     *  keeps leading. Null on every other day. */
+    advice_note: string | null;
+    /** Set on an eased day, recorded or advised today: the fields above are
+     *  then the eased session, and this is the session it replaced. */
     eased_from: PlanDayEasedFrom | null;
     /** Set on a day the readiness clamp eased only in pace — type and
      *  distance above are unchanged, and `segments`' pace is already the
@@ -611,8 +603,11 @@ export interface WeekPlanDay {
     /** Why a long day that covered its distance still reads `partial` — it
      *  arrived in pieces rather than in one run. Null on every other day. */
     credit_note: string | null;
-    /** Why an overreached day ran hot, from the intent judge; null when distance alone overreached. */
-    hot_note: string | null;
+    /** An overreached day graded on intent rather than distance. */
+    ran_hot: boolean;
+    /** What a credited run came to against the advice shown, in the grading's words: an eased
+     *  session run as written, hard work added to an easy day, or an effort the data cannot read. */
+    result_note: string | null;
     /** The credited runs' own pace — moving time over distance, the best
      *  single run for Tempo/Interval, the day's total otherwise — from
      *  `SessionMatcher::ranPaceSecPerKmFor()`. Null until the day is

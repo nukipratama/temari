@@ -12,7 +12,6 @@ use App\Enums\SessionType;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
-use App\Services\Run\Metrics\PaceFormatter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use LogicException;
@@ -226,7 +225,7 @@ final class PlanRenderer
     }
 
     /**
-     * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null $clamp
+     * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string, quality_dose?: array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null}|null $clamp  today's advisory ease, which leads the day unless the row is pinned or a race
      * @param  array<string, float>  $volumeScaleByDate  date => scale, from {@see VolumeRedistributor::redistribute()}
      * @param  bool  $isPrimaryEasy  whether this is the week's first (bigger) Easy day — see {@see SegmentGenerator::coreKmFor()}
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
@@ -272,19 +271,28 @@ final class PlanRenderer
         $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm);
         $effective = EffectiveSession::of($s, $askedKm);
         $recordedReasons = $s->readiness_assessment['reasons'] ?? $readinessReasons;
-        // Today, before credit, a recorded ease renders as a step-down beside the original session, not a headline swap.
-        $recordedEaseToday = $isToday && $effective->isEased() && ! $status->isCredited();
-        $headlinesEase = $effective->isEased() && ! $recordedEaseToday;
-        $sessionType = $headlinesEase ? $effective->sessionType : $s->session_type;
+        $headlinesEase = $effective->isEased();
+        $advisoryClamp = $isToday && ! $status->isCredited() && ! $headlinesEase ? $clamp : null;
+        $keepsPrescription = $s->pinned || $s->session_type === SessionType::Race;
+        $headlinesAdvice = $advisoryClamp !== null && ! $keepsPrescription;
+        $sessionType = match (true) {
+            $headlinesEase => $effective->sessionType,
+            $headlinesAdvice => $advisoryClamp['session_type'],
+            default => $s->session_type,
+        };
         $storedPrescription = IntensityPrescription::fromSession($s);
-        if (! $headlinesEase && $storedPrescription?->isEasy() === true && in_array($sessionType, [SessionType::Tempo, SessionType::Interval], true)) {
+        if (! $headlinesEase && ! $headlinesAdvice && $storedPrescription?->isEasy() === true && in_array($sessionType, [SessionType::Tempo, SessionType::Interval], true)) {
             $sessionType = SessionType::Easy;
         }
         $originalPaceSecPerKm = null;
+        $originalAskedKm = $askedKm;
 
         if ($headlinesEase) {
             $segments = self::stepDownFromEffective($effective, $paces, $recordedReasons, $s->phase)['segments'];
             $askedKm = $distanceKm = $effective->coreKm;
+        } elseif ($headlinesAdvice) {
+            $segments = $advisoryClamp['segments'];
+            $askedKm = $distanceKm = $advisoryClamp['core_km'];
         } else {
             // A pace ease keeps type and distance, so generation runs exactly
             // as it would have — the only change is 'easy'/'marathon' swapped
@@ -353,8 +361,8 @@ final class PlanRenderer
             : null;
 
         $originalSegments = self::segmentsFor($s, $s->session_type, $s->phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm);
-        $shownClamp = $isToday && ! $status->isCredited() ? $clamp : null;
-        if ($recordedEaseToday) {
+        $shownClamp = $advisoryClamp;
+        if ($headlinesEase && $isToday && ! $status->isCredited()) {
             $shownClamp = self::stepDownFromEffective($effective, $paces, $recordedReasons, $s->phase);
         }
         $recommendationToken = app(RecommendationHistory::class)->token($s->user_id, $s->date->toDateString(), [
@@ -391,18 +399,23 @@ final class PlanRenderer
             'prescribed_km' => $s->prescribed_km,
             'ran_anyway' => $ranAnyway ?? $s->ran_anyway,
             'prescription_reason' => $s->prescription_reason,
-            'clamp' => match (true) {
-                $recordedEaseToday => self::clampPayload($shownClamp, $clampVoice),
-                $isToday && $clamp !== null && ! $headlinesEase && ! $status->isCredited() => self::clampPayload($clamp, $clampVoice),
+            'advice_note' => $advisoryClamp !== null && $keepsPrescription ? $clampVoice ?? $advisoryClamp['note'] : null,
+            'eased_from' => match (true) {
+                $headlinesEase => self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null, $recordedReasons),
+                $headlinesAdvice => [
+                    'session_type' => $s->session_type->value,
+                    'distance_km' => abs($originalAskedKm - $advisoryClamp['core_km']) < 0.05 ? null : $originalAskedKm,
+                    'voice' => $clampVoice ?? $advisoryClamp['note'],
+                ],
                 default => null,
             },
-            'eased_from' => $headlinesEase ? self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null, $recordedReasons) : null,
             'pace_eased_from' => $effective->isPaceEased() ? [
                 'pace_sec_per_km' => $originalPaceSecPerKm,
                 'voice' => $status->isCredited() ? null : ReadinessClamp::paceEaseNote($readinessReasons),
             ] : null,
             'credit_note' => self::creditNote($sessionType, $status, $askedKm, $activity),
-            'hot_note' => self::hotNote($s, $status, $ranPaceSecPerKm),
+            'ran_hot' => self::ranHot($s, $status),
+            'result_note' => self::resultNote($s, $status, $ranPaceSecPerKm),
             'ran_pace_sec_per_km' => $ranPaceSecPerKm,
             'actual_km' => $activity['km'] ?? null,
             'credited_km' => $creditedKm,
@@ -469,16 +482,19 @@ final class PlanRenderer
     {
         $original = $effective->easedFromType ?? $effective->sessionType;
         $distanceHeld = $effective->distanceHeld();
+        $dose = $effective->qualityDose;
 
         return [
             'session_type' => $original->value,
             'distance_km' => $distanceHeld ? null : $effective->easedFromKm,
-            'voice' => $status->isCredited() ? null : $clampVoice ?? ReadinessClamp::noteFor($original, $effective->impliedCeiling(), $reasons),
+            'voice' => $status->isCredited() ? null : $clampVoice ?? ($dose === null
+                ? ReadinessClamp::noteFor($original, $effective->impliedCeiling(), $reasons)
+                : ReadinessClamp::qualityDoseNote($original, $reasons, $dose['hard_minutes'], $dose['original_hard_minutes'])),
         ];
     }
 
     /**
-     * The eased session as a step-down source, for today's recorded-but-uncredited ease.
+     * The eased session's type, segments, distance and reason, which lead the day once an ease is recorded.
      *
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @param list<string> $reasons
@@ -508,43 +524,6 @@ final class PlanRenderer
                 : ReadinessClamp::qualityDoseNote($original, $reasons, $effective->qualityDose['hard_minutes'], $effective->qualityDose['original_hard_minutes']),
             'quality_dose' => $effective->qualityDose,
         ];
-    }
-
-    /**
-     * A step-down *beside* the day's own prescription, never in place of it —
-     * an unrecorded clamp, or (today only) a recorded-but-uncredited ease.
-     * Carries a single pace rather than the full segment list: the step-down
-     * is one line, and only the core set's pace is ever shown on it.
-     *
-     * `note` is a permanent floor rather than a placeholder: the templated
-     * string always renders, and the narrated line replaces it in place once
-     * it lands. A step-down is therefore never unexplained, there is no pending
-     * skeleton on a block that must always say something, and a paused or
-     * cost-capped day still reads correctly.
-     *
-     * A credited day carries no clamp at all: the day is over, and the block
-     * that once offered a second menu is replaced by what the day actually
-     * came to. See `docs/decisions/a-credited-day-shows-its-result.md`.
-     *
-     * @param array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string, quality_dose?: array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null} $clamp
-     * @return array{session_type: string, distance_km: float, pace_sec_per_km: int|null, note: string, label: string, hard_minutes?: int, original_hard_minutes?: int, pace_band?: string}
-     */
-    private static function clampPayload(array $clamp, ?string $voice): array
-    {
-        $payload = [
-            'session_type' => $clamp['session_type']->value,
-            'distance_km' => $clamp['core_km'],
-            'pace_sec_per_km' => self::corePaceOf($clamp['segments']),
-            'note' => $voice ?? $clamp['note'],
-            'label' => 'eased today',
-        ];
-        if (isset($clamp['quality_dose'])) {
-            $payload['hard_minutes'] = $clamp['quality_dose']['hard_minutes'];
-            $payload['original_hard_minutes'] = $clamp['quality_dose']['original_hard_minutes'];
-            $payload['pace_band'] = $clamp['quality_dose']['pace_band'];
-        }
-
-        return $payload;
     }
 
     /**
@@ -586,25 +565,39 @@ final class PlanRenderer
         return 'the distance was there, but not in one run. a long day is time on feet in one go.';
     }
 
-    /**
-     * Why a day graded overreached on intent rather than distance, from the
-     * judge's own evidence, quoting the pace the card shows. Null when the
-     * distance alone overreached.
-     */
-    private static function hotNote(PlannedSession $s, PlannedSessionStatus $status, ?int $ranPaceSecPerKm): ?string
+    /** An overreached day graded on intent rather than distance: it ran too hard, not too far. */
+    private static function ranHot(PlannedSession $s, PlannedSessionStatus $status): bool
     {
-        if ($status !== PlannedSessionStatus::Overreached || $s->intent_verdict !== IntentVerdict::TooHard
-            || ($s->compliance_score !== null && $s->compliance_score >= (int) round(SessionMatcher::OVERREACHED_FRACTION * 100))) {
+        return $status === PlannedSessionStatus::Overreached && $s->intent_verdict === IntentVerdict::TooHard
+            && ($s->compliance_score === null || $s->compliance_score < (int) round(SessionMatcher::OVERREACHED_FRACTION * 100));
+    }
+
+    /**
+     * What a run came to against the advice shown, in the grading's own words:
+     * an eased session run as written, a strong-concern day run hard, hard work
+     * added to an easy day, or an effort the data can't read. Null on a day
+     * still to run and on a plain hit or miss, which the status already says.
+     */
+    private static function resultNote(PlannedSession $s, PlannedSessionStatus $status, ?int $ranPaceSecPerKm): ?string
+    {
+        if (! $status->isCredited()) {
             return null;
         }
 
         $evidence = $s->intent_evidence ?? [];
 
-        return match (true) {
-            isset($evidence['above_zone_pct'], $evidence['zone']) => "{$evidence['above_zone_pct']}% of the run sat above {$evidence['zone']}.",
-            isset($evidence['pace_sec'], $evidence['ceiling_pace_sec']) => IntentOutcome::averaged((int) $evidence['pace_sec'], $ranPaceSecPerKm, (int) $evidence['ceiling_pace_sec'])
-                .', past the '.PaceFormatter::format((float) $evidence['ceiling_pace_sec']).'/km ceiling for this run.',
-            default => 'ran harder than an easy day asks.',
+        return match ($s->intent_verdict) {
+            IntentVerdict::TooHard => self::clauses(
+                IntentOutcome::outcome(IntentVerdict::TooHard, $evidence),
+                IntentOutcome::detail(IntentVerdict::TooHard, $evidence, $ranPaceSecPerKm),
+            ),
+            IntentVerdict::Unknown => IntentOutcome::outcome(IntentVerdict::Unknown, $evidence).', so the day counts its distance only.',
+            default => null,
         };
+    }
+
+    private static function clauses(string $outcome, ?string $detail): string
+    {
+        return $detail === null ? "{$outcome}." : "{$outcome}; {$detail}.";
     }
 }

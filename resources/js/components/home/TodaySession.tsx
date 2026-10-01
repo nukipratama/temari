@@ -1,4 +1,3 @@
-import { ArrowDown } from 'lucide-react';
 import { useRef } from 'react';
 
 import type {
@@ -13,12 +12,10 @@ import { renderNarration } from '@/components/temari/Citation';
 import MascotWatermark from '@/components/temari/MascotWatermark';
 import { type MascotPose, writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon } from '@/components/ui/Icon';
 import { useRecommendationView } from '@/hooks/useRecommendationView';
 import { cn } from '@/lib/cn';
 import { formatPace } from '@/lib/pace';
 import {
-    clampSummary,
     easedFromDelta,
     judgedDayResult,
     paceEaseDelta,
@@ -158,6 +155,11 @@ function TodayPrescription({
                     ranPace={judged.ranPace}
                 />
             )}
+            {day.result_note && (
+                <p className="mt-1.5 text-xs leading-relaxed text-text-2">
+                    {day.result_note}
+                </p>
+            )}
             {sessionDelta && (
                 <div className="mt-2 border-l-2 border-border-strong pl-3">
                     {sessionDelta.typeFrom !== null && (
@@ -206,19 +208,10 @@ function TodayPrescription({
                     )}
                 </div>
             )}
-            {day.clamp !== null && (
-                <div className="mt-2 border-l-2 border-border-strong pl-3">
-                    <p className="flex items-center gap-1.5 text-label-micro text-text-2">
-                        <Icon icon={ArrowDown} className="size-3" aria-hidden />
-                        {day.clamp.label}
-                    </p>
-                    <p className="mt-0.5 text-sm font-semibold text-foreground">
-                        {clampSummary(day.clamp, day.distance_km)}
-                    </p>
-                    <p className="mt-1 text-sm leading-relaxed text-text-2">
-                        {day.clamp.note}
-                    </p>
-                </div>
+            {day.advice_note !== null && (
+                <p className="mt-2 border-l-2 border-border-strong pl-3 text-sm leading-relaxed text-text-2">
+                    {day.advice_note}
+                </p>
             )}
         </div>
     );

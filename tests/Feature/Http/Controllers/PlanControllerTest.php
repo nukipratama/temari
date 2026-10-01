@@ -602,11 +602,10 @@ it('clamps today\'s session against the readiness ceiling without mutating the s
         ->flatMap(fn (array $week): array => $week['days'])
         ->firstWhere('date', Carbon::today()->toDateString());
 
-    // Advisory: the day still reports the interval it was planned as, and the
-    // clamp rides beside it saying today is a rest instead.
-    expect($todayDay['session_type'])->toBe('interval')
-        ->and($todayDay['clamp']['session_type'])->toBe('rest')
-        ->and($todayDay['clamp']['note'])->not->toBeNull();
+    // Advisory: rest leads today, and the interval it was planned as is the context.
+    expect($todayDay['session_type'])->toBe('rest')
+        ->and($todayDay['eased_from']['session_type'])->toBe('interval')
+        ->and($todayDay['eased_from']['voice'])->not->toBeNull();
 
     // The stored row itself is untouched — the clamp is render-only.
     $fresh = $today->fresh();
@@ -636,7 +635,7 @@ it('never clamps a future day, only today, even at the worst readiness ceiling',
         ->firstWhere('date', Carbon::today()->addDays(2)->toDateString());
 
     expect($futureDay['session_type'])->toBe('interval')
-        ->and($futureDay['clamp'])->toBeNull();
+        ->and($futureDay['eased_from'])->toBeNull();
 });
 
 /**
@@ -843,7 +842,7 @@ it('refuses to move a session onto a day that is not a rest day', function (): v
         ->and($to->fresh()->session_type->value)->toBe('race');
 });
 
-it('still advises the step-down beside a session the athlete pinned to today', function (): void {
+it('keeps a session the athlete pinned to today leading, with the safety advice as a note', function (): void {
     $user = User::factory()->create();
     RecoveryFeedback::query()->create([
         'user_id' => $user->id,
@@ -863,5 +862,6 @@ it('still advises the step-down beside a session the athlete pinned to today', f
         ->firstWhere('date', Carbon::today()->toDateString());
 
     expect($todayDay['session_type'])->toBe('interval')
-        ->and($todayDay['clamp']['session_type'])->toBe('rest');
+        ->and($todayDay['eased_from'])->toBeNull()
+        ->and($todayDay['advice_note'])->toContain('reported concerning pain');
 });

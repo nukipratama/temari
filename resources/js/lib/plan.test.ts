@@ -10,7 +10,6 @@ import {
     SESSION_TYPE_ICON,
     SESSION_TYPE_LABEL,
     STATUS_GLYPH,
-    clampSummary,
     complianceTally,
     computeAdherence,
     deltaDirection,
@@ -303,58 +302,6 @@ describe('easedFromDelta', () => {
     });
 });
 
-describe('clampSummary', () => {
-    it('names the eased session, its distance and its pace', () => {
-        expect(
-            clampSummary(
-                {
-                    session_type: 'easy',
-                    distance_km: 5.9,
-                    pace_sec_per_km: 450,
-                    note: 'n',
-                    label: 'eased today',
-                },
-                9.1,
-            ),
-        ).toBe('easy · 5.9 km · 7:30/km');
-    });
-
-    /**
-     * A Tempo/Interval step-down keeps the original core km and only drops the
-     * intensity, so printing the distance again repeats the line above it and
-     * reads as a rendering bug rather than as "same distance, easier pace".
-     */
-    it('drops the distance when the clamp left it alone', () => {
-        expect(
-            clampSummary(
-                {
-                    session_type: 'easy',
-                    distance_km: 4.7,
-                    pace_sec_per_km: 502,
-                    note: 'n',
-                    label: 'eased today',
-                },
-                4.7,
-            ),
-        ).toBe('easy · 8:22/km');
-    });
-
-    it('omits the pace when there is no VDOT estimate to size one', () => {
-        expect(
-            clampSummary(
-                {
-                    session_type: 'rest',
-                    distance_km: 0,
-                    pace_sec_per_km: null,
-                    note: 'n',
-                    label: 'eased today',
-                },
-                9.1,
-            ),
-        ).toBe('rest · 0 km');
-    });
-});
-
 describe('isRaceWeek', () => {
     it('marks the week the race date falls in, from monday to sunday', () => {
         expect(isRaceWeek('2026-06-15', '2026-06-15')).toBe(true);
@@ -397,11 +344,12 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
-        clamp: null,
+        advice_note: null,
         eased_from: null,
         pace_eased_from: null,
         credit_note: null,
-        hot_note: null,
+        ran_hot: false,
+        result_note: null,
         ran_pace_sec_per_km: null,
         actual_km: null,
         credited_km: null,

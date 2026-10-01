@@ -189,8 +189,8 @@ it('renders ran_anyway true for a past, unscored rest day with a logged run', fu
         ->and($day['ran_anyway'])->toBeTrue();
 });
 
-/** A tempo day eased to easy at 00:01, distance held: the Plan row still headlines tempo, easy as the step-down. */
-it('steps a tempo day eased to easy down on the Plan row today, tempo still leading', function (): void {
+/** A tempo day eased to easy at 00:01, distance held: the Plan row leads with the easy run, tempo as context. */
+it('leads the Plan row today with a tempo day eased to easy, tempo only as context', function (): void {
     $user = assemblerAthlete();
     $row = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
@@ -203,13 +203,10 @@ it('steps a tempo day eased to easy down on the Plan row today, tempo still lead
     $day = collect($this->assembler->weeks($user, Carbon::today()))
         ->firstWhere('type', 'current')['days'][0];
 
-    expect($day['session_type'])->toBe('tempo')
+    expect($day['session_type'])->toBe('easy')
         ->and($day['distance_km'])->toBe($storedKm)
-        ->and($day['eased_from'])->toBeNull()
-        ->and($day['clamp']['session_type'])->toBe('easy')
-        ->and($day['clamp']['distance_km'])->toBe($storedKm)
-        ->and($day['clamp']['label'])->toBe('eased today')
-        ->and($day['clamp']['note'])->not->toBeNull();
+        ->and($day['eased_from']['session_type'])->toBe('tempo')
+        ->and($day['eased_from']['voice'])->not->toBeNull();
 });
 
 it('holds todays advisory clamp while a demanding run awaits hydration, then applies its evidence', function (): void {
@@ -241,8 +238,8 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
     $resumed = collect($this->assembler->weeks($user, Carbon::today()))
         ->firstWhere('type', 'current')['days'][0];
 
-    expect($held['clamp'])->toBeNull()
-        ->and($resumed['clamp']['session_type'])->toBe('easy')
+    expect($held['eased_from'])->toBeNull()
+        ->and($resumed['session_type'])->toBe('easy')
         ->and($resumed['readiness_assessment']['reasons'])->toContain('demanding_session_within_24h');
 });
 
@@ -267,7 +264,7 @@ it('shows current pain advice while other recent training history is hydrating',
     $day = collect($this->assembler->weeks($user, Carbon::today()))
         ->firstWhere('type', 'current')['days'][0];
 
-    expect($day['clamp']['session_type'])->toBe('rest')
+    expect($day['session_type'])->toBe('rest')
         ->and($day['readiness_assessment']['inputs']['recent_training_stress']['sessions'])->toBe([])
         ->and($day['readiness_assessment']['inputs']['weekly_trimp'])->toBeNull();
 });
