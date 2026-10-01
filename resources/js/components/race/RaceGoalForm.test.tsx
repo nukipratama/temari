@@ -274,10 +274,10 @@ describe('RaceGoalForm', () => {
         );
 
         expect(
-            screen.queryByLabelText('Update this race'),
+            screen.queryByRole('button', { name: 'update this race' }),
         ).not.toBeInTheDocument();
         expect(
-            screen.queryByLabelText('Add a new race'),
+            screen.queryByRole('button', { name: 'add a new race' }),
         ).not.toBeInTheDocument();
     });
 
@@ -286,8 +286,12 @@ describe('RaceGoalForm', () => {
             <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
         );
 
-        expect(screen.getByLabelText('Update this race')).toBeChecked();
-        expect(screen.getByLabelText('Add a new race')).not.toBeChecked();
+        expect(
+            screen.getByRole('button', { name: 'update this race' }),
+        ).toHaveAttribute('aria-pressed', 'true');
+        expect(
+            screen.getByRole('button', { name: 'add a new race' }),
+        ).toHaveAttribute('aria-pressed', 'false');
         expect(screen.getByRole('button', { name: '5K' })).toBeDisabled();
         expect(
             screen.getByLabelText('Custom distance in kilometers'),
@@ -307,12 +311,12 @@ describe('RaceGoalForm', () => {
         });
     });
 
-    it('starts a blank new race on "Add a new race" and posts that intent', () => {
+    it('starts a blank new race on "add a new race" and posts that intent', () => {
         render(
             <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
         );
 
-        fireEvent.click(screen.getByLabelText('Add a new race'));
+        fireEvent.click(screen.getByRole('button', { name: 'add a new race' }));
 
         expect(
             (screen.getByLabelText('Race day') as HTMLInputElement).value,
@@ -341,8 +345,10 @@ describe('RaceGoalForm', () => {
             <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
         );
 
-        fireEvent.click(screen.getByLabelText('Add a new race'));
-        fireEvent.click(screen.getByLabelText('Update this race'));
+        fireEvent.click(screen.getByRole('button', { name: 'add a new race' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'update this race' }),
+        );
 
         expect(
             (screen.getByLabelText('Race day') as HTMLInputElement).value,

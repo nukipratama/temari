@@ -19,6 +19,11 @@ import { inputVariants, outlineChipVariants } from '@/lib/variants';
 
 type RaceIntent = 'update' | 'new';
 
+const RACE_INTENTS: { value: RaceIntent; label: string }[] = [
+    { value: 'update', label: 'update this race' },
+    { value: 'new', label: 'add a new race' },
+];
+
 interface RaceGoalFormProps {
     race: {
         race_date: string;
@@ -130,29 +135,30 @@ export default function RaceGoalForm({
             </Eyebrow>
             <form onSubmit={submit} className="mt-3.5 flex flex-col gap-3.5">
                 {race && (
-                    <fieldset className="flex flex-col gap-1.5">
-                        <legend className={FIELD_LABEL}>
-                            What are you changing?
-                        </legend>
-                        <label className="flex items-center gap-2 text-sm text-foreground">
-                            <input
-                                type="radio"
-                                name="race_intent"
-                                checked={intent === 'update'}
-                                onChange={() => chooseIntent('update')}
-                            />
-                            Update this race
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-foreground">
-                            <input
-                                type="radio"
-                                name="race_intent"
-                                checked={intent === 'new'}
-                                onChange={() => chooseIntent('new')}
-                            />
-                            Add a new race
-                        </label>
-                    </fieldset>
+                    <div>
+                        <span id="race_intent_label" className={FIELD_LABEL}>
+                            what are you changing?
+                        </span>
+                        <div
+                            role="group"
+                            aria-labelledby="race_intent_label"
+                            className="mt-1.5 flex flex-wrap gap-1.5"
+                        >
+                            {RACE_INTENTS.map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    aria-pressed={intent === option.value}
+                                    onClick={() => chooseIntent(option.value)}
+                                    className={outlineChipVariants({
+                                        selected: intent === option.value,
+                                    })}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 )}
                 <div>
                     <label htmlFor="race_name" className={FIELD_LABEL}>
@@ -222,8 +228,8 @@ export default function RaceGoalForm({
                     </div>
                     {updating && (
                         <p className="mt-1.5 font-sans text-xs text-text-2">
-                            A different distance is a different race. Choose
-                            &ldquo;Add a new race&rdquo; to start one.
+                            a different distance is a different race. choose
+                            &ldquo;add a new race&rdquo; to start one.
                         </p>
                     )}
                 </div>
