@@ -2,15 +2,16 @@
 title: Easy running absorbs the week, key sessions keep their size
 description: A week running ahead or behind trims or tops up its easy days only; the long run, tempo and interval never resize, and what easy days cannot absorb is dropped.
 tags: [decision, run, plan]
-status: superseded
-reviewed: 2026-10-01
+status: accepted
+reviewed: 2026-09-24
 code_refs:
   - app/Services/Run/Plan/PlanPageAssembler.php
   - app/Services/Run/Plan/VolumeRedistributor.php
-superseded_by: no-automatic-mileage-debt
 ---
 
 # Easy running absorbs the week, key sessions keep their size
+
+Superseded on 2026-10-01 by [[no-automatic-mileage-debt]].
 
 ## Context
 

@@ -22,7 +22,7 @@ The earlier easy-running rule allowed an incomplete week to enlarge the easy ses
 
 Only actual surplus may reduce future easy volume, with each remaining easy run kept at or above 70% of its original ask. Missed or readiness-reduced kilometres never enlarge a later run. Pinned sessions, today's fixed session, and future Long, Tempo and Interval sessions stay at their own effective distances. Any unused shortfall is written off and volume never crosses a week boundary.
 
-[CurrentWeekVolumeProjector::project()](app/Services/Run/Plan/CurrentWeekVolumeProjector.php#L27) reuses the activity-date read for Home and Plan; [VolumeRedistributor::redistribute()](app/Services/Run/Plan/VolumeRedistributor.php#L43) caps each scale at the original ask.
+[CurrentWeekVolumeProjector::project()](app/Services/Run/Plan/CurrentWeekVolumeProjector.php#L27) reuses the activity-date read for Home and Plan; [VolumeRedistributor::redistribute()](app/Services/Run/Plan/VolumeRedistributor.php#L18) caps each scale at the original ask.
 
 ## Consequences
 

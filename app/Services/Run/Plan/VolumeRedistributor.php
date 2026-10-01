@@ -4,21 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-/**
- * Current-week easy runs are projected at render time on Home and Plan.
- * Completed volume, pinned sessions, today's fixed session and future key
- * sessions are reserved before remaining easy days are scaled. Long, tempo
- * and interval days never resize. Missed volume is not carried into later
- * runs, while actual surplus may shrink them. Never mutates stored rows.
- *
- * Redistribution never exceeds {@see self::MAX_SCALE}, so missed volume is
- * written off rather than added to later runs. It is floored at
- * {@see self::MIN_SCALE} when earlier runs already exceed their menu.
- *
- * Nothing here crosses a week boundary: an over-run reshapes only the days
- * left in the week it happened in, and the following week is built from its
- * own arc position.
- */
+/** Future easy mileage may shrink but never increases to replace missed running. */
 final class VolumeRedistributor
 {
     public const float MAX_SCALE = 1.0;
