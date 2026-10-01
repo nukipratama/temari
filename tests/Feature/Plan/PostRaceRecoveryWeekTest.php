@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PlanPhase;
+use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -24,7 +25,7 @@ const RACE_DAY = '2026-10-31';
 
 const MONDAY_AFTER = '2026-11-02';
 
-function raceFinisher(): User
+function raceFinisher(RaceOutcome|null $outcome = RaceOutcome::Confirmed): User
 {
     $user = User::factory()->create();
 
@@ -47,6 +48,7 @@ function raceFinisher(): User
         'race_date' => RACE_DAY,
         'distance_m' => 10_000,
         'goal_time_sec' => 3_540,
+        'outcome' => $outcome,
     ]);
 
     // The arc the athlete raced off, opened eight weeks out.
@@ -146,4 +148,29 @@ it('gives no recovery week to an athlete who called the race off instead of runn
     app(Periodizer::class)->regenerate($user, $calledOffOn->copy());
 
     expect(phaseByWeek($user)[$calledOffOn->toDateString()])->toBe(PlanPhase::Build);
+});
+
+it('gives no recovery week for a race whose outcome is unconfirmed, missed or unrecorded', function (?RaceOutcome $outcome): void {
+    $user = raceFinisher($outcome);
+    closeRaceAndRegenerate($user);
+
+    expect(phaseByWeek($user)[MONDAY_AFTER])->toBe(PlanPhase::Build);
+})->with([
+    'pending' => RaceOutcome::Pending,
+    'did not run' => RaceOutcome::DidNotRun,
+    'cancelled' => RaceOutcome::Cancelled,
+    'legacy row without an outcome' => null,
+]);
+
+it('does not replay the season when the race is confirmed after the next arc has opened', function (): void {
+    $user = raceFinisher(RaceOutcome::Pending);
+    closeRaceAndRegenerate($user);
+    $seasonId = Season::query()->where('user_id', $user->id)->latest('starts_at')->value('id');
+
+    RaceGoal::query()->where('user_id', $user->id)->update(['outcome' => RaceOutcome::Confirmed]);
+    app(Periodizer::class)->regenerate($user, Carbon::parse(MONDAY_AFTER));
+
+    expect(Season::query()->where('user_id', $user->id)->latest('starts_at')->value('id'))->toBe($seasonId)
+        ->and(Season::query()->where('user_id', $user->id)->count())->toBe(2)
+        ->and(phaseByWeek($user)[MONDAY_AFTER])->toBe(PlanPhase::Build);
 });

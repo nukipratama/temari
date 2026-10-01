@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Enums\RaceOutcome;
 use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
@@ -276,21 +277,23 @@ final readonly class SeasonService
 
     /**
      * Whether the arc being opened comes straight off a race the athlete
-     * actually ran. `plan:close-finished-races` retires the goal the morning
-     * after race day and the plan falls back to the self-scaled arc, which
-     * used to open at Build x1.0 — a full training week from a runner who
+     * confirmed having run. `plan:close-finished-races` retires the goal the
+     * morning after race day and the plan falls back to the self-scaled arc,
+     * which used to open at Build x1.0, a full training week from a runner who
      * raced on Saturday.
      *
-     * Read off the race DATE rather than `completed_at`: a goal is also
-     * retired when the athlete calls the race off ({@see
-     * \App\Http\Controllers\RaceController::destroy()}) or supersedes it
-     * with another, and there is nothing to recover from in either case.
+     * Read off the confirmed outcome, never the race date: a passed date is
+     * not participation, and a race that was called off, missed or never
+     * answered leaves nothing to recover from. Day-to-day freshness after a
+     * race that was run is the readiness assessment's job.
      */
     private static function followsARaceAlreadyRun(?Season $previous, Carbon $today): bool
     {
         $race = $previous?->raceGoal;
 
-        return $race !== null && ! $race->race_date->startOfDay()->isAfter($today);
+        return $race !== null
+            && $race->outcome === RaceOutcome::Confirmed
+            && ! $race->race_date->startOfDay()->isAfter($today);
     }
 
     /**

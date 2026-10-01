@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -284,4 +285,52 @@ it('does not flag the race goal met from a not-yet-analyzed activity', function 
     ]);
 
     expect(ctxFor($user, $season)->raceGoalMet)->toBeFalse();
+});
+
+function seasonForRaceOutcome(User $user, ?RaceOutcome $outcome, ?int $finishTimeSec = null, bool $withRaceDayRun = true): Season
+{
+    $race = RaceGoal::factory()->for($user)->completed()->create([
+        'race_date' => Carbon::today()->subDay()->toDateString(),
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3_000,
+        'outcome' => $outcome,
+        'finish_time_sec' => $finishTimeSec,
+    ]);
+    if ($withRaceDayRun) {
+        ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+            'start_date_local' => $race->race_date->copy()->addHours(8),
+            'distance' => 10_100,
+            'elapsed_time' => 3_050,
+        ]);
+    }
+
+    return Season::factory()->for($user)->create([
+        'race_goal_id' => $race->id,
+        'starts_at' => Carbon::today()->subDays(5)->toDateString(),
+        'ends_at' => $race->race_date->toDateString(),
+    ]);
+}
+
+it('counts a confirmed finish within the margin as the race goal met', function (): void {
+    $user = User::factory()->create();
+
+    expect(ctxFor($user, seasonForRaceOutcome($user, RaceOutcome::Confirmed, 3_100, withRaceDayRun: false))->raceGoalMet)->toBeTrue();
+});
+
+it('does not count a confirmed finish outside the margin', function (): void {
+    $user = User::factory()->create();
+
+    expect(ctxFor($user, seasonForRaceOutcome($user, RaceOutcome::Confirmed, 3_400, withRaceDayRun: false))->raceGoalMet)->toBeFalse();
+});
+
+it('never reads an unconfirmed matching run as success once the race carries an outcome', function (RaceOutcome $outcome): void {
+    $user = User::factory()->create();
+
+    expect(ctxFor($user, seasonForRaceOutcome($user, $outcome))->raceGoalMet)->toBeFalse();
+})->with([RaceOutcome::Pending, RaceOutcome::DidNotRun, RaceOutcome::Cancelled]);
+
+it('keeps reading a legacy race without an outcome by its run, with no retroactive regrade', function (): void {
+    $user = User::factory()->create();
+
+    expect(ctxFor($user, seasonForRaceOutcome($user, null))->raceGoalMet)->toBeTrue();
 });

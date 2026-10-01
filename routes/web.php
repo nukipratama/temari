@@ -29,6 +29,7 @@ use App\Http\Controllers\RecommendationViewController;
 use App\Http\Controllers\RecoveryFeedbackController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
+use App\Http\Controllers\RaceOutcomeController;
 use App\Http\Controllers\RootController;
 use App\Http\Controllers\RunController;
 use App\Http\Controllers\RunnerZonesController;
@@ -131,6 +132,10 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->name('fitness.evidence.store');
     Route::post('/race', [RaceController::class, 'store'])->name('race.store');
     Route::delete('/race', [RaceController::class, 'destroy'])->name('race.destroy');
+    Route::post('/race/{race}/outcome', [RaceOutcomeController::class, 'store'])
+        ->middleware('throttle:20,1')
+        ->whereNumber('race')
+        ->name('race.outcome.store');
 
     Route::get('/plan', [PlanController::class, 'index'])->name('plan');
     Route::post('/plan/recommendations/shown', RecommendationViewController::class)

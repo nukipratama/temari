@@ -3,7 +3,11 @@
 declare(strict_types=1);
 
 use App\Enums\RaceIntent;
+use App\Enums\RaceOutcome;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PerformanceEvidence;
+use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\Run\Plan\RaceGoalService;
 use App\Services\Run\Plan\RacePresenter;
@@ -47,4 +51,27 @@ it('states the honest limit for a race beyond the marathon', function (): void {
         ->and($payload['support']['dedicated_preparation'])->toBeFalse()
         ->and($payload['support']['limitation'])->toContain('ultra')
         ->and($payload['ambition']['state'])->toBe('unknown');
+});
+
+it('presents a passed race with its outcome and no suggestion once confirmed', function (): void {
+    $race = RaceGoal::factory()->for($this->user)->completed()->create([
+        'race_date' => '2026-10-04', 'outcome' => RaceOutcome::Confirmed, 'finish_time_sec' => 2_950, 'outcome_recorded_at' => '2026-10-05 08:00:00',
+    ]);
+
+    $payload = $this->presenter->presentPast($race);
+
+    expect($payload['outcome'])->toMatchArray(['state' => 'confirmed', 'finish_time_sec' => 2_950, 'suggestion' => null])
+        ->and($payload['outcome']['recorded_at'])->not->toBeNull()
+        ->and($payload['race_date'])->toBe('2026-10-04');
+});
+
+it('reads a pending race as pending and offers the matched run', function (): void {
+    $race = RaceGoal::factory()->for($this->user)->completed()->create(['race_date' => '2026-10-04', 'distance_m' => 10_000, 'outcome' => RaceOutcome::Pending]);
+    $activity = Activity::factory()->for($this->user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => '2026-10-04 07:00:00', 'distance' => 10_000.0, 'elapsed_time' => 3_000]);
+
+    $payload = $this->presenter->presentPast($race);
+
+    expect($payload['outcome']['state'])->toBe('pending')
+        ->and($payload['outcome']['suggestion']['activity_id'])->toBe($activity->id);
 });

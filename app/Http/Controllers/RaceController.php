@@ -14,6 +14,7 @@ use App\Services\Run\Plan\RaceGoalService;
 use App\Services\Run\Plan\RacePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,6 +24,8 @@ use Inertia\Response;
  */
 class RaceController extends Controller
 {
+    private const int PAST_RACES_SHOWN = 5;
+
     public function index(Request $request, RiegelProjector $projector, RacePresenter $presenter): Response
     {
         /** @var User $user */
@@ -33,7 +36,26 @@ class RaceController extends Controller
         return Inertia::render('Race', [
             'race' => $race === null ? null : $presenter->present($user, $race),
             'projection' => $race === null ? null : $projector->project($user, (float) $race->distance_m),
+            'past_races' => $this->pastRaces($user, $presenter),
         ]);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function pastRaces(User $user, RacePresenter $presenter): array
+    {
+        $races = RaceGoal::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('outcome')
+            ->whereNotNull('completed_at')
+            ->whereDate('race_date', '<=', Carbon::today()->toDateString())
+            ->orderByDesc('race_date')
+            ->orderByDesc('id')
+            ->limit(self::PAST_RACES_SHOWN)
+            ->get();
+
+        return array_values($races->map(static fn (RaceGoal $past): array => $presenter->presentPast($past))->all());
     }
 
     /**

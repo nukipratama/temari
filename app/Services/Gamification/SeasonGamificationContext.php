@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
+use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -28,7 +29,7 @@ use Illuminate\Support\Carbon;
 final readonly class SeasonGamificationContext
 {
     /** Distance tolerance for matching a logged activity to the race it's supposed to be: a marathon-goal season shouldn't count a 5K as "meeting the race". */
-    private const float RACE_DISTANCE_TOLERANCE = 0.10;
+    public const float RACE_DISTANCE_TOLERANCE = 0.10;
 
     /** How close to the goal time counts as "met" — see {@see \App\Services\Run\Plan\SeasonService}'s matching goal title. */
     public const float RACE_MARGIN_FRACTION = 0.05;
@@ -136,6 +137,12 @@ final readonly class SeasonGamificationContext
         $race = $season->raceGoal;
         if ($race === null) {
             return false;
+        }
+
+        if ($race->outcome !== null) {
+            return $race->outcome === RaceOutcome::Confirmed
+                && $race->finish_time_sec !== null
+                && $race->finish_time_sec <= $race->goal_time_sec * (1 + self::RACE_MARGIN_FRACTION);
         }
 
         $detail = Activity::analyzedJoinConstraint(

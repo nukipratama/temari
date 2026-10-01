@@ -128,6 +128,7 @@ describe('InboxRow', () => {
         ['plan_clamp', 'Plan'],
         ['strava_disconnected', 'Strava'],
         ['race_tomorrow', 'Race'],
+        ['race_outcome', 'Race'],
         ['test', 'Test'],
     ] as const)('labels the %s kind', (kind, label) => {
         renderRow({ kind, body: null });
