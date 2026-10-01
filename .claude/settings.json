@@ -1,8 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3 *ui-ux-pro-max/scripts/search.py *)",
-      "Bash(python *ui-ux-pro-max/scripts/search.py *)",
       "Bash(./vendor/bin/sail bin pest)",
       "Bash(./vendor/bin/sail bin pest *)",
       "Bash(./vendor/bin/sail pest)",
@@ -20,10 +18,6 @@
       "Bash(./vendor/bin/sail artisan list)"
     ],
     "deny": [
-      "Bash(git push --force *)",
-      "Bash(git push -f *)",
-      "Bash(git push * --force*)",
-      "Bash(git push * -f*)",
       "Bash(docker volume rm *)"
     ]
   },
@@ -51,18 +45,5 @@
   },
   "worktree": {
     "baseRef": "head"
-  },
-  "enabledPlugins": {
-    "laravel/claude-code": true,
-    "ui-ux-pro-max@ui-ux-pro-max-skill": true
-  },
-  "extraKnownMarketplaces": {
-    "ui-ux-pro-max-skill": {
-      "source": {
-        "source": "github",
-        "repo": "nextlevelbuilder/ui-ux-pro-max-skill"
-      },
-      "autoUpdate": true
-    }
   }
 }
