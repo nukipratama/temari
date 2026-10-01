@@ -11,6 +11,7 @@ code_refs:
   - app/Services/Run/Plan/RaceGoalService.php
   - app/Services/Run/Plan/RaceOutcomeService.php
   - app/Services/Run/Plan/RaceAmbitionAssessor.php
+  - app/Services/Run/Plan/RaceAmbition.php
   - app/Http/Controllers/RaceOutcomeController.php
   - resources/js/components/race/RaceOutcomeCard.tsx
   - app/Services/Run/Metrics/RiegelProjector.php
@@ -36,7 +37,7 @@ A `GoalResolver` already meant something else entirely when this feature landed:
 
 ## Outcome, ambition and support
 
-A passed date is not participation. `plan:close-finished-races` retires the row and leaves its `outcome` `pending`; `race:ask-outcome` asks the next morning, and the Race page lists passed races with [RaceOutcomeCard](../../resources/js/components/race/RaceOutcomeCard.tsx): confirm the matched run ([RaceOutcomeMatcher](../../app/Services/Run/Plan/RaceOutcomeMatcher.php), 10% distance tolerance, closest then longest), enter a time, or mark it not run. `POST /race/{race}/outcome` ([RaceOutcomeController](../../app/Http/Controllers/RaceOutcomeController.php)) records it through [RaceOutcomeService](../../app/Services/Run/Plan/RaceOutcomeService.php), reopenable at any time ([[a-race-outcome-is-confirmed-not-assumed]]). The `race` prop also carries `ambition` (the stated target beside the supported time and pace, banded on track / ambitious / unsupported, [[race-ambition-is-shown-and-capacity-is-prescribed]]), `support` (road or general maintenance beyond the marathon, [[road-preparation-ends-at-the-marathon]]) and `history`; the stable TypeScript shapes are in [inertia.ts](../../resources/js/types/inertia.ts).
+A passed date is not participation. `plan:close-finished-races` retires the row and leaves its `outcome` `pending`; `race:ask-outcome` asks the next morning, and the Race page lists passed races with [RaceOutcomeCard](../../resources/js/components/race/RaceOutcomeCard.tsx): confirm the matched run ([RaceOutcomeMatcher](../../app/Services/Run/Plan/RaceOutcomeMatcher.php), 10% distance tolerance, closest then longest), enter a time, or mark it not run. `POST /race/{race}/outcome` ([RaceOutcomeController](../../app/Http/Controllers/RaceOutcomeController.php)) records it through [RaceOutcomeService](../../app/Services/Run/Plan/RaceOutcomeService.php), reopenable at any time ([[a-race-outcome-is-confirmed-not-assumed]]). The `race` prop also carries `ambition` (the stated target beside the supported time and pace, banded on track / ambitious / unsupported, or `low_evidence` when the qualifying evidence covers under half the race distance, in which case the prescribed time is the slower of target and supported ([RaceAmbitionAssessor](../../app/Services/Run/Plan/RaceAmbitionAssessor.php#L44), [RaceAmbition::prescribedTimeSec()](../../app/Services/Run/Plan/RaceAmbition.php#L22), [[race-ambition-is-shown-and-capacity-is-prescribed]], [[one-race-model-drives-the-plan]]), `support` (road or general maintenance beyond the marathon, [[road-preparation-ends-at-the-marathon]]) and `history`; the stable TypeScript shapes are in [inertia.ts](../../resources/js/types/inertia.ts).
 
 ## Riegel projection: fitted, not assumed
 
@@ -46,13 +47,15 @@ A passed date is not participation. `plan:close-finished-races` retires the row 
 
 - **0 usable PRs** → no projection (nothing to anchor to).
 - **1 usable PR** → falls back to the default 1.06 exponent, anchored on that one PR, with the widest uncertainty band the projector ever produces.
-- **≥2 usable PRs** → fits both the exponent and intercept via log-log regression, clamped to `[0.90, 1.30]` so a noisy 2-point fit can't extrapolate into a physiologically meaningless slope.
+- **≥2 usable PRs** → fits both the exponent and intercept via log-log regression, clamped to `[1.0, 1.30]` ([MIN_EXPONENT](app/Services/Run/Metrics/RiegelProjector.php#L52)) so a noisy 2-point fit can't extrapolate into a physiologically meaningless slope. Efforts shorter than 210 s (3.5 min) are excluded from the fit ([MIN_EFFORT_SEC](app/Services/Run/Metrics/RiegelProjector.php#L57)).
+
+The projection is for display. It no longer drives planning: a projection slower than the goal adds no quality session, and race-day pace comes from the athlete's supported fitness ([[one-race-model-drives-the-plan]]).
 
 The uncertainty band (`low_sec`/`high_sec`) widens as the sample thins — see `HALF_WIDTH_BY_SAMPLE` in the projector — so the UI never claims false precision from one or two data points.
 
 ## The fit reads the current block, not the whole record
 
-`personal_records` has no time-series, so a category keeps whichever record was set last — a spring 10 km can still be on file after an autumn block has moved the athlete well past it. Regressing today's shape against those rows fits the exponent to a fade that has since been trained out: for one athlete a stale spring set pulled the fitted exponent to 1.1075 and the 10 km projection to 64:21, against 57:49 from their current block alone, which was enough for [PlanAdapter](app/Services/Run/Plan/PlanAdapter.php) to keep prescribing an extra quality session every week.
+`personal_records` has no time-series, so a category keeps whichever record was set last — a spring 10 km can still be on file after an autumn block has moved the athlete well past it. Regressing today's shape against those rows fits the exponent to a fade that has since been trained out: for one athlete a stale spring set pulled the fitted exponent to 1.1075 and the 10 km projection to 64:21, against 57:49 from their current block alone, which was enough for [PlanAdapter](app/Services/Run/Plan/PlanAdapter.php) to keep prescribing an extra quality session every week, until [[one-race-model-drives-the-plan]] took Riegel out of planning.
 
 `RiegelProjector::RECENT_MONTHS` (4) bounds the fit on `set_at`, as of the projection date. Fewer than two records survive that window and the fit falls back to the whole record rather than dropping to a single-PR default — a thin recent sample is worse evidence than a complete stale one. The chosen window travels with the payload as `window` (`recent` / `all`) and renders as the projection's provenance in [RaceDuel](resources/js/components/race/RaceDuel.tsx), beside the sample size.
 

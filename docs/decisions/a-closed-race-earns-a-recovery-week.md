@@ -12,6 +12,8 @@ code_refs:
   - tests/Feature/Plan/PostRaceRecoveryWeekTest.php
 ---
 
+> **Partly superseded (2026-10-02) by [[post-race-recovery-follows-known-race-load]].** Recovery is no longer one week for every distance, frozen on the season and limited to the self-scaled arc; it is derived live from known race load and sized by the distance run. The rest of this decision stands.
+
 # A closed race earns a recovery week
 
 **Status:** Accepted (2026-09-09)

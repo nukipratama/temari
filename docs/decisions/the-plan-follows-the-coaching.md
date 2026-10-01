@@ -17,6 +17,8 @@ code_refs:
 
 > **One threshold superseded (noted 2026-10-01) by [[road-preparation-ends-at-the-marathon]].** Marathon-class work now starts above 25 km and stops at the marathon, not at 30 km with no upper bound.
 
+> **Partly superseded (2026-10-02) by [[one-race-model-drives-the-plan]].** The single quality slot now chooses on the race time the plan trains for, the supported or target time, not on `RiegelProjector`'s projected finish, and `Periodizer` no longer depends on `RiegelProjector`. The rest of this decision stands.
+
 # The plan follows the coaching, not just the arithmetic
 
 **Status:** Accepted (2026-09-07)

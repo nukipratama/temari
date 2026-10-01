@@ -15,6 +15,8 @@ code_refs:
   - tests/Unit/Services/Run/Plan/RaceOutcomeServiceTest.php
 ---
 
+> **Partly superseded (2026-10-02) by [[post-race-recovery-follows-known-race-load]].** The next arc no longer opens with a recovery week only for a race confirmed before it is created; recovery is derived on every regeneration from known race load. The rest of this decision stands.
+
 # A race outcome is confirmed, not assumed from the date
 
 **Status:** Accepted (2026-10-01). Supersedes the date-based trigger of [[a-closed-race-earns-a-recovery-week]] and the "an unconfirmed matching run is success" reading of `SeasonGamificationContext::raceGoalMet()`.

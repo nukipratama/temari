@@ -13,6 +13,8 @@ code_refs:
   - tests/Feature/Plan/RaceCapacityPlanTest.php
 ---
 
+> **Partly superseded (2026-10-02) by [[one-race-model-drives-the-plan]].** The 3% and 6% bands now apply only when the qualifying evidence covers at least half the race distance; otherwise the state is `low_evidence`. The behind-pace arm no longer exists. The rest of this decision stands.
+
 # A race ambition is shown, and the supported effort is prescribed
 
 **Status:** Accepted (2026-10-01).
