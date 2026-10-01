@@ -104,3 +104,40 @@ it('names the marathon limit, not an easy one, on a marathon-pace long run', fun
     expect(IntentOutcome::detail(IntentVerdict::TooHard, $tooHard, 320))->toBe('averaged 5:20/km, quicker than the marathon limit of 5:30/km')
         ->and(IntentOutcome::detail(IntentVerdict::Hit, $rescued, 320))->toBe('averaged 5:20/km, but heart rate kept it in range: only 4% of the run went above Z3');
 });
+
+it('words a controlled original session completed against eased advice, by concern', function (string $from, string $concern, string $expected): void {
+    $evidence = ['eased_from' => $from, 'concern' => $concern, 'original_completed' => 'controlled', 'stimulus_family' => $from, 'pace_sec' => 350, 'ceiling_pace_sec' => 340, 'basis' => 'pace'];
+
+    expect(IntentOutcome::outcome(IntentVerdict::TooHard, $evidence))->toBe($expected)
+        ->not->toContain('_');
+})->with([
+    'mild tempo' => ['tempo', 'mild', 'tempo completed, though it exceeded the recovery advice shown'],
+    'mild intervals' => ['interval', 'mild', 'intervals completed, though they exceeded the recovery advice shown'],
+    'mild long block' => ['long', 'mild', 'long-run block completed, though it exceeded the recovery advice shown'],
+    'strong tempo' => ['tempo', 'strong', 'the hard session went ahead against advice to rest or go easy after reported pain, illness or severe fatigue'],
+]);
+
+it('words an easy day with hard work added as an unplanned hard effort', function (): void {
+    $evidence = ['pace_sec' => 330, 'ceiling_pace_sec' => 340, 'basis' => 'pace', 'concern' => 'none', 'stimulus_family' => 'hard', 'stimulus_source' => 'pace'];
+
+    expect(IntentOutcome::outcome(IntentVerdict::TooHard, $evidence))->toBe('an unplanned hard effort, harder than the easy effort the day asked for')
+        ->and(IntentOutcome::outcome(IntentVerdict::TooHard, $evidence + ['limit' => 'marathon']))->toBe('an unplanned hard effort, harder than the marathon effort the day asked for');
+});
+
+it('words a quality block run well past its target as excessive, not as a missed or easy one', function (): void {
+    $block = ['block_minutes' => 20.0, 'target_pace_sec' => 310, 'window' => '20min', 'window_pace_sec' => 290, 'basis' => 'pace', 'control' => 'excessive'];
+    $reps = ['reps_prescribed' => 4, 'reps_needed' => 3, 'rep_minutes' => 3.0, 'target_pace_sec' => 285, 'reps_at_pace' => 4, 'basis' => 'laps', 'control' => 'excessive'];
+
+    expect(IntentOutcome::outcome(IntentVerdict::TooHard, $block))->toBe('the hard block ran well past the effort it asked for')
+        ->and(IntentOutcome::outcome(IntentVerdict::TooHard, $reps))->toBe('the reps ran well past the effort they asked for')
+        ->and(IntentOutcome::detail(IntentVerdict::TooHard, $block, null))->toBe('best 20-minute stretch averaged 4:50/km, well quicker than the 5:10/km target pace')
+        ->and(IntentOutcome::detail(IntentVerdict::TooHard, $reps, null))->toBe('4 of 4 reps ran well quicker than the 4:45/km rep pace');
+});
+
+it('states the stimulus measured when the original session was completed anyway', function (): void {
+    $evidence = ['eased_from' => 'tempo', 'concern' => 'mild', 'original_completed' => 'controlled', 'stimulus_family' => 'tempo', 'stimulus_minutes' => 20.0, 'stimulus_source' => 'window', 'pace_sec' => 350, 'ceiling_pace_sec' => 340];
+
+    expect(IntentOutcome::detail(IntentVerdict::TooHard, $evidence, 350))->toBe('about 20 minutes of tempo effort were measured from pace')
+        ->and(IntentOutcome::detail(IntentVerdict::TooHard, [...$evidence, 'stimulus_source' => 'heart_rate'], 350))->toBe('about 20 minutes of tempo effort were measured from heart rate')
+        ->and(IntentOutcome::detail(IntentVerdict::TooHard, array_diff_key($evidence, ['stimulus_minutes' => 0]), 350))->toBeNull();
+});
