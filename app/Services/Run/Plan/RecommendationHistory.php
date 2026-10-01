@@ -49,11 +49,6 @@ final class RecommendationHistory
         return $view;
     }
 
-    public function beforeRun(int $userId, ActivityDetail $detail): ?RecommendationRevision
-    {
-        return $this->beforeRuns($userId, [$detail])[$detail->id] ?? null;
-    }
-
     /** @param list<ActivityDetail> $details
      * @return array<int, RecommendationRevision>
      */

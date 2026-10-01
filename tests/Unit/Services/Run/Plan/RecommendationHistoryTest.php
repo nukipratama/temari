@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
+use App\Models\RecommendationRevision;
 use App\Models\User;
 use App\Services\Run\Plan\RecommendationHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,6 +14,11 @@ use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(RefreshDatabase::class);
+
+function shownBefore(RecommendationHistory $history, int $userId, ActivityDetail $run): ?RecommendationRevision
+{
+    return $history->beforeRuns($userId, [$run])[$run->id] ?? null;
+}
 
 it('retains immutable advice across daily row deletion and regeneration', function (): void {
     $session = PlannedSession::factory()->create(['date' => '2026-10-01']);
@@ -35,10 +41,10 @@ it('uses the last actually shown revision before UTC activity start and ignores 
     $run = ActivityDetail::factory()->for(Activity::factory()->for($session->user))->create([
         'start_date_local' => '2026-10-01 18:00:00', 'start_date_utc' => '2026-10-01 11:00:00',
     ]);
-    expect($history->beforeRun($session->user_id, $run)?->id)->toBe($first->id);
+    expect(shownBefore($history, $session->user_id, $run)?->id)->toBe($first->id);
     Carbon::setTestNow('2026-10-01 12:00:00 UTC');
     $history->shown($second, (string) Str::uuid());
-    expect($history->beforeRun($session->user_id, $run)?->id)->toBe($first->id);
+    expect(shownBefore($history, $session->user_id, $run)?->id)->toBe($first->id);
     Carbon::setTestNow();
 });
 
@@ -60,10 +66,10 @@ it('does not invent shown advice or order an activity with an unknown UTC start'
     $revision = $history->record($session->user_id, $session->date->toDateString(), [], ['session_type' => 'easy']);
     $run = ActivityDetail::factory()->for(Activity::factory()->for($session->user))->create(['start_date_utc' => null]);
     $history->shown($revision, (string) Str::uuid());
-    expect($history->beforeRun($session->user_id, $run))->toBeNull()
-        ->and($history->beforeRun(User::factory()->create()->id, $run))->toBeNull();
+    expect(shownBefore($history, $session->user_id, $run))->toBeNull()
+        ->and(shownBefore($history, User::factory()->create()->id, $run))->toBeNull();
     $run->update(['start_date_utc' => '2026-10-01 00:00:00']);
-    expect($history->beforeRun(User::factory()->create()->id, $run))->toBeNull();
+    expect(shownBefore($history, User::factory()->create()->id, $run))->toBeNull();
 });
 
 it('retains policy identity and rejects reusing a receipt for different advice', function (): void {
@@ -86,6 +92,6 @@ it('orders advice in UTC while matching an activity across the local midnight bo
     $run = ActivityDetail::factory()->for(Activity::factory()->for($session->user))->create([
         'start_date_local' => '2026-10-02 01:00:00', 'start_date_utc' => '2026-10-01 18:00:00',
     ]);
-    expect($history->beforeRun($session->user_id, $run)?->id)->toBe($revision->id);
+    expect(shownBefore($history, $session->user_id, $run)?->id)->toBe($revision->id);
     Carbon::setTestNow();
 });
