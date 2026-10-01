@@ -443,12 +443,15 @@ it('resolves the deferred Profile props inside their query budget', function ():
 
     $this->actingAs($user)->get('/profile', $headers)->assertSuccessful();
 
-    // 18: was 10 against a fixture whose season started the same day as the
-    // request, so SeasonGamificationContext's own early exit (no past days
-    // yet) skipped its race-goal, peak-week and grouped activity reads
-    // entirely. The fixture now carries 9 real past weeks (see
+    // 21: was 18 before confirmed evidence, its preserved provisional anchor,
+    // and successful quality-session corroboration joined the profile read.
+    // This remains bounded across the season history rather than re-reading
+    // each source once per historical week. A fixture whose season started
+    // the same day as the request made SeasonGamificationContext's own early
+    // exit (no past days yet) skip its race-goal, peak-week and grouped
+    // activity reads entirely. The fixture now carries 9 real past weeks (see
     // seedPastSeasonWeeks), so that work actually runs — once, not per day.
-    expect($queries)->toBeLessThanOrEqual(18);
+    expect($queries)->toBeLessThanOrEqual(21);
 });
 
 // The threshold estimator reads stream_summary and nothing else. A bare get()

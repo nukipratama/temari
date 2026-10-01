@@ -36,3 +36,6 @@ export const FEEDBACK_REASON_VALUES = ['facts_wrong', 'tone_off', 'too_long', 'i
 
 export type AnchorKind = 'split' | 'zone' | 'metric' | 'session';
 export const ANCHOR_KIND_VALUES = ['split', 'zone', 'metric', 'session'] as const;
+
+export type PerformanceEvidenceKind = 'race' | 'test';
+export const PERFORMANCE_EVIDENCE_KIND_VALUES = ['race', 'test'] as const;

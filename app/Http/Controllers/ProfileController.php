@@ -130,7 +130,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * @return array{vdot: float|null, vdot_source: array{category: string, set_at: string, stale: bool, quality_category: string|null, quality_set_at: string|null}|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null, week_sessions: list<array{weekday: string, session_type: string, distance_km: float, is_today: bool}>}|null
+     * @return array{vdot: float|null, quality_vdot: float|null, vdot_source: array{category: string, set_at: string, stale: bool, confidence: string, evidence_id: int|null, evidence_kind: string|null, distance_m: int|null, corroborating_quality_count: int, quality_category: string|null, quality_set_at: string|null, quality_evidence_kind: string|null, quality_distance_m: int|null}|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null, week_sessions: list<array{weekday: string, session_type: string, distance_km: float, is_today: bool}>}|null
      */
     private function fitness(VdotEstimator $vdotEstimator, EstimateThresholdAction $thresholdEstimator, TrainingPaceCalculator $trainingPaceCalculator, WeekSessionTypesBuilder $weekSessionTypes, User $user, Carbon $today, ResolveActiveRaceAction $activeRace): ?array
     {
@@ -147,14 +147,22 @@ class ProfileController extends Controller
 
         return [
             'vdot' => $vdot['vdot'] ?? null,
+            'quality_vdot' => $vdot['quality_vdot'] ?? null,
             'vdot_source' => $vdot === null ? null : [
                 'category' => $vdot['source_category'],
                 'set_at' => $vdot['set_at']->toDateString(),
                 'stale' => $vdot['stale'],
+                'confidence' => $vdot['confidence'],
+                'evidence_id' => $vdot['evidence_id'],
+                'evidence_kind' => $vdot['evidence_kind'] ?? null,
+                'distance_m' => $vdot['distance_m'] ?? null,
+                'corroborating_quality_count' => $vdot['corroborating_quality_count'],
                 'quality_category' => $vdot['quality_source']['source_category'] ?? null,
                 'quality_set_at' => isset($vdot['quality_source'])
                     ? $vdot['quality_source']['set_at']->toDateString()
                     : null,
+                'quality_evidence_kind' => $vdot['quality_source']['evidence_kind'] ?? null,
+                'quality_distance_m' => $vdot['quality_source']['distance_m'] ?? null,
             ],
             'threshold_pace_sec' => $threshold['pace_sec'] ?? null,
             'threshold_confidence' => $threshold['confidence'] ?? null,

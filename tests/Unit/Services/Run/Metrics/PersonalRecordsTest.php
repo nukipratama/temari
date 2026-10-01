@@ -5,10 +5,13 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\FitnessAnchor;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\PersonalRecords;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 
@@ -96,7 +99,120 @@ it('inserts a fresh distance PR when none exists', function (): void {
         ->and(PersonalRecord::query()->where([
             'user_id' => $user->id,
             'category' => '5km',
-        ])->first())->not->toBeNull();
+        ])->first())->not->toBeNull()
+        ->and(FitnessAnchor::query()->where('user_id', $user->id)->value('source_activity_id'))->toBe($activity->id);
+});
+
+it('preserves the existing guide when a faster activity overwrites the only PR', function (): void {
+    $user = User::factory()->create();
+    $oldActivity = Activity::factory()->for($user)->create();
+    $oldDetail = ActivityDetail::factory()->for($oldActivity)->create([
+        'distance' => 5000,
+        'start_date_local' => '2026-06-01 07:00:00',
+        'stream_summary' => ['per_km' => evenPerKm(5, 360)],
+    ]);
+    $this->records->detectAndStore($oldActivity, $oldDetail);
+    $estimator = app(VdotEstimator::class);
+    $calculator = app(TrainingPaceCalculator::class);
+    $before = $estimator->estimate($user);
+    $beforePaces = $calculator->fromVdotResult($before);
+
+    $newActivity = Activity::factory()->for($user)->create();
+    $newDetail = ActivityDetail::factory()->for($newActivity)->create([
+        'distance' => 5000,
+        'start_date_local' => '2026-09-01 07:00:00',
+        'stream_summary' => ['per_km' => evenPerKm(5, 300)],
+    ]);
+    $this->records->detectAndStore($newActivity, $newDetail);
+    $after = $estimator->estimate($user);
+    $afterPaces = $calculator->fromVdotResult($after);
+
+    expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->value('activity_id'))
+        ->toBe($newActivity->id)
+        ->and($after['vdot'])->toBe($before['vdot'])
+        ->and($after['quality_vdot'])->toBe($before['quality_vdot'])
+        ->and($afterPaces['threshold'])->toBe($beforePaces['threshold'])
+        ->and($afterPaces['interval'])->toBe($beforePaces['interval']);
+});
+
+it('rebuilds a provisional anchor downward when its source activity is deleted', function (): void {
+    $user = User::factory()->create();
+    $fastActivity = Activity::factory()->for($user)->create();
+    $fastDetail = ActivityDetail::factory()->for($fastActivity)->create([
+        'distance' => 5000,
+        'start_date_local' => '2026-06-01 07:00:00',
+        'stream_summary' => ['per_km' => evenPerKm(5, 300)],
+    ]);
+    $this->records->detectAndStore($fastActivity, $fastDetail);
+    $fastVdot = app(VdotEstimator::class)->estimate($user)['vdot'];
+
+    $survivingActivity = Activity::factory()->for($user)->create();
+    $survivingDetail = ActivityDetail::factory()->for($survivingActivity)->create([
+        'distance' => 5000,
+        'start_date_local' => '2026-07-01 07:00:00',
+        'stream_summary' => ['per_km' => evenPerKm(5, 420)],
+    ]);
+    $this->records->detectAndStore($survivingActivity, $survivingDetail);
+
+    $fastActivity->delete();
+    $this->records->rebuildForUser($user);
+
+    $anchor = FitnessAnchor::query()->where('user_id', $user->id)->firstOrFail();
+    expect($anchor->source_activity_id)->toBe($survivingActivity->id)
+        ->and($anchor->vdot)->toBeLessThan($fastVdot)
+        ->and(app(VdotEstimator::class)->estimate($user)['vdot'])->toBe($anchor->vdot);
+});
+
+it('invalidates a corrected source activity and lowers the provisional anchor', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'distance' => 5000,
+        'start_date_local' => '2026-06-01 07:00:00',
+        'stream_summary' => ['per_km' => evenPerKm(5, 300)],
+    ]);
+    $this->records->detectAndStore($activity, $detail);
+    $fastVdot = app(VdotEstimator::class)->estimate($user)['vdot'];
+
+    $detail->update(['stream_summary' => ['per_km' => evenPerKm(5, 420)]]);
+    $this->records->rebuildForUser($user);
+
+    $estimate = app(VdotEstimator::class)->estimate($user);
+    expect(FitnessAnchor::query()->where('user_id', $user->id)->value('source_value_sec'))->toBe(2100.0)
+        ->and($estimate['vdot'])->toBeLessThan($fastVdot);
+});
+
+it('drops a quality source after its activity is deleted while keeping the base anchor', function (): void {
+    $user = User::factory()->create();
+    $half = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($half)->create([
+        'distance' => 21_200,
+        'start_date_local' => '2026-05-01 07:00:00',
+        'stream_summary' => ['per_km' => evenPerKm(21, 420), 'partial_split' => ['distance_m' => 200, 'pace' => '7:00']],
+    ]);
+    $fiveK = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($fiveK)->create([
+        'distance' => 5000,
+        'start_date_local' => '2026-09-01 07:00:00',
+        'stream_summary' => ['per_km' => evenPerKm(5, 335)],
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'activity_id' => $half->id, 'category' => 'half_marathon', 'value_sec' => 8860.95, 'set_at' => '2026-05-01',
+    ]);
+    PersonalRecord::factory()->for($user)->create([
+        'activity_id' => $fiveK->id, 'category' => '5km', 'value_sec' => 1675, 'set_at' => '2026-09-01',
+    ]);
+    $estimator = app(VdotEstimator::class);
+    $estimator->captureProvisionalAnchor($user);
+    $before = $estimator->estimate($user);
+
+    $fiveK->delete();
+    $this->records->rebuildForUser($user);
+    $after = $estimator->estimate($user);
+
+    expect($before['quality_vdot'])->toBeGreaterThan($before['vdot'])
+        ->and($after['quality_vdot'])->toBe($after['vdot'])
+        ->and($after['quality_source'])->toBeNull();
 });
 
 it('reaches a target that lands inside the trailing sub-km leftover', function (): void {

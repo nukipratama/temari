@@ -11,6 +11,7 @@ use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
 use App\Enums\GoalType;
 use App\Enums\NotificationKind;
+use App\Enums\PerformanceEvidenceKind;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\PrCategory;
 use App\Enums\Rarity;
@@ -49,6 +50,7 @@ final class GenerateTypeScriptEnumsCommand extends Command
         FeedbackSubject::class,
         FeedbackReason::class,
         AnchorKind::class,
+        PerformanceEvidenceKind::class,
     ];
 
     public function handle(): int
