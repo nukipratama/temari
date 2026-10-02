@@ -280,7 +280,7 @@ class WeeklyAggregator
         $rows = [];
         for ($weekEnding = $firstWeekEnding->copy(); $weekEnding->lte($lastWeekEnding); $weekEnding = $weekEnding->copy()->addWeek()) {
             $weekDetails = $byWeek->get($weekEnding->toDateString(), new Collection());
-            $rows[] = $this->weekRow($user, $weekEnding, $weekDetails, $dailyTrimp, $runDays, $loadSeries);
+            $rows[] = $this->weekRow($user, $weekEnding, $weekDetails, $dailyTrimp, $runDays, $loadSeries, $today);
         }
 
         return $rows;
@@ -293,7 +293,7 @@ class WeeklyAggregator
      * @param  array<string, array{0: float, 1: float}>  $loadSeries
      * @return array<string, mixed>
      */
-    private function weekRow(User $user, Carbon $weekEnding, Enumerable $weekDetails, array $dailyTrimp, array $runDays, array $loadSeries): array
+    private function weekRow(User $user, Carbon $weekEnding, Enumerable $weekDetails, array $dailyTrimp, array $runDays, array $loadSeries, Carbon $today): array
     {
         $distanceKm = DistanceFormatter::km((float) $weekDetails->sum('distance'));
         $runs = $weekDetails->count();
@@ -304,7 +304,6 @@ class WeeklyAggregator
         // For the in-progress week, measure ATL/CTL as-of today rather than the
         // future Sunday, so days that have not happened yet are not zero-filled
         // (which would understate current fitness). Past weeks are unaffected.
-        $today = Carbon::today()->startOfDay();
         $loadAsOf = $weekEnding->lessThan($today) ? $weekEnding : $today;
         $summary = $this->trainingLoad->summaryFromDailyMap($dailyTrimp, $runDays, $weekEnding, $loadAsOf, loadSeries: $loadSeries);
 
