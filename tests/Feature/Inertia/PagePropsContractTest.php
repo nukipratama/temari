@@ -49,10 +49,10 @@ afterAll(function (): void {
 });
 
 /**
- * The page's own props, deferred ones included, without the shared props
+ * The page's own props, deferred ones included, split from the shared props
  * HandleInertiaRequests merges into every response.
  *
- * @return array{component: string, props: array<string, mixed>}
+ * @return array{component: string, props: array<string, mixed>, shared: array<string, mixed>}
  */
 function propContractPage(TestCase $test, ?User $user, string $url): array
 {
@@ -84,6 +84,7 @@ function propContractPage(TestCase $test, ?User $user, string $url): array
     return [
         'component' => $page['component'],
         'props' => array_diff_key($props, array_flip($shared)),
+        'shared' => array_intersect_key($props, array_flip($shared)),
     ];
 }
 
@@ -118,24 +119,41 @@ function propContractKeyPaths(mixed $value, string $prefix = ''): array
     return $paths;
 }
 
+/**
+ * @param  list<string>  $paths
+ */
+function propContractExpectFixture(array $paths, string $fixture, string $subject, string $interface): void
+{
+    $file = base_path("tests/fixtures/{$fixture}.json");
+
+    if (getenv('UPDATE_INERTIA_PROP_FIXTURES') === '1') {
+        File::ensureDirectoryExists(dirname($file));
+        File::put($file, json_encode($paths, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
+    }
+
+    expect(File::exists($file))->toBeTrue("No fixture at tests/fixtures/{$fixture}.json; run `sail composer inertia-props:update`.");
+    expect($paths)->toBe(
+        json_decode(File::get($file), true),
+        "{$subject} drifted from tests/fixtures/{$fixture}.json. If the change is intended, run `sail composer inertia-props:update` and update {$interface} to match.",
+    );
+}
+
+it('emits the shared prop key paths its fixture records', function (string $name, Closure $url, bool $guest): void {
+    $user = propContractDemoAthlete();
+    $page = propContractPage($this, $guest ? null : $user, $url());
+
+    propContractExpectFixture(propContractKeyPaths($page['shared']), "inertia-shared-props/{$name}", "The {$name} shared props", 'SharedProps in resources/js/types/inertia.ts');
+})->with([
+    'authenticated' => ['authenticated', fn (): string => route('dashboard'), false],
+    'guest' => ['guest', fn (): string => route('login'), true],
+]);
+
 it('emits the prop key paths its fixture records', function (string $name, string $component, Closure $url, bool $guest = false): void {
     $user = propContractDemoAthlete();
     $page = propContractPage($this, $guest ? null : $user, $url($user));
     expect($page['component'])->toBe($component);
 
-    $paths = propContractKeyPaths($page['props']);
-    $fixture = base_path("tests/fixtures/inertia-props/{$name}.json");
-
-    if (getenv('UPDATE_INERTIA_PROP_FIXTURES') === '1') {
-        File::ensureDirectoryExists(dirname($fixture));
-        File::put($fixture, json_encode($paths, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
-    }
-
-    expect(File::exists($fixture))->toBeTrue("No fixture for {$name}; run `sail composer inertia-props:update`.");
-    expect($paths)->toBe(
-        json_decode(File::get($fixture), true),
-        "{$component}'s props drifted from tests/fixtures/inertia-props/{$name}.json. If the change is intended, run `sail composer inertia-props:update` and update the page's props interface to match.",
-    );
+    propContractExpectFixture(propContractKeyPaths($page['props']), "inertia-props/{$name}", "{$component}'s props", "the page's props interface");
 })->with([
     'Home' => ['Home', 'Home', fn (User $user): string => route('dashboard')],
     'History list' => ['History', 'History', fn (User $user): string => route('history')],

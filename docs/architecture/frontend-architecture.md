@@ -67,9 +67,15 @@ Every derived shared prop is a **lazy closure** (`fn () => ...`), so Inertia onl
 
 ### The page-prop contract
 
-Page props are hand-typed, so two tests pin the key names on both sides. [PagePropsContractTest](tests/Feature/Inertia/PagePropsContractTest.php) renders each page's controller for the seeded demo athlete, loads its deferred props with a partial reload, drops the shared props, and compares the sorted key paths with `tests/fixtures/inertia-props/{Page}.json` (`a.b` for nested keys, `a[].b` across list items, `a.*` for maps keyed by ids or dates; History's calendar view is `History.calendar.json`). [inertia.test.ts](resources/js/types/inertia.test.ts) reads the same fixtures and walks the page component's props type with the TypeScript compiler API: every emitted path must be declared, and every required property must be emitted. Values and types are not checked, only names.
+Page and shared props are hand-typed, so two tests pin the key names on both sides. [PagePropsContractTest](tests/Feature/Inertia/PagePropsContractTest.php) renders each page's controller for the seeded demo athlete, loads its deferred props with a partial reload, splits off the shared props, and compares the sorted key paths with `tests/fixtures/inertia-props/{Page}.json` (`a.b` for nested keys, `a[].b` across list items, `a.*` for maps keyed by ids or dates; History's calendar view is `History.calendar.json`). The shared props get the same treatment in `tests/fixtures/inertia-shared-props/`, once for the demo athlete on Home (`authenticated.json`) and once for a guest on `/login` (`guest.json`). [inertia.test.ts](resources/js/types/inertia.test.ts) reads the same fixtures and walks the page component's props type, or `SharedProps`, with the TypeScript compiler API. Values and types are not checked, only names. It fails when:
 
-After an intended prop change, regenerate the fixtures with `./vendor/bin/sail composer inertia-props:update`, update the page's props interface to match, and commit both. A new Inertia page adds a row to the test's dataset.
+- a property the type declares as required is not emitted (a rename or removal on either side);
+- an emitted path is not declared in the type and not listed for that fixture in `tests/fixtures/inertia-undeclared-baseline.json`. `SharedProps`' `[key: string]: unknown` index signature does not count as declaring a top-level key;
+- a baseline entry is stale: the path is no longer emitted, or the type now declares it.
+
+The baseline records payload that pages received before the contract existed and do not read, so it may only shrink. Delete an entry when the payload is trimmed or the type declares it, which the stale check enforces. Never add one to silence a new key: declare the key in the type instead. Adding an entry is a deliberate manual edit that needs a reviewer's agreement, and the update command never writes the baseline.
+
+After an intended prop change, regenerate the fixtures with `./vendor/bin/sail composer inertia-props:update`, update the page's props interface (or `SharedProps`) to match, and commit both. A new Inertia page adds a row to the test's dataset.
 
 ## Home's query budget
 
