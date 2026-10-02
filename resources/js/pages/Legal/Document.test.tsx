@@ -108,11 +108,11 @@ describe('Legal/Document', () => {
             'Your name and your Strava athlete id.',
             'Only you see your runs.',
         ]) {
-            expect(screen.getByText(text)).toHaveClass('max-w-[38rem]');
+            expect(screen.getByText(text)).toHaveClass('max-w-[44ch]');
         }
         expect(
             screen.getByRole('heading', { level: 1, name: 'privacy policy' }),
-        ).not.toHaveClass('max-w-[38rem]');
+        ).not.toHaveClass('max-w-[44ch]');
     });
 
     it('turns a bare URL in the copy into a link', () => {

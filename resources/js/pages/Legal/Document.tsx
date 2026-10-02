@@ -84,7 +84,7 @@ export default function LegalDocument({
                     <p className="mt-2 font-mono text-xs font-semibold uppercase tracking-wider text-text-3">
                         Last updated {updated}
                     </p>
-                    <p className="mt-4 max-w-[38rem] font-sans text-sm leading-relaxed text-text-2">
+                    <p className="mt-4 max-w-[44ch] font-sans text-sm leading-relaxed text-text-2">
                         {linkify(intro)}
                     </p>
 
@@ -101,7 +101,7 @@ export default function LegalDocument({
                         </Eyebrow>
                         <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-4.5 font-sans text-sm leading-relaxed text-foreground marker:text-text-3">
                             {summary.map((line) => (
-                                <li key={line} className="max-w-[38rem]">
+                                <li key={line} className="max-w-[44ch]">
                                     {line}
                                 </li>
                             ))}
@@ -125,7 +125,7 @@ export default function LegalDocument({
                                 {section.paragraphs.map((paragraph) => (
                                     <p
                                         key={paragraph}
-                                        className="mt-3 max-w-[38rem] font-sans text-sm leading-relaxed text-foreground"
+                                        className="mt-3 max-w-[44ch] font-sans text-sm leading-relaxed text-foreground"
                                     >
                                         {linkify(paragraph)}
                                     </p>
