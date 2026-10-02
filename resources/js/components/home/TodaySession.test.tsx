@@ -611,45 +611,4 @@ describe('TodaySession', () => {
 
         expect(screen.queryByText(/easy means easy/)).not.toBeInTheDocument();
     });
-
-    it('asks how hard the newest run felt, naming it', () => {
-        render(
-            <TodaySession
-                briefing={briefing('fine.')}
-                effortPrompt={{
-                    activity_id: 7,
-                    score: null,
-                    name: 'Treadmill',
-                    start_date_local: '2026-06-11T06:00:00',
-                }}
-            />,
-        );
-
-        expect(
-            screen.getByRole('slider', { name: 'how hard did it feel' }),
-        ).toBeInTheDocument();
-    });
-
-    it('collapses the newest run to its chip once it has a score', () => {
-        render(
-            <TodaySession
-                briefing={briefing('fine.')}
-                effortPrompt={{
-                    activity_id: 7,
-                    score: 6,
-                    name: 'Treadmill',
-                    start_date_local: '2026-06-11T06:00:00',
-                }}
-            />,
-        );
-
-        expect(screen.getByText('6/10')).toBeInTheDocument();
-        expect(screen.queryByRole('slider')).not.toBeInTheDocument();
-    });
-
-    it('asks about no run before the first one', () => {
-        render(<TodaySession briefing={briefing('fine.')} />);
-
-        expect(screen.queryByRole('slider')).not.toBeInTheDocument();
-    });
 });

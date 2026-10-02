@@ -1,8 +1,9 @@
 import { router, usePage } from '@inertiajs/react';
 import { useId, useState } from 'react';
 
-import type { PerceivedEffortPrompt, SharedProps } from '@/types/inertia';
+import type { SharedProps } from '@/types/inertia';
 
+import TemariMascot from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
@@ -11,10 +12,13 @@ import {
     EFFORT_MAX,
     EFFORT_MIN,
     effortBand,
+    effortPose,
     effortWord,
 } from '@/lib/perceivedEffort';
 
 const UNRATED_START = 5;
+
+const VOICE_LINE = "forget the watch. how'd that one feel?";
 
 const SEGMENT_FILL = {
     easy: 'bg-leaf',
@@ -98,12 +102,10 @@ export function EffortSaved({
 export function EffortPicker({
     activityId,
     saved,
-    runName = null,
     onClose,
 }: Readonly<{
     activityId: number;
     saved: number | null;
-    runName?: string | null;
     onClose: () => void;
 }>) {
     const inputId = useId();
@@ -111,17 +113,25 @@ export function EffortPicker({
     const [processing, setProcessing] = useState(false);
 
     return (
-        <div>
-            <Eyebrow token="small" tone="ink-3" as="div">
-                <label htmlFor={inputId}>how hard did it feel</label>
-            </Eyebrow>
-            {runName !== null && (
-                <p className="mt-1 text-xs text-text-2">{runName}</p>
-            )}
+        <div className="rounded-panel bg-secondary px-4 pb-3 pt-3.5 text-foreground dark:bg-sky">
+            <div className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-x-2.5">
+                <TemariMascot pose={effortPose(draft)} size={44} />
+                <div className="min-w-0">
+                    <Eyebrow token="small" tone="ink-3">
+                        gut check
+                    </Eyebrow>
+                    <label
+                        htmlFor={inputId}
+                        className="mt-0.5 block font-serif text-quote-md italic text-foreground"
+                    >
+                        {VOICE_LINE}
+                    </label>
+                </div>
+            </div>
 
             <div
                 data-score-row
-                className="mt-2 flex items-center justify-between gap-3"
+                className="mt-2.5 flex items-center justify-between gap-3"
             >
                 <p className="flex flex-wrap items-baseline gap-x-1.5">
                     <span
@@ -194,7 +204,7 @@ export function EffortPicker({
                 </div>
             </div>
 
-            <div className="relative mt-3 h-6">
+            <div className="relative mt-1.5 h-6">
                 <div
                     className="absolute inset-x-0 top-1/2 flex h-2 -translate-y-1/2 gap-0.5"
                     aria-hidden
@@ -227,7 +237,7 @@ export function EffortPicker({
                 />
             </div>
             <div
-                className="mt-1.5 grid grid-cols-10 gap-0.5 text-center"
+                className="mt-1 grid grid-cols-10 gap-0.5 text-center"
                 aria-hidden
             >
                 {ZONES.map((zone) => (
@@ -241,43 +251,6 @@ export function EffortPicker({
                         {zone.label}
                     </span>
                 ))}
-            </div>
-            <ScoreError />
-        </div>
-    );
-}
-
-/** The picker, collapsing to the saved chip once the run has a score. */
-export default function EffortScore({
-    prompt,
-    runName = null,
-}: Readonly<{ prompt: PerceivedEffortPrompt; runName?: string | null }>) {
-    const [editing, setEditing] = useState(false);
-
-    if (prompt.score === null || editing) {
-        return (
-            <EffortPicker
-                activityId={prompt.activity_id}
-                saved={prompt.score}
-                runName={runName}
-                onClose={() => setEditing(false)}
-            />
-        );
-    }
-
-    return (
-        <div>
-            <Eyebrow token="small" tone="ink-3" as="div">
-                how hard did it feel
-            </Eyebrow>
-            {runName !== null && (
-                <p className="mt-1 text-xs text-text-2">{runName}</p>
-            )}
-            <div className="mt-2">
-                <EffortSaved
-                    score={prompt.score}
-                    onChange={() => setEditing(true)}
-                />
             </div>
             <ScoreError />
         </div>

@@ -677,11 +677,3 @@ export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
     is_chain_head: boolean;
     recap_analysis: AnalysisPayload;
 }
-
-/** The newest run, offered to an effort score on Today. */
-export interface PerceivedEffortPrompt {
-    activity_id: number;
-    score: number | null;
-    name: string | null;
-    start_date_local: string | null;
-}

@@ -4,6 +4,7 @@ import {
     EFFORT_MAX,
     EFFORT_MIN,
     effortBand,
+    effortPose,
     effortWord,
 } from './perceivedEffort';
 
@@ -40,5 +41,26 @@ describe('effortBand', () => {
             'hard',
             'hard',
         ]);
+    });
+});
+
+describe('effortPose', () => {
+    it('stays neutral until the slider is touched', () => {
+        expect(effortPose(null)).toBe('neutral');
+    });
+
+    it.each([
+        [1, 'chill'],
+        [2, 'chill'],
+        [3, 'easy'],
+        [4, 'easy'],
+        [5, 'blazing'],
+        [6, 'blazing'],
+        [7, 'gassed'],
+        [8, 'gassed'],
+        [9, 'overloaded'],
+        [10, 'overloaded'],
+    ] as const)('poses %i as %s', (score, pose) => {
+        expect(effortPose(score)).toBe(pose);
     });
 });

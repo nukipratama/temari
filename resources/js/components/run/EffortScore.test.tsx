@@ -4,27 +4,85 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setMockPage } from '@/test/setup';
 
-import EffortScore, { EffortChip } from './EffortScore';
+import { EffortChip, EffortPicker } from './EffortScore';
 
-const PROMPT = {
-    activity_id: 42,
-    score: null,
-    name: 'Treadmill',
-    start_date_local: '2026-10-05T06:00:00',
-};
-
-function slider(): HTMLElement {
-    return screen.getByRole('slider', { name: 'how hard did it feel' });
+function renderPicker(saved: number | null = null, onClose = vi.fn()) {
+    return render(
+        <EffortPicker activityId={42} saved={saved} onClose={onClose} />,
+    );
 }
 
-describe('EffortScore', () => {
+const VOICE_LINE = "forget the watch. how'd that one feel?";
+
+function slider(): HTMLElement {
+    return screen.getByRole('slider', { name: VOICE_LINE });
+}
+
+function mascot(container: HTMLElement): Element {
+    const svg = container.querySelector('[data-mascot]');
+    expect(svg).not.toBeNull();
+
+    return svg as Element;
+}
+
+describe('EffortPicker', () => {
     beforeEach(() => {
         vi.mocked(router.patch).mockReset();
         vi.mocked(router.delete).mockReset();
     });
 
+    it('sits on the stat-tile ground on light and the sky panel on dark', () => {
+        const { container } = renderPicker();
+
+        expect(container.firstElementChild).toHaveClass(
+            'bg-secondary',
+            'dark:bg-sky',
+            'rounded-panel',
+        );
+        expect(container.firstElementChild).not.toHaveAttribute('data-theme');
+    });
+
+    it('opens with a gut-check eyebrow and a temari voice line', () => {
+        renderPicker();
+
+        expect(screen.getByText('gut check')).toHaveClass(
+            'text-label-small',
+            'text-text-3',
+        );
+        expect(screen.getByText(VOICE_LINE)).toHaveClass(
+            'font-serif',
+            'italic',
+            'text-foreground',
+        );
+    });
+
+    it('holds the mascot in a fixed 44px column beside the text', () => {
+        const { container } = renderPicker();
+
+        const svg = mascot(container);
+        expect(svg).toHaveAttribute('width', '44');
+        expect(svg.parentElement).toHaveClass(
+            'grid',
+            'grid-cols-[44px_minmax(0,1fr)]',
+        );
+        expect(svg.parentElement?.firstElementChild).toBe(svg);
+        expect(svg.nextElementSibling).toContainElement(
+            screen.getByText('gut check'),
+        );
+    });
+
+    it('poses the mascot from the slider, neutral until it is touched', () => {
+        const { container } = renderPicker();
+
+        expect(mascot(container)).toHaveAttribute('data-mascot', 'neutral');
+        fireEvent.change(slider(), { target: { value: '3' } });
+        expect(mascot(container)).toHaveAttribute('data-mascot', 'easy');
+        fireEvent.change(slider(), { target: { value: '7' } });
+        expect(mascot(container)).toHaveAttribute('data-mascot', 'gassed');
+    });
+
     it('starts unrated: an en dash, a muted thumb, and save disabled until the slider moves', () => {
-        render(<EffortScore prompt={PROMPT} />);
+        renderPicker();
 
         expect(slider()).toHaveAttribute('aria-valuetext', 'not rated yet');
         expect(slider()).toHaveAttribute('data-rated', 'false');
@@ -34,7 +92,7 @@ describe('EffortScore', () => {
     });
 
     it('puts save on the score row, with no divider below the slider', () => {
-        const { container } = render(<EffortScore prompt={PROMPT} />);
+        const { container } = renderPicker();
 
         const row = screen
             .getByText('drag to rate')
@@ -47,7 +105,7 @@ describe('EffortScore', () => {
     });
 
     it('draws ten segments in the effort colours, 4 easy, 2 steady, 4 hard', () => {
-        const { container } = render(<EffortScore prompt={PROMPT} />);
+        const { container } = renderPicker();
 
         const fills = ['bg-leaf', 'bg-citrus', 'bg-ember'].map(
             (fill) => container.querySelectorAll(`.${fill}`).length,
@@ -59,9 +117,8 @@ describe('EffortScore', () => {
     });
 
     it('names the effort in its colour as the slider moves, and saves the chosen score', () => {
-        render(<EffortScore prompt={PROMPT} runName="Treadmill" />);
+        renderPicker();
 
-        expect(screen.getByText('Treadmill')).toBeInTheDocument();
         fireEvent.change(slider(), { target: { value: '7' } });
 
         expect(slider()).toHaveAttribute(
@@ -81,7 +138,7 @@ describe('EffortScore', () => {
     });
 
     it('colours an easy and a steady score with their own ink', () => {
-        render(<EffortScore prompt={PROMPT} />);
+        renderPicker();
 
         fireEvent.change(slider(), { target: { value: '4' } });
         expect(screen.getByText('somewhat hard')).toHaveClass('text-leaf-ink');
@@ -91,18 +148,10 @@ describe('EffortScore', () => {
         );
     });
 
-    it('collapses a saved score to a chip that reopens the picker, where clear removes it', () => {
-        render(<EffortScore prompt={{ ...PROMPT, score: 3 }} />);
+    it('reopens a saved score, where clear removes it and cancel closes', () => {
+        const onClose = vi.fn();
+        renderPicker(3, onClose);
 
-        expect(screen.getByText('3/10')).toHaveClass('font-mono');
-        expect(screen.queryByRole('slider')).not.toBeInTheDocument();
-        expect(
-            screen.queryByRole('button', { name: 'clear' }),
-        ).not.toBeInTheDocument();
-
-        fireEvent.click(
-            screen.getByRole('button', { name: /change effort score/ }),
-        );
         expect(slider()).toHaveAttribute('aria-valuetext', '3 of 10, moderate');
 
         fireEvent.click(screen.getByRole('button', { name: 'clear' }));
@@ -112,23 +161,20 @@ describe('EffortScore', () => {
         );
 
         fireEvent.click(screen.getByRole('button', { name: 'cancel' }));
-        expect(screen.queryByRole('slider')).not.toBeInTheDocument();
-        expect(screen.getByText('3/10')).toBeInTheDocument();
+        expect(onClose).toHaveBeenCalledOnce();
     });
 
     it('offers no clear on a run that has no score yet', () => {
-        render(<EffortScore prompt={PROMPT} />);
+        renderPicker();
 
         expect(
             screen.queryByRole('button', { name: 'clear' }),
         ).not.toBeInTheDocument();
     });
 
-    it('returns to the chip once a save lands', () => {
-        render(<EffortScore prompt={{ ...PROMPT, score: 3 }} />);
-        fireEvent.click(
-            screen.getByRole('button', { name: /change effort score/ }),
-        );
+    it('closes once a save lands', () => {
+        const onClose = vi.fn();
+        renderPicker(3, onClose);
         fireEvent.change(slider(), { target: { value: '4' } });
         fireEvent.click(screen.getByRole('button', { name: 'save' }));
 
@@ -143,14 +189,14 @@ describe('EffortScore', () => {
             options.onFinish();
         });
 
-        expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+        expect(onClose).toHaveBeenCalledOnce();
     });
 
     it('shows a validation error', () => {
         setMockPage({
             errors: { score: 'The score field must be between 1 and 10.' },
         });
-        render(<EffortScore prompt={PROMPT} />);
+        renderPicker();
 
         expect(screen.getByRole('alert')).toHaveTextContent(/between 1 and 10/);
     });
