@@ -10,6 +10,8 @@ const ROW: AthleteRow = {
     user_name: 'Nuki',
     is_demo: false,
     deleted: false,
+    last_seen_at: null,
+    away: false,
     today: 0.25,
     last7: 1.5,
     last30: 4.75,
@@ -98,6 +100,16 @@ describe('AthletesPanel', () => {
         renderPanel({ is_demo: true });
 
         expect(screen.getByText('demo')).toBeInTheDocument();
+        expect(screen.getByText('demo (never stamped)')).toBeInTheDocument();
+    });
+
+    it('flags an away athlete whose scheduled narration is paused', () => {
+        renderPanel({ away: true });
+
+        expect(screen.getByText('never opened')).toBeInTheDocument();
+        expect(
+            screen.getByText('away: scheduled narration paused'),
+        ).toBeInTheDocument();
     });
 
     it('falls back to an empty state with no athletes at all', () => {

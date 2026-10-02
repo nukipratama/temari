@@ -7,6 +7,7 @@ import AttentionTab from '@/components/narration/athlete/AttentionTab';
 import CostByKindTab from '@/components/narration/athlete/CostByKindTab';
 import NarrationsTab from '@/components/narration/athlete/NarrationsTab';
 import FlashBanner from '@/components/narration/FlashBanner';
+import LastOpen from '@/components/narration/LastOpen';
 import PageContainer from '@/components/ui/PageContainer';
 import { cn } from '@/lib/cn';
 import { toggleButtonVariants } from '@/lib/variants';
@@ -54,6 +55,13 @@ export default function Athlete({
                                 ? ` · Strava ${header.athlete.strava_athlete_id}`
                                 : ''}
                         </p>
+                        <div className="mt-1">
+                            <LastOpen
+                                lastSeenAt={header.athlete.last_seen_at}
+                                away={header.athlete.away}
+                                isDemo={header.athlete.is_demo}
+                            />
+                        </div>
                     </div>
                     <a
                         href="/devtools"

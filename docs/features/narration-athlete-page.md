@@ -11,6 +11,7 @@ code_refs:
   - app/Services/Devtools/ReplayNarrationAction.php
   - app/Services/Devtools/CostForecast.php
   - resources/js/pages/Narration/Athlete.tsx
+  - resources/js/components/narration/LastOpen.tsx
 ---
 
 # Per-athlete narration page
@@ -40,8 +41,16 @@ is labelled a projection rather than a forecast budget, because the recent run r
 the only evidence behind it.
 
 Every one of those numbers comes from a single per-day query
-([`dailyCost()`](app/Services/Devtools/AthleteNarrationReport.php#L358)), so today, the
+([`dailyCost()`](app/Services/Devtools/AthleteNarrationReport.php#L368)), so today, the
 week, the month and the sparkline never disagree.
+
+The title block also says when the athlete last opened the app (`users.last_seen_at`)
+and, when [`RecentlyActiveUsers::includes()`](app/Actions/AI/RecentlyActiveUsers.php#L40)
+rejects them, an "away: scheduled narration paused" badge
+([LastOpen](resources/js/components/narration/LastOpen.tsx)). The `away` flag is computed
+server-side from that same rule, so an idle athlete never reads as a stalled pipeline. The
+demo account shows "demo (never stamped)" and no badge, since it is outside the window by
+design.
 
 ## Tab: narrations
 

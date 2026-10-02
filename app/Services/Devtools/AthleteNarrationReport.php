@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Devtools;
 
+use App\Actions\AI\RecentlyActiveUsers;
 use App\Enums\FeedbackSubject;
 use App\Models\AI\Analysis;
 use App\Models\AI\AnalysisVersion;
@@ -37,12 +38,13 @@ class AthleteNarrationReport
         private readonly LlmCostCalculator $costs,
         private readonly CostForecast $forecast,
         private readonly CeilingOverride $override,
+        private readonly RecentlyActiveUsers $activeUsers,
     ) {
     }
 
     /**
      * @return array{
-     *     athlete: array{id:int, name:string, is_demo:bool, strava_athlete_id:int|null},
+     *     athlete: array{id:int, name:string, is_demo:bool, strava_athlete_id:int|null, last_seen_at:string|null, away:bool},
      *     currency: string,
      *     today_spend: float,
      *     ceiling: array{value: float|null, source: string},
@@ -65,6 +67,8 @@ class AthleteNarrationReport
                 'name' => $athlete->name,
                 'is_demo' => $athlete->is_demo,
                 'strava_athlete_id' => $athlete->stravaConnection?->strava_athlete_id,
+                'last_seen_at' => $athlete->last_seen_at?->toIso8601String(),
+                'away' => ! $athlete->is_demo && ! $this->activeUsers->includes($athlete),
             ],
             'currency' => 'USD',
             'today_spend' => $daily[$today->toDateString()] ?? 0.0,

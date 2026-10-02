@@ -19,6 +19,8 @@ function props(overrides: Partial<AthletePageProps> = {}): AthletePageProps {
                 name: 'Dina',
                 is_demo: false,
                 strava_athlete_id: 555_444,
+                last_seen_at: null,
+                away: true,
             },
             currency: 'USD',
             today_spend: 0.25,
@@ -93,6 +95,8 @@ describe('Narration/Athlete', () => {
                             name: 'Demo',
                             is_demo: true,
                             strava_athlete_id: null,
+                            last_seen_at: null,
+                            away: false,
                         },
                     },
                 })}
@@ -101,6 +105,17 @@ describe('Narration/Athlete', () => {
 
         expect(screen.getByText(/demo account/)).toBeInTheDocument();
         expect(screen.queryByText(/Strava/)).not.toBeInTheDocument();
+        expect(screen.getByText('demo (never stamped)')).toBeInTheDocument();
+        expect(screen.queryByText(/away:/)).not.toBeInTheDocument();
+    });
+
+    it('flags an away athlete in the header', () => {
+        render(<Athlete {...props()} />);
+
+        expect(screen.getByText('never opened')).toBeInTheDocument();
+        expect(
+            screen.getByText('away: scheduled narration paused'),
+        ).toBeInTheDocument();
     });
 
     it('shows the athlete Strava id in the subtitle when connected', () => {

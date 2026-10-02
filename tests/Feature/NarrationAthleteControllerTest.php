@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\AI\RecentlyActiveUsers;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
@@ -76,6 +77,26 @@ describe('show', function (): void {
                     ->etc(),
             );
     });
+
+    it('carries the athlete\'s last open and the away flag the scheduler\'s own window decides', function (array $attributes, bool $away): void {
+        Carbon::setTestNow('2026-09-30 10:00:00');
+        $user = narrationAthlete($attributes);
+
+        $this->get(athletePath($user))
+            ->assertSuccessful()
+            ->assertInertia(
+                fn (AssertableInertia $page) => $page
+                    ->where('header.athlete.last_seen_at', $user->last_seen_at?->toIso8601String())
+                    ->where('header.athlete.away', $away)
+                    ->where('header.athlete.away', ! $user->is_demo && ! app(RecentlyActiveUsers::class)->includes($user))
+                    ->etc(),
+            );
+    })->with([
+        'active' => [['last_seen_at' => '2026-09-27 08:00:00'], false],
+        'away' => [['last_seen_at' => '2026-09-01 08:00:00'], true],
+        'never seen' => [['last_seen_at' => null], true],
+        'demo' => [['is_demo' => true, 'last_seen_at' => null], false],
+    ]);
 
     it('404s on an athlete that does not exist', function (): void {
         $this->get('/devtools/narration/athletes/999999')->assertNotFound();

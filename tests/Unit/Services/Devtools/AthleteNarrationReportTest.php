@@ -87,7 +87,7 @@ describe('header', function (): void {
             ->and($header['forecast']['month_to_date'])->toBe(6.0)
             // 7-day spend $4.00 -> $0.5714/day over the 20 remaining days.
             ->and(round($header['forecast']['projected'], 2))->toBe(17.43)
-            ->and($header['athlete'])->toBe(['id' => $user->id, 'name' => $user->name, 'is_demo' => false, 'strava_athlete_id' => null]);
+            ->and($header['athlete'])->toBe(['id' => $user->id, 'name' => $user->name, 'is_demo' => false, 'strava_athlete_id' => null, 'last_seen_at' => $user->last_seen_at?->toIso8601String(), 'away' => false]);
     });
 
     it('carries the athlete\'s Strava id when a connection exists', function (): void {

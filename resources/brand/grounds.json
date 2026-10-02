@@ -301,6 +301,9 @@
                 "resources/js/components/temari/AnalysisStatus.tsx": [
                     "paper"
                 ],
+                "resources/js/components/narration/LastOpen.tsx": [
+                    "paper"
+                ],
                 "resources/js/lib/tones.ts": [
                     "paper"
                 ]

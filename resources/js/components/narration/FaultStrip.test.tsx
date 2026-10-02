@@ -31,6 +31,8 @@ const ATHLETE: AthleteRow = {
     user_name: 'Nuki',
     is_demo: false,
     deleted: false,
+    last_seen_at: null,
+    away: false,
     today: 1,
     last7: 4,
     last30: 10,
