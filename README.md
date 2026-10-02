@@ -23,8 +23,8 @@ Full feature map: [docs/features/index.md](docs/features/index.md).
 
 ## Stack
 
-- **Backend**: Laravel 13 · PHP 8.4 (FrankenPHP + Octane in prod, Sail's PHP image in dev) · Larastan L8 · Pint · Rector
-- **Frontend**: Inertia 2 + React 19 + TypeScript · Tailwind v4 (`@tailwindcss/vite`) · Framer Motion · Vitest
+- **Backend**: Laravel 13 · PHP 8.5 (FrankenPHP + Octane in prod, Sail's PHP image in dev) · Larastan L8 · Pint · Rector
+- **Frontend**: Inertia 3 + React 19 + TypeScript · Tailwind v4 (`@tailwindcss/vite`) · Vitest
 - **Data**: MySQL 8.4 + Redis (separate dev / test / prod stacks for parity)
 - **Async**: Horizon (queues) · Scheduler
 - **Observability**: Pulse (perf) · Horizon (queues)
