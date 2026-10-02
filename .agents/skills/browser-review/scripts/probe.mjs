@@ -22,23 +22,35 @@
  * `click` drives a state first, so an accordion or modal can be inspected:
  *   node probe.mjs /settings dark --click='HR zones' 'document.body.innerText.length'
  *
+ * `--viewport=<key>` picks a VIEWPORT_DEFS key (mobile, se, tablet, laptop, desktop);
+ * the default is the 390x844 mobile context:
+ *   node probe.mjs / dark --viewport=se 'innerWidth'
+ *
  * Console/pageerror messages are always captured and printed alongside the
  * result — a live substitute for a browser devtools console mid-coding.
  * `--shot` also saves a full-page screenshot next to the JSON output:
  *   node probe.mjs /settings dark --shot 'document.title'
  */
 import { chromium } from 'playwright';
-import { BASE, login, fullPageScreenshot, SHOT, EXT, DEVTOOLS_AUTH } from './lib.mjs';
+import { BASE, VIEWPORT_DEFS, login, fullPageScreenshot, SHOT, EXT, DEVTOOLS_AUTH } from './lib.mjs';
 
 const args = process.argv.slice(2);
 const clickArg = args.find((a) => a.startsWith('--click='));
+const viewportKey = args.find((a) => a.startsWith('--viewport='))?.slice('--viewport='.length) ?? null;
 const wantsShot = args.includes('--shot');
 const rest = args.filter((a) => !a.startsWith('--'));
 const [route, ground = 'dark', expression] = rest;
 
 if (!route || !expression) {
     console.error(
-        "Usage: node probe.mjs <route> [dark|light] [--click=<text>] [--shot] '<expression>'",
+        "Usage: node probe.mjs <route> [dark|light] [--click=<text>] [--viewport=<key>] [--shot] '<expression>'",
+    );
+    process.exit(2);
+}
+
+if (viewportKey !== null && !VIEWPORT_DEFS[viewportKey]) {
+    console.error(
+        `Unknown viewport "${viewportKey}". Valid: ${Object.keys(VIEWPORT_DEFS).join(', ')}`,
     );
     process.exit(2);
 }
@@ -48,7 +60,7 @@ const browser = await chromium.launch({
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
 });
 const ctx = await browser.newContext({
-    viewport: { width: 390, height: 844 },
+    ...(viewportKey ? VIEWPORT_DEFS[viewportKey] : { viewport: { width: 390, height: 844 } }),
     ...DEVTOOLS_AUTH,
 });
 const page = await ctx.newPage();
