@@ -72,6 +72,14 @@ function yearOfTrend() {
 }
 
 describe('Trends', () => {
+    it('shows the AI pause banner while generation is paused', () => {
+        setMockPage({ aiPaused: true });
+
+        render(<Trends {...BASE_PROPS} />);
+
+        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
+    });
+
     it('renders the page headline', () => {
         render(<Trends {...BASE_PROPS} />);
 

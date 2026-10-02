@@ -171,6 +171,13 @@ beforeEach(() => {
 });
 
 describe('Home', () => {
+    it('shows the AI pause banner while generation is paused', () => {
+        setMockPage({ auth: { user: makeUser() }, aiPaused: true });
+        renderHome();
+
+        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
+    });
+
     it("leads with today, then the week's plan, retrospective last", () => {
         const { container } = renderHome(trend(), weekPlan);
 

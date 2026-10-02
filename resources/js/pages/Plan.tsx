@@ -10,6 +10,7 @@ import type {
 } from '@/lib/plan';
 import type { PlanRecalibrationState } from '@/types/inertia';
 
+import AiOutageBanner from '@/components/AiOutageBanner';
 import SeasonHeaderCard from '@/components/plan/SeasonHeaderCard';
 import SeasonTimeline from '@/components/plan/SeasonTimeline';
 import EmptyPanel from '@/components/ui/EmptyPanel';
@@ -135,6 +136,7 @@ export default function Plan({
     return (
         <>
             <Head title="Plan" />
+            <AiOutageBanner />
             <PageContainer>
                 <Eyebrow token="hero" tone="ink-2">
                     Plan

@@ -5,7 +5,6 @@ import { usePage } from '@inertiajs/react';
 import type { SharedProps } from '@/types/inertia';
 
 import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
-import AiOutageBanner from '@/components/AiOutageBanner';
 import ErrorBanner from '@/components/ErrorBanner';
 import FlashNotice from '@/components/FlashNotice';
 import MobileBottomNav from '@/components/MobileBottomNav';
@@ -44,7 +43,6 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                 <ErrorBanner />
                 <FlashNotice />
                 <StravaZoneReconnectBanner />
-                <AiOutageBanner />
                 <AiCatchingUpBanner />
                 <StravaPausedBanner />
 

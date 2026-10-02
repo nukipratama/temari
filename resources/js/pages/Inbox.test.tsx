@@ -49,6 +49,25 @@ function okFetch() {
 beforeEach(() => setMockPage({ unreadNotifications: 1 }, '/inbox'));
 
 describe('Inbox', () => {
+    it('shows nothing about an AI pause, since it renders no narration', () => {
+        setMockPage({ unreadNotifications: 1, aiPaused: true }, '/inbox');
+
+        render(
+            Inbox.layout(
+                <Inbox
+                    notifications={[]}
+                    shown={20}
+                    hasOlder={false}
+                    focusId={null}
+                />,
+            ),
+        );
+
+        expect(
+            screen.queryByText(/catching her breath/),
+        ).not.toBeInTheDocument();
+    });
+
     it('shows a decent empty state rather than a bare list', () => {
         renderInbox([]);
 

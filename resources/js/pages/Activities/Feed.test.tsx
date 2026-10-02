@@ -58,6 +58,14 @@ beforeEach(() => {
 });
 
 describe('Activities/Feed', () => {
+    it('shows the AI pause banner while generation is paused', () => {
+        setMockPage({ auth: { user: makeUser() }, aiPaused: true });
+
+        render(<RunsIndex runs={[]} rangeFilter="8w" weeklySnapshots={[]} />);
+
+        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
+    });
+
     it('explains the effort stripe and mood dot above the weeks', () => {
         const { container } = render(
             <RunsIndex

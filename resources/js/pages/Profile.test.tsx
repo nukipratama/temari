@@ -33,6 +33,14 @@ beforeEach(() => {
 });
 
 describe('Profile', () => {
+    it('shows the AI pause banner while generation is paused', () => {
+        setMockPage({ auth: { user: makeUser() }, aiPaused: true });
+
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
+
+        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
+    });
+
     it('renders the eyebrow and the editorial greeting with the first name', () => {
         render(<Profile mood="easy" identity={identity} stats={stats} />);
 

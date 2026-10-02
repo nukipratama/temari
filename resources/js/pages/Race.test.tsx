@@ -11,6 +11,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { PastRace, RaceDetails } from '@/types/inertia';
 
+import { setMockPage } from '@/test/setup';
+
 import Race from './Race';
 
 const RACE: RaceDetails = {
@@ -59,6 +61,16 @@ const PROJECTION = {
 };
 
 describe('Race', () => {
+    it('shows nothing about an AI pause, since it renders no narration', () => {
+        setMockPage({ aiPaused: true });
+
+        render(Race.layout(<Race race={RACE} projection={PROJECTION} />));
+
+        expect(
+            screen.queryByText(/catching her breath/),
+        ).not.toBeInTheDocument();
+    });
+
     it('leads with the duel under a compact header once a race is set', () => {
         const { container } = render(
             <Race race={RACE} projection={PROJECTION} />,

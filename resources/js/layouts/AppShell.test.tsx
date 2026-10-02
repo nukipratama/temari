@@ -82,6 +82,23 @@ describe('AppShell', () => {
         ).toBeInTheDocument();
     });
 
+    it('leaves the AI pause banner to the pages that render narration', () => {
+        setMockPage({
+            auth: { user: andiUser },
+            flash: {},
+            demoLoginEnabled: false,
+            aiPaused: true,
+        });
+        render(
+            <AppShell>
+                <p>child content</p>
+            </AppShell>,
+        );
+        expect(
+            screen.queryByText(/catching her breath/),
+        ).not.toBeInTheDocument();
+    });
+
     it('mounts the flash notice as shell chrome', () => {
         setMockPage({
             auth: { user: andiUser },
