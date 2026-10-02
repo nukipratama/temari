@@ -133,3 +133,13 @@ describe('FlashNotice', () => {
         expect(container.firstChild).toBeNull();
     });
 });
+
+describe('FlashNotice column cap', () => {
+    it('caps the column only from 900px up', () => {
+        setMockPage({ ...base, flash: { info: 'Heads up.' } });
+        const { container } = render(<FlashNotice />);
+        const box = container.querySelector('[class*="max-w-column"]')!;
+        expect(box.classList.contains('max-w-column')).toBe(false);
+        expect(box.classList.contains('min-[900px]:max-w-column')).toBe(true);
+    });
+});
