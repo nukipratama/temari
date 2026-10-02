@@ -1,6 +1,6 @@
-import { router, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import { CircleAlert, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
@@ -14,13 +14,13 @@ import { Icon } from '@/components/ui/Icon';
  * standalone screens, which is where the Strava-connect denial lands.
  */
 export default function ErrorBanner() {
-    const errors = usePage<SharedProps>().props.errors ?? {};
-    const message = Object.values(errors)[0] ?? null;
-    const [dismissed, setDismissed] = useState(false);
+    const errors = usePage<SharedProps>().props.errors;
+    const message = Object.values(errors ?? {})[0] ?? null;
+    const [dismissedErrors, setDismissedErrors] = useState<
+        SharedProps['errors'] | null
+    >(null);
 
-    useEffect(() => router.on('start', () => setDismissed(false)), []);
-
-    if (message === null || dismissed) {
+    if (message === null || errors === dismissedErrors) {
         return null;
     }
 
@@ -42,7 +42,7 @@ export default function ErrorBanner() {
                 </p>
                 <button
                     type="button"
-                    onClick={() => setDismissed(true)}
+                    onClick={() => setDismissedErrors(errors)}
                     aria-label="Close"
                     className="focus-ring -m-1 rounded p-1 text-text-3 transition hover:text-foreground"
                 >
