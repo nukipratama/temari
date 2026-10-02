@@ -828,3 +828,70 @@ it('does not release a newer grant after an old refresh response arrives', funct
 
     Http::assertNotSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize');
 });
+
+it('bounds the token refresh and every API read with the connect and total timeouts', function (): void {
+    $options = [];
+    Http::fake(function (Request $request, array $requestOptions) use (&$options) {
+        $options[$request->url()] = $requestOptions;
+
+        return str_contains($request->url(), '/oauth/token')
+            ? Http::response([
+                'access_token' => 'fresh-access',
+                'refresh_token' => 'fresh-refresh',
+                'expires_at' => Carbon::now()->addHours(6)->timestamp,
+            ])
+            : Http::response(['id' => 1]);
+    });
+
+    $connection = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->subMinute()]);
+
+    $client = new StravaClient();
+    $client->get($connection, 'activities/1', StravaReadSource::Manual);
+    $client->get($connection, 'activities/1/streams', StravaReadSource::Manual);
+
+    expect(array_keys($options))->toBe([
+        'https://www.strava.com/oauth/token',
+        'https://www.strava.com/api/v3/activities/1',
+        'https://www.strava.com/api/v3/activities/1/streams',
+    ]);
+    foreach ($options as $sent) {
+        expect($sent['connect_timeout'])->toBe(StravaClient::HTTP_CONNECT_TIMEOUT_SECONDS)
+            ->and($sent['timeout'])->toBe(StravaClient::HTTP_TIMEOUT_SECONDS);
+    }
+});
+
+it('bounds the grant release refresh and deauthorize calls with the connect and total timeouts', function (): void {
+    $options = [];
+    Http::fake(function (Request $request, array $requestOptions) use (&$options) {
+        $options[$request->url()] = $requestOptions;
+
+        return Http::response([
+            'access_token' => 'fresh-access',
+            'refresh_token' => 'fresh-refresh',
+            'expires_at' => Carbon::now()->addHours(6)->getTimestamp(),
+        ]);
+    });
+
+    $grant = StravaGrantToken::query()->create([
+        'strava_athlete_id' => 12345,
+        'credential_version' => 4,
+        'refresh_token' => 'stale-refresh',
+    ]);
+
+    new StravaClient()->deauthorizeGrantToken($grant);
+
+    expect(array_keys($options))->toBe([
+        'https://www.strava.com/oauth/token',
+        'https://www.strava.com/oauth/deauthorize',
+    ]);
+    foreach ($options as $sent) {
+        expect($sent['connect_timeout'])->toBe(StravaClient::HTTP_CONNECT_TIMEOUT_SECONDS)
+            ->and($sent['timeout'])->toBe(StravaClient::HTTP_TIMEOUT_SECONDS);
+    }
+});
+
+it('fits a refresh-lock wait, a refresh and two worst-case reads inside the default worker timeout', function (): void {
+    $worstCase = StravaClient::REFRESH_LOCK_WAIT_SECONDS + 3 * StravaClient::HTTP_TIMEOUT_SECONDS;
+
+    expect($worstCase)->toBeLessThan(config('horizon.defaults.supervisor-1.timeout'));
+});
