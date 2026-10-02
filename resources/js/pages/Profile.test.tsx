@@ -86,7 +86,8 @@ describe('Profile', () => {
         expect(screen.getByText('Total km')).toBeInTheDocument();
         expect(screen.getByText('544.1')).toBeInTheDocument();
         expect(screen.getByText('Total runs')).toBeInTheDocument();
-        expect(screen.getByText('Longest run')).toBeInTheDocument();
+        expect(screen.getByText('Longest run km')).toBeInTheDocument();
+        expect(screen.getByText('18.0')).toBeInTheDocument();
     });
 
     it('shows an empty state instead of zeros for a brand-new athlete with no activity', () => {

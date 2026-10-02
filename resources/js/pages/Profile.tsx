@@ -95,8 +95,8 @@ export default function Profile({
               },
               {
                   icon: Trophy,
-                  label: 'Longest run',
-                  value: stats.longest_run_km.toFixed(2),
+                  label: 'Longest run km',
+                  value: stats.longest_run_km.toFixed(1),
               },
           ]
         : [];
