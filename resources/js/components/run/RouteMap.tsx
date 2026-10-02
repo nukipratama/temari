@@ -72,7 +72,7 @@ export default function RouteMap({
                     bounds={latLngBounds(positions)}
                     boundsOptions={{ padding: [20, 20] }}
                     scrollWheelZoom={false}
-                    style={{ height: '280px', width: '100%' }}
+                    style={{ height: '17.5rem', width: '100%' }}
                     attributionControl
                 >
                     <TileLayer

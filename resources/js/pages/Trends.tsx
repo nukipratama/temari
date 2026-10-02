@@ -103,7 +103,7 @@ export default function Trends({
                         fallback={
                             <div>
                                 <div className="h-4 w-32 rounded bg-muted" />
-                                <SkeletonChart className="mt-2.5 h-[168px]" />
+                                <SkeletonChart className="mt-2.5 h-[10.5rem]" />
                             </div>
                         }
                     >

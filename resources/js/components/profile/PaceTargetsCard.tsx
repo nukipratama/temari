@@ -55,7 +55,7 @@ const RUNGS: {
     },
     {
         key: 'marathon',
-        label: 'marathon',
+        label: 'long run',
         sessionType: 'long',
         fallback: 'long steady efforts',
     },

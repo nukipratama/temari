@@ -341,12 +341,14 @@
     /* The product column, as opposed to `page` above, which only the operator
        pages still use. 760px is the prototype's own container-query value and
        holds from 900px; `-wide` is ours, since the prototype's PhoneFrame
-       never renders past the frame and so draws no reference above it. Nine
+       never renders past the frame and so draws no reference above it. It is
+       54rem, not px, so the column keeps its proportion to the text at each
+       type step (about 1037px at 19.2px, 1166px at 21.6px). Nine
        call sites shared this as a literal before it was a token — the nav
        pill and six banners have to track the column or they visibly drift
        out of alignment with it. */
     --container-column: 760px;
-    --container-column-wide: 1040px;
+    --container-column-wide: 54rem;
 }
 
 /* One type step, at the same 1280px the content column widens at. Everything
