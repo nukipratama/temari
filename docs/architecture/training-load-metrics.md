@@ -52,7 +52,7 @@ The `avg_decoupling` column remains the legacy whole-run average, frozen and no 
 Two subtleties:
 
 - **Converged lead-in.** To roll a correct CTL for any given week, the aggregator first loads a long lead-in of history before that week ([leadInStart](app/Services/Run/Metrics/WeeklyAggregator.php#L159), sized by the same converged-lookback constant), then rolls the EWMA forward through the week. A short warm-up window would produce a too-low, window-dependent CTL.
-- **In-progress week.** For the current (unfinished) week, load is measured as-of *today*, not the future Sunday, so days that haven't happened yet aren't zero-filled and don't understate current long-term load ([weekRow](app/Services/Run/Metrics/WeeklyAggregator.php#L270) `loadAsOf`; the `summaryFromDailyMap` signature separates the week anchor from the load anchor).
+- **In-progress week.** For the current (unfinished) week, load is measured as-of *today*, not the future Sunday, so days that haven't happened yet aren't zero-filled and don't understate current long-term load ([weekRow](app/Services/Run/Metrics/WeeklyAggregator.php#L250) `loadAsOf`; the `summaryFromDailyMap` signature separates the week anchor from the load anchor).
 
 ### Backdated runs propagate forward
 

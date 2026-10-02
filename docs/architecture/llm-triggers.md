@@ -206,7 +206,7 @@ and spends nothing. See [[demo-user-billing-exclusion]].
 
 ### 2. Ingest cascade
 
-[`DispatchPostRunAnalysis::handle()`](../../app/Listeners/DispatchPostRunAnalysis.php#L41) is queued
+[`DispatchPostRunAnalysis::handle()`](../../app/Listeners/DispatchPostRunAnalysis.php#L57) is queued
 on `ActivityIngested` and is where most per-run spend originates. In order: `CardFlavor` (invalidated only when the run's material fingerprint moved), then the
 grouped `PostRunSpeech` + `RunInsight` pair — both filled rule-based instead, with no dispatch, when
 [`NarrationEligibility::forIngestedRun()`](../../app/Services/AI/NarrationEligibility.php) says demo,
