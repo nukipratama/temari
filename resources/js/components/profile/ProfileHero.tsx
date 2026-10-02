@@ -73,7 +73,7 @@ export default function ProfileHero({
         <section className="relative isolate overflow-hidden">
             <MascotWatermark
                 pose={writingPose(mood, voice)}
-                className="-top-20 -right-14 min-[900px]:-top-16 min-[900px]:right-56"
+                className="-top-20 -right-14"
             />
 
             <Eyebrow token="micro" tone="horizon-ink">
