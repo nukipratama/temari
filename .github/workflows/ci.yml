@@ -127,8 +127,8 @@ jobs:
 
   worktree:
     name: worktree-races
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && needs.changes.outputs.worktree == 'true' }}
+    needs: [changes]
+    if: ${{ needs.changes.outputs.worktree == 'true' }}
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 5
     strategy:
