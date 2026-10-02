@@ -45,7 +45,7 @@ the spec — a slice that adds a section adds it here too:
 1. the `ACTIVITY` eyebrow
 2. [RunHydratingNotice](../../resources/js/components/run/RunHydratingNotice.tsx), when the deeper fetch is still in flight
 3. [RunHero](../../resources/js/components/run/RunHero.tsx) — identity, the headline stat block, and the route + conditions slab
-4. [EffortScore](../../resources/js/components/run/EffortScore.tsx), on a run without heart rate inside its 72 hours
+4. the effort-score picker ([EffortScore](../../resources/js/components/run/EffortScore.tsx)), while the run has no score or the athlete is changing it
 5. [PastYouCard](../../resources/js/components/run/PastYouCard.tsx), when there is a match
 6. [RunLenses](../../resources/js/components/run/RunLenses.tsx) — "what Temari says"
 7. [AskAboutRun](../../resources/js/components/run/AskAboutRun.tsx)
@@ -56,7 +56,7 @@ the spec — a slice that adds a section adds it here too:
 12. the Strava provenance footer
 
 **Sections 5-11 are gated on the run being detailed.** While `awaitingDetail` is
-true the page renders the notice, the hero, any effort score and the footer only — everything
+true the page renders the notice, the hero, the effort-score picker and the footer only — everything
 below the hero reads from splits, zones and effort that have not landed, so it
 would be a column of empty panels rather than a thin page.
 
@@ -101,9 +101,9 @@ Google Maps embeds use. The prototype fills this slot with a decorative
 "activate map" placeholder; P16 keeps the real map there, which already carries
 an activate pill of its own.
 
-## Effort score — runs without heart rate
+## Effort score
 
-On a run with no heart rate, within 72 hours of its start, the page carries an [EffortScore](../../resources/js/components/run/EffortScore.tsx) section under the hero: "how hard did it feel" on a 1–10 slider, a save, and once saved the score with change and clear. The score becomes the run's load; see [[an-effort-score-gives-a-run-without-heart-rate-its-load]]. [RunController](../../app/Http/Controllers/RunController.php) ships it as `perceivedEffort`, null on every other run.
+Any run, of any age and with or without heart rate, can take an effort score. Unscored, an [EffortPicker](../../resources/js/components/run/EffortScore.tsx) sits under the hero: "how hard did it feel" on a 1–10 slider with save on the score row. Saved, it collapses to a chip beside the mood chip in [RunHero](../../resources/js/components/run/RunHero.tsx) ("7/10 · very hard" in the band's ink on its tint) with "change", which reopens the picker, and "clear". The score is read from `detail.perceived_effort` and feeds no load; see [[an-effort-score-is-collected-on-every-run]].
 
 ## You vs past you
 

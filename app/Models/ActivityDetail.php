@@ -39,6 +39,7 @@ use Override;
  * @property string|null $summary_polyline
  * @property float|null $trimp_edwards
  * @property int|null $perceived_effort
+ * @property Carbon|null $perceived_effort_at
  * @property int|null $suffer_score
  * @property int|null $workout_type
  * @property float|null $elev_high
@@ -82,6 +83,7 @@ use Override;
     'summary_polyline',
     'trimp_edwards',
     'perceived_effort',
+    'perceived_effort_at',
     'suffer_score',
     'workout_type',
     'elev_high',
@@ -218,6 +220,7 @@ class ActivityDetail extends Model
             'laps' => 'array',
             'trimp_edwards' => 'float',
             'perceived_effort' => 'integer',
+            'perceived_effort_at' => 'datetime',
             'suffer_score' => 'integer',
             'workout_type' => 'integer',
             'elev_high' => 'float',

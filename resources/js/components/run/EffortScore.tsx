@@ -13,7 +13,6 @@ import {
     effortBand,
     effortWord,
 } from '@/lib/perceivedEffort';
-import { activityUrl } from '@/lib/routes';
 
 const UNRATED_START = 5;
 
@@ -23,9 +22,15 @@ const SEGMENT_FILL = {
     hard: 'bg-ember',
 } as const;
 
+const CHIP_TINT = {
+    easy: 'bg-leaf/15',
+    steady: 'bg-citrus/15',
+    hard: 'bg-ember/15',
+} as const;
+
 const ZONES = [
-    { label: 'easy', span: 'col-span-3' },
-    { label: 'steady', span: 'col-span-3' },
+    { label: 'easy', span: 'col-span-4' },
+    { label: 'steady', span: 'col-span-2' },
     { label: 'hard', span: 'col-span-4' },
 ] as const;
 
@@ -37,51 +42,93 @@ const SCORES = Array.from(
 const quietButton =
     'pressable focus-ring rounded text-[0.71875rem] font-bold text-text-2 hover:text-foreground disabled:opacity-60';
 
-function HeroRow({ score }: Readonly<{ score: number | null }>) {
-    return (
-        <p className="mt-2 flex flex-wrap items-baseline gap-x-1.5">
-            <span className={cn('text-stat', score === null && 'text-text-3')}>
-                {score ?? '–'}
-            </span>
-            <span className="text-label-small text-text-3">/ 10</span>
-            <span
-                className={cn(
-                    'ml-1 text-sm font-semibold',
-                    score === null
-                        ? 'text-text-3'
-                        : EFFORT_ICON_CLASS[effortBand(score)],
-                )}
-            >
-                {score === null ? 'drag to rate' : effortWord(score)}
-            </span>
+function effortUrl(activityId: number): string {
+    return `/activities/${activityId}/effort`;
+}
+
+function ScoreError() {
+    const error = usePage<SharedProps>().props.errors?.score;
+
+    return error ? (
+        <p className="mt-2 text-xs text-ember-ink" role="alert">
+            {error}
         </p>
+    ) : null;
+}
+
+export function EffortChip({
+    score,
+    className,
+}: Readonly<{ score: number; className?: string }>) {
+    const band = effortBand(score);
+
+    return (
+        <span
+            className={cn(
+                'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-label-micro',
+                CHIP_TINT[band],
+                EFFORT_ICON_CLASS[band],
+                className,
+            )}
+        >
+            <span className="font-mono font-bold tabular-nums">{score}/10</span>
+            {` · ${effortWord(score)}`}
+        </span>
     );
 }
 
-/**
- * How hard a run without heart rate felt, on Foster's CR-10 scale: the score
- * gives that run its load. The 3 / 3 / 4 colour grouping is display only.
- */
-export default function EffortScore({
-    prompt,
-    runName = null,
-}: Readonly<{ prompt: PerceivedEffortPrompt; runName?: string | null }>) {
-    const inputId = useId();
-    const [draft, setDraft] = useState<number | null>(null);
-    const [editing, setEditing] = useState(prompt.score === null);
+/** The saved score as a chip, with quiet "change" and "clear". */
+export function EffortSaved({
+    activityId,
+    score,
+    onChange,
+}: Readonly<{ activityId: number; score: number; onChange: () => void }>) {
     const [processing, setProcessing] = useState(false);
-    const error = usePage<SharedProps>().props.errors?.score;
-    const url = `${activityUrl(prompt)}/effort`;
-    const visits = {
-        preserveScroll: true,
-        onStart: () => setProcessing(true),
-        onFinish: () => setProcessing(false),
-        onSuccess: () => {
-            setDraft(null);
-            setEditing(false);
-        },
-    };
-    const showsSaved = !editing && prompt.score !== null;
+
+    return (
+        <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+            <EffortChip score={score} />
+            <button
+                type="button"
+                className={quietButton}
+                disabled={processing}
+                onClick={onChange}
+            >
+                change
+            </button>
+            <button
+                type="button"
+                className={quietButton}
+                disabled={processing}
+                onClick={() =>
+                    router.delete(effortUrl(activityId), {
+                        preserveScroll: true,
+                        onStart: () => setProcessing(true),
+                        onFinish: () => setProcessing(false),
+                    })
+                }
+            >
+                clear
+            </button>
+        </span>
+    );
+}
+
+/** How hard a run felt, on Foster's CR-10 scale. */
+export function EffortPicker({
+    activityId,
+    saved,
+    runName = null,
+    onClose,
+}: Readonly<{
+    activityId: number;
+    saved: number | null;
+    runName?: string | null;
+    onClose: () => void;
+}>) {
+    const inputId = useId();
+    const [draft, setDraft] = useState<number | null>(saved);
+    const [processing, setProcessing] = useState(false);
 
     return (
         <div>
@@ -92,114 +139,151 @@ export default function EffortScore({
                 <p className="mt-1 text-xs text-text-2">{runName}</p>
             )}
 
-            <HeroRow score={showsSaved ? prompt.score : draft} />
-
-            {showsSaved ? (
-                <div className="mt-2 flex gap-4">
-                    <button
-                        type="button"
-                        className={quietButton}
-                        disabled={processing}
-                        onClick={() => {
-                            setDraft(prompt.score);
-                            setEditing(true);
-                        }}
-                    >
-                        change
-                    </button>
-                    <button
-                        type="button"
-                        className={quietButton}
-                        disabled={processing}
-                        onClick={() => router.delete(url, visits)}
-                    >
-                        clear
-                    </button>
-                </div>
-            ) : (
-                <>
-                    <div className="relative mt-3 h-6">
-                        <div
-                            className="absolute inset-x-0 top-1/2 flex h-2 -translate-y-1/2 gap-0.5"
-                            aria-hidden
-                        >
-                            {SCORES.map((score) => (
-                                <span
-                                    key={score}
-                                    className={cn(
-                                        'flex-1 first:rounded-l-sm last:rounded-r-sm',
-                                        SEGMENT_FILL[effortBand(score)],
-                                    )}
-                                />
-                            ))}
-                        </div>
-                        <input
-                            id={inputId}
-                            type="range"
-                            min={EFFORT_MIN}
-                            max={EFFORT_MAX}
-                            step={1}
-                            value={draft ?? UNRATED_START}
-                            data-rated={draft !== null}
-                            aria-valuetext={
-                                draft === null
-                                    ? 'not rated yet'
-                                    : `${draft} of 10, ${effortWord(draft)}`
-                            }
-                            onChange={(event) =>
-                                setDraft(Number(event.target.value))
-                            }
-                            className="effort-range absolute inset-y-0 left-[calc(5%-0.625rem)] w-[calc(90%+1.25rem)]"
-                        />
-                    </div>
-                    <div
-                        className="mt-1.5 grid grid-cols-10 gap-0.5 text-center"
-                        aria-hidden
-                    >
-                        {ZONES.map((zone) => (
-                            <span
-                                key={zone.label}
-                                className={cn(
-                                    'text-label-micro text-text-3',
-                                    zone.span,
-                                )}
-                            >
-                                {zone.label}
-                            </span>
-                        ))}
-                    </div>
-                    <div className="mt-4 flex items-center justify-end gap-4 border-t border-dashed border-border pt-4">
-                        {prompt.score !== null && (
-                            <button
-                                type="button"
-                                className={quietButton}
-                                disabled={processing}
-                                onClick={() => {
-                                    setDraft(null);
-                                    setEditing(false);
-                                }}
-                            >
-                                cancel
-                            </button>
+            <div
+                data-score-row
+                className="mt-2 flex items-center justify-between gap-3"
+            >
+                <p className="flex flex-wrap items-baseline gap-x-1.5">
+                    <span
+                        className={cn(
+                            'text-stat',
+                            draft === null && 'text-text-3',
                         )}
-                        <PillButton
-                            tone="horizon"
-                            size="sm"
-                            disabled={draft === null || processing}
-                            onClick={() =>
-                                router.patch(url, { score: draft }, visits)
-                            }
-                        >
-                            save
-                        </PillButton>
-                    </div>
-                </>
-            )}
-            {error && (
-                <p className="mt-2 text-xs text-ember-ink" role="alert">
-                    {error}
+                    >
+                        {draft ?? '–'}
+                    </span>
+                    <span className="text-label-small text-text-3">/ 10</span>
+                    <span
+                        className={cn(
+                            'ml-1 text-sm font-semibold',
+                            draft === null
+                                ? 'text-text-3'
+                                : EFFORT_ICON_CLASS[effortBand(draft)],
+                        )}
+                    >
+                        {draft === null ? 'drag to rate' : effortWord(draft)}
+                    </span>
                 </p>
+                <div className="flex flex-none items-center gap-4">
+                    {saved !== null && (
+                        <button
+                            type="button"
+                            className={quietButton}
+                            disabled={processing}
+                            onClick={onClose}
+                        >
+                            cancel
+                        </button>
+                    )}
+                    <PillButton
+                        tone="horizon"
+                        size="sm"
+                        disabled={draft === null || processing}
+                        onClick={() =>
+                            router.patch(
+                                effortUrl(activityId),
+                                { score: draft },
+                                {
+                                    preserveScroll: true,
+                                    onStart: () => setProcessing(true),
+                                    onFinish: () => setProcessing(false),
+                                    onSuccess: onClose,
+                                },
+                            )
+                        }
+                    >
+                        save
+                    </PillButton>
+                </div>
+            </div>
+
+            <div className="relative mt-3 h-6">
+                <div
+                    className="absolute inset-x-0 top-1/2 flex h-2 -translate-y-1/2 gap-0.5"
+                    aria-hidden
+                >
+                    {SCORES.map((score) => (
+                        <span
+                            key={score}
+                            className={cn(
+                                'flex-1 first:rounded-l-sm last:rounded-r-sm',
+                                SEGMENT_FILL[effortBand(score)],
+                            )}
+                        />
+                    ))}
+                </div>
+                <input
+                    id={inputId}
+                    type="range"
+                    min={EFFORT_MIN}
+                    max={EFFORT_MAX}
+                    step={1}
+                    value={draft ?? UNRATED_START}
+                    data-rated={draft !== null}
+                    aria-valuetext={
+                        draft === null
+                            ? 'not rated yet'
+                            : `${draft} of 10, ${effortWord(draft)}`
+                    }
+                    onChange={(event) => setDraft(Number(event.target.value))}
+                    className="effort-range absolute inset-y-0 left-[calc(5%-0.625rem)] w-[calc(90%+1.25rem)]"
+                />
+            </div>
+            <div
+                className="mt-1.5 grid grid-cols-10 gap-0.5 text-center"
+                aria-hidden
+            >
+                {ZONES.map((zone) => (
+                    <span
+                        key={zone.label}
+                        className={cn(
+                            'text-label-micro text-text-3',
+                            zone.span,
+                        )}
+                    >
+                        {zone.label}
+                    </span>
+                ))}
+            </div>
+            <ScoreError />
+        </div>
+    );
+}
+
+/** The picker, collapsing to the saved chip once the run has a score. */
+export default function EffortScore({
+    prompt,
+    runName = null,
+}: Readonly<{ prompt: PerceivedEffortPrompt; runName?: string | null }>) {
+    const [editing, setEditing] = useState(false);
+
+    if (prompt.score === null || editing) {
+        return (
+            <EffortPicker
+                activityId={prompt.activity_id}
+                saved={prompt.score}
+                runName={runName}
+                onClose={() => setEditing(false)}
+            />
+        );
+    }
+
+    return (
+        <div>
+            <Eyebrow token="small" tone="ink-3" as="div">
+                how hard did it feel
+            </Eyebrow>
+            {runName !== null && (
+                <p className="mt-1 text-xs text-text-2">{runName}</p>
             )}
+            <div className="mt-2">
+                <EffortSaved
+                    activityId={prompt.activity_id}
+                    score={prompt.score}
+                    onChange={() => setEditing(true)}
+                />
+            </div>
+            <ScoreError />
         </div>
     );
 }

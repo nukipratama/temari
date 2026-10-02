@@ -11,13 +11,14 @@ return new class () extends Migration {
     {
         Schema::table('activity_details', function (Blueprint $table): void {
             $table->unsignedTinyInteger('perceived_effort')->nullable()->after('trimp_edwards');
+            $table->timestamp('perceived_effort_at')->nullable()->after('perceived_effort');
         });
     }
 
     public function down(): void
     {
         Schema::table('activity_details', function (Blueprint $table): void {
-            $table->dropColumn('perceived_effort');
+            $table->dropColumn(['perceived_effort', 'perceived_effort_at']);
         });
     }
 };

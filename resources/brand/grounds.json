@@ -130,6 +130,12 @@
         },
         "citrus/0.15": {
             "over": {
+                "resources/js/components/run/EffortScore.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/run/EffortScore.test.tsx": [
+                    "paper"
+                ],
                 "resources/js/lib/tones.ts": [
                     "paper"
                 ]
@@ -227,6 +233,12 @@
         },
         "ember/0.15": {
             "over": {
+                "resources/js/components/run/EffortScore.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/run/EffortScore.test.tsx": [
+                    "paper"
+                ],
                 "resources/js/components/narration/AthletesPanel.tsx": [
                     "paper"
                 ],
@@ -353,6 +365,12 @@
         },
         "leaf/0.15": {
             "over": {
+                "resources/js/components/run/EffortScore.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/run/EffortScore.test.tsx": [
+                    "paper"
+                ],
                 "resources/js/lib/tones.ts": [
                     "paper"
                 ],

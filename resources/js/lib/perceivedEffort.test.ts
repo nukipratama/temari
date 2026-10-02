@@ -26,13 +26,14 @@ describe('effortWord', () => {
 });
 
 describe('effortBand', () => {
-    it('groups the scale 3 / 3 / 4 into the effort colours', () => {
-        expect([1, 2, 3].map(effortBand)).toEqual(['easy', 'easy', 'easy']);
-        expect([4, 5, 6].map(effortBand)).toEqual([
-            'steady',
-            'steady',
-            'steady',
+    it('groups the scale 4 / 2 / 4 into the effort colours', () => {
+        expect([1, 2, 3, 4].map(effortBand)).toEqual([
+            'easy',
+            'easy',
+            'easy',
+            'easy',
         ]);
+        expect([5, 6].map(effortBand)).toEqual(['steady', 'steady']);
         expect([7, 8, 9, 10].map(effortBand)).toEqual([
             'hard',
             'hard',

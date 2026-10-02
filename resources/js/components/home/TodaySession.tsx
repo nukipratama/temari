@@ -238,7 +238,7 @@ export default function TodaySession({
     restDayEasePace?: RestDayEasePace | null;
     /** From {@link drawnHomeAnchors} — which citations this page can honour. */
     drawnAnchors?: ReadonlySet<string>;
-    /** The newest run without heart rate still open to an effort score. */
+    /** The newest run, offered to an effort score. */
     effortPrompt?: PerceivedEffortPrompt | null;
 }>) {
     const voice = briefing.mascotVoice;

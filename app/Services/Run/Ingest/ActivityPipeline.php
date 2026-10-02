@@ -20,7 +20,6 @@ use App\Models\User;
 use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\HeartRateZones;
-use App\Services\Run\Metrics\PerceivedEffort;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -439,10 +438,6 @@ class ActivityPipeline
     private function computeAndStoreSummary(Activity $activity, ActivityDetail $detail, ?array $streams, bool $reconcileMaxHeartRate = true): void
     {
         if ($streams === null) {
-            if (! $detail->has_heartrate) {
-                $detail->update(['trimp_edwards' => PerceivedEffort::load($detail)]);
-            }
-
             return;
         }
 
@@ -466,7 +461,7 @@ class ActivityPipeline
         );
 
         $minutesInZone = StreamSummary::fromArray($summary)->zoneMinutes();
-        $trimp = $minutesInZone !== null ? $this->trainingLoad->edwardsTrimp($minutesInZone) : PerceivedEffort::load($detail);
+        $trimp = $minutesInZone !== null ? $this->trainingLoad->edwardsTrimp($minutesInZone) : null;
 
         $detail->update([
             'stream_summary' => $summary === [] ? null : $summary,
@@ -479,9 +474,8 @@ class ActivityPipeline
      * ALREADY-STORED streams using the user's CURRENT heart-rate zones, then
      * rebuild that week's snapshot forward. Forward-only: makes ZERO Strava HTTP
      * calls, so a user-initiated "Reread" can refresh one block with new
-     * zones without re-ingesting from Strava. A run with no heart rate and no
-     * stored streams still has its effort-score load rewritten. No-op when the
-     * activity has no detail row, or carries heart rate but no stored streams.
+     * zones without re-ingesting from Strava. No-op when the activity has no
+     * stored streams or no detail row.
      *
      * $rebuildAggregates is opt-out for batch callers only: the forward rebuild
      * is O(weeks-forward) per activity, so a whole-history loop must switch it
@@ -490,12 +484,12 @@ class ActivityPipeline
     public function recomputeSummary(Activity $activity, bool $rebuildAggregates = true, bool $reconcileMaxHeartRate = true): void
     {
         $detail = $activity->detail;
-        $streams = $activity->stream === null || $activity->stream->data === [] ? null : $activity->stream->data;
-        if ($detail === null || ($streams === null && $detail->has_heartrate)) {
+        $stream = $activity->stream;
+        if ($detail === null || $stream === null || $stream->data === []) {
             return;
         }
 
-        $this->computeAndStoreSummary($activity, $detail, $streams, $reconcileMaxHeartRate);
+        $this->computeAndStoreSummary($activity, $detail, $stream->data, $reconcileMaxHeartRate);
 
         if ($rebuildAggregates && $detail->start_date_local !== null) {
             $this->weeklyAggregator->rebuildForwardFrom($activity->user, $detail->start_date_local);

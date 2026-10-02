@@ -367,7 +367,7 @@ export interface ActivityDetail {
     /** Strava ships rpm (one leg); doubled for the spm the UI shows. */
     average_cadence?: number | null;
     trimp_edwards: number | null;
-    /** CR-10 effort score (1–10), only ever set on a run without heart rate. */
+    /** CR-10 effort score (1–10) the athlete entered; feeds no load. */
     perceived_effort?: number | null;
     workout_type?: number | null;
     location_name?: string | null;
@@ -678,7 +678,7 @@ export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
     recap_analysis: AnalysisPayload;
 }
 
-/** A run without heart rate still inside its 72-hour window for an effort score. */
+/** The newest run, offered to an effort score on Today. */
 export interface PerceivedEffortPrompt {
     activity_id: number;
     score: number | null;

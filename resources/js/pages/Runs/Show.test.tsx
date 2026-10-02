@@ -281,27 +281,27 @@ describe('Runs/Show', () => {
         expect(screen.getByText('+3.2%')).toBeInTheDocument();
     });
 
-    it('asks how hard a run without heart rate felt while its window is open', () => {
-        renderShow({
-            perceivedEffort: {
-                activity_id: 99,
-                score: 6,
-                name: 'Morning Run',
-                start_date_local: '2026-05-10T06:30:00',
-            },
-        });
-        expect(screen.getByText(/harder/)).toBeInTheDocument();
+    it('asks how hard an unscored run felt, below the hero', () => {
+        renderShow({ detail: { ...detail, perceived_effort: null } });
         expect(
-            screen.getByRole('button', { name: 'change' }),
+            screen.getByRole('slider', { name: 'how hard did it feel' }),
         ).toBeInTheDocument();
+        expect(screen.queryByText(/\/10$/)).not.toBeInTheDocument();
     });
 
-    it('draws no effort score on any other run', () => {
-        renderShow();
-        expect(
-            screen.queryByRole('button', { name: 'change' }),
-        ).not.toBeInTheDocument();
+    it('collapses a saved score to a chip in the hero, and change reopens the picker', () => {
+        renderShow({ detail: { ...detail, perceived_effort: 7 } });
+
+        const chip = screen.getByText('7/10');
+        expect(chip.closest('header')).not.toBeNull();
+        expect(chip.parentElement).toHaveTextContent('7/10 · very hard');
         expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'change' }));
+        expect(
+            screen.getByRole('slider', { name: 'how hard did it feel' }),
+        ).toHaveAttribute('aria-valuetext', '7 of 10, very hard');
+        expect(screen.queryByText('7/10')).not.toBeInTheDocument();
     });
 
     it('offers the per-run ask panel', () => {

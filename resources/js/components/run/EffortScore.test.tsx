@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setMockPage } from '@/test/setup';
 
-import EffortScore from './EffortScore';
+import EffortScore, { EffortChip } from './EffortScore';
 
 const PROMPT = {
     activity_id: 42,
@@ -33,14 +33,28 @@ describe('EffortScore', () => {
         expect(screen.getByRole('button', { name: 'save' })).toBeDisabled();
     });
 
-    it('draws ten segments in the effort colours, 3 easy, 3 steady, 4 hard', () => {
+    it('puts save on the score row, with no divider below the slider', () => {
+        const { container } = render(<EffortScore prompt={PROMPT} />);
+
+        const row = screen
+            .getByText('drag to rate')
+            .closest('[data-score-row]');
+        expect(row).not.toBeNull();
+        expect(row).toContainElement(
+            screen.getByRole('button', { name: 'save' }),
+        );
+        expect(container.querySelector('.border-dashed')).toBeNull();
+    });
+
+    it('draws ten segments in the effort colours, 4 easy, 2 steady, 4 hard', () => {
         const { container } = render(<EffortScore prompt={PROMPT} />);
 
         const fills = ['bg-leaf', 'bg-citrus', 'bg-ember'].map(
             (fill) => container.querySelectorAll(`.${fill}`).length,
         );
-        expect(fills).toEqual([3, 3, 4]);
-        expect(screen.getByText('easy')).toHaveClass('col-span-3');
+        expect(fills).toEqual([4, 2, 4]);
+        expect(screen.getByText('easy')).toHaveClass('col-span-4');
+        expect(screen.getByText('steady')).toHaveClass('col-span-2');
         expect(screen.getByText('hard')).toHaveClass('col-span-4');
     });
 
@@ -69,21 +83,18 @@ describe('EffortScore', () => {
     it('colours an easy and a steady score with their own ink', () => {
         render(<EffortScore prompt={PROMPT} />);
 
-        fireEvent.change(slider(), { target: { value: '2' } });
-        expect(screen.getByText('easy', { selector: 'p span' })).toHaveClass(
-            'text-leaf-ink',
-        );
         fireEvent.change(slider(), { target: { value: '4' } });
-        expect(screen.getByText('somewhat hard')).toHaveClass(
+        expect(screen.getByText('somewhat hard')).toHaveClass('text-leaf-ink');
+        fireEvent.change(slider(), { target: { value: '5' } });
+        expect(screen.getByText('hard', { selector: 'p span' })).toHaveClass(
             'text-citrus-ink',
         );
     });
 
-    it('shows a saved score with a way to change or clear it', () => {
+    it('collapses a saved score to a chip, with change reopening the picker and clear removing it', () => {
         render(<EffortScore prompt={{ ...PROMPT, score: 3 }} />);
 
-        expect(screen.getByText('moderate')).toBeInTheDocument();
-        expect(screen.getByText('3')).toHaveClass('text-stat');
+        expect(screen.getByText('3/10')).toHaveClass('font-mono');
         expect(screen.queryByRole('slider')).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'clear' }));
@@ -96,9 +107,10 @@ describe('EffortScore', () => {
         expect(slider()).toHaveAttribute('aria-valuetext', '3 of 10, moderate');
         fireEvent.click(screen.getByRole('button', { name: 'cancel' }));
         expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+        expect(screen.getByText('3/10')).toBeInTheDocument();
     });
 
-    it('returns to the saved read once a save lands', () => {
+    it('returns to the chip once a save lands', () => {
         render(<EffortScore prompt={{ ...PROMPT, score: 3 }} />);
         fireEvent.click(screen.getByRole('button', { name: 'change' }));
         fireEvent.change(slider(), { target: { value: '4' } });
@@ -118,14 +130,35 @@ describe('EffortScore', () => {
         expect(screen.queryByRole('slider')).not.toBeInTheDocument();
     });
 
-    it('shows the server refusal', () => {
+    it('shows a validation error', () => {
         setMockPage({
-            errors: {
-                score: 'an effort score can only be set within 72 hours of the run.',
-            },
+            errors: { score: 'The score field must be between 1 and 10.' },
         });
         render(<EffortScore prompt={PROMPT} />);
 
-        expect(screen.getByRole('alert')).toHaveTextContent(/within 72 hours/);
+        expect(screen.getByRole('alert')).toHaveTextContent(/between 1 and 10/);
+    });
+});
+
+describe('EffortChip', () => {
+    it('prints the score in its band ink on the band tint', () => {
+        render(<EffortChip score={7} />);
+
+        const chip = screen.getByText('7/10').parentElement;
+        expect(chip).toHaveTextContent('7/10 · very hard');
+        expect(chip).toHaveClass('bg-ember/15', 'text-ember-ink');
+    });
+
+    it('tints an easy and a steady score with their own band', () => {
+        const { rerender } = render(<EffortChip score={4} />);
+        expect(screen.getByText('4/10').parentElement).toHaveClass(
+            'bg-leaf/15',
+            'text-leaf-ink',
+        );
+        rerender(<EffortChip score={6} />);
+        expect(screen.getByText('6/10').parentElement).toHaveClass(
+            'bg-citrus/15',
+            'text-citrus-ink',
+        );
     });
 });

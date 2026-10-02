@@ -86,7 +86,7 @@ It renders `briefing.mascotVoice` through [AnalysisStatus](resources/js/componen
 
 The whole briefing object is assembled server-side by [BriefingComposer::compose](app/Services/Run/Story/BriefingComposer.php#L24) — a single Analysis row, the daily voice (the featured-kartu voice that used to sit beside it was swept by `W2`). It is its own [[ai-pipeline]] block with independent retry. The signals their prompts read come from the context builders in [[ai-narration-internals]]; the vibe that colours Temari's tone is [[vibe-and-mood]].
 
-The same block closes with the effort score when the athlete's newest run without heart rate is still inside its 72 hours: [EffortScore](resources/js/components/run/EffortScore.tsx), named for that run, shipped as `effortPrompt` by [DashboardController](app/Http/Controllers/DashboardController.php). See [[an-effort-score-gives-a-run-without-heart-rate-its-load]].
+The same block closes with the effort score for the athlete's newest run, with or without heart rate: [EffortScore](resources/js/components/run/EffortScore.tsx), named for that run and shipped as `effortPrompt` by [DashboardController](app/Http/Controllers/DashboardController.php). Unscored it offers the picker; scored it collapses to the chip with "change" and "clear". See [[an-effort-score-is-collected-on-every-run]].
 
 ## Where the deep stats went
 

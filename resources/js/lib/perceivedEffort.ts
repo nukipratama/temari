@@ -21,9 +21,9 @@ export function effortWord(score: number): string {
 
 export type EffortBand = 'easy' | 'steady' | 'hard';
 
-/** Display grouping only: 1–3 easy, 4–6 steady, 7–10 hard. The stored score stays 1–10. */
+/** Seiler's session-RPE three-zone split: 1–4 easy, 5–6 steady, 7–10 hard. The stored score stays 1–10. */
 export function effortBand(score: number): EffortBand {
-    if (score <= 3) {
+    if (score <= 4) {
         return 'easy';
     }
 

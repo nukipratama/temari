@@ -29,7 +29,6 @@ code_refs:
   - app/Services/Run/Plan/PlanRecalibrationService.php
   - app/Services/Run/Plan/CoachingReset.php
   - app/Services/Run/Story/Temari.php
-  - app/Services/Run/Metrics/PerceivedEffort.php
   - resources/js/components/settings/HrZonesDisclosure.tsx
   - resources/js/lib/raceGoal.ts
 ---
@@ -82,9 +81,6 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | A run's fallback mood follows the same effort scale as its colour | [Temari.php:109](app/Services/Run/Story/Temari.php#L109) | product choice | — |
 | Ordinary recalibration recomputes metrics and the future plan but keeps past prescriptions and shown-advice grades | [PlanRecalibrationService.php:47](app/Services/Run/Plan/PlanRecalibrationService.php#L47) | product choice (#1511) | — |
 | One pre-launch reset rebuilds derived history once under the current policy | [CoachingReset.php:64](app/Services/Run/Plan/CoachingReset.php#L64) | product choice (#1541) | — |
-| A run without heart rate takes its load from an optional session RPE (CR-10 score × moving minutes) | [PerceivedEffort.php:24](app/Services/Run/Metrics/PerceivedEffort.php#L24) | evidence-supported | [[#Foster2001]], [[#Haddad2017]], [[#Wallace2014]] |
-| The CR-10 score is halved onto the scale of Edwards' 1–5 zone weights, and heart-rate TRIMP wins when the run has heart rate | [PerceivedEffort.php:22](app/Services/Run/Metrics/PerceivedEffort.php#L22), [ActivityPipeline.php:469](app/Services/Run/Ingest/ActivityPipeline.php#L469) | heuristic | [[#Wallace2014]] |
-| An effort score is accepted only within 72 hours of the run's start | [PerceivedEffort.php:20](app/Services/Run/Metrics/PerceivedEffort.php#L20) | heuristic | — |
 
 ## Sources
 
@@ -203,10 +199,10 @@ Nes BM, Janszky I, Wisløff U, Støylen A, Karlsen T. Age-predicted maximal hear
 Robergs RA, Landwehr R. The surprising history of the "HRmax = 220 − age" equation. *J Exerc Physiol Online* 2002;5(2):1–10. https://www.asep.org/asep/asep/Robergs2.pdf (no DOI). The 220 − age equation was fitted by eye to about eleven heterogeneous sources and carries a 7–11 bpm prediction error. Grade REV · access ABS.
 
 ### Foster2001
-Foster C, Florhaug JA, Franklin J, Gottschall L, Hrovatin LA, Parker S, Doleshal P, Dodge C. A new approach to monitoring exercise training. *J Strength Cond Res* 2001;15(1):109–115. https://pubmed.ncbi.nlm.nih.gov/11708692/. Session RPE (CR-10 × minutes) related consistently to a heart-rate zone method in cycling and basketball, so it works across modes. Grade CT · access ABS.
+Foster C, Florhaug JA, Franklin J, Gottschall L, Hrovatin LA, Parker S, Doleshal P, Dodge C. A new approach to monitoring exercise training. *J Strength Cond Res* 2001;15(1):109–115. https://pubmed.ncbi.nlm.nih.gov/11708692/. Session RPE (CR-10 × minutes) related consistently to a heart-rate zone method in cycling and basketball, so it works across modes. Grade CT · access ABS. No rule reads it yet: it is the basis for #1577, which decides what coaching does with the effort score ([[an-effort-score-is-collected-on-every-run]]).
 
 ### Haddad2017
-Haddad M, Stylianides G, Djaoui L, Dellal A, Chamari K. Session-RPE method for training load monitoring: validity, ecological usefulness, and influencing factors. *Front Neurosci* 2017;11:612. https://doi.org/10.3389/fnins.2017.00612. Across 36 studies session RPE was valid, reliable and internally consistent in many sports, ages and both sexes. Grade SR · access ABS.
+Haddad M, Stylianides G, Djaoui L, Dellal A, Chamari K. Session-RPE method for training load monitoring: validity, ecological usefulness, and influencing factors. *Front Neurosci* 2017;11:612. https://doi.org/10.3389/fnins.2017.00612. Across 36 studies session RPE was valid, reliable and internally consistent in many sports, ages and both sexes. Grade SR · access ABS. Basis for #1577.
 
 ### Wallace2014
-Wallace LK, Slattery KM, Coutts AJ. A comparison of methods for quantifying training load: relationships between modelled and actual training responses. *Eur J Appl Physiol* 2014;114(1):11–20. https://doi.org/10.1007/s00421-013-2745-1. In seven runners over 15 weeks, session RPE, TRIMP and rTSS loads each fitted the measured performance response moderately to strongly. Grade COH · access ABS.
+Wallace LK, Slattery KM, Coutts AJ. A comparison of methods for quantifying training load: relationships between modelled and actual training responses. *Eur J Appl Physiol* 2014;114(1):11–20. https://doi.org/10.1007/s00421-013-2745-1. In seven runners over 15 weeks, session RPE, TRIMP and rTSS loads each fitted the measured performance response moderately to strongly. Grade COH · access ABS. Basis for #1577.
