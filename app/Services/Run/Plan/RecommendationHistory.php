@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Crypt;
 
 final class RecommendationHistory
 {
-    public const int POLICY_VERSION = 1;
+    public const int POLICY_VERSION = 2;
 
     /** @param array<string, mixed> $original
      * @param array<string, mixed> $effective

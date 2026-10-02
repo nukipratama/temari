@@ -412,12 +412,20 @@ it('paints Home inside its query budget', function (): void {
 
     $queries = 0;
     $fitnessQueries = [];
-    DB::listen(function (QueryExecuted $query) use (&$queries, &$fitnessQueries): void {
+    $readinessQueries = ['stress' => 0, 'feedback' => 0];
+    DB::listen(function (QueryExecuted $query) use (&$queries, &$fitnessQueries, &$readinessQueries): void {
         $queries++;
         foreach (['performance_evidence', 'fitness_anchors'] as $table) {
             if (str_contains($query->sql, '`'.$table.'`')) {
                 $fitnessQueries[$table] = ($fitnessQueries[$table] ?? 0) + 1;
             }
+        }
+        if (str_contains($query->sql, '`activity_details`.`stream_summary`')
+            && str_contains($query->sql, '`activity_details`.`has_heartrate`')) {
+            $readinessQueries['stress']++;
+        }
+        if (str_contains($query->sql, '`recovery_feedback`')) {
+            $readinessQueries['feedback']++;
         }
     });
 
@@ -430,8 +438,10 @@ it('paints Home inside its query budget', function (): void {
     // hydration-backlog read runs here as it does for any other today.
     // 19: the controller reads today's own session_type once to decide
     // whether restDayEasePace's deferred prop is worth adding at all.
-    expect($queries)->toBeLessThanOrEqual(21);
+    // 24: BriefingContext::prescribedKmToDate reads this week's planned sessions.
+    expect($queries)->toBeLessThanOrEqual(24);
     expect($fitnessQueries)->toBe(['performance_evidence' => 1, 'fitness_anchors' => 1]);
+    expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
 
     Carbon::setTestNow();
 });
@@ -458,7 +468,7 @@ it('reads the clamp narration once on a clamped day', function (): void {
 
     $clampReads = 0;
     DB::listen(function (QueryExecuted $query) use (&$clampReads): void {
-        if (str_contains($query->sql, 'select `content` from `ai_analyses`')
+        if (str_contains($query->sql, 'select `content`, `content_fingerprint` from `ai_analyses`')
             && in_array(AnalysisType::PlanClampVoice->value, $query->bindings, true)) {
             $clampReads++;
         }

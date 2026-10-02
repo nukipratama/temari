@@ -8,12 +8,18 @@ use NoDiscard;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
+use App\Models\RecoveryFeedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\DistanceFormatter;
+use App\Services\Run\Metrics\RecentTrainingStress;
 use App\Services\Run\Metrics\Readiness;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Plan\EffectiveSession;
+use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
 
 /**
@@ -33,6 +39,7 @@ use Illuminate\Support\Carbon;
  */
 final readonly class BriefingContext
 {
+    /** @param array<string, mixed> $readinessAssessment */
     public function __construct(
         public ?int $thisWeekRuns,
         /** Last week's real runs through the same weekday $asOf falls on this week, not the full week. */
@@ -56,6 +63,8 @@ final readonly class BriefingContext
         public string $readinessCeiling,
         /** Gentle "build, don't coast" flag for the fresh-but-detraining case. */
         public bool $buildNudge,
+        /** The immutable decision facts exposed to narration and recommendation history. */
+        public array $readinessAssessment,
         /** A fresh connect's early pass: older history is still hydrating. */
         public bool $historyLoading = false,
     ) {
@@ -108,27 +117,34 @@ final readonly class BriefingContext
         $volumeRampPct = self::volumeRampPct($thisWeek?->distance_km, $lastWeekToDate['km']);
         $fitnessTrend = self::fitnessTrend($byDate);
 
-        // Readiness keys off the live load when we have it (same numbers the LLM
-        // sees), falling back to the weekly snapshot otherwise.
-        $snapshotMonotony = null;
-        if ($thisWeek !== null && $thisWeek->monotony !== null) {
-            $snapshotMonotony = $thisWeek->monotony;
-        } elseif ($lastWeek !== null) {
-            $snapshotMonotony = $lastWeek->monotony;
-        }
-        // The form_status shown to the LLM and the one readiness caps off must
-        // be the same source, or the prompt sees a snapshot form that
-        // contradicts the ceiling. Prefer the live load, fall back to snapshot.
-        $formStatus = self::stringOrNull($load['form_status'] ?? null) ?? $snapshotFormStatus;
-        $readinessMonotony = self::floatOrNull($load['monotony'] ?? null) ?? $snapshotMonotony;
+        $liveFormStatus = self::stringOrNull($load['form_status'] ?? null);
+        $formStatus = $liveFormStatus ?? $snapshotFormStatus;
+        $readinessMonotony = self::floatOrNull($load['monotony'] ?? null);
+        $stressProfile = $historyLoading ? null : app(RecentTrainingStress::class)->forUser($user, $asOf);
+        $feedback = self::recoveryFeedback($user, $asOf);
+        $weeklyTrimp = self::floatOrNull($load['weekly_trimp'] ?? null);
+        $weeklyTrimpReference = self::trimpRange($load['weekly_trimp_reference'] ?? null);
+        $prescribedKmToDate = $historyLoading ? null : self::prescribedKmToDate($user, $asOf);
+        $aheadOfPlanPct = $prescribedKmToDate === null || $prescribedKmToDate <= 0.0
+            ? null
+            : round(((($thisWeek->distance_km ?? 0.0) - $prescribedKmToDate) / $prescribedKmToDate) * 100, 1);
+        $formConflict = $liveFormStatus !== null
+            && $snapshotFormStatus !== null
+            && $liveFormStatus !== $snapshotFormStatus;
 
         $readiness = Readiness::assess(
-            formStatus: $formStatus,
+            formStatus: $liveFormStatus,
             recoveryHours: $recovery->recoveryHours,
             ranToday: $recovery->ranToday,
             monotony: $readinessMonotony,
             volumeRampPct: $volumeRampPct,
             fitnessTrend: $fitnessTrend,
+            stressProfile: $stressProfile,
+            feedback: $feedback,
+            weeklyTrimp: $weeklyTrimp,
+            weeklyTrimpRange: $weeklyTrimpReference,
+            formConflict: $formConflict,
+            aheadOfPlanPct: $aheadOfPlanPct,
         );
 
         return new self(
@@ -146,6 +162,7 @@ final readonly class BriefingContext
             volumeRampPct: $volumeRampPct,
             readinessCeiling: $readiness->ceiling->value,
             buildNudge: $readiness->buildNudge,
+            readinessAssessment: $readiness->toArray(),
             historyLoading: $historyLoading,
         );
     }
@@ -284,6 +301,72 @@ final readonly class BriefingContext
     }
 
     /**
+     * This week's prescribed km from Monday through $asOf, sized the way
+     * grading sizes a day ({@see \App\Services\Run\Plan\ComplianceScorer});
+     * null when the week has no planned sessions.
+     */
+    public static function prescribedKmToDate(User $user, Carbon $asOf): ?float
+    {
+        $weekStart = $asOf->copy()->startOfWeek(Carbon::MONDAY);
+        $weekRows = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
+            ->orderBy('date')
+            ->get();
+        if ($weekRows->isEmpty()) {
+            return null;
+        }
+
+        $baseline = app(TrainingBaseline::class)->forUser($user, $asOf);
+        $kmByDate = PlanRenderer::plannedKmByDate(
+            $weekRows,
+            (float) $baseline['long_run_km'],
+            (float) $baseline['long_run_cap_km'],
+            $baseline['self_scaled'],
+            (float) $baseline['long_run_progression_cap_km'],
+        );
+        $throughToday = $asOf->toDateString();
+
+        return round($weekRows
+            ->filter(fn (PlannedSession $session): bool => $session->date->toDateString() <= $throughToday)
+            ->sum(fn (PlannedSession $session): float => EffectiveSession::of($session, $kmByDate[$session->date->toDateString()])->coreKm), 1);
+    }
+
+    /** @return array{low: float, high: float}|null */
+    private static function trimpRange(mixed $value): ?array
+    {
+        if (! is_array($value) || ! is_numeric($value['low'] ?? null) || ! is_numeric($value['high'] ?? null)) {
+            return null;
+        }
+
+        return ['low' => (float) $value['low'], 'high' => (float) $value['high']];
+    }
+
+    /** @return array<string, mixed>|null */
+    private static function recoveryFeedback(User $user, Carbon $asOf): ?array
+    {
+        $feedback = RecoveryFeedback::query()
+            ->where('user_id', $user->id)
+            ->where('date', '<=', $asOf->toDateString())
+            ->orderByDesc('date')
+            ->first();
+
+        if ($feedback === null) {
+            return null;
+        }
+
+        return [
+            'date' => $feedback->date->toDateString(),
+            'freshness' => $feedback->date->isSameDay($asOf) ? 'current' : 'stale',
+            'sleep_quality' => $feedback->sleep_quality?->value,
+            'fatigue' => $feedback->fatigue?->value,
+            'soreness' => $feedback->soreness?->value,
+            'concerning_pain' => $feedback->concerning_pain,
+            'illness' => $feedback->illness,
+        ];
+    }
+
+    /**
      * @param  array<string, WeeklySnapshot>  $byDate  Keyed by week_ending ISO date.
      */
     private static function countConsecutiveActiveWeeks(array $byDate, Carbon $thisWeekEnd): int
@@ -327,6 +410,13 @@ final readonly class BriefingContext
      */
     public function toArray(): array
     {
+        $volumeRamp = $this->volumeRampPct === null ? null : [
+            'pct' => abs($this->volumeRampPct),
+            'relation' => self::volumeRampRelation($this->volumeRampPct),
+        ];
+        $readinessInputs = $this->readinessAssessment['inputs'];
+        unset($readinessInputs['volume_ramp_pct']);
+
         return [
             'this_week_runs' => $this->thisWeekRuns,
             'last_week_runs' => $this->lastWeekRuns,
@@ -335,16 +425,18 @@ final readonly class BriefingContext
             'recovery_hours' => $this->recoveryHours,
             'ran_today' => $this->ranToday,
             'days_since_last_run' => $this->daysSinceLastRun,
-            'form_status' => $this->formStatus,
+            'form_status' => $this->readinessAssessment['inputs']['form_status'],
             'time_bucket' => $this->timeBucket,
             'consecutive_weeks_active' => $this->consecutiveWeeksActive,
             'fitness_trend' => $this->fitnessTrend,
-            'volume_ramp' => $this->volumeRampPct === null ? null : [
-                'pct' => abs($this->volumeRampPct),
-                'relation' => self::volumeRampRelation($this->volumeRampPct),
-            ],
+            'volume_ramp' => $volumeRamp,
             'readiness_ceiling' => $this->readinessCeiling,
             'build_nudge' => $this->buildNudge,
+            'readiness_reasons' => $this->readinessAssessment['reasons'],
+            'readiness_assessment' => [
+                ...$this->readinessAssessment,
+                'inputs' => [...$readinessInputs, 'volume_ramp' => $volumeRamp],
+            ],
             ...($this->historyLoading ? ['history_loading' => true] : []),
         ];
     }

@@ -22,7 +22,7 @@ use App\Services\Run\Plan\ClampNarrationContext;
  */
 class AnalyzePlanClampVoiceJob extends AnalyzeRowJob
 {
-    /** @var array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool}|null */
+    /** @var array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool, readiness_reasons: list<string>, readiness_inputs: array<string, mixed>, decision_source: string}|null */
     private ?array $context = null;
 
     protected function generateContent(Analysis $row): string
@@ -34,13 +34,13 @@ class AnalyzePlanClampVoiceJob extends AnalyzeRowJob
     {
         $context = $this->contextFor($row);
 
-        return MaterialFingerprint::forClamp($context['ceiling'], $context['clamped_to'], $context['has_run_today']);
+        return MaterialFingerprint::forClamp($context['ceiling'], $context['clamped_to'], $context['has_run_today'], $context['readiness_reasons']);
     }
 
     /**
      * Memoized: generateContent() resolves it, fingerprintFor() reads it back.
      *
-     * @return array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool}
+     * @return array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool, readiness_reasons: list<string>, readiness_inputs: array<string, mixed>, decision_source: string}
      */
     private function contextFor(Analysis $row): array
     {

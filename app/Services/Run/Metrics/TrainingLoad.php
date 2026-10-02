@@ -51,7 +51,7 @@ class TrainingLoad
      */
     private const int SUMMARY_CACHE_SECONDS = 300;
 
-    private const int SUMMARY_CACHE_VERSION = 2;
+    private const int SUMMARY_CACHE_VERSION = 3;
 
     /**
      * @param  int  $windowDays  the trailing window `weekly_trimp`/monotony/strain
@@ -105,14 +105,17 @@ class TrainingLoad
         $form = round($ctl - $atl, 1);
         [$weeklyTrimp, $monotony, $strain] = $this->weekStats($dailyTrimp, $runDays, $weekAnchor, $windowDays);
         $ranges = $this->typicalWeeklyRanges($dailyTrimp, $runDays, $weekAnchor);
+        $formKnownFrom = self::formKnownFrom($dailyTrimp);
 
         return [
             'weekly_trimp' => $weeklyTrimp === null ? null : round($weeklyTrimp, 1),
             'weekly_trimp_range' => $ranges['weekly_trimp_range'],
+            'weekly_trimp_reference' => $ranges['weekly_trimp_reference'],
             'atl_7d' => round($atl, 1),
             'ctl_42d' => round($ctl, 1),
             'form' => $form,
-            'form_status' => $this->formStatus($form, $ctl),
+            'form_status' => $loadDate->toDateString() >= $formKnownFrom ? $this->formStatus($form, $ctl) : null,
+            'form_known_from' => $formKnownFrom,
             'monotony' => $monotony,
             'monotony_range' => $ranges['monotony_range'],
             'strain' => $strain,
@@ -131,16 +134,27 @@ class TrainingLoad
      *
      * @param  array<string, float>  $dailyTrimp  scored days only
      * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
-     * @return array{weekly_trimp_range: array{low: float, high: float}|null, monotony_range: array{low: float, high: float}|null, strain_range: array{low: float, high: float}|null}
+     * `weekly_trimp_reference` is the same TRIMP range unrounded and over the
+     * $weeks windows before the current one, so a guard comparing the current
+     * week against it neither trips on display rounding nor raises its own bar.
+     *
+     * @return array{weekly_trimp_range: array{low: float, high: float}|null, weekly_trimp_reference: array{low: float, high: float}|null, monotony_range: array{low: float, high: float}|null, strain_range: array{low: float, high: float}|null}
      */
     private function typicalWeeklyRanges(array $dailyTrimp, array $runDays, Carbon $asOf, int $weeks = 8): array
     {
         $trimpTotals = [];
         $monotonyTotals = [];
         $strainTotals = [];
-        for ($i = 0; $i < $weeks; $i++) {
+        $referenceTotals = [];
+        for ($i = 0; $i <= $weeks; $i++) {
             [$weekly, $monotony, $strain] = $this->weekStats($dailyTrimp, $runDays, $asOf->copy()->subDays($i * 7));
-            if ($weekly !== null && $monotony !== null && $strain !== null) {
+            if ($weekly === null || $monotony === null || $strain === null) {
+                continue;
+            }
+            if ($i > 0) {
+                $referenceTotals[] = $weekly;
+            }
+            if ($i < $weeks) {
                 $trimpTotals[] = $weekly;
                 $monotonyTotals[] = $monotony;
                 $strainTotals[] = $strain;
@@ -149,6 +163,7 @@ class TrainingLoad
 
         return [
             'weekly_trimp_range' => $this->percentileRange($trimpTotals, -1),
+            'weekly_trimp_reference' => $this->percentileRange($referenceTotals, null),
             'monotony_range' => $this->percentileRange($monotonyTotals, 1),
             'strain_range' => $this->percentileRange($strainTotals, -1),
         ];
@@ -156,24 +171,25 @@ class TrainingLoad
 
     /**
      * The 25th-75th percentile of a list, rounded to $precision (PHP `round`
-     * semantics: negative rounds to a power of ten). Null below two values,
-     * since a range needs at least two points to bound.
+     * semantics: negative rounds to a power of ten), or unrounded when null.
+     * Null below two values, since a range needs at least two points to bound.
      *
      * @param  list<float>  $values
      * @return array{low: float, high: float}|null
      */
-    private function percentileRange(array $values, int $precision): ?array
+    private function percentileRange(array $values, ?int $precision): ?array
     {
         if (count($values) < 2) {
             return null;
         }
 
         sort($values);
+        $low = $this->percentile($values, 25.0);
+        $high = $this->percentile($values, 75.0);
 
-        return [
-            'low' => round($this->percentile($values, 25.0), $precision),
-            'high' => round($this->percentile($values, 75.0), $precision),
-        ];
+        return $precision === null
+            ? ['low' => $low, 'high' => $high]
+            : ['low' => round($low, $precision), 'high' => round($high, $precision)];
     }
 
     /**
@@ -260,7 +276,7 @@ class TrainingLoad
      * (which only returns the final day's pair) — this exposes every day the
      * roll already computes along the way, not new computation.
      *
-     * @return list<array{date: string, atl: float, ctl: float, form_status: string}>
+     * @return list<array{date: string, atl: float, ctl: float, form_status: string|null}>
      */
     public function ctlTrend(User $user, int $days = 90, ?Carbon $asOf = null): array
     {
@@ -272,6 +288,7 @@ class TrainingLoad
 
         $series = $this->rollDailySeries($dailyTrimp, $today);
         $cutoff = $today->copy()->subDays($days - 1)->toDateString();
+        $formKnownFrom = self::formKnownFrom($dailyTrimp);
 
         $trend = [];
         foreach ($series as $date => [$atl, $ctl]) {
@@ -281,7 +298,7 @@ class TrainingLoad
                     'date' => $date,
                     'atl' => round($atl, 1),
                     'ctl' => round($ctl, 1),
-                    'form_status' => $this->formStatus($form, $ctl),
+                    'form_status' => $date >= $formKnownFrom ? $this->formStatus($form, $ctl) : null,
                 ];
             }
         }
@@ -324,11 +341,29 @@ class TrainingLoad
         return $trend;
     }
 
+    /**
+     * The day form becomes readable: one CTL time constant after the first
+     * scored day, since before that the EWMA is still climbing from zero and
+     * reads every ordinary week as overload.
+     *
+     * @param  non-empty-array<string, float>  $dailyTrimp
+     */
+    private static function formKnownFrom(array $dailyTrimp): string
+    {
+        return Carbon::parse((string) array_key_first($dailyTrimp))->addDays(self::CTL_TAU)->toDateString();
+    }
+
+    /**
+     * The form threshold rises continuously with CTL through (10, 5), (30, 15)
+     * and (60, 20), flat outside, so more load can never cross a band edge into
+     * a fresher label.
+     */
     public function formStatus(float $form, float $ctl): string
     {
         $threshold = match (true) {
-            $ctl < 20 => 5.0,
-            $ctl <= 50 => 15.0,
+            $ctl <= 10 => 5.0,
+            $ctl <= 30 => 5.0 + ($ctl - 10) * 0.5,
+            $ctl <= 60 => 15.0 + ($ctl - 30) * 5 / 30,
             default => 20.0,
         };
 

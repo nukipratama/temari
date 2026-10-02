@@ -3,9 +3,10 @@
 declare(strict_types=1);
 
 use App\Enums\PlanPhase;
-use App\Enums\SegmentKey;
 use App\Enums\SessionType;
+use App\Enums\PaceBand;
 use App\Services\Run\Metrics\ReadinessCeiling;
+use App\Services\Run\Plan\IntensityPrescription;
 use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SegmentGenerator;
 
@@ -36,17 +37,76 @@ it('never clamps easy, since it only needs the floor above rest', function (): v
     }
 });
 
-it('ModerateOk clamps quality work down to easy, at its own original size, but leaves a long day alone', function (): void {
+it('ModerateOk leaves long days alone and reduces a quality day without replacing its type', function (): void {
     expect(applyClamp(SessionType::Long, ReadinessCeiling::ModerateOk))->toBeNull();
 
-    $clamp = applyClamp(SessionType::Tempo, ReadinessCeiling::ModerateOk);
-    $expectedSegments = SegmentGenerator::easyEquivalentOf(SessionType::Tempo, CLAMP_BASELINE_KM, CLAMP_MULTIPLIER, INF, CLAMP_PACES);
+    $prescription = new IntensityPrescription(20, PaceBand::Threshold, 270, 'planned quality');
+    $clamp = ReadinessClamp::apply(
+        SessionType::Tempo,
+        PlanPhase::Build,
+        null,
+        CLAMP_BASELINE_KM,
+        CLAMP_MULTIPLIER,
+        INF,
+        CLAMP_PACES,
+        ReadinessCeiling::ModerateOk,
+        reasons: ['mild_fatigue_or_soreness_with_load_support'],
+        prescription: $prescription,
+    );
+    $hardSegments = array_filter($clamp['segments'], static fn ($segment): bool => $segment->paceLabel !== PaceBand::Easy);
 
-    expect($clamp['session_type'])->toBe(SessionType::Easy)
-        ->and($clamp['segments'])->toEqual($expectedSegments)
-        ->and($clamp['segments'])->toHaveCount(1)
-        ->and($clamp['segments'][0]->key)->toBe(SegmentKey::Main)
-        ->and($clamp['note'])->toBeString()->not->toBe('');
+    expect($clamp['session_type'])->toBe(SessionType::Tempo)
+        ->and(array_sum(array_map(static fn ($segment): float => $segment->minutes ?? 0.0, $hardSegments)))->toBe(15.0)
+        ->and($clamp['quality_dose'])->toMatchArray([
+            'hard_minutes' => 15,
+            'original_hard_minutes' => 20,
+            'pace_band' => 'threshold',
+            'pace_sec_per_km' => 270,
+        ])
+        ->and($clamp['note'])->toContain('mild fatigue or soreness');
+});
+
+it('preserves the event distance and gives a conservative effort note at ModerateOk', function (): void {
+    $clamp = ReadinessClamp::apply(
+        SessionType::Race,
+        PlanPhase::Taper,
+        10_000,
+        CLAMP_BASELINE_KM,
+        CLAMP_MULTIPLIER,
+        INF,
+        CLAMP_PACES,
+        ReadinessCeiling::ModerateOk,
+        reasons: ['volume_increased_sharply'],
+    );
+
+    expect($clamp['session_type'])->toBe(SessionType::Race)
+        ->and($clamp['core_km'])->toBe(10.0)
+        ->and(SegmentGenerator::segmentSumKm($clamp['segments']))->toBe(10.0)
+        ->and($clamp['note'])->toContain('event distance');
+});
+
+it('reports the whole interval repetitions actually offered and falls back when none can be reduced', function (): void {
+    foreach ([14 => 9, 3 => 0] as $original => $expected) {
+        $clamp = ReadinessClamp::apply(
+            SessionType::Interval,
+            PlanPhase::Build,
+            null,
+            CLAMP_BASELINE_KM,
+            1.0,
+            INF,
+            CLAMP_PACES,
+            ReadinessCeiling::ModerateOk,
+            prescription: new IntensityPrescription($original, PaceBand::Interval, 240, null)
+        );
+        $minutes = array_sum(array_map(static fn ($segment): float => $segment->paceLabel === PaceBand::Easy ? 0.0 : ($segment->minutes ?? 0.0), $clamp['segments']));
+        expect($minutes)->toBe((float) $expected);
+        if ($expected > 0) {
+            expect($clamp['quality_dose']['hard_minutes'])->toBe($expected)
+                ->and($clamp['note'])->toContain("{$expected} hard minutes");
+        } else {
+            expect($clamp['session_type'])->toBe(SessionType::Easy)->and($clamp)->not->toHaveKey('quality_dose');
+        }
+    }
 });
 
 it('EasyOnly scales a long day down to a shorter easy run, sized Medium like the week\'s primary Easy day', function (): void {
@@ -128,12 +188,27 @@ it('clampsToRest agrees with apply for every session type at the Rest ceiling', 
     }
 });
 
-it('never clamps a race, at any ceiling: the goal race is not a session to be talked out of', function (): void {
-    foreach (ReadinessCeiling::cases() as $ceiling) {
-        expect(applyClamp(SessionType::Race, $ceiling))->toBeNull()
-            ->and(ReadinessClamp::clampsToRest(SessionType::Race, $ceiling))->toBeFalse()
-            ->and(ReadinessClamp::downgradeFor(SessionType::Race, $ceiling))->toBeNull();
-    }
+it('leaves a race alone when readiness is clear but allows a strong-concern rest advisory', function (): void {
+    expect(applyClamp(SessionType::Race, ReadinessCeiling::QualityOk))->toBeNull()
+        ->and(ReadinessClamp::clampsToRest(SessionType::Race, ReadinessCeiling::QualityOk))->toBeFalse()
+        ->and(ReadinessClamp::downgradeFor(SessionType::Race, ReadinessCeiling::QualityOk))->toBeNull();
+
+    $clamp = ReadinessClamp::apply(
+        SessionType::Race,
+        PlanPhase::Build,
+        42_195.0,
+        CLAMP_BASELINE_KM,
+        CLAMP_MULTIPLIER,
+        INF,
+        CLAMP_PACES,
+        ReadinessCeiling::Rest,
+        reasons: ['concerning_pain_reported'],
+    );
+
+    expect($clamp['session_type'])->toBe(SessionType::Rest)
+        ->and($clamp['note'])->toContain('reported concerning pain')
+        ->and(ReadinessClamp::clampsToRest(SessionType::Race, ReadinessCeiling::Rest))->toBeTrue()
+        ->and(ReadinessClamp::downgradeFor(SessionType::Race, ReadinessCeiling::Rest))->toBe(SessionType::Rest);
 });
 
 it('paceEaseApplies only for an Easy day at EasyOnly and a Long day at ModerateOk', function (): void {

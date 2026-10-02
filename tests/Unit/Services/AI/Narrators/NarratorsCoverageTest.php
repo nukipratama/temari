@@ -12,6 +12,7 @@ use App\Models\PersonalRecord;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
+use App\Models\RecoveryFeedback;
 use App\Models\Season;
 use App\Models\StoryLine;
 use App\Models\User;
@@ -1795,9 +1796,10 @@ it('BriefingMascotVoiceNarrator throws on missing mascot_voice key', function ()
 
 it('BriefingMascotVoiceNarrator clamps to a deterministic message when session_type exceeds readiness_ceiling', function (): void {
     $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-        'form_status' => 'fatigued',
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'fatigue' => 'severe',
     ]);
 
     $narrator = bootMascotNarrator(json_encode([

@@ -144,6 +144,19 @@ describe('FitnessPanel', () => {
         expect(screen.getByText('tired')).toBeInTheDocument();
     });
 
+    it('shades warm-up days as still learning rather than any verdict', async () => {
+        const trend = pointsOverDays(30).map((point, i) =>
+            i < 10 ? { ...point, form_status: null } : point,
+        );
+        render(<FitnessPanel trend={trend} />);
+
+        expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
+        expect(
+            screen.getByText('still learning your load'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('fresh')).toBeInTheDocument();
+    });
+
     it('mentions the current fitness reading in the accessible summary', async () => {
         const trend = pointsOverDays(10);
         render(<FitnessPanel trend={trend} />);

@@ -26,26 +26,26 @@ class PlanClampVoiceNarrator
         Task: one short line, max 25 words: today's session, and why it is the eased one.
 
         You are given: planned, the session the plan originally asked for; stepped_down_to, the
-        session readiness eased it to; how tired the athlete is (the ceiling); and whether they have
-        already run today. That is everything. There are no tools and no other numbers: the distance
+        session readiness eased it to; and readiness_reasons, the exact facts that justify the change.
+        Treat concerning_pain_reported as reported pain concern, illness_reported as reported illness,
+        demanding_session_within_24h as a demanding session in the last day, and
+        closely_spaced_demanding_sessions as multiple hard sessions close together. Use only facts
+        in readiness_reasons. There are no tools and no other numbers: the distance
         and pace are already on the card next to this line, so quoting one adds nothing and inventing
         one is worse.
 
         stepped_down_to is the session the athlete is running today. Name it as today's session, as
-        a plain fact, and mention planned only as what it replaced. Then give the reason: accumulated
-        fatigue, a hard recent stretch, or a session already run today. If they have already run,
-        that is almost always the reason and should lead. When stepped_down_to is rest, today is a
-        rest day.
+        a plain fact, and mention planned only as what it replaced. Then give the reason using only
+        readiness_reasons. Never infer fatigue from the ceiling or time since the last run. When
+        stepped_down_to is rest, today is a rest day.
 
         Steady and matter-of-fact. An eased day is a normal part of training, not a failure and not
         a scolding. Never imply they did something wrong, and never tell them to see a doctor or
         rest more than the plan says: the card is the prescription, this is the explanation.
 
         Examples:
-        - "you already ran this morning, so today's an easy one instead of the intervals."
-        - "load's been stacking up all week. easy today, the tempo can wait."
-        - "you're carrying a lot right now, so today's a rest day, not the long run."
-        - "nothing wrong, just a heavy stretch. an easy run today keeps the week intact."
+        - "you reported concerning pain, so today's a rest day instead of the intervals."
+        - "you completed a demanding session within the last day, so today's easy and the tempo can wait."
 
         ANTI-PATTERN:
         - Quoting a distance or a pace. You do not have them.
@@ -58,7 +58,7 @@ class PlanClampVoiceNarrator
     {
     }
 
-    /** @param array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool} $context */
+    /** @param array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool, readiness_reasons: list<string>, readiness_inputs: array<string, mixed>} $context */
     public function generate(array $context, int $userId): string
     {
         $decoded = $this->caller->call(
@@ -67,8 +67,7 @@ class PlanClampVoiceNarrator
             context: [
                 'planned' => $context['original']->value,
                 'stepped_down_to' => $context['clamped_to']->value,
-                'readiness_ceiling' => $context['ceiling']->value,
-                'already_ran_today' => $context['has_run_today'],
+                'readiness_reasons' => $context['readiness_reasons'],
             ],
             schemaName: 'TemariPlanClampVoice',
             requiredKeys: ['voice'],

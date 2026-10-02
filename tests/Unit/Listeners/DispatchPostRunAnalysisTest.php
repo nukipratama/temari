@@ -14,6 +14,7 @@ use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Jobs\Run\RebuildTrendSnapshotsJob;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\PlannedSession;
+use App\Models\RecoveryFeedback;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -82,10 +83,10 @@ function fire(Activity $activity): void
     app(DispatchPostRunAnalysis::class)->handle(new ActivityIngested($activity->id));
 }
 
-it('never rest-clamps or requests clamp narration after an overreaching run today', function (): void {
+it('never rest-clamps or requests clamp narration after a run today, even with pain reported', function (): void {
     Notification::fake();
     $activity = analyzedActivity(Carbon::today()->setTime(7, 0)->toDateTimeString());
-    $activity->detail->update(['trimp_edwards' => 500.0]);
+    RecoveryFeedback::query()->create(['user_id' => $activity->user_id, 'date' => Carbon::today()->toDateString(), 'concerning_pain' => true]);
     $session = PlannedSession::factory()->for($activity->user)->create([
         'date' => Carbon::today()->toDateString(),
         'session_type' => SessionType::Long,
@@ -96,7 +97,6 @@ it('never rest-clamps or requests clamp narration after an overreaching run toda
         app(TrainingLoad::class)->summary($activity->user, Carbon::today()),
     );
     expect($context->ranToday)->toBeTrue()
-        ->and($context->formStatus)->toBe('overreaching')
         ->and($context->readinessCeiling)->toBe('rest');
 
     fire($activity);

@@ -23,8 +23,8 @@ export interface FitnessTrendPoint {
     date: string;
     atl: number;
     ctl: number;
-    /** TrainingLoad::formStatus() for this day, stamped server-side. */
-    form_status: FormStatus;
+    /** TrainingLoad::formStatus() for this day, stamped server-side; null during the 42-day warm-up. */
+    form_status: FormStatus | null;
 }
 
 export interface FitnessChartAnnotations {
@@ -47,7 +47,7 @@ interface FitnessPanelProps {
     className?: string;
 }
 
-type BandBucket = 'fresh' | 'balanced' | 'tired';
+type BandBucket = 'fresh' | 'balanced' | 'tired' | 'learning';
 
 // Fatigued and overreaching share one bucket: the strip is a glance, not a
 // second read of the fitness numbers, and the cost section above already
@@ -63,12 +63,14 @@ const BAND_COLOR: Record<BandBucket, string> = {
     fresh: PALETTE.leaf,
     balanced: PALETTE.stone,
     tired: PALETTE.ember,
+    learning: PALETTE.line,
 };
 
 const BAND_LABEL: Record<BandBucket, string> = {
     fresh: 'fresh',
     balanced: 'in balance',
     tired: 'tired',
+    learning: 'still learning your load',
 };
 
 interface BandRun {
@@ -83,7 +85,10 @@ interface BandRun {
 function bandRuns(trend: ReadonlyArray<FitnessTrendPoint>): BandRun[] {
     const runs: BandRun[] = [];
     for (const point of trend) {
-        const bucket = BAND_BUCKET[point.form_status];
+        const bucket =
+            point.form_status === null
+                ? 'learning'
+                : BAND_BUCKET[point.form_status];
         const last = runs[runs.length - 1];
         if (last && last.bucket === bucket) {
             last.length += 1;

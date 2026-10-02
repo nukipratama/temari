@@ -26,6 +26,7 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PerformanceEvidenceController;
 use App\Http\Controllers\RecommendationViewController;
+use App\Http\Controllers\RecoveryFeedbackController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RootController;
@@ -137,6 +138,9 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->name('plan.recommendations.shown');
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])->name('plan.sessions.update');
+    Route::post('/recovery/feedback', RecoveryFeedbackController::class)
+        ->middleware(['throttle:10,1', 'block-demo-telegram'])
+        ->name('recovery.feedback.store');
     Route::get('/inbox', InboxController::class)->name('inbox');
 
     // "This is wrong" on a plan day or a narration. The block-demo-telegram

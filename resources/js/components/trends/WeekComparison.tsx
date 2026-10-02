@@ -25,6 +25,17 @@ const CHIP_TONE: Record<string, string> = {
 
 const TILE = 'rounded-sm bg-secondary px-3 py-2.5';
 
+const DAY_MS = 86_400_000;
+
+function warmUpLine(knownFrom: string, asOf: string): string {
+    const daysToGo = Math.max(
+        1,
+        Math.round((Date.parse(knownFrom) - Date.parse(asOf)) / DAY_MS),
+    );
+
+    return `still learning your load · ${daysToGo} ${daysToGo === 1 ? 'day' : 'days'} to go`;
+}
+
 function FormChip({ status }: Readonly<{ status: FormStatus }>) {
     return (
         <span
@@ -206,13 +217,31 @@ export default function WeekComparison({
                         <span className="text-label-micro text-text-3">
                             form as of {formatShortDateId(date_ranges.load.end)}
                         </span>
-                        <FormChip status={load.form_status} />
-                        <span className="font-mono text-xs text-text-3">
-                            {formatSignedForm(load.form)}
-                        </span>
+                        {load.form_status === null ? (
+                            <span
+                                className={cn(
+                                    'inline-flex items-center rounded-full border px-3 py-1 text-label-micro',
+                                    CHIP_TONE.neutral,
+                                )}
+                            >
+                                learning
+                            </span>
+                        ) : (
+                            <>
+                                <FormChip status={load.form_status} />
+                                <span className="font-mono text-xs text-text-3">
+                                    {formatSignedForm(load.form)}
+                                </span>
+                            </>
+                        )}
                     </div>
                     <p className="text-sm leading-relaxed text-foreground">
-                        {formStatusMeaning(load.form_status)}
+                        {load.form_status === null
+                            ? warmUpLine(
+                                  load.form_known_from,
+                                  date_ranges.load.end,
+                              )
+                            : formStatusMeaning(load.form_status)}
                     </p>
                     <hr className="border-dashed border-border" />
                     <p className="text-xs text-text-3">

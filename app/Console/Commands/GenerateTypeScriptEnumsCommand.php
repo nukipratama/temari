@@ -15,6 +15,8 @@ use App\Enums\PerformanceEvidenceKind;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\PrCategory;
 use App\Enums\Rarity;
+use App\Enums\RecoveryConcernLevel;
+use App\Enums\SleepQuality;
 use App\Services\AI\Anchor\AnchorKind;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -51,6 +53,8 @@ final class GenerateTypeScriptEnumsCommand extends Command
         FeedbackReason::class,
         AnchorKind::class,
         PerformanceEvidenceKind::class,
+        RecoveryConcernLevel::class,
+        SleepQuality::class,
     ];
 
     public function handle(): int

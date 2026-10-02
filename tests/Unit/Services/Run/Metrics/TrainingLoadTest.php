@@ -99,18 +99,6 @@ it('resolves formRelation from the sign of form alone, independent of formStatus
         ->and(TrainingLoad::formRelation(0.0))->toBe('balanced');
 });
 
-it('uses moderate thresholds exactly at the low-CTL boundary (ctl=20), not narrow', function (): void {
-    // At ctl=20, narrow(5.0) would call -10 "overreaching" (not > -10);
-    // moderate(15.0) — the correct tier at this boundary — calls it "optimal".
-    expect($this->load->formStatus(-10, 20))->toBe('optimal');
-});
-
-it('uses moderate thresholds exactly at the high-CTL boundary (ctl=50), not wide', function (): void {
-    // At ctl=50, moderate(15.0) — the correct tier at this boundary — calls -18
-    // "fatigued"; wide(20.0) would call it "optimal".
-    expect($this->load->formStatus(-18, 50))->toBe('fatigued');
-});
-
 it('returns null when the user has no TRIMP-bearing activities', function (): void {
     $user = User::factory()->make(['id' => 1]);
     expect($this->load->summary($user))->toBeNull();
@@ -398,8 +386,8 @@ it('ctlTrend never returns more than the available history, even when asked for 
 it('ctlTrend stamps each day with formStatus, computed from that day\'s own atl/ctl', function (): void {
     $user = User::factory()->create();
 
-    for ($i = 0; $i < 30; $i++) {
-        seedTrimpDay($user, 80.0, 29 - $i);
+    for ($i = 0; $i < 72; $i++) {
+        seedTrimpDay($user, 80.0, 71 - $i);
     }
 
     $trend = $this->load->ctlTrend($user, 30);
@@ -441,7 +429,7 @@ it('keeps ATL/CTL as numbers through an unscored stretch', function (): void {
     // The week columns go unknown, but fitness/fatigue are EWMAs of the real
     // scored history and stay reportable rather than nulling out with it.
     $user = User::factory()->create();
-    seedTrimpDay($user, 120.0, 29);
+    seedTrimpDay($user, 120.0, 50);
     seedTrimpDay($user, null, 1);
 
     $summary = $this->load->summary($user, Carbon::today());
@@ -593,4 +581,94 @@ it('keeps distinct memo entries per user, date and window so they do not collide
     expect($summaryA)->not->toBe($summaryB)
         ->and($summaryA)->not->toBe($summaryADifferentDate)
         ->and($summaryA['weekly_trimp'])->not->toBe($summaryADifferentWindow['weekly_trimp']);
+});
+
+/**
+ * @return array<string, float>
+ */
+function steadyTrimpMap(Carbon $asOf, int $days, float $trimp, int $everyNthDay = 1): array
+{
+    $map = [];
+    for ($i = $days - 1; $i >= 0; $i--) {
+        if ($i % $everyNthDay === 0) {
+            $map[$asOf->copy()->subDays($i)->toDateString()] = $trimp;
+        }
+    }
+
+    return $map;
+}
+
+it('reads form as unknown until 42 days of scored history follow the first scored day', function (): void {
+    $asOf = Carbon::today();
+    $warming = steadyTrimpMap($asOf, 42, 80.0);
+    $warmed = steadyTrimpMap($asOf, 43, 80.0);
+
+    $during = $this->load->summaryFromDailyMap($warming, runDaysOf($warming), $asOf);
+    $after = $this->load->summaryFromDailyMap($warmed, runDaysOf($warmed), $asOf);
+
+    expect($during['form_status'])->toBeNull()
+        ->and($during['form_known_from'])->toBe($asOf->copy()->addDay()->toDateString())
+        ->and($during['ctl_42d'])->toBeGreaterThan(0.0)
+        ->and($after['form_status'])->not->toBeNull()
+        ->and($after['form_known_from'])->toBe($asOf->toDateString());
+});
+
+it('stamps warm-up days in ctlTrend as unknown form', function (): void {
+    $user = User::factory()->create();
+    for ($i = 0; $i < 50; $i++) {
+        seedTrimpDay($user, 80.0, 49 - $i);
+    }
+
+    $trend = $this->load->ctlTrend($user, 50);
+
+    expect($trend[0]['form_status'])->toBeNull()
+        ->and($trend[41]['form_status'])->toBeNull()
+        ->and($trend[42]['form_status'])->not->toBeNull();
+});
+
+it('scales the form thresholds continuously with CTL, with no cliff at the old band edges', function (): void {
+    expect($this->load->formStatus(-9.9, 10))->toBe('fatigued')
+        ->and($this->load->formStatus(-10.1, 10))->toBe('overreaching')
+        ->and($this->load->formStatus(-29.9, 30))->toBe('fatigued')
+        ->and($this->load->formStatus(-30.1, 30))->toBe('overreaching')
+        ->and($this->load->formStatus(-39.9, 60))->toBe('fatigued')
+        ->and($this->load->formStatus(-40.1, 60))->toBe('overreaching')
+        ->and($this->load->formStatus(20.1, 90))->toBe('fresh')
+        ->and($this->load->formStatus(-11, 19.9))->toBe($this->load->formStatus(-11, 20.1))
+        ->and($this->load->formStatus(-20, 49.9))->toBe($this->load->formStatus(-20, 50.1));
+});
+
+it('never reads fresher after more TRIMP on the last day', function (float $dailyTrimp, int $everyNthDay): void {
+    $severity = ['fresh' => 0, 'optimal' => 1, 'fatigued' => 2, 'overreaching' => 3];
+    $asOf = Carbon::today();
+    $base = steadyTrimpMap($asOf->copy()->subDay(), 120, $dailyTrimp, $everyNthDay);
+
+    $previous = -1;
+    for ($extra = 0.0; $extra <= 600.0; $extra += 10.0) {
+        $map = $base + [$asOf->toDateString() => $extra];
+        $status = $this->load->summaryFromDailyMap($map, runDaysOf($map), $asOf)['form_status'];
+
+        expect($severity[$status])->toBeGreaterThanOrEqual($previous);
+        $previous = $severity[$status];
+    }
+})->with([
+    'beginner, 2 runs a week' => [60.0, 3],
+    'steady every other day' => [80.0, 2],
+    'daily runner just under the old CTL-20 edge' => [19.0, 1],
+    'daily runner' => [60.0, 1],
+    'high-volume daily runner' => [150.0, 1],
+]);
+
+it('checks the personal range against an unrounded reference that leaves out the current window', function (): void {
+    $asOf = Carbon::today();
+    $steady = steadyTrimpMap($asOf, 9 * 7, 592.0 / 7);
+    $spiking = array_merge($steady, steadyTrimpMap($asOf, 7, 1000.0 / 7));
+
+    $steadySummary = $this->load->summaryFromDailyMap($steady, runDaysOf($steady), $asOf);
+    $spikingSummary = $this->load->summaryFromDailyMap($spiking, runDaysOf($spiking), $asOf);
+
+    expect($steadySummary['weekly_trimp_range'])->toBe(['low' => 590.0, 'high' => 590.0])
+        ->and($steadySummary['weekly_trimp_reference']['high'])->toEqualWithDelta(592.0, 0.001)
+        ->and($steadySummary['weekly_trimp'])->toBeLessThanOrEqual($steadySummary['weekly_trimp_reference']['high'] + 0.001)
+        ->and($spikingSummary['weekly_trimp_reference']['high'])->toEqualWithDelta(592.0, 0.001);
 });

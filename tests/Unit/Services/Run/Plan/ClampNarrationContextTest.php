@@ -5,24 +5,26 @@ declare(strict_types=1);
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\RecoveryFeedback;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Plan\ClampNarrationContext;
+use App\Services\Run\Plan\RestClampRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
-/** The readiness state that bottoms the ceiling out, same shape RestClampRecorderTest uses. */
+/** A current pain report is a strong readiness concern. */
 function tiredUser(): User
 {
     $user = User::factory()->create();
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-        'form_status' => 'overreaching',
-        'monotony' => 1.0,
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'concerning_pain' => true,
     ]);
 
     return $user;
@@ -95,6 +97,46 @@ it('explains the step-down on a pinned day too, since the renderer advises it th
     clampDay($user, pinned: true);
 
     expect(resolveClamp($user))->not->toBeNull();
+});
+
+it('keeps a pinned race prescription while carrying strong-concern advice facts', function (): void {
+    $user = User::factory()->create();
+    $session = clampDay($user, 'race', pinned: true);
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'concerning_pain' => true,
+    ]);
+
+    $context = resolveClamp($user);
+
+    expect($session->fresh()->session_type)->toBe(SessionType::Race)
+        ->and($context['clamped_to'])->toBe(SessionType::Rest)
+        ->and($context['readiness_reasons'])->toContain('concerning_pain_reported');
+});
+
+it('uses the recorded reason after a run and later feedback change', function (): void {
+    $user = User::factory()->create();
+    $session = clampDay($user);
+    $feedback = RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'illness' => true,
+    ]);
+
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+    $feedback->update(['illness' => false]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'start_date_local' => Carbon::today()->setHour(7),
+    ]);
+
+    $context = resolveClamp($user);
+
+    expect($session->fresh()->readiness_assessment['reasons'])->toContain('illness_reported')
+        ->and($context['decision_source'])->toBe('recorded')
+        ->and($context['clamped_to'])->toBe(SessionType::Rest)
+        ->and($context['readiness_reasons'])->toContain('illness_reported')
+        ->and($context['readiness_reasons'])->not->toContain('already_ran_today');
 });
 
 it('resolves nothing when there is no session, or no user at all', function (): void {

@@ -12,6 +12,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
+use App\Services\AI\HydrationBacklog;
 use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\RiegelProjector;
@@ -75,6 +76,7 @@ final readonly class PlanAdapter
     public function __construct(
         private TrainingLoad $trainingLoad,
         private RiegelProjector $riegelProjector,
+        private HydrationBacklog $hydrationBacklog,
     ) {
     }
 
@@ -86,8 +88,11 @@ final readonly class PlanAdapter
      */
     public function forWeek(User $user, Carbon $weekStart, Carbon $today, ?RaceGoal $race): array
     {
-        $load = $this->trainingLoad->summary($user, $today);
-        $ceiling = ReadinessCeiling::from(BriefingContext::forUser($user, $today, $load)->readinessCeiling);
+        $loadPending = $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
+        $load = $loadPending ? null : $this->trainingLoad->summary($user, $today);
+        $ceiling = ReadinessCeiling::from(BriefingContext::forUser($user, $today, $load, historyLoading: $loadPending)->readinessCeiling);
+        $formKnownFrom = $load['form_known_from'] ?? null;
+        $formWarmingUp = is_string($formKnownFrom) && $formKnownFrom > $today->toDateString();
         $execution = $this->previousWeekExecution($user, $weekStart);
         $currentStimulus = $this->currentWeekStimulus($user, $weekStart, $today);
         $stimulus = $currentStimulus['sessions'] > 0
@@ -98,7 +103,7 @@ final readonly class PlanAdapter
             $ceiling,
             self::floatOrNull($load['monotony'] ?? null),
             self::floatOrNull($load['strain'] ?? null),
-            self::floatOrNull($load['ctl_42d'] ?? null),
+            $formWarmingUp ? null : self::floatOrNull($load['ctl_42d'] ?? null),
             $this->previousWeekAdherencePct($user, $weekStart),
             $stimulus['adherence_pct'],
             $stimulus['misses'],

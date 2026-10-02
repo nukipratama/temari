@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
+use App\Enums\PaceBand;
 use App\Services\Run\Metrics\ReadinessCeiling;
 
 /**
@@ -25,7 +26,8 @@ final class ReadinessClamp
 {
     /**
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
-     * @return array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string}|null
+     * @param  list<string>  $reasons
+     * @return array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string, quality_dose?: array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}}|null
      *                                                                                                            null when the stored session already fits under the ceiling
      */
     public static function apply(
@@ -38,10 +40,35 @@ final class ReadinessClamp
         ?array $paces,
         ReadinessCeiling $ceiling,
         float $longRunProgressionCapKm = INF,
+        array $reasons = [],
+        ?IntensityPrescription $prescription = null,
     ): ?array {
         $requiredRank = self::requiredRank($sessionType);
         if ($requiredRank <= $ceiling->rank()) {
             return null;
+        }
+
+        if ($ceiling === ReadinessCeiling::ModerateOk && $sessionType === SessionType::Race) {
+            $km = ($raceDistanceM ?? 0) / 1000;
+
+            return ['session_type' => $sessionType, 'segments' => SegmentGenerator::easyBlock($km, $paces), 'core_km' => $km,
+                'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? 'keep the event distance and use a conservative effort.'];
+        }
+
+        if ($ceiling === ReadinessCeiling::ModerateOk && in_array($sessionType, [SessionType::Tempo, SessionType::Interval], true) && $prescription !== null && $prescription->paceBand !== null && ! $prescription->isEasy()) {
+            $minutes = max(1, (int) floor($prescription->hardMinutes * 0.75));
+            $reduced = new IntensityPrescription($minutes, $prescription->paceBand, $prescription->paceSecPerKm, $prescription->reason, $prescription->raceContext);
+            $km = SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm);
+            $segments = SegmentGenerator::forPrescription($sessionType, $phase, $km, $paces, $reduced);
+            $minutes = (int) array_sum(array_map(static fn (SessionSegment $segment): float => $segment->paceLabel === PaceBand::Easy ? 0.0 : ($segment->minutes ?? 0.0), $segments));
+            if ($minutes === 0 || $minutes >= $prescription->hardMinutes) {
+                return ['session_type' => SessionType::Easy, 'segments' => SegmentGenerator::easyBlock($km, $paces), 'core_km' => $km,
+                    'note' => 'a smaller useful quality dose does not fit this session, so keep this one easy.'];
+            }
+
+            return ['session_type' => $sessionType, 'segments' => $segments, 'core_km' => $km,
+                'note' => self::qualityDoseNote($sessionType, $reasons, $minutes, $prescription->hardMinutes),
+                'quality_dose' => ['hard_minutes' => $minutes, 'original_hard_minutes' => $prescription->hardMinutes, 'pace_band' => $prescription->paceBand->value, 'pace_sec_per_km' => $prescription->paceSecPerKm]];
         }
 
         $easyOnlyKm = SegmentGenerator::coreKmFor(SessionType::Easy, $sessionType === SessionType::Long, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm);
@@ -61,7 +88,7 @@ final class ReadinessClamp
                 'session_type' => SessionType::Rest,
                 'segments' => [],
                 'core_km' => 0.0,
-                'note' => self::restNote($sessionType),
+                'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? self::restNote($sessionType),
             ],
             // Long requires ModerateOk, so an EasyOnly ceiling — stricter than
             // ModerateOk — does send a Long day through this arm too.
@@ -75,7 +102,7 @@ final class ReadinessClamp
                     $paces,
                 ),
                 'core_km' => $easyOnlyKm,
-                'note' => self::easyOnlyNote($sessionType),
+                'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? self::easyOnlyNote($sessionType),
             ],
             // Only reachable for Tempo/Interval (their requiredRank alone
             // exceeds ModerateOk) — keeps the day's own size, just re-paced
@@ -84,7 +111,7 @@ final class ReadinessClamp
                 'session_type' => SessionType::Easy,
                 'segments' => SegmentGenerator::easyEquivalentOf($sessionType, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, $paces),
                 'core_km' => SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm),
-                'note' => self::moderateOkNote(),
+                'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? self::moderateOkNote(),
             ],
             ReadinessCeiling::QualityOk => null, // unreachable: nothing requires more than QualityOk
         };
@@ -150,9 +177,25 @@ final class ReadinessClamp
      * narrated: unlike every other clamp outcome, this one requests no
      * `plan_clamp_voice` and sends no notification. See {@see self::paceEaseApplies()}.
      */
-    public static function paceEaseNote(): string
+    /** @param list<string> $reasons */
+    public static function paceEaseNote(array $reasons = []): string
     {
-        return "your form's a little flat, so run this one at the easy end of your range.";
+        foreach ([
+            'severe_fatigue_or_soreness_reported' => 'you reported strong fatigue or soreness, so keep this one at the slower end of easy.',
+            'training_form_fatigued' => 'your current training form is showing fatigue, so keep this one at the slower end of easy.',
+            'demanding_session_within_24h' => 'you completed a demanding session within the last day, so keep this one at the slower end of easy.',
+            'closely_spaced_demanding_sessions' => 'hard sessions have landed close together, so keep this one at the slower end of easy.',
+            'weekly_load_above_personal_range' => 'your recent measured training load is above your usual range, so keep this one at the slower end of easy.',
+            'high_training_monotony' => 'your recent training load has been unusually uniform, so keep this one at the slower end of easy.',
+            'volume_increased_sharply' => "this week's running volume is well above last week's, so keep this one at the slower end of easy.",
+            'running_ahead_of_plan' => "you've run well past this week's plan so far, so keep this one at the slower end of easy.",
+        ] as $reason => $note) {
+            if (in_array($reason, $reasons, true)) {
+                return $note;
+            }
+        }
+
+        return 'keep this one at the slower end of easy.';
     }
 
     /**
@@ -161,18 +204,16 @@ final class ReadinessClamp
      * a Long day is a volume day, not an intensity one, so it only needs
      * "moderate" clearance; Easy needs the floor above Rest.
      *
-     * A `Race` day sits at the floor with `Rest`, so no ceiling ever reaches
-     * it: the clamp is advisory, and talking an athlete out of the goal race
-     * they have trained months for — on a season's worth of load they are
-     * meant to be carrying into it — is not advice this can give.
+     * A race has no readiness privilege. It stays as prescribed when evidence
+     * supports quality, and real readiness concerns can still advise easing it.
      */
     private static function requiredRank(SessionType $sessionType): int
     {
         return match ($sessionType) {
-            SessionType::Rest, SessionType::Race => ReadinessCeiling::Rest->rank(),
+            SessionType::Rest => ReadinessCeiling::Rest->rank(),
             SessionType::Easy => ReadinessCeiling::EasyOnly->rank(),
             SessionType::Long => ReadinessCeiling::ModerateOk->rank(),
-            SessionType::Tempo, SessionType::Interval => ReadinessCeiling::QualityOk->rank(),
+            SessionType::Tempo, SessionType::Interval, SessionType::Race => ReadinessCeiling::QualityOk->rank(),
         };
     }
 
@@ -182,10 +223,19 @@ final class ReadinessClamp
      * reason as {@see self::downgradeFor()}: a caller that needs only the
      * explanation should not have to build a segment list to reach it.
      */
-    public static function noteFor(SessionType $sessionType, ReadinessCeiling $ceiling): ?string
+    /** @param list<string> $reasons */
+    public static function noteFor(SessionType $sessionType, ReadinessCeiling $ceiling, array $reasons = []): ?string
     {
         if (self::requiredRank($sessionType) <= $ceiling->rank()) {
             return null;
+        }
+
+        $specificNote = self::specificNote($reasons);
+        if ($ceiling === ReadinessCeiling::ModerateOk && $sessionType === SessionType::Race) {
+            return ($specificNote === null ? '' : $specificNote.' ').'keep the event distance and use a conservative effort.';
+        }
+        if ($specificNote !== null) {
+            return $specificNote;
         }
 
         return match ($ceiling) {
@@ -196,9 +246,47 @@ final class ReadinessClamp
         };
     }
 
+    /** @param list<string> $reasons */
+    private static function specificNote(array $reasons): ?string
+    {
+        foreach ([
+            'concerning_pain_reported' => "you reported concerning pain, so today's a full rest instead.",
+            'illness_reported' => "you reported feeling ill, so today's a full rest instead.",
+            'severe_fatigue_or_soreness_reported' => "you reported strong fatigue or soreness, so quality work can wait.",
+            'training_form_overreaching' => "your current training form is showing overreaching, so today's a full rest instead.",
+            'already_ran_today' => "you already ran today, so this one stays easy instead of the planned session.",
+            'demanding_session_within_24h' => "you completed a demanding session within the last day, so quality can wait.",
+            'closely_spaced_demanding_sessions' => 'hard sessions have landed close together, so quality can wait.',
+            'weekly_load_above_personal_range' => 'your recent measured training load is above your usual range, so quality can wait.',
+            'training_form_fatigued' => "your current training form is showing fatigue, so quality can wait.",
+            'high_training_monotony' => 'your recent training load has been unusually uniform, so quality can wait.',
+            'volume_increased_sharply' => "this week's running volume is well above last week's, so quality can wait.",
+            'running_ahead_of_plan' => "you've run well past this week's plan so far, so quality can wait.",
+            'moderate_fatigue_or_soreness_reported' => 'you reported moderate fatigue or soreness, so quality can wait.',
+            'mild_fatigue_or_soreness_with_load_support' => 'you reported mild fatigue or soreness alongside elevated recent load, so ease this one.',
+            'fair_sleep_with_load_support' => 'you reported fair sleep alongside elevated recent load, so ease this one.',
+            'poor_sleep_with_load_support' => 'you reported poor sleep alongside elevated recent load, so ease this one.',
+        ] as $reason => $note) {
+            if (in_array($reason, $reasons, true)) {
+                return $note;
+            }
+        }
+
+        return null;
+    }
+
     private static function moderateOkNote(): string
     {
-        return "Your form dipped, so today's the easy version instead.";
+        return "quality work can wait, today's the easy version instead.";
+    }
+
+    /** @param list<string> $reasons */
+    public static function qualityDoseNote(SessionType $sessionType, array $reasons, int $minutes, int $originalMinutes): string
+    {
+        $cause = self::specificNote($reasons);
+        $cause = $cause === null ? '' : str_replace('quality can wait.', 'reduce the quality dose.', $cause).' ';
+
+        return $cause."keep the {$sessionType->value} intent with {$minutes} hard minutes instead of {$originalMinutes}.";
     }
 
     private static function restNote(SessionType $original): string

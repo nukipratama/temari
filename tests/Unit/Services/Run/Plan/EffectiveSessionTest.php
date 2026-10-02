@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\SessionType;
+use App\Enums\PaceBand;
 use App\Models\PlannedSession;
 use App\Services\Run\Plan\EffectiveSession;
 use Illuminate\Support\Carbon;
@@ -31,6 +32,26 @@ it('is an easy run at the recorded distance on a day eased to it', function (): 
         ->and($effective->easedFromType)->toBe(SessionType::Tempo)
         ->and($effective->easedFromKm)->toBe(5.9)
         ->and($effective->distanceHeld())->toBeFalse();
+});
+
+it('keeps a recorded readiness dose reduction in its original quality type', function (): void {
+    $qualityDose = [
+        'hard_minutes' => 15,
+        'original_hard_minutes' => 20,
+        'pace_band' => PaceBand::Threshold->value,
+        'pace_sec_per_km' => 270,
+    ];
+    $effective = EffectiveSession::of(effectiveRow([
+        'session_type' => SessionType::Tempo,
+        'clamped_km' => 6.4,
+        'readiness_assessment' => ['adjustment' => ['quality_dose' => $qualityDose]],
+    ]), 6.4);
+
+    expect($effective->sessionType)->toBe(SessionType::Tempo)
+        ->and($effective->coreKm)->toBe(6.4)
+        ->and($effective->qualityDose)->toBe($qualityDose)
+        ->and($effective->isEased())->toBeTrue()
+        ->and($effective->distanceHeld())->toBeTrue();
 });
 
 it('is a rest day on a day clamped to rest', function (): void {

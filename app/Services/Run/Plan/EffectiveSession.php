@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\SessionType;
+use App\Enums\PaceBand;
 use App\Models\PlannedSession;
 use App\Services\Run\Metrics\ReadinessCeiling;
 
@@ -20,12 +21,14 @@ final readonly class EffectiveSession
 {
     private const float HELD_TOLERANCE_KM = 0.05;
 
+    /** @param array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null $qualityDose */
     private function __construct(
         public SessionType $sessionType,
         public float $coreKm,
         public ?SessionType $easedFromType = null,
         public ?float $easedFromKm = null,
         public ?int $easedPaceSecPerKm = null,
+        public ?array $qualityDose = null,
     ) {
     }
 
@@ -36,6 +39,11 @@ final readonly class EffectiveSession
         }
 
         if ($session->clamped_km !== null) {
+            $dose = $session->readiness_assessment['adjustment']['quality_dose'] ?? null;
+            if ($dose !== null) {
+                return new self($session->session_type, $session->clamped_km, $session->session_type, $storedCoreKm, qualityDose: $dose);
+            }
+
             return new self(SessionType::Easy, $session->clamped_km, $session->session_type, $storedCoreKm);
         }
 
@@ -49,6 +57,16 @@ final readonly class EffectiveSession
     public static function isRecordedOn(PlannedSession $session): bool
     {
         return $session->rest_clamped_at !== null || $session->clamped_km !== null;
+    }
+
+    public function qualityPrescription(): ?IntensityPrescription
+    {
+        return $this->qualityDose === null ? null : new IntensityPrescription(
+            $this->qualityDose['hard_minutes'],
+            PaceBand::from($this->qualityDose['pace_band']),
+            $this->qualityDose['pace_sec_per_km'],
+            null,
+        );
     }
 
     /**

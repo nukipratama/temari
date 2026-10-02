@@ -12,7 +12,7 @@ namespace App\Enums;
  *
  * `Race` is the goal race itself, the one case whose distance comes from the
  * athlete's {@see \App\Models\RaceGoal} rather than from their training
- * baseline, and the one the readiness clamp never downgrades.
+ * baseline.
  */
 enum SessionType: string
 {

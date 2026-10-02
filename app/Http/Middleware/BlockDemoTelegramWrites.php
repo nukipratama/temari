@@ -11,18 +11,10 @@ use Symfony\Component\HttpFoundation\Response;
 class BlockDemoTelegramWrites
 {
     /**
-     * Guards the Telegram routes against the shared demo account: a demo visitor
-     * could disconnect the shared bot or spam real messages, so any mutating
-     * request (POST/PUT/PATCH/DELETE) from `is_demo` is rejected before it
-     * reaches the controller. Applied only to the Telegram send/connection
-     * routes (not blanket) — the rest of the demo is an interactive sandbox.
-     * The frontend disables these controls up front, so this is the
-     * defense-in-depth net for a direct API call that bypasses the UI.
+     * Blocks mutating requests from the shared demo account on routes that opt in.
      *
-     * Inertia visits (`router.post`/`patch`/`delete`) get a redirect back with
-     * a flashed error so the existing `$errors` bag renders it; plain `fetch`
-     * calls (no `X-Inertia` header) get a JSON 403 since Inertia's client
-     * cannot parse those bare JSON responses.
+     * Inertia visits get a redirect with a flashed error; plain fetch calls get a
+     * JSON 403 response.
      */
     public function handle(Request $request, Closure $next): Response
     {
