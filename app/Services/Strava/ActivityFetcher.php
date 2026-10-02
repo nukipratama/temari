@@ -43,10 +43,20 @@ class ActivityFetcher
      * started on or before it — bounding a first-connect backfill to a recent
      * window instead of pulling an athlete's entire history.
      *
-     * @return array{summaries: list<array<string, mixed>>, api_calls: int}
+     * When `$maxPages` is given, the walk stops after that many full pages and
+     * returns `resume_before`, the epoch start of the oldest activity it read;
+     * passing it back as `$before` resumes the walk just below that activity.
+     * `resume_before` is null once the walk has finished.
+     *
+     * @return array{summaries: list<array<string, mixed>>, api_calls: int, resume_before: ?int}
      */
-    public function fetchNewSummaries(StravaConnection $connection, StravaReadSource $source, ?CarbonImmutable $since = null): array
-    {
+    public function fetchNewSummaries(
+        StravaConnection $connection,
+        StravaReadSource $source,
+        ?CarbonImmutable $since = null,
+        ?int $before = null,
+        ?int $maxPages = null,
+    ): array {
         $existing = Activity::query()
             ->withStubs()
             ->where('user_id', $connection->user_id)
@@ -59,12 +69,14 @@ class ActivityFetcher
         $summaries = [];
         $page = 1;
         $apiCalls = 0;
+        $resumeBefore = null;
 
         while (true) {
-            $response = $this->client->get($connection, '/athlete/activities', $source, query: [
+            $response = $this->client->get($connection, '/athlete/activities', $source, query: array_filter([
                 'per_page' => self::PER_PAGE,
                 'page' => $page,
-            ]);
+                'before' => $before,
+            ], fn (?int $value): bool => $value !== null));
             $apiCalls++;
 
             /** @var list<array<string, mixed>> $items */
@@ -78,13 +90,32 @@ class ActivityFetcher
             if ($stop || count($items) < self::PER_PAGE) {
                 break;
             }
+            if ($maxPages !== null && $page >= $maxPages) {
+                $resumeBefore = $this->oldestStartEpoch($items);
+                break;
+            }
             $page++;
         }
 
         // Strava paginates newest-first; reverse so the caller stores oldest-first.
         usort($summaries, fn (array $a, array $b): int => (int) $a['id'] <=> (int) $b['id']);
 
-        return ['summaries' => $summaries, 'api_calls' => $apiCalls];
+        return ['summaries' => $summaries, 'api_calls' => $apiCalls, 'resume_before' => $resumeBefore];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    private function oldestStartEpoch(array $items): ?int
+    {
+        $starts = array_filter(array_map(
+            fn (array $item): ?int => is_string($item['start_date'] ?? null) && $item['start_date'] !== ''
+                ? CarbonImmutable::parse($item['start_date'])->getTimestamp()
+                : null,
+            $items,
+        ), fn (?int $epoch): bool => $epoch !== null);
+
+        return $starts === [] ? null : min($starts);
     }
 
     /**

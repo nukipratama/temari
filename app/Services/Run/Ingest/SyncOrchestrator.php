@@ -42,71 +42,17 @@ class SyncOrchestrator
 
     public function syncUser(User $user, ?CarbonImmutable $since = null, StravaSyncSource $source = StravaSyncSource::Poll): int
     {
-        if (! $this->stravaEnabled()) {
-            return 0;
-        }
+        return $this->walk($user, $since, $source)['inserted'];
+    }
 
-        $connection = $user->stravaConnection;
-        if ($connection === null || $connection->isRevoked()) {
-            return 0;
-        }
-
-        $lock = Cache::lock("strava-sync:user-{$user->id}", self::LOCK_TTL_SECONDS);
-        if (! $lock->get()) {
-            Log::info('strava-sync skipped — another run holds the lock', ['user_id' => $user->id]);
-
-            return 0;
-        }
-
-        $credentialVersion = $connection->credential_version;
-
-        try {
-            ['summaries' => $summaries, 'api_calls' => $apiCalls] = $this->fetcher->fetchNewSummaries($connection, StravaReadSource::fromSyncSource($source), $since);
-            if ($summaries === []) {
-                $this->logSync($user->id, 'success', 0, $apiCalls, source: $source);
-
-                return 0;
-            }
-
-            $inserted = $this->summaryIngest->store($user->id, $summaries);
-            $this->rebuildAggregates($user, $summaries);
-
-            Log::info('strava-sync stored activity summaries', [
-                'user_id' => $user->id,
-                'inserted' => $inserted,
-                'api_calls' => $apiCalls,
-            ]);
-
-            Pulse::record('strava_sync', 'inserted', $inserted)->sum()->count();
-
-            $this->logSync($user->id, 'success', $inserted, $apiCalls, source: $source);
-
-            return $inserted;
-        } catch (StravaConnectionRevokedException $e) {
-            // The token was rejected with a 401. Trip the per-connection breaker:
-            // revoke so sync stops picking this connection every hour instead of
-            // crashing the scheduled command (parity with the SyncActivitiesJob
-            // token-refresh-failure path).
-            $revoked = $connection->markRevoked(expectedCredentialVersion: $credentialVersion, stravaRejected: true);
-            if ($revoked) {
-                Pulse::record('strava_revoked', 'api_401')->count();
-            }
-            $this->logSync($user->id, 'error', 0, 0, $e->getMessage(), source: $source);
-            Log::log($revoked ? 'warning' : 'info', $revoked
-                ? 'strava-sync revoked connection after API 401'
-                : 'strava-sync ignored a stale API 401 after credentials changed', [
-                'user_id' => $user->id,
-                'reason' => $e->getMessage(),
-            ]);
-
-            return 0;
-        } catch (Throwable $e) {
-            $this->logSync($user->id, 'error', 0, 0, $e->getMessage(), source: $source);
-
-            throw $e;
-        } finally {
-            $lock->release();
-        }
+    /**
+     * Walk at most `$maxPages` pages, starting below the `$before` epoch cursor
+     * when given, and store what they hold. Returns the cursor to resume from,
+     * or null once the walk has finished.
+     */
+    public function syncUserPages(User $user, int $maxPages, ?int $before = null, StravaSyncSource $source = StravaSyncSource::Manual): ?int
+    {
+        return $this->walk($user, null, $source, $before, $maxPages)['resume_before'];
     }
 
     /**
@@ -172,6 +118,84 @@ class SyncOrchestrator
             $this->logSync($user->id, 'error', 0, 0, $e->getMessage(), source: $source);
 
             throw $e;
+        }
+    }
+
+    /**
+     * @return array{inserted: int, resume_before: ?int}
+     */
+    private function walk(User $user, ?CarbonImmutable $since, StravaSyncSource $source, ?int $before = null, ?int $maxPages = null): array
+    {
+        $finished = ['inserted' => 0, 'resume_before' => null];
+
+        if (! $this->stravaEnabled()) {
+            return $finished;
+        }
+
+        $connection = $user->stravaConnection;
+        if ($connection === null || $connection->isRevoked()) {
+            return $finished;
+        }
+
+        $lock = Cache::lock("strava-sync:user-{$user->id}", self::LOCK_TTL_SECONDS);
+        if (! $lock->get()) {
+            Log::info('strava-sync skipped — another run holds the lock', ['user_id' => $user->id]);
+
+            return $finished;
+        }
+
+        $credentialVersion = $connection->credential_version;
+
+        try {
+            [
+                'summaries' => $summaries,
+                'api_calls' => $apiCalls,
+                'resume_before' => $resumeBefore,
+            ] = $this->fetcher->fetchNewSummaries($connection, StravaReadSource::fromSyncSource($source), $since, $before, $maxPages);
+            if ($summaries === []) {
+                $this->logSync($user->id, 'success', 0, $apiCalls, source: $source);
+
+                return ['inserted' => 0, 'resume_before' => $resumeBefore];
+            }
+
+            $inserted = $this->summaryIngest->store($user->id, $summaries);
+            $this->rebuildAggregates($user, $summaries);
+
+            Log::info('strava-sync stored activity summaries', [
+                'user_id' => $user->id,
+                'inserted' => $inserted,
+                'api_calls' => $apiCalls,
+            ]);
+
+            Pulse::record('strava_sync', 'inserted', $inserted)->sum()->count();
+
+            $this->logSync($user->id, 'success', $inserted, $apiCalls, source: $source);
+
+            return ['inserted' => $inserted, 'resume_before' => $resumeBefore];
+        } catch (StravaConnectionRevokedException $e) {
+            // The token was rejected with a 401. Trip the per-connection breaker:
+            // revoke so sync stops picking this connection every hour instead of
+            // crashing the scheduled command (parity with the SyncActivitiesJob
+            // token-refresh-failure path).
+            $revoked = $connection->markRevoked(expectedCredentialVersion: $credentialVersion, stravaRejected: true);
+            if ($revoked) {
+                Pulse::record('strava_revoked', 'api_401')->count();
+            }
+            $this->logSync($user->id, 'error', 0, 0, $e->getMessage(), source: $source);
+            Log::log($revoked ? 'warning' : 'info', $revoked
+                ? 'strava-sync revoked connection after API 401'
+                : 'strava-sync ignored a stale API 401 after credentials changed', [
+                'user_id' => $user->id,
+                'reason' => $e->getMessage(),
+            ]);
+
+            return $finished;
+        } catch (Throwable $e) {
+            $this->logSync($user->id, 'error', 0, 0, $e->getMessage(), source: $source);
+
+            throw $e;
+        } finally {
+            $lock->release();
         }
     }
 
