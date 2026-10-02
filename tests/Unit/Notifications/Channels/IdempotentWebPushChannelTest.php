@@ -8,12 +8,17 @@ use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\Channels\IdempotentWebPushChannel;
+use App\Notifications\TestNotification;
 use App\Services\Notifications\NotificationDeliveryClaim;
 use App\Services\Notifications\ChannelRouter;
+use Base64Url\Base64Url;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Minishlink\WebPush\VAPID;
 use NotificationChannels\WebPush\WebPushChannel;
 
 uses(RefreshDatabase::class);
@@ -58,11 +63,13 @@ it('logs when a newer claim fences its send result', function (): void {
     Log::spy();
     $analysis = Analysis::factory()->create();
     $inner = Mockery::mock(WebPushChannel::class);
-    $inner->shouldReceive('send')->once()->andReturnUsing(function () use ($analysis): void {
+    $inner->shouldReceive('send')->once()->andReturnUsing(function () use ($analysis): array {
         DB::table('notification_deliveries')
             ->where('analysis_id', $analysis->id)
             ->where('channel', 'webpush')
             ->update(['claim_version' => 2]);
+
+        return [];
     });
 
     idempotentChannel($inner)->send(pushUser(), new AnalysisReadyNotification($analysis));
@@ -189,4 +196,27 @@ it('reclaims and sends a stale web push once with the new claim version', functi
         'status' => NotificationDeliveryStatus::Sent->value,
         'claim_version' => 2,
     ]);
+});
+
+it('delivers an encrypted, VAPID-signed push to the subscription endpoint through the HTTP client', function (): void {
+    Http::fake(['push.example/*' => Http::response('', 201)]);
+    $vapid = VAPID::createVapidKeys();
+    config(['webpush.vapid.public_key' => $vapid['publicKey'], 'webpush.vapid.private_key' => $vapid['privateKey']]);
+    $device = openssl_pkey_get_details(openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]))['ec'];
+    $user = User::factory()->create();
+    $user->updatePushSubscription(
+        'https://push.example/endpoint',
+        Base64Url::encode("\x04".str_pad($device['x'], 32, "\0", STR_PAD_LEFT).str_pad($device['y'], 32, "\0", STR_PAD_LEFT)),
+        Base64Url::encode(random_bytes(16)),
+    );
+
+    app(IdempotentWebPushChannel::class)->send($user, new TestNotification());
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://push.example/endpoint'
+        && $request->method() === 'POST'
+        && str_starts_with($request->header('Authorization')[0] ?? '', 'vapid t=')
+        && $request->header('Content-Encoding') === ['aes128gcm']
+        && $request->header('Urgency') === ['high']
+        && $request->body() !== '');
 });
