@@ -110,7 +110,7 @@ describe('app.css integrity', () => {
     });
 
     it('defines the wide page column in rem so it scales with the type step', () => {
-        expect(css).toMatch(/--container-column-wide:\s*65rem;/);
+        expect(css).toMatch(/--container-column-wide:\s*54rem;/);
     });
 
     it('still declares the press-feedback rule', () => {
