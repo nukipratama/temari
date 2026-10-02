@@ -8,31 +8,28 @@ permissions:
 
 env:
   PHP_VERSION: '8.5'
-  SHARD_TOTAL: 3
+  SHARD_TOTAL: 4
 
 jobs:
   tests:
-    name: tests (shard ${{ matrix.shard }}/3)
+    name: tests (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-26.04-arm
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
-    services:
-      mysql:
-        image: mysql:8.4@sha256:c592c15aaf4a1961e15d82eb31ea5987dda862d1c4b1e93424438c0e91dc1f8d
-        env:
-          MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: temari_testing
-          MYSQL_USER: sail
-          MYSQL_PASSWORD: password
-        ports: ['0:3306']
-        options: >-
-          --health-cmd="mysqladmin ping -ppassword"
-          --health-interval=5s --health-timeout=2s --health-retries=10
-          --tmpfs /var/lib/mysql:rw
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Backgrounded so the image pull and InnoDB init overlap PHP setup.
+      - name: Start MySQL
+        run: |
+          docker run -d --name mysql --tmpfs /var/lib/mysql:rw -p 127.0.0.1::3306 \
+            -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=temari_testing \
+            -e MYSQL_USER=sail -e MYSQL_PASSWORD=password \
+            mysql:8.4@sha256:c592c15aaf4a1961e15d82eb31ea5987dda862d1c4b1e93424438c0e91dc1f8d \
+            --innodb-flush-log-at-trx-commit=0 --innodb-doublewrite=0 --skip-log-bin --performance-schema=OFF \
+            > "$RUNNER_TEMP/mysql-start.log" 2>&1 &
 
       - uses: ./.github/actions/show-runner-resources
         with:
@@ -53,12 +50,26 @@ jobs:
       - name: Class/test 1:1 structure check
         run: ./vendor/bin/pest --group=structure
 
+      # TCP ping: the entrypoint's init server answers only on the socket.
+      - name: Wait for MySQL
+        timeout-minutes: 3
+        run: |
+          until docker exec mysql mysqladmin ping -h 127.0.0.1 -uroot -ppassword --silent 2>/dev/null; do
+            sleep 1
+          done
+          echo "DB_PORT=$(docker port mysql 3306/tcp | head -n1 | cut -d: -f2)" >> "$GITHUB_ENV"
+
+      - name: MySQL diagnostics
+        if: failure()
+        run: |
+          cat "$RUNNER_TEMP/mysql-start.log" || true
+          docker logs mysql || true
+
       - name: Tests
         env:
           APP_ENV: testing
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
-          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
           DB_DATABASE: temari_testing
           DB_USERNAME: root
           DB_PASSWORD: password

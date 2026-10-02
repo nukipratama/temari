@@ -15,13 +15,16 @@ dataset('dev and ci service manifests', [
 it('pins dev and CI MySQL and Redis to the digests prod runs', function (string $manifest): void {
     preg_match('/^FROM mysql@(sha256:[0-9a-f]{64})$/m', (string) File::get(base_path('docker/mysql/Dockerfile')), $mysql);
     preg_match('/^\s*image:\s*(redis:[^@\s]+@sha256:[0-9a-f]{64})$/m', (string) File::get(base_path('compose.prod.yaml')), $redis);
-    preg_match_all('/^\s*image:\s*\'?((?:mysql|redis)[^\'\s]*)\'?\s*$/m', (string) File::get(base_path($manifest)), $images);
+    $contents = (string) File::get(base_path($manifest));
+    preg_match_all('/^\s*image:\s*\'?((?:mysql|redis)[^\'\s]*)\'?\s*$/m', $contents, $images);
+    preg_match_all('/^\s*((?:mysql|redis):\S+)\s*\\\\?$/m', $contents, $dockerRunImages);
+    $images = [...$images[1], ...$dockerRunImages[1]];
 
     expect($mysql)->toHaveKey(1)
         ->and($redis)->toHaveKey(1)
-        ->and($images[1])->not->toBeEmpty();
+        ->and($images)->not->toBeEmpty();
 
-    foreach ($images[1] as $image) {
+    foreach ($images as $image) {
         str_starts_with($image, 'mysql')
             ? expect($image)->toEndWith('@'.$mysql[1])
             : expect($image)->toBe($redis[1]);

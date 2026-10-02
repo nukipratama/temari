@@ -53,7 +53,7 @@ log. **CI is the authoritative full gate** — a green `composer gate` locally i
 signal, not a substitute for CI passing. On `push` to `main`, `deploy` additionally builds and
 rolls the image once `ci-gate` and `build` both pass; see [[deployment]] for that half.
 
-Both test suites run three parallel shards on PRs and main pushes. PR shards collect coverage;
+The backend suite runs four parallel shards and the frontend suite three, on PRs and main pushes. The test jobs and the image build need only `changes`, so they start without waiting for `secret-scan` or `repo-guards`; `ci-gate` still requires both. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
 their `coverage` jobs merge the whole-suite totals and apply the configured thresholds exactly
 once. Main-push shards skip instrumentation and the merge jobs because the change was already
 coverage-gated before merge. Each reusable workflow's `gate` requires all of its shards and static

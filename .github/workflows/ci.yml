@@ -77,7 +77,7 @@ jobs:
           GITLEAKS_ENABLE_COMMENTS: false
 
   # Unfiltered: a deletion anywhere can orphan a doc citation, so this has to see
-  # the whole tree. Every downstream job gates on it — keep it fast.
+  # the whole tree. ci-gate requires it.
   repo-guards:
     runs-on: ubuntu-26.04-arm
     steps:
@@ -115,20 +115,20 @@ jobs:
   # orchestration, deployment, and the one required branch-protection check.
   backend:
     name: backend
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && needs.changes.outputs.backend == 'true' }}
+    needs: [changes]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     uses: ./.github/workflows/backend-ci.yml
 
   frontend:
     name: frontend
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && needs.changes.outputs.frontend == 'true' }}
+    needs: [changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     uses: ./.github/workflows/frontend-ci.yml
 
   worktree:
     name: worktree-races
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && needs.changes.outputs.worktree == 'true' }}
+    needs: [changes]
+    if: ${{ needs.changes.outputs.worktree == 'true' }}
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 5
     strategy:
@@ -176,8 +176,8 @@ jobs:
   # Dockerfile/composer change still builds. ~40s off a warm cache.
   build:
     name: build-prod-image
-    needs: [changes, secret-scan, repo-guards]
-    if: ${{ needs.secret-scan.result == 'success' && needs.repo-guards.result == 'success' && (needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true') }}
+    needs: [changes]
+    if: ${{ needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
