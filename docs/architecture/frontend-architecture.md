@@ -1,5 +1,5 @@
 ---
-title: Frontend Architecture (Inertia 2 + React 19)
+title: Frontend Architecture (Inertia 3 + React 19)
 description: How the SPA is wired — the controller→page→component flow, shared props, the middleware/route gate, the React entry, layout, and frontend conventions
 tags: [architecture, frontend]
 status: living
@@ -18,7 +18,7 @@ code_refs:
   - bootstrap/app.php
 ---
 
-# Frontend Architecture (Inertia 2 + React 19)
+# Frontend Architecture (Inertia 3 + React 19)
 
 There is no client-side router and no REST/JSON API for pages. Every screen is a Laravel controller that returns [`Inertia::render('PageName', $props)`](app/Http/Controllers/DashboardController.php#L86); Inertia ships those props to a React page component, and `<Link>` navigation re-runs the controller and swaps the page in place. This note is the wiring overview — individual screens have their own notes ([[dashboard]], [[run-history]], [[run-detail]], [[profile]], [[cards-collection]], [[records]]).
 
