@@ -42,6 +42,20 @@ describe('ProfileHero', () => {
         expect(mascot?.getAttribute('width')).toBe('200');
     });
 
+    it('bleeds the watermark off the top-right corner at every width', () => {
+        const { container } = renderHero();
+        const classes =
+            container
+                .querySelector('svg[data-mascot]')
+                ?.getAttribute('class')
+                ?.split(/\s+/) ?? [];
+
+        expect(classes).toEqual(
+            expect.arrayContaining(['-top-20', '-right-14']),
+        );
+        expect(classes.filter((c) => c.startsWith('min-['))).toEqual([]);
+    });
+
     it('renders the eyebrow with the merged est. date and every stat tile', () => {
         renderHero();
 
