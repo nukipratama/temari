@@ -77,6 +77,7 @@ it('uses the tested classifier and runs every check when the workflow itself cha
         'backend' => true,
         'frontend' => true,
         'docker' => true,
+        'worktree' => true,
     ]);
 })->group('structure');
 
@@ -102,20 +103,22 @@ it('routes public PHP entry points to backend or all checks', function (): void 
         'backend' => true,
         'frontend' => false,
         'docker' => false,
+        'worktree' => false,
     ]);
     expect(ciClassifyPaths(['public/frankenphp-worker.php']))->toBe([
         'backend' => true,
         'frontend' => true,
         'docker' => true,
+        'worktree' => true,
     ]);
 })->group('structure');
 
 it('routes toolchain and testing environment inputs to their checks', function (string $path, array $checks): void {
     expect(ciClassifyPaths([$path]))->toBe($checks);
 })->with([
-    '.nvmrc' => ['.nvmrc', ['backend' => false, 'frontend' => true, 'docker' => false]],
-    '.npmrc' => ['.npmrc', ['backend' => false, 'frontend' => true, 'docker' => false]],
-    '.env.testing.example' => ['.env.testing.example', ['backend' => true, 'frontend' => false, 'docker' => false]],
+    '.nvmrc' => ['.nvmrc', ['backend' => false, 'frontend' => true, 'docker' => false, 'worktree' => false]],
+    '.npmrc' => ['.npmrc', ['backend' => false, 'frontend' => true, 'docker' => false, 'worktree' => false]],
+    '.env.testing.example' => ['.env.testing.example', ['backend' => true, 'frontend' => false, 'docker' => false, 'worktree' => false]],
 ])->group('structure');
 
 it('routes development shell helpers to backend CI only', function (): void {
@@ -132,6 +135,25 @@ it('routes development shell helpers to backend CI only', function (): void {
     }
 })->group('structure');
 
+it('runs the worktree race harness when the worktree tooling or its harness changes', function (string $path): void {
+    expect(ciClassifyPaths([$path])['worktree'])->toBeTrue("{$path} should run the worktree race harness.");
+})->with([
+    'scripts/worktree',
+    'scripts/worktree-setup.sh',
+    'scripts/worktree-hook-create.sh',
+    'tests/scripts/worktree-races.sh',
+])->group('structure');
+
+it('skips the worktree race harness for unrelated changes', function (string $path): void {
+    expect(ciClassifyPaths([$path])['worktree'])->toBeFalse("{$path} should not run the worktree race harness.");
+})->with([
+    'scripts/tl',
+    'scripts/deploy/check-restore-counts.sh',
+    'app/Models/User.php',
+    'tests/Unit/Architecture/CiPathFilterTest.php',
+    'resources/js/app.tsx',
+])->group('structure');
+
 it('routes infrastructure and server configuration changes to every check', function (): void {
     foreach ([
         'compose.prod.yaml',
@@ -142,6 +164,7 @@ it('routes infrastructure and server configuration changes to every check', func
             'backend' => true,
             'frontend' => true,
             'docker' => true,
+            'worktree' => true,
         ]);
     }
 })->group('structure');
@@ -158,6 +181,7 @@ it('unions mixed changes and takes the all-checks branch for infrastructure', fu
         'backend' => false,
         'frontend' => true,
         'docker' => false,
+        'worktree' => false,
     ]);
 
     expect(ciClassifyPaths([
@@ -168,6 +192,7 @@ it('unions mixed changes and takes the all-checks branch for infrastructure', fu
         'backend' => true,
         'frontend' => true,
         'docker' => true,
+        'worktree' => true,
     ]);
 })->group('structure');
 
