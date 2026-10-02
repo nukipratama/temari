@@ -367,6 +367,8 @@ export interface ActivityDetail {
     /** Strava ships rpm (one leg); doubled for the spm the UI shows. */
     average_cadence?: number | null;
     trimp_edwards: number | null;
+    /** CR-10 effort score (1–10) the athlete entered; feeds no load. */
+    perceived_effort?: number | null;
     workout_type?: number | null;
     location_name?: string | null;
     location_country?: string | null;
@@ -674,4 +676,12 @@ export interface WeeklySnapshotWithRecap extends WeeklySnapshot {
     /** True for the latest completed week, the only chain link that may regenerate. */
     is_chain_head: boolean;
     recap_analysis: AnalysisPayload;
+}
+
+/** The newest run, offered to an effort score on Today. */
+export interface PerceivedEffortPrompt {
+    activity_id: number;
+    score: number | null;
+    name: string | null;
+    start_date_local: string | null;
 }

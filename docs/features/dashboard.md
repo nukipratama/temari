@@ -13,6 +13,7 @@ code_refs:
   - resources/js/components/home/EvidenceList.tsx
   - resources/js/components/home/NoVerdictPanel.tsx
   - resources/js/components/home/TodaySession.tsx
+  - resources/js/components/run/EffortScore.tsx
   - resources/js/components/home/RaceOutcomePrompt.tsx
   - resources/js/components/plan/DeltaPair.tsx
   - resources/js/components/home/NoPlanCard.tsx
@@ -84,6 +85,8 @@ When a race date has passed with its outcome still pending, Home asks about it o
 It renders `briefing.mascotVoice` through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it carries the skeleton / retry states from the [[ai-pipeline]]. One exception, on an account's first day only: the composer sends [`firstRead`](app/Services/Run/Story/BriefingComposer.php#L42) when this athlete has never had a briefing narrated, and the card then says "temari is reading your first week…" through the same label slot the deferred recaps use ([TodaySession.tsx:204](resources/js/components/home/TodaySession.tsx#L204)) instead of the usual silence a pending block renders. The flag costs no extra query — it comes back with today's row in the one read the composer already does. The text is parsed on `\n\n`: the first paragraph leads, the rest follows as body. Both halves render through [renderNarration](resources/js/components/temari/Citation.tsx) rather than plain bold, so the briefing may point one span of its own prose at the session it is talking about: the prescription above carries `id="anchor-session-today"`, and clicking the cited words scrolls to it and rings it. The server drops a citation the plan does not back, and the client drops one this page draws no element for, so the affordance only ever appears when there is something to show. See [[citations-go-where-the-prose-already-points]].
 
 The whole briefing object is assembled server-side by [BriefingComposer::compose](app/Services/Run/Story/BriefingComposer.php#L24) — a single Analysis row, the daily voice (the featured-kartu voice that used to sit beside it was swept by `W2`). It is its own [[ai-pipeline]] block with independent retry. The signals their prompts read come from the context builders in [[ai-narration-internals]]; the vibe that colours Temari's tone is [[vibe-and-mood]].
+
+The same block closes with the effort score for the athlete's newest run, with or without heart rate: [EffortScore](resources/js/components/run/EffortScore.tsx), named for that run and shipped as `effortPrompt` by [DashboardController](app/Http/Controllers/DashboardController.php). Unscored it offers the picker; scored it collapses to the chip with "change" and "clear". See [[an-effort-score-is-collected-on-every-run]].
 
 ## Where the deep stats went
 

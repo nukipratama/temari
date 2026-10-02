@@ -11,6 +11,7 @@ import type {
 
 import TimeInZoneBar from '@/components/profile/TimeInZoneBar';
 import AskAboutRun from '@/components/run/AskAboutRun';
+import { EffortPicker, EffortSaved } from '@/components/run/EffortScore';
 import LapsCarousel from '@/components/run/LapsCarousel';
 import PastYouCard, { type PastYouMatch } from '@/components/run/PastYouCard';
 import { type PrBib } from '@/components/run/PrBibStamp';
@@ -71,6 +72,9 @@ export default function RunsShow({
 }: Readonly<ShowProps>) {
     const [shareOpen, setShareOpen] = useState(false);
     const [shareAsked, setShareAsked] = useState(false);
+    const [editingEffort, setEditingEffort] = useState(false);
+    const effortScore = detail.perceived_effort ?? null;
+    const effortSaved = effortScore !== null && !editingEffort;
     const {
         summary,
         perKm,
@@ -125,7 +129,25 @@ export default function RunsShow({
                                 : undefined
                         }
                         prBib={prBib}
+                        effort={
+                            effortSaved && (
+                                <EffortSaved
+                                    score={effortScore}
+                                    onChange={() => setEditingEffort(true)}
+                                />
+                            )
+                        }
                     />
+
+                    {!effortSaved && (
+                        <section>
+                            <EffortPicker
+                                activityId={activity.id}
+                                saved={effortScore}
+                                onClose={() => setEditingEffort(false)}
+                            />
+                        </section>
+                    )}
 
                     {detailed && <PastYouCard match={pastYou} />}
 

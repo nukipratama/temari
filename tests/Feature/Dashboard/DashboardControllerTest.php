@@ -441,7 +441,8 @@ it('paints Home inside its query budget', function (): void {
     // whether restDayEasePace's deferred prop is worth adding at all.
     // 24: BriefingContext::prescribedKmToDate reads this week's planned sessions.
     // 25: Home asks about a passed race still waiting on its outcome.
-    expect($queries)->toBeLessThanOrEqual(25);
+    // 26: Home asks for the newest run to offer its effort score.
+    expect($queries)->toBeLessThanOrEqual(26);
     expect($fitnessQueries)->toBe(['performance_evidence' => 1, 'fitness_anchors' => 1]);
     expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
 
@@ -628,4 +629,38 @@ it('does not ask how a race went on the morning of the race itself', function ()
         ->assertInertia(fn (Assert $page) => $page->where('pendingRaceOutcome', null));
 
     Carbon::setTestNow();
+});
+
+it('asks Home how hard the newest run felt, with or without heart rate and at any age', function (): void {
+    Carbon::setTestNow('2026-10-20 08:00:00');
+    $user = User::factory()->create();
+    foreach ([
+        ['2026-10-05 06:00:00', true, 'Strap run', 4],
+        ['2026-10-04 06:00:00', false, 'Older treadmill', null],
+    ] as [$start, $hasHr, $name, $score]) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => $start,
+            'has_heartrate' => $hasHr,
+            'name' => $name,
+            'perceived_effort' => $score,
+        ]);
+    }
+    $foreign = Activity::factory()->for(User::factory())->analyzed()->create();
+    ActivityDetail::factory()->for($foreign)->create(['start_date_local' => '2026-10-19 07:00:00', 'has_heartrate' => false]);
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('effortPrompt.name', 'Strap run')
+            ->where('effortPrompt.score', 4)
+            ->where('effortPrompt.start_date_local', '2026-10-05T06:00:00'));
+
+    Carbon::setTestNow();
+});
+
+it('ships no effort prompt before the first run', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page->where('effortPrompt', null));
 });

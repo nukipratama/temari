@@ -8,6 +8,7 @@ code_refs:
   - resources/js/pages/Runs/Show.tsx
   - app/Http/Controllers/RunController.php
   - resources/js/components/run/RunHero.tsx
+  - resources/js/components/run/EffortScore.tsx
   - resources/js/components/run/PastYouCard.tsx
   - resources/js/components/run/AskAboutRun.tsx
   - resources/js/hooks/useRunQuestions.ts
@@ -44,17 +45,18 @@ the spec — a slice that adds a section adds it here too:
 1. the `ACTIVITY` eyebrow
 2. [RunHydratingNotice](../../resources/js/components/run/RunHydratingNotice.tsx), when the deeper fetch is still in flight
 3. [RunHero](../../resources/js/components/run/RunHero.tsx) — identity, the headline stat block, and the route + conditions slab
-4. [PastYouCard](../../resources/js/components/run/PastYouCard.tsx), when there is a match
-5. [RunLenses](../../resources/js/components/run/RunLenses.tsx) — "what Temari says"
-6. [AskAboutRun](../../resources/js/components/run/AskAboutRun.tsx)
-7. the `THE BREAKDOWN` eyebrow
-8. [VitalsCard](../../resources/js/components/run/VitalsCard.tsx)
-9. [SplitsChart](../../resources/js/components/run/SplitsChart.tsx)
-10. [LapsCarousel](../../resources/js/components/run/LapsCarousel.tsx)
-11. the Strava provenance footer
+4. the effort-score picker ([EffortScore](../../resources/js/components/run/EffortScore.tsx)), while the run has no score or the athlete is changing it
+5. [PastYouCard](../../resources/js/components/run/PastYouCard.tsx), when there is a match
+6. [RunLenses](../../resources/js/components/run/RunLenses.tsx) — "what Temari says"
+7. [AskAboutRun](../../resources/js/components/run/AskAboutRun.tsx)
+8. the `THE BREAKDOWN` eyebrow
+9. [VitalsCard](../../resources/js/components/run/VitalsCard.tsx)
+10. [SplitsChart](../../resources/js/components/run/SplitsChart.tsx)
+11. [LapsCarousel](../../resources/js/components/run/LapsCarousel.tsx)
+12. the Strava provenance footer
 
-**Sections 4-10 are gated on the run being detailed.** While `awaitingDetail` is
-true the page renders the notice, the hero and the footer only — everything
+**Sections 5-11 are gated on the run being detailed.** While `awaitingDetail` is
+true the page renders the notice, the hero, the effort-score picker and the footer only — everything
 below the hero reads from splits, zones and effort that have not landed, so it
 would be a column of empty panels rather than a thin page.
 
@@ -98,6 +100,10 @@ one tap dismisses the overlay and enables full drag/zoom, the same pattern
 Google Maps embeds use. The prototype fills this slot with a decorative
 "activate map" placeholder; P16 keeps the real map there, which already carries
 an activate pill of its own.
+
+## Effort score
+
+Any run, of any age and with or without heart rate, can take an effort score. Unscored, an [EffortPicker](../../resources/js/components/run/EffortScore.tsx) sits under the hero: "how hard did it feel" on a 1–10 slider with save on the score row. Saved, it collapses to a chip beside the mood chip in [RunHero](../../resources/js/components/run/RunHero.tsx) ("7/10 · very hard" in the band's ink on its tint) with "change", which reopens the picker, and "clear". The score is read from `detail.perceived_effort` and feeds no load; see [[an-effort-score-is-collected-on-every-run]].
 
 ## You vs past you
 

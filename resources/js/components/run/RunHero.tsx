@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import {
     Flame,
     HeartPulse,
@@ -33,6 +35,8 @@ interface RunHeroProps {
     onShare?: () => void;
     /** Non-null only on the one view that plays the record's bib stamp. */
     prBib?: PrBib | null;
+    /** Sits beside the mood chip, e.g. the saved effort score. */
+    effort?: ReactNode;
 }
 
 function display(
@@ -58,6 +62,7 @@ export default function RunHero({
     trimp,
     onShare,
     prBib = null,
+    effort = null,
 }: Readonly<RunHeroProps>) {
     const distanceKm = useCountUp(
         detail.distance != null ? detail.distance / 1000 : 0,
@@ -109,7 +114,10 @@ export default function RunHero({
                     <h1 className="mt-1 font-serif text-quote-lg italic text-foreground">
                         {detail.name ?? 'run'}
                     </h1>
-                    <MoodChip mood={mood} className="mt-1.5" />
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                        <MoodChip mood={mood} />
+                        {effort}
+                    </div>
                     {prBib !== null && (
                         <PrBibStamp bib={prBib} className="mt-1.5" />
                     )}

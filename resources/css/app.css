@@ -880,6 +880,38 @@ body {
         padding: var(--pad-page);
     }
 
+    /* Effort-score slider: a transparent native range over a segmented track. */
+    .effort-range {
+        @apply cursor-pointer appearance-none bg-transparent focus-visible:outline-none;
+    }
+    .effort-range::-webkit-slider-runnable-track {
+        @apply h-6 bg-transparent;
+    }
+    .effort-range::-moz-range-track {
+        @apply h-6 bg-transparent;
+    }
+    .effort-range::-webkit-slider-thumb {
+        @apply size-5 appearance-none rounded-full border-[3px] border-foreground bg-card shadow-e1;
+        margin-top: 0.125rem;
+    }
+    .effort-range::-moz-range-thumb {
+        @apply size-5 rounded-full border-[3px] border-foreground bg-card shadow-e1;
+    }
+    .effort-range[data-rated='false']::-webkit-slider-thumb {
+        @apply border-text-3 shadow-none;
+    }
+    .effort-range[data-rated='false']::-moz-range-thumb {
+        @apply border-text-3 shadow-none;
+    }
+    .effort-range:focus-visible::-webkit-slider-thumb {
+        outline: 2px solid var(--color-ring);
+        outline-offset: 2px;
+    }
+    .effort-range:focus-visible::-moz-range-thumb {
+        outline: 2px solid var(--color-ring);
+        outline-offset: 2px;
+    }
+
     /* Focus ring on cream surfaces (the app default). */
     .focus-ring {
         @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream;

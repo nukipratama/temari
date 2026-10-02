@@ -281,6 +281,31 @@ describe('Runs/Show', () => {
         expect(screen.getByText('+3.2%')).toBeInTheDocument();
     });
 
+    it('asks how hard an unscored run felt, below the hero', () => {
+        renderShow({ detail: { ...detail, perceived_effort: null } });
+        expect(
+            screen.getByRole('slider', { name: 'how hard did it feel' }),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/\/10$/)).not.toBeInTheDocument();
+    });
+
+    it('collapses a saved score to a chip in the hero that reopens the picker', () => {
+        renderShow({ detail: { ...detail, perceived_effort: 7 } });
+
+        const chip = screen.getByText('7/10');
+        expect(chip.closest('header')).not.toBeNull();
+        expect(chip.parentElement).toHaveTextContent('7/10 · very hard');
+        expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: /change effort score/ }),
+        );
+        expect(
+            screen.getByRole('slider', { name: 'how hard did it feel' }),
+        ).toHaveAttribute('aria-valuetext', '7 of 10, very hard');
+        expect(screen.queryByText('7/10')).not.toBeInTheDocument();
+    });
+
     it('offers the per-run ask panel', () => {
         renderShow();
         expect(

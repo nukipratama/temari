@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import type {
     BriefingResult,
     PastYouTrend,
+    PerceivedEffortPrompt,
     RestDayEasePace,
     WeekPlan,
     WeeklySnapshot,
@@ -33,6 +34,7 @@ interface HomeProps {
     /** Only shipped, deferred, on a planned rest day. */
     restDayEasePace?: RestDayEasePace | null;
     pendingRaceOutcome?: PendingRaceOutcome | null;
+    effortPrompt?: PerceivedEffortPrompt | null;
 }
 
 /**
@@ -49,6 +51,7 @@ export default function Home({
     weekPlan = null,
     restDayEasePace = null,
     pendingRaceOutcome = null,
+    effortPrompt = null,
 }: Readonly<HomeProps>) {
     const todayIso = todayLocalIso();
     const todayPlan =
@@ -74,6 +77,7 @@ export default function Home({
                             today={todayPlan}
                             restDayEasePace={restDayEasePace}
                             drawnAnchors={drawnHomeAnchors(weekPlan)}
+                            effortPrompt={effortPrompt}
                         />
 
                         {weekPlan !== null ? (

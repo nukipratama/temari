@@ -533,3 +533,17 @@ function insightOnlyHeaders(object $actingAs, int $activityId): array
         'X-Inertia-Partial-Data' => 'speechAnalysis,runInsight',
     ];
 }
+
+it('ships the stored effort score on any run, with or without heart rate', function (): void {
+    Carbon::setTestNow('2026-10-06 08:00:00');
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => '2026-08-01 06:00:00', 'has_heartrate' => true, 'perceived_effort' => 7]);
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('detail.perceived_effort', 7)
+            ->missing('perceivedEffort'));
+
+    Carbon::setTestNow();
+});
