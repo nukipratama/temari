@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
@@ -15,7 +16,9 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Sleep;
 
 uses(RefreshDatabase::class);
 
@@ -540,3 +543,141 @@ it('drops the caches derived from the history it just rebuilt', function (string
         ->and(Cache::has(TrainingLoad::summaryCacheKey($user->id, $today, 7)))->toBeFalse()
         ->and(Cache::has(UsualRunTime::cacheKey($user->id, $today)))->toBeFalse();
 })->with(['rebuildFor', 'rebuildForWeekOf', 'rebuildForwardFrom']);
+
+it('replays the snapshot saved hooks its upsert skips', function (string $rebuild): void {
+    $user = User::factory()->create(['streak_settled_through' => Carbon::today()]);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8000,
+        'elapsed_time' => 2400,
+        'trimp_edwards' => 60.0,
+        'start_date_local' => Carbon::today()->subDays(7),
+    ]);
+    $trailingWeeks = app(ResolveTrailingWeeksAction::class);
+    $today = Carbon::today()->toDateString();
+    expect($trailingWeeks($user->id, $today, 6))->toBeEmpty();
+
+    match ($rebuild) {
+        'rebuildFor' => $this->aggregator->rebuildFor($user),
+        'rebuildForWeekOf' => $this->aggregator->rebuildForWeekOf($user, Carbon::today()->subDays(7)),
+        'rebuildForwardFrom' => $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7)),
+    };
+
+    expect($trailingWeeks($user->id, $today, 6)->pluck('runs')->all())->toContain(1)
+        ->and($user->fresh()?->streak_settlement_dirty_from?->toDateString())->toBe('2026-05-10');
+})->with(['rebuildFor', 'rebuildForWeekOf', 'rebuildForwardFrom']);
+
+it('keeps created_at and casts on a rewritten week while moving updated_at', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8000,
+        'elapsed_time' => 2400,
+        'trimp_edwards' => 60.0,
+        'start_date_local' => Carbon::today()->subDays(7),
+    ]);
+
+    $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+    Carbon::setTestNow('2026-05-11 13:00:00');
+    $snapshot = $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+
+    expect($snapshot)->not->toBeNull()
+        ->and($snapshot?->created_at?->toDateTimeString())->toBe('2026-05-11 12:00:00')
+        ->and($snapshot?->updated_at?->toDateTimeString())->toBe('2026-05-11 13:00:00')
+        ->and($snapshot?->week_ending->toDateString())->toBe('2026-05-10')
+        ->and($snapshot?->runs)->toBe(1)
+        ->and($snapshot?->elapsed_time_sec)->toBe(2400)
+        ->and($snapshot?->distance_km)->toBe(8.0)
+        ->and($snapshot?->weekly_trimp)->toBe(60.0)
+        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(2);
+});
+
+it('waits for the athlete lock and gives up while another rebuild holds it', function (string $rebuild): void {
+    Sleep::fake(syncWithCarbon: true);
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8000,
+        'elapsed_time' => 2400,
+        'trimp_edwards' => 60.0,
+        'start_date_local' => Carbon::today()->subDays(7),
+    ]);
+    $run = fn (): mixed => match ($rebuild) {
+        'rebuildFor' => $this->aggregator->rebuildFor($user),
+        'rebuildForWeekOf' => $this->aggregator->rebuildForWeekOf($user, Carbon::today()->subDays(7)),
+        'rebuildForwardFrom' => $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7)),
+    };
+    $held = Cache::lock(WeeklyAggregator::lockKey($user->id), 300);
+    $held->get();
+    $startedAt = Carbon::now();
+
+    expect($run)->toThrow(LockTimeoutException::class)
+        ->and($startedAt->diffInSeconds(Carbon::now()))->toBeGreaterThan(19.0)->toBeLessThanOrEqual(20.0)
+        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeFalse();
+
+    $held->release();
+    $run();
+
+    expect(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeTrue()
+        ->and(Cache::lock(WeeklyAggregator::lockKey($user->id), 1)->get())->toBeTrue();
+})->with(['rebuildFor', 'rebuildForWeekOf', 'rebuildForwardFrom']);
+
+it('holds the athlete lock until the surrounding transaction commits', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8000,
+        'elapsed_time' => 2400,
+        'trimp_edwards' => 60.0,
+        'start_date_local' => Carbon::today()->subDays(7),
+    ]);
+    $lockFree = fn (): bool => tap(Cache::lock(WeeklyAggregator::lockKey($user->id), 1), fn ($probe) => $probe->get() && $probe->release())->get();
+    $heldInside = null;
+
+    DB::transaction(function () use ($user, $lockFree, &$heldInside): void {
+        $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+        $heldInside = ! $lockFree();
+    });
+
+    expect($heldInside)->toBeTrue()
+        ->and(Cache::lock(WeeklyAggregator::lockKey($user->id), 1)->get())->toBeTrue();
+});
+
+it('releases the athlete lock when the surrounding transaction rolls back', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8000,
+        'elapsed_time' => 2400,
+        'trimp_edwards' => 60.0,
+        'start_date_local' => Carbon::today()->subDays(7),
+    ]);
+
+    expect(fn () => DB::transaction(function () use ($user): void {
+        $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+
+        throw new RuntimeException('caller failed after the rebuild');
+    }))->toThrow(RuntimeException::class);
+
+    expect(Cache::lock(WeeklyAggregator::lockKey($user->id), 1)->get())->toBeTrue();
+});
+
+it('lets a second rebuild in the same transaction reuse the athlete lock it already holds', function (): void {
+    Sleep::fake(syncWithCarbon: true);
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => 8000,
+        'elapsed_time' => 2400,
+        'trimp_edwards' => 60.0,
+        'start_date_local' => Carbon::today()->subDays(7),
+    ]);
+
+    DB::transaction(function () use ($user): void {
+        $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+        $this->aggregator->rebuildForWeekOf($user, Carbon::today()->subDays(7));
+    });
+
+    expect(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeTrue()
+        ->and(Cache::lock(WeeklyAggregator::lockKey($user->id), 1)->get())->toBeTrue();
+});

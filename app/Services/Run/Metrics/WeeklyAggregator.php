@@ -5,20 +5,48 @@ declare(strict_types=1);
 namespace App\Services\Run\Metrics;
 
 use Carbon\CarbonInterface;
+use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Gamification\StreakSettlementService;
 use App\Services\Notifications\UsualRunTime;
 use App\Services\Run\Story\PastYouTrendBuilder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Enumerable;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class WeeklyAggregator
 {
     /** Runs that must carry a decoupling reading before the week gets an average of them. */
     private const int MIN_RUNS_FOR_AVG_DECOUPLING = 2;
+
+    private const int LOCK_SECONDS = 120;
+
+    private const int LOCK_WAIT_SECONDS = 20;
+
+    /** @var array<int, true> */
+    private static array $held = [];
+
+    /** @var list<string> */
+    private const array REBUILT_COLUMNS = [
+        'distance_km',
+        'runs',
+        'elapsed_time_sec',
+        'weekly_trimp',
+        'atl_7d',
+        'ctl_42d',
+        'form',
+        'form_status',
+        'avg_decoupling',
+        'avg_decoupling_v2',
+        'monotony',
+        'strain',
+    ];
 
     /**
      * The only ActivityDetail columns the weekly roll-up reads: the week filter
@@ -56,23 +84,70 @@ class WeeklyAggregator
         UsualRunTime::clearCache($user);
     }
 
-    public function rebuildForWeekOf(User $user, Carbon $when): ?WeeklySnapshot
+    public static function lockKey(int $userId): string
     {
-        $this->clearDerivedCaches($user);
-        $weekEnding = $when->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        return "weekly-aggregate:{$userId}";
+    }
 
-        // Load a converged lead-in window through this week so the CTL EWMA
-        // settles as a continuous series; a short warm-up window would yield a
-        // too-low, window-dependent CTL.
-        $details = $this->loadHistoryThrough($user, $weekEnding, $this->leadInStart($weekEnding));
-        if ($details->isEmpty()) {
-            return null;
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $rebuild
+     * @return T
+     */
+    private function exclusively(User $user, callable $rebuild): mixed
+    {
+        if (isset(self::$held[$user->id]) && DB::transactionLevel() > 0) {
+            return $rebuild();
         }
 
-        ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
-        $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp, $runDays);
+        $lock = Cache::lock(self::lockKey($user->id), self::LOCK_SECONDS);
+        $lock->block(self::LOCK_WAIT_SECONDS);
+        self::$held[$user->id] = true;
 
-        return $this->snapshotFor($user, $weekEnding);
+        $released = false;
+        $release = function () use ($lock, $user, &$released): void {
+            if ($released) {
+                return;
+            }
+            $released = true;
+            unset(self::$held[$user->id]);
+            $lock->release();
+        };
+
+        try {
+            $result = $rebuild();
+        } catch (Throwable $e) {
+            $release();
+
+            throw $e;
+        }
+
+        DB::afterRollBack($release);
+        DB::afterCommit($release);
+
+        return $result;
+    }
+
+    public function rebuildForWeekOf(User $user, Carbon $when): ?WeeklySnapshot
+    {
+        return $this->exclusively($user, function () use ($user, $when): ?WeeklySnapshot {
+            $this->clearDerivedCaches($user);
+            $weekEnding = $when->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+
+            // Load a converged lead-in window through this week so the CTL EWMA
+            // settles as a continuous series; a short warm-up window would yield a
+            // too-low, window-dependent CTL.
+            $details = $this->loadHistoryThrough($user, $weekEnding, $this->leadInStart($weekEnding));
+            if ($details->isEmpty()) {
+                return null;
+            }
+
+            ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
+            $this->writeWeeks($user, $weekEnding, [$this->weekRow($user, $weekEnding, $details, $dailyTrimp, $runDays)]);
+
+            return $this->snapshotFor($user, $weekEnding);
+        });
     }
 
     /**
@@ -83,28 +158,32 @@ class WeeklyAggregator
      */
     public function rebuildForwardFrom(User $user, CarbonInterface $weekAnchor): ?WeeklySnapshot
     {
-        $this->clearDerivedCaches($user);
-        $anchorWeekEnding = Carbon::instance($weekAnchor)->endOfWeek(Carbon::SUNDAY)->startOfDay();
-        $lastWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        return $this->exclusively($user, function () use ($user, $weekAnchor): ?WeeklySnapshot {
+            $this->clearDerivedCaches($user);
+            $anchorWeekEnding = Carbon::instance($weekAnchor)->endOfWeek(Carbon::SUNDAY)->startOfDay();
+            $lastWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
-        // Load the lead-in window once (sized so even the anchor week has a
-        // converged CTL) and roll every week's snapshot from this shared series.
-        // upsertWeek filters to its own week and rolls the EWMA only through its
-        // $weekEnding, so a backdated activity propagates forward in one query.
-        $details = $this->loadHistoryThrough($user, $lastWeekEnding, $this->leadInStart($anchorWeekEnding));
-        if ($details->isEmpty()) {
-            return null;
-        }
+            // Load the lead-in window once (sized so even the anchor week has a
+            // converged CTL) and roll every week's snapshot from this shared series.
+            // weekRow filters to its own week and rolls the EWMA only through its
+            // $weekEnding, so a backdated activity propagates forward in one query.
+            $details = $this->loadHistoryThrough($user, $lastWeekEnding, $this->leadInStart($anchorWeekEnding));
+            if ($details->isEmpty()) {
+                return null;
+            }
 
-        ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
+            ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
 
-        $weekEnding = $anchorWeekEnding->copy();
-        while ($weekEnding->lte($lastWeekEnding)) {
-            $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp, $runDays);
-            $weekEnding = $weekEnding->copy()->addWeek();
-        }
+            $rows = [];
+            $weekEnding = $anchorWeekEnding->copy();
+            while ($weekEnding->lte($lastWeekEnding)) {
+                $rows[] = $this->weekRow($user, $weekEnding, $details, $dailyTrimp, $runDays);
+                $weekEnding = $weekEnding->copy()->addWeek();
+            }
+            $this->writeWeeks($user, $anchorWeekEnding, $rows);
 
-        return $this->snapshotFor($user, $anchorWeekEnding);
+            return $this->snapshotFor($user, $anchorWeekEnding);
+        });
     }
 
     /**
@@ -146,46 +225,63 @@ class WeeklyAggregator
 
     public function rebuildFor(User $user): int
     {
-        $this->clearDerivedCaches($user);
-        $details = Activity::analyzedJoinConstraint(
-            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
-        )
-            ->where('activities.user_id', $user->id)
-            ->whereNotNull('activity_details.start_date_local')
-            ->orderBy('activity_details.start_date_local')
-            ->select(self::HISTORY_COLUMNS)
-            ->get();
+        return $this->exclusively($user, function () use ($user): int {
+            $this->clearDerivedCaches($user);
+            $details = Activity::analyzedJoinConstraint(
+                ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+            )
+                ->where('activities.user_id', $user->id)
+                ->whereNotNull('activity_details.start_date_local')
+                ->orderBy('activity_details.start_date_local')
+                ->select(self::HISTORY_COLUMNS)
+                ->get();
 
-        if ($details->isEmpty()) {
-            return 0;
-        }
+            if ($details->isEmpty()) {
+                return 0;
+            }
 
-        ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
+            ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
 
-        // Non-empty (guarded above), so first() is present.
-        $firstDetail = $details->first();
+            // Non-empty (guarded above), so first() is present.
+            $firstDetail = $details->first();
 
-        /** @var Carbon $earliest */
-        $earliest = $firstDetail->start_date_local;
-        $weekEnding = $earliest->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
-        $today = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+            /** @var Carbon $earliest */
+            $earliest = $firstDetail->start_date_local;
+            $firstWeekEnding = $earliest->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+            $today = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
-        $count = 0;
-        while ($weekEnding->lte($today)) {
-            $this->upsertWeek($user, $weekEnding, $details, $dailyTrimp, $runDays);
-            $weekEnding = $weekEnding->copy()->addWeek();
-            $count++;
-        }
+            $rows = [];
+            $weekEnding = $firstWeekEnding->copy();
+            while ($weekEnding->lte($today)) {
+                $rows[] = $this->weekRow($user, $weekEnding, $details, $dailyTrimp, $runDays);
+                $weekEnding = $weekEnding->copy()->addWeek();
+            }
+            $this->writeWeeks($user, $firstWeekEnding, $rows);
 
-        return $count;
+            return \count($rows);
+        });
+    }
+
+    /**
+     * A query upsert skips the model's saved hooks, so their side effects are replayed here.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function writeWeeks(User $user, Carbon $earliestWeekEnding, array $rows): void
+    {
+        WeeklySnapshot::query()->upsert($rows, ['user_id', 'week_ending'], self::REBUILT_COLUMNS);
+
+        app(ResolveTrailingWeeksAction::class)->forget($user->id);
+        app(StreakSettlementService::class)->markDirty($user->id, $earliestWeekEnding);
     }
 
     /**
      * @param  Enumerable<int, ActivityDetail>  $details
      * @param  array<string, float>  $dailyTrimp
      * @param  array<string, true>  $runDays
+     * @return array<string, mixed>
      */
-    private function upsertWeek(User $user, Carbon $weekEnding, Enumerable $details, array $dailyTrimp, array $runDays): void
+    private function weekRow(User $user, Carbon $weekEnding, Enumerable $details, array $dailyTrimp, array $runDays): array
     {
         $weekStart = $weekEnding->copy()->subDays(6)->startOfDay();
         $weekEnd = $weekEnding->copy()->endOfDay();
@@ -208,26 +304,22 @@ class WeeklyAggregator
         $loadAsOf = $weekEnding->lessThan($today) ? $weekEnding : $today;
         $summary = $this->trainingLoad->summaryFromDailyMap($dailyTrimp, $runDays, $weekEnding, $loadAsOf);
 
-        WeeklySnapshot::query()->updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'week_ending' => $weekEnding->toDateString(),
-            ],
-            [
-                'distance_km' => $distanceKm,
-                'runs' => $runs,
-                'elapsed_time_sec' => $elapsedTimeSec,
-                'weekly_trimp' => $summary['weekly_trimp'] ?? null,
-                'atl_7d' => $summary['atl_7d'] ?? null,
-                'ctl_42d' => $summary['ctl_42d'] ?? null,
-                'form' => $summary['form'] ?? null,
-                'form_status' => $summary['form_status'] ?? null,
-                'avg_decoupling' => $avgDecoupling,
-                'avg_decoupling_v2' => $avgDecouplingV2,
-                'monotony' => $summary['monotony'] ?? null,
-                'strain' => $summary['strain'] ?? null,
-            ],
-        );
+        return [
+            'user_id' => $user->id,
+            'week_ending' => $weekEnding->toDateString(),
+            'distance_km' => $distanceKm,
+            'runs' => $runs,
+            'elapsed_time_sec' => $elapsedTimeSec,
+            'weekly_trimp' => $summary['weekly_trimp'] ?? null,
+            'atl_7d' => $summary['atl_7d'] ?? null,
+            'ctl_42d' => $summary['ctl_42d'] ?? null,
+            'form' => $summary['form'] ?? null,
+            'form_status' => $summary['form_status'] ?? null,
+            'avg_decoupling' => $avgDecoupling,
+            'avg_decoupling_v2' => $avgDecouplingV2,
+            'monotony' => $summary['monotony'] ?? null,
+            'strain' => $summary['strain'] ?? null,
+        ];
     }
 
     /**
