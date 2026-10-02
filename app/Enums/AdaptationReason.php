@@ -48,7 +48,7 @@ enum AdaptationReason: string
         return match ($this) {
             self::Steady => "you finished {$adherencePct}% of last week's sessions. nothing to change, the plan stands.",
             self::LowReadiness => 'your readiness sits at rest-only today, so this week drops to deload volume with no quality work.',
-            self::HighMonotony => 'every day last week carried the same load. that uniformity is the injury-risk pattern, so this week is a deload.',
+            self::HighMonotony => 'every day last week carried the same load, so this week is a deload.',
             self::HighStrain => 'last week\'s strain ran well past what your fitness supports. this week backs off to deload volume.',
             self::MissedWeek => "you finished {$adherencePct}% of last week's sessions. this week comes back smaller, not doubled.",
             self::MissedStimulus => sprintf(

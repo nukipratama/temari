@@ -8,16 +8,18 @@ use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Feedback;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\RecoveryFeedback;
 use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\RiegelProjector;
-use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\Periodizer;
@@ -37,6 +39,88 @@ beforeEach(function (): void {
     $this->periodizer = app(Periodizer::class);
 });
 afterEach(fn () => Carbon::setTestNow());
+
+it('keeps carried readiness doses under new workload limits during reconciliation and regeneration', function (bool $fullRegeneration): void {
+    Carbon::setTestNow('2026-08-13 08:00:00');
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    WeeklySnapshot::query()->where('user_id', $user->id)->update(['distance_km' => 60.0]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create(['start_date_local' => '2026-08-08 07:00:00', 'distance' => 20_000]);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
+    $this->periodizer->regenerate($user, Carbon::today());
+    $session = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->firstOrFail();
+    $assessment = ['adjustment' => ['quality_dose' => ['hard_minutes' => 15, 'original_hard_minutes' => 20, 'pace_band' => 'threshold', 'pace_sec_per_km' => 270]]];
+    $session->update(['clamped_km' => 12.0, 'readiness_assessment' => $assessment]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'start_date_local' => '2026-08-10 07:00:00', 'elapsed_time' => 10800,
+        'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 0, 'Z3' => 0, 'Z4' => 180, 'Z5' => 0]],
+    ]);
+    if ($fullRegeneration) {
+        $this->periodizer->regenerate($user, Carbon::today());
+    } else {
+        expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeTrue();
+    }
+    $session = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->firstOrFail();
+    $effective = EffectiveSession::of($session, 10.0);
+    expect($session->prescribed_hard_minutes)->toBe(0)
+        ->and($session->readiness_assessment)->toEqual($assessment)
+        ->and($effective->qualityPrescription())->toBeNull()
+        ->and($effective->sessionType)->toBe(SessionType::Easy)
+        ->and($effective->coreKm)->toBe(12.0);
+})->with(['reconciliation' => false, 'full regeneration' => true]);
+
+it('reconciles new actual workload only into affected current-week prescriptions', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    WeeklySnapshot::query()->where('user_id', $user->id)->update(['distance_km' => 60.0]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create(['start_date_local' => '2026-08-08 07:00:00', 'distance' => 20_000]);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
+    $this->periodizer->regenerate($user, Carbon::today());
+    $thursday = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-13')->firstOrFail();
+    $nextWeek = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-20')->firstOrFail();
+    expect($thursday->prescribed_hard_minutes)->toBeGreaterThan(0);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'start_date_local' => '2026-08-10 07:00:00', 'elapsed_time' => 10800,
+        'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 0, 'Z3' => 0, 'Z4' => 180, 'Z5' => 0]],
+    ]);
+
+    expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeTrue()
+        ->and($thursday->fresh()->prescribed_hard_minutes)->toBe(0)
+        ->and($nextWeek->fresh()->id)->toBe($nextWeek->id)
+        ->and($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse();
+});
+
+it('still plans today when a run is already logged today', function (): void {
+    Carbon::setTestNow('2026-08-13 18:00:00');
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'start_date_local' => '2026-08-13 07:00:00', 'elapsed_time' => 2400, 'moving_time' => 2400, 'distance' => 7000,
+    ]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->count())->toBe(1);
+});
+
+it('keeps a day the athlete skipped in advance when the plan regenerates', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    $this->periodizer->regenerate($user, Carbon::today());
+    $future = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-14')->firstOrFail();
+    $future->update(['skipped' => true]);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    expect($future->fresh()?->skipped)->toBeTrue()
+        ->and(PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-14')->count())->toBe(1);
+});
 
 function seedPeriodizerBaseline(User $user): void
 {
@@ -363,24 +447,15 @@ it('reconciles when a settled key-session verdict changes the adaptation fingerp
 it('does not remove a deload when a mid-week reading later looks healthy', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
-    bindMonotonyDeloadSignals();
-    app()->forgetInstance(Periodizer::class);
-    $periodizer = app(Periodizer::class);
-    $periodizer->regenerate($user, Carbon::today());
+    reportIllnessToday($user);
+    $this->periodizer->regenerate($user, Carbon::today());
 
-    $healthyLoad = Mockery::mock(TrainingLoad::class);
-    $healthyLoad->shouldReceive('summary')->andReturn([
-        'weekly_trimp' => 250.0, 'atl_7d' => 35.0, 'ctl_42d' => 40.0,
-        'form' => 5.0, 'form_status' => 'optimal', 'monotony' => 1.1, 'strain' => 300.0,
-    ]);
-    app()->instance(TrainingLoad::class, $healthyLoad);
-    app()->forgetInstance(PlanAdapter::class);
+    RecoveryFeedback::query()->where('user_id', $user->id)->delete();
 
-    app()->forgetInstance(Periodizer::class);
-    expect(app(Periodizer::class)->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
+    expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
         ->and(currentWeekPhases($user))->toBe([PlanPhase::Deload])
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->reason)
-        ->toBe(AdaptationReason::HighMonotony);
+        ->toBe(AdaptationReason::LowReadiness);
 });
 
 it('does not restore a quality slot removed by an earlier repeated miss', function (): void {
@@ -439,16 +514,9 @@ it('reconciles a settled key-session verdict from the current week', function ()
         ->toBe(AdaptationReason::MissedStimulus);
 });
 
-function bindMonotonyDeloadSignals(): void
+function reportIllnessToday(User $user): void
 {
-    $trainingLoad = Mockery::mock(TrainingLoad::class);
-    $trainingLoad->shouldReceive('summary')->andReturn([
-        'weekly_trimp' => 400.0, 'atl_7d' => 50.0, 'ctl_42d' => 40.0,
-        'form' => 5.0, 'form_status' => 'optimal',
-        'monotony' => PlanAdapter::MONOTONY_DELOAD + 0.5, 'strain' => 500.0,
-    ]);
-    app()->instance(TrainingLoad::class, $trainingLoad);
-    app()->forgetInstance(PlanAdapter::class);
+    RecoveryFeedback::query()->create(['user_id' => $user->id, 'date' => Carbon::today()->toDateString(), 'illness' => true]);
 }
 
 function currentWeekPhases(User $user): array
@@ -464,17 +532,17 @@ function currentWeekPhases(User $user): array
         ->all();
 }
 
-it('turns the current week into a real deload when monotony says so', function (): void {
+it('turns the current week into a real deload when readiness says rest', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
-    bindMonotonyDeloadSignals();
+    reportIllnessToday($user);
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
     expect(currentWeekPhases($user))->toBe([PlanPhase::Deload])
         ->and(currentWeekQualityCount($user))->toBe(0)
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->reason)
-        ->toBe(AdaptationReason::HighMonotony);
+        ->toBe(AdaptationReason::LowReadiness);
 });
 
 it('never deloads a taper week, where freshness is already the goal', function (): void {
@@ -484,7 +552,7 @@ it('never deloads a taper week, where freshness is already the goal', function (
         'race_date' => Carbon::today()->addDays(5)->toDateString(),
         'distance_m' => 10_000,
     ]);
-    bindMonotonyDeloadSignals();
+    reportIllnessToday($user);
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
@@ -500,7 +568,7 @@ it('records the volume floor a load deload takes the week under', function (): v
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
     RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString(), 'distance_m' => 10_000]);
-    bindMonotonyDeloadSignals();
+    reportIllnessToday($user);
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
@@ -518,7 +586,7 @@ it('records no overridden floor when the week stands, or when a taper week is le
     $tapering = User::factory()->create();
     seedPeriodizerBaseline($tapering);
     RaceGoal::factory()->for($tapering)->create(['race_date' => Carbon::today()->addDays(5)->toDateString(), 'distance_m' => 10_000]);
-    bindMonotonyDeloadSignals();
+    reportIllnessToday($tapering);
     app(Periodizer::class)->regenerate($tapering, Carbon::today());
 
     expect(floorOverriddenKm($steady))->toBeNull()
@@ -528,7 +596,7 @@ it('records no overridden floor when the week stands, or when a taper week is le
 it('records no overridden floor for a goal-less season, which has none', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
-    bindMonotonyDeloadSignals();
+    reportIllnessToday($user);
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
@@ -639,6 +707,11 @@ it('caps future quality around a settled tempo and a race-pace Long in the curre
         'prescribed_hard_minutes' => 20,
         'prescribed_pace_band' => PaceBand::Threshold,
     ]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'start_date_local' => $tuesday->copy()->setTime(7, 0),
+        'elapsed_time' => 3600,
+        'stream_summary' => ['time_in_zone_min' => ['Z1' => 10, 'Z2' => 30, 'Z3' => 0, 'Z4' => 20, 'Z5' => 0]],
+    ]);
 
     $this->periodizer->regenerate($user, Carbon::today());
 
@@ -655,7 +728,7 @@ it('caps future quality around a settled tempo and a race-pace Long in the curre
         ->and($sunday->prescribed_hard_minutes)->toBeGreaterThan(0);
 });
 
-it('counts a pinned quality type in a later week without stored hard minutes', function (): void {
+it('reserves unknown pinned quality without inventing a remaining hard-minute allowance', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
     foreach (range(0, 3) as $i) {
@@ -685,8 +758,8 @@ it('counts a pinned quality type in a later week without stored hard minutes', f
 
     expect($pinned->fresh()->session_type)->toBe(SessionType::Interval)
         ->and($thursday->session_type)->toBe(SessionType::Easy)
-        ->and($sunday->prescribed_pace_band)->toBe(PaceBand::Marathon)
-        ->and($sunday->prescribed_hard_minutes)->toBeGreaterThan(0);
+        ->and($sunday->prescribed_pace_band)->toBeNull()
+        ->and($sunday->prescribed_hard_minutes)->toBe(0);
 });
 
 it('lets the race projection move prescribed quality work in both directions', function (): void {

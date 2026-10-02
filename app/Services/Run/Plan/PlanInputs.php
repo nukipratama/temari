@@ -19,7 +19,7 @@ use Illuminate\Support\Carbon;
 final readonly class PlanInputs
 {
     /**
-     * @param  list<int>|null  $runDays  ISO weekdays the athlete chose, if any
+     * @param  list<int>|null  $runDays  Monday-based offsets the athlete chose, if any
      * @param  array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int, stimulus_adherence_pct: int}  $adaptation
      * @param  array<string, true>  $pinnedDates  Y-m-d the athlete fixed, never overwritten
      * @param  array<string, true>  $settledDates  Y-m-d already carrying a verdict
@@ -27,7 +27,8 @@ final readonly class PlanInputs
      * @param  bool  $increasesHeld  the race block holds flat at its floor until the load guard's recent runs are scored
      * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      * @param array<string, array{verdict: IntentVerdict, hard_minutes: int}> $recentPrescriptions
-     * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null}> $fixedSessions
+     * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float}> $fixedSessions
+     * @param list<array{date: string, duration_minutes: int|null, hard_minutes: float|null, demanding: bool}> $actualSessions
      */
     public function __construct(
         public int $userId,
@@ -53,6 +54,8 @@ final readonly class PlanInputs
         public float $longRunProgressionCapKm = INF,
         public array $recentPrescriptions = [],
         public array $fixedSessions = [],
+        public array $actualSessions = [],
+        public bool $twoRunQualityEligible = false,
     ) {
     }
 

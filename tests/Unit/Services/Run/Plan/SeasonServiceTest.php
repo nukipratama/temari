@@ -7,6 +7,7 @@ use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\SeasonGoal;
@@ -534,4 +535,57 @@ it('re-reads the active race under the lock too, so a pre-lock memoized "no race
     $season = app()->make(SeasonService::class, ['activeRace' => $staleRace])->ensureCurrent($user, Carbon::today());
 
     expect($season->race_goal_id)->toBe($race->id);
+});
+
+function trailingFollowThrough(User $user, string $lastWeekEnding, float $actualKm, float $prescribedKm): void
+{
+    foreach (range(0, 5) as $i) {
+        $weekEnding = Carbon::parse($lastWeekEnding)->subWeeks($i);
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => $weekEnding->toDateString(), 'distance_km' => $actualKm]);
+        PlannedSession::factory()->for($user)->create([
+            'date' => $weekEnding->copy()->subDay()->toDateString(),
+            'session_type' => SessionType::Long,
+            'prescribed_km' => $prescribedKm,
+        ]);
+    }
+}
+
+it('keeps the anchor when the athlete followed the prescription down, however far it eased', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create(['anchor_weekly_volume_km' => 30.0, 'starts_at' => '2026-08-10', 'ends_at' => '2026-11-02']);
+    Carbon::setTestNow('2026-09-21 08:00:00');
+    trailingFollowThrough($user, '2026-09-20', 10.0, 12.0);
+
+    $this->service->ensureCurrent($user, Carbon::today());
+
+    expect($season->fresh()->anchor_weekly_volume_km)->toBe(30.0);
+});
+
+it('re-anchors after a collapse the prescription did not ask for', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create(['anchor_weekly_volume_km' => 30.0, 'starts_at' => '2026-08-10', 'ends_at' => '2026-11-02']);
+    Carbon::setTestNow('2026-09-21 08:00:00');
+    trailingFollowThrough($user, '2026-09-20', 10.0, 30.0);
+
+    $this->service->ensureCurrent($user, Carbon::today());
+
+    expect($season->fresh()->anchor_weekly_volume_km)->toBe(10.0);
+});
+
+it('carries the anchor into the next season when the athlete followed the prescription', function (): void {
+    $user = User::factory()->create();
+    Season::factory()->for($user)->create(['anchor_weekly_volume_km' => 30.0, 'starts_at' => '2026-06-29', 'ends_at' => '2026-09-20']);
+    Carbon::setTestNow('2026-09-21 08:00:00');
+    trailingFollowThrough($user, '2026-09-20', 18.0, 20.0);
+
+    expect($this->service->ensureCurrent($user, Carbon::today())->anchor_weekly_volume_km)->toBe(30.0);
+});
+
+it('opens the next season at the trailing actual when the athlete fell short of the prescription', function (): void {
+    $user = User::factory()->create();
+    Season::factory()->for($user)->create(['anchor_weekly_volume_km' => 30.0, 'starts_at' => '2026-06-29', 'ends_at' => '2026-09-20']);
+    Carbon::setTestNow('2026-09-21 08:00:00');
+    trailingFollowThrough($user, '2026-09-20', 18.0, 30.0);
+
+    expect($this->service->ensureCurrent($user, Carbon::today())->anchor_weekly_volume_km)->toBe(18.0);
 });

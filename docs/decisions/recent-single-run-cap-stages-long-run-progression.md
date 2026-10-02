@@ -11,6 +11,8 @@ code_refs:
   - app/Services/Run/Plan/PlanRenderer.php
 ---
 
+> **Partly superseded (2026-10-02) by [[a-season-averages-its-anchor-and-no-session-outruns-recent-capacity]].** The ceiling now bounds every running session, not only `Long`, and with no recent run it is the cold-start long run, not absent. The rest of this decision stands.
+
 # Recent single-run capacity stages long-run progression
 
 **Status:** Accepted (2026-09-21)

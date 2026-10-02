@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\ExperienceLevel;
 use App\Enums\PlanPhase;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
@@ -24,6 +26,13 @@ const ARC_START = '2026-09-07';
 
 function logWeek(User $user, string $weekEnding, float $km): void
 {
+    if ($km > 0) {
+        ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+            'distance' => 11_000,
+            'start_date_local' => Carbon::parse($weekEnding)->subDay()->setTime(7, 0),
+        ]);
+    }
+
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => $weekEnding,
         'distance_km' => $km,

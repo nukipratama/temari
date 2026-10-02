@@ -8,12 +8,16 @@ use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
+use App\Models\PersonalRecord;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\PlanInputsGatherer;
+use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -24,6 +28,41 @@ beforeEach(function (): void {
     $this->gatherer = app(PlanInputsGatherer::class);
 });
 afterEach(fn () => Carbon::setTestNow());
+
+it('budgets actual marathon-band minutes without escalating threshold readiness stress', function (): void {
+    $user = gathererAthlete();
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'start_date_local' => '2026-09-06 07:00', 'elapsed_time' => 3600,
+        'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 30, 'Z3' => 30, 'Z4' => 0, 'Z5' => 0]],
+    ]);
+    expect($this->gatherer->forUser($user, Carbon::today())->actualSessions)->toBe([
+        ['date' => '2026-09-06', 'duration_minutes' => 60, 'hard_minutes' => 30.0, 'demanding' => true],
+    ]);
+});
+
+it('requires six recent consistent running weeks and credible paces for two-run quality', function (): void {
+    $user = User::factory()->create();
+    $weeks = collect(range(0, 5))->map(fn (int $offset) => WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => Carbon::today()->subDay()->subWeeks($offset), 'runs' => 2, 'distance_km' => 12.0,
+    ]));
+    expect($this->gatherer->forUser($user, Carbon::today())->twoRunQualityEligible)->toBeFalse();
+    PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 3000, 'set_at' => Carbon::today()]);
+    app(VdotEstimator::class)->forget($user);
+    expect($this->gatherer->forUser($user, Carbon::today())->twoRunQualityEligible)->toBeTrue();
+    $weeks->last()->update(['runs' => 1]);
+    expect($this->gatherer->forUser($user, Carbon::today())->twoRunQualityEligible)->toBeFalse();
+});
+
+it('removes skipped prescriptions from workload and restores them only after unskipping', function (): void {
+    $user = gathererAthlete();
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => '2026-09-09', 'session_type' => SessionType::Tempo,
+        'skipped' => true, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Threshold,
+    ]);
+    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions)->not->toHaveKey('2026-09-09');
+    $session->update(['skipped' => false, 'pinned' => true]);
+    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions)->toHaveKey('2026-09-09');
+});
 
 function gathererAthlete(): User
 {
@@ -125,16 +164,6 @@ it('collects fixed session prescriptions across the horizon without making past 
     expect(array_keys($inputs->pinnedDates))->toBe([$tomorrow, $nextWeek])
         ->and(array_keys($inputs->settledDates))->toBe([$inTwoDays])
         ->and($inputs->fixedSessions)->toBe([
-            $monday => [
-                'session_type' => SessionType::Tempo,
-                'prescribed_hard_minutes' => 20,
-                'prescribed_pace_band' => PaceBand::Threshold,
-            ],
-            $yesterday => [
-                'session_type' => SessionType::Interval,
-                'prescribed_hard_minutes' => 18,
-                'prescribed_pace_band' => PaceBand::Interval,
-            ],
             $tomorrow => [
                 'session_type' => SessionType::Easy,
                 'prescribed_hard_minutes' => 0,

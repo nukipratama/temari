@@ -16,25 +16,23 @@ it('returns nothing when the original total km is zero, avoiding a divide by zer
     expect(VolumeRedistributor::redistribute(['2026-08-11' => 0.0, '2026-08-13' => 0.0], 20.0))->toBe([]);
 });
 
-it('applies the same continuous scale to every eligible day, toward the remaining target', function (): void {
+it('does not enlarge eligible days when the remaining target is larger than planned', function (): void {
     $eligible = ['2026-08-11' => 5.0, '2026-08-13' => 10.0];
-    // original total = 15; target = 20 -> scale 20/15 = 1.333...
 
     $result = VolumeRedistributor::redistribute($eligible, 20.0);
 
     expect($result['2026-08-11'])->toBe($result['2026-08-13'])
-        ->and($result['2026-08-11'])->toEqualWithDelta(20.0 / 15.0, 0.0001);
+        ->and($result['2026-08-11'])->toBe(1.0);
 });
 
-it('caps how far missed volume may inflate the days that remain', function (): void {
+it('writes off missed volume instead of inflating the days that remain', function (): void {
     $eligible = ['2026-08-11' => 5.0, '2026-08-13' => 5.0];
-    // original total = 10; an uncapped x4 would apply — the cap holds it at MAX_SCALE.
 
     $result = VolumeRedistributor::redistribute($eligible, 40.0);
 
     expect($result['2026-08-11'])->toBe(VolumeRedistributor::MAX_SCALE)
         ->and($result['2026-08-13'])->toBe(VolumeRedistributor::MAX_SCALE)
-        ->and(VolumeRedistributor::MAX_SCALE)->toBeLessThan(4.0);
+        ->and(VolumeRedistributor::MAX_SCALE)->toBe(1.0);
 });
 
 it('never scales below the floor when the target is negative', function (): void {
@@ -43,11 +41,6 @@ it('never scales below the floor when the target is negative', function (): void
     expect($result['2026-08-11'])->toBe(VolumeRedistributor::MIN_SCALE);
 });
 
-/**
- * Reducing is harder than adding: an athlete who banks the week's volume
- * early should still be given a real session, not a token one. The scale-up
- * cap stays where it was, so the two are deliberately asymmetric.
- */
 it('never cuts the days that remain below 70% of what they would otherwise ask', function (): void {
     $eligible = ['2026-08-13' => 10.0, '2026-08-16' => 14.0];
 

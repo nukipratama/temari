@@ -12,6 +12,8 @@ code_refs:
   - app/Services/Run/Plan/SeasonSummaryBuilder.php
 ---
 
+> **Fact update, 2026-10-02.** The premise that "the baseline already tracks the athlete's real volume" did not hold: a goal-less cycle prescribed roughly 0.4–1.2× its anchor. [[a-season-averages-its-anchor-and-no-session-outruns-recent-capacity]] now solves the baseline so the cycle averages the anchor. The flat arc and the 1.4 ramp cap stand.
+
 # A goal-less arc holds flat, and a race block's ramp is bounded
 
 **Status:** Accepted (2026-09-16)

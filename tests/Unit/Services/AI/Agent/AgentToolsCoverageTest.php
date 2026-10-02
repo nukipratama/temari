@@ -973,6 +973,10 @@ it('sizes the week\'s primary easy day bigger than a later easy day', function (
 it('scales today\'s reported distance by the week\'s own volume multiplier', function (): void {
     $user = User::factory()->create();
     $today = Carbon::today();
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'distance' => 15_000,
+        'start_date_local' => $today->copy()->subDays(2),
+    ]);
     $session = PlannedSession::factory()->for($user)->create([
         'date' => $today->toDateString(),
         'session_type' => SessionType::Long,
@@ -1285,6 +1289,10 @@ it('derives the distance for a day the scorer has not reached yet', function ():
 it('scales the fallback distance by the week\'s own volume multiplier', function (): void {
     $user = User::factory()->create();
     $today = Carbon::today();
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'distance' => 15_000,
+        'start_date_local' => $today->copy()->subDays(2),
+    ]);
     PlannedSession::factory()->for($user)->create([
         'date' => $today->toDateString(),
         'session_type' => SessionType::Long,

@@ -135,12 +135,12 @@ final class SegmentGenerator
 
         $effectiveLong = min($longRunBaselineKm * $volumeMultiplier, $longRunCapKm);
 
-        return match ($sessionType) {
-            SessionType::Long => round(min($effectiveLong, $longRunProgressionCapKm), 1),
-            SessionType::Tempo => round($effectiveLong * self::MEDIUM_FRACTION_OF_LONG, 1),
-            SessionType::Interval => round($effectiveLong * self::SHORT_FRACTION_OF_LONG, 1),
-            SessionType::Easy => round($effectiveLong * ($isPrimaryEasy ? self::MEDIUM_FRACTION_OF_LONG : self::SHORT_FRACTION_OF_LONG), 1),
-        };
+        return round(min($longRunProgressionCapKm, match ($sessionType) {
+            SessionType::Long => $effectiveLong,
+            SessionType::Tempo => $effectiveLong * self::MEDIUM_FRACTION_OF_LONG,
+            SessionType::Interval => $effectiveLong * self::SHORT_FRACTION_OF_LONG,
+            SessionType::Easy => $effectiveLong * ($isPrimaryEasy ? self::MEDIUM_FRACTION_OF_LONG : self::SHORT_FRACTION_OF_LONG),
+        }), 1);
     }
 
     /**

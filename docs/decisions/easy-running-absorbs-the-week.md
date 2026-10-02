@@ -11,6 +11,8 @@ code_refs:
 
 # Easy running absorbs the week, key sessions keep their size
 
+Superseded on 2026-10-01 by [[no-automatic-mileage-debt]].
+
 ## Context
 
 The Plan page resizes the rest of the current week against what has already been run ([[plan-periodizer]]). It used one scale factor across every remaining training day, so a long run was cut or inflated exactly as hard as an easy jog. On a real week an overrun, compounded by a pinned day counted twice, took a 10.4 km long run to 7.3 km. The double count is fixed separately; the proportional cut would still have hit the long run on any honest overrun, and a shortfall would have crammed missed km into it (up to the 1.35 cap).

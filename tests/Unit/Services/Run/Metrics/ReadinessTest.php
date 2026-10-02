@@ -38,7 +38,7 @@ it('caps at the most restrictive guardrail', function (
     'overreaching form alone is not a concern' => ['overreaching', 72, false, 1.0, 0.0, 'up', ReadinessCeiling::QualityOk],
     'already ran today caps at easy even if fresh + rested' => ['fresh', 60, true, 1.0, 0.0, 'up', ReadinessCeiling::EasyOnly],
     'fatigued form alone is not a concern' => ['fatigued', 60, false, 1.0, 0.0, 'plateau', ReadinessCeiling::QualityOk],
-    'high monotony withholds quality' => ['fresh', 60, false, 2.5, 0.0, 'up', ReadinessCeiling::ModerateOk],
+    'high monotony is descriptive only' => ['fresh', 60, false, 2.5, 0.0, 'up', ReadinessCeiling::QualityOk],
     // Softer caps -> moderate, quality withheld.
     'a week-over-week jump alone does not withhold quality' => ['fresh', 60, false, 1.0, 65.0, 'up', ReadinessCeiling::QualityOk],
     'ordinary run recency does not withhold quality' => ['fresh', 12, false, 1.0, 0.0, 'up', ReadinessCeiling::QualityOk],
@@ -55,8 +55,7 @@ it('nudges a fresh but detraining runner to build, within the ceiling', function
 });
 
 it('never lets a build nudge override a red flag', function (): void {
-    // Fresh + detraining would nudge, but high monotony withholds quality.
-    $r = Readiness::assess('fresh', 60, false, 2.5, 0.0, 'down');
+    $r = Readiness::assess('fresh', 60, false, 1.0, 0.0, 'down', feedback: ['freshness' => 'current', 'fatigue' => 'moderate']);
 
     expect($r->ceiling)->toBe(ReadinessCeiling::ModerateOk)
         ->and($r->buildNudge)->toBeFalse();
@@ -300,4 +299,12 @@ it('reads the personal range as a concern only when the athlete is also ahead of
 it('does not read a steady week exactly at its reference as above range', function (): void {
     expect(Readiness::assess('optimal', 60, false, 1.0, 0.0, 'plateau', weeklyTrimp: 592.0, weeklyTrimpRange: ['low' => 592.0, 'high' => 592.0])->ceiling)
         ->toBe(ReadinessCeiling::QualityOk);
+});
+
+it('never counts monotony as load that supports a mild concern', function (): void {
+    $readiness = Readiness::assess('optimal', 60, false, 3.5, 0.0, 'plateau', feedback: ['freshness' => 'current', 'fatigue' => 'mild']);
+
+    expect($readiness->ceiling)->toBe(ReadinessCeiling::QualityOk)
+        ->and($readiness->reasons)->toContain('mild_feedback_without_load_support')
+        ->and($readiness->inputs['monotony'])->toBe(3.5);
 });

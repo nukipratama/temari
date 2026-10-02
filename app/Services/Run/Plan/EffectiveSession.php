@@ -21,7 +21,10 @@ final readonly class EffectiveSession
 {
     private const float HELD_TOLERANCE_KM = 0.05;
 
-    /** @param array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null $qualityDose */
+    /**
+     * @param array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null $qualityDose
+     * @param array<string, int|float|string>|null $qualityRaceContext
+     */
     private function __construct(
         public SessionType $sessionType,
         public float $coreKm,
@@ -29,6 +32,7 @@ final readonly class EffectiveSession
         public ?float $easedFromKm = null,
         public ?int $easedPaceSecPerKm = null,
         public ?array $qualityDose = null,
+        private ?array $qualityRaceContext = null,
     ) {
     }
 
@@ -40,8 +44,23 @@ final readonly class EffectiveSession
 
         if ($session->clamped_km !== null) {
             $dose = $session->readiness_assessment['adjustment']['quality_dose'] ?? null;
-            if ($dose !== null) {
-                return new self($session->session_type, $session->clamped_km, $session->session_type, $storedCoreKm, qualityDose: $dose);
+            if ($dose !== null && $session->session_type->isQuality() && $session->prescribed_hard_minutes !== 0) {
+                $dose['hard_minutes'] = min($dose['hard_minutes'], $session->prescribed_hard_minutes ?? $dose['hard_minutes']);
+                if ($session->prescribed_hard_minutes !== null && $session->prescribed_pace_band !== null) {
+                    $dose['pace_band'] = $session->prescribed_pace_band->value;
+                }
+                if ($session->prescribed_pace_sec_per_km !== null && $dose['pace_sec_per_km'] !== null) {
+                    $dose['pace_sec_per_km'] = max($dose['pace_sec_per_km'], $session->prescribed_pace_sec_per_km);
+                }
+
+                return new self(
+                    $session->session_type,
+                    $session->clamped_km,
+                    $session->session_type,
+                    $storedCoreKm,
+                    qualityDose: $dose,
+                    qualityRaceContext: $session->prescribed_hard_minutes === null ? null : $session->prescription_race_context
+                );
             }
 
             return new self(SessionType::Easy, $session->clamped_km, $session->session_type, $storedCoreKm);
@@ -66,6 +85,7 @@ final readonly class EffectiveSession
             PaceBand::from($this->qualityDose['pace_band']),
             $this->qualityDose['pace_sec_per_km'],
             null,
+            $this->qualityRaceContext,
         );
     }
 

@@ -35,15 +35,6 @@ use Illuminate\Support\Carbon;
  */
 final readonly class PlanAdapter
 {
-    /** Foster's injury-risk uniformity threshold, the same one {@see \App\Services\Run\Metrics\Readiness} caps against. */
-    public const float MONOTONY_DELOAD = 2.0;
-
-    /** Weekly strain past this multiple of CTL is more than the athlete's fitness supports. */
-    public const float STRAIN_TO_CTL_DELOAD = 12.0;
-
-    /** Below this much CTL the strain ratio is noise, not signal. */
-    public const float MIN_CTL_FOR_STRAIN = 10.0;
-
     /** Below this share of the week's prescription completed, last week counts as a re-entry, not a catch-up. */
     public const float MISSED_WEEK_ADHERENCE = 0.50;
 
@@ -91,8 +82,6 @@ final readonly class PlanAdapter
         $loadPending = $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
         $load = $loadPending ? null : $this->trainingLoad->summary($user, $today);
         $ceiling = ReadinessCeiling::from(BriefingContext::forUser($user, $today, $load, historyLoading: $loadPending)->readinessCeiling);
-        $formKnownFrom = $load['form_known_from'] ?? null;
-        $formWarmingUp = is_string($formKnownFrom) && $formKnownFrom > $today->toDateString();
         $execution = $this->previousWeekExecution($user, $weekStart);
         $currentStimulus = $this->currentWeekStimulus($user, $weekStart, $today);
         $stimulus = $currentStimulus['sessions'] > 0
@@ -101,9 +90,6 @@ final readonly class PlanAdapter
 
         return self::decide(
             $ceiling,
-            self::floatOrNull($load['monotony'] ?? null),
-            self::floatOrNull($load['strain'] ?? null),
-            $formWarmingUp ? null : self::floatOrNull($load['ctl_42d'] ?? null),
             $this->previousWeekAdherencePct($user, $weekStart),
             $stimulus['adherence_pct'],
             $stimulus['misses'],
@@ -128,9 +114,6 @@ final readonly class PlanAdapter
      */
     public static function decide(
         ReadinessCeiling $ceiling,
-        ?float $monotony,
-        ?float $strain,
-        ?float $ctl,
         int $adherencePct,
         int $stimulusAdherencePct,
         int $stimulusMisses,
@@ -140,7 +123,7 @@ final readonly class PlanAdapter
         int $egregiousDecouplingDays,
         ?float $raceGapRatio,
     ): array {
-        $reason = self::reasonFor($ceiling, $monotony, $strain, $ctl, $adherencePct, $stimulusMisses, $raggedDays, $egregiousEasyDays, $egregiousDecouplingDays, $raceGapRatio);
+        $reason = self::reasonFor($ceiling, $adherencePct, $stimulusMisses, $raggedDays, $egregiousEasyDays, $egregiousDecouplingDays, $raceGapRatio);
 
         return [
             'reason' => $reason,
@@ -158,9 +141,6 @@ final readonly class PlanAdapter
 
     private static function reasonFor(
         ReadinessCeiling $ceiling,
-        ?float $monotony,
-        ?float $strain,
-        ?float $ctl,
         int $adherencePct,
         int $stimulusMisses,
         int $raggedDays,
@@ -170,12 +150,6 @@ final readonly class PlanAdapter
     ): AdaptationReason {
         if ($ceiling === ReadinessCeiling::Rest) {
             return AdaptationReason::LowReadiness;
-        }
-        if ($monotony !== null && $monotony >= self::MONOTONY_DELOAD) {
-            return AdaptationReason::HighMonotony;
-        }
-        if (self::strainIsExcessive($strain, $ctl)) {
-            return AdaptationReason::HighStrain;
         }
         if ($adherencePct / 100 < self::MISSED_WEEK_ADHERENCE) {
             return AdaptationReason::MissedWeek;
@@ -202,15 +176,6 @@ final readonly class PlanAdapter
     private static function stimulusNeedsReduction(int $misses): bool
     {
         return $misses >= 2;
-    }
-
-    private static function strainIsExcessive(?float $strain, ?float $ctl): bool
-    {
-        if ($strain === null || $ctl === null || $ctl < self::MIN_CTL_FOR_STRAIN) {
-            return false;
-        }
-
-        return $strain > $ctl * self::STRAIN_TO_CTL_DELOAD;
     }
 
     /**
@@ -425,10 +390,5 @@ final readonly class PlanAdapter
         $projection = $this->riegelProjector->project($user, (float) $race->distance_m);
 
         return $projection === null ? null : $projection['predicted_sec'] / $race->goal_time_sec;
-    }
-
-    private static function floatOrNull(mixed $value): ?float
-    {
-        return is_numeric($value) ? (float) $value : null;
     }
 }
