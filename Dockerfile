@@ -181,10 +181,10 @@ COPY docker/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 
 # /data/caddy and /config/caddy are Caddy's data + config dirs (used by the
 # pki module even when auto_https is off). Must be writable by www-data.
-RUN mkdir -p /data/caddy /config/caddy /config/psysh \
+RUN mkdir -p /data/caddy /config/caddy /config/psysh /tmp/opcache \
     && chown -R www-data:www-data \
         /var/www/html/storage /var/www/html/bootstrap/cache \
-        /data/caddy /config/caddy /config/psysh
+        /data/caddy /config/caddy /config/psysh /tmp/opcache
 
 USER www-data
 EXPOSE 7001

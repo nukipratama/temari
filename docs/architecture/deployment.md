@@ -38,7 +38,7 @@ How Temari is built into an image, run as a compose stack, and continuously depl
 - **`dev`** — local-only FrankenPHP target (traditional mode, no Octane worker). Bakes PHP extensions + the pinned Node toolchain + `docker/Caddyfile.dev`; source is volume-mounted at runtime.
 - **`vendor`** — `composer install --no-dev`, then `dump-autoload --classmap-authoritative`. The `package:discover` hook is **deferred** out of this stage (the `composer:2` image has no redis ext, so a provider boot would crash).
 - **`assets`** — `npm ci` + `npm run build` (Vite + `@tailwindcss/vite`), pulling `vendor/` in because some packages publish CSS/JS.
-- **runtime** (final, unnamed) — fresh FrankenPHP, copies `vendor/` and `public/build`, installs the runtime extensions (`pdo_mysql`, `redis`, `intl`, `bcmath`, `opcache`, `pcntl`), then runs the deferred `package:discover` with `CACHE_STORE=array`.
+- **runtime** (final, unnamed) — fresh FrankenPHP, copies `vendor/` and `public/build`, installs the runtime extensions (`pdo_mysql`, `redis`, `intl`, `bcmath`, `opcache`, `pcntl`), then runs the deferred `package:discover` with `CACHE_STORE=array`. The image loads no `php.ini`; [docker/php.ini](docker/php.ini) is copied in as `zz-app.ini` and is the only app-level PHP config: opcache with JIT off, `expose_php` off, assertions compiled out, and an opcache file cache in `/tmp/opcache` so short-lived artisan processes (scheduler runs, healthchecks) reuse compiled scripts.
 
 `config:cache` is deliberately **not** baked into the image — build time has no `.env`, so `env()` would freeze PHP defaults (e.g. `DB_CONNECTION` → `sqlite` in [config/database.php](config/database.php)) into the cache. Caching happens at deploy time instead, inside the running container. See `package:discover` + the `Optimize caches` step ([.github/workflows/ci.yml](.github/workflows/ci.yml)) and [[defer-config-cache]].
 
@@ -110,7 +110,7 @@ The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on
 8. `migrate --force`, then `migrate --database=analytics --path=database/migrations/analytics --force` (one-shot `compose run --rm app`).
 9. Roll `app horizon` onto the new image (`up -d --no-deps`) — the recreate gives Horizon fresh workers, so no separate `horizon:terminate`.
 10. `artisan optimize` (caches config inside the running container, where the real env is loaded).
-11. Poll shallow `/ready`, then deep `/up`, and smoke-test `/login` plus the PWA assets while maintenance is still active.
+11. Poll shallow `/ready`, then deep `/up`, and smoke-test `/login` (which must carry no `X-Powered-By` header) plus the PWA assets while maintenance is still active.
 12. Resume `scheduler`, roll `pulse`, then lift maintenance only if this deploy enabled it. Owner maintenance remains untouched.
 13. Prune SHA-tagged `temari/app` images that aren't `:latest`/`:previous`.
 
