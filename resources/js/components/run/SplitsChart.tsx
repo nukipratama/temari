@@ -126,7 +126,7 @@ export default function SplitsChart({
                 Splits per km
             </Eyebrow>
             <p className="mb-1.5 mt-0.5 font-sans text-xs text-text-3">
-                Taller bar, faster km · dashed line tracks heart rate — tap a
+                taller bar, faster km · dashed line tracks heart rate — tap a
                 bar for its pace.
             </p>
             <div className="mb-2.5 flex items-center gap-3">
@@ -224,7 +224,7 @@ export default function SplitsChart({
                             className="flex-none fill-current text-icon-accent"
                         />
                         <span className="font-sans text-xs font-bold text-foreground">
-                            Km {fastestRow.km} · fastest
+                            km {fastestRow.km} · fastest
                             {fastestRow.avg_hr != null &&
                                 ` · ${fastestRow.avg_hr} bpm`}
                         </span>

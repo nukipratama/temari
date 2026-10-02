@@ -45,10 +45,10 @@ export default class ErrorBoundary extends Component<Props, State> {
                 />
                 <div className="flex flex-col gap-1">
                     <h1 className="text-lg font-semibold text-foreground">
-                        Oops, something broke.
+                        oops, something broke.
                     </h1>
                     <p className="text-sm text-text-2">
-                        This page is being cranky. Try reloading it.
+                        this page is being cranky. try reloading it.
                     </p>
                 </div>
                 <button
@@ -57,7 +57,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                     className="focus-ring inline-flex items-center gap-1.5 rounded-full bg-leaf-deep px-4 py-2 text-sm font-semibold text-cream transition hover:opacity-90"
                 >
                     <RefreshCw aria-hidden />
-                    <span>Reload</span>
+                    <span>reload</span>
                 </button>
             </div>
         );

@@ -98,7 +98,7 @@ final class InboxController extends Controller
         return [
             'id' => $row->id,
             'kind' => $row->kind->value,
-            'title' => $row->title,
+            'title' => self::lowercaseLead($row->title),
             'body' => $row->body,
             'created_at' => $row->created_at?->toIso8601String(),
             'read_at' => $row->read_at?->toIso8601String(),
@@ -163,6 +163,11 @@ final class InboxController extends Controller
     private static function activityId(array $payload): ?int
     {
         return self::intOrNull($payload['activity_id'] ?? null);
+    }
+
+    private static function lowercaseLead(string $title): string
+    {
+        return str_starts_with($title, 'Strava') ? $title : mb_lcfirst($title);
     }
 
     private static function stringOrNull(mixed $value): ?string

@@ -25,13 +25,13 @@ export default function DemoBlockedModal({
             title="Telegram's taking a break for now"
             body={
                 <>
-                    This is still the demo, so I&apos;ve switched off Telegram
+                    this is still the demo, so I&apos;ve switched off Telegram
                     here, that keeps this shared bot from getting tapped by
-                    someone else. Connect your own Strava and you&apos;ll get
+                    someone else. connect your own Strava and you&apos;ll get
                     real notifications on your phone.
                 </>
             }
-            primaryLabel="Connect Strava"
+            primaryLabel="connect Strava"
             primaryIcon={StravaIcon}
             primaryClassName="bg-card border-[1.5px] border-border text-text-2 hover:border-foreground/40 hover:text-foreground"
             onPrimary={() => router.post('/logout')}

@@ -372,7 +372,7 @@ describe('Settings', () => {
             await screen.findByText('sure you want to delete your account?'),
         ).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
         await waitFor(() => {
             expect(
                 screen.queryByText('sure you want to delete your account?'),

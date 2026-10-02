@@ -126,7 +126,7 @@ export default function Profile({
                 </Eyebrow>
                 <header className="mt-2 mb-5 flex items-start justify-between gap-3">
                     <PageHero size="quote-lg" italic>
-                        {firstName ? `${firstName},` : 'Runner,'}
+                        {firstName ? `${firstName},` : 'runner,'}
                         <br />
                         <em className="italic text-horizon-ink">your story.</em>
                     </PageHero>

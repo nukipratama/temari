@@ -47,16 +47,16 @@ describe('goalTimeError', () => {
 
     it('rejects a time the server would reject as too short', () => {
         expect(goalTimeError(0)).toBe(
-            'Goal time has to be at least 5 minutes.',
+            'goal time has to be at least 5 minutes.',
         );
         expect(goalTimeError(MIN_GOAL_TIME_SEC - 1)).toBe(
-            'Goal time has to be at least 5 minutes.',
+            'goal time has to be at least 5 minutes.',
         );
     });
 
     it('rejects a time the server would reject as too long', () => {
         expect(goalTimeError(MAX_GOAL_TIME_SEC + 1)).toBe(
-            'Goal time has to be under 72 hours.',
+            'goal time has to be under 72 hours.',
         );
     });
 });
@@ -65,7 +65,7 @@ describe('impossiblePaceWarning', () => {
     it('warns when the pace beats the world-record floor', () => {
         // 10K in 25:00 = 150 sec/km, under the 155 sec/km floor.
         expect(impossiblePaceWarning(10, 1_500)).toBe(
-            "That's 2:30/km, quicker than world-record pace for most distances. Worth double-checking, but you can still save it.",
+            "that's 2:30/km, quicker than world-record pace for most distances. worth double-checking, but you can still save it.",
         );
     });
 
@@ -86,7 +86,7 @@ describe('ambitiousGoalWarning', () => {
     it("warns when the goal is well ahead of the athlete's own projected range", () => {
         // 3,000 * 0.9 = 2,700 - anything under that is a real stretch.
         expect(ambitiousGoalWarning(10, 2_600, projection)).toBe(
-            "That's well ahead of your own projected range (50:00–55:00). Ambitious, but you can still save it.",
+            "that's well ahead of your own projected range (50:00–55:00). ambitious, but you can still save it.",
         );
     });
 

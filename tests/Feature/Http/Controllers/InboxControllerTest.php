@@ -194,3 +194,21 @@ it('leaves a recap row without run stats', function (): void {
     expect($row['distance_m'])->toBeNull()
         ->and($row['elapsed_time_s'])->toBeNull();
 });
+
+it('serves a stored sentence-case title with a lowercase lead, keeping proper nouns and the stored row intact', function (): void {
+    $user = User::factory()->create();
+    $titles = [
+        'Your 4.6K run is in.' => 'your 4.6K run is in.',
+        'Your August recap is ready' => 'your August recap is ready',
+        'Strava stopped syncing' => 'Strava stopped syncing',
+        'race day is tomorrow' => 'race day is tomorrow',
+    ];
+    foreach (array_keys($titles) as $stored) {
+        InboxNotification::factory()->for($user)->create(['title' => $stored]);
+    }
+
+    $served = array_column(inboxRows($this->actingAs($user)), 'title');
+
+    expect($served)->toEqualCanonicalizing(array_values($titles))
+        ->and(InboxNotification::query()->pluck('title')->all())->toEqualCanonicalizing(array_keys($titles));
+});

@@ -97,7 +97,7 @@ export default function PastYouCard({
             <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 font-mono font-bold leading-tight tabular-nums text-icon-accent">
                 {evenPace ? (
                     <span className="text-stat-sm text-foreground">
-                        Dead even
+                        dead even
                     </span>
                 ) : (
                     <>
@@ -120,14 +120,14 @@ export default function PastYouCard({
                 href={activityUrl({ activity_id: match.past_activity_id })}
                 className="focus-ring hit-area mt-2 inline-flex items-center gap-1 rounded font-sans text-xs font-bold text-icon-accent"
             >
-                View that run
+                view that run
                 <Icon icon={ArrowRight} width={12} height={12} aria-hidden />
             </Link>
 
             <dl className="mt-4 grid grid-cols-2 gap-3">
                 {hr !== null && (
                     <Delta
-                        label="Heart rate"
+                        label="heart rate"
                         value={`${Math.round(hr.bpm)} bpm`}
                         suffix={
                             hr.relation === 'same' ? 'the same' : hr.relation
@@ -137,7 +137,7 @@ export default function PastYouCard({
                 )}
                 {time.relation !== 'same' && (
                     <Delta
-                        label="Over the distance"
+                        label="over the distance"
                         value={formatDuration(Math.round(time.seconds))}
                         suffix={
                             time.relation === 'faster' ? 'quicker' : 'slower'

@@ -70,12 +70,12 @@ const DEFAULT_RELOAD_PROPS = ['speechAnalysis', 'runInsight'];
 
 function rereadLabel(pending: boolean, cooldownRemaining: number): string {
     if (pending) {
-        return 'Rereading…';
+        return 'rereading…';
     }
     if (cooldownRemaining > 0) {
-        return `Next in ${formatDurationHMS(cooldownRemaining)}`;
+        return `next in ${formatDurationHMS(cooldownRemaining)}`;
     }
-    return 'Reread';
+    return 'reread';
 }
 
 /**
@@ -234,7 +234,7 @@ export default function RunLenses({
                         What Temari says
                     </Eyebrow>
                     <p className="mt-0.5 text-sm text-text-2">
-                        The story of this run, and what stood out.
+                        the story of this run, and what stood out.
                     </p>
                 </div>
             </header>

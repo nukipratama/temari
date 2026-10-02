@@ -149,7 +149,7 @@ function RateLimitedNote({ onSky }: Readonly<{ onSky: boolean }>) {
         <span
             className={`text-xs ${onSky ? 'text-horizon' : 'text-horizon-ink'}`}
         >
-            Easy there, Temari&apos;s overwhelmed. Try again in a bit.
+            easy there, temari&apos;s overwhelmed. try again in a bit.
         </span>
     );
 }
@@ -340,7 +340,7 @@ export default function AnalysisStatus({
                     <span
                         className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
                     >
-                        Attempt {attempts}
+                        attempt {attempts}
                     </span>
                 )}
             </div>
@@ -354,7 +354,7 @@ export default function AnalysisStatus({
                     size={size}
                     message={
                         paused && aiPauseRetriesFailed
-                            ? 'This will be written once Temari is back.'
+                            ? 'this will be written once temari is back.'
                             : undefined
                     }
                 />

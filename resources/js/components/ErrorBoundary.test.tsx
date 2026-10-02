@@ -38,7 +38,7 @@ describe('ErrorBoundary', () => {
             </ErrorBoundary>,
         );
 
-        expect(screen.getByText('Oops, something broke.')).toBeInTheDocument();
+        expect(screen.getByText('oops, something broke.')).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: /reload/i }),
         ).toBeInTheDocument();
