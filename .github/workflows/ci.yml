@@ -497,3 +497,14 @@ jobs:
             echo "| SHA | \`${{ github.sha }}\` |"
             echo "| Status | ${{ steps.tip.outputs.current == 'false' && format('Superseded by {0}, skipped', steps.tip.outputs.tip) || (job.status == 'success' && '✅ Deployed' || '❌ Failed') }} |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  notify:
+    name: Deploy alert
+    needs: [deploy]
+    if: always() && needs.deploy.result == 'failure'
+    uses: ./.github/workflows/maintainer-alert.yml
+    with:
+      message: Deploy ${{ github.sha }} failed on the homelab runner, possibly before any step ran.
+    secrets:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}
