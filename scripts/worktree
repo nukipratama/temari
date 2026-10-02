@@ -6,7 +6,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 CHECKOUT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 SLOT_FILE=".claude-worktree-slot"
 LOCKS_NAME="temari-worktree-slots"
-MAX_WORKTREE_SLOTS=83
+MAX_WORKTREE_SLOTS=84
 INCOMPLETE_SLOT_TTL_MINUTES=5
 
 usage() {
