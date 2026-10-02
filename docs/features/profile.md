@@ -56,7 +56,7 @@ This is the merged profile voice: it reads who the runner is from their 12-week 
 
 ## Stat row
 
-A horizontally scrolling row inside the hero: **Total km**, **Total runs**, **Longest run**, plus **VDOT** and **Threshold** when the athlete has a VDOT-eligible PR. The controller delegates to [LifetimeStats](app/Services/Run/LifetimeStats.php), the same service `/calendar` uses: one aggregate query over `ActivityDetail` (`SUM(distance)`, `MAX(distance)`, `MIN(start_date_local)`) plus `user->activities()->count()` for the run count, converted to km and cached per user for 5 minutes. `/profile` maps its `longest_km` onto the `longest_run_km` prop; the page renders **Total km** at 1dp and **Longest run** at 2dp, matching the precision the service rounds to.
+A horizontally scrolling row inside the hero: **Total km**, **Total runs**, **Longest run** (its value carries the unit, `42.6 km`, like **Threshold**'s `/km`, so the label fits one line on phones), plus **VDOT** and **Threshold** when the athlete has a VDOT-eligible PR. The controller delegates to [LifetimeStats](app/Services/Run/LifetimeStats.php), the same service `/calendar` uses: one aggregate query over `ActivityDetail` (`SUM(distance)`, `MAX(distance)`, `MIN(start_date_local)`) plus `user->activities()->count()` for the run count, converted to km and cached per user for 5 minutes. `/profile` maps its `longest_km` onto the `longest_run_km` prop; the page renders **Total km** and **Longest run** at 1dp. The service rounds the total to 1dp and the longest run to 2dp, so the tile drops the second decimal.
 
 Sharing `/calendar`'s cache means the totals can trail a just-ingested run by up to the TTL, the same window `/calendar` has always had.
 
