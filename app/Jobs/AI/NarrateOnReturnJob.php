@@ -123,7 +123,7 @@ class NarrateOnReturnJob implements ShouldQueue
                 ->where('analysis_type', AnalysisType::WeeklyRecap)
                 ->where('status', AnalysisStatus::Pending));
 
-        $pending()->where('week_ending', '<', $lastClosed)->get()
+        $readiness->ready($pending()->where('week_ending', '<', $lastClosed)->get())
             ->each(fn (WeeklySnapshot $snapshot) => $service->requestRuleBased(
                 WeeklySnapshot::class,
                 (int) $snapshot->id,

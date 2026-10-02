@@ -260,8 +260,8 @@ covers only [`RecentlyActiveUsers`](../../app/Actions/AI/RecentlyActiveUsers.php
 athletes away from the app are excluded. A stalled weekly or monthly recap link that is past the
 backfill age cutoff, or whose period closed before the athlete connected, is filled with
 `requestRuleBased()` instead of being resumed, so recovery never bills the LLM for history Temari
-never watched; a pre-connect link still waits for its period to finish hydrating first, as the
-kickoffs do. Failed rows are bounded by
+never watched; a too-old or pre-connect weekly link still waits for its week to finish hydrating
+first, as the kickoffs do. Failed rows are bounded by
 [`MAX_SELF_HEAL_ATTEMPTS`](../../app/Models/AI/Analysis.php#L78) and then dead-letter to
 `/devtools/narration` for a manual re-arm, which is itself a recovery-origin dispatch. See
 [[bounded-self-heal-and-dead-letter]]. On the sweep that sees a non-ceiling pause lift,
@@ -276,7 +276,8 @@ active athlete's block that failed from one sweep before the pause began one mor
 the 7-day window lapsed (not for an account younger than the window). It sends the last 7 days of
 pending runs and cards, the latest closed week's and month's recaps and this week's credited day
 reads to the LLM with `invalidate: false`, and fills anything older still `Pending` rule-based, as
-well as a latest closed month that ended before the athlete connected. The
+well as a latest closed month that ended before the athlete connected. An older week waits on
+[RecapHydrationReadiness](../../app/Services/AI/RecapHydrationReadiness.php) before that fill. The
 origin is `return`, and `AnalysisService::markDone()` sends no notification for it. See
 [[narration-spends-only-on-active-athletes]].
 

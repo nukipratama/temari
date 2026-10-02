@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\IngestState;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Jobs\AI\AnalyzeActivityJob;
@@ -141,6 +142,34 @@ it('narrates the latest closed week and month and fills older missed recaps rule
         ->and(returnRowStatus($monthly, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-06'))->toBe(AnalysisStatus::Pending)
         ->and(returnRowReason(WeeklySnapshot::class, $olderWeek->id, AnalysisType::WeeklyRecap))->toBe(AnalysisOrigin::Return)
         ->and(returnRowReason($monthly, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-04'))->toBe(AnalysisOrigin::Return);
+});
+
+function olderWeekStillHydrating(User $user): Activity
+{
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
+    $activity = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2026-06-04 06:30:00')]);
+
+    return $activity;
+}
+
+it('leaves an older missed week Pending while its runs still hydrate', function (): void {
+    olderWeekStillHydrating($this->athlete);
+    $olderWeek = weeklyRecapLeftPending($this->athlete, '2026-06-07');
+
+    narrateOnReturn($this->athlete);
+
+    expect(returnRowStatus(WeeklySnapshot::class, $olderWeek->id, AnalysisType::WeeklyRecap))->toBe(AnalysisStatus::Pending);
+});
+
+it('fills an older missed week rule-based once its runs have hydrated', function (): void {
+    olderWeekStillHydrating($this->athlete)->update(['ingest_state' => IngestState::Detailed]);
+    $olderWeek = weeklyRecapLeftPending($this->athlete, '2026-06-07');
+
+    narrateOnReturn($this->athlete);
+
+    expect(returnRowStatus(WeeklySnapshot::class, $olderWeek->id, AnalysisType::WeeklyRecap))->toBe(AnalysisStatus::Done)
+        ->and(returnRowReason(WeeklySnapshot::class, $olderWeek->id, AnalysisType::WeeklyRecap))->toBe(AnalysisOrigin::Return);
 });
 
 it('fills the latest closed month rule-based when it closed before the athlete connected', function (): void {
