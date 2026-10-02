@@ -11,7 +11,7 @@
         </x-slot:actions>
     </x-pulse::card-header>
 
-    <x-pulse::scroll :expand="$expand" wire:poll.30s="">
+    <x-pulse::scroll :expand="$expand" class="temari-card-body" wire:poll.30s="">
         <div class="text-label-micro text-text-3 mb-1">Now</div>
         <div class="grid grid-cols-4 gap-2 mb-4">
             @foreach ($statusBoxes as $box)
@@ -124,7 +124,7 @@
                 ])>
                     <div class="font-mono text-lg font-bold tabular-nums text-foreground">{{ number_format($deadLettered) }}</div>
                     @if ($deadLettered > 0)
-                        <a href="{{ url('/devtools/narration') }}" class="block text-label-micro text-ember-ink underline">
+                        <a href="{{ url('/devtools/narration') }}" class="block break-all text-label-micro text-ember-ink underline">
                             /devtools/narration
                         </a>
                     @else

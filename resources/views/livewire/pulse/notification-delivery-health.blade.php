@@ -8,7 +8,7 @@
         </x-slot:actions>
     </x-pulse::card-header>
 
-    <x-pulse::scroll :expand="$expand" wire:poll.30s="">
+    <x-pulse::scroll :expand="$expand" class="temari-card-body" wire:poll.30s="">
         <div class="grid grid-cols-4 gap-2 mb-4">
             @foreach ($statusBoxes as $box)
                 @include('livewire.pulse.partials.stat-tile', [
