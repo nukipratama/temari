@@ -410,6 +410,42 @@ it('spendDigest says so plainly on a day nobody spent anything', function (): vo
     app(MaintainerAlerter::class)->spendDigest([], 0.0, 1.0, 5.0);
 });
 
+it('exceptionDigest lists each new fingerprint with its first-seen time and count', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(7403);
+
+    $client->shouldReceive('sendMessage')->once()->with(
+        7403,
+        "2 new exceptions since the last digest.\n"
+        ."- RuntimeException at app/Services/Foo.php:12, first seen Sep 30 10:00, 3 times\n"
+        .'- browser error at /build/assets/app.js:1:2 (#abcd1234), first seen Sep 30 11:15, once',
+    );
+
+    app(MaintainerAlerter::class)->exceptionDigest([
+        ['label' => 'RuntimeException at app/Services/Foo.php:12', 'first_seen' => '2026-09-30T10:00:00+07:00', 'count' => 3],
+        ['label' => 'browser error at /build/assets/app.js:1:2 (#abcd1234)', 'first_seen' => '2026-09-30T11:15:00+07:00', 'count' => 1],
+    ]);
+});
+
+it('exceptionDigest folds a long list into a count so the message stays sendable', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(7404);
+
+    $entries = array_map(fn (int $i): array => [
+        'label' => "RuntimeException at app/F{$i}.php:1",
+        'first_seen' => '2026-09-30T10:00:00+07:00',
+        'count' => 1,
+    ], range(1, MaintainerAlerter::EXCEPTION_DIGEST_MAX_LINES + 4));
+
+    $client->shouldReceive('sendMessage')->once()->with(7404, Mockery::on(
+        fn (string $message): bool => str_starts_with($message, (MaintainerAlerter::EXCEPTION_DIGEST_MAX_LINES + 4).' new exceptions')
+            && str_ends_with($message, "\n- and 4 more")
+            && substr_count($message, "\n- RuntimeException") === MaintainerAlerter::EXCEPTION_DIGEST_MAX_LINES,
+    ));
+
+    app(MaintainerAlerter::class)->exceptionDigest($entries);
+});
+
 // #986: every alert queues its Telegram send instead of making the call
 // inline, so a slow/unreachable Telegram can never block the caller.
 it('queues the Telegram send instead of calling the client inline', function (): void {
