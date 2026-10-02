@@ -33,8 +33,15 @@ const BY_CATEGORY = {
 } satisfies Record<string, ProgressionSeries>;
 
 describe('ProgressionCard', () => {
-    it('opens on the longest distance available and draws its journey', () => {
-        render(<ProgressionCard byCategory={BY_CATEGORY} />);
+    it('draws the journey of the distance it opens on', () => {
+        render(
+            <ProgressionCard
+                byCategory={{
+                    ...BY_CATEGORY,
+                    '5km': { ...BY_CATEGORY['5km'], goal_sec: null },
+                }}
+            />,
+        );
 
         expect(screen.getByText(/Journey · 10 km/)).toBeInTheDocument();
         expect(screen.getByTestId('journey-chart')).toBeInTheDocument();
@@ -140,9 +147,96 @@ describe('ProgressionCard', () => {
 
     it('shows the goal chip only for a distance that has one', () => {
         render(<ProgressionCard byCategory={BY_CATEGORY} />);
-        expect(screen.queryByText(/goal: sub-/)).not.toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole('tab', { name: '5K' }));
         expect(screen.getByText(/goal: sub-29:00/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('tab', { name: '10K' }));
+        expect(screen.queryByText(/goal: sub-/)).not.toBeInTheDocument();
+    });
+
+    describe('opening tab', () => {
+        const series = (
+            category: string,
+            overrides: Partial<ProgressionSeries> = {},
+        ): ProgressionSeries => ({
+            category,
+            weeks: ['2026-04-13', '2026-09-28'],
+            times_sec: [3800, 3700],
+            activity_ids: [1, 2],
+            goal_sec: null,
+            progress: null,
+            ...overrides,
+        });
+        const progress = BY_CATEGORY['10km'].progress;
+
+        const selectedTab = () =>
+            screen.getByRole('tab', { selected: true }).textContent;
+
+        it('opens on the active race distance over a longer one', () => {
+            render(
+                <ProgressionCard
+                    byCategory={{
+                        '10km': series('10km', { goal_sec: 3000 }),
+                        marathon: series('marathon', { progress }),
+                    }}
+                />,
+            );
+
+            expect(selectedTab()).toBe('10K');
+        });
+
+        it('opens on the race distance even when a longer one has a figure', () => {
+            render(
+                <ProgressionCard
+                    byCategory={{
+                        '5km': series('5km', { goal_sec: 1500 }),
+                        half_marathon: series('half_marathon', { progress }),
+                    }}
+                />,
+            );
+
+            expect(selectedTab()).toBe('5K');
+        });
+
+        it('opens on the longest distance with a figure when there is no race', () => {
+            render(
+                <ProgressionCard
+                    byCategory={{
+                        '5km': series('5km', { progress }),
+                        '10km': series('10km', { progress }),
+                        marathon: series('marathon'),
+                    }}
+                />,
+            );
+
+            expect(selectedTab()).toBe('10K');
+        });
+
+        it('opens on the longest distance when none has a figure or a race', () => {
+            render(
+                <ProgressionCard
+                    byCategory={{
+                        '5km': series('5km'),
+                        marathon: series('marathon'),
+                    }}
+                />,
+            );
+
+            expect(selectedTab()).toBe('FM');
+        });
+
+        it('keeps the athlete’s own choice over the opening tab', () => {
+            render(
+                <ProgressionCard
+                    byCategory={{
+                        '10km': series('10km', { goal_sec: 3000 }),
+                        marathon: series('marathon'),
+                    }}
+                />,
+            );
+
+            fireEvent.click(screen.getByRole('tab', { name: 'FM' }));
+
+            expect(selectedTab()).toBe('FM');
+        });
     });
 });
