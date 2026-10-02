@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import {
+    Fragment,
     useEffect,
     useLayoutEffect,
     useRef,
@@ -218,21 +219,29 @@ export default function JourneyChart({
                         strokeDasharray="2 2"
                     />
                 )}
-                {points.map((point, index) => (
-                    <circle
-                        key={point.label}
-                        cx={point.x}
-                        cy={point.y}
-                        r={point.pr || index === selectedIndex ? 5 : 2.5}
-                        fill={
-                            point.pr
-                                ? 'var(--color-horizon)'
-                                : 'var(--color-horizon-ink)'
-                        }
-                        stroke={point.pr ? 'var(--color-card)' : undefined}
-                        strokeWidth={point.pr ? 2 : undefined}
-                    />
-                ))}
+                {points.map((point, index) =>
+                    point.pr ? (
+                        <Fragment key={point.label}>
+                            <Dot
+                                point={point}
+                                color="var(--color-card)"
+                                diameter={12}
+                            />
+                            <Dot
+                                point={point}
+                                color="var(--color-horizon)"
+                                diameter={8}
+                            />
+                        </Fragment>
+                    ) : (
+                        <Dot
+                            key={point.label}
+                            point={point}
+                            color="var(--color-horizon-ink)"
+                            diameter={index === selectedIndex ? 10 : 5}
+                        />
+                    ),
+                )}
             </svg>
             {selected && (
                 <div
@@ -252,6 +261,25 @@ export default function JourneyChart({
                 </div>
             )}
         </div>
+    );
+}
+
+function Dot({
+    point,
+    color,
+    diameter,
+}: Readonly<{ point: Point; color: string; diameter: number }>) {
+    return (
+        <line
+            x1={point.x}
+            y1={point.y}
+            x2={point.x}
+            y2={point.y}
+            stroke={color}
+            strokeWidth={diameter}
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+        />
     );
 }
 

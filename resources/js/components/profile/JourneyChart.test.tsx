@@ -47,10 +47,55 @@ describe('JourneyChart', () => {
         const { container } = render(
             <JourneyChart weeks={['2026-05-25']} timesSec={[3160]} />,
         );
-        const dot = container.querySelector('circle');
+        const dot = container.querySelector(
+            'line[vector-effect="non-scaling-stroke"]',
+        );
 
-        expect(dot?.getAttribute('cx')).toBe('150');
-        expect(dot?.getAttribute('cy')).toBe('39');
+        expect(dot?.getAttribute('x1')).toBe('150');
+        expect(dot?.getAttribute('y1')).toBe('39');
+    });
+
+    it('draws every marker as a zero-length round-capped line that stays round at any width', () => {
+        const { container } = render(
+            <JourneyChart weeks={WEEKS} timesSec={TIMES} />,
+        );
+        const markers = Array.from(
+            container.querySelectorAll(
+                'line[vector-effect="non-scaling-stroke"]',
+            ),
+        );
+
+        expect(container.querySelector('circle, ellipse')).toBeNull();
+        expect(markers).toHaveLength(4);
+        markers.forEach((marker) => {
+            expect(marker.getAttribute('x1')).toBe(marker.getAttribute('x2'));
+            expect(marker.getAttribute('y1')).toBe(marker.getAttribute('y2'));
+            expect(marker.getAttribute('stroke-linecap')).toBe('round');
+        });
+        expect(
+            markers.map((marker) => [
+                marker.getAttribute('stroke'),
+                marker.getAttribute('stroke-width'),
+            ]),
+        ).toEqual([
+            ['var(--color-horizon-ink)', '5'],
+            ['var(--color-horizon-ink)', '5'],
+            ['var(--color-card)', '12'],
+            ['var(--color-horizon)', '8'],
+        ]);
+    });
+
+    it('grows the selected marker to the PR size', () => {
+        const { container } = render(
+            <JourneyChart weeks={WEEKS} timesSec={TIMES} />,
+        );
+
+        fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowLeft' });
+        const markers = container.querySelectorAll(
+            'line[vector-effect="non-scaling-stroke"]',
+        );
+
+        expect(markers[1].getAttribute('stroke-width')).toBe('10');
     });
 
     it('moves the readout between weeks with the arrow keys, most recent first', () => {
