@@ -53,6 +53,14 @@ jobs:
           set -o pipefail
           mkdir -p "$BACKUP_DIR"
           out="$BACKUP_DIR/nightly-$NIGHTLY_TIMESTAMP.sql.gz"
+          manifest="$BACKUP_DIR/nightly-$NIGHTLY_TIMESTAMP.manifest"
+          db_sql() {
+            $COMPOSE exec -T mysql sh -c "export MYSQL_PWD=\"\$DB_PASSWORD\"; mysql -h 127.0.0.1 -N -B -u\"\$DB_USERNAME\" \"\$DB_DATABASE\" -e \"$1\""
+          }
+          if ! { query=$(db_sql "SHOW TABLES" | scripts/deploy/count-rows-query.sh) && db_sql "$query" > "$manifest"; }; then
+            rm -f "$manifest"
+            echo "::warning::Nightly manifest not written; the weekly restore test skips its count check for this dump."
+          fi
           # shellcheck disable=SC2016 # Database variables must expand inside the container shell.
           $COMPOSE exec -T mysql sh -c \
             'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" "$DB_DATABASE"' \
@@ -62,6 +70,10 @@ jobs:
             'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""' \
             | tr -d '[:space:]')
           scripts/deploy/verify-and-prune-backup.sh "Nightly backup" "$out" "$tables" "$BACKUP_DIR/nightly-*.sql.gz" 14
+          for m in "$BACKUP_DIR"/nightly-*.manifest; do
+            [ -e "$m" ] || continue
+            [ -e "${m%.manifest}.sql.gz" ] || rm -f "$m"
+          done
 
       - name: Backup analytics schema
         timeout-minutes: 10
@@ -70,6 +82,14 @@ jobs:
           # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
           if $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "USE $adb"' 2>/dev/null; then
             set -o pipefail
+            manifest="$BACKUP_DIR/analytics-nightly-$NIGHTLY_TIMESTAMP.manifest"
+            adb_sql() {
+              $COMPOSE exec -T mysql sh -c "adb=\"\${DB_ANALYTICS_DATABASE:-temari_analytics}\"; export MYSQL_PWD=\"\$DB_PASSWORD\"; mysql -h 127.0.0.1 -N -B -u\"\$DB_USERNAME\" \"\$adb\" -e \"$1\""
+            }
+            if ! { query=$(adb_sql "SHOW TABLES" | scripts/deploy/count-rows-query.sh) && adb_sql "$query" > "$manifest"; }; then
+              rm -f "$manifest"
+              echo "::warning::Nightly analytics manifest not written; the weekly restore test skips its count check for this dump."
+            fi
             # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
             $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" --databases "$adb"' \
               | gzip > "$out"
@@ -77,6 +97,10 @@ jobs:
             tables=$($COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$adb\""' \
               | tr -d '[:space:]')
             scripts/deploy/verify-and-prune-backup.sh "Nightly analytics backup" "$out" "$tables" "$BACKUP_DIR/analytics-nightly-*.sql.gz" 14
+            for m in "$BACKUP_DIR"/analytics-nightly-*.manifest; do
+              [ -e "$m" ] || continue
+              [ -e "${m%.manifest}.sql.gz" ] || rm -f "$m"
+            done
           else
             echo "Analytics schema not present — skipping."
           fi

@@ -1,15 +1,21 @@
 name: Restore dry-run
 
-# Manual, owner-triggered dry run of scripts/restore-db.sh against a real prod
-# backup pair, restored into a throwaway MySQL instead of the live one. Proves
-# the backup is actually restorable without touching prod data — see the
-# "Rollback" section of docs/architecture/deployment.md.
+# Restores a real prod backup pair with scripts/restore-db.sh into a throwaway
+# MySQL instead of the live one, weekly for the newest nightly pair and on demand
+# for either kind. See the "Rollback" section of docs/architecture/deployment.md.
 
 on:
+  schedule:
+    - cron: '7 21 * * 6' # Sunday 04:07 WIB
   workflow_dispatch:
     inputs:
+      kind:
+        description: 'which backup rotation to restore'
+        type: choice
+        options: [nightly, pre-deploy]
+        default: nightly
       backup_sha:
-        description: 'git SHA of the pre-deploy-<sha>-*.sql.gz pair to restore (default: newest on disk)'
+        description: 'kind=pre-deploy only: git SHA of the pre-deploy-<sha>-*.sql.gz pair to restore (default: newest on disk)'
         required: false
         default: ''
 
@@ -39,23 +45,30 @@ jobs:
       - name: Pick the backup pair
         id: pick
         timeout-minutes: 2
+        env:
+          KIND: ${{ inputs.kind || 'nightly' }}
+          BACKUP_SHA: ${{ inputs.backup_sha }}
         run: |
           set -euo pipefail
 
-          # Deploy backup names carry a timestamp + run id + run attempt after the
-          # sha (so a re-run never overwrites an earlier backup), so the pairing
-          # is by matching suffix rather than by sha alone: whatever comes after
-          # "pre-deploy-" is identical between a main dump and its analytics
-          # sibling, just under the "analytics-pre-deploy-" prefix instead.
-          sha="${{ inputs.backup_sha }}"
-          if [ -n "$sha" ]; then
+          case "$KIND" in
+            nightly | pre-deploy) ;;
+            *) echo "::error::unknown kind '$KIND' (nightly or pre-deploy)"; exit 1 ;;
+          esac
+
+          # Pairing is by matching suffix: whatever comes after "nightly-" or
+          # "pre-deploy-" (timestamp, plus sha + run id + run attempt for deploy
+          # backups) is identical between a main dump and its analytics sibling,
+          # just under the "analytics-" prefix.
+          if [ -n "$BACKUP_SHA" ]; then
+            [ "$KIND" = "pre-deploy" ] || { echo "::error::backup_sha only applies to kind=pre-deploy"; exit 1; }
             # shellcheck disable=SC2012 # Generated backup filenames contain no whitespace.
-            app=$(ls -1t "$BACKUP_DIR"/pre-deploy-"$sha"-*.sql.gz 2>/dev/null | head -n1 || true)
-            [ -n "$app" ] || { echo "::error::no backup found for sha $sha in $BACKUP_DIR"; exit 1; }
+            app=$(ls -1t "$BACKUP_DIR"/pre-deploy-"$BACKUP_SHA"-*.sql.gz 2>/dev/null | head -n1 || true)
+            [ -n "$app" ] || { echo "::error::no backup found for sha $BACKUP_SHA in $BACKUP_DIR"; exit 1; }
           else
             # shellcheck disable=SC2012 # Generated backup filenames contain no whitespace.
-            app=$(ls -1t "$BACKUP_DIR"/pre-deploy-*.sql.gz 2>/dev/null | head -n1 || true)
-            [ -n "$app" ] || { echo "::error::no pre-deploy-*.sql.gz found in $BACKUP_DIR"; exit 1; }
+            app=$(ls -1t "$BACKUP_DIR"/"$KIND"-*.sql.gz 2>/dev/null | head -n1 || true)
+            [ -n "$app" ] || { echo "::error::no $KIND-*.sql.gz found in $BACKUP_DIR"; exit 1; }
           fi
 
           analytics="$BACKUP_DIR/analytics-$(basename "$app")"
@@ -65,6 +78,8 @@ jobs:
             echo "app=$app"
             echo "analytics=$analytics"
             echo "label=$(basename "$app")"
+            echo "app_manifest=${app%.sql.gz}.manifest"
+            echo "analytics_manifest=${analytics%.sql.gz}.manifest"
           } >> "$GITHUB_OUTPUT"
 
           echo "Selected pair ($(basename "$app")):"
@@ -92,11 +107,16 @@ jobs:
           RESTORE_DB_ASSUME_YES: '1'
         run: ./scripts/restore-db.sh "${{ steps.pick.outputs.analytics }}"
 
-      # Read-only against the live mysql (SELECT COUNT / SHOW TABLES only, never
-      # a write) so this step is safe to run beside a live deploy even though
-      # concurrency already keeps them from overlapping.
-      - name: Verify the restore against live (read-only)
+      # A nightly pair is checked against the manifest its backup wrote just before
+      # dumping; a pre-deploy pair, taken minutes before a deploy, against the live
+      # mysql, read-only (SELECT COUNT / SHOW TABLES only, never a write).
+      - name: Verify the restore
+        id: verify
         timeout-minutes: 5
+        env:
+          KIND: ${{ inputs.kind || 'nightly' }}
+          APP_MANIFEST: ${{ steps.pick.outputs.app_manifest }}
+          ANALYTICS_MANIFEST: ${{ steps.pick.outputs.analytics_manifest }}
         run: |
           set -euo pipefail
 
@@ -145,15 +165,38 @@ jobs:
             rm -f "$live_err" "$throwaway_err"
           }
 
-          echo "== default schema =="
-          check_tables sql "default"
-          for t in users activities ai_analyses planned_sessions; do
-            check_counts sql "default" "$t"
-          done
+          check_manifest() { # $1=sql-fn  $2=schema  $3=manifest
+            local fn="$1" schema="$2" manifest="$3" query restored
+            if [ ! -f "$manifest" ]; then
+              echo "::warning::$schema — no manifest at $manifest, so this dump predates manifests; count check skipped."
+              return 0
+            fi
+            query=$("$fn" "docker compose -p $RESTORE_PROJECT -f $RESTORE_COMPOSE_FILE" "$RESTORE_SERVICE" "SHOW TABLES" | scripts/deploy/count-rows-query.sh)
+            restored="$(mktemp)"
+            "$fn" "docker compose -p $RESTORE_PROJECT -f $RESTORE_COMPOSE_FILE" "$RESTORE_SERVICE" "$query" > "$restored"
+            if ! scripts/deploy/check-restore-manifest.sh "$schema" "$manifest" "$restored"; then
+              fail=1
+            fi
+            rm -f "$restored"
+          }
 
-          echo "== analytics schema =="
-          check_tables sql_analytics "analytics"
-          check_counts sql_analytics "analytics" ai_token_usages
+          if [ "$KIND" = "nightly" ]; then
+            echo "== default schema (against the dump-time manifest) =="
+            check_manifest sql "default" "$APP_MANIFEST"
+
+            echo "== analytics schema (against the dump-time manifest) =="
+            check_manifest sql_analytics "analytics" "$ANALYTICS_MANIFEST"
+          else
+            echo "== default schema =="
+            check_tables sql "default"
+            for t in users activities ai_analyses planned_sessions; do
+              check_counts sql "default" "$t"
+            done
+
+            echo "== analytics schema =="
+            check_tables sql_analytics "analytics"
+            check_counts sql_analytics "analytics" ai_token_usages
+          fi
 
           if [ "$fail" -ne 0 ]; then
             echo "::error::restore dry-run FAILED verification"
@@ -168,8 +211,18 @@ jobs:
           {
             echo "## Restore dry-run"
             if [ "${{ job.status }}" = "success" ]; then
-              echo "PASS — \`${{ steps.pick.outputs.label }}\` restored clean into a throwaway database and verified against live."
+              echo "PASS — \`${{ steps.pick.outputs.label }}\` restored clean into a throwaway database and verified (nightly: against its dump-time manifest; pre-deploy: against live)."
             else
               echo "FAIL — \`${{ steps.pick.outputs.label }}\`, see the Verify step above."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  notify:
+    needs: [restore-dry-run]
+    if: always() && needs.restore-dry-run.result == 'failure'
+    uses: ./.github/workflows/maintainer-alert.yml
+    with:
+      message: Restore dry-run (${{ inputs.kind || 'nightly' }}) failed on the homelab runner, possibly before any step ran.
+    secrets:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}
