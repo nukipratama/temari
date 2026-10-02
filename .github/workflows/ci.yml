@@ -406,6 +406,10 @@ jobs:
         run: |
           curl -fsS --max-time 10 -o /dev/null -w "login: HTTP %{http_code} in %{time_total}s\n" \
             http://127.0.0.1:7001/login
+          login=$(curl -fsS --max-time 10 -D- -o /dev/null http://127.0.0.1:7001/login)
+          if printf '%s' "$login" | grep -qi '^x-powered-by:'; then
+            echo "::error::/login advertises X-Powered-By"; exit 1
+          fi
           # PWA assets must serve with the right MIME + cache headers. Asserting them
           # here catches a Caddyfile serving regression (e.g. the file copied to the
           # wrong path → default config with no header handles) before the deploy goes green.
