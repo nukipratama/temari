@@ -211,10 +211,14 @@ return [
                 // '#^http://127\.0\.0\.1:13714#', // Inertia SSR...
             ],
             // Collapse Strava's per-activity URLs into one labeled row so a slow
-            // Strava call is visible instead of scattered across hundreds of IDs.
+            // Strava call is visible instead of scattered across hundreds of IDs,
+            // and keep the Telegram bot token and run coordinates out of stored keys.
             'groups' => [
                 '#^https://(www\.strava\.com/api/v3|api-v3\.strava\.com)/.*#' => 'strava.com/api/v3/*',
                 '#^https://www\.strava\.com/oauth/token.*#' => 'strava.com/oauth/token',
+                '#^https://api\.telegram\.org/bot[^/]+/(\w+).*#' => 'api.telegram.org/bot*/\1',
+                '#^https://(nominatim\.openstreetmap\.org/[^?]*).*#' => '\1',
+                '#^https://((?:archive-)?api\.open-meteo\.com/[^?]*).*#' => '\1',
             ],
         ],
 
