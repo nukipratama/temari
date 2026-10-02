@@ -1,4 +1,4 @@
-import type { ActiveElement, ChartEvent, Plugin } from 'chart.js';
+import type { ActiveElement, Chart, ChartEvent, Plugin } from 'chart.js';
 
 import { Suspense, useMemo, useState } from 'react';
 
@@ -6,6 +6,7 @@ import type { FormStatus } from '@/types/inertia';
 
 import Skeleton from '@/components/ui/Skeleton';
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
@@ -96,88 +97,90 @@ function bandRuns(trend: ReadonlyArray<FitnessTrendPoint>): BandRun[] {
     return runs;
 }
 
-/** Draws a vertical line at each deload-week index — the long-term load chart's one
- *  marker in direction A (race day lives in its own comparison instead). */
-function deloadMarkerPlugin(indices: number[], color: string): Plugin<'line'> {
-    return {
-        id: 'trendDeloadMarker',
-        afterDatasetsDraw(chart) {
-            if (indices.length === 0) return;
-            const { ctx, chartArea, scales } = chart;
-            const xScale = scales.x;
-            if (!xScale || !chartArea) return;
-
-            ctx.save();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 1;
-            ctx.setLineDash([3, 2]);
-            indices.forEach((index) => {
-                const x = xScale.getPixelForValue(index);
-                ctx.beginPath();
-                ctx.moveTo(x, chartArea.top);
-                ctx.lineTo(x, chartArea.bottom);
-                ctx.stroke();
-            });
-            ctx.restore();
-        },
-    };
+interface FitnessOverlayOptions {
+    deloadIndices: number[];
+    deloadColor: string;
+    highlightDays: number;
+    total: number;
+    highlightColor: string;
+    cursorIndex: number | null;
+    cursorColor: string;
 }
 
-/** Shades the trailing `days` of the plot area, so "a month ago" reads as a
- *  place on the line rather than an abstract number. Skipped once the
- *  visible window is no wider than the shade itself — nothing left to
- *  contrast it against. */
-function highlightPlugin(
-    days: number,
-    total: number,
+function overlayOf(chart: Chart): FitnessOverlayOptions | undefined {
+    return (chart.options.plugins as { fitnessOverlay?: FitnessOverlayOptions })
+        .fitnessOverlay;
+}
+
+function strokeVerticalAt(
+    chart: Chart,
+    index: number,
     color: string,
-): Plugin<'line'> {
-    return {
-        id: 'trendHighlight',
-        beforeDatasetsDraw(chart) {
-            if (days <= 0 || total === 0 || days >= total) return;
-            const { ctx, chartArea, scales } = chart;
-            const xScale = scales.x;
-            if (!xScale || !chartArea) return;
+    lineWidth: number,
+    dash: number[] = [],
+): void {
+    const { ctx, chartArea, scales } = chart;
+    const x = scales.x.getPixelForValue(index);
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash(dash);
+    ctx.beginPath();
+    ctx.moveTo(x, chartArea.top);
+    ctx.lineTo(x, chartArea.bottom);
+    ctx.stroke();
+    ctx.restore();
+}
 
-            const fromIndex = Math.max(0, total - days);
-            const x0 = xScale.getPixelForValue(fromIndex);
-            ctx.save();
-            ctx.fillStyle = color;
-            ctx.fillRect(
-                x0,
-                chartArea.top,
-                chartArea.right - x0,
-                chartArea.bottom - chartArea.top,
+/**
+ * Draws from `options.plugins.fitnessOverlay`: beneath the line, the trailing
+ * `highlightDays` shaded so "a month ago" is a place on the line (skipped once
+ * the window is no wider than the shade); above it, a dashed line at each
+ * deload-week index and the scrub cursor the readout points at.
+ */
+const fitnessOverlayPlugin: Plugin<'line'> = {
+    id: 'fitnessOverlay',
+    beforeDatasetsDraw(chart) {
+        const overlay = overlayOf(chart);
+        if (!overlay) return;
+        const { highlightDays, total, highlightColor } = overlay;
+        if (highlightDays <= 0 || total === 0 || highlightDays >= total) {
+            return;
+        }
+
+        const { ctx, chartArea } = chart;
+        const x0 = chart.scales.x.getPixelForValue(
+            Math.max(0, total - highlightDays),
+        );
+        ctx.save();
+        ctx.fillStyle = highlightColor;
+        ctx.fillRect(
+            x0,
+            chartArea.top,
+            chartArea.right - x0,
+            chartArea.bottom - chartArea.top,
+        );
+        ctx.restore();
+    },
+    afterDatasetsDraw(chart) {
+        const overlay = overlayOf(chart);
+        if (!overlay) return;
+
+        overlay.deloadIndices.forEach((index) =>
+            strokeVerticalAt(chart, index, overlay.deloadColor, 1, [3, 2]),
+        );
+        if (overlay.cursorIndex !== null) {
+            strokeVerticalAt(
+                chart,
+                overlay.cursorIndex,
+                overlay.cursorColor,
+                1.5,
             );
-            ctx.restore();
-        },
-    };
-}
+        }
+    },
+};
 
-/** Draws the scrub cursor: a vertical line at the hovered/dragged index, so
- *  the readout above the chart always has a place on the line to point at. */
-function cursorPlugin(index: number | null, color: string): Plugin<'line'> {
-    return {
-        id: 'trendCursor',
-        afterDatasetsDraw(chart) {
-            if (index === null) return;
-            const { ctx, chartArea, scales } = chart;
-            const xScale = scales.x;
-            if (!xScale || !chartArea) return;
-
-            const x = xScale.getPixelForValue(index);
-            ctx.save();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.moveTo(x, chartArea.top);
-            ctx.lineTo(x, chartArea.bottom);
-            ctx.stroke();
-            ctx.restore();
-        },
-    };
-}
+const CHART_PLUGINS = [fitnessOverlayPlugin];
 
 type RangeKey = '1M' | '3M' | '1Y';
 
@@ -207,6 +210,7 @@ export default function FitnessPanel({
 }: Readonly<FitnessPanelProps>) {
     const isDark = useIsDarkGround();
     const ground = isDark ? CHART_GROUND.dark : CHART_GROUND.light;
+    const reducedMotion = useReducedMotion();
 
     const [range, setRange] = useState<RangeKey>('3M');
     const [cursorIndex, setCursorIndex] = useState<number | null>(null);
@@ -224,25 +228,6 @@ export default function FitnessPanel({
         });
         return indices;
     }, [visible, annotations]);
-
-    const chartPlugins = useMemo(
-        () => [
-            deloadMarkerPlugin(deloadIndices, PALETTE.stone),
-            highlightPlugin(
-                highlightDays,
-                visible.length,
-                `${PALETTE.horizon}22`,
-            ),
-            cursorPlugin(cursorIndex, ground.border),
-        ],
-        [
-            deloadIndices,
-            highlightDays,
-            visible.length,
-            cursorIndex,
-            ground.border,
-        ],
-    );
 
     const labels = useMemo(
         () => visible.map((p) => formatNaiveMonthDayId(p.date)),
@@ -272,14 +257,34 @@ export default function FitnessPanel({
         () => ({
             responsive: true,
             maintainAspectRatio: false,
-            animation: { duration: 900, easing: 'easeOutQuart' as const },
+            animation: reducedMotion
+                ? (false as const)
+                : { duration: 900, easing: 'easeOutQuart' as const },
             interaction: { mode: 'index' as const, intersect: false },
-            onHover: (_event: ChartEvent, elements: ActiveElement[]): void => {
-                setCursorIndex(elements.length > 0 ? elements[0].index : null);
+            onHover: (
+                _event: ChartEvent,
+                elements: ActiveElement[],
+                chart: Chart,
+            ): void => {
+                const overlay = overlayOf(chart);
+                const index = elements.length > 0 ? elements[0].index : null;
+                if (!overlay || overlay.cursorIndex === index) return;
+                overlay.cursorIndex = index;
+                chart.draw();
+                setCursorIndex(index);
             },
             plugins: {
                 legend: { display: false },
                 tooltip: { enabled: false },
+                fitnessOverlay: {
+                    deloadIndices,
+                    deloadColor: PALETTE.stone,
+                    highlightDays,
+                    total: visible.length,
+                    highlightColor: `${PALETTE.horizon}22`,
+                    cursorIndex: null,
+                    cursorColor: ground.border,
+                },
             },
             scales: {
                 x: {
@@ -304,7 +309,7 @@ export default function FitnessPanel({
                 },
             },
         }),
-        [ground],
+        [ground, reducedMotion, deloadIndices, highlightDays, visible.length],
     );
 
     const runs = useMemo(() => bandRuns(visible), [visible]);
@@ -385,7 +390,7 @@ export default function FitnessPanel({
                     <Line
                         data={data}
                         options={options}
-                        plugins={chartPlugins}
+                        plugins={CHART_PLUGINS}
                     />
                 </Suspense>
             </div>

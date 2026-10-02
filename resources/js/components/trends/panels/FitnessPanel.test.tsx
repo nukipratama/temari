@@ -12,27 +12,31 @@ type ChartData = {
     datasets: Array<{ label: string; data: number[] }>;
 };
 
+type OverlayLike = { deloadIndices: number[]; cursorIndex: number | null };
 type ChartOptionsLike = {
     scales?: { x?: { display?: boolean; ticks?: { maxTicksLimit?: number } } };
-    plugins?: { tooltip?: { enabled?: boolean } };
-    onHover?: (event: unknown, elements: Array<{ index: number }>) => void;
+    plugins?: {
+        tooltip?: { enabled?: boolean };
+        fitnessOverlay?: OverlayLike;
+    };
+    onHover?: (
+        event: unknown,
+        elements: Array<{ index: number }>,
+        chart: unknown,
+    ) => void;
 };
-type ChartPluginLike = { id: string };
 
 let lastData: ChartData | null = null;
 let lastOptions: ChartOptionsLike | null = null;
-let lastPlugins: ChartPluginLike[] | null = null;
 
 vi.mock('react-chartjs-2', () => ({
     Line: (props: {
         data: ChartData;
         options?: ChartOptionsLike;
-        plugins?: ChartPluginLike[];
         ref?: Ref<unknown>;
     }) => {
         lastData = props.data;
         lastOptions = props.options ?? null;
-        lastPlugins = props.plugins ?? null;
         useImperativeHandle(props.ref, () => ({ update: () => {} }));
         return createElement('div', { 'data-testid': 'line-chart' });
     },
@@ -107,16 +111,23 @@ describe('FitnessPanel', () => {
         render(<FitnessPanel trend={pointsOverDays(30)} />);
         await screen.findByTestId('line-chart');
 
+        const chart = {
+            options: { plugins: { ...lastOptions!.plugins } },
+            draw: vi.fn(),
+        };
         act(() => {
-            lastOptions!.onHover!({}, [{ index: 5 }]);
+            lastOptions!.onHover!({}, [{ index: 5 }], chart);
         });
+
+        expect(chart.options.plugins.fitnessOverlay!.cursorIndex).toBe(5);
+        expect(chart.draw).toHaveBeenCalledOnce();
 
         expect(
             await screen.findByText(/jan 6 · long-term load 41/),
         ).toBeInTheDocument();
     });
 
-    it('draws the deload marker plugin when a deload date falls inside the trend', async () => {
+    it('hands the deload index to the overlay when a deload date falls inside the trend', async () => {
         const annotations: FitnessChartAnnotations = {
             deload: ['2026-01-05'],
             race: ['2026-01-20'],
@@ -129,9 +140,9 @@ describe('FitnessPanel', () => {
         );
 
         expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
-        expect(lastPlugins!.some((p) => p.id === 'trendDeloadMarker')).toBe(
-            true,
-        );
+        expect(lastOptions!.plugins!.fitnessOverlay!.deloadIndices).toEqual([
+            4,
+        ]);
     });
 
     it('draws a form-status band beneath the chart, collapsed into runs', async () => {
