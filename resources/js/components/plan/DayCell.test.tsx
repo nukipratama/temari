@@ -145,7 +145,7 @@ describe('DayCellBody', () => {
         expect(screen.queryByText(/^of /)).not.toBeInTheDocument();
     });
 
-    it('hides the " km" suffix below 360px on both the ran and the planned line, keeping the figure', () => {
+    it('prints the bare figure with no " km" suffix on both the ran and the planned line', () => {
         const { container, rerender } = render(
             <DayCellBody
                 day={day({ status: 'done', actual_km: 10.1 })}
@@ -153,17 +153,15 @@ describe('DayCellBody', () => {
             />,
         );
 
-        let suffix = screen.getByText('km');
-        expect(suffix).toHaveClass('max-[359px]:hidden');
-        expect(suffix.parentElement).toHaveTextContent(/^10\.1 km$/);
+        expect(container).not.toHaveTextContent(/km/);
+        expect(screen.getByText('10.1')).toBeInTheDocument();
 
         rerender(
             <DayCellBody day={day({ distance_km: 21.1 })} hasElapsed={false} />,
         );
 
-        suffix = screen.getByText('km');
-        expect(suffix).toHaveClass('max-[359px]:hidden');
-        expect(suffix.parentElement).toHaveTextContent(/^21\.1 km$/);
+        expect(container).not.toHaveTextContent(/km/);
+        expect(screen.getByText('21.1')).toBeInTheDocument();
         expect(container).not.toHaveTextContent(/of/);
     });
 
