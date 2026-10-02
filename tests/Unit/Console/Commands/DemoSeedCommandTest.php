@@ -89,12 +89,15 @@ function commitSharedDemoFixture(): void
  * (normally the first test below, in file order, but also any test that runs
  * after releaseSharedDemoFixture() wiped the schema), the rest see
  * already-committed rows. releaseSharedDemoFixture(), called by the last
- * test in this file, hands the schema back clean.
+ * test in this file, hands the schema back clean. Returns the console output
+ * of the seed that built the fixture.
  */
-function ensureBareDemoSeeded(): void
+function ensureBareDemoSeeded(): string
 {
+    static $output = '';
+
     if (User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->exists()) {
-        return;
+        return $output;
     }
 
     // Token set + queue/notifications faked: seeding must never reach *out*, so a
@@ -107,10 +110,13 @@ function ensureBareDemoSeeded(): void
     $notifications = Notification::fake();
 
     $exitCode = Artisan::call('demo:seed');
+    $output = Artisan::output();
     expect($exitCode)->toBe(0);
     expect(channelsUsedBy($notifications))->toBe([]);
 
     commitSharedDemoFixture();
+
+    return $output;
 }
 
 /**
@@ -386,7 +392,7 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
 });
 
 it('reminds the operator to enable the demo login only when it is off', function (): void {
-    ensureBareDemoSeeded();
+    $this->mock(DemoRunSeeder::class, fn ($mock) => $mock->shouldReceive('seed')->twice()->andReturn(126));
 
     config()->set('demo.login_enabled', false);
     $this->artisan('demo:seed')
@@ -400,12 +406,62 @@ it('reminds the operator to enable the demo login only when it is off', function
 });
 
 it('tells the operator the demo narration stays rule-based, Reread included', function (): void {
-    ensureBareDemoSeeded();
+    expect(ensureBareDemoSeeded())
+        ->toContain('demo narration stays rule-based')
+        ->not->toContain('real LLM narration');
+});
 
-    $this->artisan('demo:seed')
-        ->expectsOutputToContain('demo narration stays rule-based')
-        ->doesntExpectOutputToContain('real LLM narration')
+it('applies the edge states after the seed when --with-edge-states is passed', function (): void {
+    $this->mock(DemoRunSeeder::class, function ($mock): void {
+        $mock->shouldReceive('seed')->once()->ordered()->andReturn(126);
+        $mock->shouldReceive('seedEdgeStates')->once()->ordered()->andReturn(3);
+    });
+
+    $this->artisan('demo:seed', ['--with-edge-states' => true])
+        ->expectsOutputToContain('Edge states applied: 3 Analysis rows.')
         ->assertSuccessful();
+});
+
+it('seeds the pending, processing and failed states the audits cannot otherwise reach', function (): void {
+    ensureBareDemoSeeded();
+    app(DemoRunSeeder::class)->seedEdgeStates();
+
+    $statuses = Analysis::query()
+        ->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Processing, AnalysisStatus::Failed])
+        ->pluck('status')
+        ->map(fn (AnalysisStatus $s): string => $s->value)
+        ->sort()
+        ->values()
+        ->all();
+
+    expect($statuses)->toBe(['failed', 'pending', 'processing']);
+
+    // A failed row has to carry what the dead-letter UI reads, or the state
+    // renders as merely empty rather than as failed.
+    $failed = Analysis::query()->where('status', AnalysisStatus::Failed)->sole();
+    expect($failed->error)->not->toBeNull()
+        ->and($failed->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and($failed->content)->toBeNull();
+});
+
+it('applies the edge states at most once across re-runs', function (): void {
+    ensureBareDemoSeeded();
+    $seeder = app(DemoRunSeeder::class);
+
+    $seeder->seedEdgeStates();
+    $first = Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count();
+
+    $seeder->seedEdgeStates();
+
+    expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())->toBe($first);
+});
+
+it('clears the producer on a row whose content the edge states blank', function (): void {
+    ensureBareDemoSeeded();
+    app(DemoRunSeeder::class)->seedEdgeStates();
+
+    expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->whereNotNull('served_by')->count())
+        ->toBe(0);
 });
 
 it('leaves every analysis done and rule-based-served unless --with-edge-states is passed', function (): void {

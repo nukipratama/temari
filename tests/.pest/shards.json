@@ -165,7 +165,6 @@
         "Tests\\Unit\\Architecture\\MigrationSafetyGuardTest": 0.3745,
         "Tests\\Unit\\Architecture\\RefreshShardsCompareTest": 0.4112,
         "Tests\\Unit\\Architecture\\WorktreeScriptTest": 11.9746,
-        "Tests\\Unit\\Console\\Commands\\DemoSeedCommandEdgeStatesTest": 27.3672,
         "Tests\\Unit\\Console\\Commands\\DemoSeedCommandTest": 30.285,
         "Tests\\Unit\\Console\\Commands\\Demo\\DailyRefreshCommandTest": 0.4587,
         "Tests\\Unit\\Console\\Commands\\Run\\RecomputeCardClaimsCommandTest": 2.4139,
