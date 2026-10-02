@@ -3,13 +3,17 @@
 declare(strict_types=1);
 
 use App\Enums\IntentVerdict;
+use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
+use App\Enums\SegmentKey;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
+use App\Models\RecommendationRevision;
+use App\Models\RecommendationView;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -18,6 +22,7 @@ use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\RecommendationHistory;
+use App\Services\Run\Plan\SessionSegment;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -310,14 +315,13 @@ function scorerVerdict(User $user, PlannedSession $row): array
 
 it('grades a tempo eased to easy and run easy as intent hit, on distance alone', function (): void {
     $user = User::factory()->create();
-    $paces = scorerPaces($user, '2026-08-05');
     $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo, 'clamped_km' => 6.4]);
-    scorerPacedRun($user, '2026-08-05', 5.3, 403, ['best_1min_pace' => '4:30']);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), shownEasyEffective());
+    shownRun($user, '2026-08-05', 5.3, 2136, ['best_1min_pace' => '4:30']);
 
     $verdict = scorerVerdict($user, $row);
 
-    expect($paces['marathon'])->toBeLessThan(403)
-        ->and($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
         ->and($verdict['status'])->toBe(PlannedSessionStatus::Partial)
         ->and($verdict['score'])->toBe(83)
         ->and($verdict['distance_score'])->toBe(83);
@@ -325,10 +329,12 @@ it('grades a tempo eased to easy and run easy as intent hit, on distance alone',
 
 it('grades a long day eased to an easy run as done when split across two runs', function (): void {
     $user = User::factory()->create();
-    $paces = scorerPaces($user, '2026-08-05');
     $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Long, 'clamped_km' => 6.8]);
-    scorerPacedRun($user, '2026-08-05', 4.5, $paces['easy']);
-    scorerPacedRun($user, '2026-08-05', 3.6, $paces['easy']);
+    showAdvice($user, '2026-08-05', ['session_type' => 'long', 'distance_km' => 14.0, 'segments' => shownEasySegments()], [
+        ...shownEasyEffective(), 'distance_km' => 6.8,
+    ]);
+    shownRun($user, '2026-08-05', 4.5, 1800);
+    shownRun($user, '2026-08-05', 3.6, 1440, [], '17:00:00');
 
     $verdict = scorerVerdict($user, $row);
 
@@ -354,10 +360,11 @@ it('keeps a long day split in two partial when the clamp left its size alone', f
 
 it('reads an uneased tempo run all easy as partial even at full distance', function (): void {
     $user = User::factory()->create();
-    $paces = scorerPaces($user, '2026-08-05');
     $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo]);
-    $askedKm = (float) scorerVerdict($user, $row)['prescribed_km'];
-    scorerPacedRun($user, '2026-08-05', $askedKm, $paces['easy'], everyWindowAt($paces['easy']));
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 8.0, 3200, everyWindowAt(400));
 
     app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-20'));
 
@@ -368,10 +375,11 @@ it('reads an uneased tempo run all easy as partial even at full distance', funct
 
 it('reads a tempo that reached its block within tolerance as done', function (): void {
     $user = User::factory()->create();
-    $paces = scorerPaces($user, '2026-08-05');
     $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo]);
-    $askedKm = (float) scorerVerdict($user, $row)['prescribed_km'];
-    scorerPacedRun($user, '2026-08-05', $askedKm, $paces['easy'], everyWindowAt($paces['threshold'] + 5));
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 8.0, 3200, everyWindowAt(315));
 
     $verdict = scorerVerdict($user, $row);
 
@@ -381,10 +389,11 @@ it('reads a tempo that reached its block within tolerance as done', function ():
 
 it('reads an easy run faster than marathon pace as overreached', function (): void {
     $user = User::factory()->create();
-    $paces = scorerPaces($user, '2026-08-05');
     $row = scorerDay($user, '2026-08-05');
-    $askedKm = (float) scorerVerdict($user, $row)['prescribed_km'];
-    scorerPacedRun($user, '2026-08-05', $askedKm, $paces['marathon'] - 20);
+    showAdvice($user, '2026-08-05', ['session_type' => 'easy', 'segments' => shownEasySegments()], [
+        'session_type' => 'easy', 'distance_km' => 6.4, 'segments' => shownEasySegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 6.4, 2048);
 
     $verdict = scorerVerdict($user, $row);
 
@@ -425,10 +434,11 @@ it('does not judge intent on a day that was never credited', function (): void {
  */
 it('persists the intent verdict and its evidence beside the grade', function (): void {
     $user = User::factory()->create();
-    $paces = scorerPaces($user, '2026-08-05');
     $row = scorerDay($user, '2026-08-05');
-    $askedKm = (float) scorerVerdict($user, $row)['prescribed_km'];
-    scorerPacedRun($user, '2026-08-05', $askedKm, $paces['marathon'] - 20);
+    showAdvice($user, '2026-08-05', ['session_type' => 'easy', 'segments' => shownEasySegments()], [
+        'session_type' => 'easy', 'distance_km' => 6.4, 'segments' => shownEasySegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 6.4, 2048);
 
     app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-05'));
 
@@ -446,4 +456,287 @@ it('persists no intent verdict for a day never credited', function (): void {
 
     expect($row->refresh()->intent_verdict)->toBeNull()
         ->and($row->intent_evidence)->toBeNull();
+});
+
+const SHOWN_PACES = ['easy' => 400, 'marathon' => 340, 'threshold' => 310, 'interval' => 285];
+
+/** @return list<array<string, mixed>> */
+function shownTempoSegments(float $blockMinutes = 20.0): array
+{
+    return [
+        new SessionSegment(SegmentKey::Warmup, 10.0, 'Z2', PaceBand::Easy, 400, 1.5)->toArray(),
+        new SessionSegment(SegmentKey::Main, $blockMinutes, 'Z4', PaceBand::Threshold, 310, 4.0)->toArray(),
+    ];
+}
+
+/** @return list<array<string, mixed>> */
+function shownEasySegments(): array
+{
+    return [new SessionSegment(SegmentKey::Main, 40.0, 'Z2', PaceBand::Easy, 400, 6.4)->toArray()];
+}
+
+/**
+ * @param  array<string, mixed>  $original
+ * @param  array<string, mixed>  $effective
+ */
+function showAdvice(User $user, string $date, array $original, array $effective): RecommendationRevision
+{
+    $revision = app(RecommendationHistory::class)->record($user->id, $date, $original, $effective);
+    RecommendationView::query()->create([
+        'recommendation_revision_id' => $revision->id,
+        'observation_id' => (string) Str::uuid(),
+        'shown_at' => Carbon::parse($date.' 00:30:00', 'UTC'),
+    ]);
+
+    return $revision;
+}
+
+/** @return array<string, mixed> */
+function shownTempoOriginal(): array
+{
+    return ['session_type' => 'tempo', 'phase' => 'build', 'hard_minutes' => 20, 'distance_km' => 8.0, 'reason' => null, 'segments' => shownTempoSegments()];
+}
+
+/**
+ * @param  list<string>  $reasons
+ * @return array<string, mixed>
+ */
+function shownEasyEffective(string $ceiling = 'moderate_ok', array $reasons = []): array
+{
+    return [
+        'session_type' => 'easy', 'distance_km' => 6.4, 'segments' => shownEasySegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => 'ease off',
+        'readiness_assessment' => ['ceiling' => $ceiling, 'reasons' => $reasons, 'inputs' => []],
+    ];
+}
+
+/** @param  array<string, mixed>  $summary */
+function shownRun(User $user, string $date, float $km, int $movingSec, array $summary = [], string $time = '06:00:00'): ActivityDetail
+{
+    return ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'start_date_local' => Carbon::parse("{$date} {$time}"),
+        'start_date_utc' => Carbon::parse("{$date} {$time}", 'UTC')->addHour(),
+        'distance' => $km * 1000,
+        'moving_time' => $movingSec,
+        'elapsed_time' => $movingSec,
+        'stream_summary' => $summary,
+    ]);
+}
+
+/** @return array<string, mixed> */
+function controlledTempoSummary(): array
+{
+    return ['best_20min_pace' => '5:15', 'time_in_zone_min' => ['Z1' => 2, 'Z2' => 14, 'Z3' => 4, 'Z4' => 21, 'Z5' => 0]];
+}
+
+it('reads a controlled tempo that exceeded advice eased for a mild concern as the original tempo completed', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo, 'clamped_km' => 6.4]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), shownEasyEffective('moderate_ok', ['moderate_fatigue_or_soreness_reported']));
+    shownRun($user, '2026-08-05', 8.0, 2800, controlledTempoSummary());
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::TooHard)
+        ->and($verdict['status'])->toBe(PlannedSessionStatus::Overreached)
+        ->and($verdict['intent']['evidence'])->toMatchArray([
+            'advice_history' => 'shown', 'eased_from' => 'tempo', 'concern' => 'mild', 'original_completed' => 'controlled',
+            'stimulus_family' => 'tempo', 'stimulus_minutes' => 20.0, 'stimulus_source' => 'window',
+        ])->not->toHaveKey('quality_progression');
+});
+
+it('keeps a strong recovery concern distinct when the eased session was run hard anyway', function (string $ceiling, string $reason): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo, 'clamped_km' => 6.4]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), shownEasyEffective($ceiling, [$reason]));
+    shownRun($user, '2026-08-05', 8.0, 2800, controlledTempoSummary());
+
+    expect(scorerVerdict($user, $row)['intent']['evidence'])->toMatchArray(['eased_from' => 'tempo', 'concern' => 'strong', 'original_completed' => 'controlled']);
+})->with([
+    'severe fatigue' => ['easy_only', 'severe_fatigue_or_soreness_reported'],
+    'pain' => ['rest', 'concerning_pain_reported'],
+    'illness' => ['easy_only', 'illness_reported'],
+]);
+
+it('treats a severe reason under a ceiling that still allowed moderate work as a mild concern', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo, 'clamped_km' => 6.4]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), shownEasyEffective('moderate_ok', ['severe_fatigue_or_soreness_reported']));
+    shownRun($user, '2026-08-05', 8.0, 2800, controlledTempoSummary());
+
+    expect(scorerVerdict($user, $row)['intent']['evidence']['concern'])->toBe('mild');
+});
+
+it('does not count an eased tempo run easy toward quality progression', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo, 'clamped_km' => 6.4]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), shownEasyEffective());
+    shownRun($user, '2026-08-05', 6.4, 2580);
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($verdict['intent']['evidence'])->toMatchArray(['eased_from' => 'tempo', 'concern' => 'mild', 'stimulus_family' => 'easy'])
+        ->not->toHaveKeys(['quality_progression', 'original_completed']);
+});
+
+it('reads self-added hard work on an easy day as an unplanned hard effort that teaches no quality', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05');
+    showAdvice($user, '2026-08-05', ['session_type' => 'easy', 'phase' => 'build', 'hard_minutes' => null, 'distance_km' => 6.4, 'reason' => null, 'segments' => shownEasySegments()], [
+        'session_type' => 'easy', 'distance_km' => 6.4, 'segments' => shownEasySegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 6.4, 2100, ['time_in_zone_min' => ['Z1' => 2, 'Z2' => 10, 'Z3' => 15, 'Z4' => 8, 'Z5' => 0]]);
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::TooHard)
+        ->and($verdict['intent']['evidence'])->toMatchArray(['concern' => 'none', 'stimulus_family' => 'hard', 'stimulus_minutes' => 23.0])
+        ->not->toHaveKeys(['eased_from', 'quality_progression']);
+});
+
+it('marks a shown quality session graded on complete evidence as eligible to teach progression', function (array $summary, IntentVerdict $expected): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 8.0, 2800, $summary);
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['intent']['verdict'])->toBe($expected)
+        ->and($verdict['intent']['evidence'])->toMatchArray(['concern' => 'none', 'quality_progression' => 'eligible']);
+})->with([
+    'controlled hit' => [controlledTempoSummary(), IntentVerdict::Hit],
+    'complete miss' => [['best_20min_pace' => '6:35'], IntentVerdict::Missed],
+    'excessive' => [['best_20min_pace' => '4:40'], IntentVerdict::TooHard],
+]);
+
+it('keeps a shown quality day with unknown intent informational and out of progression', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 8.0, 2800);
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Unknown)
+        ->and($verdict['status'])->toBe(PlannedSessionStatus::Done)
+        ->and($verdict['distance_score'])->toBe(100)
+        ->and($verdict['intent']['evidence'])->not->toHaveKey('quality_progression');
+});
+
+it('keeps verified distance and an unknown intent when no advice was shown', function (): void {
+    $user = User::factory()->create();
+    scorerPaces($user, '2026-08-05');
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo]);
+    $askedKm = (float) scorerVerdict($user, $row)['prescribed_km'];
+    scorerPacedRun($user, '2026-08-05', $askedKm, 450, everyWindowAt(450));
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Unknown)
+        ->and($verdict['intent']['evidence'])->toBe(['advice_history' => 'unknown'])
+        ->and($verdict['status'])->toBe(PlannedSessionStatus::Done)
+        ->and($verdict['distance_score'])->toBe(100);
+});
+
+it('judges a multi-activity day on its longest run and gives unknown intent when no recording covers the block', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 3.5, 900, ['best_10min_pace' => '5:00', 'time_in_zone_min' => ['Z1' => 1, 'Z2' => 2, 'Z3' => 2, 'Z4' => 10, 'Z5' => 0]]);
+    shownRun($user, '2026-08-05', 3.0, 720, ['time_in_zone_min' => ['Z1' => 1, 'Z2' => 2, 'Z3' => 2, 'Z4' => 8, 'Z5' => 0]], '17:00:00');
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Unknown)
+        ->and($verdict['intent']['evidence'])->toMatchArray(['stimulus_family' => 'tempo', 'stimulus_minutes' => 18.0])
+        ->not->toHaveKey('quality_progression');
+});
+
+it('rewrites revised intent evidence at an equal distance score without touching the earned score', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', [
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Done,
+        'compliance_score' => 100,
+        'distance_score' => 100,
+        'prescribed_km' => 8.0,
+        'intent_verdict' => IntentVerdict::Unknown,
+        'intent_evidence' => ['advice_history' => 'unknown'],
+    ]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 8.0, 2800, controlledTempoSummary());
+
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-20'));
+    $row->refresh();
+
+    expect($row->intent_verdict)->toBe(IntentVerdict::Hit)
+        ->and($row->intent_evidence)->toMatchArray(['advice_history' => 'shown', 'quality_progression' => 'eligible'])
+        ->and($row->compliance_score)->toBe(100)
+        ->and($row->status)->toBe(PlannedSessionStatus::Done);
+});
+
+it('rewrites intent evidence when a smaller recomputed score would not replace the earned one', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', [
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Overreached,
+        'compliance_score' => 140,
+        'distance_score' => 140,
+        'prescribed_km' => 8.0,
+        'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['advice_history' => 'shown', 'stimulus_family' => 'tempo', 'quality_progression' => 'eligible'],
+    ]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 8.0, 2800, ['best_20min_pace' => '6:35']);
+
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-20'));
+    $row->refresh();
+
+    expect($row->intent_verdict)->toBe(IntentVerdict::Missed)
+        ->and($row->compliance_score)->toBe(140)
+        ->and($row->status)->toBe(PlannedSessionStatus::Overreached);
+});
+
+it('clears stale intent evidence once the day has no credited run left, keeping the earned score', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', [
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Done,
+        'compliance_score' => 100,
+        'distance_score' => 100,
+        'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['advice_history' => 'shown', 'stimulus_family' => 'tempo', 'quality_progression' => 'eligible'],
+    ]);
+
+    app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-20'));
+    $row->refresh();
+
+    expect($row->intent_verdict)->toBeNull()
+        ->and($row->intent_evidence)->toBeNull()
+        ->and($row->compliance_score)->toBe(100);
+});
+
+it('does not read an easy run as the original completed when the eased session was a marathon-paced long run', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Long, 'clamped_km' => 6.4]);
+    $marathonLong = [new SessionSegment(SegmentKey::Main, 90.0, 'Z3', PaceBand::Marathon, 340, 16.0)->toArray()];
+    showAdvice($user, '2026-08-05', ['session_type' => 'long', 'phase' => 'peak', 'hard_minutes' => 90, 'distance_km' => 16.0, 'reason' => null, 'segments' => $marathonLong], shownEasyEffective());
+    shownRun($user, '2026-08-05', 6.4, 2580);
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($verdict['intent']['evidence'])->toMatchArray(['eased_from' => 'long', 'stimulus_family' => 'easy'])
+        ->not->toHaveKeys(['original_completed', 'quality_progression']);
 });

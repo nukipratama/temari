@@ -166,15 +166,10 @@ final readonly class PlanRecalibrationService
 
         /** @var array<string, array{date: Carbon, verdict: IntentVerdict, hard_minutes: int}> $recent */
         $recent = [];
-        /** @var array<string, array{distance_m: int, goal_time_sec: int}|null> $raceByDate */
-        $raceByDate = [];
         $count = 0;
         foreach ($rows as $row) {
             $season = $seasons->first(fn (Season $candidate): bool => $row->date->betweenIncluded($candidate->starts_at, $candidate->ends_at));
             $race = $season?->raceGoal;
-            $raceByDate[$row->date->toDateString()] = $race === null
-                ? null
-                : ['distance_m' => (int) $race->distance_m, 'goal_time_sec' => (int) $race->goal_time_sec];
             $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $row->date));
             $family = IntensityPrescriptionResolver::familyKey(
                 $row->session_type,
@@ -201,7 +196,6 @@ final readonly class PlanRecalibrationService
                 $user,
                 Collection::wrap([$row]),
                 Carbon::today(),
-                $raceByDate,
             )[$row->date->toDateString()] ?? null;
             if ($verdict === null) {
                 continue;

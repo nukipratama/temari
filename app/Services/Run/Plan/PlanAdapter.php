@@ -13,7 +13,6 @@ use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\AI\HydrationBacklog;
-use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\StreamSummary;
@@ -50,17 +49,6 @@ final readonly class PlanAdapter
     /** Number of settled weeks that can contribute to a repeated-stimulus reduction. */
     public const int STIMULUS_HISTORY_WEEKS = 3;
 
-    /**
-     * Egregiously decoupled days before the week counts as run too hard.
-     *
-     * Two, where an egregious share above Z2 still speaks for the week alone.
-     * The two are not the same kind of evidence: a day's time above Z2 is a
-     * bounded share of measured minutes, while decoupling is a ratio between
-     * two derived halves, the noisier signal here. It gets the same two-day
-     * bar as {@see self::RAGGED_DAYS_MIN} rather than counting alone.
-     */
-    public const int EGREGIOUS_DECOUPLING_DAYS_MIN = 2;
-
     /** Projection within this fraction of the goal time is on track; neither direction fires. */
     public const float RACE_GAP_MARGIN = 0.02;
 
@@ -96,7 +84,6 @@ final readonly class PlanAdapter
             $stimulus['reduction_misses'],
             $execution['ragged'],
             $execution['egregious_easy'],
-            $execution['egregious_decoupling'],
             $this->raceGapRatio($user, $race),
         );
     }
@@ -108,7 +95,6 @@ final readonly class PlanAdapter
      * @param  int  $stimulusMissesInWindow  missed key sessions across the settled three-week window
      * @param  int  $raggedDays  days last week whose runs came in harder than the day was written for
      * @param  int  $egregiousEasyDays  of those, easy days so far above Z2 that one is the whole verdict
-     * @param  int  $egregiousDecouplingDays  of those, quality days so far past the decoupling line that {@see self::EGREGIOUS_DECOUPLING_DAYS_MIN} of them are the verdict
      * @param  float|null  $raceGapRatio  projected finish / goal time; above 1.0 the athlete is behind their goal
      * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int, stimulus_adherence_pct: int}
      */
@@ -120,10 +106,9 @@ final readonly class PlanAdapter
         int $stimulusMissesInWindow,
         int $raggedDays,
         int $egregiousEasyDays,
-        int $egregiousDecouplingDays,
         ?float $raceGapRatio,
     ): array {
-        $reason = self::reasonFor($ceiling, $adherencePct, $stimulusMisses, $raggedDays, $egregiousEasyDays, $egregiousDecouplingDays, $raceGapRatio);
+        $reason = self::reasonFor($ceiling, $adherencePct, $stimulusMisses, $raggedDays, $egregiousEasyDays, $raceGapRatio);
 
         return [
             'reason' => $reason,
@@ -145,7 +130,6 @@ final readonly class PlanAdapter
         int $stimulusMisses,
         int $raggedDays,
         int $egregiousEasyDays,
-        int $egregiousDecouplingDays,
         ?float $raceGapRatio,
     ): AdaptationReason {
         if ($ceiling === ReadinessCeiling::Rest) {
@@ -154,9 +138,7 @@ final readonly class PlanAdapter
         if ($adherencePct / 100 < self::MISSED_WEEK_ADHERENCE) {
             return AdaptationReason::MissedWeek;
         }
-        if ($egregiousEasyDays >= 1
-            || $egregiousDecouplingDays >= self::EGREGIOUS_DECOUPLING_DAYS_MIN
-            || $raggedDays >= self::RAGGED_DAYS_MIN) {
+        if ($egregiousEasyDays >= 1 || $raggedDays >= self::RAGGED_DAYS_MIN) {
             return AdaptationReason::RanTooHard;
         }
         if ($stimulusMisses > 0) {
@@ -281,27 +263,25 @@ final readonly class PlanAdapter
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->whereIn('session_type', [SessionType::Long, SessionType::Tempo, SessionType::Interval])
             ->whereIn('status', [PlannedSessionStatus::Done, PlannedSessionStatus::Partial, PlannedSessionStatus::Overreached])
+            ->where('intent_evidence->quality_progression', 'eligible')
             ->whereIn('intent_verdict', [IntentVerdict::Hit->value, IntentVerdict::Missed->value, IntentVerdict::TooHard->value])
             ->get(['intent_verdict']);
     }
 
     /**
-     * How last week was run, as counts of days whose runs came in harder than
-     * the day was written for: an `Easy` day that spent more than
-     * {@see self::EASY_DAY_HARD_SHARE} of its moving time above Z2, or a
-     * `Long`/`Tempo`/`Interval` day whose decoupling ran past
-     * {@see DecouplingBands::HIGH}. The two `egregious` counts are the subsets
-     * far enough past those lines to weigh more than one merely ragged day, and
-     * they are kept apart because {@see self::reasonFor} asks a different
-     * number of each.
+     * How last week was run, as counts of `Easy` days whose runs spent more
+     * than {@see self::EASY_DAY_HARD_SHARE} of their moving time above Z2. The
+     * `egregious_easy` count is the subset far enough past that line for one
+     * day to speak for the week. Steady-segment decoupling is descriptive and
+     * never read here.
      *
      * A day counts once however many runs it holds, because sessions are
      * matched to days and not to individual runs. A run carrying no
      * heart-rate stream reads as no signal rather than as a clean day: the
-     * zone breakdown is absent and decoupling is withheld, so neither test
-     * can fire. Rest and race days are never judged.
+     * zone breakdown is absent, so the test cannot fire. Only easy days are
+     * judged.
      *
-     * @return array{ragged: int, egregious_easy: int, egregious_decoupling: int}
+     * @return array{ragged: int, egregious_easy: int}
      */
     private function previousWeekExecution(User $user, Carbon $weekStart): array
     {
@@ -310,11 +290,11 @@ final readonly class PlanAdapter
         $prescribed = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$previousStart->toDateString(), $previousEnd->toDateString()])
-            ->get(['date', 'session_type'])
-            ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => $session->session_type]);
+            ->get(['date', 'session_type', 'rest_clamped_at', 'clamped_km', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'prescription_race_context', 'intent_evidence'])
+            ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => EffectiveSession::settledTypeOf($session)]);
 
         if ($prescribed->isEmpty()) {
-            return ['ragged' => 0, 'egregious_easy' => 0, 'egregious_decoupling' => 0];
+            return ['ragged' => 0, 'egregious_easy' => 0];
         }
 
         $details = ActivityDetail::query()
@@ -325,50 +305,24 @@ final readonly class PlanAdapter
 
         $ragged = [];
         $egregiousEasy = [];
-        $egregiousDecoupling = [];
         foreach ($details as $detail) {
             $date = $detail->start_date_local?->toDateString();
-            $type = $date === null ? null : $prescribed->get($date);
-            if (! $type instanceof SessionType) {
+            if ($date === null || $prescribed->get($date) !== SessionType::Easy) {
                 continue;
             }
-            $summary = StreamSummary::fromArray($detail->streamSummary());
-            if (self::ranHarderThanWritten($type, $summary, self::EASY_DAY_HARD_SHARE, DecouplingBands::HIGH)) {
+            $hardShare = StreamSummary::fromArray($detail->streamSummary())->hardZoneShare() / 100;
+            if ($hardShare > self::EASY_DAY_HARD_SHARE) {
                 $ragged[$date] = true;
             }
-            if (self::ranHarderThanWritten($type, $summary, self::EGREGIOUS_EASY_DAY_HARD_SHARE, null)) {
+            if ($hardShare > self::EGREGIOUS_EASY_DAY_HARD_SHARE) {
                 $egregiousEasy[$date] = true;
-            }
-            if (self::ranHarderThanWritten($type, $summary, null, DecouplingBands::EGREGIOUS)) {
-                $egregiousDecoupling[$date] = true;
             }
         }
 
         return [
             'ragged' => count($ragged),
             'egregious_easy' => count($egregiousEasy),
-            'egregious_decoupling' => count($egregiousDecoupling),
         ];
-    }
-
-    /**
-     * A null line means that arm is not being counted on this pass, so the
-     * caller can ask about one kind of day without the other answering too.
-     *
-     * The two lines carry different units: this class's thresholds are
-     * fractions, while {@see DecouplingBands}'s decoupling line stays percent.
-     */
-    private static function ranHarderThanWritten(SessionType $type, StreamSummary $summary, ?float $easyShareLine, ?float $decouplingPctLine): bool
-    {
-        $decouplingPct = $summary->steadyEffortDecouplingPct();
-
-        return match ($type) {
-            SessionType::Easy => $easyShareLine !== null && $summary->hardZoneShare() / 100 > $easyShareLine,
-            SessionType::Long, SessionType::Tempo, SessionType::Interval => $decouplingPctLine !== null
-                && $decouplingPct !== null
-                && $decouplingPct > $decouplingPctLine,
-            SessionType::Rest, SessionType::Race => false,
-        };
     }
 
     /**

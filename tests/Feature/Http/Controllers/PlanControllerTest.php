@@ -16,6 +16,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\RecommendationView;
 use App\Models\RecoveryFeedback;
 use App\Models\Season;
 use App\Models\TrainingPreference;
@@ -31,10 +32,13 @@ use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanPageAssembler;
+use App\Services\Run\Plan\RecommendationHistory;
 use App\Support\TrainingDisclaimer;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -420,8 +424,16 @@ it('moves a generated quality prescription with its workout and keeps its render
     $summary = collect(['30s', '1min', '3min', '5min', '10min', '20min', '30min', '60min'])
         ->mapWithKeys(fn (string $window): array => ["best_{$window}_pace" => $paceText])
         ->all();
+    $shown = json_decode(Crypt::decryptString($renderedDay['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
+    $revision = app(RecommendationHistory::class)->record($user->id, $rest->date->toDateString(), $shown['original'], $shown['effective']);
+    RecommendationView::query()->create([
+        'recommendation_revision_id' => $revision->id,
+        'observation_id' => (string) Str::uuid(),
+        'shown_at' => Carbon::parse($rest->date->toDateString().' 00:30:00', 'UTC'),
+    ]);
     ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
         'start_date_local' => $rest->date->copy()->setTime(6, 0),
+        'start_date_utc' => Carbon::parse($rest->date->toDateString().' 06:00:00', 'UTC'),
         'distance' => $runKm * 1000,
         'moving_time' => (int) round($runKm * $runPace),
         'elapsed_time' => (int) round($runKm * $runPace),

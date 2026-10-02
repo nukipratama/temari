@@ -20,6 +20,8 @@ code_refs:
 
 **Status:** Accepted (2026-09-17). Builds on [[a-credited-day-shows-its-result]] and [[the-eased-session-leads]].
 
+> **Partly superseded (2026-10-01) by [[grading-follows-shown-advice-and-actual-stimulus]].** Intent is judged against the shown advice only and is `unknown` without it, a quality block more than 5% quicker than target reads `too_hard`, and a window shorter than about 90% of the block cannot prove it.
+
 ## Context
 
 A day's `status` and `compliance_score` were a km ratio and nothing else. An easy jog at full

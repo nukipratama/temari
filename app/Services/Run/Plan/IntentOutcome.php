@@ -44,7 +44,8 @@ final class IntentOutcome
             IntentVerdict::Missed => $family === self::REPS
                 ? 'the reps never reached the effort they asked for'
                 : 'the hard effort the day asked for never showed up',
-            IntentVerdict::TooHard => 'it ran harder than the '.self::limitName($evidence).' effort the day asked for',
+            IntentVerdict::TooHard => self::tooHardOutcome($family, $evidence)
+                ?? 'it ran harder than the '.self::limitName($evidence).' effort the day asked for',
             IntentVerdict::Unknown => "this run's data can't tell how the effort went",
         };
     }
@@ -59,6 +60,9 @@ final class IntentOutcome
     {
         if ($verdict === IntentVerdict::Unknown) {
             return null;
+        }
+        if (isset($evidence['original_completed'])) {
+            return self::stimulusDetail($evidence);
         }
 
         return match (self::family($evidence)) {
@@ -111,6 +115,58 @@ final class IntentOutcome
         };
     }
 
+    /**
+     * A too-hard reading that is not simply "quicker than easy": an eased
+     * session run as originally written, hard work added to an easy day, or a
+     * quality block run well past its target.
+     *
+     * @param  array<string, int|float|string>  $evidence
+     */
+    private static function tooHardOutcome(?string $family, array $evidence): ?string
+    {
+        if (isset($evidence['eased_from'], $evidence['original_completed'])) {
+            if (($evidence['concern'] ?? null) === 'strong') {
+                return 'the hard session went ahead against advice to rest or go easy after reported pain, illness or severe fatigue';
+            }
+
+            [$name, $pronoun] = match ($evidence['eased_from']) {
+                'interval' => ['intervals', 'they'],
+                'long' => ['long-run block', 'it'],
+                default => ['tempo', 'it'],
+            };
+
+            return $evidence['original_completed'] === 'excessive'
+                ? "{$name} completed well past its target effort, and {$pronoun} exceeded the recovery advice shown"
+                : "{$name} completed, though {$pronoun} exceeded the recovery advice shown";
+        }
+
+        if (($evidence['control'] ?? null) === 'excessive') {
+            return $family === self::REPS
+                ? 'the reps ran well past the effort they asked for'
+                : 'the hard block ran well past the effort it asked for';
+        }
+
+        return ($evidence['stimulus_family'] ?? null) === 'hard' && $family === self::STEADY
+            ? 'an unplanned hard effort, harder than the '.self::limitName($evidence).' effort the day asked for'
+            : null;
+    }
+
+    /** @param  array<string, int|float|string>  $evidence */
+    private static function stimulusDetail(array $evidence): ?string
+    {
+        if (! is_numeric($evidence['stimulus_minutes'] ?? null) || ! isset($evidence['stimulus_family'])) {
+            return null;
+        }
+
+        $source = match ($evidence['stimulus_source'] ?? null) {
+            'heart_rate' => 'heart rate',
+            'laps' => 'laps',
+            default => 'pace',
+        };
+
+        return 'about '.self::minutes((float) $evidence['stimulus_minutes'])." minutes of {$evidence['stimulus_family']} effort were measured from {$source}";
+    }
+
     /** @param  array<string, int|float|string>  $evidence */
     private static function marathonLimit(array $evidence): bool
     {
@@ -129,14 +185,21 @@ final class IntentOutcome
         $target = is_numeric($evidence['target_pace_sec'] ?? null) ? self::pace((int) $evidence['target_pace_sec']) : null;
         $targetName = self::family($evidence) === self::REPS ? 'rep pace' : 'target pace';
         $hit = $verdict === IntentVerdict::Hit;
+        $excessive = ($evidence['control'] ?? null) === 'excessive';
         $parts = [];
 
         if (is_numeric($evidence['reps_at_pace'] ?? null) && $target !== null) {
-            $parts[] = ($hit ? '' : 'only ')."{$evidence['reps_at_pace']} of {$evidence['reps_prescribed']} reps landed on the {$target} {$targetName}";
+            $parts[] = $excessive
+                ? "{$evidence['reps_at_pace']} of {$evidence['reps_prescribed']} reps ran well quicker than the {$target} {$targetName}"
+                : ($hit ? '' : 'only ')."{$evidence['reps_at_pace']} of {$evidence['reps_prescribed']} reps landed on the {$target} {$targetName}";
         } elseif (isset($evidence['window']) && is_numeric($evidence['window_pace_sec'] ?? null) && $target !== null) {
             $onPace = $hit && ($evidence['basis'] ?? null) !== 'heart_rate';
-            $parts[] = 'best '.self::windowWords((string) $evidence['window']).' stretch averaged '.self::pace((int) $evidence['window_pace_sec'])
-                .($onPace ? ", on the {$target} {$targetName}" : ", slower than the {$target} {$targetName}");
+            $comparison = match (true) {
+                $excessive => "well quicker than the {$target} {$targetName}",
+                $onPace => "on the {$target} {$targetName}",
+                default => "slower than the {$target} {$targetName}",
+            };
+            $parts[] = 'best '.self::windowWords((string) $evidence['window']).' stretch averaged '.self::pace((int) $evidence['window_pace_sec']).", {$comparison}";
         }
 
         if (($evidence['basis'] ?? null) === 'heart_rate' && isset($evidence['zone']) && is_numeric($evidence['zone_minutes'] ?? null)) {

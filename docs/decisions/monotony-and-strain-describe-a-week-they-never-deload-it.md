@@ -24,7 +24,7 @@ The 2026-10-01 coaching audit ran the adaptation rules against synthetic athlete
 
 ## Decision
 
-1. **Monotony is descriptive.** [PlanAdapter::decide()](app/Services/Run/Plan/PlanAdapter.php#L115) no longer reads it, so no week becomes a HighMonotony deload. [Readiness](app/Services/Run/Metrics/Readiness.php#L139) records it as an input but no longer counts it as supporting load or caps the day at 2.0. **Evidence-supported.**
+1. **Monotony is descriptive.** [PlanAdapter::decide()](app/Services/Run/Plan/PlanAdapter.php#L101) no longer reads it, so no week becomes a HighMonotony deload. [Readiness](app/Services/Run/Metrics/Readiness.php#L139) records it as an input but no longer counts it as supporting load or caps the day at 2.0. **Evidence-supported.**
 2. **Strain is not a deload trigger.** A jump in load after a gap or a low-load period is handled once: the missed-week adaptation shrinks the week that follows the gap, and the ramp brings volume back. A week-to-week ratio carries no injury association of its own ([[coaching-evidence#Frandsen2025]], [[coaching-evidence#Impellizzeri2020]]). **Evidence-supported.**
 3. Without strain in the decision, the form warm-up no longer needs a guard for the strain-to-CTL ratio, so it is gone. The hydration gate stays.
 

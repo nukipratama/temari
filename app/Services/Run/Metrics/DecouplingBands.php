@@ -15,10 +15,9 @@ namespace App\Services\Run\Metrics;
  *
  * The ladder is fitted against real runs rather than assumed. On the corpus
  * this athlete's ordinary runs — easy days and quality days alike — land
- * between 6 and 13%, so a line drawn at 5% fires on a routine Tuesday and
- * tells the plan the week was run too hard. {@see self::HIGH} therefore sits
- * above the top of that band, where a figure genuinely says something the
- * athlete did not intend.
+ * between 6 and 13%, so a line drawn at 5% fires on a routine Tuesday.
+ * {@see self::HIGH} therefore sits above the top of that band. The bands are
+ * descriptive: no plan decision reads them.
  */
 final class DecouplingBands
 {
@@ -30,9 +29,6 @@ final class DecouplingBands
 
     /** Past the top of the ordinary band: HR drifted well past pace, whatever the day asked for. */
     public const float HIGH = 12.0;
-
-    /** Far enough past {@see self::HIGH} that the day is not a rounding error on the week. */
-    public const float EGREGIOUS = 15.0;
 
     /**
      * Which way a decoupling reading points, for a caller that must not

@@ -82,10 +82,63 @@ it('reads a tempo held within tolerance of threshold for as long as the block as
 it('measures a block that falls between windows on the longest window that fits inside it', function (): void {
     $run = judgeRun(8.0, 2800, ['best_20min_pace' => '5:10', 'best_30min_pace' => '6:00']);
 
-    $reading = SessionIntentJudge::judge(SessionType::Tempo, tempoDay(blockMinutes: 26.0), JUDGE_PACES, [$run]);
+    $reading = SessionIntentJudge::judge(SessionType::Tempo, tempoDay(blockMinutes: 22.0), JUDGE_PACES, [$run]);
 
     expect($reading['verdict'])->toBe(IntentVerdict::Hit)
         ->and($reading['evidence']['window'])->toBe('20min');
+});
+
+it('cannot read a window well short of the block as a hit', function (): void {
+    $run = judgeRun(8.0, 2800, ['best_20min_pace' => '5:10']);
+
+    $reading = SessionIntentJudge::judge(SessionType::Tempo, tempoDay(blockMinutes: 26.0), JUDGE_PACES, [$run]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Unknown)
+        ->and($reading['evidence'])->toMatchArray(['window' => '20min', 'stimulus_family' => 'unknown', 'stimulus_source' => 'none']);
+});
+
+it('lets heart rate decide a block the pace windows cannot cover', function (): void {
+    $zones = ['Z1' => 2, 'Z2' => 12, 'Z3' => 6, 'Z4' => 24, 'Z5' => 4];
+    $run = judgeRun(8.0, 2800, ['best_20min_pace' => '5:10', 'time_in_zone_min' => $zones]);
+
+    $reading = SessionIntentJudge::judge(SessionType::Tempo, tempoDay(blockMinutes: 26.0), JUDGE_PACES, [$run]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($reading['evidence'])->toMatchArray(['basis' => 'heart_rate', 'stimulus_source' => 'heart_rate', 'stimulus_minutes' => 28.0]);
+});
+
+it('reads a tempo faster than target by more than five percent as too hard, not rewarded', function (): void {
+    $run = judgeRun(8.0, 2800, ['best_20min_pace' => '4:50']);
+
+    $reading = SessionIntentJudge::judge(SessionType::Tempo, tempoDay(), JUDGE_PACES, [$run]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::TooHard)
+        ->and($reading['evidence'])->toMatchArray(['basis' => 'pace', 'control' => 'excessive', 'stimulus_family' => 'tempo', 'stimulus_minutes' => 20.0, 'stimulus_source' => 'window']);
+});
+
+it('keeps a tempo within five percent faster than target controlled', function (): void {
+    $run = judgeRun(8.0, 2800, ['best_20min_pace' => '5:00']);
+
+    $reading = SessionIntentJudge::judge(SessionType::Tempo, tempoDay(), JUDGE_PACES, [$run]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($reading['evidence'])->toMatchArray(['control' => 'controlled', 'stimulus_family' => 'tempo', 'stimulus_minutes' => 20.0]);
+});
+
+it('cannot judge a tempo split across recordings when the longest one cannot cover the block', function (): void {
+    $longest = judgeRun(3.0, 900, ['best_10min_pace' => '5:00', 'time_in_zone_min' => ['Z1' => 1, 'Z2' => 2, 'Z3' => 2, 'Z4' => 10, 'Z5' => 0]]);
+    $other = judgeRun(2.0, 600, ['time_in_zone_min' => ['Z1' => 1, 'Z2' => 2, 'Z3' => 2, 'Z4' => 5, 'Z5' => 0]]);
+
+    $reading = SessionIntentJudge::judge(SessionType::Tempo, tempoDay(), JUDGE_PACES, [$other, $longest]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Unknown)
+        ->and($reading['evidence'])->toMatchArray(['stimulus_family' => 'tempo', 'stimulus_minutes' => 15.0, 'stimulus_source' => 'heart_rate']);
+});
+
+it('still reads one short recording as missed when heart rate is complete', function (): void {
+    $run = judgeRun(3.0, 900, ['time_in_zone_min' => ['Z1' => 1, 'Z2' => 2, 'Z3' => 2, 'Z4' => 10, 'Z5' => 0]]);
+
+    expect(SessionIntentJudge::judge(SessionType::Tempo, tempoDay(), JUDGE_PACES, [$run])['verdict'])->toBe(IntentVerdict::Missed);
 });
 
 it('reads a tempo run all easy as missed', function (): void {
@@ -238,4 +291,54 @@ it('marks a single marathon-pace long segment as graded against the marathon lim
 
     expect($reading['evidence'])->toMatchArray(['limit' => 'marathon', 'ceiling_pace_sec' => 330])
         ->and(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [judgeRun(6.0, 1980)])['evidence'])->not->toHaveKey('limit');
+});
+
+it('reads intervals run far faster than the rep pace as too hard', function (): void {
+    $laps = lapRows([[2000, 800], [700, 180], [300, 130], [710, 180], [300, 130], [720, 180], [300, 130], [700, 180], [1000, 400]]);
+
+    $reading = SessionIntentJudge::judge(SessionType::Interval, intervalDay(), JUDGE_PACES, [judgeRun(6.9, 2300, ['laps' => $laps])]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::TooHard)
+        ->and($reading['evidence'])->toMatchArray(['basis' => 'laps', 'control' => 'excessive', 'stimulus_family' => 'interval', 'stimulus_minutes' => 12.0, 'stimulus_source' => 'laps']);
+});
+
+it('does not count laps far shorter than the prescribed rep as reps', function (): void {
+    $laps = lapRows([[2000, 800], [210, 60], [300, 130], [210, 60], [300, 130], [210, 60], [300, 130], [210, 60], [1000, 400]]);
+
+    $reading = SessionIntentJudge::judge(SessionType::Interval, intervalDay(), JUDGE_PACES, [judgeRun(4.7, 1700, ['laps' => $laps])]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Missed)
+        ->and($reading['evidence'])->toMatchArray(['reps_at_pace' => 0]);
+});
+
+it('cannot read a short rep window as covering a longer rep', function (): void {
+    $laps = lapRows([[1000, 400], [1000, 300], [1000, 390], [1000, 295], [600, 240]]);
+
+    $reading = SessionIntentJudge::judge(SessionType::Interval, intervalDay(repMinutes: 4.0), JUDGE_PACES, [judgeRun(4.6, 1625, ['laps' => $laps, 'best_3min_pace' => '4:50'])]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Unknown);
+});
+
+it('records an easy day that stayed easy as easy stimulus, however fast', function (): void {
+    $run = judgeRun(6.0, 1980, ['time_in_zone_min' => ['Z1' => 8, 'Z2' => 22, 'Z3' => 3, 'Z4' => 0, 'Z5' => 0]]);
+
+    expect(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$run])['evidence'])
+        ->toMatchArray(['stimulus_family' => 'easy', 'stimulus_source' => 'heart_rate']);
+});
+
+it('records self-added hard work on an easy day with the hard minutes summed across the day', function (): void {
+    $first = judgeRun(6.0, 1980, ['time_in_zone_min' => ['Z1' => 2, 'Z2' => 10, 'Z3' => 15, 'Z4' => 6, 'Z5' => 0]]);
+    $second = judgeRun(2.0, 700, ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 5, 'Z3' => 5, 'Z4' => 2, 'Z5' => 0]]);
+
+    $reading = SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$first, $second]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::TooHard)
+        ->and($reading['evidence'])->toMatchArray(['stimulus_family' => 'hard', 'stimulus_minutes' => 28.0, 'stimulus_source' => 'heart_rate']);
+});
+
+it('records no hard minutes when a too-fast easy run carries no heart rate', function (): void {
+    $reading = SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [judgeRun(6.0, 1980)]);
+
+    expect($reading['evidence'])->toMatchArray(['stimulus_family' => 'hard', 'stimulus_source' => 'pace'])
+        ->not->toHaveKey('stimulus_minutes');
 });

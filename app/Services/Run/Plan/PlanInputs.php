@@ -27,7 +27,7 @@ final readonly class PlanInputs
      * @param  bool  $increasesHeld  the race block holds flat at its floor until the load guard's recent runs are scored
      * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      * @param array<string, array{verdict: IntentVerdict, hard_minutes: int}> $recentPrescriptions
-     * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float}> $fixedSessions
+     * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float, demanding?: bool}> $fixedSessions
      * @param list<array{date: string, duration_minutes: int|null, hard_minutes: float|null, demanding: bool}> $actualSessions
      */
     public function __construct(

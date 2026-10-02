@@ -116,7 +116,7 @@ final readonly class PlanInputsGatherer
      * @return array{
      *     pinned: array<string, true>,
      *     settled: array<string, true>,
-     *     fixed: array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float}>
+     *     fixed: array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float, demanding?: bool}>
      * }
      *
      */
@@ -131,7 +131,7 @@ final readonly class PlanInputsGatherer
                 ->orWhere('status', '!=', PlannedSessionStatus::Planned)
                 ->orWhere('date', '<', $today->toDateString()))
             ->orderBy('date')
-            ->get(['date', 'pinned', 'skipped', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'phase', 'volume_multiplier', 'race_distance_m', 'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km']);
+            ->get(['date', 'pinned', 'skipped', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'phase', 'volume_multiplier', 'race_distance_m', 'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescription_race_context', 'intent_evidence']);
 
         $pinned = [];
         $settled = [];
@@ -148,14 +148,18 @@ final readonly class PlanInputsGatherer
                 continue;
             }
             if ($row->date->lt($today) || $row->pinned || $row->status !== PlannedSessionStatus::Planned) {
-                $fixed[$date] = [
-                    'session_type' => $row->session_type,
-                    'prescribed_hard_minutes' => $row->prescribed_hard_minutes ?? 0,
-                    'prescribed_pace_band' => $row->prescribed_pace_band,
-                ];
-                if (($row->status !== PlannedSessionStatus::Planned && $row->session_type->isQuality())
-                    || $row->session_type === SessionType::Race
-                    || (in_array($row->session_type, [SessionType::Tempo, SessionType::Interval], true) && $row->prescribed_hard_minutes === null)) {
+                $fixed[$date] = $row->status->isCredited()
+                    ? EffectiveSession::budgetProfileOf($row)
+                    : [
+                        'session_type' => $row->session_type,
+                        'prescribed_hard_minutes' => $row->prescribed_hard_minutes ?? 0,
+                        'prescribed_pace_band' => $row->prescribed_pace_band,
+                    ];
+                $budgetedType = $fixed[$date]['session_type'];
+                if (! array_key_exists('hard_minutes', $fixed[$date])
+                    && (($row->status !== PlannedSessionStatus::Planned && $budgetedType->isQuality())
+                        || $budgetedType === SessionType::Race
+                        || (in_array($budgetedType, [SessionType::Tempo, SessionType::Interval], true) && $row->prescribed_hard_minutes === null))) {
                     $fixed[$date]['hard_minutes'] = null;
                 }
                 if ($row->status === PlannedSessionStatus::Planned && $paces !== null) {
@@ -189,6 +193,7 @@ final readonly class PlanInputsGatherer
             ->where('user_id', $user->id)
             ->whereBetween('date', [$today->copy()->subDays(42)->toDateString(), $today->copy()->subDay()->toDateString()])
             ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval, SessionType::Long])
+            ->where('intent_evidence->quality_progression', 'eligible')
             ->whereNotNull('intent_verdict')
             ->whereNotNull('prescribed_hard_minutes')
             ->where('prescribed_hard_minutes', '>', 0)

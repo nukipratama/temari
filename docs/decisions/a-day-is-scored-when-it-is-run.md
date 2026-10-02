@@ -14,6 +14,8 @@ code_refs:
 
 # A day is scored when it is run, and only ever upward
 
+> **Partly superseded (2026-10-02) by [[decoupling-describes-a-run-and-a-deletion-re-grades-its-day]].** A deleted run now re-grades its day from the surviving runs in either direction, so a deletion can lower the score. Ingests, re-ingests, revisions and late uploads still only move it up, and the rest of this decision stands.
+
 **Status:** Accepted (2026-09-07). Supersedes the *"this stays render-only"* clause of
 [[today-credits-when-earned]]; the rest of that note stands unchanged.
 

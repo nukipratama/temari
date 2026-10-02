@@ -13,12 +13,18 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
+use App\Enums\IntentVerdict;
+use App\Enums\PlannedSessionStatus;
+use App\Models\PlannedSession;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Plan\ComplianceScorer;
+use App\Services\Run\Plan\PlanReconciliationService;
+use App\Services\Run\Trend\TrendSnapshotRepairService;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\StravaClient;
 use Illuminate\Http\Client\ConnectionException;
@@ -92,6 +98,9 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
+        app(ComplianceScorer::class),
+        app(PlanReconciliationService::class),
+        app(TrendSnapshotRepairService::class),
     );
 
     expect(Activity::query()->withStubs()->whereKey($doomed->id)->exists())->toBeFalse()
@@ -126,6 +135,9 @@ it('fires the replay when deleting the last backlog row empties it', function ()
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
+        app(ComplianceScorer::class),
+        app(PlanReconciliationService::class),
+        app(TrendSnapshotRepairService::class),
     );
 
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
@@ -155,6 +167,9 @@ it('purges a retired-type row too, not just the ones KnownAnalysisTypeScope show
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
+        app(ComplianceScorer::class),
+        app(PlanReconciliationService::class),
+        app(TrendSnapshotRepairService::class),
     );
 
     expect(DB::table('ai_analyses')->where('subject_id', $doomed->id)->count())->toBe(0);
@@ -176,7 +191,7 @@ it('prunes a now-empty weekly snapshot when the deleted run was the last one', f
     $personalRecords = Mockery::mock(PersonalRecords::class);
     $personalRecords->shouldReceive('rebuildForUser')->once();
 
-    new CleanupDeletedActivityJob($user->id, 7_003)->handle($weekly, $personalRecords, app(StravaClient::class), app(ResolveTrailingWeeksAction::class), app(SettleEarlyNarrationAction::class));
+    new CleanupDeletedActivityJob($user->id, 7_003)->handle($weekly, $personalRecords, app(StravaClient::class), app(ResolveTrailingWeeksAction::class), app(SettleEarlyNarrationAction::class), app(ComplianceScorer::class), app(PlanReconciliationService::class), app(TrendSnapshotRepairService::class));
 
     expect(Activity::query()->withStubs()->whereKey($sole->id)->exists())->toBeFalse()
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(0);
@@ -191,6 +206,9 @@ it('no-ops when the activity is already gone', function (): void {
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
+        app(ComplianceScorer::class),
+        app(PlanReconciliationService::class),
+        app(TrendSnapshotRepairService::class),
     );
 
     expect(true)->toBeTrue();
@@ -210,6 +228,9 @@ it('does NOT delete when Strava still returns the activity (forged delete event)
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
+        app(ComplianceScorer::class),
+        app(PlanReconciliationService::class),
+        app(TrendSnapshotRepairService::class),
     );
 
     expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue()
@@ -227,6 +248,9 @@ it('does NOT delete when there is no live connection to verify against', functio
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
+        app(ComplianceScorer::class),
+        app(PlanReconciliationService::class),
+        app(TrendSnapshotRepairService::class),
     );
 
     expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue();
@@ -241,6 +265,9 @@ function runCleanupJob(User $user, int $externalId): void
         app(StravaClient::class),
         app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
+        app(ComplianceScorer::class),
+        app(PlanReconciliationService::class),
+        app(TrendSnapshotRepairService::class),
     );
 }
 
@@ -321,4 +348,72 @@ it('no-ops cleanly when the run was removed locally between retries', function (
     runCleanupJob($user, 7_025);
 
     Http::assertSentCount(1);
+});
+
+function pastEasyDay(User $user): array
+{
+    $day = now()->startOfWeek()->subWeek()->addDay();
+    $row = PlannedSession::factory()->for($user)->create(['date' => $day->toDateString()]);
+    $prescribedKm = app(ComplianceScorer::class)->verdictsFor($user, $row->newCollection([$row]), now())[$day->toDateString()]['prescribed_km'];
+
+    return [$day, $row, (float) $prescribedKm];
+}
+
+it('re-grades an overreached day from the surviving run when a duplicate upload is deleted', function (): void {
+    $user = User::factory()->create();
+    [$day, $row, $prescribedKm] = pastEasyDay($user);
+    makeCleanupRun($user, 7_040, $prescribedKm * 1000, $day->copy()->setTime(6, 0));
+    makeCleanupRun($user, 7_041, $prescribedKm * 1000, $day->copy()->setTime(6, 5));
+    app(ComplianceScorer::class)->creditIfEarned($user, $day, now());
+    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Overreached);
+    fakeStravaConfirms404($user, 7_041);
+
+    runCleanupJob($user, 7_041);
+
+    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Done)
+        ->and($row->compliance_score)->toBe(100);
+});
+
+it('drops a past day to missed when its only run is deleted, clearing its intent evidence', function (): void {
+    $user = User::factory()->create();
+    [$day, $row, $prescribedKm] = pastEasyDay($user);
+    makeCleanupRun($user, 7_030, $prescribedKm * 1000, $day->copy()->setTime(6, 0));
+    app(ComplianceScorer::class)->creditIfEarned($user, $day, now());
+    $row->update([
+        'intent_verdict' => IntentVerdict::TooHard,
+        'intent_evidence' => ['advice_history' => 'shown', 'stimulus_family' => 'hard', 'stimulus_minutes' => 20.0],
+    ]);
+    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Done);
+    fakeStravaConfirms404($user, 7_030);
+
+    runCleanupJob($user, 7_030);
+
+    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Missed)
+        ->and($row->intent_verdict)->toBeNull()
+        ->and($row->intent_evidence)->toBeNull();
+});
+
+it('keeps an excused day excused when its run is deleted', function (): void {
+    $user = User::factory()->create();
+    $day = now()->startOfWeek()->subWeek()->addDay();
+    $row = PlannedSession::factory()->for($user)->create(['date' => $day->toDateString(), 'skipped' => true, 'status' => PlannedSessionStatus::Skip]);
+    makeCleanupRun($user, 7_050, 5_000, $day->copy()->setTime(6, 0));
+    fakeStravaConfirms404($user, 7_050);
+
+    runCleanupJob($user, 7_050);
+
+    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Skip);
+});
+
+it('marks plan reconciliation and trend snapshots dirty from the deleted run date', function (): void {
+    $user = User::factory()->create();
+    $day = now()->startOfWeek()->subWeek()->addDay();
+    makeCleanupRun($user, 7_060, 5_000, $day->copy()->setTime(6, 0));
+    fakeStravaConfirms404($user, 7_060);
+
+    runCleanupJob($user, 7_060);
+
+    $user->refresh();
+    expect($user->trend_snapshots_pending_from?->toDateString())->toBe($day->toDateString())
+        ->and($user->plan_reconciliation_pending_from?->toDateString())->toBe($day->toDateString());
 });

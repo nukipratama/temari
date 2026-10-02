@@ -73,6 +73,44 @@ final readonly class EffectiveSession
         return new self($session->session_type, $storedCoreKm);
     }
 
+    /**
+     * What a settled day was actually asking for: the effective type of the
+     * advice the athlete was shown when the grade recorded it, otherwise the
+     * type the stored clamp state implies.
+     */
+    public static function settledTypeOf(PlannedSession $session): SessionType
+    {
+        $shown = $session->intent_evidence['effective_type'] ?? null;
+
+        return (is_string($shown) ? SessionType::tryFrom($shown) : null) ?? self::of($session, 0.0)->sessionType;
+    }
+
+    /**
+     * How a credited day counts toward the weekly budget and recovery: the
+     * session it was effectively asked to be, with any hard work the runs
+     * actually held that the advice did not ask for. An abandoned quality
+     * session spends none of its prescribed hard minutes.
+     *
+     * @return array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, demanding?: bool}
+     */
+    public static function budgetProfileOf(PlannedSession $session): array
+    {
+        $type = self::settledTypeOf($session);
+        $profile = $type === $session->session_type || $type->isQuality()
+            ? ['session_type' => $session->session_type, 'prescribed_hard_minutes' => $session->prescribed_hard_minutes ?? 0, 'prescribed_pace_band' => $session->prescribed_pace_band]
+            : ['session_type' => $type, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null];
+
+        $evidence = $session->intent_evidence ?? [];
+        $addedHardWork = in_array($evidence['stimulus_family'] ?? null, ['tempo', 'interval', 'hard'], true);
+        if ($addedHardWork && ! $profile['session_type']->isQuality()) {
+            $minutes = $evidence['stimulus_minutes'] ?? null;
+            $profile['hard_minutes'] = is_numeric($minutes) ? (float) $minutes : null;
+            $profile['demanding'] = true;
+        }
+
+        return $profile;
+    }
+
     public static function isRecordedOn(PlannedSession $session): bool
     {
         return $session->rest_clamped_at !== null || $session->clamped_km !== null;

@@ -15,6 +15,9 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Plan\ComplianceScorer;
+use App\Services\Run\Plan\PlanReconciliationService;
+use App\Services\Run\Trend\TrendSnapshotRepairService;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\StravaClient;
@@ -64,6 +67,9 @@ class CleanupDeletedActivityJob implements ShouldQueue
         StravaClient $client,
         ResolveTrailingWeeksAction $weeklySnapshots,
         SettleEarlyNarrationAction $settleEarlyNarration,
+        ComplianceScorer $complianceScorer,
+        PlanReconciliationService $planReconciliation,
+        TrendSnapshotRepairService $trendSnapshots,
     ): void {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
 
@@ -101,9 +107,13 @@ class CleanupDeletedActivityJob implements ShouldQueue
         // card id, no FK) does not — capture the id now to purge it below.
         $cardId = $activity->runCard?->id;
 
-        DB::transaction(function () use ($activity, $weekAnchor, $user, $weekly, $personalRecords, $localId, $cardId, $weeklySnapshots): void {
+        DB::transaction(function () use ($activity, $weekAnchor, $user, $weekly, $personalRecords, $localId, $cardId, $weeklySnapshots, $complianceScorer): void {
             // Cascades detail / stream / card / post-run storyline via FK.
             $activity->delete();
+
+            if ($weekAnchor !== null) {
+                $complianceScorer->regradeAfterDelete($user, $weekAnchor, Carbon::today());
+            }
 
             if ($weekAnchor !== null) {
                 $rebuilt = $weekly->rebuildForwardFrom($user, $weekAnchor);
@@ -145,6 +155,11 @@ class CleanupDeletedActivityJob implements ShouldQueue
                     ->delete();
             }
         });
+
+        if ($weekAnchor !== null) {
+            $planReconciliation->markDirty($user->id, $weekAnchor);
+            $trendSnapshots->markDirty($user->id, $weekAnchor);
+        }
 
         // Deleting the last row in the athlete's backlog can leave it empty
         // same as a successful hydration would — see SettleEarlyNarrationAction.
