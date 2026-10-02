@@ -76,6 +76,12 @@ jobs:
           SESSION_DRIVER: array
         run: ./vendor/bin/pest --compact --update-shards --exclude-group=structure --coverage-php=/dev/null
 
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: shards-json
+          path: tests/.pest/shards.json
+          retention-days: 1
+
       - name: Compare shard balance
         id: compare
         run: |
@@ -88,7 +94,7 @@ jobs:
         run: echo "${{ steps.compare.outputs.summary }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Open or update the refresh PR
-        if: steps.compare.outputs.decision == 'yes'
+        if: steps.compare.outputs.decision == 'scratch-never'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
