@@ -31,17 +31,15 @@ describe('EffortPicker', () => {
         vi.mocked(router.delete).mockReset();
     });
 
-    it('sits on a fixed-dark sky panel on both grounds', () => {
+    it('sits on the stat-tile ground on light and the sky panel on dark', () => {
         const { container } = renderPicker();
 
         expect(container.firstElementChild).toHaveClass(
-            'bg-sky',
+            'bg-secondary',
+            'dark:bg-sky',
             'rounded-panel',
         );
-        expect(container.firstElementChild).toHaveAttribute(
-            'data-theme',
-            'dark',
-        );
+        expect(container.firstElementChild).not.toHaveAttribute('data-theme');
     });
 
     it('opens with a gut-check eyebrow and a temari voice line', () => {
@@ -49,12 +47,12 @@ describe('EffortPicker', () => {
 
         expect(screen.getByText('gut check')).toHaveClass(
             'text-label-small',
-            'text-ink-on-sky',
+            'text-text-3',
         );
         expect(screen.getByText(VOICE_LINE)).toHaveClass(
             'font-serif',
             'italic',
-            'text-cream',
+            'text-foreground',
         );
     });
 
@@ -89,7 +87,7 @@ describe('EffortPicker', () => {
         expect(slider()).toHaveAttribute('aria-valuetext', 'not rated yet');
         expect(slider()).toHaveAttribute('data-rated', 'false');
         expect(screen.getByText('–')).toBeInTheDocument();
-        expect(screen.getByText('drag to rate')).toHaveClass('text-ink-on-sky');
+        expect(screen.getByText('drag to rate')).toHaveClass('text-text-3');
         expect(screen.getByRole('button', { name: 'save' })).toBeDisabled();
     });
 

@@ -44,7 +44,7 @@ const SCORES = Array.from(
 );
 
 const quietButton =
-    'pressable focus-ring-on-sky rounded text-[0.71875rem] font-bold text-cream/80 hover:text-cream disabled:opacity-60';
+    'pressable focus-ring rounded text-[0.71875rem] font-bold text-text-2 hover:text-foreground disabled:opacity-60';
 
 function effortUrl(activityId: number): string {
     return `/activities/${activityId}/effort`;
@@ -113,19 +113,16 @@ export function EffortPicker({
     const [processing, setProcessing] = useState(false);
 
     return (
-        <div
-            data-theme="dark"
-            className="rounded-panel bg-sky px-4 pb-3 pt-3.5 text-cream"
-        >
+        <div className="rounded-panel bg-secondary px-4 pb-3 pt-3.5 text-foreground dark:bg-sky">
             <div className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-x-2.5">
-                <TemariMascot pose={effortPose(draft)} size={44} onSky />
+                <TemariMascot pose={effortPose(draft)} size={44} />
                 <div className="min-w-0">
-                    <Eyebrow token="small" tone="ink-on-sky">
+                    <Eyebrow token="small" tone="ink-3">
                         gut check
                     </Eyebrow>
                     <label
                         htmlFor={inputId}
-                        className="mt-0.5 block font-serif text-quote-md italic text-cream"
+                        className="mt-0.5 block font-serif text-quote-md italic text-foreground"
                     >
                         {VOICE_LINE}
                     </label>
@@ -140,19 +137,17 @@ export function EffortPicker({
                     <span
                         className={cn(
                             'text-stat',
-                            draft === null ? 'text-ink-on-sky' : 'text-cream',
+                            draft === null && 'text-text-3',
                         )}
                     >
                         {draft ?? '–'}
                     </span>
-                    <span className="text-label-small text-ink-on-sky">
-                        / 10
-                    </span>
+                    <span className="text-label-small text-text-3">/ 10</span>
                     <span
                         className={cn(
                             'ml-1 text-sm font-semibold',
                             draft === null
-                                ? 'text-ink-on-sky'
+                                ? 'text-text-3'
                                 : EFFORT_ICON_CLASS[effortBand(draft)],
                         )}
                     >
@@ -249,7 +244,7 @@ export function EffortPicker({
                     <span
                         key={zone.label}
                         className={cn(
-                            'text-label-micro text-ink-on-sky',
+                            'text-label-micro text-text-3',
                             zone.span,
                         )}
                     >
