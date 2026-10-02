@@ -57,6 +57,7 @@ let embeddedFaces: Promise<string> | null = null;
 
 async function dataUrl(url: string): Promise<string> {
     const response = await fetch(url);
+    if (!response.ok) throw new Error(`font fetch failed: ${response.status}`);
     const buffer = new Uint8Array(await response.arrayBuffer());
     let binary = '';
     for (const byte of buffer) binary += String.fromCharCode(byte);
@@ -86,12 +87,17 @@ async function fontFaces(): Promise<string> {
             face(SANS, 'normal', '200 800', sans) +
             face(MONO, 'normal', '100 800', mono)
         );
-    })().catch(() => '');
+    })();
 
-    return embeddedFaces;
+    try {
+        return await embeddedFaces;
+    } catch {
+        embeddedFaces = null;
+        return '';
+    }
 }
 
-/** Test seam: forget the held faces so a failed fetch isn't cached forever. */
+/** Test seam: forget the held faces between tests. */
 export function resetEmbeddedFonts(): void {
     embeddedFaces = null;
 }
