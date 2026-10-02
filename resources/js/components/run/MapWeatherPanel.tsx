@@ -43,7 +43,7 @@ export default function MapWeatherPanel({
             {hasPolyline && (
                 <Suspense
                     fallback={
-                        <div className="skeleton h-[280px]" aria-hidden />
+                        <div className="skeleton h-[17.5rem]" aria-hidden />
                     }
                 >
                     <RouteMap

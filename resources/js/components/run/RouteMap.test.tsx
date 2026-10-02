@@ -5,8 +5,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setMockPage } from '@/test/setup';
 
 vi.mock('react-leaflet', () => ({
-    MapContainer: ({ children }: { children?: React.ReactNode }) => (
-        <div data-testid="map-container">{children}</div>
+    MapContainer: ({
+        children,
+        style,
+    }: {
+        children?: React.ReactNode;
+        style?: React.CSSProperties;
+    }) => (
+        <div data-testid="map-container" style={style}>
+            {children}
+        </div>
     ),
     Polyline: ({ positions }: { positions: Array<[number, number]> }) => (
         <div data-testid="polyline" data-points={positions.length} />
@@ -53,6 +61,13 @@ describe('RouteMap', () => {
         expect(screen.getByTestId('map-container')).toBeInTheDocument();
         expect(screen.getByTestId('polyline').getAttribute('data-points')).toBe(
             '3',
+        );
+    });
+
+    it('sizes the map in rem so it scales with the type step', () => {
+        render(<RouteMap polyline="good" />);
+        expect(screen.getByTestId('map-container').style.height).toBe(
+            '17.5rem',
         );
     });
 

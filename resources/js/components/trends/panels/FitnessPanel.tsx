@@ -381,7 +381,7 @@ export default function FitnessPanel({
             <div
                 role="img"
                 aria-label={`Long-term load over ${visible.length} days, now at ${latest.ctl.toFixed(1)}.`}
-                className="mt-2 h-[168px]"
+                className="mt-2 h-[10.5rem]"
                 style={{ touchAction: 'pan-y' }}
             >
                 <Suspense
