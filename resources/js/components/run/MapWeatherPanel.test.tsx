@@ -159,6 +159,33 @@ describe('MapWeatherPanel', () => {
         ).not.toBeNull();
     });
 
+    it('keeps the wind and humidity units on one line', () => {
+        render(
+            <MapWeatherPanel detail={detail({ weather_wind_speed_kmh: 11 })} />,
+        );
+        expect(screen.getByText(/80% humidity/)).toHaveClass(
+            'whitespace-nowrap',
+        );
+        expect(screen.getByText(/11 km\/h/)).toHaveClass('whitespace-nowrap');
+    });
+
+    it('lets the weather row wrap and titles the place with its full name', () => {
+        const { container } = render(
+            <MapWeatherPanel
+                detail={detail({
+                    location_name:
+                        'Alun-alun Kidul, Yogyakarta, DIY, Indonesia',
+                })}
+            />,
+        );
+        expect(container.querySelector('[data-map-weather] > div')).toHaveClass(
+            'flex-wrap',
+        );
+        expect(
+            screen.getByTitle('Alun-alun Kidul, Yogyakarta, DIY, Indonesia'),
+        ).toBeInTheDocument();
+    });
+
     it('passes the className through to the wrapper', () => {
         const { container } = render(
             <MapWeatherPanel detail={detail()} className="flex" />,

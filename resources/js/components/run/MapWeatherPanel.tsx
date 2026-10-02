@@ -53,7 +53,7 @@ export default function MapWeatherPanel({
                 </Suspense>
             )}
             {hasConditions && (
-                <div className="flex items-center gap-3 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
                     {temp != null && (
                         <div>
                             <b className="font-mono text-lg font-bold leading-none tabular-nums text-foreground">
@@ -61,14 +61,14 @@ export default function MapWeatherPanel({
                                 <span className="text-xs">C</span>
                             </b>
                             {humidity != null && (
-                                <span className="mt-1 block font-sans text-xs text-text-2">
+                                <span className="mt-1 block whitespace-nowrap font-sans text-xs text-text-2">
                                     {Math.round(humidity)}% humidity
                                 </span>
                             )}
                         </div>
                     )}
                     {windSpeed != null && (
-                        <div className="flex items-center gap-1 font-sans text-xs text-text-2">
+                        <div className="flex items-center gap-1 whitespace-nowrap font-sans text-xs text-text-2">
                             <Icon
                                 icon={Wind}
                                 width={12}
@@ -92,7 +92,10 @@ export default function MapWeatherPanel({
                         </div>
                     )}
                     {location != null && (
-                        <div className="ml-auto min-w-0 border-l border-border-strong pl-3 text-right">
+                        <div
+                            className="ml-auto max-w-full border-l border-border-strong pl-3 text-right"
+                            title={location}
+                        >
                             {(() => {
                                 const [place, region] =
                                     splitLocationLines(location);
