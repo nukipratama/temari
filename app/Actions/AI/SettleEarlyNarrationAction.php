@@ -18,6 +18,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\HydrationBacklog;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\PersonalRecords;
+use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
@@ -44,6 +45,7 @@ class SettleEarlyNarrationAction
         private readonly PlanNarrationRequester $planNarration,
         private readonly HydrationBacklog $backlog,
         private readonly KickoffWeeklyRecaps $weeklyRecaps,
+        private readonly WeeklyAggregator $weeklyAggregator,
     ) {
     }
 
@@ -65,6 +67,13 @@ class SettleEarlyNarrationAction
             }
 
             return;
+        }
+
+        // Settles the drain's dirty weeks, this run's included, before anything below narrates from them.
+        if ($startedAt !== null) {
+            $this->weeklyAggregator->rollForwardFrom($user, $startedAt);
+        } else {
+            $this->weeklyAggregator->rollForwardDirty($user);
         }
 
         // Rebuilt and recomputed before the claim, and unconditionally: both

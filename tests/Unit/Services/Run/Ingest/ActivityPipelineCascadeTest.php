@@ -74,11 +74,12 @@ it('queues no AI job from inside the ingest transaction', function (): void {
 
     // The story layer runs inside DB::transaction; every fan-out analysis
     // request now belongs to the post-commit listener, so nothing from it is
-    // billable until the watermark is durable. A TrendRead row can still
-    // exist here — SettleEarlyNarrationAction runs post-commit too, and this
-    // single-run user's backlog is trivially empty.
+    // billable until the watermark is durable. A TrendRead or WeeklyRecap row
+    // can still exist here — SettleEarlyNarrationAction runs post-commit too,
+    // rolls this run's week forward, and this single-run user's backlog is
+    // trivially empty.
     Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
-    expect(Analysis::query()->where('analysis_type', '!=', AnalysisType::TrendRead)->count())->toBe(0);
+    expect(Analysis::query()->whereNotIn('analysis_type', [AnalysisType::TrendRead, AnalysisType::WeeklyRecap])->count())->toBe(0);
 });
 
 it('dispatches nothing when the ingest transaction rolls back', function (): void {

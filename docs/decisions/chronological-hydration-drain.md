@@ -42,7 +42,7 @@ every backfill — the replay ran on every drain, not as a rare safety net.
 ## Decision
 
 **Hydrate the backlog oldest-first, by `activity_details.start_date_local`.**
-[HydrateBacklogCommand::hydrateFor()](../../app/Console/Commands/Strava/HydrateBacklogCommand.php#L113)
+[HydrateBacklogCommand::hydrateFor()](../../app/Console/Commands/Strava/HydrateBacklogCommand.php#L135)
 orders its correlated subquery ascending instead of descending. Everything
 else about the drain — the headroom-paced budget, the even split across users,
 the give-up guard on `detail_fail_count`, the 15-minute cadence — is

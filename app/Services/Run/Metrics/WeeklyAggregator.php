@@ -13,6 +13,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\Gamification\StreakSettlementService;
 use App\Services\Notifications\UsualRunTime;
 use App\Services\Run\Story\PastYouTrendBuilder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Enumerable;
@@ -157,23 +158,79 @@ class WeeklyAggregator
      */
     public function rebuildForwardFrom(User $user, CarbonInterface $weekAnchor): ?WeeklySnapshot
     {
-        return $this->exclusively($user, function () use ($user, $weekAnchor): ?WeeklySnapshot {
-            $this->clearDerivedCaches($user);
-            $anchorWeekEnding = Carbon::instance($weekAnchor)->endOfWeek(Carbon::SUNDAY)->startOfDay();
-            $lastWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        return $this->exclusively($user, fn (): ?WeeklySnapshot => $this->rollForward($user, $weekAnchor));
+    }
 
-            // Load the lead-in window once (sized so even the anchor week has a
-            // converged CTL) and roll every week's snapshot from this shared series,
-            // so a backdated activity propagates forward in one query.
-            $details = $this->loadHistoryThrough($user, $lastWeekEnding, $this->leadInStart($anchorWeekEnding));
-            if ($details->isEmpty()) {
-                return null;
-            }
+    /**
+     * Records $from's week as the earliest one whose snapshots no longer match
+     * the history, for {@see rollForwardDirty} to rebuild later in one pass.
+     */
+    public function markDirty(User $user, CarbonInterface $from): void
+    {
+        $this->exclusively($user, fn () => $this->markDirtyFrom($user, $from));
+    }
 
-            $this->writeWeeks($user, $anchorWeekEnding, $this->weekRows($user, $anchorWeekEnding, $lastWeekEnding, $details));
+    /**
+     * Rolls forward from the earliest dirty week and clears the mark, or does
+     * nothing when no week is dirty.
+     */
+    public function rollForwardDirty(User $user): void
+    {
+        $this->exclusively($user, fn () => $this->drainDirty($user));
+    }
 
-            return $this->snapshotFor($user, $anchorWeekEnding);
+    /**
+     * Marks $from's week dirty before rebuilding, so a worker killed mid-rebuild
+     * leaves the mark for {@see rollForwardDirty} to finish the job.
+     */
+    public function rollForwardFrom(User $user, CarbonInterface $from): void
+    {
+        $this->exclusively($user, function () use ($user, $from): void {
+            $this->markDirtyFrom($user, $from);
+            $this->drainDirty($user);
         });
+    }
+
+    private function markDirtyFrom(User $user, CarbonInterface $from): void
+    {
+        $weekEnding = Carbon::instance($from)->endOfWeek(Carbon::SUNDAY)->toDateString();
+
+        User::query()
+            ->whereKey($user->id)
+            ->where(fn (Builder $query) => $query
+                ->whereNull('weekly_snapshots_dirty_from')
+                ->orWhere('weekly_snapshots_dirty_from', '>', $weekEnding))
+            ->update(['weekly_snapshots_dirty_from' => $weekEnding]);
+    }
+
+    private function drainDirty(User $user): void
+    {
+        $dirtyFrom = User::query()->whereKey($user->id)->first(['id', 'weekly_snapshots_dirty_from'])?->weekly_snapshots_dirty_from;
+        if ($dirtyFrom === null) {
+            return;
+        }
+
+        $this->rollForward($user, $dirtyFrom);
+        User::query()->whereKey($user->id)->update(['weekly_snapshots_dirty_from' => null]);
+    }
+
+    private function rollForward(User $user, CarbonInterface $weekAnchor): ?WeeklySnapshot
+    {
+        $this->clearDerivedCaches($user);
+        $anchorWeekEnding = Carbon::instance($weekAnchor)->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        $lastWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+
+        // Load the lead-in window once (sized so even the anchor week has a
+        // converged CTL) and roll every week's snapshot from this shared series,
+        // so a backdated activity propagates forward in one query.
+        $details = $this->loadHistoryThrough($user, $lastWeekEnding, $this->leadInStart($anchorWeekEnding));
+        if ($details->isEmpty()) {
+            return null;
+        }
+
+        $this->writeWeeks($user, $anchorWeekEnding, $this->weekRows($user, $anchorWeekEnding, $lastWeekEnding, $details));
+
+        return $this->snapshotFor($user, $anchorWeekEnding);
     }
 
     /**

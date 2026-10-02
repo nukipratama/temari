@@ -682,6 +682,75 @@ it('lets a second rebuild in the same transaction reuse the athlete lock it alre
         ->and(Cache::lock(WeeklyAggregator::lockKey($user->id), 1)->get())->toBeTrue();
 });
 
+it('keeps the earliest dirty week however the marks arrive', function (): void {
+    $user = User::factory()->create();
+
+    $this->aggregator->markDirty($user, Carbon::parse('2026-04-15'));
+    $this->aggregator->markDirty($user, Carbon::parse('2026-03-03'));
+    $this->aggregator->markDirty($user, Carbon::parse('2026-04-29'));
+
+    expect($user->fresh()->weekly_snapshots_dirty_from->toDateString())->toBe('2026-03-08');
+});
+
+it('rolls forward from the earliest dirty week and clears the mark', function (): void {
+    $user = User::factory()->create();
+    foreach (['2026-03-03', '2026-04-15'] as $day) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'distance' => 8000,
+            'elapsed_time' => 2400,
+            'trimp_edwards' => 60.0,
+            'start_date_local' => Carbon::parse($day.' 07:00'),
+        ]);
+    }
+    $this->aggregator->markDirty($user, Carbon::parse('2026-04-15'));
+    $this->aggregator->markDirty($user, Carbon::parse('2026-03-03'));
+
+    $this->aggregator->rollForwardDirty($user);
+
+    expect(WeeklySnapshot::query()->where('user_id', $user->id)->min('week_ending'))->toBe('2026-03-08')
+        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->max('week_ending'))->toBe('2026-05-17')
+        ->and($user->fresh()->weekly_snapshots_dirty_from)->toBeNull();
+});
+
+it('writes nothing when no week is dirty', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
+
+    $this->aggregator->rollForwardDirty($user);
+
+    expect(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+it('rolls forward from whichever is earlier, the given run or a week already dirty', function (): void {
+    $user = User::factory()->create();
+    foreach (['2026-03-03', '2026-04-15'] as $day) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse($day.' 07:00')]);
+    }
+    $this->aggregator->markDirty($user, Carbon::parse('2026-03-03'));
+
+    $this->aggregator->rollForwardFrom($user, Carbon::parse('2026-04-15'));
+
+    expect(WeeklySnapshot::query()->where('user_id', $user->id)->min('week_ending'))->toBe('2026-03-08')
+        ->and($user->fresh()->weekly_snapshots_dirty_from)->toBeNull();
+});
+
+it('leaves the week dirty when the roll forward dies mid-rebuild', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2026-04-15 07:00')]);
+    DB::listen(function (QueryExecuted $query): void {
+        if (str_starts_with($query->sql, 'insert into `weekly_snapshots`')) {
+            throw new RuntimeException('worker killed');
+        }
+    });
+
+    expect(fn () => $this->aggregator->rollForwardFrom($user, Carbon::parse('2026-04-15')))->toThrow(RuntimeException::class)
+        ->and($user->fresh()->weekly_snapshots_dirty_from->toDateString())->toBe('2026-04-19');
+});
+
 function seedWeeklyAggregatorMultiYearHistory(User $user): void
 {
     $first = Carbon::parse('2023-01-02');

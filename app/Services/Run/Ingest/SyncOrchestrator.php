@@ -214,7 +214,8 @@ class SyncOrchestrator
     /**
      * Roll the weekly snapshots forward from the oldest run this sync stored, so
      * a first-connect backfill lands its whole history in one pass instead of
-     * once per ingested activity.
+     * once per ingested activity. The week is marked dirty first, so a sync
+     * killed mid-rebuild is finished by the next `strava:hydrate-backlog` tick.
      *
      * @param  list<array<string, mixed>>  $summaries  oldest-first
      */
@@ -225,7 +226,7 @@ class SyncOrchestrator
             return;
         }
 
-        $this->weeklyAggregator->rebuildForwardFrom($user, CarbonImmutable::parse($start));
+        $this->weeklyAggregator->rollForwardFrom($user, CarbonImmutable::parse($start));
     }
 
     private function logSync(int $userId, string $status, int $activitiesSynced, int $apiCalls = 0, ?string $error = null, ?StravaSyncSource $source = null): void

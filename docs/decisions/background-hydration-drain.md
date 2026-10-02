@@ -47,6 +47,19 @@ code_refs:
 > takes what `backgroundHeadroom()` allows — is unchanged. See
 > [[backfill-borrows-the-live-reserve]].
 
+> **The forward roll stopped being a free side effect 2026-10-03.** The
+> *Nothing new was needed to make it safe* bullet below treats the per-run
+> weekly-snapshot roll as harmless. It was not. The drain hydrates
+> oldest-first, so each run rewrote every later week through today, and the
+> next run overwrote it. A 126-run, 27-week backlog took 10.2 s and 4,214
+> queries, where one rebuild takes 140 ms. A 2,016-run, 432-week backlog modelled
+> at about four hours of default-queue worker time. A backfilled run now only
+> marks its week dirty. The 15-minute tick rolls each dirty athlete forward
+> once, through a unique per-athlete job under the aggregator's lock. The drain's
+> completion rolls forward inline before recaps resume. Weekly snapshots may
+> therefore lag a running drain by up to one tick. Fresh runs, including
+> today's, still rebuild inline for the readiness ceiling. See [[run-ingest-pipeline]].
+
 ## Context
 
 [[summary-first-ingest]] made a connect cost single-digit Strava reads regardless of history depth, and it is still the right call. It also named its own price: *"a run nobody opens never gets its splits, zones, TRIMP, card, PRs or narration"*, and *"load history is genuinely incomplete until runs are opened."*
