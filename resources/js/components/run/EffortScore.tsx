@@ -1,7 +1,7 @@
 import { router, usePage } from '@inertiajs/react';
 import { useId, useState } from 'react';
 
-import type { PerceivedEffortPrompt, SharedProps } from '@/types/inertia';
+import type { SharedProps } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import PillButton from '@/components/ui/PillButton';
@@ -98,12 +98,10 @@ export function EffortSaved({
 export function EffortPicker({
     activityId,
     saved,
-    runName = null,
     onClose,
 }: Readonly<{
     activityId: number;
     saved: number | null;
-    runName?: string | null;
     onClose: () => void;
 }>) {
     const inputId = useId();
@@ -115,9 +113,6 @@ export function EffortPicker({
             <Eyebrow token="small" tone="ink-3" as="div">
                 <label htmlFor={inputId}>how hard did it feel</label>
             </Eyebrow>
-            {runName !== null && (
-                <p className="mt-1 text-xs text-text-2">{runName}</p>
-            )}
 
             <div
                 data-score-row
@@ -241,43 +236,6 @@ export function EffortPicker({
                         {zone.label}
                     </span>
                 ))}
-            </div>
-            <ScoreError />
-        </div>
-    );
-}
-
-/** The picker, collapsing to the saved chip once the run has a score. */
-export default function EffortScore({
-    prompt,
-    runName = null,
-}: Readonly<{ prompt: PerceivedEffortPrompt; runName?: string | null }>) {
-    const [editing, setEditing] = useState(false);
-
-    if (prompt.score === null || editing) {
-        return (
-            <EffortPicker
-                activityId={prompt.activity_id}
-                saved={prompt.score}
-                runName={runName}
-                onClose={() => setEditing(false)}
-            />
-        );
-    }
-
-    return (
-        <div>
-            <Eyebrow token="small" tone="ink-3" as="div">
-                how hard did it feel
-            </Eyebrow>
-            {runName !== null && (
-                <p className="mt-1 text-xs text-text-2">{runName}</p>
-            )}
-            <div className="mt-2">
-                <EffortSaved
-                    score={prompt.score}
-                    onChange={() => setEditing(true)}
-                />
             </div>
             <ScoreError />
         </div>

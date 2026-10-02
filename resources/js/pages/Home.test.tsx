@@ -351,4 +351,30 @@ describe('Home', () => {
 
         vi.useRealTimers();
     });
+
+    it('renders no effort picker on Today, even when the props name a run', () => {
+        const staleProps = {
+            effortPrompt: {
+                activity_id: 7,
+                score: null,
+                name: 'Treadmill',
+                start_date_local: '2026-06-11T06:00:00',
+            },
+        };
+        render(
+            <Home
+                briefing={briefing}
+                snapshot={snapshot}
+                hasRuns
+                pastYouTrend={trend()}
+                weekPlan={null}
+                {...staleProps}
+            />,
+        );
+
+        expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('how hard did it feel'),
+        ).not.toBeInTheDocument();
+    });
 });

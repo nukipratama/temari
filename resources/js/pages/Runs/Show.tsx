@@ -102,6 +102,16 @@ export default function RunsShow({
         <>
             <Head title={detail.name ?? 'Run'} />
             <PageContainer>
+                {!effortSaved && (
+                    <section className="mb-6 border-b border-dashed border-border pb-6">
+                        <EffortPicker
+                            activityId={activity.id}
+                            saved={effortScore}
+                            onClose={() => setEditingEffort(false)}
+                        />
+                    </section>
+                )}
+
                 <Eyebrow token="hero" tone="ink-3">
                     Activity
                 </Eyebrow>
@@ -138,16 +148,6 @@ export default function RunsShow({
                             )
                         }
                     />
-
-                    {!effortSaved && (
-                        <section>
-                            <EffortPicker
-                                activityId={activity.id}
-                                saved={effortScore}
-                                onClose={() => setEditingEffort(false)}
-                            />
-                        </section>
-                    )}
 
                     {detailed && <PastYouCard match={pastYou} />}
 

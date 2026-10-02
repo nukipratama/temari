@@ -70,19 +70,6 @@ class DashboardController extends Controller
 
                 return $race === null ? null : ['id' => $race->id, 'name' => $race->name, 'race_date' => $race->race_date->toDateString()];
             },
-            'effortPrompt' => function () use ($user): ?array {
-                $run = ActivityDetail::query()
-                    ->forUser($user->id)
-                    ->orderByDesc('activity_details.start_date_local')
-                    ->first();
-
-                return $run === null ? null : [
-                    'activity_id' => $run->activity_id,
-                    'score' => $run->perceived_effort,
-                    'name' => $run->name,
-                    'start_date_local' => $run->start_date_local?->format('Y-m-d\TH:i:s'),
-                ];
-            },
         ];
 
         // Only a planned rest day pays for this: every other day skips both

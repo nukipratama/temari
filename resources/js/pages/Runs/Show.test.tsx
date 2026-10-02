@@ -281,12 +281,14 @@ describe('Runs/Show', () => {
         expect(screen.getByText('+3.2%')).toBeInTheDocument();
     });
 
-    it('asks how hard an unscored run felt, below the hero', () => {
+    it('asks how hard an unscored run felt at the top, before the hero', () => {
         renderShow({ detail: { ...detail, perceived_effort: null } });
         expect(
             screen.getByRole('slider', { name: 'how hard did it feel' }),
         ).toBeInTheDocument();
         expect(screen.queryByText(/\/10$/)).not.toBeInTheDocument();
+        expect(precedes('how hard did it feel', 'Activity')).toBe(true);
+        expect(precedes('how hard did it feel', 'Morning Run')).toBe(true);
     });
 
     it('collapses a saved score to a chip in the hero that reopens the picker', () => {
