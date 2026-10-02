@@ -51,7 +51,7 @@ class WeeklyAggregator
 
     /**
      * The only ActivityDetail columns the weekly roll-up reads: the week filter
-     * and daily TRIMP map need the date, upsertWeek sums distance/elapsed_time,
+     * and daily TRIMP map need the date, weekRow sums distance/elapsed_time,
      * and averageDecoupling reads `stream_summary`. Everything else on the table
      * (notably the `splits_metric` and `laps` blobs) would be a year of JSON
      * pulled per ingest for nothing.
@@ -255,7 +255,7 @@ class WeeklyAggregator
      */
     private function loadHistoryThrough(User $user, Carbon $weekEnding, Carbon $from): Collection
     {
-        // Materialize once: upsertWeek enumerates this set several times per week
+        // Materialize once: weekRow enumerates this set several times per week
         // (filter + sums + decoupling), and a lazy query would re-run the whole
         // 365-day scan on each pass. A user-year of rows fits comfortably in memory.
         return Activity::analyzedJoinConstraint(
