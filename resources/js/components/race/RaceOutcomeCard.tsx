@@ -82,7 +82,7 @@ export default function RaceOutcomeCard({
                 <button
                     type="button"
                     onClick={() => setChanging(true)}
-                    className="focus-ring mt-2 rounded p-1 text-xs font-bold text-horizon-ink"
+                    className="focus-ring hit-area mt-2 rounded p-1 text-xs font-bold text-horizon-ink"
                 >
                     change
                 </button>

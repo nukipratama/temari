@@ -122,6 +122,9 @@ describe('RaceOutcomeCard', () => {
             screen.queryByRole('button', { name: 'i did not run it' }),
         ).not.toBeInTheDocument();
 
+        expect(screen.getByRole('button', { name: 'change' })).toHaveClass(
+            'hit-area',
+        );
         fireEvent.click(screen.getByRole('button', { name: 'change' }));
         expect(
             screen.getByRole('button', { name: 'i did not run it' }),

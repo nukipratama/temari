@@ -129,7 +129,7 @@ export default function InboxRow({
                         <button
                             type="button"
                             onClick={() => setShowAbsolute((prev) => !prev)}
-                            className="relative z-20 shrink-0 font-mono text-xs tabular-nums text-text-3"
+                            className="hit-area z-20 shrink-0 font-mono text-xs tabular-nums text-text-3"
                         >
                             <time
                                 dateTime={item.created_at ?? undefined}

@@ -55,7 +55,7 @@ export default function Race({
                     </h1>
                     <Link
                         href="/plan"
-                        className="focus-ring inline-flex flex-none items-center gap-0.5 text-xs font-semibold text-horizon-ink"
+                        className="focus-ring hit-area inline-flex flex-none items-center gap-0.5 text-xs font-semibold text-horizon-ink"
                     >
                         plan
                         <Icon
@@ -92,7 +92,7 @@ export default function Race({
                             <button
                                 type="button"
                                 onClick={() => setConfirmingClear(true)}
-                                className="focus-ring rounded p-1 text-xs font-bold text-ember-ink transition hover:opacity-80"
+                                className="focus-ring hit-area rounded p-1 text-xs font-bold text-ember-ink transition hover:opacity-80"
                             >
                                 clear race
                             </button>

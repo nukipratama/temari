@@ -108,6 +108,15 @@ describe('Inbox', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('gives mark all read a padded hit area', () => {
+        setMockPage({ unreadNotifications: 2 }, '/inbox');
+        renderInbox([item({ id: 5 })]);
+
+        expect(
+            screen.getByRole('button', { name: 'mark all read' }),
+        ).toHaveClass('hit-area');
+    });
+
     it('marks every loaded row read and hits the bulk endpoint', async () => {
         const fetchMock = okFetch();
         setMockPage({ unreadNotifications: 2 }, '/inbox');

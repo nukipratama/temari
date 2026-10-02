@@ -211,6 +211,9 @@ describe('Plan', () => {
         expect(
             screen.getByRole('link', { name: /race goal/i }),
         ).toHaveAttribute('href', '/race');
+        expect(screen.getByRole('link', { name: /race goal/i })).toHaveClass(
+            'hit-area',
+        );
     });
 
     it('carries no schedule / race-goal tab switch; the race line links out instead', () => {
@@ -390,5 +393,8 @@ describe('Plan', () => {
         expect(
             screen.getByRole('link', { name: /the full disclaimer/i }),
         ).toHaveAttribute('href', '/training-disclaimer');
+        expect(
+            screen.getByRole('link', { name: /the full disclaimer/i }),
+        ).toHaveClass('hit-area');
     });
 });

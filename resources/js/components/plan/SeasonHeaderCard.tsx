@@ -81,7 +81,7 @@ export default function SeasonHeaderCard({
                 season
             </Eyebrow>
             <Collapsible className="mt-2">
-                <CollapsibleTrigger className="group focus-ring flex w-full items-center gap-3 text-left">
+                <CollapsibleTrigger className="group focus-ring hit-area flex w-full items-center gap-3 text-left">
                     <span className="min-w-0 flex-1 text-xs text-text-2">
                         Week {weekIndex} of {totalWeeks}
                         {currentGroupKey
