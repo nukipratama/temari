@@ -20,7 +20,8 @@ return new class () extends PulseMigration {
                 ->where(fn (Builder $query) => $query
                     ->where('key', 'like', '%api.telegram.org%/bot%')
                     ->orWhere('key', 'like', '%lat=%')
-                    ->orWhere('key', 'like', '%latitude=%'))
+                    ->orWhere('key', 'like', '%latitude=%')
+                    ->orWhere('key', 'like', '%verify_token=%'))
                 ->delete();
         }
     }

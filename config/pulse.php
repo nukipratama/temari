@@ -219,6 +219,7 @@ return [
                 '#^https://api\.telegram\.org/bot[^/]+/(\w+).*#' => 'api.telegram.org/bot*/\1',
                 '#^https://(nominatim\.openstreetmap\.org/[^?]*).*#' => '\1',
                 '#^https://((?:archive-)?api\.open-meteo\.com/[^?]*).*#' => '\1',
+                '#^(https?://[^?]+/strava/webhook)\?.*#' => '\1',
             ],
         ],
 

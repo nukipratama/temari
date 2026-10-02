@@ -25,6 +25,7 @@ it('purges stored Pulse keys that carry the bot token or coordinates and keeps t
     seedPulseKey('GET', 'https://nominatim.openstreetmap.org/reverse?lat=-6.2146&lon=106.8451&format=jsonv2');
     seedPulseKey('GET', 'https://api.open-meteo.com/v1/forecast?latitude=-6.2146&longitude=106.8451');
     seedPulseKey('GET', 'https://archive-api.open-meteo.com/v1/archive?latitude=-6.2146&longitude=106.8451');
+    seedPulseKey('GET', 'https://temari.test/strava/webhook?hub.mode=subscribe&hub.verify_token=fakeVerifyToken&hub.challenge=probe-1');
     $strava = seedPulseKey('GET', 'strava.com/api/v3/*');
     $nominatim = seedPulseKey('GET', 'nominatim.openstreetmap.org/reverse');
 
