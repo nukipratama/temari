@@ -24,7 +24,7 @@ Every read goes through [`StravaClient::get()`](app/Services/Strava/StravaClient
 | --- | --- |
 | `/athlete/activities` | [ActivityFetcher](app/Services/Strava/ActivityFetcher.php#L63) |
 | `/activities/{id}` | [CleanupDeletedActivityJob](app/Jobs/Strava/CleanupDeletedActivityJob.php#L112) |
-| `/activities/{id}/streams` | [ActivityPipeline](app/Services/Run/Ingest/ActivityPipeline.php#L256) |
+| `/activities/{id}/streams` | [ActivityPipeline](app/Services/Run/Ingest/ActivityPipeline.php#L289) |
 | `/athlete/zones` | [ZoneFetcher](app/Services/Strava/ZoneFetcher.php#L44) |
 | `/athlete` | [VerifyStravaRevocationJob](app/Jobs/Strava/VerifyStravaRevocationJob.php#L52) |
 | `/push_subscriptions` | [WebhookSubscribeCommand](app/Console/Commands/Strava/WebhookSubscribeCommand.php#L25) |
