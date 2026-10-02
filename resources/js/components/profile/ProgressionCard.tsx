@@ -55,7 +55,13 @@ export default function ProgressionCard({
     byCategory,
 }: Readonly<{ byCategory: Record<string, ProgressionSeries> }>) {
     const tabs = TABS.filter((c) => byCategory[c]);
-    const [selected, setSelected] = useState<string>(tabs.at(-1) ?? tabs[0]);
+    const [selected, setSelected] = useState<string>(
+        () =>
+            tabs.find((c) => byCategory[c].goal_sec != null) ??
+            tabs.filter((c) => byCategory[c].progress != null).at(-1) ??
+            tabs.at(-1) ??
+            tabs[0],
+    );
     const series = byCategory[selected] ?? byCategory[tabs[0]];
 
     const progress = series.progress;
