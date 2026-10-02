@@ -15,6 +15,8 @@ import { dayStatusGlyph, SESSION_TYPE_ICON, weekdayLabel } from '@/lib/plan';
 const kmFigure = (km: number | null): string =>
     formatKm(km === null ? null : km * 1000, 1);
 
+const KmSuffix = () => <span className="max-[359px]:hidden"> km</span>;
+
 /** The borderless column both Today's and Plan's week strip wrap their day
  *  content in — only the ring/selection state differs between the two. */
 export const DAY_CELL_CLASS =
@@ -62,7 +64,8 @@ export function DayCellBody({
             {ran ? (
                 <>
                     <span className="text-meta font-bold tracking-tight whitespace-nowrap tabular-nums text-foreground">
-                        {kmFigure(day.actual_km)} km
+                        {kmFigure(day.actual_km)}
+                        <KmSuffix />
                     </span>
                     {!isRest && (
                         <span className="text-meta leading-tight tracking-tight whitespace-nowrap text-text-2">
@@ -72,7 +75,14 @@ export function DayCellBody({
                 </>
             ) : (
                 <span className="text-meta tracking-tight whitespace-nowrap text-foreground">
-                    {isRest ? 'rest' : `${kmFigure(planned)} km`}
+                    {isRest ? (
+                        'rest'
+                    ) : (
+                        <>
+                            {kmFigure(planned)}
+                            <KmSuffix />
+                        </>
+                    )}
                 </span>
             )}
             <span

@@ -129,7 +129,9 @@ describe('WeekPlanWidget', () => {
         await waitFor(() => {
             expectWeekKm('18.2', '24.6');
         });
-        expect(screen.getByText('km')).toBeInTheDocument();
+        expect(
+            screen.getByText('km', { selector: '.text-text-3' }),
+        ).toBeInTheDocument();
         expect(screen.getByText('26.9')).toBeInTheDocument();
         expect(screen.getByText('24.6')).toBeInTheDocument();
         expect(screen.getByText('eased')).toBeInTheDocument();
@@ -233,7 +235,7 @@ describe('WeekPlanWidget', () => {
             <WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />,
         );
 
-        expect(screen.getByText('4.2 km')).toBeInTheDocument();
+        expect(screen.getByText('4.2')).toBeInTheDocument();
         expect(
             container.querySelector('[title^="Done"] [data-icon="Check"]'),
         ).toBeInTheDocument();
@@ -266,9 +268,12 @@ describe('WeekPlanWidget', () => {
             <WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />,
         );
 
-        expect(screen.getByText('9.4 km')).toBeInTheDocument();
+        expect(screen.getByText('9.4')).toBeInTheDocument();
         expect(screen.getByText('of 8.0')).toBeInTheDocument();
-        expect(screen.getAllByText('8.0 km')).toHaveLength(6);
+        expect(screen.getAllByText('8.0')).toHaveLength(6);
+        expect(
+            screen.getByRole('link', { name: /ran 9\.4 km/ }),
+        ).toBeInTheDocument();
         expect(
             container.querySelector('[title^="Done"] [data-icon="Check"]'),
         ).toBeInTheDocument();
@@ -288,7 +293,7 @@ describe('WeekPlanWidget', () => {
         );
         render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
 
-        expect(screen.getByText('4.2 km')).toBeInTheDocument();
+        expect(screen.getByText('4.2')).toBeInTheDocument();
         expect(screen.queryByText(/^of /)).not.toBeInTheDocument();
     });
 
@@ -315,7 +320,7 @@ describe('WeekPlanWidget', () => {
         );
         render(<WeekPlanWidget weekPlan={weekOf(days)} snapshot={snapshot} />);
 
-        expect(screen.getByText('5.0 km')).toBeInTheDocument();
+        expect(screen.getByText('5.0')).toBeInTheDocument();
         expect(screen.getByText('of 9.1')).toBeInTheDocument();
         expect(screen.queryByText('5k')).not.toBeInTheDocument();
         expect(screen.queryByText('of 9.1k')).not.toBeInTheDocument();
