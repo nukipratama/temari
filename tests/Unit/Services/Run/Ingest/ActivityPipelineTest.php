@@ -1522,3 +1522,94 @@ it('drains 5+ runs recent-first then oldest-first, settling the replay exactly o
         ->pluck('discriminator')
         ->all())->toEqualCanonicalizing(AnalysisType::TREND_READ_RANGES);
 });
+
+function scoredRunWithoutHeartRate(): Activity
+{
+    $activity = makeActivityWithConnection();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-05-10 06:30:00'),
+        'moving_time' => 2400,
+        'has_heartrate' => false,
+        'average_heartrate' => null,
+        'perceived_effort' => 6,
+        'trimp_edwards' => 120.0,
+        'stream_summary' => null,
+    ]);
+
+    return $activity;
+}
+
+/** @return array<string, mixed> */
+function resyncedRunPayload(bool $hasHeartRate): array
+{
+    return [
+        'name' => 'Treadmill',
+        'start_date_local' => '2026-05-10 06:30:00',
+        'distance' => 6000.0,
+        'moving_time' => 2400,
+        'elapsed_time' => 2400,
+        'has_heartrate' => $hasHeartRate,
+        'average_heartrate' => $hasHeartRate ? 150.0 : null,
+        'splits_metric' => [],
+        'map' => null,
+    ];
+}
+
+it('uses heart-rate TRIMP once a resync brings heart rate, keeping the stored effort score', function (): void {
+    $activity = scoredRunWithoutHeartRate();
+    $time = range(0, 2400, 60);
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response(resyncedRunPayload(true)),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => $time],
+            'heartrate' => ['data' => array_fill(0, count($time), 145)],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    $detail = $activity->detail()->first();
+    expect($detail->perceived_effort)->toBe(6)
+        ->and($detail->trimp_edwards)->toBeFloat()->not->toBe(120.0)
+        ->and($detail->trimp_edwards)->toEqualWithDelta(80.0, 5.0);
+});
+
+it('keeps counting the effort score when a resync still carries no heart rate', function (): void {
+    $activity = scoredRunWithoutHeartRate();
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response(resyncedRunPayload(false)),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([
+            'time' => ['data' => range(0, 2400, 60)],
+            'velocity_smooth' => ['data' => array_fill(0, 41, 2.5)],
+        ]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    expect($activity->detail()->first()->trimp_edwards)->toBe(120.0);
+});
+
+it('keeps counting the effort score when a resync finds no streams', function (): void {
+    $activity = scoredRunWithoutHeartRate();
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response(resyncedRunPayload(false)),
+        'strava.com/api/v3/activities/999/streams*' => Http::response(['error' => 'gone'], 404),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    expect($activity->detail()->first()->trimp_edwards)->toBe(120.0);
+});
+
+it('recomputeSummary writes the effort-score load for a run with no heart rate and no stored streams', function (): void {
+    $activity = scoredRunWithoutHeartRate();
+    $activity->update(['analyzed_at' => now()]);
+    $activity->detail()->update(['trimp_edwards' => null, 'perceived_effort' => 5]);
+
+    Http::fake();
+    $this->pipeline->recomputeSummary($activity->fresh());
+
+    expect($activity->detail()->first()->trimp_edwards)->toBe(100.0)
+        ->and(WeeklySnapshot::query()->where('user_id', $activity->user_id)->value('weekly_trimp'))->toBe(100.0);
+    Http::assertNothingSent();
+});

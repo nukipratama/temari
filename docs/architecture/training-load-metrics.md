@@ -3,12 +3,13 @@ title: Training-Load Metrics Engine
 description: How per-run TRIMP rolls up into CTL/ATL long-term and short-term load, load balance, strain and monotony, and how weekly snapshots stay correct when a backdated run arrives
 tags: [architecture, run]
 status: living
-reviewed: 2026-09-28
+reviewed: 2026-10-02
 code_refs:
   - app/Services/Run/Metrics/TrainingLoad.php
   - app/Services/Run/Metrics/WeeklyAggregator.php
   - app/Models/WeeklySnapshot.php
   - app/Services/Run/Ingest/ActivityPipeline.php
+  - app/Services/Run/Metrics/PerceivedEffort.php
 ---
 
 # Training-Load Metrics Engine
@@ -17,9 +18,11 @@ This is the engine behind the dashboard's training-load read-out and the [[run-h
 
 ## TRIMP: the unit of training stress
 
-Everything is built on **Edwards TRIMP** — a single number for how hard one run was. The [[run-ingest-pipeline]] buckets a run's heart rate into HR zones (see [[stream-analysis]]) and hands the minutes-per-zone to [edwardsTrimp](app/Services/Run/Metrics/TrainingLoad.php#L32), which weights each zone by its intensity (the higher the zone, the heavier the weight; see [zoneWeight](app/Services/Run/Metrics/TrainingLoad.php#L485)) and sums them. The result is written onto the activity at [ActivityPipeline](app/Services/Run/Ingest/ActivityPipeline.php#L443) as `trimp_edwards`, so each run carries its own stress score.
+Everything is built on **Edwards TRIMP** — a single number for how hard one run was. The [[run-ingest-pipeline]] buckets a run's heart rate into HR zones (see [[stream-analysis]]) and hands the minutes-per-zone to [edwardsTrimp](app/Services/Run/Metrics/TrainingLoad.php#L32), which weights each zone by its intensity (the higher the zone, the heavier the weight; see [zoneWeight](app/Services/Run/Metrics/TrainingLoad.php#L485)) and sums them. The result is written onto the activity at [ActivityPipeline](app/Services/Run/Ingest/ActivityPipeline.php#L469) as `trimp_edwards`, so each run carries its own stress score.
 
-Because the weights and the zone math depend on the runner's HR zones, recomputing with new zones (see [[settings-hr-zones]]) re-derives TRIMP without re-fetching from Strava — that's what [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L472) does.
+Because the weights and the zone math depend on the runner's HR zones, recomputing with new zones (see [[settings-hr-zones]]) re-derives TRIMP without re-fetching from Strava — that's what [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L490) does.
+
+A run with **no heart rate** has no Edwards TRIMP. Within 72 hours of its start the athlete can rate how hard it felt on the CR-10 scale, and the same resolver then writes `score × moving minutes ÷ 2` into `trimp_edwards` ([PerceivedEffort.php:24](app/Services/Run/Metrics/PerceivedEffort.php#L24), [ActivityPipeline.php:469](app/Services/Run/Ingest/ActivityPipeline.php#L469)). Heart rate always wins, and clearing a score returns the run to unscored. See [[an-effort-score-gives-a-run-without-heart-rate-its-load]].
 
 ## CTL / ATL: long-term and short-term load as decaying averages
 
@@ -56,7 +59,7 @@ Two subtleties:
 
 ### Backdated runs propagate forward
 
-CTL is **cumulative**: a run inserted into a past week changes the long-term load baseline of *every* later week too. So ingest doesn't just rebuild that one week — [rebuildForwardFrom](app/Services/Run/Metrics/WeeklyAggregator.php#L159) rebuilds the affected week and every week through today, loading one shared lead-in series and re-rolling each week's snapshot from it in a single query. This is what [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L472) calls after a run's TRIMP changes. A full from-scratch backfill is [rebuildFor](app/Services/Run/Metrics/WeeklyAggregator.php#L226).
+CTL is **cumulative**: a run inserted into a past week changes the long-term load baseline of *every* later week too. So ingest doesn't just rebuild that one week — [rebuildForwardFrom](app/Services/Run/Metrics/WeeklyAggregator.php#L159) rebuilds the affected week and every week through today, loading one shared lead-in series and re-rolling each week's snapshot from it in a single query. This is what [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php#L490) calls after a run's TRIMP changes. A full from-scratch backfill is [rebuildFor](app/Services/Run/Metrics/WeeklyAggregator.php#L226).
 
 ## Where the numbers surface
 

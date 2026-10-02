@@ -26,7 +26,9 @@ class SummaryIngest
     /**
      * ActivityDetail columns the summary endpoint can fill. Everything else on
      * the table (splits, laps, calories, device, weather, stream summary, TRIMP)
-     * needs the detail or streams endpoint and stays null until hydration.
+     * needs the detail or streams endpoint and stays null until hydration; the
+     * one TRIMP a summary row carries is an effort-score load, on a run without
+     * heart rate.
      *
      * @var list<string>
      */
@@ -98,6 +100,12 @@ class SummaryIngest
         foreach (array_chunk($detailRows, self::CHUNK) as $chunk) {
             ActivityDetail::query()->upsert($chunk, ['activity_id'], self::SUMMARY_COLUMNS);
         }
+
+        ActivityDetail::query()
+            ->whereIn('activity_id', $activities->pluck('id'))
+            ->where('has_heartrate', true)
+            ->whereNotNull('trimp_edwards')
+            ->update(['trimp_edwards' => null]);
 
         // A stub left behind by an earlier failed ingest now carries honest
         // summary data, so it earns its way past the AnalyzedScope.

@@ -27,6 +27,7 @@ use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PerformanceEvidenceController;
 use App\Http\Controllers\RecommendationViewController;
 use App\Http\Controllers\RecoveryFeedbackController;
+use App\Http\Controllers\PerceivedEffortController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
 use App\Http\Controllers\RaceOutcomeController;
@@ -123,6 +124,12 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/activities/{activity}', [RunController::class, 'show'])
         ->middleware('inertia-etag')
         ->name('activities.show');
+    Route::patch('/activities/{activity}/effort', [PerceivedEffortController::class, 'update'])
+        ->middleware('throttle:30,1')
+        ->name('activities.effort.update');
+    Route::delete('/activities/{activity}/effort', [PerceivedEffortController::class, 'destroy'])
+        ->middleware('throttle:30,1')
+        ->name('activities.effort.destroy');
 
     Route::get('/trends', TrendsController::class)->name('trends');
 

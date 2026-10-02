@@ -14,6 +14,7 @@ use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\DetailHydrator;
+use App\Services\Run\Metrics\PerceivedEffort;
 use App\Services\Run\Metrics\PrBibResolver;
 use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\Story\Card\CardFacts;
@@ -132,6 +133,7 @@ class RunController extends Controller
                 return $match;
             },
             'prBib' => fn (): ?array => $prBib->resolve($activity, $detail),
+            'perceivedEffort' => fn (): ?array => PerceivedEffort::prompt($detail, now()),
         ]);
     }
 

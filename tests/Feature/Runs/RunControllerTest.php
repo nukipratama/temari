@@ -533,3 +533,29 @@ function insightOnlyHeaders(object $actingAs, int $activityId): array
         'X-Inertia-Partial-Data' => 'speechAnalysis,runInsight',
     ];
 }
+
+it('offers the effort score on a run without heart rate inside its 72 hours, and on no other run', function (): void {
+    Carbon::setTestNow('2026-10-06 08:00:00');
+    $user = User::factory()->create();
+    $make = function (string $start, bool $hasHr, ?int $score) use ($user): Activity {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => $start, 'has_heartrate' => $hasHr, 'perceived_effort' => $score]);
+
+        return $activity;
+    };
+    $open = $make('2026-10-05 06:00:00', false, 7);
+    $closed = $make('2026-10-03 06:00:00', false, 5);
+    $withHr = $make('2026-10-06 06:00:00', true, null);
+
+    $this->actingAs($user)->get("/activities/{$open->id}")
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('perceivedEffort.activity_id', $open->id)
+            ->where('perceivedEffort.score', 7)
+            ->where('detail.perceived_effort', 7));
+    $this->actingAs($user)->get("/activities/{$closed->id}")
+        ->assertInertia(fn (Assert $page) => $page->where('perceivedEffort', null));
+    $this->actingAs($user)->get("/activities/{$withHr->id}")
+        ->assertInertia(fn (Assert $page) => $page->where('perceivedEffort', null));
+
+    Carbon::setTestNow();
+});

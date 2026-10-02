@@ -18,7 +18,7 @@ class SummaryRecomputer
      * Refresh one activity's `stream_summary` / `trimp_edwards` from its
      * ALREADY-STORED streams using the user's CURRENT heart-rate zones, then
      * rebuild that week's snapshot forward. Makes ZERO Strava HTTP calls. No-op
-     * when the activity is gone, or has no stored streams / no detail row.
+     * when the activity is gone, has no detail row, or carries heart rate but no stored streams.
      */
     public function recomputeFromStoredStreams(int $activityId): void
     {

@@ -2,11 +2,13 @@ import { useRef } from 'react';
 
 import type {
     BriefingResult,
+    PerceivedEffortPrompt,
     RestDayEasePace,
     WeekPlanDay,
 } from '@/types/inertia';
 
 import { AskedRanResult, ChangeRow } from '@/components/plan/DeltaPair';
+import EffortScore from '@/components/run/EffortScore';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { renderNarration } from '@/components/temari/Citation';
 import MascotWatermark from '@/components/temari/MascotWatermark';
@@ -227,6 +229,7 @@ export default function TodaySession({
     today = null,
     restDayEasePace = null,
     drawnAnchors = new Set<string>(),
+    effortPrompt = null,
 }: Readonly<{
     briefing: BriefingResult;
     /** Today's row of `weekPlan.days`, null when no plan covers today. */
@@ -235,6 +238,8 @@ export default function TodaySession({
     restDayEasePace?: RestDayEasePace | null;
     /** From {@link drawnHomeAnchors} — which citations this page can honour. */
     drawnAnchors?: ReadonlySet<string>;
+    /** The newest run without heart rate still open to an effort score. */
+    effortPrompt?: PerceivedEffortPrompt | null;
 }>) {
     const voice = briefing.mascotVoice;
     const recommendationRef = useRef<HTMLElement>(null);
@@ -278,6 +283,15 @@ export default function TodaySession({
                                 drawnAnchors={drawnAnchors}
                             />
                         )}
+                    />
+                </div>
+            )}
+            {effortPrompt !== null && (
+                <div className="mt-4">
+                    <EffortScore
+                        key={effortPrompt.activity_id}
+                        prompt={effortPrompt}
+                        runName={effortPrompt.name}
                     />
                 </div>
             )}

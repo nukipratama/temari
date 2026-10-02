@@ -281,6 +281,29 @@ describe('Runs/Show', () => {
         expect(screen.getByText('+3.2%')).toBeInTheDocument();
     });
 
+    it('asks how hard a run without heart rate felt while its window is open', () => {
+        renderShow({
+            perceivedEffort: {
+                activity_id: 99,
+                score: 6,
+                name: 'Morning Run',
+                start_date_local: '2026-05-10T06:30:00',
+            },
+        });
+        expect(screen.getByText(/harder/)).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'change' }),
+        ).toBeInTheDocument();
+    });
+
+    it('draws no effort score on any other run', () => {
+        renderShow();
+        expect(
+            screen.queryByRole('button', { name: 'change' }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    });
+
     it('offers the per-run ask panel', () => {
         renderShow();
         expect(

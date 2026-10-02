@@ -13,6 +13,7 @@ use App\Models\RaceGoal;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Metrics\PerceivedEffort;
 use App\Services\Run\Metrics\RestDayEasePace;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Story\BriefingComposer;
@@ -69,6 +70,18 @@ class DashboardController extends Controller
                     ->first();
 
                 return $race === null ? null : ['id' => $race->id, 'name' => $race->name, 'race_date' => $race->race_date->toDateString()];
+            },
+            'effortPrompt' => function () use ($user): ?array {
+                $now = Carbon::now();
+                $run = ActivityDetail::query()
+                    ->forUser($user->id)
+                    ->where('activity_details.has_heartrate', false)
+                    ->where('activity_details.start_date_local', '>=', $now->copy()->subHours(PerceivedEffort::WINDOW_HOURS)->subDay())
+                    ->orderByDesc('activity_details.start_date_local')
+                    ->get()
+                    ->first(fn (ActivityDetail $detail): bool => PerceivedEffort::accepts($detail, $now));
+
+                return $run === null ? null : PerceivedEffort::prompt($run, $now);
             },
         ];
 

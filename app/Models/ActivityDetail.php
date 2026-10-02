@@ -38,6 +38,7 @@ use Override;
  * @property array<int, array<string, mixed>>|null $laps
  * @property string|null $summary_polyline
  * @property float|null $trimp_edwards
+ * @property int|null $perceived_effort
  * @property int|null $suffer_score
  * @property int|null $workout_type
  * @property float|null $elev_high
@@ -80,6 +81,7 @@ use Override;
     'laps',
     'summary_polyline',
     'trimp_edwards',
+    'perceived_effort',
     'suffer_score',
     'workout_type',
     'elev_high',
@@ -215,6 +217,7 @@ class ActivityDetail extends Model
             'splits_metric' => 'array',
             'laps' => 'array',
             'trimp_edwards' => 'float',
+            'perceived_effort' => 'integer',
             'suffer_score' => 'integer',
             'workout_type' => 'integer',
             'elev_high' => 'float',

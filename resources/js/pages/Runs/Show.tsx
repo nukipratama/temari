@@ -5,12 +5,14 @@ import type {
     Activity,
     ActivityDetail,
     AnalysisPayload,
+    PerceivedEffortPrompt,
     Mood,
     StoryLine,
 } from '@/types/inertia';
 
 import TimeInZoneBar from '@/components/profile/TimeInZoneBar';
 import AskAboutRun from '@/components/run/AskAboutRun';
+import EffortScore from '@/components/run/EffortScore';
 import LapsCarousel from '@/components/run/LapsCarousel';
 import PastYouCard, { type PastYouMatch } from '@/components/run/PastYouCard';
 import { type PrBib } from '@/components/run/PrBibStamp';
@@ -54,6 +56,8 @@ interface ShowProps {
     isChainHead: boolean;
     pastYou: PastYouMatch | null;
     prBib: PrBib | null;
+    /** Set only on a run without heart rate inside its 72-hour window. */
+    perceivedEffort?: PerceivedEffortPrompt | null;
 }
 
 export default function RunsShow({
@@ -68,6 +72,7 @@ export default function RunsShow({
     isChainHead,
     pastYou,
     prBib,
+    perceivedEffort = null,
 }: Readonly<ShowProps>) {
     const [shareOpen, setShareOpen] = useState(false);
     const [shareAsked, setShareAsked] = useState(false);
@@ -126,6 +131,12 @@ export default function RunsShow({
                         }
                         prBib={prBib}
                     />
+
+                    {perceivedEffort !== null && (
+                        <section>
+                            <EffortScore prompt={perceivedEffort} />
+                        </section>
+                    )}
 
                     {detailed && <PastYouCard match={pastYou} />}
 

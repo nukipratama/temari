@@ -166,3 +166,23 @@ it('stores a treadmill run without coordinates or a polyline', function (): void
         ->and($detail->summary_polyline)->toBeNull()
         ->and($detail->has_heartrate)->toBeFalse();
 });
+
+it('stops counting an effort score once a resync reports heart rate on a summary-only run', function (): void {
+    $user = User::factory()->create();
+    app(SummaryIngest::class)->store($user->id, [
+        summaryPayload(111, ['has_heartrate' => false, 'average_heartrate' => null]),
+        summaryPayload(222, ['has_heartrate' => false, 'average_heartrate' => null]),
+    ]);
+    ActivityDetail::query()->update(['perceived_effort' => 6, 'trimp_edwards' => 120.0]);
+
+    app(SummaryIngest::class)->store($user->id, [
+        summaryPayload(111),
+        summaryPayload(222, ['has_heartrate' => false, 'average_heartrate' => null]),
+    ]);
+
+    $gainedHr = Activity::query()->where('strava_external_id', 111)->firstOrFail()->detail()->first();
+    $stillNoHr = Activity::query()->where('strava_external_id', 222)->firstOrFail()->detail()->first();
+    expect($gainedHr->perceived_effort)->toBe(6)
+        ->and($gainedHr->trimp_edwards)->toBeNull()
+        ->and($stillNoHr->trimp_edwards)->toBe(120.0);
+});
