@@ -80,6 +80,41 @@ describe('Legal/Document', () => {
         ).toHaveAttribute('id', 'notes');
     });
 
+    it('spaces each section rule evenly above and below', () => {
+        renderDocument();
+
+        const sections = SECTIONS.map((section) =>
+            screen
+                .getByRole('heading', { level: 2, name: section.heading })
+                .closest('section'),
+        );
+        const sectionList = sections[0]?.parentElement;
+
+        expect(sectionList).toHaveClass(
+            '[&>*:not(:last-child)]:pb-10',
+            '[&>*:not(:first-child)]:pt-10',
+        );
+        expect(sectionList).not.toHaveClass(
+            '[&>*]:pt-10',
+            '[&>*:first-child]:pt-0',
+        );
+    });
+
+    it('caps paragraphs and list items at a readable measure', () => {
+        renderDocument();
+
+        for (const text of [
+            'What is held, and what leaves the server.',
+            'Your name and your Strava athlete id.',
+            'Only you see your runs.',
+        ]) {
+            expect(screen.getByText(text)).toHaveClass('max-w-[38rem]');
+        }
+        expect(
+            screen.getByRole('heading', { level: 1, name: 'privacy policy' }),
+        ).not.toHaveClass('max-w-[38rem]');
+    });
+
     it('turns a bare URL in the copy into a link', () => {
         renderDocument();
 

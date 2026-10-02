@@ -84,7 +84,7 @@ export default function LegalDocument({
                     <p className="mt-2 font-mono text-xs font-semibold uppercase tracking-wider text-text-3">
                         Last updated {updated}
                     </p>
-                    <p className="mt-4 font-sans text-sm leading-relaxed text-text-2">
+                    <p className="mt-4 max-w-[38rem] font-sans text-sm leading-relaxed text-text-2">
                         {linkify(intro)}
                     </p>
 
@@ -101,12 +101,14 @@ export default function LegalDocument({
                         </Eyebrow>
                         <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-4.5 font-sans text-sm leading-relaxed text-foreground marker:text-text-3">
                             {summary.map((line) => (
-                                <li key={line}>{line}</li>
+                                <li key={line} className="max-w-[38rem]">
+                                    {line}
+                                </li>
                             ))}
                         </ul>
                     </section>
 
-                    <div className="mt-10 flex flex-col divide-y divide-dashed divide-border [&>*]:pt-10 [&>*:first-child]:pt-0">
+                    <div className="mt-10 flex flex-col divide-y divide-dashed divide-border [&>*:not(:last-child)]:pb-10 [&>*:not(:first-child)]:pt-10">
                         {sections.map((section) => (
                             <section
                                 key={section.heading}
@@ -123,7 +125,7 @@ export default function LegalDocument({
                                 {section.paragraphs.map((paragraph) => (
                                     <p
                                         key={paragraph}
-                                        className="mt-3 font-sans text-sm leading-relaxed text-foreground"
+                                        className="mt-3 max-w-[38rem] font-sans text-sm leading-relaxed text-foreground"
                                     >
                                         {linkify(paragraph)}
                                     </p>
