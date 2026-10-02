@@ -157,6 +157,8 @@ describe('MapWeatherPanel', () => {
         expect(
             container.querySelector('.skeleton, .skeleton-on-sky'),
         ).not.toBeNull();
+        expect(container.querySelector('.h-\\[17\\.5rem\\]')).not.toBeNull();
+        expect(container.querySelector('.h-\\[280px\\]')).toBeNull();
     });
 
     it('keeps the wind and humidity units on one line', () => {

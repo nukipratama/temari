@@ -168,6 +168,14 @@ describe('FitnessPanel', () => {
         expect(screen.getByText('fresh')).toBeInTheDocument();
     });
 
+    it('sizes the chart in rem so it scales with the type step', () => {
+        render(<FitnessPanel trend={pointsOverDays(10)} />);
+
+        expect(screen.getByRole('img', { name: /now at/ })).toHaveClass(
+            'h-[10.5rem]',
+        );
+    });
+
     it('mentions the current long-term load reading in the accessible summary', async () => {
         const trend = pointsOverDays(10);
         render(<FitnessPanel trend={trend} />);

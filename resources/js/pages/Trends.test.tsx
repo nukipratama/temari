@@ -173,6 +173,15 @@ describe('Trends', () => {
         );
     });
 
+    it('sizes the fitness chart skeleton in rem to match the chart', () => {
+        setMockDeferred(['ctlTrend', 'chartAnnotations']);
+
+        const { container } = render(<Trends {...BASE_PROPS} />);
+
+        expect(container.querySelector('.h-\\[10\\.5rem\\]')).not.toBeNull();
+        expect(container.querySelector('.h-\\[168px\\]')).toBeNull();
+    });
+
     it("states this week's km and runs against last week", () => {
         render(<Trends {...BASE_PROPS} />);
 
