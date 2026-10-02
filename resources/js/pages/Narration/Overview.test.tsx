@@ -96,6 +96,8 @@ const baseProps: NarrationOverviewProps = {
             user_name: 'Alice',
             is_demo: false,
             deleted: false,
+            last_seen_at: null,
+            away: false,
             today: 0.42,
             last7: 0.42,
             last30: 0.42,

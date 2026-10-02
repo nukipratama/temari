@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
 use App\Models\AI\TokenUsage;
@@ -44,6 +45,7 @@ class TokenUsageReport
         private readonly LlmCostCalculator $costCalculator,
         private readonly CostCeilingLedger $ceilingLedger,
         private readonly CeilingOverride $ceilingOverride,
+        private readonly RecentlyActiveUsers $activeUsers,
     ) {
     }
 
@@ -528,6 +530,7 @@ class TokenUsageReport
      *
      * @return list<array{
      *     user_id:int, user_name:string|null, is_demo:bool, deleted:bool,
+     *     last_seen_at:string|null, away:bool,
      *     today:float, last7:float, last30:float, calls:int, tokens:int,
      *     ceiling:float|null, ceiling_overridden:bool, capped:bool,
      *     sparkline: list<array{day:string, cost:float}>,
@@ -540,13 +543,15 @@ class TokenUsageReport
         $windowStart = Carbon::today()->subDays(self::ATHLETE_WINDOW_DAYS - 1)->startOfDay();
         $spend = $this->athleteSpend($windowStart);
 
-        /** @var array<int, array{name:string|null, is_demo:bool, deleted:bool}> $identities */
+        /** @var array<int, array{name:string|null, is_demo:bool, deleted:bool, last_seen_at:string|null, away:bool}> $identities */
         $identities = [];
-        foreach (User::query()->orderBy('id')->get(['id', 'name', 'is_demo']) as $user) {
+        foreach (User::query()->orderBy('id')->get(['id', 'name', 'is_demo', 'last_seen_at']) as $user) {
             $identities[(int) $user->id] = [
                 'name' => $user->name,
                 'is_demo' => (bool) $user->is_demo,
                 'deleted' => false,
+                'last_seen_at' => $user->last_seen_at?->toIso8601String(),
+                'away' => ! $user->is_demo && ! $this->activeUsers->includes($user),
             ];
         }
 
@@ -561,6 +566,8 @@ class TokenUsageReport
                 'name' => self::stringOrNull($entry['name']),
                 'is_demo' => false,
                 'deleted' => true,
+                'last_seen_at' => null,
+                'away' => false,
             ];
         }
 
@@ -578,6 +585,8 @@ class TokenUsageReport
                 'user_name' => $identity['name'],
                 'is_demo' => $identity['is_demo'],
                 'deleted' => $identity['deleted'],
+                'last_seen_at' => $identity['last_seen_at'],
+                'away' => $identity['away'],
                 'today' => $today,
                 'last7' => $entry['last7'] ?? 0.0,
                 'last30' => $entry['last30'] ?? 0.0,

@@ -12,6 +12,8 @@ function header(overrides: Partial<AthleteHeaderData> = {}): AthleteHeaderData {
             name: 'Dina',
             is_demo: false,
             strava_athlete_id: 555_444,
+            last_seen_at: null,
+            away: false,
         },
         currency: 'USD',
         today_spend: 0.25,

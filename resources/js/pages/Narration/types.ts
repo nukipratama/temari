@@ -145,6 +145,9 @@ export interface AthleteRow {
     is_demo: boolean;
     /** The account is gone; the name is the snapshot taken on delete. */
     deleted: boolean;
+    last_seen_at: string | null;
+    /** Outside the scheduler's active window, so scheduled narration skips them. */
+    away: boolean;
     today: number;
     last7: number;
     last30: number;
@@ -236,6 +239,8 @@ export interface AthleteHeaderData {
         name: string;
         is_demo: boolean;
         strava_athlete_id: number | null;
+        last_seen_at: string | null;
+        away: boolean;
     };
     currency: string;
     today_spend: number;

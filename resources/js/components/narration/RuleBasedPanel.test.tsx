@@ -11,6 +11,8 @@ function athlete(overrides: Partial<AthleteRow> = {}): AthleteRow {
         user_name: 'Nuki',
         is_demo: false,
         deleted: false,
+        last_seen_at: null,
+        away: false,
         today: 0,
         last7: 0,
         last30: 0,

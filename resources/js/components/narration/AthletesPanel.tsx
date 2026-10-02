@@ -3,6 +3,7 @@ import { Users } from 'lucide-react';
 import type { AthleteRow } from '@/pages/Narration/types';
 
 import EmptyState from '@/components/narration/EmptyState';
+import LastOpen from '@/components/narration/LastOpen';
 import Sparkline from '@/components/narration/Sparkline';
 import SectionHeading from '@/components/SectionHeading';
 import { Card } from '@/components/ui/card';
@@ -123,6 +124,13 @@ function AthleteRowView({
                     {row.is_demo && <Tag label="demo" />}
                     {row.capped && <Tag label="capped" alert />}
                     {row.ceiling_overridden && <Tag label="override" />}
+                </div>
+                <div className="mt-1">
+                    <LastOpen
+                        lastSeenAt={row.last_seen_at}
+                        away={row.away}
+                        isDemo={row.is_demo}
+                    />
                 </div>
             </div>
 

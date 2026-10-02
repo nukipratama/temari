@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\AI\RecentlyActiveUsers;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
@@ -488,3 +489,23 @@ it('narrows the cost chart to the athlete the filter names', function (): void {
 it('rejects a non-numeric athlete filter', function (): void {
     $this->getJson('/devtools/narration?athlete=alice')->assertStatus(422);
 });
+
+it('carries each athlete\'s last open and the away flag the scheduler\'s own window decides', function (array $attributes, bool $away): void {
+    Carbon::setTestNow('2026-09-30 10:00:00');
+    $user = User::factory()->create($attributes);
+
+    $this->get('/devtools/narration')
+        ->assertSuccessful()
+        ->assertInertia(function (AssertableInertia $page) use ($user, $away): void {
+            $row = collect($page->toArray()['props']['athletes'])->firstWhere('user_id', $user->id);
+
+            expect($row['last_seen_at'])->toBe($user->last_seen_at?->toIso8601String())
+                ->and($row['away'])->toBe($away)
+                ->and($row['away'])->toBe(! $user->is_demo && ! app(RecentlyActiveUsers::class)->includes($user));
+        });
+})->with([
+    'active' => [['last_seen_at' => '2026-09-27 08:00:00'], false],
+    'away' => [['last_seen_at' => '2026-09-01 08:00:00'], true],
+    'never seen' => [['last_seen_at' => null], true],
+    'demo' => [['is_demo' => true, 'last_seen_at' => null], false],
+]);
