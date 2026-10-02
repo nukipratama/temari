@@ -150,7 +150,7 @@ export default function MobileBottomNav() {
                                     <TabIcon
                                         className={cn(
                                             'transition-[width,height] duration-150',
-                                            isActive ? 'size-5' : 'size-[18px]',
+                                            isActive ? 'size-5' : 'size-4.5',
                                         )}
                                         aria-hidden
                                     />

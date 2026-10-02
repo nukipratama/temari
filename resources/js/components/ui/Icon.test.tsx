@@ -22,17 +22,34 @@ describe('Icon', () => {
         expect(svg).toHaveClass('text-leaf-ink');
     });
 
-    it('sizes from width, falling back to height, then 24', () => {
+    it('sizes in rem from width, falling back to height, then 24', () => {
         const { container: byWidth } = render(
             <Icon icon={X} width={18} height={30} />,
         );
-        expect(byWidth.querySelector('svg')).toHaveAttribute('width', '18');
+        expect(byWidth.querySelector('svg')).toHaveAttribute(
+            'width',
+            '1.125rem',
+        );
+        expect(byWidth.querySelector('svg')).toHaveAttribute(
+            'height',
+            '1.125rem',
+        );
 
         const { container: byHeight } = render(<Icon icon={X} height={20} />);
-        expect(byHeight.querySelector('svg')).toHaveAttribute('width', '20');
+        expect(byHeight.querySelector('svg')).toHaveAttribute(
+            'width',
+            '1.25rem',
+        );
+
+        const { container: small } = render(<Icon icon={X} width={12} />);
+        expect(small.querySelector('svg')).toHaveAttribute('width', '0.75rem');
+        expect(small.querySelector('svg')).toHaveAttribute('height', '0.75rem');
 
         const { container: byDefault } = render(<Icon icon={X} />);
-        expect(byDefault.querySelector('svg')).toHaveAttribute('width', '24');
+        expect(byDefault.querySelector('svg')).toHaveAttribute(
+            'width',
+            '1.5rem',
+        );
     });
 
     it('passes through arbitrary SVG props', () => {
