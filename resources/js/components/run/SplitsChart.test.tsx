@@ -83,6 +83,17 @@ describe('SplitsChart', () => {
         ).toBeInTheDocument();
     });
 
+    it('fills the slower kms with the ground-reactive muted surface and keeps the fastest on horizon', () => {
+        render(<SplitsChart rows={rows} />);
+        const fill = (name: string) =>
+            screen.getByRole('button', { name }).querySelector('div');
+
+        const slower = fill('Km 1, 5:10 pace');
+        expect(slower).toHaveClass('bg-muted');
+        expect(slower).not.toHaveClass('bg-sky-2');
+        expect(fill('Km 2, 4:40 pace')).toHaveClass('bg-horizon');
+    });
+
     it('traces heart rate over the bars when at least two kms recorded it', () => {
         const { container } = render(<SplitsChart rows={rows} />);
         expect(container.querySelector('polyline')).not.toBeNull();
