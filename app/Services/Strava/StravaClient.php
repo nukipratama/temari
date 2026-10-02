@@ -36,11 +36,11 @@ class StravaClient
 
     public const int REFRESH_LOCK_TTL_SECONDS = 90;
 
-    public const int REFRESH_LOCK_WAIT_SECONDS = 15;
+    public const int REFRESH_LOCK_WAIT_SECONDS = 5;
 
     public const int HTTP_CONNECT_TIMEOUT_SECONDS = 5;
 
-    public const int HTTP_TIMEOUT_SECONDS = 10;
+    public const int HTTP_TIMEOUT_SECONDS = 15;
 
     // Strava enforces rate limits per CLIENT (the whole app), not per athlete, so
     // these buckets are keyed globally and shared across every connected user. The
