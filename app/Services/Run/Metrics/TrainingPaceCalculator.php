@@ -5,25 +5,34 @@ declare(strict_types=1);
 namespace App\Services\Run\Metrics;
 
 /**
- * Daniels-style training paces derived from a VDOT value.
- *
- * Reuses the VO2 <-> velocity relationship (and its coefficients) from
- * {@see VdotEstimator}: VO2 = c + b·v + a·v² (v in m/min). Each training zone
- * targets a fraction of VDOT as its VO2 (%VO2max intensity); solving the
- * quadratic for v gives that zone's velocity, converted to sec/km. Fractions
- * are calibrated against Daniels' published training-pace tables.
+ * One guide pace per training zone, each read off the same VDOT race-time
+ * model {@see VdotEstimator} fits races with: marathon is the athlete's
+ * marathon race-equivalent pace, threshold the pace they could race for an
+ * hour, interval the pace they could race for about eleven minutes. Easy sits
+ * at the midpoint of the VDOT calculator's E band on the VO2 curve, which is
+ * a fixed VO2 fraction from VDOT 40 and rises toward marathon pace below it.
  */
 class TrainingPaceCalculator
 {
-    private const float EASY_LOW_FRACTION = 0.72;
+    private const float MARATHON_METERS = 42_195.0;
 
-    private const float EASY_HIGH_FRACTION = 0.80;
+    private const float THRESHOLD_EFFORT_MINUTES = 60.0;
 
-    private const float MARATHON_FRACTION = 0.86;
+    private const float INTERVAL_EFFORT_MINUTES = 11.0;
 
-    private const float THRESHOLD_FRACTION = 0.95;
+    private const float EASY_MID_FRACTION = 0.657;
 
-    private const float INTERVAL_FRACTION = 1.03;
+    private const float EASY_MID_FRACTION_AT_LOW_VDOT = 0.728;
+
+    private const float EASY_FLAT_FROM_VDOT = 40.0;
+
+    private const float EASY_LOW_VDOT = 30.0;
+
+    private const float EASY_HALF_BAND_FRACTION = 0.041;
+
+    public function __construct(private readonly VdotEstimator $vdotEstimator)
+    {
+    }
 
     /**
      * Convenience wrapper around {@see self::fromVdot()} for callers holding a
@@ -47,34 +56,39 @@ class TrainingPaceCalculator
      */
     public function fromVdot(float $vdot, ?float $qualityVdot = null): array
     {
-        $easyLowPace = $this->paceFromVo2Fraction($vdot, self::EASY_LOW_FRACTION);
-        $easyHighPace = $this->paceFromVo2Fraction($vdot, self::EASY_HIGH_FRACTION);
         $quality = $qualityVdot ?? $vdot;
+        $marathonSec = $this->vdotEstimator->raceTimeForVdot($vdot, self::MARATHON_METERS) ?? 0.0;
 
         return [
-            'easy' => (int) round(($easyLowPace + $easyHighPace) / 2),
-            'marathon' => (int) round($this->paceFromVo2Fraction($vdot, self::MARATHON_FRACTION)),
-            'threshold' => (int) round($this->paceFromVo2Fraction($quality, self::THRESHOLD_FRACTION)),
-            'interval' => (int) round($this->paceFromVo2Fraction($quality, self::INTERVAL_FRACTION)),
+            'easy' => (int) round($this->paceFromVo2Fraction($vdot, self::easyMidFraction($vdot))),
+            'marathon' => (int) round($marathonSec / (self::MARATHON_METERS / 1000)),
+            'threshold' => (int) round($this->paceFromVo2Fraction($quality, VdotEstimator::sustainableVo2Fraction(self::THRESHOLD_EFFORT_MINUTES))),
+            'interval' => (int) round($this->paceFromVo2Fraction($quality, VdotEstimator::sustainableVo2Fraction(self::INTERVAL_EFFORT_MINUTES))),
         ];
     }
 
     /**
-     * The slow end of the easy band on its own — the 72% fraction {@see self::fromVdot()}
-     * already averages into its single `easy` figure, exposed here without
-     * touching that average or its shape. Every other consumer keeps reading
-     * the averaged value; this is for the one caller that wants the slow end
-     * specifically (see `ReadinessClamp::paceEaseApplies()`).
+     * The slow end of the easy band on its own, for the one caller that wants
+     * it rather than the midpoint {@see self::fromVdot()} guides with (see
+     * `ReadinessClamp::paceEaseApplies()`).
      */
     public function easySlowEndSecPerKm(float $vdot): int
     {
-        return (int) round($this->paceFromVo2Fraction($vdot, self::EASY_LOW_FRACTION));
+        return (int) round($this->paceFromVo2Fraction($vdot, self::easyMidFraction($vdot) - self::EASY_HALF_BAND_FRACTION));
     }
 
     /** @param  array{vdot: float, quality_vdot?: float, ...}|null  $vdotResult */
     public function easySlowEndFromVdotResult(?array $vdotResult): ?int
     {
         return $vdotResult === null ? null : $this->easySlowEndSecPerKm($vdotResult['vdot']);
+    }
+
+    private static function easyMidFraction(float $vdot): float
+    {
+        $belowFlat = self::EASY_FLAT_FROM_VDOT - min(self::EASY_FLAT_FROM_VDOT, max(self::EASY_LOW_VDOT, $vdot));
+
+        return self::EASY_MID_FRACTION
+            + $belowFlat / (self::EASY_FLAT_FROM_VDOT - self::EASY_LOW_VDOT) * (self::EASY_MID_FRACTION_AT_LOW_VDOT - self::EASY_MID_FRACTION);
     }
 
     /**

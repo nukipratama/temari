@@ -157,8 +157,15 @@ describe('PaceTargetsCard', () => {
                     category: 'half_marathon',
                     set_at: '2026-05-19',
                     stale: false,
+                    confidence: 'provisional',
+                    evidence_id: null,
+                    evidence_kind: null,
+                    distance_m: null,
+                    corroborating_quality_count: 0,
                     quality_category: null,
                     quality_set_at: null,
+                    quality_evidence_kind: null,
+                    quality_distance_m: null,
                 }}
             />,
         );
@@ -177,8 +184,15 @@ describe('PaceTargetsCard', () => {
                     category: '5km',
                     set_at: '2024-01-08',
                     stale: true,
+                    confidence: 'stale',
+                    evidence_id: null,
+                    evidence_kind: null,
+                    distance_m: null,
+                    corroborating_quality_count: 0,
                     quality_category: null,
                     quality_set_at: null,
+                    quality_evidence_kind: null,
+                    quality_distance_m: null,
                 }}
             />,
         );
@@ -195,8 +209,15 @@ describe('PaceTargetsCard', () => {
                     category: 'half_marathon',
                     set_at: '2026-05-17',
                     stale: false,
+                    confidence: 'provisional',
+                    evidence_id: null,
+                    evidence_kind: null,
+                    distance_m: null,
+                    corroborating_quality_count: 0,
                     quality_category: '5km',
                     quality_set_at: '2026-08-29',
+                    quality_evidence_kind: null,
+                    quality_distance_m: null,
                 }}
             />,
         );
@@ -214,8 +235,15 @@ describe('PaceTargetsCard', () => {
                     category: 'best_90min',
                     set_at: '2026-05-17',
                     stale: false,
+                    confidence: 'provisional',
+                    evidence_id: null,
+                    evidence_kind: null,
+                    distance_m: null,
+                    corroborating_quality_count: 0,
                     quality_category: null,
                     quality_set_at: null,
+                    quality_evidence_kind: null,
+                    quality_distance_m: null,
                 }}
             />,
         );

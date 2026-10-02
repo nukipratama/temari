@@ -16,12 +16,17 @@ export interface VdotSource {
     category: string;
     /** `Y-m-d`. */
     set_at: string;
-    /** No PR inside the estimator's recency window, so an older one still stands in. */
+    /** The evidence is older than the estimator's recency window. */
     stale: boolean;
-    /** Set only when tempo and interval read a different, more recent record than
-     *  easy and marathon do. Null when one record drives all four. */
+    confidence: string;
+    evidence_id: number | null;
+    evidence_kind: string | null;
+    distance_m: number | null;
+    corroborating_quality_count: number;
     quality_category: string | null;
     quality_set_at: string | null;
+    quality_evidence_kind: string | null;
+    quality_distance_m: number | null;
 }
 
 /** One training day of the current week — `WeekSessionTypesBuilder`. */

@@ -45,6 +45,7 @@ interface StatsPayload {
 
 interface FitnessPayload {
     vdot: number | null;
+    quality_vdot: number | null;
     vdot_source: VdotSource | null;
     threshold_pace_sec: number | null;
     threshold_confidence: string | null;

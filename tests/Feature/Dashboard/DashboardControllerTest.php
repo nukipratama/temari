@@ -411,8 +411,14 @@ it('paints Home inside its query budget', function (): void {
     $this->app->forgetScopedInstances();
 
     $queries = 0;
-    DB::listen(function () use (&$queries): void {
+    $fitnessQueries = [];
+    DB::listen(function (QueryExecuted $query) use (&$queries, &$fitnessQueries): void {
         $queries++;
+        foreach (['performance_evidence', 'fitness_anchors'] as $table) {
+            if (str_contains($query->sql, '`'.$table.'`')) {
+                $fitnessQueries[$table] = ($fitnessQueries[$table] ?? 0) + 1;
+            }
+        }
     });
 
     $this->actingAs($user)->get('/')->assertSuccessful();
@@ -424,7 +430,8 @@ it('paints Home inside its query budget', function (): void {
     // hydration-backlog read runs here as it does for any other today.
     // 19: the controller reads today's own session_type once to decide
     // whether restDayEasePace's deferred prop is worth adding at all.
-    expect($queries)->toBeLessThanOrEqual(19);
+    expect($queries)->toBeLessThanOrEqual(21);
+    expect($fitnessQueries)->toBe(['performance_evidence' => 1, 'fitness_anchors' => 1]);
 
     Carbon::setTestNow();
 });

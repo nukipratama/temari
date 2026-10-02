@@ -28,6 +28,7 @@ _Pipelines & metrics_
 - [[run-ingest-pipeline]] — Strava sync → ActivityPipeline → metrics → transactional story layer
 - [[stream-analysis]] — raw streams → `stream_summary` (HR zones, splits, decoupling, cadence)
 - [[training-load-metrics]] — Edwards TRIMP, CTL/ATL EWMA, strain/monotony/form, backdated propagation
+- [[coaching-evidence]] — the curated sources behind coaching rules, and a rule table labelling each evidence-supported, heuristic or product choice
 - [[past-you-engine]] — summary-safe matching against the runner's own history, and the trend verdict it produces
 
 _AI narration_

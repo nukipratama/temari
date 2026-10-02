@@ -3,7 +3,12 @@
 declare(strict_types=1);
 
 use App\Models\PersonalRecord;
+use App\Models\PerformanceEvidence;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
+use App\Models\FitnessAnchor;
 use App\Models\User;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -12,6 +17,30 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->estimator = app(VdotEstimator::class);
+});
+
+it('anchors fitness to confirmed races and tests with explicit provenance', function (): void {
+    $user = User::factory()->create();
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => 5000, 'elapsed_time_sec' => 1500,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+    $result = $this->estimator->estimate($user);
+    expect($result['confidence'])->toBe('confirmed')->and($result['source_category'])->toBe('confirmed_test')
+        ->and($result['stale'])->toBeFalse()->and($result['evidence_id'])->toBeInt();
+});
+
+it('does not treat an ordinary easy activity PR as a maximal fitness test', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['workout_type' => 0]);
+    PersonalRecord::factory()->for($user)->create([
+        'activity_id' => $activity->id, 'category' => '5km', 'value_sec' => 1200, 'set_at' => now(),
+    ]);
+    $estimate = $this->estimator->estimate($user);
+    expect($estimate['confidence'])->toBe('provisional')
+        ->and($estimate['evidence_id'])->toBeNull()
+        ->and($estimate['quality_vdot'])->toBe($estimate['vdot']);
 });
 
 it('returns null when user has no qualifying distance PR', function (): void {
@@ -122,8 +151,8 @@ it('drops a PR that has aged out of the window, so current form sets the paces',
 
     $result = $this->estimator->estimate($user);
 
-    expect($result['source_category'])->toBe('1km')
-        ->and($result['stale'])->toBeFalse();
+    expect($result['source_category'])->toBe('marathon')
+        ->and($result['stale'])->toBeTrue();
 });
 
 it('keeps an aged-out PR when nothing newer exists, rather than leaving the athlete with no paces', function (): void {
@@ -287,4 +316,123 @@ it('still lets a short record pull the quality anchor down when sustained eviden
     expect($result['quality_source']['source_category'])->toBe('1km')
         ->and($result['quality_vdot'])->toEqualWithDelta(31.9, 0.3)
         ->and($result['quality_vdot'])->toBeGreaterThan($result['vdot']);
+});
+
+it('does not establish a fitness or quality anchor from incidental efforts under 3km', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create([
+        'category' => '1km', 'value_sec' => 210.0, 'set_at' => Carbon::today()->subWeek(),
+    ]);
+
+    expect($this->estimator->estimate($user))->toBeNull();
+    $this->estimator->captureProvisionalAnchor($user);
+    expect(FitnessAnchor::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+it('lets a newer confirmed performance replace an older slower result at a comparable distance', function (): void {
+    $user = User::factory()->create();
+    $older = PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'race', 'distance_m' => 5000, 'elapsed_time_sec' => 1800,
+        'performed_on' => Carbon::today()->subMonths(3), 'confirmed_at' => now(),
+    ]);
+    $newer = PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => 5200, 'elapsed_time_sec' => 1500,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+
+    $result = $this->estimator->estimate($user);
+
+    expect($result['evidence_id'])->toBe($newer->id)
+        ->and($result['confidence'])->toBe('confirmed')
+        ->and($result['vdot'])->toEqualWithDelta(
+            round($this->estimator->vdotFromTimeAndDistance(1500, 5200), 1),
+            0.01,
+        )
+        ->and($result['evidence_id'])->not->toBe($older->id);
+});
+
+it('marks materially different confirmed distances as conflicting and keeps the lower VDOT', function (): void {
+    $user = User::factory()->create();
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'race', 'distance_m' => 5000, 'elapsed_time_sec' => 1500,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'race', 'distance_m' => 10000, 'elapsed_time_sec' => 4200,
+        'performed_on' => Carbon::today()->subDays(2), 'confirmed_at' => now(),
+    ]);
+
+    $result = $this->estimator->estimate($user);
+
+    expect($result['confidence'])->toBe('conflicting')
+        ->and($result['vdot'])->toEqualWithDelta(
+            round($this->estimator->vdotFromTimeAndDistance(4200, 10000), 1),
+            0.01,
+        );
+});
+
+it('excludes an evidence confirmation made after the historical as-of date', function (): void {
+    $user = User::factory()->create();
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => 5000, 'elapsed_time_sec' => 1500,
+        'performed_on' => Carbon::parse('2026-09-20'), 'confirmed_at' => Carbon::parse('2026-10-01 12:00:00'),
+    ]);
+
+    expect($this->estimator->estimate($user, Carbon::parse('2026-09-30')))->toBeNull();
+});
+
+it('does not apply a provisional snapshot captured after a historical as-of date', function (): void {
+    $user = User::factory()->create();
+    $record = PersonalRecord::factory()->for($user)->create([
+        'category' => '5km', 'value_sec' => 1800, 'set_at' => '2026-09-20',
+    ]);
+    $this->estimator->captureProvisionalAnchor($user, Carbon::parse('2026-10-01 12:00:00'));
+    $record->update(['value_sec' => 1500, 'set_at' => '2026-10-01']);
+
+    expect($this->estimator->estimate($user, Carbon::parse('2026-09-30')))->toBeNull();
+});
+
+it('keeps old confirmed evidence available with stale confidence', function (): void {
+    $user = User::factory()->create();
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'race', 'distance_m' => 5000, 'elapsed_time_sec' => 1500,
+        'performed_on' => Carbon::today()->subYears(2), 'confirmed_at' => now(),
+    ]);
+
+    $result = $this->estimator->estimate($user);
+
+    expect($result['confidence'])->toBe('stale')
+        ->and($result['stale'])->toBeTrue();
+});
+
+it('keeps a provisional anchor unchanged when a faster easy activity replaces its only PR', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['workout_type' => 0]);
+    $record = PersonalRecord::factory()->for($user)->create([
+        'activity_id' => $activity->id, 'category' => '5km', 'value_sec' => 1800, 'set_at' => now(),
+    ]);
+    $this->estimator->captureProvisionalAnchor($user);
+    $before = $this->estimator->estimate($user);
+    $beforePaces = app(TrainingPaceCalculator::class)->fromVdotResult($before);
+
+    $record->update(['value_sec' => 1500, 'set_at' => now(), 'activity_id' => Activity::factory()->for($user)->create()->id]);
+    $after = $this->estimator->estimate($user);
+    $afterPaces = app(TrainingPaceCalculator::class)->fromVdotResult($after);
+
+    expect($after['vdot'])->toBe($before['vdot'])
+        ->and($after['quality_vdot'])->toBe($before['quality_vdot'])
+        ->and($afterPaces['threshold'])->toBe($beforePaces['threshold'])
+        ->and($afterPaces['interval'])->toBe($beforePaces['interval']);
+});
+
+it('inverts a VDOT back to the race time it supports at a distance', function (float $timeSec, float $distanceM): void {
+    $vdot = $this->estimator->vdotFromTimeAndDistance($timeSec, $distanceM);
+
+    expect($this->estimator->raceTimeForVdot($vdot, $distanceM))->toEqualWithDelta($timeSec, 1.0);
+})->with([[1500.0, 5000.0], [4200.0, 10000.0], [11_400.0, 42195.0]]);
+
+it('supports no race time for a non-positive VDOT or distance', function (): void {
+    expect($this->estimator->raceTimeForVdot(0.0, 10_000.0))->toBeNull()
+        ->and($this->estimator->raceTimeForVdot(50.0, 0.0))->toBeNull();
 });

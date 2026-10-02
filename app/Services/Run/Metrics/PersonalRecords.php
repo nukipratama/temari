@@ -7,6 +7,7 @@ namespace App\Services\Run\Metrics;
 use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\FitnessAnchor;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -18,6 +19,7 @@ class PersonalRecords
 {
     public function __construct(
         private readonly ResolveDistanceRecordsAction $distanceRecords,
+        private readonly VdotEstimator $vdotEstimator,
     ) {
     }
 
@@ -30,15 +32,20 @@ class PersonalRecords
      */
     public function rebuildForUser(User $user): void
     {
+        $this->vdotEstimator->captureProvisionalAnchor($user);
         PersonalRecord::query()->where('user_id', $user->id)->delete();
         $this->distanceRecords->forget($user->id);
 
         foreach ($this->chronologically($user) as $activity) {
             $detail = $activity->detail;
             if ($detail !== null) {
-                $this->detectAndStore($activity, $detail);
+                $this->storeRecords($activity, $detail);
             }
         }
+
+        $this->vdotEstimator->forget($user);
+        $this->validateFitnessAnchor($user);
+        $this->vdotEstimator->captureProvisionalAnchor($user);
     }
 
     /**
@@ -93,6 +100,21 @@ class PersonalRecords
      */
     public function detectAndStore(Activity $activity, ActivityDetail $detail): array
     {
+        return DB::transaction(function () use ($activity, $detail): array {
+            $this->vdotEstimator->captureProvisionalAnchor($activity->user);
+
+            $broken = $this->storeRecords($activity, $detail);
+
+            $this->vdotEstimator->forget($activity->user);
+            $this->vdotEstimator->captureProvisionalAnchor($activity->user);
+
+            return $broken;
+        });
+    }
+
+    /** @return list<string> */
+    private function storeRecords(Activity $activity, ActivityDetail $detail): array
+    {
         $setAt = $detail->start_date_local ?? Carbon::now();
         $broken = [];
 
@@ -103,6 +125,77 @@ class PersonalRecords
         }
 
         return $broken;
+    }
+
+    private function validateFitnessAnchor(User $user): void
+    {
+        $anchor = FitnessAnchor::query()->where('user_id', $user->id)->first();
+        if ($anchor === null) {
+            return;
+        }
+
+        if (! $this->sourcePerformanceIsValid(
+            $user,
+            $anchor->source_activity_id,
+            $anchor->source_category,
+            $anchor->source_value_sec,
+            $anchor->set_at,
+        )) {
+            $anchor->delete();
+
+            return;
+        }
+
+        if ($anchor->quality_vdot > $anchor->vdot
+            && ($anchor->quality_source_category === null
+                || $anchor->quality_source_value_sec === null
+                || $anchor->quality_set_at === null
+                || ! $this->sourcePerformanceIsValid(
+                    $user,
+                    $anchor->quality_source_activity_id,
+                    $anchor->quality_source_category,
+                    $anchor->quality_source_value_sec,
+                    $anchor->quality_set_at,
+                ))) {
+            $anchor->update([
+                'quality_vdot' => $anchor->vdot,
+                'quality_source_activity_id' => null,
+                'quality_source_category' => null,
+                'quality_source_value_sec' => null,
+                'quality_set_at' => null,
+            ]);
+        }
+    }
+
+    private function sourcePerformanceIsValid(
+        User $user,
+        ?int $activityId,
+        string $category,
+        float $valueSec,
+        Carbon $setAt,
+    ): bool {
+        if ($activityId === null) {
+            $record = PersonalRecord::query()->where('user_id', $user->id)
+                ->where('category', $category)->first();
+
+            return $record !== null
+                && $record->set_at->toDateString() === $setAt->toDateString()
+                && $record->value_sec <= $valueSec + 0.01;
+        }
+
+        $activity = Activity::withStubs()->where('user_id', $user->id)
+            ->with('detail')->find($activityId);
+        $detail = $activity?->detail;
+        if ($detail === null) {
+            return false;
+        }
+        if ($detail->start_date_local?->toDateString() !== $setAt->toDateString()) {
+            return false;
+        }
+
+        $sourceValue = $this->categoryValues($detail)[$category] ?? null;
+
+        return $sourceValue !== null && $sourceValue <= $valueSec + 0.01;
     }
 
     /**

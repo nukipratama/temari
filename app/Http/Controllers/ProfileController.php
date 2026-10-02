@@ -130,7 +130,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * @return array{vdot: float|null, vdot_source: array{category: string, set_at: string, stale: bool, quality_category: string|null, quality_set_at: string|null}|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null, week_sessions: list<array{weekday: string, session_type: string, distance_km: float, is_today: bool}>}|null
+     * @return array{vdot: float|null, quality_vdot: float|null, vdot_source: array{category: string, set_at: string, stale: bool, confidence: string, evidence_id: int|null, evidence_kind: string|null, distance_m: int|null, corroborating_quality_count: int, quality_category: string|null, quality_set_at: string|null, quality_evidence_kind: string|null, quality_distance_m: int|null}|null, threshold_pace_sec: float|null, threshold_confidence: string|null, training_paces: array{easy: int, marathon: int, threshold: int, interval: int}|null, week_sessions: list<array{weekday: string, session_type: string, distance_km: float, is_today: bool}>}|null
      */
     private function fitness(VdotEstimator $vdotEstimator, EstimateThresholdAction $thresholdEstimator, TrainingPaceCalculator $trainingPaceCalculator, WeekSessionTypesBuilder $weekSessionTypes, User $user, Carbon $today, ResolveActiveRaceAction $activeRace): ?array
     {
@@ -147,15 +147,8 @@ class ProfileController extends Controller
 
         return [
             'vdot' => $vdot['vdot'] ?? null,
-            'vdot_source' => $vdot === null ? null : [
-                'category' => $vdot['source_category'],
-                'set_at' => $vdot['set_at']->toDateString(),
-                'stale' => $vdot['stale'],
-                'quality_category' => $vdot['quality_source']['source_category'] ?? null,
-                'quality_set_at' => isset($vdot['quality_source'])
-                    ? $vdot['quality_source']['set_at']->toDateString()
-                    : null,
-            ],
+            'quality_vdot' => $vdot['quality_vdot'] ?? null,
+            'vdot_source' => $vdot === null ? null : VdotEstimator::sourceSummary($vdot),
             'threshold_pace_sec' => $threshold['pace_sec'] ?? null,
             'threshold_confidence' => $threshold['confidence'] ?? null,
             'training_paces' => $paces,

@@ -3,7 +3,7 @@ title: Profile
 description: The runner's identity page — Temari's profile voice, lifetime stats, PR progression charts, Strava status
 tags: [feature, profile]
 status: living
-reviewed: 2026-09-24
+reviewed: 2026-10-01
 code_refs:
   - resources/js/pages/Profile.tsx
   - app/Http/Controllers/ProfileController.php
@@ -18,6 +18,13 @@ code_refs:
   - resources/js/components/UserAvatarLink.tsx
   - app/Services/Run/Metrics/TimeInZoneSummary.php
   - app/Services/Run/Metrics/VdotEstimator.php
+  - app/Enums/PerformanceEvidenceKind.php
+  - app/Models/PerformanceEvidence.php
+  - app/Models/FitnessAnchor.php
+  - app/Http/Controllers/PerformanceEvidenceController.php
+  - database/migrations/2026_10_01_000100_create_performance_evidence.php
+  - database/migrations/2026_10_01_000200_create_fitness_anchors.php
+  - routes/web.php
   - app/Actions/Run/Metrics/EstimateThresholdAction.php
   - app/Services/Run/Metrics/TrainingPaceCalculator.php
   - app/Services/Run/Plan/WeekSessionTypesBuilder.php
@@ -63,15 +70,19 @@ The ladder replaced a horizontal rail whose four labels had to be measured again
 
 **Where the numbers came from** reads as chips under the ladder rather than a sentence: `from 5 km pr · aug 28`, plus `stale` only when the estimate has nothing recent behind it, plus `tempo + interval from …` only when the quality anchor diverges from the base one. With no `vdot_source` there are no chips.
 
-`ProfileController::fitness` builds the `fitness` prop from [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php)`::estimate`, [EstimateThresholdAction](app/Actions/Run/Metrics/EstimateThresholdAction.php)`::__invoke` and [TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php)`::fromVdotResult`; `fitness` is `null` (and the extra tiles don't render) when the user has no VDOT-eligible PR yet.
+`ProfileController::fitness` builds the `fitness` prop from [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php)`::estimate`, [EstimateThresholdAction](app/Actions/Run/Metrics/EstimateThresholdAction.php)`::__invoke` and [TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php)`::fromVdotResult`; `fitness` is `null` (and the extra tiles don't render) until a qualifying provisional PR or confirmed performance exists.
 
 These are the same estimators [ProfileVoiceNarrator](app/Services/AI/Narrators/ProfileVoiceNarrator.php) calls via [TrainingPacesTool](app/Services/AI/Agent/Tools/TrainingPacesTool.php) to narrate pace targets in prose — the numbers reach the user both ways, tabulated here and spoken in the hero voice above.
 
-### A PR only votes while it is current
+### Confirmed performances and the provisional guide
 
-`estimate` takes the **minimum** VDOT across categories on purpose, so no prescribed pace outruns a genuine PR. But [PersonalRecords](app/Services/Run/Metrics/PersonalRecords.php)`::updateIfFaster` only ever replaces a record with a *faster* one, so a record improves and never ages out on its own. Unbounded, the two rules compound: one hard effort from years ago wins the minimum forever and pins every prescribed pace to the fitness the athlete had then, which is self-reinforcing, since a well-periodized plan prescribes easy running and so rarely produces a new short-distance PR to displace it.
+Legacy personal records still provide a provisional guide, so existing athletes keep seeing the pace targets they already had while the app starts collecting explicit evidence. [PersonalRecords](app/Services/Run/Metrics/PersonalRecords.php) asks [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php) to capture that guide before a PR can be overwritten, and captures the first complete set after initial ingestion. The [FitnessAnchor](app/Models/FitnessAnchor.php) records the values, their source activity and time, and the exact capture timestamp. A capture made after an as-of date is never used for that historical estimate. Sustained evidence of at least 3 km is required; a short incidental PR alone cannot establish VDOT or a quality pace.
 
-Only records set within `VdotEstimator::RECENT_MONTHS` (12) vote. Deliberately a cut on voting rights rather than a decay applied to the number: PR age is not evidence of detraining, and an athlete running steadily who simply has not raced still holds the fitness their old record proved. When *nothing* is recent the older estimate still stands — no null cliff for a returning athlete — but it comes back flagged `stale`, and [PaceTargetsCard](resources/js/components/profile/PaceTargetsCard.tsx) marks the source chip `stale` rather than presenting an old number as current.
+The authenticated `POST /fitness/evidence` route ([PerformanceEvidenceController](app/Http/Controllers/PerformanceEvidenceController.php)) records a runner-confirmed race or purposeful test. It accepts a qualifying distance from 1 km through marathon, elapsed time, performance date, and optional owned activity or race-goal references. Confirmation time is stored separately from performance date, so a later confirmation cannot rewrite what a historical plan knew. Repeating confirmation for the same activity returns its first saved details and does not move that confirmation date.
+
+Confirmed sustained performances are the primary route to changing quality capacity. A newer confirmed result at the same or a distance within 10% replaces the older comparable result inside the 12-month window. Distinct recent distances remain separate evidence; when their VDOTs differ by at least 10%, confidence is `conflicting` and the lower VDOT remains the conservative anchor. When no sustained result is recent, the most recent sustained confirmation remains available with `stale` confidence. Confirmed results inside the last three months and at or under 10 km may support threshold and interval paces; the 3 km minimum must still be represented. Controlled quality sessions that were prescribed and successfully completed are counted as corroboration, but never act as a maximal test.
+
+The response to confirmation includes `fitness.vdot`, `fitness.vdot_source` (category, date, confidence, stale state, evidence id, evidence kind and distance, corroborating quality count, plus quality source metadata), and the four `training_paces`. The same source and freshness metadata is available on the Profile prop for the later evidence UI. If a pace changes by at least five seconds per kilometre and planned future sessions exist, the deterministic [Periodizer](app/Services/Run/Plan/Periodizer.php) refreshes those planned rows directly; the endpoint does not request narration. Settled and pinned rows stay fixed, and recommendation revisions/views remain as the history of what was previously shown.
 
 ### What counts as a threshold session
 
@@ -85,22 +96,11 @@ Together these produced **6:56/km at "high confidence" from 23 samples** for an 
 
 ### Endurance and quality read different evidence
 
-A record is a **floor** on what the athlete could do on its own date, never a **ceiling** on what they can do now. One minimum taken across every distance *and* every date conflates the two, and on real data that broke the quality end outright: a hard half from four months ago outvoted a week-old 5 km and had the plan prescribing **interval reps slower than the athlete's own sub-maximal 5 km training pace**.
+[TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php) derives easy and marathon pace from `vdot`, then threshold and interval pace from `quality_vdot`. For legacy PRs, the captured provisional anchor preserves the existing guide until a runner confirms a race or purposeful test. Later easy or faster activity-linked PRs cannot silently raise that guide. The stored activity provenance lets [PersonalRecords](app/Services/Run/Metrics/PersonalRecords.php)`::rebuildForUser` invalidate a source that was deleted or corrected, rebuild from the surviving sustained PRs, and drop a quality source that no longer exists.
 
-Raising the single anchor is not the fix either — it breaks the other end. Anchored on the recent short evidence, prescribed *easy* pace came out faster than the athlete's actual half-marathon **race** pace.
+Confirmed evidence remains conservative across materially different distances: the lower VDOT drives easy and marathon pace, while recent sustained confirmed results can support quality paces. A shorter confirmed result may keep quality VDOT at or below its sustained companion, but cannot raise it above that sustained evidence. Without a sustained confirmed result there is no confirmed anchor, and without a recent qualifying quality result the quality VDOT equals the endurance VDOT.
 
-So `estimate()` returns two anchors, and [TrainingPaceCalculator::fromVdot()](app/Services/Run/Metrics/TrainingPaceCalculator.php) splits the four paces between them:
-
-| pace | anchor | why |
-|---|---|---|
-| easy, marathon | `vdot` — minimum across every category in the 12-month window | never outrun a distance the athlete has actually proven |
-| threshold, interval | `quality_vdot` — the same minimum over records inside `QUALITY_MONTHS` (3) and at or under `QUALITY_MAX_METERS` (10 km) | quality work should reflect what the athlete runs *now*, over durations quality work actually lasts |
-
-The quality slice also needs **one record of at least `QUALITY_MIN_METERS` (3 km)** before it may establish an anchor at all. A shorter record is a few minutes of work and is frequently a closing surge inside an easy run, not an effort. It still *participates* in the minimum once sustained evidence sits beside it — the minimum keeps whichever evidence is most conservative, and on real data a 5:09 surge implied a lower VDOT than the athlete's genuine 5 km time trial, so dropping it would have made quality paces faster rather than safer. What it may not do is stand alone: without the rule, a half-marathoner racing at 6:59/km with one 3:30 kilometre on record is prescribed **tempo at 4:02/km and intervals at 3:47/km**.
-
-`quality_vdot` can never fall below `vdot`: its slice is a subset of the endurance slice, so its minimum can only be higher. With no qualifying recent short record it simply equals `vdot`, which is the pre-split behaviour. `quality_source` is set only when the two genuinely diverge, and `PaceTargetsCard` then names both records rather than presenting one date as the source of all four numbers.
-
-The window is measured from a caller-supplied date, defaulting to now. [TrainingBaseline](app/Services/Run/Plan/TrainingBaseline.php) threads its own `$asOf` through, so the as-of paths [ComplianceScorer](app/Services/Run/Plan/ComplianceScorer.php) and [SeasonSummaryBuilder](app/Services/Run/Plan/SeasonSummaryBuilder.php) already use judge an old week by the evidence that existed then, the same discipline as [[a-day-is-scored-when-it-is-run]].
+Both performance date and confirmation timestamp are checked against a caller-supplied `$asOf`. [TrainingBaseline](app/Services/Run/Plan/TrainingBaseline.php) threads its own date through, so [ComplianceScorer](app/Services/Run/Plan/ComplianceScorer.php) and [SeasonSummaryBuilder](app/Services/Run/Plan/SeasonSummaryBuilder.php) judge old weeks only by evidence and provisional snapshots available then, consistent with [[a-day-is-scored-when-it-is-run]].
 
 ## Time in zone · last 12 weeks
 
