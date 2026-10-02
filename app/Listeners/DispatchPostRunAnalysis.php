@@ -22,6 +22,7 @@ use App\Services\Run\Plan\PlanReconciliationDispatch;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Story\Temari;
 use App\Services\Run\Trend\TrendSnapshotRepairDispatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Carbon;
@@ -46,6 +47,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly ComplianceScorer $complianceScorer,
         private readonly PlanReconciliationDispatch $planReconciliation,
         private readonly TrendSnapshotRepairDispatch $trendSnapshots,
+        private readonly Temari $temari,
     ) {
     }
 
@@ -87,6 +89,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
         if ($detail->start_date_local !== null) {
             $this->complianceScorer->creditIfEarned($user, $detail->start_date_local, Carbon::today());
+            $this->temari->refreshPostRunMood($activity, $detail);
             $this->planReconciliation->forActivity($activity);
         }
 
