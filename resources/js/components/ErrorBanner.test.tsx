@@ -38,7 +38,7 @@ describe('ErrorBanner', () => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
-    it('re-shows the banner when a fresh error message appears after dismissal', () => {
+    it('re-shows the banner when a later response carries a different error', () => {
         setMockPage({
             ...base,
             errors: {
@@ -54,5 +54,28 @@ describe('ErrorBanner', () => {
         expect(screen.getByRole('alert')).toHaveTextContent(
             'Demo user not seeded yet.',
         );
+    });
+
+    it('re-shows the same message when a new response fails the same way', () => {
+        setMockPage({ ...base, errors: { race_date: 'Too far out.' } });
+        const { rerender } = render(<ErrorBanner />);
+        fireEvent.click(screen.getByLabelText('Close'));
+
+        setMockPage({ ...base, errors: { race_date: 'Too far out.' } });
+        rerender(<ErrorBanner />);
+
+        expect(screen.getByRole('alert')).toHaveTextContent('Too far out.');
+    });
+
+    it('keeps a dismissed message hidden while the page still holds that response', () => {
+        const errors = { race_date: 'Too far out.' };
+        setMockPage({ ...base, errors });
+        const { rerender } = render(<ErrorBanner />);
+        fireEvent.click(screen.getByLabelText('Close'));
+
+        setMockPage({ ...base, errors });
+        rerender(<ErrorBanner />);
+
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 });

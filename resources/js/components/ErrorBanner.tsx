@@ -14,19 +14,13 @@ import { Icon } from '@/components/ui/Icon';
  * standalone screens, which is where the Strava-connect denial lands.
  */
 export default function ErrorBanner() {
-    const errors = usePage<SharedProps>().props.errors ?? {};
-    const message = Object.values(errors)[0] ?? null;
-    const [dismissed, setDismissed] = useState(false);
-    const [lastMessage, setLastMessage] = useState(message);
+    const errors = usePage<SharedProps>().props.errors;
+    const message = Object.values(errors ?? {})[0] ?? null;
+    const [dismissedErrors, setDismissedErrors] = useState<
+        SharedProps['errors'] | null
+    >(null);
 
-    // A fresh error (new message) re-shows the banner after a prior dismissal.
-    // Adjusted during render (React-endorsed) rather than in an effect.
-    if (message !== lastMessage) {
-        setLastMessage(message);
-        setDismissed(false);
-    }
-
-    if (message === null || dismissed) {
+    if (message === null || errors === dismissedErrors) {
         return null;
     }
 
@@ -48,7 +42,7 @@ export default function ErrorBanner() {
                 </p>
                 <button
                     type="button"
-                    onClick={() => setDismissed(true)}
+                    onClick={() => setDismissedErrors(errors)}
                     aria-label="Close"
                     className="focus-ring -m-1 rounded p-1 text-text-3 transition hover:text-foreground"
                 >
