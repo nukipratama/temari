@@ -218,6 +218,7 @@ describe('Profile', () => {
                         times_sec: [1800, 1770, 1751],
                         activity_ids: [101, 102, 103],
                         goal_sec: 1740,
+                        progress: null,
                     },
                 }}
             />,

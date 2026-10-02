@@ -847,28 +847,57 @@ it('reads an empty recent-runs list for a runner with no history', function (): 
 
 // ── ProgressionSignalTool ────────────────────────────────────────────
 
+function seedProgressionEfforts(User $user, string $category, float $distance, int $earliest, int $latest): void
+{
+    PersonalRecord::factory()->for($user)->create([
+        'category' => $category,
+        'value_sec' => min($earliest, $latest),
+        'set_at' => '2020-01-01',
+    ]);
+    foreach ([[Carbon::today()->subWeeks(25), $earliest], [Carbon::today()->subDays(7), $latest]] as [$date, $seconds]) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'start_date_local' => $date,
+            'distance' => $distance,
+            'elapsed_time' => $seconds,
+        ]);
+    }
+}
+
+it('ranks distances by relative improvement, so a longer distance cannot win on spread alone', function (): void {
+    $user = User::factory()->create();
+    seedProgressionEfforts($user, '5km', 5000.0, 1500, 1380);
+    seedProgressionEfforts($user, '10km', 10000.0, 3300, 3100);
+
+    $reading = new ProgressionSignalTool($user, Carbon::today(), app(ProgressionSeriesBuilder::class))->handle([]);
+
+    expect($reading['progression_signal'])->toBe([
+        'label' => '5 km',
+        'relation' => 'faster',
+        'delta_sec' => 120,
+        'delta_formatted' => '2:00',
+    ]);
+});
+
+it('reads a regressing distance as slower with an unsigned delta', function (): void {
+    $user = User::factory()->create();
+    seedProgressionEfforts($user, '5km', 5000.0, 1500, 1980);
+
+    $reading = new ProgressionSignalTool($user, Carbon::today(), app(ProgressionSeriesBuilder::class))->handle([]);
+
+    expect($reading['progression_signal'])->toBe([
+        'label' => '5 km',
+        'relation' => 'slower',
+        'delta_sec' => 480,
+        'delta_formatted' => '8:00',
+    ]);
+});
+
 it('names the distance the runner has improved most, from one series build', function (): void {
     $user = User::factory()->create();
 
-    // Two categories with two timed efforts each; 10k improved by more.
-    foreach ([['5km', 5000.0, [1500, 1440]], ['10km', 10000.0, [3300, 3000]]] as [$category, $distance, $times]) {
-        // set_at sits far outside any run week here so the builder's PR-week
-        // snap is a no-op; the factory default is a random date within the last
-        // year, which can land on the slower week and flatten that delta.
-        PersonalRecord::factory()->for($user)->create([
-            'category' => $category,
-            'value_sec' => min($times),
-            'set_at' => '2020-01-01',
-        ]);
-        foreach ($times as $index => $seconds) {
-            $activity = Activity::factory()->for($user)->analyzed()->create();
-            ActivityDetail::factory()->for($activity)->create([
-                'start_date_local' => Carbon::today()->subDays(60 - $index * 10),
-                'distance' => $distance,
-                'elapsed_time' => $seconds,
-            ]);
-        }
-    }
+    seedProgressionEfforts($user, '5km', 5000.0, 1500, 1440);
+    seedProgressionEfforts($user, '10km', 10000.0, 3300, 3000);
 
     $queries = 0;
     DB::listen(function () use (&$queries): void {

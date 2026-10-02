@@ -53,11 +53,13 @@ class ProfileVoiceNarrator
         THE SHIFT IS THE SCOREBOARD. This page is a long view, so the comparison
         that matters is recent-them against earlier-them: persona_mix_recent (last 6
         weeks) against persona_mix_earlier (the 6 weeks before that), and
-        get_progression_signal, where a bigger delta means the same distance is
-        costing them less time -- read the size off delta_sec, but the figure you
-        write is always delta_formatted ("26:47"), never raw seconds, because the
-        progression card next to this paragraph prints the formatted one and the
-        two must not disagree. When one of those has genuinely moved,
+        get_progression_signal, where relation is the direction: faster means the
+        same distance now costs them less time, slower means more, flat means it
+        held. Take the direction from relation alone, never from the delta, which
+        only says how far it moved -- read that size off delta_sec, but the figure
+        you write is always delta_formatted ("26:47"), never raw seconds, because
+        the progression card next to this paragraph prints the formatted one and
+        the two must not disagree. When one of those has genuinely moved,
         that movement IS the paragraph. When it moved the wrong way, say so: a mix
         that used to have hard days in it and now doesn't is a real observation, and
         the honest version of it is more useful to them than a compliment.

@@ -38,11 +38,14 @@ final class ProgressionSignalTool extends UserTool
 
     public function description(): string
     {
-        return "The distance they've improved the most across their history (label), with the "
-            .'difference as delta_formatted (mm:ss, the only form to quote -- the app\'s own '
-            .'progression card shows the same figure) and delta_sec (raw seconds, for judging '
-            .'size and direction, never for quoting). If progression_signal is missing, no '
-            .'distance yet has at least two records to compare, so don\'t make up progress.';
+        return "The distance they've improved the most over the last six months (label), "
+            .'comparing their best time in the first four weeks against their best in the last '
+            .'four. relation says which way it moved: faster, slower, or flat. delta_formatted '
+            .'(mm:ss) is how far it moved and the only form to quote -- the app\'s own progression '
+            .'card shows the same figure; delta_sec is the same size in raw seconds, for judging '
+            .'how big the move is, never for quoting. Neither number carries the direction, only '
+            .'relation does. If progression_signal is missing, no distance has a time in both '
+            .'windows to compare, so don\'t make up progress.';
     }
 
     /** @return array<string, mixed> */
@@ -59,7 +62,7 @@ final class ProgressionSignalTool extends UserTool
         }
 
         $best = null;
-        $bestDelta = 0;
+        $bestImprovement = null;
 
         // One build for every record: buildMany ORs the distance bands into a
         // single scan, so calling it per category was four full ActivityDetail
@@ -67,18 +70,19 @@ final class ProgressionSignalTool extends UserTool
         $series = $this->progressionSeriesBuilder->buildMany($this->user, array_values($records->all()), fn () => null);
 
         foreach (self::CATEGORIES as $category) {
-            $data = $series[$category->value] ?? null;
-            if ($data === null || count($data['times_sec']) < 2) {
+            $progress = $series[$category->value]['progress'] ?? null;
+            if ($progress === null) {
                 continue;
             }
 
-            $delta = (int) (max($data['times_sec']) - min($data['times_sec']));
-            if ($delta > $bestDelta) {
-                $bestDelta = $delta;
+            $improvement = ($progress['from_sec'] - $progress['to_sec']) / $progress['from_sec'];
+            if ($bestImprovement === null || $improvement > $bestImprovement) {
+                $bestImprovement = $improvement;
                 $best = [
                     'label' => $category->label(),
-                    'delta_sec' => $delta,
-                    'delta_formatted' => DurationFormatter::hms($delta),
+                    'relation' => $progress['relation'],
+                    'delta_sec' => $progress['delta_sec'],
+                    'delta_formatted' => DurationFormatter::hms($progress['delta_sec']),
                 ];
             }
         }
