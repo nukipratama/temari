@@ -202,6 +202,9 @@ it('serves a stored sentence-case title with a lowercase lead, keeping proper no
         'Your August recap is ready' => 'your August recap is ready',
         'Strava stopped syncing' => 'Strava stopped syncing',
         'race day is tomorrow' => 'race day is tomorrow',
+        'PR on the 5K' => 'PR on the 5K',
+        'HR zones updated' => 'HR zones updated',
+        'Z2 week done' => 'Z2 week done',
     ];
     foreach (array_keys($titles) as $stored) {
         InboxNotification::factory()->for($user)->create(['title' => $stored]);

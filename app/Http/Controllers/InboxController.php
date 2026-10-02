@@ -167,7 +167,7 @@ final class InboxController extends Controller
 
     private static function lowercaseLead(string $title): string
     {
-        return str_starts_with($title, 'Strava') ? $title : mb_lcfirst($title);
+        return ! str_starts_with($title, 'Strava') && preg_match('/^\p{Lu}\p{Ll}/u', $title) === 1 ? mb_lcfirst($title) : $title;
     }
 
     private static function stringOrNull(mixed $value): ?string
