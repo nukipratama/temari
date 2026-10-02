@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { formMock, setMockPage } from '@/test/setup';
 
@@ -145,6 +145,19 @@ describe('Login', () => {
         expect(
             await screen.findByRole('img', { name: '10K Sunrise' }),
         ).toBeInTheDocument();
+    });
+
+    it('sizes the sample card skeleton like the rem-sized tile it stands in for', async () => {
+        vi.resetModules();
+        const { default: FreshLogin } = await import('./Login');
+        const { container } = render(<FreshLogin authStravaUrl="/x" />);
+        expect(container.querySelector('.skeleton')).toHaveClass(
+            'h-[5.25rem]',
+            'w-[4.875rem]',
+        );
+        expect(
+            await screen.findByRole('img', { name: '10K Sunrise' }),
+        ).toHaveClass('h-[5.25rem]', 'w-[4.875rem]');
     });
 
     it('renders the data-use and disclaimer copy handed down by the server', () => {
