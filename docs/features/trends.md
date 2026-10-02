@@ -70,6 +70,12 @@ app-local `today`, and the calendar slice uses the same Sunday-ending week bound
 CTL line over the full 365-day `ctlTrend` series (Chart.js, via
 [FitnessPanel](resources/js/components/trends/panels/FitnessPanel.tsx)), with the trailing 30 days
 shaded and the deload marker kept — no ATL line, no stat tiles on the chart itself, no badge chips.
+The shade, the deload dashes and the scrub cursor come from one module-level Chart.js plugin
+([fitnessOverlayPlugin](resources/js/components/trends/panels/FitnessPanel.tsx#L141)) that reads
+`options.plugins.fitnessOverlay` at draw time, because react-chartjs-2 only reads `plugins` on mount;
+a range or ground change reaches it through the memoised `options`, and a scrub writes the cursor
+index there and calls `chart.draw()` from `onHover` ([`onHover`](resources/js/components/trends/panels/FitnessPanel.tsx#L264)).
+The 900 ms tween is off under `prefers-reduced-motion`.
 The categorical load balance band beneath the line is a plain flex strip, not a second Chart.js
 dataset: each day's status (`BAND_BUCKET` in [FitnessPanel](resources/js/components/trends/panels/FitnessPanel.tsx), mirroring
 [TrainingLoad::formStatus()](app/Services/Run/Metrics/TrainingLoad.php)) is bucketed into
