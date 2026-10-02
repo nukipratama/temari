@@ -16,6 +16,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
+use App\Models\StravaConnection;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -140,6 +141,17 @@ it('narrates the latest closed week and month and fills older missed recaps rule
         ->and(returnRowStatus($monthly, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-06'))->toBe(AnalysisStatus::Pending)
         ->and(returnRowReason(WeeklySnapshot::class, $olderWeek->id, AnalysisType::WeeklyRecap))->toBe(AnalysisOrigin::Return)
         ->and(returnRowReason($monthly, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-04'))->toBe(AnalysisOrigin::Return);
+});
+
+it('fills the latest closed month rule-based when it closed before the athlete connected', function (): void {
+    StravaConnection::factory()->for($this->athlete)->create(['created_at' => Carbon::parse('2026-06-02 08:00:00')]);
+    monthlyRecapLeftPending($this->athlete, '2026-05');
+
+    narrateOnReturn($this->athlete);
+
+    Bus::assertNotDispatched(AnalyzeMonthlyRecapJob::class);
+    expect(returnRowStatus(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-05'))->toBe(AnalysisStatus::Done)
+        ->and(returnRowReason(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $this->athlete->id, AnalysisType::MonthlyRecap, '2026-05'))->toBe(AnalysisOrigin::Return);
 });
 
 it('leaves a failed older recap failed rather than hiding the fault behind filler', function (): void {

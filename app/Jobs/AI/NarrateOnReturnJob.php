@@ -14,6 +14,7 @@ use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\HydrationBacklog;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\AI\RecapHydrationReadiness;
@@ -52,6 +53,7 @@ class NarrateOnReturnJob implements ShouldQueue
         AnalysisService $service,
         RecapHydrationReadiness $readiness,
         PlanNarrationRequester $planNarration,
+        HydrationBacklog $backlog,
     ): void {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Return);
 
@@ -65,7 +67,7 @@ class NarrateOnReturnJob implements ShouldQueue
         $this->catchUpRuns($service, $user, $windowStart);
         $this->catchUpCardFlavors($service, $user, $windowStart);
         $this->catchUpWeeklyRecaps($service, $readiness, $user);
-        $this->catchUpMonthlyRecaps($service, $user);
+        $this->catchUpMonthlyRecaps($service, $backlog, $user);
         $this->readThisWeek($planNarration, $user);
     }
 
@@ -139,7 +141,7 @@ class NarrateOnReturnJob implements ShouldQueue
             ));
     }
 
-    private function catchUpMonthlyRecaps(AnalysisService $service, User $user): void
+    private function catchUpMonthlyRecaps(AnalysisService $service, HydrationBacklog $backlog, User $user): void
     {
         $lastClosed = RecapPeriod::lastClosedMonth();
         $months = Analysis::query()
@@ -150,8 +152,10 @@ class NarrateOnReturnJob implements ShouldQueue
             ->where('discriminator', '<=', $lastClosed)
             ->pluck('discriminator');
 
+        $connectedAt = $backlog->connectedAt($user->id);
+
         foreach ($months as $month) {
-            if ($month < $lastClosed) {
+            if ($month < $lastClosed || RecapPeriod::monthClosedBeforeConnect($month, $connectedAt)) {
                 $service->requestRuleBased(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $month, refillDone: false, reason: AnalysisOrigin::Return);
 
                 continue;

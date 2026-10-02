@@ -13,7 +13,6 @@ use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\HydrationBacklog;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -81,8 +80,8 @@ class KickoffMonthlyRecaps
             // A month that closed before the athlete connected Strava is
             // history Temari never watched — filled rule-based too.
             $connectedAt = $this->backlog->connectedAt((int) $id);
-            $preConnect = $narratable->filter(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
-            $narratable = $narratable->reject(fn (string $month): bool => $this->closedBeforeConnect($month, $connectedAt))->values();
+            $preConnect = $narratable->filter(fn (string $month): bool => RecapPeriod::monthClosedBeforeConnect($month, $connectedAt))->values();
+            $narratable = $narratable->reject(fn (string $month): bool => RecapPeriod::monthClosedBeforeConnect($month, $connectedAt))->values();
 
             $tooOld->each(fn (string $month) => $this->service->requestRuleBased(
                 subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
@@ -118,16 +117,6 @@ class KickoffMonthlyRecaps
         }
 
         return ['dispatched' => $dispatched, 'rule_based' => $ruleFilled];
-    }
-
-    /**
-     * Whether $month (Y-m) was already over before the athlete's Strava
-     * connection landed — the same anchor {@see \App\Services\AI\HistoryNarrationGate} uses.
-     */
-    private function closedBeforeConnect(string $month, ?Carbon $connectedAt): bool
-    {
-        return $connectedAt !== null
-            && Carbon::parse($month.'-01')->endOfMonth()->endOfDay()->lt($connectedAt);
     }
 
     /**

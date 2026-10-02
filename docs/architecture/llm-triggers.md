@@ -108,6 +108,9 @@ ordering problem the LLM path does (#1010). The monthly bucket's rule-based fill
 hydration wait, unchanged — but a month that closed after connecting and would otherwise get a real
 LLM read is staged Pending instead while `HydrationBacklog::monthAwaitsHydration()` (grace-bounded)
 holds (#1054), and the hourly `ai:self-heal` sweep resumes it once that clears.
+The pre-connect test is one classifier,
+[`RecapPeriod::weekClosedBeforeConnect()` / `monthClosedBeforeConnect()`](../../app/Services/AI/RecapPeriod.php#L36),
+shared by both kickoffs, the self-heal recap sweeps (origin 4) and `NarrateOnReturnJob` (origin 5).
 See [[deferred-recap-windowing]] and [[history-narrates-on-demand]].
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
@@ -254,7 +257,11 @@ narrate them once the window closes, which is why a pending recap row is not a b
 flight, then resumes the earliest stalled link per user per family. **Every dispatch is
 `invalidate: false`**, so recovery never re-bills content that already exists, and every sweep
 covers only [`RecentlyActiveUsers`](../../app/Actions/AI/RecentlyActiveUsers.php), so demo and
-athletes away from the app are excluded. Failed rows are bounded by
+athletes away from the app are excluded. A stalled weekly or monthly recap link that is past the
+backfill age cutoff, or whose period closed before the athlete connected, is filled with
+`requestRuleBased()` instead of being resumed, so recovery never bills the LLM for history Temari
+never watched; a pre-connect link still waits for its period to finish hydrating first, as the
+kickoffs do. Failed rows are bounded by
 [`MAX_SELF_HEAL_ATTEMPTS`](../../app/Models/AI/Analysis.php#L78) and then dead-letter to
 `/devtools/narration` for a manual re-arm, which is itself a recovery-origin dispatch. See
 [[bounded-self-heal-and-dead-letter]]. On the sweep that sees a non-ceiling pause lift,
@@ -268,7 +275,8 @@ active athlete's block that failed from one sweep before the pause began one mor
 [`NarrateOnReturnJob`](../../app/Jobs/AI/NarrateOnReturnJob.php) on an athlete's first visit after
 the 7-day window lapsed (not for an account younger than the window). It sends the last 7 days of
 pending runs and cards, the latest closed week's and month's recaps and this week's credited day
-reads to the LLM with `invalidate: false`, and fills anything older still `Pending` rule-based. The
+reads to the LLM with `invalidate: false`, and fills anything older still `Pending` rule-based, as
+well as a latest closed month that ended before the athlete connected. The
 origin is `return`, and `AnalysisService::markDone()` sends no notification for it. See
 [[narration-spends-only-on-active-athletes]].
 

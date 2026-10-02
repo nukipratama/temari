@@ -13,7 +13,6 @@ use App\Services\AI\HydrationBacklog;
 use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
 
 /**
  * Kicks off the connected weekly-recap chain for every completed week whose
@@ -86,11 +85,11 @@ class KickoffWeeklyRecaps
         /** @var list<int> $userIds */
         $userIds = $candidates->pluck('user_id')->map(fn (mixed $id): int => (int) $id)->unique()->values()->all();
         $connectedAt = $this->backlog->connectedAtFor($userIds);
-        $preConnectCandidates = $candidates->filter(fn (WeeklySnapshot $snapshot): bool => $this->closedBeforeConnect(
+        $preConnectCandidates = $candidates->filter(fn (WeeklySnapshot $snapshot): bool => RecapPeriod::weekClosedBeforeConnect(
             $snapshot->week_ending,
             $connectedAt[(int) $snapshot->user_id] ?? null,
         ));
-        $eligible = $candidates->reject(fn (WeeklySnapshot $snapshot): bool => $this->closedBeforeConnect(
+        $eligible = $candidates->reject(fn (WeeklySnapshot $snapshot): bool => RecapPeriod::weekClosedBeforeConnect(
             $snapshot->week_ending,
             $connectedAt[(int) $snapshot->user_id] ?? null,
         ));
@@ -125,15 +124,5 @@ class KickoffWeeklyRecaps
             'rule_based' => $tooOld->count() + $preConnect->count(),
             'deferred' => $deferred,
         ];
-    }
-
-    /**
-     * Whether the week ending on $weekEnding was already over before the
-     * athlete's Strava connection landed — the same anchor
-     * {@see RecapHydrationReadiness} and {@see \App\Services\AI\HistoryNarrationGate} use.
-     */
-    private function closedBeforeConnect(Carbon $weekEnding, ?Carbon $connectedAt): bool
-    {
-        return $connectedAt !== null && $weekEnding->copy()->endOfDay()->lt($connectedAt);
     }
 }
