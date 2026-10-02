@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Carbon\CarbonInterface;
 use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Models\RunCard;
-use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Actions\Run\DeleteIngestedRunAction;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\Strava\CleanupDeletedActivityJob;
@@ -23,8 +23,6 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Plan\ComplianceScorer;
-use App\Services\Run\Plan\PlanReconciliationService;
-use App\Services\Run\Trend\TrendSnapshotRepairService;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\StravaClient;
 use Illuminate\Http\Client\ConnectionException;
@@ -93,14 +91,9 @@ it('deletes the run, recomputes the week, rebuilds PRs, and purges orphaned narr
     ]);
 
     new CleanupDeletedActivityJob($user->id, 7_001)->handle(
-        app(WeeklyAggregator::class),
-        app(PersonalRecords::class),
         app(StravaClient::class),
-        app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
-        app(ComplianceScorer::class),
-        app(PlanReconciliationService::class),
-        app(TrendSnapshotRepairService::class),
+        app(DeleteIngestedRunAction::class),
     );
 
     expect(Activity::query()->withStubs()->whereKey($doomed->id)->exists())->toBeFalse()
@@ -130,14 +123,9 @@ it('fires the replay when deleting the last backlog row empties it', function ()
     ]);
 
     new CleanupDeletedActivityJob($user->id, 7_020)->handle(
-        app(WeeklyAggregator::class),
-        app(PersonalRecords::class),
         app(StravaClient::class),
-        app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
-        app(ComplianceScorer::class),
-        app(PlanReconciliationService::class),
-        app(TrendSnapshotRepairService::class),
+        app(DeleteIngestedRunAction::class),
     );
 
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
@@ -162,14 +150,9 @@ it('purges a retired-type row too, not just the ones KnownAnalysisTypeScope show
     ]);
 
     new CleanupDeletedActivityJob($user->id, 7_010)->handle(
-        app(WeeklyAggregator::class),
-        app(PersonalRecords::class),
         app(StravaClient::class),
-        app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
-        app(ComplianceScorer::class),
-        app(PlanReconciliationService::class),
-        app(TrendSnapshotRepairService::class),
+        app(DeleteIngestedRunAction::class),
     );
 
     expect(DB::table('ai_analyses')->where('subject_id', $doomed->id)->count())->toBe(0);
@@ -191,7 +174,11 @@ it('prunes a now-empty weekly snapshot when the deleted run was the last one', f
     $personalRecords = Mockery::mock(PersonalRecords::class);
     $personalRecords->shouldReceive('rebuildForUser')->once();
 
-    new CleanupDeletedActivityJob($user->id, 7_003)->handle($weekly, $personalRecords, app(StravaClient::class), app(ResolveTrailingWeeksAction::class), app(SettleEarlyNarrationAction::class), app(ComplianceScorer::class), app(PlanReconciliationService::class), app(TrendSnapshotRepairService::class));
+    $settleEarlyNarration = app(SettleEarlyNarrationAction::class);
+    $this->instance(WeeklyAggregator::class, $weekly);
+    $this->instance(PersonalRecords::class, $personalRecords);
+
+    new CleanupDeletedActivityJob($user->id, 7_003)->handle(app(StravaClient::class), $settleEarlyNarration, app(DeleteIngestedRunAction::class));
 
     expect(Activity::query()->withStubs()->whereKey($sole->id)->exists())->toBeFalse()
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(0);
@@ -201,14 +188,9 @@ it('no-ops when the activity is already gone', function (): void {
     $user = User::factory()->create();
 
     new CleanupDeletedActivityJob($user->id, 999_999)->handle(
-        app(WeeklyAggregator::class),
-        app(PersonalRecords::class),
         app(StravaClient::class),
-        app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
-        app(ComplianceScorer::class),
-        app(PlanReconciliationService::class),
-        app(TrendSnapshotRepairService::class),
+        app(DeleteIngestedRunAction::class),
     );
 
     expect(true)->toBeTrue();
@@ -223,14 +205,9 @@ it('does NOT delete when Strava still returns the activity (forged delete event)
     Http::fake(['strava.com/api/v3/activities/7010' => Http::response(['id' => 7_010], 200)]);
 
     new CleanupDeletedActivityJob($user->id, 7_010)->handle(
-        app(WeeklyAggregator::class),
-        app(PersonalRecords::class),
         app(StravaClient::class),
-        app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
-        app(ComplianceScorer::class),
-        app(PlanReconciliationService::class),
-        app(TrendSnapshotRepairService::class),
+        app(DeleteIngestedRunAction::class),
     );
 
     expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue()
@@ -243,14 +220,9 @@ it('does NOT delete when there is no live connection to verify against', functio
     Http::fake();
 
     new CleanupDeletedActivityJob($user->id, 7_011)->handle(
-        app(WeeklyAggregator::class),
-        app(PersonalRecords::class),
         app(StravaClient::class),
-        app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
-        app(ComplianceScorer::class),
-        app(PlanReconciliationService::class),
-        app(TrendSnapshotRepairService::class),
+        app(DeleteIngestedRunAction::class),
     );
 
     expect(Activity::query()->whereKey($activity->id)->exists())->toBeTrue();
@@ -260,14 +232,9 @@ it('does NOT delete when there is no live connection to verify against', functio
 function runCleanupJob(User $user, int $externalId): void
 {
     new CleanupDeletedActivityJob($user->id, $externalId)->handle(
-        app(WeeklyAggregator::class),
-        app(PersonalRecords::class),
         app(StravaClient::class),
-        app(ResolveTrailingWeeksAction::class),
         app(SettleEarlyNarrationAction::class),
-        app(ComplianceScorer::class),
-        app(PlanReconciliationService::class),
-        app(TrendSnapshotRepairService::class),
+        app(DeleteIngestedRunAction::class),
     );
 }
 

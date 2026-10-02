@@ -6,6 +6,7 @@ namespace App\Services\Run\Ingest;
 
 use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Actions\Gamification\DetectActivityMilestonesAction;
+use App\Actions\Run\DeleteIngestedRunAction;
 use App\Enums\IngestState;
 use App\Enums\StravaReadPriority;
 use App\Enums\StravaReadSource;
@@ -61,6 +62,7 @@ class ActivityPipeline
         private readonly AppConfig $config,
         private readonly HistoryNarrationGate $history,
         private readonly SettleEarlyNarrationAction $settleEarlyNarration,
+        private readonly DeleteIngestedRunAction $deleteIngestedRun,
     ) {
     }
 
@@ -216,6 +218,7 @@ class ActivityPipeline
      * authoritative sport_type. Rejects here so a ride / walk / swim never mints
      * a PR / card / weekly snapshot or bills the AI narrator — the poll path
      * filters these upstream, this is the webhook's equivalent choke point.
+     * A run already ingested and then re-typed on Strava heals like a delete.
      *
      * @param  array<string, mixed>  $detail
      */
@@ -226,7 +229,11 @@ class ActivityPipeline
             'sport_type' => $detail['sport_type'] ?? $detail['type'] ?? null,
         ]);
         $user = $activity->user;
-        $activity->delete();
+        if ($activity->detail()->exists()) {
+            ($this->deleteIngestedRun)($activity);
+        } else {
+            $activity->delete();
+        }
         ($this->settleEarlyNarration)($user);
     }
 

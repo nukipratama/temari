@@ -24,6 +24,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Run\Metrics\PersonalRecords;
+use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use App\Services\Weather\OpenMeteoClient;
@@ -443,6 +444,56 @@ it('drops a non-run activity (ride) without minting a run', function (): void {
         ->and(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
     // Only the detail fetch fired; we bail before the streams call.
     Http::assertSentCount(1);
+});
+
+it('heals the records, week and narration of an ingested run re-typed to a ride on resync', function (): void {
+    Event::fake([ActivityIngested::class]);
+    $activity = makeActivityWithConnection();
+    $user = $activity->user;
+    $user->stravaConnection->forceFill(['created_at' => now()->subMonths(3)])->save();
+    $weekStart = now()->startOfWeek()->subWeek();
+    $survivor = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($survivor)->create([
+        'start_date_local' => $weekStart->copy()->setTime(6, 30),
+        'distance' => 5000,
+        'stream_summary' => ['per_km' => array_map(fn (int $km): array => [
+            'km' => $km, 'pace' => '5:00', 'elapsed_sec' => 300, 'distance_m' => 1000,
+        ], range(1, 5))],
+    ]);
+    $runPayload = [
+        'name' => 'Morning Run', 'sport_type' => 'Run',
+        'start_date_local' => $weekStart->copy()->addDays(2)->setTime(6, 30)->toDateTimeString(),
+        'distance' => 5000, 'moving_time' => 1200, 'elapsed_time' => 1200,
+        'splits_metric' => array_map(fn (int $km): array => [
+            'split' => $km, 'distance' => 1000, 'moving_time' => 240, 'elapsed_time' => 240,
+        ], range(1, 5)),
+    ];
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::sequence()
+            ->push($runPayload)
+            ->push(['sport_type' => 'Ride'] + $runPayload),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    app(WeeklyAggregator::class)->rebuildFor($user);
+    $weekEnding = $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->toDateString();
+    $card = RunCard::query()->where('activity_id', $activity->id)->firstOrFail();
+    Analysis::factory()->create(['subject_type' => Activity::class, 'subject_id' => $activity->id, 'analysis_type' => AnalysisType::PostRunSpeech]);
+    Analysis::factory()->create(['subject_type' => RunCard::class, 'subject_id' => $card->id, 'analysis_type' => AnalysisType::CardFlavor]);
+    expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->value('activity_id'))->toBe($activity->id)
+        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', $weekEnding)->value('runs'))->toBe(2);
+
+    $this->pipeline->ingest(Activity::query()->withStubs()->findOrFail($activity->id));
+
+    $record = PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->firstOrFail();
+    expect(Activity::query()->withStubs()->find($activity->id))->toBeNull()
+        ->and($record->activity_id)->toBe($survivor->id)
+        ->and($record->value_sec)->toBe(1500.0)
+        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', $weekEnding)->value('runs'))->toBe(1)
+        ->and(Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->exists())->toBeFalse()
+        ->and(Analysis::query()->where('subject_type', RunCard::class)->where('subject_id', $card->id)->exists())->toBeFalse();
 });
 
 it('fires the replay when a non-run upload empties the backlog, not just a successful ingest', function (): void {
