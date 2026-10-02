@@ -179,10 +179,12 @@ describe('RunListRow', () => {
 
     it('puts the date and time on the metrics line, not beside the title', () => {
         render(<RunListRow detail={detail()} />);
-        const when = screen.getByText(/· 07:00$/);
+        const time = screen.getByText(/· 07:00$/);
+        const when = time.parentElement;
         const metricsLine = screen.getByText('150 bpm').parentElement;
         expect(metricsLine).toContainElement(when);
-        expect(when.className).toContain('text-[0.6875rem]');
+        expect(when?.className).toContain('text-[0.6875rem]');
+        expect(time).toHaveClass('max-[359px]:hidden');
         const titleLine = screen.getByText('Morning Run').parentElement;
         expect(titleLine).not.toContainElement(when);
     });

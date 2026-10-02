@@ -60,39 +60,34 @@ function RunListRow({
                 stripeClass,
             )}
         >
-            <div className="flex items-center">
-                <div className="flex min-w-0 items-center gap-1.5">
-                    {knownMood !== null && (
-                        <span
-                            aria-hidden
-                            className={cn(
-                                'size-[7px] flex-none rounded-full',
-                                MOOD_FILL[knownMood],
-                            )}
-                        />
-                    )}
+            <div className="flex min-w-0 items-center gap-1.5">
+                {knownMood !== null && (
                     <span
-                        title={name}
-                        className="truncate text-[0.8125rem] leading-[1.2] font-bold text-foreground"
-                    >
-                        {name}
-                    </span>
-                    <span className="flex-none font-mono text-[0.8125rem] leading-[1.2] font-bold text-foreground tabular-nums">
-                        · {km} km
-                    </span>
-                    {runCard && (
-                        <Icon
-                            icon={Sparkle}
-                            width={12}
-                            height={12}
-                            className={cn(
-                                'flex-none',
-                                RARITY_INK[runCard.rarity],
-                            )}
-                            aria-label={`${runCard.rarity} card`}
-                        />
-                    )}
-                </div>
+                        aria-hidden
+                        className={cn(
+                            'size-[7px] flex-none rounded-full',
+                            MOOD_FILL[knownMood],
+                        )}
+                    />
+                )}
+                <span
+                    title={name}
+                    className="truncate text-[0.8125rem] leading-[1.2] font-bold text-foreground"
+                >
+                    {name}
+                </span>
+                <span className="flex-none font-mono text-[0.8125rem] leading-[1.2] font-bold text-foreground tabular-nums">
+                    · {km} km
+                </span>
+                {runCard && (
+                    <Icon
+                        icon={Sparkle}
+                        width={12}
+                        height={12}
+                        className={cn('flex-none', RARITY_INK[runCard.rarity])}
+                        aria-label={`${runCard.rarity} card`}
+                    />
+                )}
             </div>
             <div className="mt-1.25 flex flex-wrap items-baseline gap-x-1.75 gap-y-0.5 font-mono tabular-nums">
                 <b className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
@@ -108,7 +103,11 @@ function RunListRow({
                 </span>
                 <span className="ml-auto text-[0.6875rem] leading-[1.2] whitespace-nowrap text-text-3">
                     {formatNaiveMonthDayId(detail.start_date_local)}
-                    {startTime && ` · ${startTime}`}
+                    {startTime && (
+                        <span className="max-[359px]:hidden">
+                            {` · ${startTime}`}
+                        </span>
+                    )}
                 </span>
             </div>
             {note && (
