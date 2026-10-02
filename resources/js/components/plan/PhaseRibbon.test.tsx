@@ -78,11 +78,11 @@ describe('PhaseRibbon', () => {
         expect(container).toBeEmptyDOMElement();
     });
 
-    it('grows every cell a taller invisible hit area over the thin track', () => {
+    it('grows every cell a 2rem invisible hit area over the thin track, short of the season toggle above', () => {
         render(<PhaseRibbon weeks={RACE_SEASON} />);
 
         for (const cell of screen.getAllByRole('button')) {
-            expect(cell).toHaveClass('hit-area');
+            expect(cell).toHaveClass('hit-area', '[--hit-h:2rem]');
         }
     });
 

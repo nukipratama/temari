@@ -916,7 +916,7 @@ body {
     .focus-ring {
         @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream;
     }
-    /* Invisible tap area: 44px tall, never narrower than 24px, centred on the control. */
+    /* Invisible tap area: 44px tall (or --hit-h where a neighbour is closer), never narrower than 24px, centred on the control. */
     .hit-area,
     .leaflet-control-attribution a {
         @apply relative;
@@ -928,7 +928,7 @@ body {
         top: 50%;
         left: 50%;
         width: max(100%, 1.5rem);
-        height: max(100%, 2.75rem);
+        height: max(100%, var(--hit-h, 2.75rem));
         transform: translate(-50%, -50%);
     }
     /* Focus ring on dark sky panels (offset color flips to sky). */

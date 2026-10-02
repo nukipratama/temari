@@ -59,7 +59,7 @@ export default function PhaseRibbon({
                         type="button"
                         aria-label={cellLabel(week)}
                         className={cn(
-                            'focus-ring hit-area h-full min-w-0 flex-1',
+                            'focus-ring hit-area h-full min-w-0 flex-1 [--hit-h:2rem]',
                             index === 0 && 'rounded-l-full',
                             index === weeks.length - 1 && 'rounded-r-full',
                             week.zone === 'general' && 'bg-muted',
