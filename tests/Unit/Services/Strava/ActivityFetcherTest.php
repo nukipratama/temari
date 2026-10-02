@@ -10,6 +10,7 @@ use App\Services\Strava\ActivityFetcher;
 use App\Services\Strava\StravaClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -290,4 +291,44 @@ it('reports how many Strava reads the walk spent', function (): void {
     // 201 runs of history for two reads — the whole point of paging summaries.
     expect($result['api_calls'])->toBe(2)
         ->and($result['summaries'])->toHaveCount(201);
+});
+
+it('stops at the page cap with one second past the oldest start read as the resume cursor, and resumes from it', function (): void {
+    $connection = makeUnpersistedConnection();
+    $page = fn (int $firstId, string $newest): array => array_map(fn (int $offset): array => [
+        'id' => $firstId - $offset,
+        'sport_type' => 'Run',
+        'start_date' => CarbonImmutable::parse($newest)->subHours($offset)->toIso8601String(),
+    ], range(0, 199));
+    Http::fake([
+        'strava.com/api/v3/athlete/activities*' => Http::sequence()
+            ->push($page(1_000, '2026-03-01T06:00:00Z'))
+            ->push($page(800, '2026-02-01T06:00:00Z')),
+    ]);
+    $fetcher = new ActivityFetcher(new StravaClient());
+
+    $capped = $fetcher->fetchNewSummaries($connection, StravaReadSource::Manual, maxPages: 1);
+    $resumed = $fetcher->fetchNewSummaries($connection, StravaReadSource::Manual, before: $capped['resume_before'], maxPages: 1);
+
+    expect($capped['api_calls'])->toBe(1)
+        ->and($capped['summaries'])->toHaveCount(200)
+        ->and($capped['resume_before'])->toBe(CarbonImmutable::parse('2026-03-01T06:00:00Z')->subHours(199)->getTimestamp() + 1)
+        ->and($resumed['resume_before'])->toBe(CarbonImmutable::parse('2026-02-01T06:00:00Z')->subHours(199)->getTimestamp() + 1);
+
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), 'before='.$capped['resume_before'])
+        && str_contains($request->url(), 'page=1'));
+});
+
+it('returns no resume cursor when the walk ends under the page cap', function (): void {
+    $connection = makeUnpersistedConnection();
+    Http::fake([
+        'strava.com/api/v3/athlete/activities*' => Http::response([
+            ['id' => 10, 'sport_type' => 'Run', 'start_date' => '2026-03-01T06:00:00Z'],
+        ]),
+    ]);
+
+    $result = new ActivityFetcher(new StravaClient())->fetchNewSummaries($connection, StravaReadSource::Manual, maxPages: 2);
+
+    expect($result['resume_before'])->toBeNull()
+        ->and($result['api_calls'])->toBe(1);
 });

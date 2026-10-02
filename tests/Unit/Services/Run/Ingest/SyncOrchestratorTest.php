@@ -50,7 +50,7 @@ function orchestrator(ActivityFetcher|MockInterface $fetcher, ?MaintainerAlerter
 
 /**
  * @param  list<int>  $ids
- * @return array{summaries: list<array<string, mixed>>, api_calls: int}
+ * @return array{summaries: list<array<string, mixed>>, api_calls: int, resume_before: null}
  */
 function summaryResult(array $ids, int $apiCalls = 1): array
 {
@@ -65,6 +65,7 @@ function summaryResult(array $ids, int $apiCalls = 1): array
             'elapsed_time' => 1_800,
         ], $ids),
         'api_calls' => $apiCalls,
+        'resume_before' => null,
     ];
 }
 
@@ -410,4 +411,23 @@ it('offers the shared budget after a failed sync too', function (): void {
     expect(fn () => orchestrator($fetcher, $alerter)->syncUser($user))->toThrow(RuntimeException::class);
 
     expect(StravaSyncLog::query()->where('user_id', $user->id)->value('rate_limit_15min_remaining'))->toBeNull();
+});
+
+it('walks a bounded slice from the given cursor, stores it, and hands back the resume cursor', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldReceive('fetchNewSummaries')
+        ->once()
+        ->withArgs(fn ($connection, $source, $since, ?int $before, ?int $maxPages): bool => $source === StravaReadSource::Manual
+            && $since === null
+            && $before === 1_780_000_000
+            && $maxPages === 2)
+        ->andReturn([...summaryResult([10, 20]), 'resume_before' => 1_770_000_000]);
+
+    $resumeBefore = orchestrator($fetcher)->syncUserPages($user, 2, 1_780_000_000);
+
+    expect($resumeBefore)->toBe(1_770_000_000)
+        ->and(Activity::query()->where('user_id', $user->id)->count())->toBe(2);
 });

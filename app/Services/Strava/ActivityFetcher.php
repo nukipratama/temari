@@ -43,10 +43,22 @@ class ActivityFetcher
      * started on or before it — bounding a first-connect backfill to a recent
      * window instead of pulling an athlete's entire history.
      *
-     * @return array{summaries: list<array<string, mixed>>, api_calls: int}
+     * When `$maxPages` is given, the walk stops after that many full pages and
+     * returns `resume_before`, one second past the start of the oldest activity
+     * it read; passing it back as `$before` resumes the walk at that second, so
+     * a run sharing it is not lost, and the resumed walk skips runs it already
+     * holds instead of stopping on them. `resume_before` is null once the walk
+     * has finished.
+     *
+     * @return array{summaries: list<array<string, mixed>>, api_calls: int, resume_before: ?int}
      */
-    public function fetchNewSummaries(StravaConnection $connection, StravaReadSource $source, ?CarbonImmutable $since = null): array
-    {
+    public function fetchNewSummaries(
+        StravaConnection $connection,
+        StravaReadSource $source,
+        ?CarbonImmutable $since = null,
+        ?int $before = null,
+        ?int $maxPages = null,
+    ): array {
         $existing = Activity::query()
             ->withStubs()
             ->where('user_id', $connection->user_id)
@@ -59,12 +71,14 @@ class ActivityFetcher
         $summaries = [];
         $page = 1;
         $apiCalls = 0;
+        $resumeBefore = null;
 
         while (true) {
-            $response = $this->client->get($connection, '/athlete/activities', $source, query: [
+            $response = $this->client->get($connection, '/athlete/activities', $source, query: array_filter([
                 'per_page' => self::PER_PAGE,
                 'page' => $page,
-            ]);
+                'before' => $before,
+            ], fn (?int $value): bool => $value !== null));
             $apiCalls++;
 
             /** @var list<array<string, mixed>> $items */
@@ -73,9 +87,14 @@ class ActivityFetcher
                 break;
             }
 
-            $stop = $this->collectNewSummaries($items, $existingSet, $windowStart, $since, $summaries);
+            $stop = $this->collectNewSummaries($items, $existingSet, $windowStart, $since, $summaries, stopOnKnown: $before === null);
 
             if ($stop || count($items) < self::PER_PAGE) {
+                break;
+            }
+            if ($maxPages !== null && $page >= $maxPages) {
+                $oldest = $this->oldestStartEpoch($items);
+                $resumeBefore = $oldest === null ? null : $oldest + 1;
                 break;
             }
             $page++;
@@ -84,7 +103,22 @@ class ActivityFetcher
         // Strava paginates newest-first; reverse so the caller stores oldest-first.
         usort($summaries, fn (array $a, array $b): int => (int) $a['id'] <=> (int) $b['id']);
 
-        return ['summaries' => $summaries, 'api_calls' => $apiCalls];
+        return ['summaries' => $summaries, 'api_calls' => $apiCalls, 'resume_before' => $resumeBefore];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    private function oldestStartEpoch(array $items): ?int
+    {
+        $starts = array_filter(array_map(
+            fn (array $item): ?int => is_string($item['start_date'] ?? null) && $item['start_date'] !== ''
+                ? CarbonImmutable::parse($item['start_date'])->getTimestamp()
+                : null,
+            $items,
+        ), fn (?int $epoch): bool => $epoch !== null);
+
+        return $starts === [] ? null : min($starts);
     }
 
     /**
@@ -96,7 +130,7 @@ class ActivityFetcher
      * @param  array<int, int>  $existingSet
      * @param  list<array<string, mixed>>  $summaries
      */
-    private function collectNewSummaries(array $items, array $existingSet, CarbonImmutable $windowStart, ?CarbonImmutable $since, array &$summaries): bool
+    private function collectNewSummaries(array $items, array $existingSet, CarbonImmutable $windowStart, ?CarbonImmutable $since, array &$summaries, bool $stopOnKnown): bool
     {
         foreach ($items as $item) {
             $id = (int) ($item['id'] ?? 0);
@@ -105,8 +139,9 @@ class ActivityFetcher
             }
             if (isset($existingSet[$id])) {
                 // Don't stop inside the trailing window: a backdated upload can
-                // still sit below this already-synced run.
-                if ($this->startedAfter($item, $windowStart)) {
+                // still sit below this already-synced run. A resumed backfill
+                // never stops on a known run; only Strava running out ends it.
+                if (! $stopOnKnown || $this->startedAfter($item, $windowStart)) {
                     continue;
                 }
 

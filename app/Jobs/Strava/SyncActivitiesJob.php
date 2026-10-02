@@ -23,6 +23,10 @@ class SyncActivitiesJob implements ShouldQueue
 {
     use Queueable;
 
+    public const int PAGES_PER_ATTEMPT = 2;
+
+    public const int LOCK_RETRY_SECONDS = 30;
+
     public int $tries = 3;
 
     /**
@@ -34,11 +38,15 @@ class SyncActivitiesJob implements ShouldQueue
      * @param  int  $userId  Local user id whose connection drives the sync.
      * @param  int|null  $stravaActivityId  When set, ingest only this Strava
      *                                       activity (webhook push); otherwise
-     *                                       run the full newest-first backfill.
+     *                                       run the newest-first backfill,
+     *                                       PAGES_PER_ATTEMPT pages at a time.
+     * @param  int|null  $before  Epoch cursor a continuation resumes the
+     *                            backfill below.
      */
     public function __construct(
         public readonly int $userId,
         public readonly ?int $stravaActivityId = null,
+        public readonly ?int $before = null,
     ) {
     }
 
@@ -59,7 +67,11 @@ class SyncActivitiesJob implements ShouldQueue
                 return;
             }
 
-            $orchestrator->syncUser($user, source: StravaSyncSource::Manual);
+            $resumeBefore = $orchestrator->syncUserPages($user, self::PAGES_PER_ATTEMPT, $this->before, StravaSyncSource::Manual);
+            if ($resumeBefore !== null) {
+                $next = new self($this->userId, before: $resumeBefore);
+                $this->prependToChain($resumeBefore === $this->before ? $next->delay(self::LOCK_RETRY_SECONDS) : $next);
+            }
         } catch (StravaRateLimitedException $e) {
             Log::warning('strava-sync rate-limited', [
                 'user_id' => $user->id,
