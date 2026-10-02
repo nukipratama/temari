@@ -1,0 +1,75 @@
+name: Backup watchdog
+
+on:
+  schedule:
+    - cron: '37 1 * * *' # 08:37 WIB
+  workflow_dispatch:
+    inputs:
+      max_age_hours:
+        description: 'alert when the newest successful Nightly backup is older than this many hours'
+        type: number
+        default: 26
+
+permissions:
+  actions: read
+
+jobs:
+  check:
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 5
+    outputs:
+      detail: ${{ steps.age.outputs.detail }}
+    steps:
+      - name: Measure the newest successful Nightly backup
+        id: age
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MAX_AGE_HOURS: ${{ inputs.max_age_hours || 26 }}
+        run: |
+          set -euo pipefail
+
+          if ! [[ "$MAX_AGE_HOURS" =~ ^[0-9]+$ ]]; then
+            echo "::error::max_age_hours must be a whole number of hours, got '$MAX_AGE_HOURS'"
+            exit 1
+          fi
+
+          last=$(gh run list --workflow 'Nightly backup' --status success --limit 1 --json createdAt --jq '.[0].createdAt // empty')
+
+          if [ -z "$last" ]; then
+            stale=true
+            detail="Backup watchdog: no successful Nightly backup run exists."
+          else
+            age_hours=$(( ($(date -u +%s) - $(date -u -d "$last" +%s)) / 3600 ))
+            if [ "$age_hours" -ge "$MAX_AGE_HOURS" ]; then
+              stale=true
+              detail="Backup watchdog: the newest successful Nightly backup started at $last, ${age_hours}h ago (limit ${MAX_AGE_HOURS}h)."
+            else
+              stale=false
+              detail="Newest successful Nightly backup started at $last, ${age_hours}h ago (limit ${MAX_AGE_HOURS}h)."
+            fi
+          fi
+
+          echo "$detail"
+          {
+            echo "stale=$stale"
+            echo "detail=$detail"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Fail when the newest backup is stale
+        if: steps.age.outputs.stale == 'true'
+        env:
+          DETAIL: ${{ steps.age.outputs.detail }}
+        run: |
+          echo "::error::$DETAIL"
+          exit 1
+
+  notify:
+    needs: [check]
+    if: always() && needs.check.result == 'failure'
+    uses: ./.github/workflows/maintainer-alert.yml
+    with:
+      message: ${{ needs.check.outputs.detail || 'Backup watchdog could not read the Nightly backup run history.' }}
+    secrets:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}

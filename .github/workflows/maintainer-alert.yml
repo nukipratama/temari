@@ -1,0 +1,40 @@
+name: Maintainer alert
+
+# Hosted-runner Telegram push, using the same two repository secrets as nightly-audit.yml.
+
+on:
+  workflow_call:
+    inputs:
+      message:
+        description: 'alert text; the run URL is appended'
+        type: string
+        required: true
+    secrets:
+      TELEGRAM_BOT_TOKEN:
+        required: false
+      TELEGRAM_MAINTAINER_CHAT_ID:
+        required: false
+
+permissions: {}
+
+jobs:
+  telegram:
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 5
+    steps:
+      - name: Push a Telegram alert
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}
+          MESSAGE: ${{ inputs.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_MAINTAINER_CHAT_ID" ]; then
+            echo "TELEGRAM_BOT_TOKEN / TELEGRAM_MAINTAINER_CHAT_ID not set, skipping the push."
+            exit 0
+          fi
+
+          curl -sS --fail-with-body --max-time 30 \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_MAINTAINER_CHAT_ID}" \
+            --data-urlencode text="$MESSAGE Check the run: $RUN_URL"
