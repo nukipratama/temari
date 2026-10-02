@@ -289,7 +289,7 @@ describe('Runs/Show', () => {
         expect(screen.queryByText(/\/10$/)).not.toBeInTheDocument();
     });
 
-    it('collapses a saved score to a chip in the hero, and change reopens the picker', () => {
+    it('collapses a saved score to a chip in the hero that reopens the picker', () => {
         renderShow({ detail: { ...detail, perceived_effort: 7 } });
 
         const chip = screen.getByText('7/10');
@@ -297,7 +297,9 @@ describe('Runs/Show', () => {
         expect(chip.parentElement).toHaveTextContent('7/10 · very hard');
         expect(screen.queryByRole('slider')).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: 'change' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: /change effort score/ }),
+        );
         expect(
             screen.getByRole('slider', { name: 'how hard did it feel' }),
         ).toHaveAttribute('aria-valuetext', '7 of 10, very hard');

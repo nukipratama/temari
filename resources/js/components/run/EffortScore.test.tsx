@@ -91,11 +91,19 @@ describe('EffortScore', () => {
         );
     });
 
-    it('collapses a saved score to a chip, with change reopening the picker and clear removing it', () => {
+    it('collapses a saved score to a chip that reopens the picker, where clear removes it', () => {
         render(<EffortScore prompt={{ ...PROMPT, score: 3 }} />);
 
         expect(screen.getByText('3/10')).toHaveClass('font-mono');
         expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'clear' }),
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: /change effort score/ }),
+        );
+        expect(slider()).toHaveAttribute('aria-valuetext', '3 of 10, moderate');
 
         fireEvent.click(screen.getByRole('button', { name: 'clear' }));
         expect(router.delete).toHaveBeenCalledWith(
@@ -103,16 +111,24 @@ describe('EffortScore', () => {
             expect.objectContaining({ preserveScroll: true }),
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'change' }));
-        expect(slider()).toHaveAttribute('aria-valuetext', '3 of 10, moderate');
         fireEvent.click(screen.getByRole('button', { name: 'cancel' }));
         expect(screen.queryByRole('slider')).not.toBeInTheDocument();
         expect(screen.getByText('3/10')).toBeInTheDocument();
     });
 
+    it('offers no clear on a run that has no score yet', () => {
+        render(<EffortScore prompt={PROMPT} />);
+
+        expect(
+            screen.queryByRole('button', { name: 'clear' }),
+        ).not.toBeInTheDocument();
+    });
+
     it('returns to the chip once a save lands', () => {
         render(<EffortScore prompt={{ ...PROMPT, score: 3 }} />);
-        fireEvent.click(screen.getByRole('button', { name: 'change' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: /change effort score/ }),
+        );
         fireEvent.change(slider(), { target: { value: '4' } });
         fireEvent.click(screen.getByRole('button', { name: 'save' }));
 

@@ -132,7 +132,6 @@ export default function RunsShow({
                         effort={
                             effortSaved && (
                                 <EffortSaved
-                                    activityId={activity.id}
                                     score={effortScore}
                                     onChange={() => setEditingEffort(true)}
                                 />

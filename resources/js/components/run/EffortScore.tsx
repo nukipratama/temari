@@ -77,40 +77,20 @@ export function EffortChip({
     );
 }
 
-/** The saved score as a chip, with quiet "change" and "clear". */
+/** The saved score as a chip; tapping it reopens the picker. */
 export function EffortSaved({
-    activityId,
     score,
     onChange,
-}: Readonly<{ activityId: number; score: number; onChange: () => void }>) {
-    const [processing, setProcessing] = useState(false);
-
+}: Readonly<{ score: number; onChange: () => void }>) {
     return (
-        <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+        <button
+            type="button"
+            className="focus-ring rounded-full"
+            aria-label={`change effort score, ${score} of 10, ${effortWord(score)}`}
+            onClick={onChange}
+        >
             <EffortChip score={score} />
-            <button
-                type="button"
-                className={quietButton}
-                disabled={processing}
-                onClick={onChange}
-            >
-                change
-            </button>
-            <button
-                type="button"
-                className={quietButton}
-                disabled={processing}
-                onClick={() =>
-                    router.delete(effortUrl(activityId), {
-                        preserveScroll: true,
-                        onStart: () => setProcessing(true),
-                        onFinish: () => setProcessing(false),
-                    })
-                }
-            >
-                clear
-            </button>
-        </span>
+        </button>
     );
 }
 
@@ -166,14 +146,31 @@ export function EffortPicker({
                 </p>
                 <div className="flex flex-none items-center gap-4">
                     {saved !== null && (
-                        <button
-                            type="button"
-                            className={quietButton}
-                            disabled={processing}
-                            onClick={onClose}
-                        >
-                            cancel
-                        </button>
+                        <>
+                            <button
+                                type="button"
+                                className={quietButton}
+                                disabled={processing}
+                                onClick={() =>
+                                    router.delete(effortUrl(activityId), {
+                                        preserveScroll: true,
+                                        onStart: () => setProcessing(true),
+                                        onFinish: () => setProcessing(false),
+                                        onSuccess: onClose,
+                                    })
+                                }
+                            >
+                                clear
+                            </button>
+                            <button
+                                type="button"
+                                className={quietButton}
+                                disabled={processing}
+                                onClick={onClose}
+                            >
+                                cancel
+                            </button>
+                        </>
                     )}
                     <PillButton
                         tone="horizon"
@@ -278,7 +275,6 @@ export default function EffortScore({
             )}
             <div className="mt-2">
                 <EffortSaved
-                    activityId={prompt.activity_id}
                     score={prompt.score}
                     onChange={() => setEditing(true)}
                 />
