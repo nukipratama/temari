@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import type {
     BriefingResult,
@@ -327,7 +327,7 @@ describe('Home', () => {
     });
 
     it("passes restDayEasePace through to today's session on a rest day", () => {
-        vi.setSystemTime(new Date('2026-06-08T09:00:00'));
+        setMockPage({ auth: { user: makeUser() }, today: '2026-06-08' });
 
         const restDayPlan: WeekPlan = {
             ...weekPlan,
@@ -348,8 +348,6 @@ describe('Home', () => {
         expect(
             screen.getByText(/your easy runs after a rest day go/),
         ).toBeInTheDocument();
-
-        vi.useRealTimers();
     });
 
     it('renders no effort picker on Today, even when the props name a run', () => {

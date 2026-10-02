@@ -30,6 +30,7 @@ const DEFAULT_PAGE_PROPS: Record<string, unknown> = {
     auth: { user: null },
     flash: { success: null, error: null, info: null },
     demoLoginEnabled: false,
+    today: '2026-06-17',
 };
 const DEFAULT_URL = '/';
 const DEFAULT_COMPONENT = 'Home';

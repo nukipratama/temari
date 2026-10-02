@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { setMockPage } from '@/test/setup';
 
 import {
+    daysUntilId,
     formatAbsoluteId,
     formatDuration,
     formatDurationHMS,
@@ -21,7 +25,7 @@ import {
     parseNaiveLocalDate,
     parsePaceSec,
     sundayOf,
-    todayLocalIso,
+    useTodayIso,
 } from './pace';
 
 describe('formatPace', () => {
@@ -370,9 +374,40 @@ describe('formatShortDateTimeId', () => {
     });
 });
 
-describe('local-zone ISO date helpers', () => {
-    it('todayLocalIso returns YYYY-MM-DD for the local current date', () => {
-        expect(todayLocalIso()).toBe(isoDateLocal(new Date()));
+describe('server-day helpers', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 9, 3, 0, 30));
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('useTodayIso follows the shared server date, not the device clock', () => {
+        setMockPage({ today: '2026-10-02' });
+
+        expect(renderHook(() => useTodayIso()).result.current).toBe(
+            '2026-10-02',
+        );
+    });
+
+    it('useTodayIso falls back to the device date without a shared date', () => {
+        setMockPage({ today: undefined });
+
+        expect(renderHook(() => useTodayIso()).result.current).toBe(
+            '2026-10-03',
+        );
+    });
+
+    it('daysUntilId counts from the given server date, not the device clock', () => {
+        expect(daysUntilId('2026-10-05', '2026-10-02')).toBe(3);
+        expect(daysUntilId('2026-10-02', '2026-10-02')).toBe(0);
+        expect(daysUntilId('2026-10-01', '2026-10-02')).toBe(-1);
+    });
+
+    it('daysUntilId spans a month and a year boundary', () => {
+        expect(daysUntilId('2027-01-02', '2026-12-30')).toBe(3);
     });
 });
 

@@ -67,19 +67,18 @@ const BACK_TARGETS: Readonly<Record<string, BackTarget>> = {
     'Settings/Index': { href: '/profile', label: 'Profile' },
 };
 
-/** The default tab destination, resetting a calendar to the current month. */
+/** The default tab destination, resetting a calendar to the month of the server's `today`. */
 export function defaultTabHrefFor(
     tab: TabId,
     currentHref: string,
-    now = new Date(),
+    today: string,
 ): string {
     const query = currentHref.split('?')[1]?.split('#')[0] ?? '';
     if (
         tab === 'history' &&
         new URLSearchParams(query).get('view') === 'calendar'
     ) {
-        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        return `/history?view=calendar&month=${month}`;
+        return `/history?view=calendar&month=${today.slice(0, 7)}`;
     }
 
     return ITEMS.find((item) => item.id === tab)?.href ?? '/';

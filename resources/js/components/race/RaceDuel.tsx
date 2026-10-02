@@ -3,7 +3,12 @@ import type { RaceAmbition, RaceSupport } from '@/types/inertia';
 import MascotWatermark from '@/components/temari/MascotWatermark';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
-import { daysUntilId, formatDurationHMS, formatNaiveIdDate } from '@/lib/pace';
+import {
+    daysUntilId,
+    formatDurationHMS,
+    formatNaiveIdDate,
+    useTodayIso,
+} from '@/lib/pace';
 import {
     ambitionNote,
     type GoalGapVerdict,
@@ -57,7 +62,7 @@ export default function RaceDuel({
         (ambition.state === 'on_track' && gap.verdict === 'behind')
             ? 'on'
             : gap.verdict;
-    const daysToGo = daysUntilId(race.race_date);
+    const daysToGo = daysUntilId(race.race_date, useTodayIso());
 
     return (
         <section className={cn('relative isolate overflow-hidden', className)}>

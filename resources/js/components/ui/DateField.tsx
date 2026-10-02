@@ -6,7 +6,7 @@ import { useCoarsePointer } from '@/hooks/useCoarsePointer';
 import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/cn';
 import { addMonths, isSameMonth, monthGrid, WEEKDAYS } from '@/lib/monthGrid';
-import { parseNaiveLocalDate, todayLocalIso } from '@/lib/pace';
+import { parseNaiveLocalDate, useTodayIso } from '@/lib/pace';
 import { inputVariants } from '@/lib/variants';
 
 interface DateFieldProps {
@@ -94,7 +94,7 @@ function CalendarPopover({
     min?: string;
     onPick: (iso: string) => void;
 }>) {
-    const today = todayLocalIso();
+    const today = useTodayIso();
     const [month, setMonth] = useState(() => value || min || today);
     const weeks = monthGrid(month);
     const monthDate = parseNaiveLocalDate(month);

@@ -5,7 +5,7 @@ import type {
     RaceSupport,
 } from '@/types/inertia';
 
-import { formatDurationHMS, formatPace } from '@/lib/pace';
+import { formatDurationHMS, formatPace, isoDateLocal } from '@/lib/pace';
 
 /**
  * The race-goal bounds, mirrored from the server so a form cannot offer a
@@ -26,14 +26,12 @@ const IMPOSSIBLE_PACE_SEC_PER_KM = 155;
 // impossible, just a real stretch worth a gut check.
 export const PERSONALIZED_STRETCH_RATIO = 0.9;
 
-/** Earliest race day the server accepts, as a local calendar date (`after:today`). */
-export function earliestRaceDate(now: Date = new Date()): string {
-    const date = new Date(now.getTime());
+/** Earliest race day the server accepts (`after:today`): the day after the server's `today`. */
+export function earliestRaceDate(today: string): string {
+    const date = new Date(`${today}T00:00:00`);
     date.setDate(date.getDate() + 1);
-    const month = `${date.getMonth() + 1}`.padStart(2, '0');
-    const day = `${date.getDate()}`.padStart(2, '0');
 
-    return `${date.getFullYear()}-${month}-${day}`;
+    return isoDateLocal(date);
 }
 
 /** Null when the goal time is submittable, otherwise the reason it is not. */

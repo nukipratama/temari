@@ -202,6 +202,8 @@ export interface SharedProps {
         info: string | null;
     };
     demoLoginEnabled: boolean;
+    /** The server's calendar day (`YYYY-MM-DD`, app timezone); every client day boundary reads this, never the device clock. */
+    today?: string;
     stravaSync?: StravaSync | null;
     activeRace?: ActiveRace | null;
     /** ISO-8601 timestamp of the auth user's last heart-rate-zone change, or null. */

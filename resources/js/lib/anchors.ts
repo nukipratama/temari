@@ -1,4 +1,3 @@
-import { todayLocalIso } from '@/lib/pace';
 import { ANCHOR_KIND_VALUES, type AnchorKind } from '@/types/generated';
 
 /**
@@ -158,8 +157,8 @@ interface WeekPlanish {
  */
 export function drawnHomeAnchors(
     weekPlan: WeekPlanish | null,
+    todayIso: string,
 ): ReadonlySet<string> {
-    const todayIso = todayLocalIso();
     const covered =
         weekPlan?.days.some((day) => day.date === todayIso) ?? false;
 

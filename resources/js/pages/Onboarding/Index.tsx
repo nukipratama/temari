@@ -37,7 +37,7 @@ import SettingsRow from '@/components/ui/SettingsRow';
 import { useCountUp } from '@/hooks/useCountUp';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
-import { formatPace } from '@/lib/pace';
+import { formatPace, useTodayIso } from '@/lib/pace';
 import { earliestRaceDate, goalTimeError } from '@/lib/raceGoal';
 import { revealDelay } from '@/lib/styles';
 import { inputVariants, outlineChipVariants } from '@/lib/variants';
@@ -179,6 +179,7 @@ export default function OnboardingIndex({
     const page = usePage<SharedProps>().props;
     const firstName = page.auth.user?.first_name ?? '';
     const errors = page.errors ?? {};
+    const today = useTodayIso();
     const [step, setStep] = useState<Step>('connected');
     const [subIndex, setSubIndex] = useState(0);
     const [raceDate, setRaceDate] = useState('');
@@ -655,7 +656,7 @@ export default function OnboardingIndex({
                                     <DateField
                                         id="onboarding_race_date"
                                         value={raceDate}
-                                        min={earliestRaceDate()}
+                                        min={earliestRaceDate(today)}
                                         onChange={setRaceDate}
                                         className="mt-1.5"
                                     />

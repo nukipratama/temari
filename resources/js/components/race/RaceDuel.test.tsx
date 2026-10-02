@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { RaceAmbition, RaceSupport } from '@/types/inertia';
+
+import { setMockPage } from '@/test/setup';
 
 import RaceDuel from './RaceDuel';
 
@@ -40,12 +42,7 @@ function renderDuel(ambition: Partial<RaceAmbition> = {}, support = SUPPORT) {
 
 describe('RaceDuel', () => {
     beforeEach(() => {
-        vi.useFakeTimers({ toFake: ['Date'] });
-        vi.setSystemTime(new Date(2026, 10, 26, 9, 0));
-    });
-
-    afterEach(() => {
-        vi.useRealTimers();
+        setMockPage({ today: '2026-11-26' });
     });
 
     it('faces the target off against the time recent runs support', () => {

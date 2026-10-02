@@ -9,6 +9,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
+import { useTodayIso } from '@/lib/pace';
 import {
     ambitiousGoalWarning,
     earliestRaceDate,
@@ -70,6 +71,7 @@ export default function RaceGoalForm({
     const [name, setName] = useState(race?.name ?? '');
     const [processing, setProcessing] = useState(false);
     const [intent, setIntent] = useState<RaceIntent>('update');
+    const today = useTodayIso();
 
     const updating = race !== null && intent === 'update';
 
@@ -181,7 +183,7 @@ export default function RaceGoalForm({
                     <DateField
                         id="race_date"
                         required
-                        min={earliestRaceDate()}
+                        min={earliestRaceDate(today)}
                         value={raceDate}
                         onChange={setRaceDate}
                         className="mt-1.5"

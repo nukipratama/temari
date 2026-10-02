@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+
+import { setMockPage } from '@/test/setup';
 
 import RaceCard from './RaceCard';
 
@@ -20,7 +22,7 @@ describe('RaceCard', () => {
     });
 
     it('shows the race, its distance, its date and the days left', () => {
-        vi.setSystemTime(new Date('2026-08-31T09:00:00'));
+        setMockPage({ today: '2026-08-31' });
 
         render(<RaceCard race={race} />);
 
@@ -28,8 +30,6 @@ describe('RaceCard', () => {
         expect(screen.getByText(/21\.1 km/)).toBeInTheDocument();
         expect(screen.getByText('42')).toBeInTheDocument();
         expect(screen.getByText('days')).toBeInTheDocument();
-
-        vi.useRealTimers();
     });
 
     it('falls back to a generic title when the race is unnamed', () => {
@@ -39,12 +39,10 @@ describe('RaceCard', () => {
     });
 
     it('says "day" on the eve of the race', () => {
-        vi.setSystemTime(new Date('2026-10-11T09:00:00'));
+        setMockPage({ today: '2026-10-11' });
 
         render(<RaceCard race={race} />);
 
         expect(screen.getByText('day')).toBeInTheDocument();
-
-        vi.useRealTimers();
     });
 });

@@ -4,7 +4,7 @@ import type { ActiveRace } from '@/types/inertia';
 
 import { Icon } from '@/components/ui/Icon';
 import LinkCard from '@/components/ui/LinkCard';
-import { daysUntilId, formatShortDateId } from '@/lib/pace';
+import { daysUntilId, formatShortDateId, useTodayIso } from '@/lib/pace';
 
 /**
  * The race the athlete is training for, or the prompt to set one. Both states
@@ -13,6 +13,8 @@ import { daysUntilId, formatShortDateId } from '@/lib/pace';
 export default function RaceCard({
     race,
 }: Readonly<{ race: ActiveRace | null }>) {
+    const today = useTodayIso();
+
     if (race === null) {
         return (
             <LinkCard
@@ -30,7 +32,7 @@ export default function RaceCard({
         );
     }
 
-    const days = daysUntilId(race.race_date);
+    const days = daysUntilId(race.race_date, today);
 
     return (
         <LinkCard

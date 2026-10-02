@@ -14,6 +14,7 @@ import PageHero from '@/components/ui/PageHero';
 import { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 import { postJson } from '@/lib/http';
+import { useTodayIso } from '@/lib/pace';
 
 /** Rows each "load older" press adds — mirrors InboxController::PER_PAGE. */
 const PER_PAGE = 20;
@@ -48,6 +49,7 @@ export default function Inbox({
 }: Readonly<InboxProps>) {
     const { props } = usePage<SharedProps>();
     const unread = props.unreadNotifications ?? 0;
+    const today = useTodayIso();
 
     const focusTarget =
         notifications.find((item) => item.id === focusId) ?? null;
@@ -143,7 +145,7 @@ export default function Inbox({
                         ) : (
                             <>
                                 <div className="mt-4 flex flex-col gap-3.5">
-                                    {groupByBucket(notifications).map(
+                                    {groupByBucket(notifications, today).map(
                                         ({ bucket, items }) => (
                                             <div key={bucket}>
                                                 <Eyebrow

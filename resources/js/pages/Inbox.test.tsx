@@ -198,25 +198,26 @@ describe('Inbox', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('groups rows into Today / This Week / Earlier sections', () => {
+    it('groups rows into Today / This Week / Earlier sections by the shared server date', () => {
         vi.useFakeTimers();
-        vi.setSystemTime(new Date(2026, 7, 19, 12, 0, 0)); // Wed 19 Aug 2026
+        vi.setSystemTime(new Date(2026, 7, 20, 1, 30));
+        setMockPage({ unreadNotifications: 1, today: '2026-08-19' }, '/inbox');
 
         renderInbox([
             item({
                 id: 1,
                 title: 'Today row',
-                created_at: new Date(2026, 7, 19, 8).toISOString(),
+                created_at: '2026-08-19T23:10:00+07:00',
             }),
             item({
                 id: 2,
                 title: 'This week row',
-                created_at: new Date(2026, 7, 17, 8).toISOString(),
+                created_at: '2026-08-17T08:00:00+07:00',
             }),
             item({
                 id: 3,
                 title: 'Earlier row',
-                created_at: new Date(2026, 7, 1, 8).toISOString(),
+                created_at: '2026-08-01T08:00:00+07:00',
             }),
         ]);
 
