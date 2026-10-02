@@ -161,65 +161,99 @@ jobs:
             'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" --databases "$DB_ANALYTICS_DATABASE"' \
             | gzip > /tmp/restore-ci/analytics-fixture.sql.gz
 
-      - name: Simulate a disaster (drop the schemas)
+      - name: Simulate a failed migration (leftover tables, lost rows)
         run: |
           docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "DROP DATABASE $DB_DATABASE; CREATE DATABASE $DB_DATABASE;"'
+            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" "$DB_DATABASE" -e "
+              CREATE TABLE restore_ci_leftover (id INT PRIMARY KEY);
+              DELETE FROM restore_ci_sentinel;
+            "'
 
           docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "DROP DATABASE $DB_ANALYTICS_DATABASE;"'
+            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" "$DB_ANALYTICS_DATABASE" -e "
+              CREATE TABLE restore_ci_analytics_leftover (id INT PRIMARY KEY);
+              DELETE FROM restore_ci_analytics_sentinel;
+            "'
 
-      - name: Restore via scripts/restore-db.sh
-        timeout-minutes: 5
+      - name: Restore over the failed migration, then after a disaster, via scripts/restore-db.sh
+        timeout-minutes: 10
         env:
           COMPOSE_FILE: tests/fixtures/restore-db-ci-compose.yml
           MYSQL_SERVICE: mysql
           RESTORE_DB_ASSUME_YES: '1'
         run: |
+          assert_restored() {
+            after=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+              'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""')
+            after="$(echo "$after" | tr -d '[:space:]')"
+
+            if [ "$after" != "$TABLE_COUNT_BEFORE" ]; then
+              echo "::error::table count after the restore $1 ($after) != at dump time ($TABLE_COUNT_BEFORE)"
+              exit 1
+            fi
+
+            leftover=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+              'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\" AND table_name = \"restore_ci_leftover\""')
+            leftover="$(echo "$leftover" | tr -d '[:space:]')"
+
+            if [ "$leftover" != "0" ]; then
+              echo "::error::restore_ci_leftover, created after the dump, survived the restore $1"
+              exit 1
+            fi
+
+            note=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+              'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" "$DB_DATABASE" -e "SELECT note FROM restore_ci_sentinel WHERE id = 1"')
+            note="$(echo "$note" | tr -d '[:space:]')"
+
+            if [ "$note" != "restore-db-ci-sentinel" ]; then
+              echo "::error::sentinel row missing or wrong after the restore $1: got '$note'"
+              exit 1
+            fi
+
+            echo "Restore $1 verified: $after tables, no leftover table, sentinel row intact."
+
+            after_analytics=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+              'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_ANALYTICS_DATABASE\""')
+            after_analytics="$(echo "$after_analytics" | tr -d '[:space:]')"
+
+            if [ "$after_analytics" != "$ANALYTICS_TABLE_COUNT_BEFORE" ]; then
+              echo "::error::analytics table count after the restore $1 ($after_analytics) != at dump time ($ANALYTICS_TABLE_COUNT_BEFORE)"
+              exit 1
+            fi
+
+            analytics_leftover=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+              'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_ANALYTICS_DATABASE\" AND table_name = \"restore_ci_analytics_leftover\""')
+            analytics_leftover="$(echo "$analytics_leftover" | tr -d '[:space:]')"
+
+            if [ "$analytics_leftover" != "0" ]; then
+              echo "::error::restore_ci_analytics_leftover, created after the dump, survived the restore $1"
+              exit 1
+            fi
+
+            analytics_note=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+              'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" "$DB_ANALYTICS_DATABASE" -e "SELECT note FROM restore_ci_analytics_sentinel WHERE id = 1"')
+            analytics_note="$(echo "$analytics_note" | tr -d '[:space:]')"
+
+            if [ "$analytics_note" != "restore-db-ci-analytics-sentinel" ]; then
+              echo "::error::analytics sentinel row missing or wrong after the restore $1: got '$analytics_note'"
+              exit 1
+            fi
+
+            echo "Analytics restore $1 verified: $after_analytics tables, no leftover table, sentinel row intact."
+          }
+
           ./scripts/restore-db.sh /tmp/restore-ci/fixture.sql.gz
           ./scripts/restore-db.sh /tmp/restore-ci/analytics-fixture.sql.gz
+          assert_restored "over the failed migration"
 
-      - name: Assert the restore actually restored the data
-        run: |
-          after=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""')
-          after="$(echo "$after" | tr -d '[:space:]')"
+          docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "DROP DATABASE $DB_DATABASE; CREATE DATABASE $DB_DATABASE;"'
+          docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "DROP DATABASE $DB_ANALYTICS_DATABASE;"'
 
-          if [ "$after" != "$TABLE_COUNT_BEFORE" ]; then
-            echo "::error::table count after restore ($after) != before the disaster ($TABLE_COUNT_BEFORE)"
-            exit 1
-          fi
-
-          note=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" "$DB_DATABASE" -e "SELECT note FROM restore_ci_sentinel WHERE id = 1"')
-          note="$(echo "$note" | tr -d '[:space:]')"
-
-          if [ "$note" != "restore-db-ci-sentinel" ]; then
-            echo "::error::sentinel row missing or wrong after restore: got '$note'"
-            exit 1
-          fi
-
-          echo "Restore verified: $after tables, sentinel row intact."
-
-          after_analytics=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_ANALYTICS_DATABASE\""')
-          after_analytics="$(echo "$after_analytics" | tr -d '[:space:]')"
-
-          if [ "$after_analytics" != "$ANALYTICS_TABLE_COUNT_BEFORE" ]; then
-            echo "::error::analytics table count after restore ($after_analytics) != before the disaster ($ANALYTICS_TABLE_COUNT_BEFORE)"
-            exit 1
-          fi
-
-          analytics_note=$(docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" "$DB_ANALYTICS_DATABASE" -e "SELECT note FROM restore_ci_analytics_sentinel WHERE id = 1"')
-          analytics_note="$(echo "$analytics_note" | tr -d '[:space:]')"
-
-          if [ "$analytics_note" != "restore-db-ci-analytics-sentinel" ]; then
-            echo "::error::analytics sentinel row missing or wrong after restore: got '$analytics_note'"
-            exit 1
-          fi
-
-          echo "Analytics restore verified: $after_analytics tables, sentinel row intact."
+          ./scripts/restore-db.sh /tmp/restore-ci/fixture.sql.gz
+          ./scripts/restore-db.sh /tmp/restore-ci/analytics-fixture.sql.gz
+          assert_restored "after a disaster (dropped schemas)"
 
       - name: Tear down the throwaway stack
         if: always()
