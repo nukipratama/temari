@@ -416,6 +416,23 @@ describe('AnalysisStatus', () => {
             ).not.toBeInTheDocument();
         });
 
+        it('says a failed block will be written once Temari is back, not to try again', () => {
+            setMockPage({ aiPaused: true, aiPauseRetriesFailed: true });
+            render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
+            expect(
+                screen.getByText('This will be written once Temari is back.'),
+            ).toBeInTheDocument();
+            expect(screen.queryByText(/try again/i)).not.toBeInTheDocument();
+        });
+
+        it('makes no written-on-return promise under a pause that does not retry failed blocks', () => {
+            setMockPage({ aiPaused: true, aiPauseRetriesFailed: false });
+            render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
+            expect(
+                screen.queryByText('This will be written once Temari is back.'),
+            ).not.toBeInTheDocument();
+        });
+
         it('hides the empty-state trigger on a pending block', () => {
             setMockPage({ aiPaused: true });
             render(

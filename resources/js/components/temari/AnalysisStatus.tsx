@@ -177,7 +177,8 @@ export default function AnalysisStatus({
     // chain only the head may, so regenerating mid-history can't desync later
     // links. Resume actions on failed/pending links stay regardless.
     const canRegenerate = canTrigger && (!chained || isChainHead);
-    const { hrZonesChangedAt } = usePage<SharedProps>().props;
+    const { hrZonesChangedAt, aiPauseRetriesFailed = false } =
+        usePage<SharedProps>().props;
     const effectiveStatus = pending ? 'queued' : status;
     const content = analysis.content;
     const attempts = analysis.attempts ?? 0;
@@ -330,7 +331,14 @@ export default function AnalysisStatus({
     if (effectiveStatus === 'failed') {
         return (
             <div className="flex flex-col gap-1.5">
-                <UnavailableNote size={size} />
+                <UnavailableNote
+                    size={size}
+                    message={
+                        paused && aiPauseRetriesFailed
+                            ? 'This will be written once Temari is back.'
+                            : undefined
+                    }
+                />
                 {rateLimited && <RateLimitedNote onSky={onSky} />}
                 {canTrigger && (
                     <button

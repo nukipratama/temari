@@ -78,6 +78,43 @@ class SelfHealer
     }
 
     /**
+     * One fresh attempt, once a pause lifts, for every active athlete's block that
+     * failed from an hour (one sweep) before the pause began. Each is set one
+     * attempt short of {@see Analysis::MAX_SELF_HEAL_ATTEMPTS}, so a further
+     * failure dead-letters it again and re-alerts.
+     */
+    public function retryFailedDuringPause(Carbon $pauseStartedAt): int
+    {
+        $index = 0;
+
+        foreach ($this->activeUsers->ids() as $userId) {
+            $rows = AnalysisSubjectMap::whereOwnedBy(
+                Analysis::query()
+                    ->knownType()
+                    ->where('status', AnalysisStatus::Failed)
+                    ->where('updated_at', '>=', $pauseStartedAt->copy()->subHour()),
+                $userId,
+            )->get();
+
+            foreach ($rows as $row) {
+                $row->update(['attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS - 1]);
+
+                $this->service->request(
+                    subjectOrType: $row->subject_type,
+                    subjectId: $row->subject_id,
+                    type: $row->analysis_type,
+                    discriminator: $row->discriminator,
+                    delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
+                    invalidate: false,
+                );
+                $index++;
+            }
+        }
+
+        return $index;
+    }
+
+    /**
      * Per-activity chains: the user's earliest activity (by start_date_local)
      * whose narration group is *stalled* on its representative PostRunSpeech row
      * (Pending, or Failed still under the retry budget). Dispatching it

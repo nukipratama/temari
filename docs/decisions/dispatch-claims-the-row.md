@@ -16,6 +16,8 @@ code_refs:
 **Status:** Accepted (documented 2026-09-09). Refines the dispatch mechanism of
 [[idempotent-dispatch-cost-ceiling]] and the retry budget of [[bounded-self-heal-and-dead-letter]].
 
+> **One claim below is partly superseded (noted 2026-10-02).** "Only a person re-arms its budget" has one exception: when a non-ceiling pause lifts, a block that failed during it is set one attempt short of the limit and re-dispatched once. See [[failed-during-a-pause-retried-once-on-resume]].
+
 > **One claim below is superseded (noted 2026-09-10).** "The plan-day edit now declares its
 > origin" and every other `User`-origin controller no longer call
 > `app(NarrationOrigin::class)->set(AnalysisOrigin::User)` themselves —

@@ -15,13 +15,13 @@ uses(RefreshDatabase::class);
 beforeEach(fn () => Cache::flush());
 
 it('shares true when LLM generation is paused', function (): void {
-    $this->partialMock(AnalysisService::class)
-        ->shouldReceive('generationPaused')
-        ->andReturn(true);
+    $analyses = $this->partialMock(AnalysisService::class);
+    $analyses->shouldReceive('generationPaused')->andReturn(true);
+    $analyses->shouldReceive('pauseReason')->andReturn('kill_switch');
 
     $this->actingAs(User::factory()->create())->get('/profile')
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->where('aiPaused', true));
+        ->assertInertia(fn (Assert $page) => $page->where('aiPaused', true)->where('aiPauseRetriesFailed', true));
 });
 
 it('shares false when the pipeline is healthy', function (): void {

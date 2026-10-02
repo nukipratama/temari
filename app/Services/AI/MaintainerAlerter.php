@@ -150,18 +150,36 @@ class MaintainerAlerter
      * current {@see AnalysisService::pauseReason()} to the last one alerted (stored
      * durably) and pushes only on a change, so an ongoing pause is not re-sent on
      * every hourly self-heal run. A null reason means generation resumed.
+     *
+     * Returns when the pause began on the one sweep that sees it lift, and null
+     * otherwise, including when the lifting pause was the app-wide cost ceiling.
      */
-    public function syncPauseState(?string $reason): void
+    public function syncPauseState(?string $reason): ?Carbon
     {
         $stored = $this->config->get(AppConfigKey::AiLastPauseReason);
         $previous = is_string($stored) ? $stored : null;
 
         if ($reason === $previous) {
-            return;
+            return null;
         }
 
-        $this->config->set(AppConfigKey::AiLastPauseReason, $reason);
+        $startedAt = $this->config->get(AppConfigKey::AiPauseStartedAt);
+
+        $this->config->setMany([
+            [AppConfigKey::AiLastPauseReason, $reason],
+            [AppConfigKey::AiPauseStartedAt, match (true) {
+                $reason === null => null,
+                $previous === null => Carbon::now()->toIso8601String(),
+                default => $startedAt,
+            }],
+        ]);
         $this->broadcast($this->pauseMessage($reason));
+
+        if ($reason !== null || $previous === 'cost_ceiling' || ! is_string($startedAt)) {
+            return null;
+        }
+
+        return Carbon::parse($startedAt);
     }
 
     /**

@@ -33,6 +33,7 @@ enum AppConfigKey: string
     // Last pause reason pushed to maintainers — managed by MaintainerAlerter so a
     // pause on/off transition is alerted once, not re-sent every self-heal run.
     case AiLastPauseReason = 'ai.last_pause_reason';
+    case AiPauseStartedAt = 'ai.pause_started_at';
 
     public function cacheKey(): string
     {
@@ -57,6 +58,7 @@ enum AppConfigKey: string
             self::AiConfigBreakerFailures => 0,
             self::AiConfigBreakerOpenedAt => null,
             self::AiLastPauseReason => null,
+            self::AiPauseStartedAt => null,
         };
     }
 
@@ -78,6 +80,7 @@ enum AppConfigKey: string
             self::StravaBreakerOpenedAt => $value === null ? null : (string) $value,
             self::AiConfigBreakerOpenedAt => $value === null ? null : (string) $value,
             self::AiLastPauseReason => $value === null ? null : (string) $value,
+            self::AiPauseStartedAt => $value === null ? null : (string) $value,
         };
     }
 }

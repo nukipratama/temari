@@ -257,7 +257,10 @@ covers only [`RecentlyActiveUsers`](../../app/Actions/AI/RecentlyActiveUsers.php
 athletes away from the app are excluded. Failed rows are bounded by
 [`MAX_SELF_HEAL_ATTEMPTS`](../../app/Models/AI/Analysis.php#L78) and then dead-letter to
 `/devtools/narration` for a manual re-arm, which is itself a recovery-origin dispatch. See
-[[bounded-self-heal-and-dead-letter]].
+[[bounded-self-heal-and-dead-letter]]. On the sweep that sees a non-ceiling pause lift,
+[`SelfHealer::retryFailedDuringPause()`](../../app/Services/AI/SelfHealer.php#L86) first gives every
+active athlete's block that failed from one sweep before the pause began one more attempt; see
+[[failed-during-a-pause-retried-once-on-resume]].
 
 ### 5. Return
 

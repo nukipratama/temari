@@ -16,6 +16,8 @@ code_refs:
 
 **Status:** Accepted (documented 2026-07-04). Supersedes the "no self-healing" stance of [[per-block-manual-retry]].
 
+> **Partly superseded, 2026-10-02, by [[failed-during-a-pause-retried-once-on-resume]]:** a block that failed during a non-ceiling pause, dead-lettered or not, gets one fresh attempt when the pause lifts, so a person is no longer the only way back from the dead-letter.
+
 
 > **Extended, 2026-09-09, by [[kickoff-catch-up-is-upsert-only]].** Everything below still holds.
 > It only ever describes the *fill* side: every sweep here starts from a row that already exists, so
