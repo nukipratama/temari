@@ -330,7 +330,14 @@ export default function AnalysisStatus({
     if (effectiveStatus === 'failed') {
         return (
             <div className="flex flex-col gap-1.5">
-                <UnavailableNote size={size} />
+                <UnavailableNote
+                    size={size}
+                    message={
+                        paused
+                            ? 'This will be written once Temari is back.'
+                            : undefined
+                    }
+                />
                 {rateLimited && <RateLimitedNote onSky={onSky} />}
                 {canTrigger && (
                     <button

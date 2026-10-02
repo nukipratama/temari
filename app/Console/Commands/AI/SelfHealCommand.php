@@ -24,7 +24,7 @@ class SelfHealCommand extends Command
         // Detect a pause on/off transition before the early-exit, so both entering
         // a pause (healthy -> paused) and resuming (paused -> healthy) push an alert
         // once, with the reason. Runs hourly regardless of the current pause state.
-        $alerter->syncPauseState($service->pauseReason());
+        $liftedPauseStartedAt = $alerter->syncPauseState($service->pauseReason());
 
         // Nothing this run can dispatch would bill while generation is paused
         // (cost ceiling / AI off / Azure unset) - every request() would no-op -
@@ -35,7 +35,8 @@ class SelfHealCommand extends Command
             return self::SUCCESS;
         }
 
-        $resumed = $healer->run();
+        $resumed = ($liftedPauseStartedAt === null ? 0 : $healer->retryFailedDuringPause($liftedPauseStartedAt))
+            + $healer->run();
 
         $this->info("Resumed {$resumed} blocks.");
 

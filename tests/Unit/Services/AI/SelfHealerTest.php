@@ -804,6 +804,44 @@ it('resumes a stalled profile-voice row even while any run of the backlog awaits
     expect(array_column($captured, 'type'))->toEqualCanonicalizing([AnalysisType::BriefingMascotVoice, AnalysisType::ProfileVoice]);
 });
 
+/** @param array<string, mixed> $attributes */
+function failedPlanDayVoice(User $user, string $day, string $failedAt, array $attributes = []): Analysis
+{
+    return Analysis::factory()->create([
+        'subject_type' => AnalysisType::PlanDayVoice->subjectType(),
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::PlanDayVoice,
+        'discriminator' => $day,
+        'status' => AnalysisStatus::Failed,
+        'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
+        'updated_at' => Carbon::parse($failedAt),
+        ...$attributes,
+    ]);
+}
+
+it('re-arms every active athlete block that failed since an hour before the pause began, one attempt short of the limit', function (): void {
+    $user = User::factory()->create(['last_seen_at' => Carbon::now()]);
+    $deadLettered = failedPlanDayVoice($user, '2026-06-16', '2026-06-17 07:30:00');
+    $underBudget = failedPlanDayVoice($user, '2026-06-17', '2026-06-17 09:00:00', ['attempts' => 1]);
+    $tooEarly = failedPlanDayVoice($user, '2026-06-15', '2026-06-17 06:59:00');
+    $done = failedPlanDayVoice($user, '2026-06-14', '2026-06-17 09:00:00', ['status' => AnalysisStatus::Done]);
+    $demo = failedPlanDayVoice(User::factory()->demo()->create(), '2026-06-16', '2026-06-17 09:00:00');
+    $away = failedPlanDayVoice(User::factory()->create(['last_seen_at' => Carbon::today()->subDays(8)]), '2026-06-16', '2026-06-17 09:00:00');
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->retryFailedDuringPause(Carbon::parse('2026-06-17 08:00:00')))->toBe(2)
+        ->and(array_column($captured, 'discriminator'))->toEqualCanonicalizing(['2026-06-16', '2026-06-17'])
+        ->and(array_column($captured, 'invalidate'))->toBe([false, false])
+        ->and(array_column($captured, 'delaySeconds'))->toBe([0, 5])
+        ->and($deadLettered->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS - 1)
+        ->and($underBudget->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS - 1)
+        ->and($tooEarly->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and($done->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and($demo->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and($away->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS);
+});
+
 it('resumes both a briefing and a profile-voice row for a long-connected athlete despite a stuck old backlog entry (#1032)', function (): void {
     $user = User::factory()->create();
     // Connected well past the hydration grace window (default 48h).

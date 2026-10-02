@@ -109,6 +109,43 @@ it('alerts a resume when the reason clears back to null', function (): void {
     expect(app(AppConfig::class)->get(AppConfigKey::AiLastPauseReason))->toBeNull();
 });
 
+it('stamps when a pause begins and keeps that stamp while only the reason changes', function (): void {
+    Carbon::setTestNow('2026-06-17 08:00:00');
+    $alerter = app(MaintainerAlerter::class);
+
+    expect($alerter->syncPauseState('kill_switch'))->toBeNull();
+
+    Carbon::setTestNow('2026-06-17 09:00:00');
+    expect($alerter->syncPauseState('config'))->toBeNull()
+        ->and(app(AppConfig::class)->get(AppConfigKey::AiPauseStartedAt))
+        ->toBe(Carbon::parse('2026-06-17 08:00:00')->toIso8601String());
+
+    Carbon::setTestNow();
+});
+
+it('returns the pause start once when a non-ceiling pause lifts, then nothing on the next sweep', function (): void {
+    Carbon::setTestNow('2026-06-17 08:00:00');
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->syncPauseState('config');
+
+    Carbon::setTestNow('2026-06-17 10:00:00');
+    $lifted = $alerter->syncPauseState(null);
+
+    expect($lifted?->equalTo(Carbon::parse('2026-06-17 08:00:00')))->toBeTrue()
+        ->and($alerter->syncPauseState(null))->toBeNull()
+        ->and(app(AppConfig::class)->get(AppConfigKey::AiPauseStartedAt))->toBeNull();
+
+    Carbon::setTestNow();
+});
+
+it('does not report a resume when the app-wide cost ceiling lifts', function (): void {
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->syncPauseState('cost_ceiling');
+
+    expect($alerter->syncPauseState(null))->toBeNull()
+        ->and(app(AppConfig::class)->get(AppConfigKey::AiPauseStartedAt))->toBeNull();
+});
+
 it('pushes a scheduler-failure alert', function (): void {
     $client = fakeTelegram();
     adminWithChat(4001);
