@@ -4,7 +4,7 @@ import {
     RotateCcwClock,
     Sunrise,
 } from 'lucide-react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { backTargetFor, defaultTabHrefFor, ITEMS, navTabFor } from './nav';
 
@@ -48,20 +48,37 @@ describe('nav', () => {
     });
 
     describe('defaultTabHrefFor', () => {
-        it('resets the calendar to the current month', () => {
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it("resets the calendar to the server date's month", () => {
             expect(
                 defaultTabHrefFor(
                     'history',
                     '/history?view=calendar&month=2026-06',
-                    new Date(2026, 8, 28),
+                    '2026-09-28',
+                ),
+            ).toBe('/history?view=calendar&month=2026-09');
+        });
+
+        it('follows the server month when the device clock is already in the next one', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date(2026, 9, 1, 0, 30));
+
+            expect(
+                defaultTabHrefFor(
+                    'history',
+                    '/history?view=calendar&month=2026-06',
+                    '2026-09-30',
                 ),
             ).toBe('/history?view=calendar&month=2026-09');
         });
 
         it('returns the tab home route for other tab states', () => {
-            expect(defaultTabHrefFor('plan', '/plan?day=2026-06-16')).toBe(
-                '/plan',
-            );
+            expect(
+                defaultTabHrefFor('plan', '/plan?day=2026-06-16', '2026-06-16'),
+            ).toBe('/plan');
         });
     });
 

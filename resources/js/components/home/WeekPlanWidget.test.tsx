@@ -1,7 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { WeekPlan, WeekPlanDay, WeeklySnapshot } from '@/types/inertia';
+
+import { setMockPage } from '@/test/setup';
 
 import WeekPlanWidget from './WeekPlanWidget';
 
@@ -22,10 +24,8 @@ const snapshot: WeeklySnapshot = {
     strain: 392,
 };
 
-vi.mock('@/lib/pace', async () => {
-    const actual =
-        await vi.importActual<typeof import('@/lib/pace')>('@/lib/pace');
-    return { ...actual, todayLocalIso: () => '2026-01-07' };
+beforeEach(() => {
+    setMockPage({ today: '2026-01-07' });
 });
 
 function day(overrides: Partial<WeekPlanDay>): WeekPlanDay {

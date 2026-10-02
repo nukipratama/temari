@@ -147,8 +147,10 @@ Rows render grouped into **Today / This Week / Earlier**
 grouping over whatever rows the window holds, no backend shape change. The "this week"
 boundary is Monday-start, matching the backend's own week convention (`startOfWeek(Carbon::MONDAY)`,
 e.g. [Periodizer](../../app/Services/Run/Plan/Periodizer.php#L56)) rather than a locale default.
-`created_at` is a true instant, so bucketing reads it with plain `Date` parsing and deliberately does
-not reuse `pace.ts`'s `mondayOf`, which is built for Strava's naive `start_date_local` values.
+Both boundaries come from the shared server `today`, never the device clock: `created_at` is
+serialized in the app timezone, so its leading date is the server's calendar day, and
+[`bucketOf`](../../resources/js/components/inbox/inboxBuckets.ts#L17) compares that date with
+`today` and with `today`'s Monday.
 
 Tapping a row's timestamp toggles it between relative (`formatRelativeId`) and absolute
 (`formatAbsoluteId`) display, per row, client-only state.

@@ -1,3 +1,5 @@
+import { isoDateLocal, mondayOf, parseNaiveLocalDate } from '@/lib/pace';
+
 export type InboxBucket = 'today' | 'week' | 'earlier';
 
 export const BUCKET_LABEL: Record<InboxBucket, string> = {
@@ -8,36 +10,17 @@ export const BUCKET_LABEL: Record<InboxBucket, string> = {
 
 const BUCKET_ORDER: readonly InboxBucket[] = ['today', 'week', 'earlier'];
 
-function startOfLocalDay(d: Date): Date {
-    const x = new Date(d);
-    x.setHours(0, 0, 0, 0);
-    return x;
-}
-
-// Monday-start, matching the backend's own week convention (Carbon::MONDAY,
-// e.g. app/Services/Run/Plan/Periodizer.php:56).
-function startOfLocalWeek(d: Date): Date {
-    const x = startOfLocalDay(d);
-    const offset = (x.getDay() + 6) % 7;
-    x.setDate(x.getDate() - offset);
-    return x;
-}
-
 /**
- * `created_at` is a true instant (ISO-8601 with offset), so this reads it via
- * `new Date()` directly rather than pace.ts's `mondayOf`, which is built for
- * Strava's naive `start_date_local` values.
+ * `created_at` arrives stamped in the server's zone, so its leading date is
+ * the server's calendar day; weeks are Monday-start like the backend's.
  */
-export function bucketOf(
-    createdAt: string | null,
-    now: Date = new Date(),
-): InboxBucket {
-    if (!createdAt) return 'earlier';
-    const created = new Date(createdAt);
-    if (Number.isNaN(created.getTime())) return 'earlier';
+export function bucketOf(createdAt: string | null, today: string): InboxBucket {
+    const created = createdAt ? parseNaiveLocalDate(createdAt) : null;
+    if (created === null) return 'earlier';
 
-    if (created >= startOfLocalDay(now)) return 'today';
-    if (created >= startOfLocalWeek(now)) return 'week';
+    const createdDay = isoDateLocal(created);
+    if (createdDay >= today) return 'today';
+    if (createdDay >= isoDateLocal(mondayOf(today))) return 'week';
     return 'earlier';
 }
 
@@ -53,11 +36,11 @@ export interface InboxBucketGroup<T> {
  */
 export function groupByBucket<T extends { created_at: string | null }>(
     items: readonly T[],
-    now: Date = new Date(),
+    today: string,
 ): InboxBucketGroup<T>[] {
     const buckets = new Map<InboxBucket, T[]>();
     for (const item of items) {
-        const bucket = bucketOf(item.created_at, now);
+        const bucket = bucketOf(item.created_at, today);
         const group = buckets.get(bucket);
         if (group) {
             group.push(item);

@@ -10,7 +10,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
-import { formatKm, todayLocalIso } from '@/lib/pace';
+import { formatKm, useTodayIso } from '@/lib/pace';
 import { deltaDirection, ranHot, weekdayLabel } from '@/lib/plan';
 
 const PHASE_LABEL: Record<string, string> = {
@@ -100,7 +100,7 @@ export default function WeekPlanWidget({
     weekPlan,
     snapshot,
 }: Readonly<{ weekPlan: WeekPlan; snapshot: WeeklySnapshot | null }>) {
-    const todayIso = todayLocalIso();
+    const todayIso = useTodayIso();
     const actualKm = snapshot?.distance_km ?? 0;
     const actualTweened = useCountUp(actualKm);
     const plannedTweened = useCountUp(weekPlan.planned_km_this_week);

@@ -24,7 +24,7 @@ import { readPlanSelectedDay } from '@/lib/navigationMemory';
 import {
     formatDurationHMS,
     formatNaiveMonthDayId,
-    todayLocalIso,
+    useTodayIso,
 } from '@/lib/pace';
 import { laneStack } from '@/lib/variants';
 
@@ -90,7 +90,7 @@ export default function Plan({
     planRecalibration,
 }: Readonly<PlanProps>) {
     const [regenerating, setRegenerating] = useState(false);
-    const today = todayLocalIso();
+    const today = useTodayIso();
     const [focusDay] = useState(requestedDay);
     const [selectedDay] = useState(() => focusDay ?? readPlanSelectedDay());
     const regenerateCooldown = useCooldownCountdown(regenerateCooldownSeconds);

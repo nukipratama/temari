@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
  * Builds the cross-cutting props merged into every Inertia response. The
@@ -17,10 +18,10 @@ use Illuminate\Http\Request;
  *
  * The domain families each own their own builder ({@see GamificationProps},
  * {@see StravaProps}, {@see NotificationProps}, {@see AiProps}); what is left
- * here is the request-shaped remainder — identity, flashes, and two config
- * flags — plus the composition.
+ * here is the request-shaped remainder — identity, flashes, the server's
+ * calendar day and two config flags — plus the composition.
  *
- * Every prop but `auth` and the two config flags is a closure, so Inertia skips
+ * Every prop but `auth`, `today` and the two config flags is a closure, so Inertia skips
  * the work entirely on a partial reload that did not ask for that key.
  */
 final readonly class SharedProps
@@ -65,6 +66,7 @@ final readonly class SharedProps
             // '' when unconfigured; the run map falls back to plain OSM tiles rather
             // than a watermarked CARTO map.
             'cartoApiKey' => (string) config('services.carto.api_key'),
+            'today' => Carbon::today()->toDateString(),
             'planRecalibration' => fn (): array => $this->planRecalibrationFor($user),
             ...$this->gamification->forUser($user),
             ...$this->strava->forUser($user),

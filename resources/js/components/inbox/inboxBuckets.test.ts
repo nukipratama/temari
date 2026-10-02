@@ -1,44 +1,58 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { bucketOf, groupByBucket } from './inboxBuckets';
 
-// Local-time anchors, matching bucketOf's own local Date arithmetic — so the
-// test is deterministic regardless of the runner's timezone. Wednesday, so
-// "this week" (Monday-start) safely spans several prior local days.
-const now = new Date(2026, 7, 19, 12, 0, 0); // Wed 19 Aug 2026, local noon
-const today = (hoursAgo: number) =>
-    new Date(now.getTime() - hoursAgo * 60 * 60 * 1000).toISOString();
-const monday = new Date(2026, 7, 17, 8, 0, 0).toISOString(); // this week
-const beforeMonday = new Date(2026, 7, 16, 8, 0, 0).toISOString(); // last week
+const today = '2026-08-19';
+const earlierToday = '2026-08-19T07:30:00+07:00';
+const monday = '2026-08-17T08:00:00+07:00';
+const beforeMonday = '2026-08-16T08:00:00+07:00';
 
 describe('bucketOf', () => {
-    it('buckets a null/invalid created_at as earlier', () => {
-        expect(bucketOf(null, now)).toBe('earlier');
-        expect(bucketOf('not-a-date', now)).toBe('earlier');
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
-    it('buckets the same local day as today', () => {
-        expect(bucketOf(today(2), now)).toBe('today');
+    it('buckets a null/invalid created_at as earlier', () => {
+        expect(bucketOf(null, today)).toBe('earlier');
+        expect(bucketOf('not-a-date', today)).toBe('earlier');
+    });
+
+    it('buckets the same server day as today', () => {
+        expect(bucketOf(earlierToday, today)).toBe('today');
     });
 
     it('buckets an earlier day this week (Monday-start) as week', () => {
-        expect(bucketOf(monday, now)).toBe('week');
+        expect(bucketOf(monday, today)).toBe('week');
     });
 
     it("buckets a day before this week's Monday as earlier", () => {
-        expect(bucketOf(beforeMonday, now)).toBe('earlier');
+        expect(bucketOf(beforeMonday, today)).toBe('earlier');
+    });
+
+    it('files a row stamped today in Jakarta under today while the device clock is already tomorrow', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 7, 20, 1, 30));
+
+        expect(bucketOf('2026-08-19T23:10:00+07:00', today)).toBe('today');
+    });
+
+    it('keeps a row stamped yesterday in Jakarta out of today while the device clock is still yesterday', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 7, 18, 22, 0));
+
+        expect(bucketOf('2026-08-18T21:00:00+07:00', today)).toBe('week');
     });
 });
 
 describe('groupByBucket', () => {
     it('groups items into today / week / earlier in that order, omitting empty buckets', () => {
         const items = [
-            { id: 1, created_at: today(2) },
+            { id: 1, created_at: earlierToday },
             { id: 2, created_at: monday },
             { id: 3, created_at: beforeMonday },
         ];
 
-        expect(groupByBucket(items, now)).toEqual([
+        expect(groupByBucket(items, today)).toEqual([
             { bucket: 'today', items: [items[0]] },
             { bucket: 'week', items: [items[1]] },
             { bucket: 'earlier', items: [items[2]] },
@@ -46,12 +60,14 @@ describe('groupByBucket', () => {
     });
 
     it('omits a bucket with no items', () => {
-        const items = [{ id: 1, created_at: today(2) }];
+        const items = [{ id: 1, created_at: earlierToday }];
 
-        expect(groupByBucket(items, now)).toEqual([{ bucket: 'today', items }]);
+        expect(groupByBucket(items, today)).toEqual([
+            { bucket: 'today', items },
+        ]);
     });
 
     it('returns an empty array for no items', () => {
-        expect(groupByBucket([], now)).toEqual([]);
+        expect(groupByBucket([], today)).toEqual([]);
     });
 });

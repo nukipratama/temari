@@ -14,6 +14,7 @@ import {
     readTabMemory,
     rememberTabLocation,
 } from '@/lib/navigationMemory';
+import { useTodayIso } from '@/lib/pace';
 
 // Tapping the active tab scrolls to top instead of a full Inertia round-trip to the same page.
 function scrollToTop(event: MouseEvent<Element>) {
@@ -28,6 +29,7 @@ function handleActiveTabClick(
     event: MouseEvent<Element>,
     tab: TabId,
     currentUrl: string,
+    today: string,
 ) {
     if (window.scrollY > 0) {
         rememberTabLocation(tab, currentUrl, 0);
@@ -36,7 +38,7 @@ function handleActiveTabClick(
     }
 
     event.preventDefault();
-    const href = defaultTabHrefFor(tab, currentUrl);
+    const href = defaultTabHrefFor(tab, currentUrl, today);
     const needsReset =
         currentUrl !== href ||
         (tab === 'plan' && readPlanSelectedDay() !== null);
@@ -77,6 +79,7 @@ export default function MobileBottomNav() {
     const { component, props, url } = usePage<SharedProps>();
     const current = navTabFor(component);
     const hasUnread = (props.unreadNotifications ?? 0) > 0;
+    const today = useTodayIso();
     const [pending, setPending] = useState<TabId | null>(null);
     // Counts visits still in flight rather than trusting any single `finish`:
     // a second tap before the first answers interrupts that first visit, which
@@ -123,6 +126,7 @@ export default function MobileBottomNav() {
                                               event,
                                               item.id,
                                               url,
+                                              today,
                                           )
                                     : () => {
                                           inFlightRef.current += 1;

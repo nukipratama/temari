@@ -21,7 +21,7 @@ import EmptyRunsState from '@/components/run/EmptyRunsState';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { drawnHomeAnchors } from '@/lib/anchors';
-import { todayLocalIso } from '@/lib/pace';
+import { useTodayIso } from '@/lib/pace';
 import { laneStack } from '@/lib/variants';
 
 interface HomeProps {
@@ -50,7 +50,7 @@ export default function Home({
     restDayEasePace = null,
     pendingRaceOutcome = null,
 }: Readonly<HomeProps>) {
-    const todayIso = todayLocalIso();
+    const todayIso = useTodayIso();
     const todayPlan =
         weekPlan?.days.find((day) => day.date === todayIso) ?? null;
     const judged =
@@ -73,7 +73,7 @@ export default function Home({
                             briefing={briefing}
                             today={todayPlan}
                             restDayEasePace={restDayEasePace}
-                            drawnAnchors={drawnHomeAnchors(weekPlan)}
+                            drawnAnchors={drawnHomeAnchors(weekPlan, todayIso)}
                         />
 
                         {weekPlan !== null ? (

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { RaceAmbition, RaceSupport } from '@/types/inertia';
 
@@ -17,27 +17,24 @@ import {
 } from './raceGoal';
 
 describe('earliestRaceDate', () => {
-    it('is the local calendar day after the given date', () => {
-        expect(earliestRaceDate(new Date(2026, 7, 13, 9, 30))).toBe(
-            '2026-08-14',
-        );
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('is the calendar day after the given server date', () => {
+        expect(earliestRaceDate('2026-08-13')).toBe('2026-08-14');
     });
 
     it('rolls over the month and the year', () => {
-        expect(earliestRaceDate(new Date(2026, 7, 31, 9, 30))).toBe(
-            '2026-09-01',
-        );
-        expect(earliestRaceDate(new Date(2026, 11, 31, 23, 59))).toBe(
-            '2027-01-01',
-        );
+        expect(earliestRaceDate('2026-08-31')).toBe('2026-09-01');
+        expect(earliestRaceDate('2026-12-31')).toBe('2027-01-01');
     });
 
-    it('reads the local calendar day, not the UTC one', () => {
-        // 23:30 local on the 13th is already the 14th in UTC for Asia/Jakarta.
-        // Going through toISOString() here would return 2026-08-15.
-        expect(earliestRaceDate(new Date(2026, 7, 13, 23, 30))).toBe(
-            '2026-08-14',
-        );
+    it('follows the server date when the device clock is already a day ahead', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 7, 14, 0, 30));
+
+        expect(earliestRaceDate('2026-08-13')).toBe('2026-08-14');
     });
 });
 

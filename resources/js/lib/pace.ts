@@ -1,3 +1,7 @@
+import { usePage } from '@inertiajs/react';
+
+import type { SharedProps } from '@/types/inertia';
+
 // Mirrors App\Services\Run\Metrics\PaceFormatter::format().
 export function formatPace(secPerKm: number): string {
     const total = Math.round(secPerKm);
@@ -274,12 +278,11 @@ export function formatShortDateTimeId(iso: string | null | undefined): string {
     return time === null ? date : `${date} · ${time}`;
 }
 
-/** Whole days from local midnight today to a naive `YYYY-MM-DD`; negative once past. */
-export function daysUntilId(iso: string): number {
+/** Whole days from the naive `YYYY-MM-DD` `today` to `iso`; negative once past. */
+export function daysUntilId(iso: string, today: string): number {
     const target = new Date(`${iso}T00:00:00`);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+    const from = new Date(`${today}T00:00:00`);
+    return Math.round((target.getTime() - from.getTime()) / 86_400_000);
 }
 
 // Local-zone Monday-of-week, via parseNaiveLocalDate so a run is always
@@ -307,9 +310,9 @@ export function isoDateLocal(d: Date): string {
     return `${y}-${m}-${day}`;
 }
 
-/** Today as YYYY-MM-DD in the local zone. */
-export function todayLocalIso(): string {
-    return isoDateLocal(new Date());
+/** The server's calendar day as YYYY-MM-DD. */
+export function useTodayIso(): string {
+    return usePage<SharedProps>().props.today;
 }
 
 // Inverse of formatPace: parses "M:SS" (or "MM:SS") back to seconds-per-km.

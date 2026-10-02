@@ -17,6 +17,7 @@ import {
     formatNaiveMonthDayId,
     formatPace,
     paceSecPerKm,
+    useTodayIso,
 } from '@/lib/pace';
 import { ambitionNote } from '@/lib/raceGoal';
 
@@ -43,6 +44,8 @@ export default function RaceComparison({
     load,
     className,
 }: Readonly<RaceComparisonProps>) {
+    const today = useTodayIso();
+
     if (activeRace === null) {
         return (
             <section className={className}>
@@ -65,7 +68,7 @@ export default function RaceComparison({
     }
 
     const supportedSec = outlook?.ambition.supported_time_sec ?? null;
-    const daysOut = daysUntilId(activeRace.race_date);
+    const daysOut = daysUntilId(activeRace.race_date, today);
     const weeksOut = Math.floor(daysOut / 7);
     const paceSec = paceSecPerKm(
         activeRace.goal_time_sec,

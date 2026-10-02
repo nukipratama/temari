@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 
 import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlanDay, SeasonSummaryWeek } from '@/lib/plan';
 
@@ -10,15 +10,9 @@ import {
     clearNavigationMemory,
     rememberPlanSelectedDay,
 } from '@/lib/navigationMemory';
-import { setMockDeferred } from '@/test/setup';
+import { setMockDeferred, setMockPage } from '@/test/setup';
 
 import Plan from './Plan';
-
-vi.mock('@/lib/pace', async () => {
-    const actual =
-        await vi.importActual<typeof import('@/lib/pace')>('@/lib/pace');
-    return { ...actual, todayLocalIso: () => '2026-06-17' };
-});
 
 const DISCLAIMER_LINE =
     'temari plans from your runs, not a check-up. if something hurts, rest and see a pro.';
@@ -117,9 +111,37 @@ function renderPlan(overrides: Partial<ComponentProps<typeof Plan>> = {}) {
 }
 
 describe('Plan', () => {
+    beforeEach(() => {
+        setMockPage({ today: '2026-06-17' }, '/plan', 'Plan');
+    });
+
     afterEach(() => {
+        vi.useRealTimers();
         window.history.replaceState({}, '', '/plan');
         clearNavigationMemory();
+    });
+
+    it("keeps the server's tomorrow editable while the device clock already reads that day", () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 5, 18, 0, 30));
+
+        renderPlan();
+
+        expect(
+            screen.getByRole('button', { name: /^skip$/i }),
+        ).toBeInTheDocument();
+    });
+
+    it("locks the server's today while the device clock still reads the day before", () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 5, 17, 23, 0));
+        setMockPage({ today: '2026-06-18' }, '/plan', 'Plan');
+
+        renderPlan();
+
+        expect(
+            screen.queryByRole('button', { name: /^skip$/i }),
+        ).not.toBeInTheDocument();
     });
 
     it('leads with the eyebrow, headline and a one-line race summary', () => {

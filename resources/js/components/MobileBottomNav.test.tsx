@@ -179,20 +179,22 @@ describe('MobileBottomNav', () => {
         expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'auto' });
     });
 
-    it('resets the active calendar tab to the current month when already at top', () => {
-        const now = new Date();
-        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    it("resets the active calendar tab to the server date's month when already at top", () => {
         writeTabMemory('history', {
             href: '/history?view=calendar&month=2026-06',
             scrollY: 240,
         });
-        setMockPage({}, '/history?view=calendar&month=2026-06', 'History');
+        setMockPage(
+            { today: '2026-09-30' },
+            '/history?view=calendar&month=2026-06',
+            'History',
+        );
         render(<MobileBottomNav />);
 
         fireEvent.click(screen.getByText('History').closest('a')!);
 
         expect(router.visit).toHaveBeenCalledWith(
-            `/history?view=calendar&month=${currentMonth}`,
+            '/history?view=calendar&month=2026-09',
             { replace: true, preserveState: false },
         );
         expect(readTabMemory('history')).toBeNull();

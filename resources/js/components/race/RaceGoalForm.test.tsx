@@ -2,6 +2,8 @@ import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { setMockPage } from '@/test/setup';
+
 import RaceGoalForm from './RaceGoalForm';
 
 const RACE = {
@@ -166,15 +168,14 @@ describe('RaceGoalForm', () => {
     });
 
     it('stops the date picker short of a race day the server would reject', () => {
+        setMockPage({ today: '2026-10-02' });
         render(
             <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
         );
 
-        const min = screen.getByLabelText('Race day').getAttribute('min') ?? '';
-
-        expect(min).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-        expect(new Date(`${min}T23:59:59`).getTime()).toBeGreaterThan(
-            Date.now(),
+        expect(screen.getByLabelText('Race day')).toHaveAttribute(
+            'min',
+            '2026-10-03',
         );
     });
 

@@ -181,19 +181,14 @@ describe('revealAnchor', () => {
 
 describe('drawnHomeAnchors', () => {
     it('draws the prescribed session only when the plan covers today', () => {
-        const today = new Date();
-        const iso = [
-            today.getFullYear(),
-            String(today.getMonth() + 1).padStart(2, '0'),
-            String(today.getDate()).padStart(2, '0'),
-        ].join('-');
+        const today = '2026-10-02';
 
-        expect(drawnHomeAnchors({ days: [{ date: iso }] })).toEqual(
-            new Set(['session:today']),
-        );
-        expect(drawnHomeAnchors({ days: [{ date: '1999-01-01' }] })).toEqual(
-            new Set(),
-        );
-        expect(drawnHomeAnchors(null)).toEqual(new Set());
+        expect(
+            drawnHomeAnchors({ days: [{ date: '2026-10-02' }] }, today),
+        ).toEqual(new Set(['session:today']));
+        expect(
+            drawnHomeAnchors({ days: [{ date: '2026-10-03' }] }, today),
+        ).toEqual(new Set());
+        expect(drawnHomeAnchors(null, today)).toEqual(new Set());
     });
 });

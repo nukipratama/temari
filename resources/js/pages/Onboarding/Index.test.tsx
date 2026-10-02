@@ -192,15 +192,13 @@ describe('Onboarding/Index', () => {
     });
 
     it('stops the date picker short of a race day the server would reject', () => {
-        setMockPage({ auth: { user: makeUser() } });
+        setMockPage({ auth: { user: makeUser() }, today: '2026-10-02' });
         render(<OnboardingIndex />);
         advanceToGoal();
 
-        const min = screen.getByLabelText('race day').getAttribute('min') ?? '';
-
-        expect(min).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-        expect(new Date(`${min}T23:59:59`).getTime()).toBeGreaterThan(
-            Date.now(),
+        expect(screen.getByLabelText('race day')).toHaveAttribute(
+            'min',
+            '2026-10-03',
         );
     });
 
