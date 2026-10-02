@@ -38,7 +38,8 @@ describe('PaceTargetsCard', () => {
         expect(rungs).toHaveLength(4);
         expect(rungs[0]).toHaveTextContent('easy');
         expect(rungs[0]).toHaveTextContent('6:10');
-        expect(rungs[1]).toHaveTextContent('marathon');
+        expect(rungs[1]).toHaveTextContent('long run');
+        expect(rungs[1]).not.toHaveTextContent('marathon');
         expect(rungs[2]).toHaveTextContent('tempo');
         expect(rungs[3]).toHaveTextContent('interval');
         expect(rungs[3]).toHaveTextContent('4:28');
