@@ -373,3 +373,25 @@ it('climbs or holds the block\'s volume outside its recovery weeks until the tap
 
     return $cases;
 });
+
+it('keeps a race beyond the marathon in the general zone with one taper week', function (): void {
+    $start = Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY);
+    $raceDate = $start->copy()->addWeeks(9)->addDays(5);
+
+    $weeks = $this->schedule->forRace($start, $raceDate, 80_000);
+
+    expect($weeks)->toHaveCount(10)
+        ->and(array_unique(array_column($weeks, 'zone')))->toBe([PhaseSchedule::ZONE_GENERAL])
+        ->and($weeks[9]['phase'])->toBe(PlanPhase::Taper)
+        ->and($weeks[8]['phase'])->not->toBe(PlanPhase::Taper)
+        ->and($weeks[9]['week_start']->toDateString())->toBe($raceDate->copy()->startOfWeek(Carbon::MONDAY)->toDateString());
+});
+
+it('treats the marathon distance as dedicated road preparation with its own block', function (): void {
+    $start = Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY);
+
+    $weeks = $this->schedule->forRace($start, $start->copy()->addWeeks(19), 42_195);
+
+    expect(array_column($weeks, 'zone'))->toContain(PhaseSchedule::ZONE_BLOCK)
+        ->and($weeks[19]['phase'])->toBe(PlanPhase::Taper);
+});

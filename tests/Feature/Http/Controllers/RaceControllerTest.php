@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
+use App\Models\PerformanceEvidence;
 use App\Models\PersonalRecord;
+use App\Services\Run\Plan\SeasonService;
 use App\Models\RaceGoal;
 use App\Models\PlannedSession;
 use App\Services\AI\AnalysisOrigin;
@@ -91,22 +93,76 @@ it('creates the first race for a user with none', function (): void {
         ->and($race->name)->toBe('Jakarta 10K');
 });
 
-it('supersedes the current active race on a new submission, keeping history', function (): void {
+it('revises the current race in place by default, keeping its season and history', function (): void {
     $user = User::factory()->create();
-    $old = RaceGoal::factory()->for($user)->create(['name' => 'Old race']);
+    $old = RaceGoal::factory()->for($user)->create(['name' => 'Old race', 'distance_m' => 10_000, 'goal_time_sec' => 3_000]);
+    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
 
     $this->actingAs($user)
-        ->post('/race', racePayload(['name' => 'New race']))
+        ->post('/race', racePayload(['name' => 'Renamed race', 'goal_time_sec' => 2_900]))
         ->assertRedirect();
 
-    expect($old->fresh()->completed_at)->not->toBeNull();
+    expect($old->fresh()->completed_at)->toBeNull()
+        ->and($old->fresh()->goal_time_sec)->toBe(2_900)
+        ->and($old->fresh()->name)->toBe('Renamed race')
+        ->and(RaceGoal::query()->where('user_id', $user->id)->count())->toBe(1)
+        ->and(app(SeasonService::class)->ensureCurrent($user, Carbon::today())->id)->toBe($season->id);
+});
+
+it('starts a new event, keeping the old one on record, when the intent is new', function (): void {
+    Carbon::setTestNow('2026-09-08 10:00:00');
+    $user = User::factory()->create();
+    $old = RaceGoal::factory()->for($user)->create(['name' => 'Old race', 'race_date' => Carbon::today()->addWeeks(20)->toDateString()]);
+
+    $this->actingAs($user)
+        ->post('/race', racePayload(['name' => 'New race', 'intent' => 'new']))
+        ->assertRedirect();
 
     $active = RaceGoal::query()->where('user_id', $user->id)->active()->get();
-    expect($active)->toHaveCount(1)
-        ->and($active->first()->name)->toBe('New race');
+    expect($old->fresh()->completed_at)->not->toBeNull()
+        ->and($active)->toHaveCount(1)
+        ->and($active->first()->name)->toBe('New race')
+        ->and(RaceGoal::query()->where('user_id', $user->id)->count())->toBe(2);
 
-    // History retained, not deleted.
-    expect(RaceGoal::query()->where('user_id', $user->id)->count())->toBe(2);
+    Carbon::setTestNow();
+});
+
+it('rejects revising the current race into a different distance', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['distance_m' => 10_000]);
+
+    $this->actingAs($user)
+        ->post('/race', racePayload(['distance_m' => 21_097]))
+        ->assertSessionHasErrors('distance_m');
+});
+
+it('does not rebuild the plan or add history when the same race is submitted again', function (): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => now()->addWeeks(12)->toDateString(), 'distance_m' => 10_000, 'goal_time_sec' => 3_000, 'name' => 'Jakarta 10K']);
+
+    $this->actingAs($user)->post('/race', racePayload())->assertRedirect();
+
+    Bus::assertNothingDispatched();
+    expect($race->changes()->count())->toBe(0)
+        ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('shows the stated target beside the supported effort, the mode and the event history', function (): void {
+    $user = User::factory()->create();
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 4_200,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+    $this->actingAs($user)->post('/race', racePayload(['goal_time_sec' => 3_000]))->assertRedirect();
+
+    $this->actingAs($user)->get('/race')->assertInertia(fn (Assert $page) => $page
+        ->where('race.goal_time_sec', 3_000)
+        ->where('race.ambition.state', 'unsupported')
+        ->where('race.ambition.target_pace_sec_per_km', 300)
+        ->where('race.support.mode', 'road')
+        ->where('race.history.0.kind', 'created')
+        ->has('race.ambition.supported_time_sec'));
 });
 
 it('rejects an invalid submission and persists nothing', function (): void {

@@ -9,17 +9,22 @@ use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\RaceChangeKind;
+use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
+use App\Models\RaceGoalChange;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Metrics\RecentTrainingStress;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * The database side of a regeneration: the athlete's season, active race,
@@ -30,17 +35,22 @@ use Illuminate\Support\Carbon;
  */
 final readonly class PlanInputsGatherer
 {
+    private const int RESUME_TRAILING_WEEKS = 4;
+
+    private const int RESUME_MIN_WEEKS = 2;
+
     public function __construct(
         private TrainingBaseline $baseline,
         private SeasonService $seasonService,
         private PlanAdapter $planAdapter,
-        private RiegelProjector $riegelProjector,
         private ResolveActiveRaceAction $activeRace,
         private ResolveTrainingPreferenceAction $trainingPreference,
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
         private RecentTrainingStress $trainingStress,
         private ResolveTrailingWeeksAction $trailingWeeks,
+        private RaceAmbitionAssessor $ambition,
+        private RaceOutcomeMatcher $raceOutcomes,
     ) {
     }
 
@@ -57,6 +67,7 @@ final readonly class PlanInputsGatherer
         $this->seasonService->releaseHeldIncreases($season, $user, $today);
 
         $race = ($this->activeRace)($user->id);
+        $ambition = $race === null ? null : $this->ambition->assess($user, $race, $today);
         $preference = ($this->trainingPreference)($user->id);
         $baseline = $this->baseline->forUser($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
@@ -75,13 +86,13 @@ final readonly class PlanInputsGatherer
             today: $today,
             seasonStart: $season->starts_at,
             seasonEnd: $season->ends_at,
-            seasonOpensWithRecovery: $season->opens_with_recovery,
+            recovery: $this->postRaceRecovery($user, $today),
             raceDate: $race?->race_date,
             raceDistanceM: $race === null ? null : (float) $race->distance_m,
             sessionsPerWeek: $baseline['sessions_per_week'],
             runDays: $preference?->run_days,
             longRunDay: $preference?->long_run_day,
-            adaptation: $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race),
+            adaptation: $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race, $ambition),
             pinnedDates: $pinnedDates,
             // A day that already carries a verdict is the record of what was
             // run, not a slot left to plan. Since compliance lands at ingest
@@ -91,13 +102,11 @@ final readonly class PlanInputsGatherer
             settledDates: $settledDates,
             // How long the race will take this athlete, not how far it is: the
             // same 10K is a VO2max event for one runner and a threshold event
-            // for another, and only the projection can tell them apart.
-            projectedRaceSeconds: $race === null
-                ? null
-                : $this->riegelProjector->project($user, (float) $race->distance_m)['predicted_sec'] ?? null,
+            // for another, and only the time the plan trains for can tell them apart.
+            projectedRaceSeconds: $ambition === null ? null : (float) $ambition->prescribedTimeSec(),
             volumeFloorKm: $season->volume_floor_km,
             increasesHeld: $season->increases_held,
-            raceGoalTimeSec: $race?->goal_time_sec,
+            raceGoalTimeSec: $ambition?->prescribedTimeSec(),
             paces: $paces,
             longRunBaselineKm: $baseline['long_run_km'],
             longRunCapKm: $baseline['long_run_cap_km'],
@@ -107,7 +116,48 @@ final readonly class PlanInputsGatherer
             actualSessions: $actualSessions,
             twoRunQualityEligible: $paces !== null && $weeks->count() >= 6
                 && $weeks->every(static fn (WeeklySnapshot $week): bool => $week->runs >= 2),
+            resumeTrailingMeanKm: $this->resumeTrailingMeanKm($race, $weeks, $currentWeekStart),
         );
+    }
+
+    private function postRaceRecovery(User $user, Carbon $today): ?PostRaceRecovery
+    {
+        $races = RaceGoal::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('race_date', [$today->copy()->subDays(14)->toDateString(), $today->toDateString()])
+            ->where(static fn (Builder $query): Builder => $query->whereNull('outcome')->orWhereNotIn('outcome', [RaceOutcome::DidNotRun->value, RaceOutcome::Cancelled->value]))
+            ->orderByDesc('race_date')
+            ->get();
+
+        foreach ($races as $race) {
+            $distanceRunM = $race->outcome === RaceOutcome::Confirmed
+                ? (float) (ActivityDetail::query()->where('activity_id', $race->outcome_activity_id)->value('distance') ?? $race->distance_m)
+                : $this->raceOutcomes->candidates($race)->first()['distance_m'] ?? null;
+            if ($distanceRunM !== null) {
+                return PostRaceRecovery::after($race->race_date, $distanceRunM);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  Collection<int, WeeklySnapshot>  $weeks
+     */
+    private function resumeTrailingMeanKm(?RaceGoal $race, Collection $weeks, Carbon $currentWeekStart): ?float
+    {
+        $recent = $weeks->take(self::RESUME_TRAILING_WEEKS);
+        if ($race === null || $recent->count() < self::RESUME_MIN_WEEKS) {
+            return null;
+        }
+
+        $revised = RaceGoalChange::query()
+            ->where('race_goal_id', $race->id)
+            ->whereIn('kind', [RaceChangeKind::Revised, RaceChangeKind::Postponed])
+            ->where('created_at', '>=', $currentWeekStart->copy()->subWeeks(self::RESUME_TRAILING_WEEKS - 1))
+            ->exists();
+
+        return $revised ? (float) $recent->avg(static fn (WeeklySnapshot $week): float => (float) $week->distance_km) : null;
     }
 
     /**

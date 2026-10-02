@@ -19,6 +19,8 @@ use App\Services\Run\Plan\SeasonSummaryBuilder;
 use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
+use App\Enums\RaceOutcome;
+use App\Enums\SeasonPerformance;
 use App\Enums\SessionType;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -61,17 +63,20 @@ it('generates exactly 5 season goals', function (): void {
     expect(SeasonGoal::query()->where('season_id', $season->id)->count())->toBe(5);
 });
 
-it('generates a race-margin goal for a race-oriented season and a CTL-growth goal for self-scaled', function (): void {
+it('generates a race-margin goal for a race-oriented season and a consistency goal for self-scaled', function (): void {
     $user = User::factory()->create();
     $season = $this->service->ensureCurrent($user, Carbon::today());
     $metrics = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
-    expect($metrics)->toContain('season_ctl_growth')->not->toContain('season_race_goal_met');
+    $consistency = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_consistent_weeks')->first();
+    expect($metrics)->not->toContain('season_ctl_growth')->not->toContain('season_race_goal_met')
+        ->and($consistency?->target)->toBe(12.0)
+        ->and($consistency?->unit)->toBe('weeks');
 
     $userWithRace = User::factory()->create();
     RaceGoal::factory()->for($userWithRace)->create(['race_date' => Carbon::today()->addWeeks(9)->toDateString()]);
     $raceSeason = $this->service->ensureCurrent($userWithRace, Carbon::today());
     $raceMetrics = SeasonGoal::query()->where('season_id', $raceSeason->id)->pluck('metric')->all();
-    expect($raceMetrics)->toContain('season_race_goal_met')->not->toContain('season_ctl_growth');
+    expect($raceMetrics)->toContain('season_race_goal_met')->not->toContain('season_consistent_weeks');
 });
 
 it('returns the same season on a second call the same day, without duplicating goals', function (): void {
@@ -588,4 +593,45 @@ it('opens the next season at the trailing actual when the athlete fell short of 
     trailingFollowThrough($user, '2026-09-20', 18.0, 30.0);
 
     expect($this->service->ensureCurrent($user, Carbon::today())->anchor_weekly_volume_km)->toBe(18.0);
+});
+
+it('keeps a race beyond the marathon on general goals with no block goals or under-ready line', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['distance_m' => 80_000, 'race_date' => Carbon::today()->addWeeks(3)->toDateString()]);
+
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $metrics = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
+
+    expect($metrics)->not->toContain('season_race_goal_met')->not->toContain('season_peak_weekly_km')
+        ->and($season->block_goals_appended_at)->toBeNull()
+        ->and($this->service->takeUnderReadyLine($season))->toBeNull();
+});
+
+it('settles the closing season\'s record when the next one opens, with a pending race reading as pending', function (): void {
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addWeeks(2)->toDateString(),
+        'outcome' => RaceOutcome::Pending,
+    ]);
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+
+    Carbon::setTestNow($race->race_date->copy()->addDay()->setTime(8, 0));
+    $race->update(['completed_at' => now()]);
+    $next = $this->service->ensureCurrent($user, Carbon::today());
+
+    expect($next->id)->not->toBe($season->id)
+        ->and($season->fresh()->record_settled_at)->not->toBeNull()
+        ->and($season->fresh()->performance_state)->toBe(SeasonPerformance::Pending)
+        ->and($season->fresh()->process_pct)->toBeInt()
+        ->and($next->performance_state)->toBeNull();
+});
+
+it('does not settle anything for the season it keeps', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(9)->toDateString()]);
+
+    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $this->service->ensureCurrent($user, Carbon::today());
+
+    expect($season->fresh()->record_settled_at)->toBeNull();
 });

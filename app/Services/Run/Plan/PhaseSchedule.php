@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PlanPhase;
+use App\Enums\RaceSupport;
 use Illuminate\Support\Carbon;
 use InvalidArgumentException;
 
@@ -29,8 +30,6 @@ final class PhaseSchedule
 {
     /** race distance (m) -> taper length (weeks), standard taper-duration convention. */
     private const float HALF_MARATHON_DISTANCE_M = 15_000.0;
-
-    private const float MARATHON_THRESHOLD_DISTANCE_M = 25_000.0;
 
     /**
      * base / build / peak split of the weeks remaining after the taper — Base
@@ -85,7 +84,7 @@ final class PhaseSchedule
     {
         return match (true) {
             $distanceM <= self::HALF_MARATHON_DISTANCE_M => 1,
-            $distanceM <= self::MARATHON_THRESHOLD_DISTANCE_M => 2,
+            $distanceM <= RaceSupport::MARATHON_CLASS_ABOVE_M => 2,
             default => 3,
         };
     }
@@ -97,7 +96,7 @@ final class PhaseSchedule
     public static function blockOpensOn(Carbon $raceDate, float $raceDistanceM): Carbon
     {
         return $raceDate->copy()->startOfWeek(Carbon::MONDAY)->subWeeks(
-            ($raceDistanceM <= self::MARATHON_THRESHOLD_DISTANCE_M ? self::BLOCK_WEEKS : self::LONG_RACE_BLOCK_WEEKS) - 1,
+            ($raceDistanceM <= RaceSupport::MARATHON_CLASS_ABOVE_M ? self::BLOCK_WEEKS : self::LONG_RACE_BLOCK_WEEKS) - 1,
         );
     }
 
@@ -110,6 +109,10 @@ final class PhaseSchedule
     public function forRace(Carbon $arcStart, Carbon $raceDate, float $raceDistanceM): array
     {
         $arcStartWeek = $arcStart->copy()->startOfWeek(Carbon::MONDAY);
+        if (! RaceSupport::forDistance($raceDistanceM)->dedicatedPreparation()) {
+            return $this->generalMaintenance($arcStartWeek, $raceDate);
+        }
+
         $blockStart = self::blockOpensOn($raceDate, $raceDistanceM);
         if ($blockStart->lessThanOrEqualTo($arcStartWeek)) {
             return $this->raceBlock($arcStartWeek, $raceDate, $raceDistanceM);
@@ -119,6 +122,19 @@ final class PhaseSchedule
             ...$this->selfScaled($arcStartWeek, (int) $arcStartWeek->diffInWeeks($blockStart)),
             ...$this->raceBlock($blockStart, $raceDate, $raceDistanceM),
         ];
+    }
+
+    /**
+     * The self-scaled cycle through race week, with a single taper week at the end.
+     *
+     * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
+     */
+    private function generalMaintenance(Carbon $arcStartWeek, Carbon $raceDate): array
+    {
+        $weekCount = max(1, (int) $arcStartWeek->diffInWeeks($raceDate->copy()->startOfWeek(Carbon::MONDAY)) + 1);
+        $cycle = array_column($this->selfScaled($arcStartWeek, $weekCount), 'phase');
+
+        return $this->weeksFrom($arcStartWeek, [...array_slice($cycle, 0, -1), PlanPhase::Taper], self::ZONE_GENERAL);
     }
 
     /**
@@ -169,20 +185,14 @@ final class PhaseSchedule
     }
 
     /**
-     * `$opensWithRecovery` puts a single recovery week at the head of the arc,
-     * before the cycle starts, for an athlete who has just raced. The cycle
-     * then runs from the week after it, so the recovery week is an extra week
-     * rather than one borrowed from the first build block.
-     *
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
      */
-    public function selfScaled(Carbon $arcStart, int $weeks, bool $opensWithRecovery = false): array
+    public function selfScaled(Carbon $arcStart, int $weeks): array
     {
         $currentWeekStart = $arcStart->copy()->startOfWeek(Carbon::MONDAY);
 
-        $phases = $opensWithRecovery ? [PlanPhase::Deload] : [];
-        $cycleWeeks = $weeks - count($phases);
-        for ($i = 0; $i < $cycleWeeks; $i++) {
+        $phases = [];
+        for ($i = 0; $i < $weeks; $i++) {
             $cyclePosition = $i % self::SELF_SCALED_CYCLE_WEEKS;
             $phases[] = $cyclePosition < self::SELF_SCALED_CYCLE_WEEKS - 1 ? PlanPhase::Build : PlanPhase::Deload;
         }

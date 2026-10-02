@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
 use App\Enums\IngestState;
+use App\Enums\RaceAmbitionState;
+use App\Services\Run\Plan\RaceAmbition;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
@@ -18,7 +19,6 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\PlanAdapter;
-use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -130,34 +130,12 @@ it('backs off instead of adding work when an athlete behind their goal ran the w
         ->and($decision['quality_delta'])->toBe(-1);
 });
 
-it('adds a quality session when the projection is behind the goal time', function (): void {
+it('adds no quality session when the projection is behind the goal time', function (): void {
     $decision = decide(raceGapRatio: 1.08);
 
-    expect($decision['reason'])->toBe(AdaptationReason::BehindRacePace)
-        ->and($decision['quality_delta'])->toBe(1)
+    expect($decision['reason'])->toBe(AdaptationReason::Steady)
+        ->and($decision['quality_delta'])->toBe(0)
         ->and($decision['deload'])->toBeFalse();
-});
-
-it('keeps a six-run week spaced when the projection is behind the goal time', function (): void {
-    $decision = decide(raceGapRatio: 1.08);
-    $rows = new WeekPlanBuilder()->build(
-        Carbon::parse('2026-08-10'),
-        PlanPhase::Build,
-        6,
-        [],
-        10_000.0,
-        false,
-        qualityDelta: $decision['quality_delta'],
-        projectedRaceSeconds: 35 * 60.0,
-    );
-    $qualityWeekdays = array_map(
-        static fn (string $date): int => Carbon::parse($date)->dayOfWeekIso,
-        array_keys(array_filter($rows, static fn (array $row): bool => in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true))),
-    );
-
-    expect($decision['reason'])->toBe(AdaptationReason::BehindRacePace)
-        ->and($decision['quality_delta'])->toBe(1)
-        ->and($qualityWeekdays)->toBe([2, 4]);
 });
 
 it('lets a settled current-week hit release a previous-week quality hold before race feedback', function (): void {
@@ -168,8 +146,8 @@ it('lets a settled current-week hit release a previous-week quality hold before 
         raceGapRatio: 1.08,
     );
 
-    expect($decision['reason'])->toBe(AdaptationReason::BehindRacePace)
-        ->and($decision['quality_delta'])->toBe(1);
+    expect($decision['reason'])->toBe(AdaptationReason::Steady)
+        ->and($decision['quality_delta'])->toBe(0);
 });
 
 it('keeps the quality count when the projection is already inside the goal time', function (): void {
@@ -452,7 +430,7 @@ it('reads perfect adherence when nothing from last week was scoreable yet', func
     Carbon::setTestNow();
 });
 
-it('turns a race projection slower than the goal time into a behind-pace verdict', function (): void {
+it('adds no work when the race projection is slower than the goal time', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
     $race = RaceGoal::factory()->for($user)->create([
@@ -474,8 +452,37 @@ it('turns a race projection slower than the goal time into a behind-pace verdict
     $adapter = new PlanAdapter($trainingLoad, $riegel, app(HydrationBacklog::class));
     $decision = $adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), $race);
 
-    expect($decision['reason'])->toBe(AdaptationReason::BehindRacePace)
-        ->and($decision['quality_delta'])->toBe(1);
+    expect($decision['reason'])->toBe(AdaptationReason::Steady)
+        ->and($decision['quality_delta'])->toBe(0);
+
+    Carbon::setTestNow();
+});
+
+it('does not chase an unsupported race ambition with extra quality', function (): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create([
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3000,
+        'race_date' => '2026-09-07',
+    ]);
+
+    $trainingLoad = Mockery::mock(TrainingLoad::class);
+    $trainingLoad->shouldReceive('summary')->andReturn([
+        'monotony' => 1.1, 'strain' => 100.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
+    ]);
+    $riegel = Mockery::mock(RiegelProjector::class);
+    $riegel->shouldReceive('project')->andReturn([
+        'predicted_sec' => 4200.0, 'low_sec' => 4000.0, 'high_sec' => 4400.0,
+        'exponent' => 1.06, 'sample_size' => 3, 'confidence' => 'medium',
+    ]);
+    $unsupported = new RaceAmbition(RaceAmbitionState::Unsupported, 3000, 300, 4200, 420, 28.6, 'confirmed');
+
+    $adapter = new PlanAdapter($trainingLoad, $riegel, app(HydrationBacklog::class));
+    $decision = $adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), $race, $unsupported);
+
+    expect($decision['reason'])->toBe(AdaptationReason::Steady)
+        ->and($decision['quality_delta'])->toBe(0);
 
     Carbon::setTestNow();
 });
@@ -642,42 +649,6 @@ it('still lets one easy day far above Z2 speak for the week', function (): void 
     Carbon::setTestNow();
 });
 
-it('drops the behind-pace verdict once the athlete\'s finished block leaves the projection window', function (): void {
-    $user = User::factory()->create();
-    $race = RaceGoal::factory()->for($user)->create([
-        'distance_m' => 10_000,
-        'goal_time_sec' => 3_540,
-        'race_date' => '2026-11-01',
-    ]);
-    foreach ([
-        ['1km', 309.0, '2026-08-22'],
-        ['5km', 1_675.0, '2026-08-28'],
-        ['10km', 3_939.0, '2026-05-09'],
-        ['15km', 6_177.0, '2026-05-16'],
-        ['half_marathon', 8_844.0, '2026-05-16'],
-    ] as [$category, $valueSec, $setAt]) {
-        PersonalRecord::factory()->for($user)->create([
-            'category' => $category,
-            'value_sec' => $valueSec,
-            'set_at' => $setAt,
-        ]);
-    }
-
-    // Early September: the spring block is still inside the window, its fade
-    // pulls the fitted exponent to 1.1075, and the 10 km projection lands at
-    // 64:21 against a 59:00 goal.
-    Carbon::setTestNow('2026-09-01 08:00:00');
-    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-09-01'), Carbon::parse('2026-09-01'), $race)['reason'])
-        ->toBe(AdaptationReason::BehindRacePace);
-
-    // Three weeks later the same records are out of the window and only the
-    // current block is fitted, so the athlete is no longer told to add work.
-    Carbon::setTestNow('2026-09-21 08:00:00');
-    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-09-21'), Carbon::parse('2026-09-21'), $race)['reason'])
-        ->not->toBe(AdaptationReason::BehindRacePace);
-
-    Carbon::setTestNow();
-});
 
 it('leaves an eased tempo that was run easy out of stimulus adherence', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');

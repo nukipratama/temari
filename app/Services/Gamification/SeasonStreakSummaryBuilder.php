@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
+use App\Enums\RaceSupport;
 use App\Models\Season;
 use App\Models\StreakRestToken;
 use App\Models\User;
@@ -26,13 +27,14 @@ final readonly class SeasonStreakSummaryBuilder
 {
     public function __construct(
         private SeasonGoalResolver $seasonGoalResolver,
+        private SeasonRecordBuilder $recordBuilder,
         private TrainingLoad $trainingLoad,
     ) {
     }
 
     /**
      * @param  SeasonGamificationContext|null  $context  Pass a pre-built context when the caller already holds one, to avoid resolving it twice.
-     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, is_race_oriented: bool, block_opens_on: string|null, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>}|null
+     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, is_race_oriented: bool, block_opens_on: string|null, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>, record: array{process: array{pct: int|null, goals_met: int, goals_total: int}, performance: array{state: string, target_time_sec: int|null, finish_time_sec: int|null, margin_pct: float|null}}}|null
      */
     public function seasonPayload(User $user, ?Season $season, Carbon $today, ?SeasonGamificationContext $context = null): ?array
     {
@@ -54,8 +56,11 @@ final readonly class SeasonStreakSummaryBuilder
             'week_index' => $weekIndex,
             'total_weeks' => $totalWeeks,
             'is_race_oriented' => $season->race_goal_id !== null,
-            'block_opens_on' => $race === null ? null : PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m)->toDateString(),
+            'block_opens_on' => $race === null || ! RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()
+                ? null
+                : PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m)->toDateString(),
             'goals' => $goals,
+            'record' => $this->recordBuilder->build($user, $season, $today, $context),
         ];
     }
 

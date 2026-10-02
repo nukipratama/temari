@@ -356,11 +356,13 @@ it('counts a race season\'s general-zone week at its base-rule slot count, not t
         ->and($this->builder->qualitySlotCount(PlanPhase::Build, 6, 10_000.0, false, PhaseSchedule::ZONE_BLOCK))->toBe(2);
 });
 
-it('classifies marathon distance at and above the threshold, never on a null race', function (): void {
+it('classifies marathon-class road distances, never a null race or one beyond the marathon', function (): void {
     expect(WeekPlanBuilder::isMarathonDistance(null))->toBeFalse()
         ->and(WeekPlanBuilder::isMarathonDistance(21_097.5))->toBeFalse()
-        ->and(WeekPlanBuilder::isMarathonDistance(30_000.0))->toBeTrue()
-        ->and(WeekPlanBuilder::isMarathonDistance(42_195.0))->toBeTrue();
+        ->and(WeekPlanBuilder::isMarathonDistance(25_000.0))->toBeFalse()
+        ->and(WeekPlanBuilder::isMarathonDistance(28_000.0))->toBeTrue()
+        ->and(WeekPlanBuilder::isMarathonDistance(42_195.0))->toBeTrue()
+        ->and(WeekPlanBuilder::isMarathonDistance(50_000.0))->toBeFalse();
 });
 
 it('spends a fast runner\'s only quality day on interval work, and a slow runner\'s on threshold', function (): void {

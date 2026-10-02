@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\RaceIntent;
 use App\Http\Requests\StoreRaceGoalRequest;
 use Illuminate\Support\Facades\Validator;
 
@@ -75,4 +76,18 @@ it('requires the core fields', function (): void {
         ->and($validator->errors()->has('race_date'))->toBeTrue()
         ->and($validator->errors()->has('distance_m'))->toBeTrue()
         ->and($validator->errors()->has('goal_time_sec'))->toBeTrue();
+});
+
+it('accepts an update or new-race intent and rejects anything else', function (): void {
+    expect(validateRaceGoal(raceGoalPayload(['intent' => 'update']))->passes())->toBeTrue()
+        ->and(validateRaceGoal(raceGoalPayload(['intent' => 'new']))->passes())->toBeTrue()
+        ->and(validateRaceGoal(raceGoalPayload(['intent' => 'replace']))->fails())->toBeTrue();
+});
+
+it('defaults the intent to updating the current race', function (): void {
+    $withoutIntent = StoreRaceGoalRequest::create('/race', 'POST', raceGoalPayload());
+    $asNew = StoreRaceGoalRequest::create('/race', 'POST', raceGoalPayload(['intent' => 'new']));
+
+    expect($withoutIntent->intent())->toBe(RaceIntent::Update)
+        ->and($asNew->intent())->toBe(RaceIntent::New);
 });

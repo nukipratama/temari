@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -14,7 +15,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\HydrationBacklog;
 use App\Services\Gamification\SeasonGamificationContext;
-use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Gamification\SeasonRecordBuilder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -40,11 +41,6 @@ final readonly class SeasonService
 {
     /** Self-scaled seasons match the periodizer's own materialization horizon. */
     public const int SELF_SCALED_WEEKS = Periodizer::HORIZON_WEEKS;
-
-    /** Floor so a brand-new athlete (CTL ~0) still gets a meaningful, non-zero growth target. */
-    private const float MIN_CTL_GROWTH_TARGET = 3.0;
-
-    private const float CTL_GROWTH_FRACTION = 0.10;
 
     /**
      * How far the athlete's own trailing volume has to fall BELOW the stored
@@ -74,11 +70,11 @@ final readonly class SeasonService
         private TrainingBaseline $baseline,
         private PhaseSchedule $phaseSchedule,
         private WeekPlanBuilder $weekPlanBuilder,
-        private TrainingLoad $trainingLoad,
         private ResolveActiveRaceAction $activeRace,
         private ResolveSeasonAction $season,
         private SeasonSummaryBuilder $seasonSummaryBuilder,
         private HydrationBacklog $hydrationBacklog,
+        private SeasonRecordBuilder $records,
     ) {
     }
 
@@ -119,7 +115,6 @@ final readonly class SeasonService
         }
         $volumeFloorKm = $race !== null ? $this->baseline->recentWeeklyMeanKm($user, $today) : null;
         $increasesHeld = $race !== null && $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
-        $opensWithRecovery = $race === null && self::followsARaceAlreadyRun($current, $today);
         $endsAt = $race !== null
             ? $race->race_date->toDateString()
             : $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
@@ -136,7 +131,6 @@ final readonly class SeasonService
                 'anchor_weekly_volume_km' => $anchorKm,
                 'volume_floor_km' => $volumeFloorKm,
                 'increases_held' => $increasesHeld,
-                'opens_with_recovery' => $opensWithRecovery,
                 'block_goals_appended_at' => $blockGoalsAppendedAt,
                 'ends_at' => $endsAt,
             ]);
@@ -153,13 +147,16 @@ final readonly class SeasonService
             $current->update(['ends_at' => $today->copy()->subDay()]);
         }
 
+        if ($current !== null) {
+            $this->records->settle($user, $current, $today);
+        }
+
         $season = Season::query()->create([
             'user_id' => $user->id,
             'race_goal_id' => $race?->id,
             'anchor_weekly_volume_km' => $anchorKm,
             'volume_floor_km' => $volumeFloorKm,
             'increases_held' => $increasesHeld,
-            'opens_with_recovery' => $opensWithRecovery,
             'block_goals_appended_at' => $blockGoalsAppendedAt,
             'starts_at' => $today->toDateString(),
             'ends_at' => $endsAt,
@@ -274,25 +271,6 @@ final readonly class SeasonService
     }
 
     /**
-     * Whether the arc being opened comes straight off a race the athlete
-     * actually ran. `plan:close-finished-races` retires the goal the morning
-     * after race day and the plan falls back to the self-scaled arc, which
-     * used to open at Build x1.0 — a full training week from a runner who
-     * raced on Saturday.
-     *
-     * Read off the race DATE rather than `completed_at`: a goal is also
-     * retired when the athlete calls the race off ({@see
-     * \App\Http\Controllers\RaceController::destroy()}) or supersedes it
-     * with another, and there is nothing to recover from in either case.
-     */
-    private static function followsARaceAlreadyRun(?Season $previous, Carbon $today): bool
-    {
-        $race = $previous?->raceGoal;
-
-        return $race !== null && ! $race->race_date->startOfDay()->isAfter($today);
-    }
-
-    /**
      * A race-oriented season ends on its race day per
      * `docs/features/plan-periodizer.md`. `race_goal_id` staying the same
      * (the athlete's active race row was edited in place rather than
@@ -326,7 +304,7 @@ final readonly class SeasonService
 
         $weeks = $race !== null
             ? $this->phaseSchedule->forRace($today, $race->race_date, (float) $race->distance_m)
-            : $this->phaseSchedule->selfScaled($today, self::SELF_SCALED_WEEKS, $season->opens_with_recovery);
+            : $this->phaseSchedule->selfScaled($today, self::SELF_SCALED_WEEKS);
         $weekCount = count($weeks);
 
         $phases = array_column($weeks, 'phase');
@@ -377,7 +355,7 @@ final readonly class SeasonService
         ];
 
         if ($race === null) {
-            $goals[] = $this->ctlGrowthGoal($user, $today);
+            $goals[] = self::consistencyGoal($season);
         } elseif (self::blockHasOpened($race, $today)) {
             $goals[] = self::raceMarginGoal();
             $goals[] = $this->peakWeeklyKmGoal($season, $race, $user);
@@ -398,7 +376,7 @@ final readonly class SeasonService
     public function takeUnderReadyLine(Season $season): ?string
     {
         $race = $season->raceGoal;
-        if ($race === null || $season->under_ready_noted_at !== null) {
+        if ($race === null || $season->under_ready_noted_at !== null || ! RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()) {
             return null;
         }
 
@@ -418,7 +396,8 @@ final readonly class SeasonService
 
     private static function blockHasOpened(RaceGoal $race, Carbon $today): bool
     {
-        return ! $today->lessThan(PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m));
+        return RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()
+            && ! $today->lessThan(PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m));
     }
 
     /**
@@ -488,33 +467,22 @@ final readonly class SeasonService
         ];
     }
 
-    private static function floatOrNull(mixed $value): ?float
-    {
-        return is_numeric($value) ? (float) $value : null;
-    }
-
     /**
      * @return array{title: string, metric: string, metric_key: null, target: float, unit: string}
      */
-    private function ctlGrowthGoal(User $user, Carbon $today): array
+    private static function consistencyGoal(Season $season): array
     {
-        $summary = $this->trainingLoad->summary($user, $today);
-
-        // An unscored load curve is null, never zero — see
-        // docs/decisions/unscored-load-is-null-not-zero.md. Coercing it here
-        // would claim the athlete has no fitness rather than that we cannot see
-        // it; both land on the floor, but only one of them says something false.
-        $startCtl = self::floatOrNull($summary['ctl_42d'] ?? null);
-        $target = $startCtl === null
-            ? self::MIN_CTL_GROWTH_TARGET
-            : max(self::MIN_CTL_GROWTH_TARGET, round($startCtl * self::CTL_GROWTH_FRACTION, 1));
+        $weeks = 0;
+        for ($sunday = $season->starts_at->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay(); $sunday->lte($season->ends_at); $sunday->addWeek()) {
+            $weeks++;
+        }
 
         return [
-            'title' => 'Grow your fitness (CTL) this season',
-            'metric' => 'season_ctl_growth',
+            'title' => 'Run your planned volume week by week',
+            'metric' => 'season_consistent_weeks',
             'metric_key' => null,
-            'target' => $target,
-            'unit' => 'CTL pts',
+            'target' => (float) max(1, $weeks),
+            'unit' => 'weeks',
         ];
     }
 }

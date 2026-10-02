@@ -169,6 +169,7 @@ it('caps the long run by race distance, the ratio inverting as the race lengthen
     '5K' => [5_000, 16.0],
     '10K' => [10_000, 20.0],
     'half' => [21_097, 22.0],
+    '25K stays half-marathon class' => [25_000, 22.0],
     'marathon' => [42_195, 35.0],
 ]);
 
@@ -668,7 +669,6 @@ it('sizes a self-scaled cycle so its four weeks average the anchor unless a long
         'anchor_weekly_volume_km' => $anchorKm,
         'starts_at' => '2026-08-10',
         'ends_at' => '2026-09-06',
-        'opens_with_recovery' => false,
     ]);
 
     $plannedKm = array_column(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season), 'planned_km');
@@ -691,7 +691,6 @@ it('lets a long-run cap hold a self-scaled cycle under its anchor', function (fl
         'anchor_weekly_volume_km' => $anchorKm,
         'starts_at' => '2026-08-10',
         'ends_at' => '2026-09-06',
-        'opens_with_recovery' => false,
     ]);
 
     $baseline = $this->baseline->forUser($user, Carbon::today());
@@ -702,3 +701,18 @@ it('lets a long-run cap hold a self-scaled cycle under its anchor', function (fl
     'two sessions at 40 km' => [40.0, 2],
     'four sessions at 70 km' => [70.0, 4],
 ]);
+
+it('caps the long run for a race beyond the marathon at the general aerobic ceiling, not the marathon one', function (): void {
+    $marathoner = User::factory()->create();
+    weeksOf($marathoner, array_fill(0, 6, 90.0));
+    RaceGoal::factory()->for($marathoner)->create(['distance_m' => 42_195, 'race_date' => Carbon::today()->addWeeks(10)]);
+    Season::factory()->for($marathoner)->create(['anchor_weekly_volume_km' => 90.0, 'starts_at' => Carbon::today(), 'ends_at' => Carbon::today()->addWeeks(10)]);
+
+    $ultraRunner = User::factory()->create();
+    weeksOf($ultraRunner, array_fill(0, 6, 90.0));
+    RaceGoal::factory()->for($ultraRunner)->create(['distance_m' => 80_000, 'race_date' => Carbon::today()->addWeeks(10)]);
+    Season::factory()->for($ultraRunner)->create(['anchor_weekly_volume_km' => 90.0, 'starts_at' => Carbon::today(), 'ends_at' => Carbon::today()->addWeeks(10)]);
+
+    expect($this->baseline->forUser($marathoner, Carbon::today())['long_run_cap_km'])->toBe(35.0)
+        ->and($this->baseline->forUser($ultraRunner, Carbon::today())['long_run_cap_km'])->toBe(22.0);
+});

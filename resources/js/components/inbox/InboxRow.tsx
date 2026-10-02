@@ -34,6 +34,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
     plan_clamp: 'Plan',
     strava_disconnected: 'Strava',
     race_tomorrow: 'Race',
+    race_outcome: 'Race',
     test: 'Test',
 };
 
@@ -45,6 +46,7 @@ const KIND_ICON: Record<NotificationKind, IconComponent> = {
     plan_clamp: Moon,
     strava_disconnected: RefreshCwOff,
     race_tomorrow: Flag,
+    race_outcome: Flag,
     test: Bell,
 };
 
@@ -56,6 +58,7 @@ const KIND_TONE: Record<NotificationKind, Tone> = {
     plan_clamp: 'neutral',
     strava_disconnected: 'neutral',
     race_tomorrow: 'accent',
+    race_outcome: 'accent',
     test: 'neutral',
 };
 

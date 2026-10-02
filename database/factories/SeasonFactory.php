@@ -25,7 +25,6 @@ class SeasonFactory extends Factory
             'anchor_weekly_volume_km' => null,
             'volume_floor_km' => null,
             'increases_held' => false,
-            'opens_with_recovery' => false,
             'starts_at' => Carbon::today()->toDateString(),
             'ends_at' => Carbon::today()->addWeeks(12)->toDateString(),
         ];

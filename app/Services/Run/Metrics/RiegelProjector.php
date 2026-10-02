@@ -49,9 +49,12 @@ class RiegelProjector
      * meaningless prediction while still letting real signal move the number
      * away from the population-average default.
      */
-    private const float MIN_EXPONENT = 0.90;
+    private const float MIN_EXPONENT = 1.0;
 
     private const float MAX_EXPONENT = 1.30;
+
+    /** The shortest effort, in seconds, a projection reads. */
+    private const int MIN_EFFORT_SEC = 210;
 
     /**
      * Uncertainty half-width, as a fraction of the predicted time, by sample
@@ -174,7 +177,7 @@ class RiegelProjector
         $recent = [];
         foreach ($prs as $pr) {
             $pair = $this->pairFor($pr);
-            if ($pair === null) {
+            if ($pair === null || $pair['time_sec'] < self::MIN_EFFORT_SEC) {
                 continue;
             }
 

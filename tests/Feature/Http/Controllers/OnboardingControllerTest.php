@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\RaceChangeKind;
+use App\Enums\RaceOutcome;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\AI\Analysis;
@@ -137,6 +139,8 @@ it('creates a race and marks the user onboarded when the goal step is filled in'
         ->and($race->distance_m)->toBe(10_000)
         ->and($race->goal_time_sec)->toBe(3_000)
         ->and($race->name)->toBe('Jakarta 10K')
+        ->and($race->outcome)->toBe(RaceOutcome::Pending)
+        ->and($race->changes->pluck('kind')->all())->toBe([RaceChangeKind::Created])
         ->and($user->fresh()->onboarded_at)->not->toBeNull();
 });
 

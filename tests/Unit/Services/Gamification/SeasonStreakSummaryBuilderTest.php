@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\RaceOutcome;
 use App\Models\RaceGoal;
 use App\Models\StreakRestToken;
 use App\Models\User;
@@ -59,6 +60,26 @@ it('carries the day a race season\'s block opens', function (): void {
     $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
 
     expect($this->builder->seasonPayload($user, $season, Carbon::today())['block_opens_on'])->toBe('2026-10-26');
+});
+
+it('carries the season record with process and performance kept apart', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-12-13', 'distance_m' => 21_097, 'outcome' => RaceOutcome::Pending]);
+    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+
+    $record = $this->builder->seasonPayload($user, $season, Carbon::today())['record'];
+
+    expect($record['process'])->toHaveKeys(['pct', 'goals_met', 'goals_total'])
+        ->and($record['performance']['state'])->toBe('pending')
+        ->and($record['performance']['target_time_sec'])->toBe(3_000);
+});
+
+it('has no block to open for a race beyond the marathon', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-13', 'distance_m' => 80_000]);
+    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+
+    expect($this->builder->seasonPayload($user, $season, Carbon::today())['block_opens_on'])->toBeNull();
 });
 
 it('reports the weekly streak with its open week and no rest weeks held', function (): void {

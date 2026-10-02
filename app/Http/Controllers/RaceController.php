@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreRaceGoalRequest;
-use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\PlanRegenerationReason;
+use App\Http\Requests\StoreRaceGoalRequest;
 use App\Models\RaceGoal;
 use App\Models\User;
-use App\Services\Run\Plan\PlanRegenerationService;
 use App\Services\Run\Metrics\RiegelProjector;
-use App\Support\SharedPropCacheKey;
+use App\Services\Run\Plan\PlanRegenerationService;
+use App\Services\Run\Plan\RaceGoalService;
+use App\Services\Run\Plan\RacePresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,7 +24,9 @@ use Inertia\Response;
  */
 class RaceController extends Controller
 {
-    public function index(Request $request, RiegelProjector $projector): Response
+    private const int PAST_RACES_SHOWN = 5;
+
+    public function index(Request $request, RiegelProjector $projector, RacePresenter $presenter): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -32,52 +34,51 @@ class RaceController extends Controller
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
 
         return Inertia::render('Race', [
-            'race' => $this->racePayload($race),
+            'race' => $race === null ? null : $presenter->present($user, $race),
             'projection' => $race === null ? null : $projector->project($user, (float) $race->distance_m),
+            'past_races' => $this->pastRaces($user, $presenter),
         ]);
     }
 
     /**
-     * Creating a race always sets it as the athlete's one active race — this
-     * is also how the form's "edit" affordance works: submitting the form
-     * again supersedes the current active race with the new values while
-     * keeping the old one on record (`completed_at` stamped, never deleted).
+     * @return list<array<string, mixed>>
+     */
+    private function pastRaces(User $user, RacePresenter $presenter): array
+    {
+        $races = RaceGoal::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('outcome')
+            ->whereNotNull('completed_at')
+            ->whereDate('race_date', '<=', Carbon::today()->toDateString())
+            ->orderByDesc('race_date')
+            ->orderByDesc('id')
+            ->limit(self::PAST_RACES_SHOWN)
+            ->get();
+
+        return array_values($races->map(static fn (RaceGoal $past): array => $presenter->presentPast($past))->all());
+    }
+
+    /**
+     * With a race already active the request carries an explicit intent:
+     * `update` (the default) revises that event and keeps its season, `new`
+     * starts a new event and so a new season. See {@see RaceGoalService}.
      */
     public function store(
         StoreRaceGoalRequest $request,
+        RaceGoalService $races,
         PlanRegenerationService $regeneration,
-        ResolveActiveRaceAction $activeRace,
     ): RedirectResponse {
         /** @var User $user */
         $user = $request->user();
 
-        DB::transaction(function () use ($user, $request): void {
-            RaceGoal::query()
-                ->where('user_id', $user->id)
-                ->active()
-                ->update(['completed_at' => now()]);
+        $race = $races->submit($user, $request->raceAttributes(), $request->intent());
 
-            RaceGoal::query()->create([
-                'user_id' => $user->id,
-                'race_date' => $request->validated('race_date'),
-                'distance_m' => $request->validated('distance_m'),
-                'goal_time_sec' => $request->validated('goal_time_sec'),
-                'name' => $request->validated('name'),
-            ]);
-        });
+        if (! $race->wasRecentlyCreated && ! $race->wasChanged(['race_date', 'goal_time_sec'])) {
+            return back()->with('success', 'Your race is saved.');
+        }
 
-        // The model's own saved()/deleted() hooks already bust this per row,
-        // but they fire mid-transaction (before commit) here — busted again
-        // after the commit so a concurrent read can't re-warm the cache from
-        // the pre-swap state. Same reasoning as AccessoryController::equip().
-        SharedPropCacheKey::ActiveRace->forget($user->id);
-        $activeRace->forget($user->id);
-
-        // A race replaces the plan's whole structure — PhaseSchedule::forRace()
-        // supersedes the self-scaled arc, the season flips mode, and the
-        // week's quality work changes with it. Waiting for Monday would have
-        // trained the athlete against an arc their own goal had superseded,
-        // while the message below said otherwise.
+        // A date or target change reshapes the arc, so the plan is rebuilt now
+        // rather than on Monday, and only when one of them actually moved.
         if (! $regeneration->regenerateForRequest($user, PlanRegenerationReason::Settings)) {
             return back()->with('info', 'Your race is saved. The plan update is queued.');
         }
@@ -86,59 +87,25 @@ class RaceController extends Controller
     }
 
     /**
-     * Retires the athlete's race without replacing it, and returns the plan to
-     * its self-scaled arc.
-     *
-     * Until this existed a race could only ever be superseded by another one,
-     * so a wrong date was stuck until it passed — and the plan kept building
-     * phases toward it the whole time. Stamped rather than deleted, the same
-     * way {@see self::store()} retires the goal it supersedes: a race the
-     * athlete abandoned is still part of their record.
+     * Calls the race off and returns the plan to its self-scaled arc. The
+     * event stays on record as cancelled, never deleted.
      */
     public function destroy(
         Request $request,
+        RaceGoalService $races,
         PlanRegenerationService $regeneration,
-        ResolveActiveRaceAction $activeRace,
     ): RedirectResponse {
         /** @var User $user */
         $user = $request->user();
 
-        $retired = RaceGoal::query()
-            ->where('user_id', $user->id)
-            ->active()
-            ->update(['completed_at' => now()]);
-
-        if ($retired === 0) {
+        if ($races->cancel($user) === null) {
             return back();
         }
 
-        SharedPropCacheKey::ActiveRace->forget($user->id);
-        $activeRace->forget($user->id);
-
-        // Same reasoning as store(): the plan's whole structure hangs off
-        // whether a race is active, so it is rebuilt now rather than on Monday.
         if (! $regeneration->regenerateForRequest($user, PlanRegenerationReason::Settings)) {
             return back()->with('info', 'Race cleared. The plan update is queued.');
         }
 
         return back()->with('success', 'Race cleared. Temari\'s back to building around your own running.');
-    }
-
-    /**
-     * @return array{id: int, race_date: string, distance_m: int, goal_time_sec: int, name: string|null}|null
-     */
-    private function racePayload(?RaceGoal $race): ?array
-    {
-        if ($race === null) {
-            return null;
-        }
-
-        return [
-            'id' => $race->id,
-            'race_date' => $race->race_date->toDateString(),
-            'distance_m' => $race->distance_m,
-            'goal_time_sec' => $race->goal_time_sec,
-            'name' => $race->name,
-        ];
     }
 }

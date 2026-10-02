@@ -34,6 +34,7 @@ Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never
 | `plan_clamp` | a rest day being stepped down | inbox only | the plan |
 | `strava_disconnected` | the Strava grant being revoked | inbox · Telegram · push | the profile, where the reconnect button is |
 | `race_tomorrow` | 18:00 the evening before an active race goal's date | inbox · Telegram · push | the race page |
+| `race_outcome` | 09:00 the morning after a race whose outcome is still pending | inbox · Telegram · push | the race page, where the athlete confirms a run, enters a time or says they did not run |
 | `test` | the "send test notification" button | inbox · Telegram · push | the dashboard |
 
 **`plan_clamp` is the one inbox-only kind.** A step-down used to exist only while the plan page
@@ -64,6 +65,13 @@ is safe here for the reason [[scheduler]] gives — one scheduler container, and
 overlap lock while it runs. The body says the race and its distance, repeats the plan's own taper
 rest when today is one, and ends on the single practical thing left to do that evening; there is no
 narrator behind it and no hype in it.
+
+**`race_outcome` asks, it does not assume.** `race:ask-outcome` runs at 09:00 and notifies each
+athlete whose race was yesterday and whose outcome is still `pending`
+([RaceOutcomeAskCommand](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php)); the dedupe key
+is again the race plus its date ([RaceOutcomeNotification](../../app/Notifications/RaceOutcomeNotification.php)).
+A passed date is not participation, so the copy is neutral and says nothing is counted until the
+athlete answers. The demo account and athletes with the master switch off are never asked.
 
 **`strava_disconnected` is the one kind the master switch does not govern.** Until it notified, the
 only surface that admitted a dead grant was the empty-runs hero, a screen an athlete with runs on

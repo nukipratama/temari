@@ -2,21 +2,16 @@ import { Head, Link, router } from '@inertiajs/react';
 import { ArrowRight, CalendarX, Pencil } from 'lucide-react';
 import { useState } from 'react';
 
+import type { PastRace, RaceDetails } from '@/types/inertia';
+
 import RaceDuel, { type RaceProjection } from '@/components/race/RaceDuel';
 import RaceGoalForm from '@/components/race/RaceGoalForm';
+import RaceOutcomeCard from '@/components/race/RaceOutcomeCard';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
-
-interface RacePayload {
-    id: number;
-    race_date: string;
-    distance_m: number;
-    goal_time_sec: number;
-    name: string | null;
-}
 
 interface ProjectionPayload extends RaceProjection {
     /** Fitted Riegel exponent — carried by the payload, not drawn. */
@@ -24,8 +19,9 @@ interface ProjectionPayload extends RaceProjection {
 }
 
 interface RaceProps {
-    race: RacePayload | null;
+    race: RaceDetails | null;
     projection: ProjectionPayload | null;
+    past_races?: PastRace[];
 }
 
 const FORM_ID = 'race-goal-form';
@@ -38,7 +34,11 @@ const MUTED_PILL =
  * compact header, with the goal form folded behind "edit race". The CTL/ATL
  * fitness chart lives on Trends.
  */
-export default function Race({ race, projection }: Readonly<RaceProps>) {
+export default function Race({
+    race,
+    projection,
+    past_races: pastRaces = [],
+}: Readonly<RaceProps>) {
     const [editing, setEditing] = useState(false);
     const [confirmingClear, setConfirmingClear] = useState(false);
 
@@ -129,6 +129,14 @@ export default function Race({ race, projection }: Readonly<RaceProps>) {
                         </button>
                     </div>
                 )}
+
+                {pastRaces.map((past) => (
+                    <RaceOutcomeCard
+                        key={past.id}
+                        race={past}
+                        className="mt-4"
+                    />
+                ))}
 
                 <div id={FORM_ID}>
                     {editing && (

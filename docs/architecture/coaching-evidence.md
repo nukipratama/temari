@@ -17,6 +17,13 @@ code_refs:
   - app/Services/Run/Plan/SeasonService.php
   - app/Services/Run/Plan/PhaseSchedule.php
   - app/Services/Run/Plan/ComplianceScorer.php
+  - app/Services/Run/Plan/PostRaceRecovery.php
+  - app/Services/Run/Plan/PlanInputsGatherer.php
+  - app/Services/Run/Plan/Periodizer.php
+  - app/Services/Run/Plan/RaceAmbitionAssessor.php
+  - app/Services/Run/Plan/RaceAmbition.php
+  - app/Services/Run/Metrics/RiegelProjector.php
+  - app/Services/Gamification/SeasonGamificationContext.php
 ---
 
 # Coaching evidence
@@ -53,6 +60,12 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | The Build ramp is a heuristic, not a safety rule | [PhaseSchedule.php:46](app/Services/Run/Plan/PhaseSchedule.php#L46) | heuristic | [[#Buist2008]] |
 | Steady-segment decoupling describes a run; only easy days run above Z2 count a week as run too hard | [PlanAdapter.php:286](app/Services/Run/Plan/PlanAdapter.php#L286) | evidence-supported | [[#Smyth2022]], [[#CoyleGonzalezAlonso2001]], [[#Maunder2021]], [[#Racinais2015]] |
 | Deleting a run re-grades its day from the surviving runs in either direction; an excused day keeps its verdict | [ComplianceScorer.php:321](app/Services/Run/Plan/ComplianceScorer.php#L321) | product choice | — |
+| After a marathon-class race (30 km or more run), 14 days carry no quality and the first full week after race day runs at the deload multiplier | [PostRaceRecovery.php:28](app/Services/Run/Plan/PostRaceRecovery.php#L28), [PlanInputsGatherer.php:127](app/Services/Run/Plan/PlanInputsGatherer.php#L127), [Periodizer.php:471](app/Services/Run/Plan/Periodizer.php#L471), [Periodizer.php:771](app/Services/Run/Plan/Periodizer.php#L771) | evidence-supported | [[#Sherman1984]], [[#Warhol1985]], [[#MartinezNavarro2021]] |
+| After a race of over 15 km, 7 days carry no quality; after 15 km or less, 3 days; the 30 km and 15 km class thresholds are conventions (the research found no half-marathon or shorter recovery timelines) | [PostRaceRecovery.php:17](app/Services/Run/Plan/PostRaceRecovery.php#L17), [PostRaceRecovery.php:19](app/Services/Run/Plan/PostRaceRecovery.php#L19), [PostRaceRecovery.php:28](app/Services/Run/Plan/PostRaceRecovery.php#L28) | heuristic | — |
+| A target backed by evidence covering under half the race distance is `low_evidence`, and the prescribed race time is the slower of target and supported | [RaceAmbitionAssessor.php:44](app/Services/Run/Plan/RaceAmbitionAssessor.php#L44), [RaceAmbition.php:22](app/Services/Run/Plan/RaceAmbition.php#L22) | evidence-supported | [[#VickersVertosick2016]], [[#Keogh2019]], [[#OficialCasado2025]], [[#BlytheKiraly2016]], [[#Riegel1981]] |
+| The 3% and 6% ambition bands against supported race time | [RaceAmbitionAssessor.php:17](app/Services/Run/Plan/RaceAmbitionAssessor.php#L17), [RaceAmbitionAssessor.php:19](app/Services/Run/Plan/RaceAmbitionAssessor.php#L19) | heuristic | — |
+| A Riegel projection slower than the goal adds no quality session; the projection is display only, with its fitted exponent floored at 1.0 and efforts under 3.5 min excluded | [PlanAdapter.php:148](app/Services/Run/Plan/PlanAdapter.php#L148), [RiegelProjector.php:52](app/Services/Run/Metrics/RiegelProjector.php#L52), [RiegelProjector.php:57](app/Services/Run/Metrics/RiegelProjector.php#L57) | evidence-supported | [[#Riegel1981]], [[#BlytheKiraly2016]], [[#VickersVertosick2016]] |
+| A goal-less season's goal counts weeks that reached 85% of the planned km, not CTL growth | [SeasonGamificationContext.php:176](app/Services/Gamification/SeasonGamificationContext.php#L176), [SeasonService.php:473](app/Services/Run/Plan/SeasonService.php#L473) | product choice | [[#Vermeire2022]], [[#Doherty2020]] |
 
 ## Sources
 
@@ -136,3 +149,24 @@ Maunder E, Seiler S, Mildenhall MJ, Kilding AE, Plews DJ. The importance of "dur
 
 ### Racinais2015
 Racinais S, Alonso JM, Coutts AJ, et al. Consensus recommendations on training and competing in the heat. *Sports Med* 2015;45(7):925–938. https://doi.org/10.1007/s40279-015-0343-6. Heat raises heart rate at a given pace; training in heat should be regulated by heart rate or effort, not pace. Grade CON · access FT.
+
+### Sherman1984
+Sherman WM, Armstrong LE, Murray TM, et al. Effect of a 42.2-km footrace and subsequent rest or exercise on muscular strength and work capacity. *J Appl Physiol* 1984;57(6):1668–1673. https://doi.org/10.1152/jappl.1984.57.6.1668. Knee-extensor strength fell after a marathon; rest recovered it better than 20–45 min/day of easy running over 7 days, and it was still below baseline on day 7 in both groups (n = 10). Grade RCT · access ABS.
+
+### MartinezNavarro2021
+Martínez-Navarro I, Montoya-Vieco A, Hernando C, et al. The week after running a marathon: effects of running vs elliptical training vs resting on neuromuscular performance and muscle damage recovery. *Eur J Sport Sci* 2021;21(12):1668–1674. https://doi.org/10.1080/17461391.2020.1857441. Returning to running at 48 h did not change CK or LDH recovery up to 8 days and improved squat jump at 96 h (n = 64). Grade CT · access ABS.
+
+### Warhol1985
+Warhol MJ, Siegel AJ, Evans WJ, Silverman LM. Skeletal muscle injury and repair in marathon runners after competition. *Am J Pathol* 1985;118(2):331–339. https://pubmed.ncbi.nlm.nih.gov/3970143/. Biopsies showed fibre damage at 1–3 days, repair at 3–4 weeks and regeneration markers at 8–12 weeks. Grade LAB · access ABS.
+
+### VickersVertosick2016
+Vickers AJ, Vertosick EA. An empirical study of race times in recreational endurance runners. *BMC Sports Sci Med Rehabil* 2016;8:26. https://doi.org/10.1186/s13102-016-0052-y. In 2,303 recreational runners Riegel was calibrated to the half marathon but much too fast for the marathon, and its error was largest in less-trained runners. Models adding weekly volume or a second race did better. Grade COH · access ABS.
+
+### Keogh2019
+Keogh A, Smyth B, Caulfield B, et al. Prediction equations for marathon performance: a systematic review. *Int J Sports Physiol Perform* 2019;14(9):1159–1169. https://doi.org/10.1123/ijspp.2019-0360. 114 equations in 36 studies, R² from 0.10 to 0.99; most omit course, sex and weather, so no single equation is recommended. Grade SR · access ABS.
+
+### BlytheKiraly2016
+Blythe DAJ, Király FJ. Prediction and quantification of individual athletic performance of runners. *PLoS One* 2016;11:e0157257. https://doi.org/10.1371/journal.pone.0157257. Individual runners have distance-dependent exponents; a 3-parameter individual model cut prediction error by about 30% against existing methods (164,746 runners). Grade COH · access ABS.
+
+### Riegel1981
+Riegel PS. Athletic records and human endurance. *Am Sci* 1981;69(3):285–290. https://pubmed.ncbi.nlm.nih.gov/7235349/. T2 = T1·(D2/D1)^1.06, fitted to world records from about 3.5 to 230 min; a fatigue factor, not physiology. Grade NONE · access NR.

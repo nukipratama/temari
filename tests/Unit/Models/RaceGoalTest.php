@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Enums\RaceOutcome;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Support\SharedPropCacheKey;
@@ -87,4 +88,18 @@ it('forgets the per-request active-race memo on create, update and delete', func
 
     $revived->delete();
     expect($resolve($user->id))->toBeNull();
+});
+
+it('casts its outcome, finish time and recorded-at, and reads null for a legacy row', function (): void {
+    $legacy = RaceGoal::factory()->create();
+    $recorded = RaceGoal::factory()->make([
+        'outcome' => 'confirmed',
+        'finish_time_sec' => '2950',
+        'outcome_recorded_at' => '2026-10-02 08:00:00',
+    ]);
+
+    expect($legacy->fresh()->outcome)->toBeNull()
+        ->and($recorded->outcome)->toBe(RaceOutcome::Confirmed)
+        ->and($recorded->finish_time_sec)->toBeInt()->toBe(2950)
+        ->and($recorded->outcome_recorded_at)->toBeInstanceOf(Carbon::class);
 });

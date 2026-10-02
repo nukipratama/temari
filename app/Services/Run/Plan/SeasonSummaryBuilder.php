@@ -119,7 +119,7 @@ final readonly class SeasonSummaryBuilder
         } else {
             $raceDistanceM = null;
             $totalWeeks = max(1, (int) $season->starts_at->diffInWeeks($season->ends_at) + 1);
-            $weeks = $this->phaseSchedule->selfScaled($season->starts_at, $totalWeeks, $season->opens_with_recovery);
+            $weeks = $this->phaseSchedule->selfScaled($season->starts_at, $totalWeeks);
         }
 
         $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), $isSelfScaled || $season->increases_held, array_column($weeks, 'zone'));

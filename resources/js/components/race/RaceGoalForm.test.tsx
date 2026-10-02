@@ -267,4 +267,94 @@ describe('RaceGoalForm', () => {
             (screen.getByLabelText('Minutes') as HTMLInputElement).value,
         ).toBe('50');
     });
+
+    it('offers no choice of intent when there is no race to update', () => {
+        render(
+            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: 'update this race' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'add a new race' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('defaults to updating the current race with its distance held', () => {
+        render(
+            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: 'update this race' }),
+        ).toHaveAttribute('aria-pressed', 'true');
+        expect(
+            screen.getByRole('button', { name: 'add a new race' }),
+        ).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: '5K' })).toBeDisabled();
+        expect(
+            screen.getByLabelText('Custom distance in kilometers'),
+        ).toBeDisabled();
+
+        fireEvent.change(screen.getByLabelText('Minutes'), {
+            target: { value: '48' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'update race' }));
+
+        expect(lastPostCall()?.[1]).toEqual({
+            race_date: '2026-12-06',
+            distance_m: 10_000,
+            goal_time_sec: 2_880,
+            name: 'Jakarta 10K',
+            intent: 'update',
+        });
+    });
+
+    it('starts a blank new race on "add a new race" and posts that intent', () => {
+        render(
+            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'add a new race' }));
+
+        expect(
+            (screen.getByLabelText('Race day') as HTMLInputElement).value,
+        ).toBe('');
+        expect(
+            (screen.getByLabelText('Name (optional)') as HTMLInputElement)
+                .value,
+        ).toBe('');
+        expect(screen.getByRole('button', { name: '5K' })).not.toBeDisabled();
+
+        fireEvent.change(screen.getByLabelText('Race day'), {
+            target: { value: '2027-03-14' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: '5K' }));
+        fireEvent.click(screen.getByRole('button', { name: 'add race' }));
+
+        expect(lastPostCall()?.[1]).toMatchObject({
+            race_date: '2027-03-14',
+            distance_m: 5_000,
+            intent: 'new',
+        });
+    });
+
+    it('restores the current race when switching back to updating it', () => {
+        render(
+            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'add a new race' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'update this race' }),
+        );
+
+        expect(
+            (screen.getByLabelText('Race day') as HTMLInputElement).value,
+        ).toBe('2026-12-06');
+        expect(
+            screen.getByRole('button', { name: 'update race' }),
+        ).toBeVisible();
+    });
 });

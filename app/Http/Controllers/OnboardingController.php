@@ -7,14 +7,13 @@ namespace App\Http\Controllers;
 use App\Actions\AI\RequestTodaysBriefing;
 use App\Enums\PlanRegenerationReason;
 use App\Http\Requests\CompleteOnboardingRequest;
-use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Services\Run\Plan\PlanRegenerationService;
+use App\Services\Run\Plan\RaceGoalService;
 use App\Services\Telegram\TelegramLinkToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,30 +52,18 @@ class OnboardingController extends Controller
         CompleteOnboardingRequest $request,
         PlanRegenerationService $regeneration,
         RequestTodaysBriefing $briefing,
+        RaceGoalService $races,
     ): RedirectResponse {
         /** @var User $user */
         $user = $request->user();
 
         if ($request->filled('race_date')) {
-            // Locked check-then-create: a retried/double submit racing itself
-            // must not create a second active race (RaceGoal allows only one).
-            DB::transaction(function () use ($user, $request): void {
-                $hasActiveRace = RaceGoal::query()
-                    ->where('user_id', $user->id)
-                    ->active()
-                    ->lockForUpdate()
-                    ->exists();
-
-                if (! $hasActiveRace) {
-                    RaceGoal::query()->create([
-                        'user_id' => $user->id,
-                        'race_date' => $request->validated('race_date'),
-                        'distance_m' => $request->validated('distance_m'),
-                        'goal_time_sec' => $request->validated('goal_time_sec'),
-                        'name' => $request->validated('name'),
-                    ]);
-                }
-            });
+            $races->createUnlessActive($user, [
+                'race_date' => $request->validated('race_date'),
+                'distance_m' => (int) $request->validated('distance_m'),
+                'goal_time_sec' => (int) $request->validated('goal_time_sec'),
+                'name' => $request->validated('name'),
+            ]);
         }
 
         if ($request->hasAny(['experience_level', 'sessions_per_week', 'goal_type', 'run_days', 'long_run_day'])) {

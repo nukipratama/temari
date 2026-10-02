@@ -83,7 +83,7 @@ it('narrows the uncertainty band as the PR sample grows', function (): void {
         ->and($richFraction)->toBeLessThan($thinFraction);
 });
 
-it('clamps a pathological 2-point fit instead of extrapolating an implausible exponent', function (): void {
+it('clamps a pathological 2-point fit, never below an exponent of 1.0', function (): void {
     $steep = User::factory()->create();
     PersonalRecord::factory()->for($steep)->create(['category' => '10km', 'value_sec' => 3_000.0, 'set_at' => now()]);
     PersonalRecord::factory()->for($steep)->create(['category' => '15km', 'value_sec' => 6_000.0, 'set_at' => now()]);
@@ -94,7 +94,7 @@ it('clamps a pathological 2-point fit instead of extrapolating an implausible ex
     PersonalRecord::factory()->for($flat)->create(['category' => '10km', 'value_sec' => 3_000.0, 'set_at' => now()]);
     PersonalRecord::factory()->for($flat)->create(['category' => '15km', 'value_sec' => 4_200.0, 'set_at' => now()]);
 
-    expect($this->projector->project($flat, 20_000.0)['exponent'])->toBe(0.9);
+    expect($this->projector->project($flat, 20_000.0)['exponent'])->toBe(1.0);
 });
 
 it('converts an effort-window PR (pace, not elapsed time) into a (distance, time) pair', function (): void {
@@ -172,3 +172,14 @@ function riegelAthleteWithTwoBlocks(): User
 
     return $user;
 }
+
+it('leaves out an effort shorter than three and a half minutes', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '1km', 'value_sec' => 200.0, 'set_at' => now()]);
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1_300.0, 'set_at' => now()]);
+
+    $projection = $this->projector->project($user, 10_000.0);
+
+    expect($projection['sample_size'])->toBe(1)
+        ->and($projection['exponent'])->toBe(1.06);
+});

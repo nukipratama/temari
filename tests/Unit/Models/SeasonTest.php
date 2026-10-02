@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SeasonPerformance;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\SeasonGoal;
@@ -67,4 +68,20 @@ it('has many season goals', function (): void {
 
     expect($season->goals)->toHaveCount(3)
         ->and($season->goals->first())->toBeInstanceOf(SeasonGoal::class);
+});
+
+it('reads a legacy season without a settled record as null, and casts a settled one', function (): void {
+    $legacy = Season::factory()->create();
+    $settled = Season::factory()->create([
+        'process_pct' => '82',
+        'performance_state' => 'pending',
+        'record_settled_at' => '2026-10-05 08:00:00',
+    ]);
+
+    expect($legacy->fresh()->process_pct)->toBeNull()
+        ->and($legacy->fresh()->performance_state)->toBeNull()
+        ->and($legacy->fresh()->record_settled_at)->toBeNull()
+        ->and($settled->fresh()->process_pct)->toBeInt()->toBe(82)
+        ->and($settled->fresh()->performance_state)->toBe(SeasonPerformance::Pending)
+        ->and($settled->fresh()->record_settled_at)->toBeInstanceOf(Carbon::class);
 });

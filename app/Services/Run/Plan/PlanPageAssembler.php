@@ -53,6 +53,7 @@ final class PlanPageAssembler
         private readonly ResolveWeekAdaptationAction $weekAdaptation,
         private readonly HydrationBacklog $hydrationBacklog,
         private readonly CurrentWeekVolumeProjector $volumeProjector,
+        private readonly RaceAmbitionAssessor $ambition,
     ) {
     }
 
@@ -261,7 +262,7 @@ final class PlanPageAssembler
                     $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status,
                     $activityByDate[$s->date->toDateString()] ?? null,
                     $clampVoice,
-                    $race !== null && $s->date->isSameDay($race->race_date) ? $race->goal_time_sec : null,
+                    $race !== null && $s->date->isSameDay($race->race_date) ? $this->ambition->assess($user, $race, $today)->prescribedTimeSec() : null,
                     $baselineData['long_run_progression_cap_km'],
                     $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
                     $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,

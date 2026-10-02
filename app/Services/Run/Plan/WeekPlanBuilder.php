@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PlanPhase;
+use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 use Illuminate\Support\Carbon;
 
@@ -53,9 +54,6 @@ final class WeekPlanBuilder
     private const int THRESHOLD_RACE_SECONDS = 4200;
 
     private const int MAX_SESSIONS = 6;
-
-    /** Races at/above this distance get race-pace-specific (marathon band) quality work in Peak/Taper. */
-    public const float MARATHON_DISTANCE_THRESHOLD_M = 30_000.0;
 
     /** Ceiling on quality sessions per week once race-pace feedback asks for more. */
     private const int MAX_QUALITY_SLOTS = 2;
@@ -318,7 +316,7 @@ final class WeekPlanBuilder
      */
     public static function isMarathonDistance(?float $raceDistanceM): bool
     {
-        return $raceDistanceM !== null && $raceDistanceM >= self::MARATHON_DISTANCE_THRESHOLD_M;
+        return RaceSupport::isMarathonClass($raceDistanceM);
     }
 
     /**

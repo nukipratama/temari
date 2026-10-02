@@ -9,14 +9,43 @@ import {
 } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { PastRace, RaceDetails } from '@/types/inertia';
+
 import Race from './Race';
 
-const RACE = {
+const RACE: RaceDetails = {
     id: 1,
     race_date: '2026-12-06',
     distance_m: 10_000,
     goal_time_sec: 3_000,
     name: 'Jakarta 10K',
+    ambition: {
+        state: 'on_track',
+        target_time_sec: 3_000,
+        target_pace_sec_per_km: 300,
+        supported_time_sec: 3_050,
+        supported_pace_sec_per_km: 305,
+        prescribed_time_sec: 3_000,
+        gap_pct: 1.6,
+        evidence_confidence: 'confirmed',
+    },
+    support: { mode: 'road', dedicated_preparation: true, limitation: null },
+    history: [],
+};
+
+const PAST_RACE: PastRace = {
+    id: 9,
+    race_date: '2026-10-04',
+    distance_m: 21_097,
+    goal_time_sec: 7_000,
+    name: 'Bandung Half',
+    outcome: {
+        state: 'pending',
+        finish_time_sec: null,
+        activity_id: null,
+        recorded_at: null,
+        suggestion: null,
+    },
 };
 
 const PROJECTION = {
@@ -208,5 +237,28 @@ describe('Race', () => {
 
         expect(remove).toHaveBeenCalledWith('/race');
         remove.mockRestore();
+    });
+
+    it('draws no outcome card when no race has passed', () => {
+        render(<Race race={RACE} projection={PROJECTION} />);
+
+        expect(
+            screen.queryByRole('region', { name: /outcome/ }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('asks how a passed race went, even with no active race', () => {
+        render(<Race race={null} projection={null} past_races={[PAST_RACE]} />);
+
+        expect(
+            screen.getByRole('region', { name: 'Bandung Half outcome' }),
+        ).toBeInTheDocument();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'i did not run it' }),
+        );
+
+        expect(vi.mocked(router.post).mock.calls.at(-1)?.[0]).toBe(
+            '/race/9/outcome',
+        );
     });
 });

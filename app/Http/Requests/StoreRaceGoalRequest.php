@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Enums\RaceIntent;
+use Illuminate\Validation\Rule;
 use Override;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -20,6 +22,24 @@ class StoreRaceGoalRequest extends FormRequest
         return true;
     }
 
+    public function intent(): RaceIntent
+    {
+        return $this->enum('intent', RaceIntent::class) ?? RaceIntent::Update;
+    }
+
+    /**
+     * @return array{race_date: string, distance_m: int, goal_time_sec: int, name: string|null}
+     */
+    public function raceAttributes(): array
+    {
+        return [
+            'race_date' => $this->validated('race_date'),
+            'distance_m' => (int) $this->validated('distance_m'),
+            'goal_time_sec' => (int) $this->validated('goal_time_sec'),
+            'name' => $this->validated('name'),
+        ];
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -33,6 +53,7 @@ class StoreRaceGoalRequest extends FormRequest
             // 5 minutes to 72 hours, same "plausible ultra" ceiling.
             'goal_time_sec' => ['required', 'integer', 'between:300,259200'],
             'name' => ['nullable', 'string', 'max:120'],
+            'intent' => ['nullable', Rule::enum(RaceIntent::class)],
         ];
     }
 

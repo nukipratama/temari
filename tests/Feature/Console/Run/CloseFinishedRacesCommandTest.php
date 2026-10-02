@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\RaceOutcome;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
@@ -71,5 +72,20 @@ it('lets the plan regenerate again once the race is retired', function (): void 
 
     expect(PlannedSession::query()->where('user_id', $user->id)->count())
         ->toBeGreaterThan(0);
+    Carbon::setTestNow();
+});
+
+it('ends dated preparation without proving participation: the outcome stays pending', function (): void {
+    Carbon::setTestNow('2026-09-08 10:00:00');
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->subDay()->toDateString(), 'outcome' => RaceOutcome::Pending]);
+    $legacy = raceOn(User::factory()->create(), Carbon::today()->subDay()->toDateString());
+
+    $this->artisan('plan:close-finished-races')->assertSuccessful();
+
+    expect($race->fresh()->completed_at)->not->toBeNull()
+        ->and($race->fresh()->outcome)->toBe(RaceOutcome::Pending)
+        ->and($race->fresh()->finish_time_sec)->toBeNull()
+        ->and($legacy->fresh()->outcome)->toBeNull();
     Carbon::setTestNow();
 });
