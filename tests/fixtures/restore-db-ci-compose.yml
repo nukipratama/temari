@@ -4,7 +4,7 @@
 # of compose.prod.yaml, via its COMPOSE_FILE/MYSQL_SERVICE overrides.
 services:
   mysql:
-    image: mysql:8.4
+    image: mysql:8.4@sha256:c592c15aaf4a1961e15d82eb31ea5987dda862d1c4b1e93424438c0e91dc1f8d
     environment:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: temari_ci_restore

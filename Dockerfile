@@ -2,15 +2,15 @@
 
 # FrankenPHP base, digest-pinned so the floating tag can't drift the Caddyfile
 # syntax out from under us (a worker-directive rename took prod down once).
-# = dunglas/frankenphp:1.12.4-php8.5-alpine. Refresh after a bump with:
+# = dunglas/frankenphp:1.12.7-php8.5-alpine (PHP 8.5.11). Refresh after a bump with:
 #   docker buildx imagetools inspect dunglas/frankenphp:1-php8.5-alpine --format '{{.Manifest.Digest}}'
-ARG FRANKENPHP_DIGEST=sha256:070d9a37e02bf65c3cb14793218a8375f06839b0af6a5ccc6ab94379bbbf0517
+ARG FRANKENPHP_DIGEST=sha256:34c27f58cd2343a004e836db3c82705150f4f47920b640b976707a6c7f4b8686
 
 # Single pinned Node toolchain reused by the dev stage (copied in) and the
-# assets build, so dev/CI/prod all run the same Node. node:24.16.0-alpine
+# assets build, so dev/CI/prod all run the same Node. node:24.21.0-alpine
 # (Krypton LTS). Refresh after a version bump with:
 #   docker buildx imagetools inspect node:<ver>-alpine --format '{{.Manifest.Digest}}'
-FROM node@sha256:2bdb65ed1dab192432bc31c95f94155ca5ad7fc1392fb7eb7526ab682fa5bf14 AS node-src
+FROM node@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS node-src
 
 # ─── Stage: dev ─────────────────────────────────────────────────────────────
 # Local dev target — FrankenPHP traditional mode (no Octane worker).
