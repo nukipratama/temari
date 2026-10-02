@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ReportClientErrorRequest;
+use App\Support\NewExceptionLedger;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -30,6 +31,8 @@ class ClientErrorController extends Controller
             'stack' => self::trace($validated['stack'] ?? null),
             'user_id' => $request->user()?->id,
         ]);
+
+        NewExceptionLedger::recordBrowser($validated['message'], $validated['stack'] ?? null);
 
         return response()->noContent();
     }

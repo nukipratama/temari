@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\NewExceptionLedger;
 use Illuminate\Support\Facades\Log;
 
 function spyOnClientErrorLog(): void
@@ -68,4 +69,18 @@ it('throttles a browser stuck in an error loop', function (): void {
     }
 
     $this->postJson('/client-errors', ['message' => 'boom 11'])->assertStatus(429);
+});
+
+it('records the browser error fingerprint for the next exception digest', function (): void {
+    spyOnClientErrorLog();
+
+    $this->postJson('/client-errors', [
+        'message' => 'TypeError: athlete 42',
+        'stack' => "TypeError: athlete 42\n    at Run (https://temari.test/build/assets/app.js:1:2)",
+    ])->assertNoContent();
+
+    $pending = NewExceptionLedger::pull();
+
+    expect($pending)->toHaveCount(1)
+        ->and($pending[0]['label'])->toStartWith('browser error at /build/assets/app.js:1:2');
 });

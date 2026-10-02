@@ -66,6 +66,9 @@ class MaintainerAlerter
 
     private const int STRAVA_BUDGET_WINDOW_SECONDS = 900;
 
+    /** Keeps the exception digest inside Telegram's 4096-character message limit. */
+    public const int EXCEPTION_DIGEST_MAX_LINES = 25;
+
     public function __construct(
         private readonly TelegramClient $telegram,
         private readonly AppConfig $config,
@@ -337,6 +340,33 @@ class MaintainerAlerter
             $row['cost'],
             $this->headroom($row['cost'], $perUserCeiling),
         ), $rows);
+
+        $this->broadcast(implode("\n", [$headline, ...$lines]));
+    }
+
+    /**
+     * The daily list of never-seen exception fingerprints, sent once by
+     * {@see \App\Console\Commands\ExceptionDigestCommand} and only when the list
+     * is non-empty. Each entry is a location, never a message, so no athlete
+     * data reaches the chat.
+     *
+     * @param  list<array{label: string, first_seen: string, count: int}>  $entries
+     */
+    public function exceptionDigest(array $entries): void
+    {
+        $total = count($entries);
+        $headline = $total === 1 ? '1 new exception since the last digest.' : "{$total} new exceptions since the last digest.";
+
+        $lines = array_map(fn (array $entry): string => sprintf(
+            '- %s, first seen %s, %s',
+            $entry['label'],
+            Carbon::parse($entry['first_seen'])->format('M j H:i'),
+            $entry['count'] === 1 ? 'once' : "{$entry['count']} times",
+        ), array_slice($entries, 0, self::EXCEPTION_DIGEST_MAX_LINES));
+
+        if ($total > self::EXCEPTION_DIGEST_MAX_LINES) {
+            $lines[] = '- and '.($total - self::EXCEPTION_DIGEST_MAX_LINES).' more';
+        }
 
         $this->broadcast(implode("\n", [$headline, ...$lines]));
     }
