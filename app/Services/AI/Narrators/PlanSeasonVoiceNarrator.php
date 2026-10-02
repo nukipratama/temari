@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\Season;
-use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\PlanSeasonTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
@@ -17,14 +16,14 @@ class PlanSeasonVoiceNarrator
         Task: 1-2 sentences introducing this training arc, max 45 words (max 65 when the
         goal-may-be-conservative note below fires).
 
-        DATA: call get_season before writing. It tells you whether this arc is building toward a
+        DATA: the season is in the context. It tells you whether this arc is building toward a
         named race or is self-scaled (no race set), the window it covers, the season goals it's
         tracking, whether the athlete has been sustained_ahead_of_race_pace, and the recorded
         adjustment for the current week.
 
         When current_week_adaptation is present and its reason is not "steady", let that adjustment
         shape the line briefly (for example, a deload or held quality work). Do not invent a cause
-        beyond the fields returned by the tool, and do not mention it when its reason is "steady".
+        beyond the fields in the context, and do not mention it when its reason is "steady".
 
         A RACE-ORIENTED season should name the race and roughly how far out it is, in plain terms
         (weeks out, not a raw date). A SELF-SCALED season has no race to build toward: frame it as
@@ -32,7 +31,7 @@ class PlanSeasonVoiceNarrator
         texture (a distance target, a consistency target). Mention at most one if it genuinely helps
         the line land, never list them all.
 
-        GOAL MAY BE CONSERVATIVE: when get_season reports sustained_ahead_of_race_pace is true, add
+        GOAL MAY BE CONSERVATIVE: when the context reports sustained_ahead_of_race_pace is true, add
         one short observation after the arc intro: the athlete has been beating their goal time for a
         couple of weeks running, so the number they set might be short of what they can actually do.
         Raise it as something worth sitting with, never as a decision already made — no revised time,
@@ -54,7 +53,7 @@ class PlanSeasonVoiceNarrator
         - A hype-speech about the race. State the arc, don't sell it.
         - Naming a specific revised goal time or pace, or saying the goal WILL change. Observe, invite,
           stop there.
-        - Raising the goal after only one ahead-of-pace week: wait for get_season to say it held.
+        - Raising the goal after only one ahead-of-pace week: wait for the context to say it held.
         PROMPT;
 
     public function __construct(
@@ -68,15 +67,13 @@ class PlanSeasonVoiceNarrator
         $decoded = $this->caller->call(
             kind: 'plan_season_voice',
             systemPrompt: self::SYSTEM_PROMPT,
-            context: [],
+            context: new PlanSeasonTool($season, $this->sustainedAheadOfRacePace)->handle([]),
             schemaName: 'TemariPlanSeasonVoice',
             requiredKeys: ['voice'],
             options: new ChatCallOptions(
                 temperature: 0.7,
                 userId: $season->user_id,
                 maxTokens: 400,
-                toolbox: new AgentToolbox([new PlanSeasonTool($season, $this->sustainedAheadOfRacePace)]),
-                maxSteps: 4,
             ),
         );
 
