@@ -14,6 +14,8 @@ use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Jobs\Run\RebuildTrendSnapshotsJob;
 use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\PlannedSession;
+use App\Models\StoryLine;
+use App\Services\Run\Story\Temari;
 use App\Models\RecoveryFeedback;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -717,6 +719,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         app(ComplianceScorer::class),
         app(PlanReconciliationDispatch::class),
         app(TrendSnapshotRepairDispatch::class),
+        app(Temari::class),
     );
 
     $listener->handle(new ActivityIngested($activity->id));
@@ -1125,4 +1128,15 @@ it('narrates a long-connected athlete\'s briefing and profile voice on schedule 
     Bus::assertDispatched(AnalyzeProfileVoiceJob::class);
 
     Carbon::setTestNow();
+});
+
+it('refreshes the run mood once its plan day is graded, before narration reads it', function (): void {
+    $activity = analyzedActivity();
+    PlannedSession::factory()->for($activity->user)->create(['date' => '2026-05-10', 'session_type' => SessionType::Tempo]);
+    $activity->detail->update(['stream_summary' => ['time_in_zone_pct' => ['Z2' => 25.0, 'Z3' => 45.0, 'Z4' => 30.0], 'negative_split' => false], 'weather_temp_c' => 24]);
+    StoryLine::query()->create(['user_id' => $activity->user_id, 'activity_id' => $activity->id, 'kind' => StoryLine::KIND_POST_RUN, 'mood' => Temari::MOOD_ENTENG, 'sigil_pattern' => 'orct']);
+
+    fire($activity);
+
+    expect($activity->postRunStoryLine()->first()->mood)->toBe(Temari::MOOD_NYALA);
 });

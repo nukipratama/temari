@@ -14,7 +14,7 @@ code_refs:
 
 ## Context
 
-[Temari::moodForActivity()](app/Services/Run/Story/Temari.php#L109) picks a mood from first-match rules: a PR, a controlled hard session, decoupling, heat, a hard grind. A run that matched none fell through to chill, the rest-day mood, even when the run's effort colour said steady or hard. The card then showed a hard-effort colour beside a face that said it was a rest.
+[Temari::moodForActivity()](app/Services/Run/Story/Temari.php#L137) picks a mood from first-match rules: a PR, a controlled hard session, decoupling, heat, a hard grind. A run that matched none fell through to chill, the rest-day mood, even when the run's effort colour said steady or hard. The card then showed a hard-effort colour beside a face that said it was a rest.
 
 ## Decision
 

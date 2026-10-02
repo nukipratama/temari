@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Run\Story;
 
 use App\Enums\Effort;
+use App\Enums\IntentVerdict;
+use App\Enums\PaceBand;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
@@ -14,6 +18,8 @@ use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Services\Run\Plan\EffectiveSession;
+use App\Services\Run\Plan\PlannedSessionTypes;
 use Illuminate\Support\Carbon;
 
 class Temari
@@ -43,7 +49,7 @@ class Temari
 
     public function postRunLine(Activity $activity, ActivityDetail $detail): StoryLine
     {
-        $mood = self::moodForActivity($detail, self::hasPr($activity), self::effortOf($activity, $detail));
+        $mood = self::moodOf($activity, $detail);
 
         return StoryLine::query()->updateOrCreate(
             [
@@ -58,6 +64,28 @@ class Temari
                 'sigil_pattern' => self::sigilForMoodPublic($mood),
             ],
         );
+    }
+
+    /** Re-reads an existing post-run mood once the run's plan day is graded; never creates the line. */
+    public function refreshPostRunMood(Activity $activity, ActivityDetail $detail): void
+    {
+        $line = StoryLine::query()
+            ->where('activity_id', $activity->id)
+            ->where('kind', StoryLine::KIND_POST_RUN)
+            ->first();
+        if ($line === null) {
+            return;
+        }
+
+        $mood = self::moodOf($activity, $detail);
+        if ($line->mood !== $mood) {
+            $line->update(['mood' => $mood, 'sigil_pattern' => self::sigilForMoodPublic($mood)]);
+        }
+    }
+
+    private static function moodOf(Activity $activity, ActivityDetail $detail): string
+    {
+        return self::moodForActivity($detail, self::hasPr($activity), self::effortOf($activity, $detail), self::planDayOf($activity, $detail));
     }
 
     public function dailyGreeting(User $user, string $vibe, ?Carbon $forDate = null): StoryLine
@@ -97,7 +125,7 @@ class Temari
             return self::MOOD_ADEM;
         }
 
-        return self::moodForActivity($detail, self::hasPr($activity), self::effortOf($activity, $detail));
+        return self::moodOf($activity, $detail);
     }
 
     private static function hasPr(Activity $activity): bool
@@ -106,8 +134,11 @@ class Temari
     }
 
     // Order matters — first matching rule wins, most-prestigious mood first.
-    private static function moodForActivity(ActivityDetail $detail, bool $hasPr, Effort $effort): string
+    private static function moodForActivity(ActivityDetail $detail, bool $hasPr, Effort $effort, ?PlannedSession $planDay): string
     {
+        $plannedType = $planDay === null ? null : EffectiveSession::settledTypeOf($planDay);
+        $qualityDay = $planDay !== null && (in_array($plannedType, [SessionType::Tempo, SessionType::Interval, SessionType::Race], true)
+            || ($plannedType === SessionType::Long && $planDay->prescribed_pace_band === PaceBand::Marathon && $planDay->prescribed_hard_minutes > 0));
         $summary = StreamSummary::fromArray($detail->streamSummary());
         $hardShare = $summary->hardZoneShare();
         $decoupling = $summary->steadyEffortDecouplingPct();
@@ -115,6 +146,9 @@ class Temari
         $negativeSplit = $summary->negativeSplit() === true;
         $hardSession = $hardShare >= 80.0;
         $intendedHard = SessionIntent::isIntendedHard($detail);
+        $verdict = $planDay?->intent_verdict;
+        $wentAfterQuality = $qualityDay
+            && ($verdict === IntentVerdict::Hit || ($verdict !== IntentVerdict::Missed && $intendedHard));
 
         return match (true) {
             $hasPr => self::MOOD_NYALA,
@@ -129,6 +163,10 @@ class Temari
             // HR drifted well past pace on a run that wasn't meant to be hard.
             $decoupling !== null && $decoupling > DecouplingBands::HIGH => self::MOOD_LEMES,
             $hotWeather => self::MOOD_OLENG,
+            // A quality session is judged by its purpose: run harder than asked is
+            // overreach, done as asked (or showing the threshold work) is a win.
+            $verdict === IntentVerdict::TooHard => self::MOOD_MUMET,
+            $wentAfterQuality => self::MOOD_NYALA,
             // A hard grind that never settled into a controlled finish.
             $hardSession && ! $negativeSplit => self::MOOD_MUMET,
             // Finished strong (a hard-but-controlled session lands here too, since
@@ -140,6 +178,16 @@ class Temari
             $effort === Effort::Steady => self::MOOD_ENTENG,
             default => self::MOOD_ADEM,
         };
+    }
+
+    private static function planDayOf(Activity $activity, ActivityDetail $detail): ?PlannedSession
+    {
+        $date = $detail->start_date_local;
+        if ($date === null) {
+            return null;
+        }
+
+        return PlannedSessionTypes::sessionsByDate($activity->user_id, $date->copy()->startOfDay(), $date->copy()->endOfDay())[$date->toDateString()] ?? null;
     }
 
     /** The same effort the run's colour shows, from {@see RunEffort}. */

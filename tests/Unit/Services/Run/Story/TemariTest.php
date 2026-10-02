@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\Effort;
+use App\Enums\IntentVerdict;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -444,4 +446,107 @@ it('moodForActivityOrDefault falls back to chill when the activity has no detail
     $activity->setRelation('detail', null);
 
     expect(Temari::moodForActivityOrDefault($activity))->toBe(Temari::MOOD_ADEM);
+});
+
+/**
+ * @param  array<string, mixed>  $day
+ * @param  array<string, float>  $zones
+ */
+function qualityDayRun(array $day, array $zones, bool $negativeSplit = false): array
+{
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-10-01', ...$day]);
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => '2026-10-01 05:58:00',
+        'elapsed_time' => 2_400,
+        'distance' => 6_820,
+        'workout_type' => null,
+        'stream_summary' => ['time_in_zone_pct' => $zones, 'negative_split' => $negativeSplit],
+        'weather_temp_c' => 24,
+    ]);
+
+    return [$activity, $detail];
+}
+
+it('reads a planned tempo that shows threshold work as a session gone after, not an easy run', function (): void {
+    [$activity, $detail] = qualityDayRun(
+        ['session_type' => SessionType::Tempo, 'status' => PlannedSessionStatus::Done, 'intent_verdict' => IntentVerdict::Unknown],
+        ['Z1' => 2.6, 'Z2' => 22.1, 'Z3' => 48.0, 'Z4' => 27.3, 'Z5' => 0.0],
+    );
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_NYALA)
+        ->and(Temari::moodForActivityOrDefault($activity->fresh()))->toBe(Temari::MOOD_NYALA);
+});
+
+it('keeps a negative-split tempo a quality win rather than an easy run', function (): void {
+    [$activity, $detail] = qualityDayRun(
+        ['session_type' => SessionType::Tempo],
+        ['Z2' => 45.0, 'Z3' => 30.0, 'Z4' => 25.0],
+        negativeSplit: true,
+    );
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_NYALA);
+});
+
+it('follows the graded verdict on a quality day: done as asked is blazing, harder than asked is overloaded', function (IntentVerdict $verdict, string $mood): void {
+    [$activity, $detail] = qualityDayRun(
+        ['session_type' => SessionType::Interval, 'status' => PlannedSessionStatus::Done, 'intent_verdict' => $verdict],
+        ['Z2' => 70.0, 'Z3' => 20.0, 'Z4' => 10.0],
+        negativeSplit: true,
+    );
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe($mood);
+})->with([
+    'hit' => [IntentVerdict::Hit, Temari::MOOD_NYALA],
+    'too hard' => [IntentVerdict::TooHard, Temari::MOOD_MUMET],
+]);
+
+it('does not call a tempo whose hard part never happened a quality win', function (): void {
+    [$activity, $detail] = qualityDayRun(
+        ['session_type' => SessionType::Tempo, 'status' => PlannedSessionStatus::Done, 'intent_verdict' => IntentVerdict::Missed],
+        ['Z2' => 50.0, 'Z3' => 25.0, 'Z4' => 25.0],
+        negativeSplit: true,
+    );
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_ENTENG);
+});
+
+it('judges an eased tempo by the easy run it was eased to', function (): void {
+    [$activity, $detail] = qualityDayRun(
+        ['session_type' => SessionType::Tempo, 'clamped_km' => 5.0, 'status' => PlannedSessionStatus::Done, 'intent_verdict' => IntentVerdict::Hit],
+        ['Z2' => 85.0, 'Z3' => 15.0],
+        negativeSplit: true,
+    );
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_ENTENG);
+});
+
+it('still flags threshold work on a planned easy day as a grind, not a win', function (): void {
+    [$activity, $detail] = qualityDayRun(
+        ['session_type' => SessionType::Easy],
+        ['Z2' => 15.0, 'Z3' => 45.0, 'Z4' => 40.0],
+    );
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_MUMET);
+});
+
+it('agrees with a too-hard grade on an easy day instead of calling the run easy', function (): void {
+    [$activity, $detail] = qualityDayRun(
+        ['session_type' => SessionType::Easy, 'status' => PlannedSessionStatus::Overreached, 'intent_verdict' => IntentVerdict::TooHard],
+        ['Z2' => 60.0, 'Z3' => 30.0, 'Z4' => 10.0],
+        negativeSplit: true,
+    );
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_MUMET);
+});
+
+it('keeps a well-run easy day easy', function (): void {
+    [$activity, $detail] = qualityDayRun(
+        ['session_type' => SessionType::Easy, 'status' => PlannedSessionStatus::Done, 'intent_verdict' => IntentVerdict::Hit],
+        ['Z1' => 20.0, 'Z2' => 75.0, 'Z3' => 5.0],
+        negativeSplit: true,
+    );
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_ENTENG);
 });
