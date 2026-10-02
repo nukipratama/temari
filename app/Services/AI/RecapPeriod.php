@@ -28,4 +28,22 @@ final class RecapPeriod
     {
         return Carbon::today()->subMonthNoOverflow()->format('Y-m');
     }
+
+    /**
+     * Whether the week ending on $weekEnding was already over before the
+     * athlete's Strava connection landed, so Temari never watched it.
+     */
+    public static function weekClosedBeforeConnect(Carbon|string $weekEnding, ?Carbon $connectedAt): bool
+    {
+        return $connectedAt !== null && Carbon::parse($weekEnding)->endOfDay()->lt($connectedAt);
+    }
+
+    /**
+     * Whether $month (Y-m) was already over before the athlete's Strava
+     * connection landed, so Temari never watched it.
+     */
+    public static function monthClosedBeforeConnect(string $month, ?Carbon $connectedAt): bool
+    {
+        return $connectedAt !== null && Carbon::parse($month.'-01')->endOfMonth()->endOfDay()->lt($connectedAt);
+    }
 }

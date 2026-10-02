@@ -219,6 +219,62 @@ it('fills a stalled monthly link older than the backfill depth cap rule-based in
         ->and($captured[0]['ruleBased'])->toBeTrue();
 });
 
+function stalledRecapsForAthleteConnectedAt(string $connectedAt): User
+{
+    config()->set('ai.backfill_max_age_days', 84);
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::parse($connectedAt)]);
+    $week = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-06-14', 'runs' => 3]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $week->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-05',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    return $user;
+}
+
+it('fills a stalled pre-connect week and month inside the age cutoff rule-based, never through the LLM', function (): void {
+    stalledRecapsForAthleteConnectedAt('2026-06-16 08:00:00');
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(2)
+        ->and($captured)->toHaveCount(2)
+        ->and(array_column($captured, 'ruleBased'))->each->toBeTrue()
+        ->and(array_column($captured, 'type'))->toEqualCanonicalizing([AnalysisType::WeeklyRecap, AnalysisType::MonthlyRecap]);
+});
+
+it('holds a stalled pre-connect month whose own runs are still hydrating', function (): void {
+    $user = stalledRecapsForAthleteConnectedAt('2026-06-16 08:00:00');
+    $run = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($run)->create(['start_date_local' => Carbon::parse('2026-05-20 06:00:00')]);
+
+    $captured = [];
+    selfHealer(captureResumeRequests($captured))->run();
+
+    expect(array_column($captured, 'type'))->not->toContain(AnalysisType::MonthlyRecap);
+});
+
+it('still resumes a stalled week and month that closed after connecting through the LLM', function (): void {
+    stalledRecapsForAthleteConnectedAt('2026-04-20 08:00:00');
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(2)
+        ->and($captured)->toHaveCount(2)
+        ->and(array_column($captured, 'ruleBased'))->each->toBeFalse();
+});
+
 it('resumes both weekly and monthly chains in one sweep', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 3]);

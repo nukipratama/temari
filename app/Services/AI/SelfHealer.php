@@ -206,12 +206,17 @@ class SelfHealer
     private function resumeWeekly(): int
     {
         $stalled = $this->chains->stalledWeeklyLinkPerUser();
-        $activeWeekIds = WeeklySnapshot::query()
+        /** @var array<int, int> $activeWeekOwners */
+        $activeWeekOwners = WeeklySnapshot::query()
             ->whereIn('id', $stalled->map(fn (ChainLink $link): int => $link->subjectId)->all())
             ->whereIn('user_id', $this->activeUsers->query()->select('id'))
-            ->pluck('id')
-            ->flip();
-        $links = $stalled->filter(fn (ChainLink $link): bool => $activeWeekIds->has($link->subjectId));
+            ->pluck('user_id', 'id')
+            ->map(fn (mixed $userId): int => (int) $userId)
+            ->all();
+        $links = $stalled->filter(fn (ChainLink $link): bool => isset($activeWeekOwners[$link->subjectId]));
+        $connectedAt = $this->backlog->connectedAtFor(array_values(array_unique($activeWeekOwners)));
+        $preConnect = fn (ChainLink $link): bool => $link->discriminator !== null
+            && RecapPeriod::weekClosedBeforeConnect($link->discriminator, $connectedAt[$activeWeekOwners[$link->subjectId]] ?? null);
         $oldestReal = $this->ages->cutoffDate();
 
         // discriminator carries week_ending here (see ChainResolver::stalledWeeklyLinkPerUser).
@@ -234,6 +239,17 @@ class SelfHealer
             }
 
             if (! $ready->has($link->subjectId)) {
+                continue;
+            }
+
+            if ($preConnect($link)) {
+                $this->service->requestRuleBased(
+                    subjectOrType: WeeklySnapshot::class,
+                    subjectId: $link->subjectId,
+                    type: AnalysisType::WeeklyRecap,
+                );
+                $resumed++;
+
                 continue;
             }
 
@@ -288,6 +304,17 @@ class SelfHealer
             // A month whose own runs are still hydrating (KickoffMonthlyRecaps'
             // own deferral) is left for the next sweep rather than resumed.
             if ($link->discriminator !== null && $this->backlog->monthAwaitsHydration($link->subjectId, $link->discriminator)) {
+                continue;
+            }
+
+            if ($link->discriminator !== null && RecapPeriod::monthClosedBeforeConnect($link->discriminator, $this->backlog->connectedAt($link->subjectId))) {
+                $this->service->requestRuleBased(
+                    subjectOrType: AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+                    subjectId: $link->subjectId,
+                    type: AnalysisType::MonthlyRecap,
+                    discriminator: $link->discriminator,
+                );
+
                 continue;
             }
 
