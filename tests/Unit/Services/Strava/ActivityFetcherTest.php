@@ -10,6 +10,7 @@ use App\Services\Strava\ActivityFetcher;
 use App\Services\Strava\StravaClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -314,7 +315,7 @@ it('stops at the page cap with the oldest start read as the resume cursor, and r
         ->and($capped['resume_before'])->toBe(CarbonImmutable::parse('2026-03-01T06:00:00Z')->subHours(199)->getTimestamp())
         ->and($resumed['resume_before'])->toBe(CarbonImmutable::parse('2026-02-01T06:00:00Z')->subHours(199)->getTimestamp());
 
-    Http::assertSent(fn ($request): bool => str_contains($request->url(), 'before='.$capped['resume_before'])
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), 'before='.$capped['resume_before'])
         && str_contains($request->url(), 'page=1'));
 });
 
