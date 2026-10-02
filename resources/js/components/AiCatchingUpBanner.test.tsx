@@ -34,3 +34,13 @@ describe('AiCatchingUpBanner', () => {
         ).toBeInTheDocument();
     });
 });
+
+describe('AiCatchingUpBanner column cap', () => {
+    it('caps the column only from 900px up', () => {
+        setMockPage({ ...base, aiCatchingUp: true });
+        const { container } = render(<AiCatchingUpBanner />);
+        const box = container.querySelector('[class*="max-w-column"]')!;
+        expect(box.classList.contains('max-w-column')).toBe(false);
+        expect(box.classList.contains('min-[900px]:max-w-column')).toBe(true);
+    });
+});
