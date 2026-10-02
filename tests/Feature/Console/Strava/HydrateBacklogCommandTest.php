@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\StravaReadPriority;
+use App\Jobs\Run\RollWeeklySnapshotsForwardJob;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -43,6 +44,18 @@ it('no-ops when the Strava kill-switch is off', function (): void {
     $this->artisan('strava:hydrate-backlog')->assertSuccessful();
 
     Queue::assertNothingPushed();
+});
+
+it('rolls every dirty athlete forward once per tick, the demo never, even with the kill-switch off', function (): void {
+    app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
+    $dirty = User::factory()->create(['weekly_snapshots_dirty_from' => '2026-03-08']);
+    User::factory()->create(['is_demo' => true, 'weekly_snapshots_dirty_from' => '2026-03-08']);
+    User::factory()->create();
+
+    $this->artisan('strava:hydrate-backlog')->assertSuccessful();
+
+    Queue::assertPushed(RollWeeklySnapshotsForwardJob::class, 1);
+    Queue::assertPushed(RollWeeklySnapshotsForwardJob::class, fn (RollWeeklySnapshotsForwardJob $job): bool => $job->userId === $dirty->id);
 });
 
 it('queues the summary-only backlog at background priority', function (): void {

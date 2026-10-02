@@ -123,7 +123,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         if ($detail->start_date_local === null) {
             return;
         }
-        $snapshot = $this->rebuildWeeksUnlessRecalibrating($user, $detail->start_date_local);
+        $snapshot = $this->rebuildWeeksUnlessRecalibrating($user, $detail->start_date_local, $isBackfill && ! $user->is_demo);
         $this->trendSnapshots->forActivity($activity);
 
         if ($isToday && ! $athleteAway) {
@@ -157,7 +157,12 @@ class DispatchPostRunAnalysis implements ShouldQueue
         }
     }
 
-    private function rebuildWeeksUnlessRecalibrating(User $user, Carbon $from): ?WeeklySnapshot
+    /**
+     * A backfilled run only marks its week dirty: the drain lands its runs
+     * oldest-first, and the `strava:hydrate-backlog` tick rolls the athlete's
+     * snapshots forward once for all of them.
+     */
+    private function rebuildWeeksUnlessRecalibrating(User $user, Carbon $from, bool $deferred): ?WeeklySnapshot
     {
         $recalibration = Cache::lock(
             RecalibrateTrainingHistoryJob::overlapLockKey($user->id),
@@ -170,7 +175,16 @@ class DispatchPostRunAnalysis implements ShouldQueue
         }
         $recalibration->release();
 
-        return $this->weeklyAggregator->rebuildForwardFrom($user, $from);
+        if (! $deferred) {
+            return $this->weeklyAggregator->rebuildForwardFrom($user, $from);
+        }
+
+        $this->weeklyAggregator->markDirty($user, $from);
+
+        return WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->where('week_ending', $from->copy()->endOfWeek(Carbon::SUNDAY)->toDateString())
+            ->first();
     }
 
     private function requestCardFlavor(Activity $activity, bool $ruleBased, bool $stageOnly, int $delaySec): void

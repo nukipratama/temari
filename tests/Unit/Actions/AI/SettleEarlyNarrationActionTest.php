@@ -23,6 +23,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\SelfHealer;
 use App\Services\Run\Metrics\PersonalRecords;
+use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -94,6 +95,31 @@ it('does nothing while the backlog is still hydrating', function (): void {
     $this->mock(RecomputeCardClaimsAction::class)->shouldNotReceive('__invoke');
 
     app(SettleEarlyNarrationAction::class)($user);
+});
+
+it('settles the snapshots of the drain and of the run that emptied it', function (): void {
+    Bus::fake();
+    ['user' => $user, 'older' => $older, 'newer' => $newer] = earlyPassUser();
+    $newer->detail->update(['start_date_local' => Carbon::today()->subDays(15)]);
+    app(WeeklyAggregator::class)->markDirty($user, $older->detail->start_date_local);
+
+    app(SettleEarlyNarrationAction::class)($user, $newer->detail->start_date_local);
+
+    expect($user->fresh()->weekly_snapshots_dirty_from)->toBeNull()
+        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->sum('runs'))->toEqual(2)
+        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->min('week_ending'))
+        ->toBe(Carbon::today()->subDays(15)->endOfWeek(Carbon::SUNDAY)->toDateString());
+});
+
+it('rolls the dirty weeks forward when a give-up empties the backlog', function (): void {
+    Bus::fake();
+    ['user' => $user, 'older' => $older] = earlyPassUser();
+    app(WeeklyAggregator::class)->markDirty($user, $older->detail->start_date_local);
+
+    app(SettleEarlyNarrationAction::class)($user);
+
+    expect($user->fresh()->weekly_snapshots_dirty_from)->toBeNull()
+        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeTrue();
 });
 
 it('does nothing for a long-connected athlete, even with a stuck backlog straggler', function (): void {

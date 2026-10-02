@@ -252,7 +252,7 @@ it('fans out activity + briefing + mascot voice analyses', function (): void {
 });
 
 it('stages the weekly recap Pending without an LLM dispatch (weekly cadence)', function (): void {
-    $activity = analyzedActivity();
+    $activity = analyzedActivity('2026-05-10 12:00:00');
 
     fire($activity);
 
@@ -265,6 +265,28 @@ it('stages the weekly recap Pending without an LLM dispatch (weekly cadence)', f
         ->where('analysis_type', AnalysisType::WeeklyRecap)
         ->firstOrFail();
     expect($row->status)->toBe(AnalysisStatus::Pending);
+});
+
+it('marks a backfilled run week dirty and stages its recap against the week already synced', function (): void {
+    $activity = analyzedActivity('2026-04-15 06:30:00');
+    $synced = WeeklySnapshot::factory()->for($activity->user)->create(['week_ending' => '2026-04-19']);
+
+    fire($activity);
+
+    expect($activity->user->fresh()->weekly_snapshots_dirty_from->toDateString())->toBe('2026-04-19')
+        ->and(WeeklySnapshot::query()->where('user_id', $activity->user_id)->count())->toBe(1)
+        ->and(Analysis::query()->forSubject(WeeklySnapshot::class, $synced->id, AnalysisType::WeeklyRecap)->value('status'))
+        ->toBe(AnalysisStatus::Pending);
+});
+
+it('rebuilds a demo backfilled run inline, since no tick ever rolls the demo forward', function (): void {
+    $demo = User::factory()->create(['is_demo' => true]);
+    $activity = analyzedActivity('2026-04-15 06:30:00', $demo->id);
+
+    fire($activity);
+
+    expect($demo->fresh()->weekly_snapshots_dirty_from)->toBeNull()
+        ->and(WeeklySnapshot::query()->where('user_id', $demo->id)->where('week_ending', '2026-04-19')->exists())->toBeTrue();
 });
 
 it('skips its weekly rebuild and marks recalibration dirty while recalibration runs', function (): void {
@@ -286,7 +308,7 @@ it('skips its weekly rebuild and marks recalibration dirty while recalibration r
 });
 
 it('leaves the recalibration lock free after rebuilding when no recalibration runs', function (): void {
-    $activity = analyzedActivity();
+    $activity = analyzedActivity('2026-05-10 12:00:00');
 
     fire($activity);
 
@@ -322,7 +344,7 @@ it('lets the recalibration re-run cover a run ingested while it held its lock', 
 });
 
 it('leaves a Done weekly recap untouched on re-ingest (no mid-week invalidation)', function (): void {
-    $activity = analyzedActivity();
+    $activity = analyzedActivity('2026-05-10 12:00:00');
     fire($activity);
 
     $snapshot = WeeklySnapshot::query()->where('user_id', $activity->user_id)->firstOrFail();
@@ -764,7 +786,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
     // WeeklyAggregator's own rebuild correctness has its own dedicated suite
     // (WeeklyAggregatorTest); this only checks the listener's own branch —
     // a null return means no history to stage a recap against.
-    $activity = analyzedActivity();
+    $activity = analyzedActivity('2026-05-10 12:00:00');
     $weekly = Mockery::mock(WeeklyAggregator::class);
     $weekly->shouldReceive('rebuildForwardFrom')->once()->andReturnNull();
     $listener = new DispatchPostRunAnalysis(

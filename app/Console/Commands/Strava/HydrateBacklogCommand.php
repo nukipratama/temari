@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Strava;
 
 use App\Actions\AI\RecentlyActiveUsers;
+use App\Jobs\Run\RollWeeklySnapshotsForwardJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\Scopes\AnalyzedScope;
@@ -28,6 +29,8 @@ class HydrateBacklogCommand extends Command
 
     public function handle(AppConfig $config, StravaClient $client, DetailHydrator $hydrator): int
     {
+        $this->rollDirtyWeeksForward();
+
         if (! $config->boolean(AppConfigKey::StravaEnabled)) {
             $this->warn('Strava is disabled (kill-switch); skipping hydration drain.');
 
@@ -66,6 +69,17 @@ class HydrateBacklogCommand extends Command
         $this->line("Queued {$dispatched} run(s) for hydration across {$userIds->count()} user(s).");
 
         return self::SUCCESS;
+    }
+
+    /** Reads no Strava data, so it runs ahead of the kill-switch and headroom checks. */
+    private function rollDirtyWeeksForward(): void
+    {
+        User::query()
+            ->notDemo()
+            ->whereNotNull('weekly_snapshots_dirty_from')
+            ->orderBy('id')
+            ->pluck('id')
+            ->each(fn (mixed $id) => RollWeeklySnapshotsForwardJob::dispatch((int) $id));
     }
 
     /**
