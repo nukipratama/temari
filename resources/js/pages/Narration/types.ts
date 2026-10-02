@@ -164,7 +164,7 @@ export interface AthleteRow {
     dead_lettered: number;
 }
 
-export type PreviousTotals = Omit<UsageTotals, 'truncated_calls'>;
+export type PreviousTotals = Omit<UsageTotals, 'truncated_calls' | 'cached'>;
 
 /** Relative range token resolved server-side; drives preset highlighting. */
 export type RangeToken = 'today' | '7d' | '30d' | 'month' | 'all' | 'custom';

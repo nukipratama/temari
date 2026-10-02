@@ -397,19 +397,25 @@ it('weaves the snapshot real numbers into the weekly recap', function (): void {
         ->and($recap)->toContain('tell me how you feel');
 });
 
-/**
- * A ran week with a null form_status means the training-load rollup never
- * reached this snapshot before the recap read it (#1010) — the caller
- * (KickoffWeeklyRecaps / RecapHydrationReadiness) is expected to hold the
- * week back until then, so a null here past that gate must be loud rather
- * than a silently generic "steady. that's the read." closer.
- */
-it('surfaces a ran week with a missing form_status instead of silently defaulting', function (): void {
-    Log::spy();
+function scoredRunForFiller(User $user, string $date): void
+{
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse($date),
+        'trimp_edwards' => 80.0,
+    ]);
+}
 
-    $snapshot = WeeklySnapshot::factory()->create([
+it('surfaces a scored week past the form-known date that is missing its form_status', function (): void {
+    Log::spy();
+    $user = User::factory()->create();
+    scoredRunForFiller($user, '2026-06-01 07:00:00');
+
+    $snapshot = WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-08-09',
         'distance_km' => 44.7,
         'runs' => 5,
+        'weekly_trimp' => 310.0,
         'form_status' => null,
     ]);
 
@@ -421,6 +427,40 @@ it('surfaces a ran week with a missing form_status instead of silently defaultin
             fn (array $context): bool => $context['snapshot_id'] === $snapshot->id && $context['runs'] === 5,
         ))
         ->once();
+});
+
+it('does not log for a ran week with no scored run', function (): void {
+    Log::spy();
+
+    $snapshot = WeeklySnapshot::factory()->create([
+        'distance_km' => 44.7,
+        'runs' => 5,
+        'weekly_trimp' => null,
+        'form_status' => null,
+    ]);
+
+    $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
+
+    expect($recap)->toContain("steady. that's the read.");
+    Log::shouldNotHaveReceived('warning');
+});
+
+it('does not log for a scored week inside the first 42 days of the athlete\'s load history', function (): void {
+    Log::spy();
+    $user = User::factory()->create();
+    scoredRunForFiller($user, '2026-08-03 07:00:00');
+
+    $snapshot = WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-09-13',
+        'distance_km' => 30.0,
+        'runs' => 4,
+        'weekly_trimp' => 250.0,
+        'form_status' => null,
+    ]);
+
+    app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
+
+    Log::shouldNotHaveReceived('warning');
 });
 
 it('does not log for a normally-resolved form_status', function (): void {

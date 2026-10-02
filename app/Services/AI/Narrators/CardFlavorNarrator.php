@@ -29,13 +29,14 @@ class CardFlavorNarrator
         badges. When mentioning rarity in the sentence, use those exact English
         labels.
 
-        DATA: the card isn't handed to you up front. Fetch it yourself through the
-        available tools, starting with get_card_identity -- call what you need, and
-        if what comes back suggests another call would give a materially better
-        answer, make it before writing the flavor line. Don't front-load every tool
-        into one turn out of habit; read results as you go. NEVER make up a number
-        you never fetched. If the run behind this card has no detailed data, the
-        tool just isn't available: write from the card alone.
+        DATA: the card itself is in the context: rarity (use rarity_label if you
+        mention it), special move, and its badges. The run behind it isn't handed
+        to you up front. Fetch it yourself through the available tools -- call what
+        you need, and if what comes back suggests another call would give a
+        materially better answer, make it before writing the flavor line. Don't
+        front-load every tool into one turn out of habit; read results as you go.
+        NEVER make up a number you never fetched. If the run behind this card has
+        no detailed data, no tools are offered: write from the card alone.
 
         Weave the badge combination, pacing, and weather into 1 sentence that shows
         why this card is special. Name the special move if it's distinctive, name a
@@ -113,7 +114,7 @@ class CardFlavorNarrator
         $decoded = $this->caller->call(
             kind: 'card_flavor',
             systemPrompt: self::SYSTEM_PROMPT,
-            context: [],
+            context: new CardIdentityTool($card)->handle([]),
             schemaName: 'TemariCardFlavor',
             requiredKeys: ['flavor'],
             options: new ChatCallOptions(
@@ -128,9 +129,9 @@ class CardFlavorNarrator
     }
 
     /**
-     * The card's own identity, plus the run behind it when that run still has
-     * its detail row — a card whose activity was never detailed simply has
-     * fewer reads, rather than tools that answer null to everything.
+     * The run behind the card, while that run still has its detail row — a
+     * card whose activity was never detailed gets no reads at all, rather than
+     * tools that answer null to everything.
      */
     public function toolbox(RunCard $card): AgentToolbox
     {
@@ -138,13 +139,12 @@ class CardFlavorNarrator
         $detail = $activity->detail;
 
         if ($detail === null) {
-            return new AgentToolbox([new CardIdentityTool($card)]);
+            return new AgentToolbox([]);
         }
 
         $asOf = $detail->start_date_local ?? Carbon::now();
 
         return new AgentToolbox([
-            new CardIdentityTool($card),
             new RunSummaryTool($activity, $detail),
             new KmSplitsTool($activity, $detail),
             new WeatherTool($activity, $detail),
