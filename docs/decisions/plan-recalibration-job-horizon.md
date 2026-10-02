@@ -14,6 +14,8 @@ code_refs:
 
 **Status:** Accepted (2026-09-26). Operational limit for [[plan-recalibration-rewrites-history]] until [issue #1249](https://github.com/nukipratama/temari/issues/1249) is complete.
 
+> **Partly superseded (2026-10-02) by [[a-one-time-reset-rebuilds-history-before-launch]].** The recalibration this job runs no longer regrades past plan rows; the timeout and activity envelope stand.
+
 ## Context
 
 Recalibration keeps one per-user transaction open while it streams and recomputes stored activity data, rebuilds aggregates, regrades past sessions, and regenerates the future plan. A benchmark of 1,008 activities completed in 34.66 seconds with 56 MB peak memory. The queue job previously allowed only 60 seconds, leaving little headroom above the measured history size.

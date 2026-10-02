@@ -3,7 +3,7 @@ title: Stream analysis (stream_summary)
 description: How raw Strava streams become the stream_summary payload — zones, splits, decoupling, cadence, best-effort paces — and who reads it
 tags: [architecture, run]
 status: living
-reviewed: 2026-09-28
+reviewed: 2026-10-02
 code_refs:
   - app/Services/Run/Ingest/StreamAnalysis.php
   - app/Services/Run/Ingest/ActivityPipeline.php
@@ -22,7 +22,7 @@ Strava ships a run as raw per-sample streams (time, distance, heartrate, cadence
 
 The [[run-ingest-pipeline]] fetches streams and calls [compute](app/Services/Run/Ingest/StreamAnalysis.php#L32) inside [computeAndStoreSummary](app/Services/Run/Ingest/ActivityPipeline.php#L417). The result is persisted on the run's [ActivityDetail](app/Models/ActivityDetail.php) (JSON-cast `stream_summary` column, see [casts](app/Models/ActivityDetail.php#L140)); a `null` blob means "no usable streams" (treadmill / manual run). The same step also derives Edwards TRIMP from the zone minutes and stores it alongside ([store](app/Services/Run/Ingest/ActivityPipeline.php#L443)). See [[training-load-metrics]].
 
-Recompute is Strava-free: [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php) re-runs the analysis over already-stored streams with the user's *current* zones. A single-run "Reread" reaches it through [SummaryRecomputer](app/Services/Run/Metrics/SummaryRecomputer.php). A profile or synced-zone change instead dispatches the unique per-user [RecalibrateTrainingHistoryJob](app/Jobs/Run/RecalibrateTrainingHistoryJob.php), whose [PlanRecalibrationService](app/Services/Run/Plan/PlanRecalibrationService.php) recomputes every stored stream summary, rebuilds aggregates once, regrades plan history and regenerates future sessions. No Strava read or LLM call occurs in that path; the demo account is excluded and is refreshed by `demo:seed`. See [[plan-recalibration-rewrites-history]].
+Recompute is Strava-free: [recomputeSummary](app/Services/Run/Ingest/ActivityPipeline.php) re-runs the analysis over already-stored streams with the user's *current* zones. A single-run "Reread" reaches it through [SummaryRecomputer](app/Services/Run/Metrics/SummaryRecomputer.php). A profile or synced-zone change instead dispatches the unique per-user [RecalibrateTrainingHistoryJob](app/Jobs/Run/RecalibrateTrainingHistoryJob.php), whose [PlanRecalibrationService](app/Services/Run/Plan/PlanRecalibrationService.php) recomputes every stored stream summary, rebuilds aggregates once and regenerates future sessions, keeping past prescriptions and grades. No Strava read or LLM call occurs in that path; the demo account is excluded and is refreshed by `demo:seed`. See [[a-one-time-reset-rebuilds-history-before-launch]].
 
 ## How HR zones come in
 
