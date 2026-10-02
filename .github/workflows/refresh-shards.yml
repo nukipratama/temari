@@ -1,6 +1,6 @@
 name: Refresh shards
 
-# Pest balances the 3-way backend shard using the per-class timings committed
+# Pest balances the 4-way backend shard using the per-class timings committed
 # in tests/.pest/shards.json (docs/decisions/sharded-pr-coverage.md). Nobody
 # regenerates it on a schedule, so it drifts as classes are added, removed, or
 # get slower/faster. This runs the regeneration nightly and opens or updates
@@ -54,7 +54,7 @@ jobs:
       - uses: ./.github/actions/setup-php
         with:
           php-version: ${{ env.PHP_VERSION }}
-          coverage: 'none'
+          coverage: 'pcov'
           classmap-authoritative: 'true'
 
       - name: Stub .env for file-scanning tests
@@ -74,7 +74,7 @@ jobs:
           DB_PASSWORD: password
           CACHE_STORE: array
           SESSION_DRIVER: array
-        run: ./vendor/bin/pest --compact --update-shards --exclude-group=structure
+        run: ./vendor/bin/pest --compact --update-shards --exclude-group=structure --coverage-php=/dev/null
 
       - name: Compare shard balance
         id: compare

@@ -26,6 +26,10 @@ code_refs:
 > unchanged; only "regenerate it when the suite's shape changes enough" is now automatic rather
 > than manual.
 
+> **Fact update, 2026-10-03.** Backend tests now run in four shards (`SHARD_TOTAL` 4), and
+> `refresh-shards` times the map with pcov loaded (`--coverage-php=/dev/null`), so the split balances
+> the coverage-instrumented PR shards; main-push shards share the same map.
+
 Coverage roughly doubled backend tests on every pull request (186–340s vs ~145s on a push),
 making them the PR's critical path by two to three minutes. Frontend tests were also near the
 critical path because per-file jsdom setup dominated their runtime. Both suites now use the same
