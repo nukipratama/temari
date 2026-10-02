@@ -86,8 +86,9 @@ services:
     redis:
         <<: *redis-base
         profiles: ['local-db']
-        volumes:
-            - 'sail-redis:/data'
+        # No persistence: dev Redis only holds disposable queue, lock and cache
+        # state, and a dump left by a newer Redis would stop the pinned one booting.
+        command: ['redis-server', '--save', '', '--appendonly', 'no']
     mysql_test:
         <<: *mysql-base
         profiles: ['local-db']
@@ -120,8 +121,6 @@ networks:
         driver: bridge
 volumes:
     sail-mysql:
-        driver: local
-    sail-redis:
         driver: local
     node_modules:
         driver: local
