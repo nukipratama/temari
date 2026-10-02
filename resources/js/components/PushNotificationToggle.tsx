@@ -171,7 +171,7 @@ export default function PushNotificationToggle({
                 <p
                     role="status"
                     aria-live="polite"
-                    className="px-2 pb-1 text-[0.75rem] text-text-3"
+                    className="px-2 pb-1 text-xs text-text-3"
                 >
                     {status}
                 </p>

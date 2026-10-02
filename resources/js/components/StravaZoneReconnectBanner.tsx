@@ -80,7 +80,7 @@ export default function StravaZoneReconnectBanner() {
                         setDismissed(true);
                     }}
                     aria-label="Dismiss"
-                    className="focus-ring -m-1 shrink-0 rounded p-1 text-text-3 transition hover:text-foreground"
+                    className="focus-ring -m-1 shrink-0 rounded-xs p-1 text-text-3 transition hover:text-foreground"
                 >
                     <Icon icon={X} width={16} height={16} />
                 </button>

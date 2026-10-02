@@ -38,7 +38,7 @@ stylesheet, and a pruned variable would read there as a missing token.
 
 **Two guards enforce this page.** [scripts/check-raw-palette.mjs](../scripts/check-raw-palette.mjs)
 (`npm run check:palette`) fails CI on a value that never reached a token — a raw Tailwind
-shade, a default `shadow-lg`, a sub-11px rem font size outside the card art. `/devtools/design`
+shade, a default `shadow-lg`, a bare `rounded`, a sub-11px rem font size outside the card art. `/devtools/design`
 ([Design.tsx](../resources/js/pages/Devtools/Design.tsx)) catches the other half: values that
 *are* tokenised but inconsistent, by rendering the audits against the live CSS.
 
@@ -299,11 +299,14 @@ Section rhythm (unchanged): major section → next major `mt-10`; subsection →
 | `rounded-4xl` | 26px | shadcn/prototype primitives — lands on the same corner as `rounded-panel`, independently |
 | `rounded-panel` | 26px | The hero-panel corner (`ProfileHero`, `RunHero`). A separate name on purpose: `--radius-lg`/`--shadow-e*` are reused across ~170 unrelated call sites, so new surfaces opt in by name rather than moving shape on everything that already uses them. |
 
-These **override Tailwind's defaults for the whole namespace**, so no call site can land between
-two steps. `2xl`/`3xl`/`4xl` joined the scale in F2 to back the shadcn/prototype component set;
-before that they were rejected by the source guard, which is how one screen ended up with four
-different card corners without them. Arbitrary radii (`rounded-[11px]`) survive only inside the
-collectible card art, which is drawn to its own geometry.
+These replace Tailwind's values for the **named steps** above. They do not cover the whole
+namespace: bare `rounded` is not a step and would compile to Tailwind's 0.25rem (4px, under the
+6px floor), so `npm run check:palette` rejects it; use `rounded-xs`. `2xl`/`3xl`/`4xl` joined the
+scale in F2 to back the shadcn/prototype component set; before that they were rejected by the
+source guard, which is how one screen ended up with four different card corners without them.
+Arbitrary radii (`rounded-[11px]`) are not guarded. By convention they belong to the collectible
+card art, which is drawn to its own geometry; the calendar's 3px bar caps are the one exception
+outside it.
 
 ## Elevation
 

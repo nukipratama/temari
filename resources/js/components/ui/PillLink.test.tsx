@@ -41,7 +41,7 @@ describe('PillLink', () => {
         );
         expect(
             screen.getByRole('link', { name: /click/i }).className,
-        ).toContain('text-[0.8125rem]');
+        ).toContain('text-xs');
     });
 
     it('fires onClick when clicked', () => {

@@ -68,7 +68,7 @@ describe('check-raw-palette rules', () => {
      * anything — proving the rule went away because it ran out of a
      * violation to find, not because RULES was silently trimmed further.
      */
-    it('has exactly the six rules the docstring documents', () => {
+    it('has exactly the seven rules the docstring documents', () => {
         expect(RULES.map((rule) => rule.name)).toEqual([
             'raw Tailwind palette utility',
             'off-token shadow utility',
@@ -76,6 +76,7 @@ describe('check-raw-palette rules', () => {
             'inline px font-size',
             'ground-fixed gradient stop',
             'sub-11px rem font-size',
+            'bare rounded utility',
         ]);
     });
 
@@ -178,7 +179,43 @@ describe('sub-11px rem font-size', () => {
             'sub-11px rem font-size',
         );
         expect(names('resources/js/components/card/Card.tsx')).toEqual(
-            RULES.slice(0, 5).map((r) => r.name),
+            RULES.map((r) => r.name).filter(
+                (name) => name !== 'sub-11px rem font-size',
+            ),
         );
+    });
+});
+
+describe('bare rounded utility', () => {
+    const rule = RULES[6].re;
+    const bare = ['round', 'ed'].join('');
+    const matches = (classes: string) => classes.match(rule) ?? [];
+
+    it.each([
+        `focus-ring -m-1 ${bare} p-1`,
+        `"${bare} bg-muted"`,
+        `'h-4 w-32 ${bare}'`,
+        `\`h-[1.625em] ${bare} \${width}\``,
+        `'${bare}'`,
+        `inline-flex md:${bare} text-xs`,
+    ])('flags a bare radius in %s', (classes) => {
+        expect(matches(classes)).toHaveLength(1);
+    });
+
+    it.each(['rounded-xs', 'rounded-full', 'rounded-t-md', 'rounded-[3px]'])(
+        'leaves the scale step %s alone',
+        (step) => {
+            expect(matches(`focus-ring ${step} p-1`)).toEqual([]);
+        },
+    );
+
+    it.each([
+        `const ${bare} = Number(value.toFixed(decimals));`,
+        `? ${bare} > 0 : ${bare} < 0`,
+        `value: display(hr, hrCount, ${bare}),`,
+        `A day's warmup and main set are ${bare} so they add up`,
+        `it('draws the bar square, never ${bare}', () => {`,
+    ])('does not mistake prose or a variable for a class: %s', (line) => {
+        expect(matches(line)).toEqual([]);
     });
 });

@@ -330,7 +330,7 @@ export default function AnalysisStatus({
                         {SKELETON_WIDTHS.map((width) => (
                             <div
                                 key={width}
-                                className={`h-[1.625em] rounded ${width} ${skeletonBg}`}
+                                className={`h-[1.625em] rounded-xs ${width} ${skeletonBg}`}
                                 aria-hidden
                             />
                         ))}

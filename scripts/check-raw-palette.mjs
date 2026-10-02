@@ -5,7 +5,7 @@
  * templates under resources/views (error pages + the first-party Pulse cards),
  * minus the published vendor templates listed in EXCLUDED.
  *
- * Six rules, all enforcing the same thing — a value a designer can move must
+ * Seven rules, all enforcing the same thing — a value a designer can move must
  * live in the `@theme` block of resources/css/app.css, not at a call site:
  *
  *   1. Colour must resolve through a semantic `--color-*` token (`bg-horizon`,
@@ -32,6 +32,10 @@
  *   6. A rem font-size literal must not fall below the 11px floor
  *      (`0.6875rem` at the 16px phone root). Card art under
  *      resources/js/components/card/ is exempt, as MASTER.md documents.
+ *   7. A radius must be a step of the `--radius-*` scale: bare `rounded` is
+ *      Tailwind's 0.25rem, below the 6px `rounded-xs` floor. With no comment
+ *      stripping, a bare token counts as a class only beside a hyphenated or
+ *      variant utility, or alone in quotes, so prose and variables pass.
  *
  * A third rule (off-scale radius: `rounded-2xl`/`3xl`/`4xl` sitting outside
  * the `--radius-*` scale) existed from the v2 token set until F2, which
@@ -176,6 +180,11 @@ const RULES = [
         fix: 'Use `.text-label-micro` or `.text-meta` (11px) where the role fits, otherwise `text-xs`. The root is 16px below 1280px, so a rem literal under `0.6875rem` renders under the 11px floor on every phone; only card art (resources/js/components/card/) is exempt.',
         re: /\btext-\[(?:length:)?0?\.(?:[0-5]\d*|6(?:[0-7]\d*)?|68(?:[0-6]\d*)?|687(?:[0-4]\d*)?)rem\]/g,
         exemptDir: 'resources/js/components/card/',
+    },
+    {
+        name: 'bare rounded utility',
+        fix: 'Use a step of the radius scale: `rounded-xs` (6px) for small controls, `rounded-sm`/`rounded-md` above it. Bare `rounded` compiles to Tailwind\'s 0.25rem, below the scale\'s 6px floor.',
+        re: /(?<=[^\s"'`]*\w[-:][^\s"'`]*\s+)(?:[\w-]+:)*rounded(?=[\s"'`]|$)|(?<=^|[\s"'`])(?:[\w-]+:)*rounded(?=\s+[^\s"'`]*\w[-:])|(?<=["'`])(?:[\w-]+:)*rounded(?=["'`])/g,
     },
 ];
 

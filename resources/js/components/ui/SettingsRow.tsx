@@ -80,7 +80,7 @@ export default function SettingsRow({
                         {label}
                     </span>
                     {description !== undefined && (
-                        <span className="font-sans text-[0.75rem] text-text-2">
+                        <span className="font-sans text-xs text-text-2">
                             {description}
                         </span>
                     )}

@@ -13,7 +13,7 @@ interface SkeletonProps {
  * The sweep itself lives in the `.skeleton` class in app.css.
  */
 export default function Skeleton({ className }: Readonly<SkeletonProps>) {
-    return <div aria-hidden className={cn('skeleton rounded', className)} />;
+    return <div aria-hidden className={cn('skeleton rounded-xs', className)} />;
 }
 
 const PROSE_WIDTHS = ['w-full', 'w-[70%]', 'w-[85%]'];
