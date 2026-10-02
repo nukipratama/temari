@@ -194,6 +194,25 @@ describe('Login', () => {
         expect(screen.getByText(DATA_USE.points[0])).toBeVisible();
     });
 
+    it('caps the hero copy to the same centred column as the sign-in lanes', () => {
+        render(<Login authStravaUrl="/x" />);
+
+        const column = screen.getByRole('heading', { level: 1 }).parentElement;
+        const lane = screen
+            .getByText('start with your history')
+            .closest('section');
+
+        const columnClasses = [
+            'min-[900px]:mx-auto',
+            'min-[900px]:max-w-column',
+            'min-[1280px]:max-w-column-wide',
+            'min-[900px]:px-6',
+        ];
+        expect(lane).toHaveClass(...columnClasses);
+        expect(column).toHaveClass(...columnClasses);
+        expect(column?.closest('header')).not.toHaveClass('min-[900px]:px-14');
+    });
+
     it('omits the disclosure entirely when the server sends no copy', () => {
         render(<Login authStravaUrl="/x" />);
 

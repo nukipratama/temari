@@ -169,7 +169,7 @@ export default function Login({
 function Hero() {
     return (
         <header
-            className="relative overflow-hidden px-5.5 pt-14 pb-6 text-cream min-[900px]:px-14 min-[900px]:pt-16 min-[900px]:pb-9"
+            className="relative overflow-hidden px-5.5 pt-14 pb-6 text-cream min-[900px]:px-0 min-[900px]:pt-16 min-[900px]:pb-9"
             style={{ background: HERO_GRADIENT }}
         >
             <span
@@ -178,7 +178,7 @@ function Hero() {
                 style={{ background: HERO_GLOW }}
             />
 
-            <div className="relative">
+            <div className="relative min-[900px]:mx-auto min-[900px]:max-w-column min-[1280px]:max-w-column-wide min-[900px]:px-6">
                 <BrandMark tone="cream" />
 
                 <Eyebrow token="hero" tone="horizon" className="mt-4.5">
