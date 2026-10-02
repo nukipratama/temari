@@ -16,21 +16,27 @@ MIRRORS='^resources/(css|views|brand)/|^resources/js/lib/(shareCard|runcard|char
 DOCS_READ_BY_TESTS='^(CLAUDE|README)\.md$|^docs/design-tokens\.md$|^\.agents/skills/temari/.*\.md$'
 BACKEND='^(app|bootstrap|config|database|routes|tests)/|^public/.*\.php$|^scripts/(worktree|tl)$|^scripts/.*\.(php|sh)$|^composer\.(json|lock)$|^(phpunit\.xml|artisan|rector\.php|pint\.json|\.env\.testing\.example)$|^phpstan.*\.neon$'
 FRONTEND='^resources/(js|css|views)/|^public/(sw\.js|offline\.html|manifest\.webmanifest|robots\.txt)$|^scripts/.*\.mjs$|^(package\.json|package-lock\.json|vite\.config\.ts|vitest\.config\.ts|prettier\.config\.js|eslint\.config\.js|\.nvmrc|\.npmrc)$|^tsconfig.*\.json$|^\.prettierrc'
+WORKTREE='^scripts/worktree|^tests/scripts/'
 
 if match "$ARCH"; then
   backend=true
   frontend=true
   docker=true
+  worktree=true
 else
   backend=false
   frontend=false
   docker=false
+  worktree=false
   if match "$BACKEND" || match "$MIRRORS" || match "$DOCS_READ_BY_TESTS"; then
     backend=true
   fi
   if match "$FRONTEND"; then
     frontend=true
   fi
+  if match "$WORKTREE"; then
+    worktree=true
+  fi
 fi
 
-printf 'backend=%s\nfrontend=%s\ndocker=%s\n' "$backend" "$frontend" "$docker"
+printf 'backend=%s\nfrontend=%s\ndocker=%s\nworktree=%s\n' "$backend" "$frontend" "$docker" "$worktree"

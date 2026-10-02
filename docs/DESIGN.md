@@ -38,7 +38,7 @@ Backend logic is split by domain under `app/Services/`:
 - **Gamification** — milestones, personal records, card rarities, streak tracking, and the daily [[vibe-and-mood]] that drives Temari's tone. Under `app/Services/Gamification/` and `app/Services/Run/Story/`.
 - **Notifications** — every notification lands in the in-app inbox and, where reachable, also goes out over Telegram and web push: post-run and recap narration, the morning briefing, race-eve and plan-change notices, Strava disconnects, and streak-at-risk reminders (`streak:remind` Saturdays 18:00). One master switch governs *what* is sent and per-channel mutes govern *where*; the demo account is never pushed. Routing lives in [app/Services/Notifications/ChannelRouter.php](app/Services/Notifications/ChannelRouter.php). See [[notification-inbox]] and [[telegram-notifications]].
 - **Geo / Weather** — best-effort reverse-geocode (Nominatim) and weather snapshot (Open-Meteo) augment each run. Under `app/Services/Geo/` and `app/Services/Weather/`. See [[geo-reverse-geocoding]] + [[weather-integration]].
-- **Frontend** — Inertia 2 + React 19 pages in `resources/js/pages/`, rendered by controllers in `app/Http/Controllers/`. See [[frontend-architecture]] for the wiring, [[features/index|Features]] for each screen.
+- **Frontend** — Inertia 3 + React 19 pages in `resources/js/pages/`, rendered by controllers in `app/Http/Controllers/`. See [[frontend-architecture]] for the wiring, [[features/index|Features]] for each screen.
 
 ## Data lifecycle (high level)
 
