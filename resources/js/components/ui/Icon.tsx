@@ -36,7 +36,9 @@ export function Icon({
     className,
     ...rest
 }: { icon: IconComponent } & Omit<SVGProps<SVGSVGElement>, 'icon'>) {
-    const size = width ?? height ?? 24;
+    const requested = width ?? height ?? 24;
+    const size =
+        typeof requested === 'number' ? `${requested / 16}rem` : requested;
 
     return <Glyph width={size} height={size} className={className} {...rest} />;
 }

@@ -112,6 +112,17 @@ describe('MobileBottomNav', () => {
         );
     });
 
+    it('sizes the active and idle tab icons in rem', () => {
+        setMockPage({}, '/history', 'History');
+        render(<MobileBottomNav />);
+        expect(
+            screen.getByText('History').closest('a')?.querySelector('svg'),
+        ).toHaveClass('size-5');
+        expect(
+            screen.getByText('Today').closest('a')?.querySelector('svg'),
+        ).toHaveClass('size-4.5');
+    });
+
     it('scrolls to top instead of navigating when the active tab is tapped', () => {
         const scrollTo = vi.fn();
         vi.stubGlobal('scrollTo', scrollTo);
