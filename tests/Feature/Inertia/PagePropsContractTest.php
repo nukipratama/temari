@@ -178,3 +178,15 @@ it('emits the prop key paths its fixture records', function (string $name, strin
     'Narration overview' => ['Narration/Overview', 'Narration/Overview', fn (User $user): string => route('devtools.narration')],
     'Narration athlete' => ['Narration/Athlete', 'Narration/Athlete', fn (User $user): string => route('devtools.narration.athlete', ['userId' => $user->id])],
 ]);
+
+it('has a prop contract fixture for every page a controller renders', function (): void {
+    $rendered = collect(File::allFiles(app_path()))
+        ->flatMap(fn (SplFileInfo $file): array => preg_match_all("/Inertia::render\(\s*'([^']+)'/", (string) file_get_contents($file->getPathname()), $matches) > 0 ? $matches[1] : [])
+        ->unique()
+        ->sort()
+        ->values();
+
+    expect($rendered)->not->toBeEmpty()
+        ->and($rendered->reject(fn (string $component): bool => File::exists(base_path("tests/fixtures/inertia-props/{$component}.json")))->values()->all())
+        ->toBe([], 'These pages have no prop contract fixture; add them to the dataset above and run `sail composer inertia-props:update`.');
+});
