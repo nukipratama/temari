@@ -361,24 +361,25 @@ a run-question limit of 4/min, and a per-run agent budget of 8 steps / 30k token
 
 ## Cost shape
 
-**Every narrator but the clamp voice is a tool-calling agent run.** The clamp voice is a plain
-single-turn call with no toolbox; every other block is a multi-turn loop, and each turn re-sends the
+**Every narrator but the three plan voices is a tool-calling agent run.** The clamp, day and season
+voices are plain single-turn calls with no toolbox (the day and season voices get their one bound
+read in the context instead); every other block is a multi-turn loop, and each turn re-sends the
 whole prefix. That single fact drives everything below.
 
 | narrator | tools | max steps | max output | temp | deployment key |
 |---|---|---|---|---|---|
 | `RunInsightNarrator` | 11 | default (10) | 3000 | 0.7 | `run_insight` |
 | `RunQuestionNarrator` | up to 12 | default (10) | 1200 | 0.7 | `run_question` |
-| `CardFlavorNarrator` | up to 7 | default (10) | 400 | 0.8 | `card_flavor` |
+| `CardFlavorNarrator` | up to 6 | default (10) | 400 | 0.8 | `card_flavor` |
 | `PostRunSpeechNarrator` | 7 | default (10) | 1500 | 0.8 | `post_run_speech` |
 | `BriefingMascotVoiceNarrator` | 6 | default (10) | 1800 | 0.8 | `briefing_mascot_voice` |
 | `ProfileVoiceNarrator` | 5 | default (10) | 1800 | 0.75 | `profile_voice` |
 | `WeeklyRecapNarrator` | 2 | **6** | 1500 | 0.7 | `weekly_recap` |
 | `MonthlyRecapNarrator` | 2 | **6** | 1500 | 0.7 | `monthly_recap` |
 | `TrendReadNarrator` | 2 | **6** | 1200 | 0.7 | `trend_read` |
-| `PlanDayVoiceNarrator` | 1 | **4** | 300 | 0.7 | `plan_day_voice` |
+| `PlanDayVoiceNarrator` | 0 | 1 (plain call) | 300 | 0.7 | `plan_day_voice` |
 | `PlanClampVoiceNarrator` | 0 | 1 (plain call) | 200 | 0.7 | `plan_clamp_voice` |
-| `PlanSeasonVoiceNarrator` | 1 | **4** | 400 | 0.7 | `plan_season_voice` |
+| `PlanSeasonVoiceNarrator` | 0 | 1 (plain call) | 400 | 0.7 | `plan_season_voice` |
 
 Every kind has its own `azure_openai.narrators.*` override key, each defaulting to
 `AZURE_OPENAI_DEPLOYMENT`. Routing is env-only; no code decides which model a narrator gets.
@@ -454,16 +455,18 @@ inline in its `toolbox()` method.
 | `RunInsightNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` |
 | `RunQuestionNarrator` | `RunSummaryTool`, `GetThreadTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` always; `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool` only once the run is `Detailed` |
 | `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `WeekStateTool`, `PlanContextTool` |
-| `CardFlavorNarrator` | `CardIdentityTool` always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool`, `PlanContextTool` when the run has detail |
+| `CardFlavorNarrator` | `CardIdentityTool`'s payload in the context, always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool`, `PlanContextTool` when the run has detail |
 | `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `RecentBaselineTool`, `PlanContextTool` |
 | `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool`, `PlanAdherenceTool` |
 | `WeeklyRecapNarrator` | `WeekTotalsTool`, `PlanContextTool` |
 | `MonthlyRecapNarrator` | `MonthTotalsTool`, `PlanContextTool` |
 | `TrendReadNarrator` | `TrendRangeTool`, `PlanAdherenceTool` |
-| `PlanDayVoiceNarrator` | `PlanDayTool` |
-| `PlanSeasonVoiceNarrator` | `PlanSeasonTool` |
+| `PlanDayVoiceNarrator` | none; `PlanDayTool`'s payload in the context |
+| `PlanSeasonVoiceNarrator` | none; `PlanSeasonTool`'s payload in the context |
 
-Every one of the 24 tools is carried by at least one narrator; none is orphaned.
+Every one of the 24 tools is used by at least one narrator; none is orphaned. Three of them
+(`CardIdentityTool`, `PlanDayTool`, `PlanSeasonTool`) are read into the context rather than offered
+as tools, since the model had no choice to make about calling them.
 
 ## The deterministic half
 
@@ -497,16 +500,16 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | `monthly_recap` | earns it | Same shape, same 6-step budget. |
 | `profile_voice` | earns it | Once a week, four reads, genuinely synthetic. |
 | `trend_read` | earns it | 2 tools and a 6-step budget, one call per active athlete per day since `30d`/`90d`/`12mo` retired (#967). |
-| `plan_day_voice` | earns it | Budget aligned to 4. Since #939 it is no longer scheduled at all — one call per run day, requested after post-ingest plan reconciliation settles the credited day, phrasing #946's intent verdict rather than announcing the session ahead of time. |
-| `plan_season_voice` | earns it | Budget aligned to 4 and idempotent, so it neither re-bills nor over-runs. |
+| `plan_day_voice` | earns it | One plain call with the day plan in the context. Since #939 it is no longer scheduled at all — one call per run day, requested after post-ingest plan reconciliation settles the credited day, phrasing #946's intent verdict rather than announcing the session ahead of time. |
+| `plan_season_voice` | earns it | One plain call with the season in the context, and idempotent, so it neither re-bills nor over-runs. |
 | run Q&A | earns it | A free-form question about one run is exactly what rules cannot answer. |
 | `TemariPersona` | earns it | ~4,000 tokens on every turn, but it *is* the product, and the per-kind prompt cache already serves roughly half of it at a tenth of the rate. The largest available lever, and the last one to reach for. |
 
 **Tool shortlist** — flagged rather than ruled, since only a handful are worth acting on:
 
 - The two plan tools (`PlanDayTool`, `PlanSeasonTool`) each return one bound read with nothing for
-  the model to decide. Handing the payload straight to the prompt would remove a tool round trip
-  per plan block.
+  the model to decide, so their narrators hand the payload straight to the prompt and skip the tool
+  round trip. `CardFlavorNarrator` does the same with `CardIdentityTool`.
 - `PlanContextTool` is the one plan read bound to a *span* rather than a row, so a narrator with no
   `PlannedSession` in hand can still say what was prescribed. The four per-run narrators bind it to
   a single day, the date of the run they are describing; the weekly and monthly recaps bind it to

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Models\PlannedSession;
-use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\PlanDayTool;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
@@ -21,7 +20,7 @@ class PlanDayVoiceNarrator
         short sentences, max 35 words total. This is a read, not a preview: the day happened, and
         you are stating what it was, never what it will be.
 
-        DATA: call get_day_plan first. It carries the prescribed session, phase, distance_km
+        DATA: the day's plan is in the context. It carries the prescribed session, phase, distance_km
         (asked), completed_km (run), status (done/partial/missed/overreached), ran_anyway, and,
         when there was a session to judge, intent: plain words for whether the session did the
         job it was written for, already decided — plus intent_detail, the evidence behind it as a
@@ -67,7 +66,7 @@ class PlanDayVoiceNarrator
         - "3 of the 8 you were down for. short, but it's on the board."
 
         ANTI-PATTERN:
-        - Quoting a distance, pace, or percentage get_day_plan didn't give you.
+        - Quoting a distance, pace, or percentage the context didn't give you.
         - Saying the day missed when intent says it did the job, or the reverse. This exact line
           shipped on an easy day that stayed easy: "the pace sat at 7:29/km, so it missed the hit
           mark."
@@ -91,22 +90,20 @@ class PlanDayVoiceNarrator
         $decoded = $this->caller->call(
             kind: 'plan_day_voice',
             systemPrompt: self::SYSTEM_PROMPT,
-            context: [],
+            context: new PlanDayTool(
+                $session,
+                $this->baseline,
+                $this->vdotEstimator,
+                $this->paceCalculator,
+                $this->completedKm($session),
+                $session->status->isCredited() ? $this->sessionMatcher->ranPaceSecPerKmFor($session) : null,
+            )->handle([]),
             schemaName: 'TemariPlanDayVoice',
             requiredKeys: ['voice'],
             options: new ChatCallOptions(
                 temperature: 0.7,
                 userId: $session->user_id,
                 maxTokens: 300,
-                toolbox: new AgentToolbox([new PlanDayTool(
-                    $session,
-                    $this->baseline,
-                    $this->vdotEstimator,
-                    $this->paceCalculator,
-                    $this->completedKm($session),
-                    $session->status->isCredited() ? $this->sessionMatcher->ranPaceSecPerKmFor($session) : null,
-                )]),
-                maxSteps: 4,
                 validator: static fn (array $answer): ?string => OutcomeLabels::complaint((string) $answer['voice'], 'voice', plainText: true),
             ),
         );
