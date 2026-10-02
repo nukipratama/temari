@@ -99,7 +99,7 @@ describe('DayCellBody', () => {
             />,
         );
 
-        expect(screen.getByText('5.0 km')).toBeInTheDocument();
+        expect(screen.getByText('5.0')).toBeInTheDocument();
         expect(screen.getByText('of 6.0')).toBeInTheDocument();
     });
 
@@ -124,7 +124,7 @@ describe('DayCellBody', () => {
             <DayCellBody day={day({ distance_km: 8 })} hasElapsed={false} />,
         );
 
-        expect(screen.getByText('8.0 km')).toBeInTheDocument();
+        expect(screen.getByText('8.0')).toBeInTheDocument();
         expect(screen.queryByText(/^of /)).not.toBeInTheDocument();
     });
 
@@ -141,8 +141,28 @@ describe('DayCellBody', () => {
             />,
         );
 
-        expect(screen.getByText('4.2 km')).toBeInTheDocument();
+        expect(screen.getByText('4.2')).toBeInTheDocument();
         expect(screen.queryByText(/^of /)).not.toBeInTheDocument();
+    });
+
+    it('prints the bare figure with no " km" suffix on both the ran and the planned line', () => {
+        const { container, rerender } = render(
+            <DayCellBody
+                day={day({ status: 'done', actual_km: 10.1 })}
+                hasElapsed
+            />,
+        );
+
+        expect(container).not.toHaveTextContent(/km/);
+        expect(screen.getByText('10.1')).toBeInTheDocument();
+
+        rerender(
+            <DayCellBody day={day({ distance_km: 21.1 })} hasElapsed={false} />,
+        );
+
+        expect(container).not.toHaveTextContent(/km/);
+        expect(screen.getByText('21.1')).toBeInTheDocument();
+        expect(container).not.toHaveTextContent(/of/);
     });
 
     it('draws the effort bar square and full-width along the bottom, never rounded', () => {
