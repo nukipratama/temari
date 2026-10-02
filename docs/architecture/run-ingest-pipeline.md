@@ -20,6 +20,7 @@ code_refs:
   - app/Services/Strava/ActivityFetcher.php
   - app/Jobs/Strava/SyncActivitiesJob.php
   - app/Jobs/Strava/IngestActivityJob.php
+  - app/Actions/Run/DeleteIngestedRunAction.php
   - app/Listeners/DispatchPostRunAnalysis.php
   - app/Models/Activity.php
   - routes/console.php
@@ -56,7 +57,7 @@ A summary-only run is hydrated when the deeper data is about to be looked at. [D
 
 [ActivityPipeline::ingest()](app/Services/Run/Ingest/ActivityPipeline.php) does the real work, in order:
 
-1. **Fetch detail** `/activities/{id}` → upsert [ActivityDetail](app/Models/ActivityDetail.php) via [storeDetail()](app/Services/Run/Ingest/ActivityPipeline.php). First the detail's `sport_type` is checked against [RunSportType](app/Services/Strava/RunSportType.php) (shared with the poll-path filter): a non-run upload (ride/walk/swim reaching ingest via the webhook, which fires for every type) has its stub **deleted** here so it never mints a bogus PR/card/snapshot or bills the narrator.
+1. **Fetch detail** `/activities/{id}` → upsert [ActivityDetail](app/Models/ActivityDetail.php) via [storeDetail()](app/Services/Run/Ingest/ActivityPipeline.php). First the detail's `sport_type` is checked against [RunSportType](app/Services/Strava/RunSportType.php) (shared with the poll-path filter): a non-run upload (ride/walk/swim reaching ingest via the webhook, which fires for every type) has its stub **deleted** here so it never mints a bogus PR/card/snapshot or bills the narrator. A run that was already ingested and then re-typed on Strava (a ride auto-recorded as a run, fixed later, arrives as a webhook `update` through [ResyncActivityJob](app/Jobs/Strava/ResyncActivityJob.php)) has a detail row, so it is deleted through [DeleteIngestedRunAction](app/Actions/Run/DeleteIngestedRunAction.php) instead, the same heal a Strava delete gets: plan day re-graded, weekly snapshots rebuilt or emptied weeks dropped, PRs rebuilt from the surviving runs, its activity- and card-keyed Analysis rows purged, plan reconciliation and trend snapshots marked dirty.
 2. **Fetch streams** (time/distance/HR/cadence/velocity/altitude/latlng) → upsert [ActivityStream](app/Models/ActivityStream.php). Best-effort: a 4xx (404 = no streams, treadmill/manual) is logged and ingest continues.
 3. **Compute summary** — [StreamAnalysis::compute()](app/Services/Run/Ingest/StreamAnalysis.php) derives HR time-in-zone, best-effort paces, decoupling, cadence distribution, per-km splits, etc. (see [[stream-analysis]]); [TrainingLoad::edwardsTrimp()](app/Services/Run/Metrics/TrainingLoad.php) folds zone minutes into a TRIMP (the load engine is [[training-load-metrics]]). Both land on the detail row.
 4. **Weather** — [lookupWeather()](app/Services/Run/Ingest/ActivityPipeline.php) uses the detail payload's stored start coords; best-effort, never blocks. See [[weather-integration]].
