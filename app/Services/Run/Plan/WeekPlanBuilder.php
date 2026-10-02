@@ -55,26 +55,14 @@ final class WeekPlanBuilder
 
     private const int MAX_SESSIONS = 6;
 
-    /** Ceiling on quality sessions per week once race-pace feedback asks for more. */
-    private const int MAX_QUALITY_SLOTS = 2;
-
     /** A week with fewer sessions than this carries one quality day on the phase baseline, not two. */
     private const int MIN_SESSIONS_FOR_EXTRA_QUALITY = 5;
-
-    /**
-     * Below this, race-pace feedback cannot add a quality day: at three
-     * sessions the long run plus two quality days is the whole week, leaving
-     * no easy running at all. At four there is still an easy day left over,
-     * and {@see self::awayFromLongRun()} keeps both hard days off the long
-     * run's flanks.
-     */
-    private const int MIN_SESSIONS_FOR_ADDED_QUALITY = 4;
 
     /**
      * @param  array<string, true>  $fixedDates  Y-m-d dates already fixed or settled; never assigned a row here
      * @param  Carbon  $notBefore  dates earlier than this (a past day within the current week) are skipped too —
      *                             regeneration only ever writes today-forward, so past days stay untouched
-     * @param  int  $qualityDelta  the adapter's verdict on this week's quality block: +1 adds a session, -1 drops one
+     * @param  int  $qualityDelta  the adapter's verdict on this week's quality block: -1 drops a session, 0 leaves the block alone
      * @param  ?list<int>  $preferredOffsets  an explicit {@see \App\Models\TrainingPreference} `run_days`
      *                                        (0=Mon..6=Sun) — when set (with `$preferredLongOffset`), replaces
      *                                        `DAY_TEMPLATES` entirely for this week rather than merely seeding it
@@ -125,11 +113,8 @@ final class WeekPlanBuilder
         $qualitySlots = self::withQualityDelta(
             $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds, $zone),
             $phase,
-            $sessionsPerWeek,
             $qualityDelta,
-            count($qualityPool),
             $selfScaled,
-            $projectedRaceSeconds,
             $zone,
         );
         if ($sessionsPerWeek === 2 && $twoRunQualityEligible && in_array($phase, [PlanPhase::Base, PlanPhase::Build, PlanPhase::Peak], true) && $qualityDelta >= 0) {
@@ -343,70 +328,25 @@ final class WeekPlanBuilder
     }
 
     /**
-     * The adapter's verdict resizes the week's quality block: race-pace
-     * feedback moves it either way, a week run harder than it was written
-     * only ever drops one. Base, Deload and Taper are exempt in both
-     * directions: none exists to carry quality work, a taper's whole job is
+     * The adapter's verdict can shrink the week's quality block: a week run
+     * harder than it was written drops a session. Base, Deload and Taper are
+     * exempt: none exists to carry quality work, a taper's whole job is
      * arriving fresh, and Base is defined as predominantly easy with at most
      * one threshold session. A race season's general-zone week is exempt for
      * the same reason — it trains by base rules, see
      * {@see self::phaseQualitySlots()} — regardless of which phase the
-     * self-scaled mesocycle it's borrowing happens to land it on. Adding is
-     * further gated on the week having enough sessions to absorb it, so a
-     * 3-day week never turns into two-thirds quality.
-     *
-     * A slot is only ever promised where the week can actually place it:
-     * `$qualityPoolSize` is how many training days are left once the long run
-     * and its flanks are excluded, so the block is never asked for a day
-     * {@see self::spreadOffsets()} would silently drop.
+     * self-scaled mesocycle it's borrowing happens to land it on.
      *
      * @param  list<array{session_type: SessionType}>  $slots
      * @return list<array{session_type: SessionType}>
      */
-    private static function withQualityDelta(array $slots, PlanPhase $phase, int $sessionsPerWeek, int $qualityDelta, int $qualityPoolSize, bool $selfScaled, ?float $projectedRaceSeconds, string $zone): array
+    private static function withQualityDelta(array $slots, PlanPhase $phase, int $qualityDelta, bool $selfScaled, string $zone): array
     {
-        if ($qualityDelta === 0 || self::isGeneralZone($selfScaled, $zone) || in_array($phase, [PlanPhase::Base, PlanPhase::Deload, PlanPhase::Taper], true)) {
+        if ($qualityDelta >= 0 || self::isGeneralZone($selfScaled, $zone) || in_array($phase, [PlanPhase::Base, PlanPhase::Deload, PlanPhase::Taper], true)) {
             return $slots;
         }
 
-        if ($qualityDelta < 0) {
-            return array_slice($slots, 0, max(0, count($slots) + $qualityDelta));
-        }
-
-        $ceiling = $sessionsPerWeek >= self::MIN_SESSIONS_FOR_ADDED_QUALITY
-            ? min(self::MAX_QUALITY_SLOTS, $qualityPoolSize)
-            : count($slots);
-        $target = min($ceiling, count($slots) + $qualityDelta);
-
-        if ($target <= count($slots)) {
-            return $slots;
-        }
-
-        $added = [];
-        for ($i = count($slots); $i < $target; $i++) {
-            $added[] = ['session_type' => self::leastRepresentedQualityType([...$slots, ...$added], $phase, $selfScaled, $projectedRaceSeconds)];
-        }
-
-        return [...$slots, ...$added];
-    }
-
-    /**
-     * The stimulus the week has least of; a tie falls back to what the phase
-     * picks when it only gets one quality day.
-     *
-     * @param  list<array{session_type: SessionType}>  $slots
-     */
-    private static function leastRepresentedQualityType(array $slots, PlanPhase $phase, bool $selfScaled, ?float $projectedRaceSeconds): SessionType
-    {
-        $types = array_column($slots, 'session_type');
-        $tempo = count(array_filter($types, static fn (SessionType $type): bool => $type === SessionType::Tempo));
-        $interval = count($types) - $tempo;
-
-        return match (true) {
-            $tempo < $interval => SessionType::Tempo,
-            $interval < $tempo => SessionType::Interval,
-            default => self::singleQualityType($phase, $selfScaled, $projectedRaceSeconds),
-        };
+        return array_slice($slots, 0, max(0, count($slots) + $qualityDelta));
     }
 
     /**

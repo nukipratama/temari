@@ -147,14 +147,6 @@ function qualityCount(array $rows): int
         ->count();
 }
 
-it('adds a quality session when race-pace feedback asks for more', function (): void {
-    $before = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true);
-    $after = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true, null, 1);
-
-    expect(qualityCount($before))->toBe(2)
-        ->and(qualityCount($after))->toBe(2);
-});
-
 it('drops a quality session when race-pace feedback asks for less', function (): void {
     $before = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true);
     $after = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true, null, -1);
@@ -169,37 +161,10 @@ it('drops the week to zero quality when asked for less than it already carries',
     expect(qualityCount($rows))->toBe(0);
 });
 
-it('leaves a Base week the one quality day its phase defines, in either direction', function (): void {
+it('leaves a Base week the one quality day its phase defines when feedback asks for less', function (): void {
     $eased = $this->builder->build($this->monday, PlanPhase::Base, 4, [], null, false, null, -1);
-    $pushed = $this->builder->build($this->monday, PlanPhase::Base, 5, [], null, false, null, 1);
 
-    expect(qualityCount($eased))->toBe(1)
-        ->and(qualityCount($pushed))->toBe(1);
-});
-
-it('refuses to add a quality session to a week too short to absorb it', function (): void {
-    // Three sessions is the long run plus two: a second quality day would
-    // leave the week with no easy running at all.
-    $rows = $this->builder->build($this->monday, PlanPhase::Build, 3, [], null, true, null, 1);
-
-    expect(qualityCount($rows))->toBe(1);
-});
-
-it('adds the promised quality session to a four-session week, either side of the long run', function (): void {
-    $before = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true);
-    $after = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true, null, 1);
-
-    // 4-session template: Tue, Thu, Sat, Sun (long). Both quality days land
-    // away from Sunday's long run rather than flanking it.
-    $quality = collect($after)
-        ->filter(fn (array $r): bool => in_array($r['session_type'], [SessionType::Tempo, SessionType::Interval], true))
-        ->keys()
-        ->map(fn (string $d): int => (int) Carbon::parse($d)->dayOfWeekIso)
-        ->all();
-
-    expect(qualityCount($before))->toBe(1)
-        ->and(qualityCount($after))->toBe(2)
-        ->and($quality)->toBe([2, 4]);
+    expect(qualityCount($eased))->toBe(1);
 });
 
 it('chooses Thursday over Tuesday for circular recovery from the Sunday long run', function (): void {
@@ -219,7 +184,7 @@ it('chooses Thursday when Wednesday and Thursday are equally spaced from the Sun
 });
 
 it('uses Tuesday and Thursday for a six-session build week behind its race goal', function (): void {
-    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, qualityDelta: 1, projectedRaceSeconds: 35 * 60.0);
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, projectedRaceSeconds: 35 * 60.0);
     $typesByWeekday = collect($rows)->mapWithKeys(fn (array $row, string $date): array => [
         Carbon::parse($date)->dayOfWeekIso => $row['session_type'],
     ]);
@@ -273,7 +238,6 @@ it('keeps quality within the hard-day budget for run counts two through six', fu
             [],
             10_000.0,
             false,
-            qualityDelta: 1,
             projectedRaceSeconds: 35 * 60.0,
         );
         $longDate = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Long);
@@ -293,14 +257,6 @@ it('keeps quality within the hard-day budget for run counts two through six', fu
             expect(WeekPlanBuilder::longRunRecoveryDays($qualityOffsets[$index - 1], $qualityOffsets[$index]))->toBeGreaterThanOrEqual(2);
         }
     }
-});
-
-it('caps quality when two requested sessions can only land on adjacent run days', function (): void {
-    $rows = $this->builder->build($this->monday, PlanPhase::Build, 4, [], null, true, qualityDelta: 1, preferredOffsets: [1, 2, 3, 4], preferredLongOffset: 4);
-
-    expect(qualityCount($rows))->toBe(1)
-        ->and($rows[$this->monday->copy()->addDay()->toDateString()]['session_type'])->toBe(SessionType::Tempo)
-        ->and($rows[$this->monday->copy()->addDays(2)->toDateString()]['session_type'])->toBe(SessionType::Easy);
 });
 
 it('keeps the long-run flanks clear when no other quality day is available', function (): void {
@@ -324,27 +280,12 @@ it('still empties a four-session race week\'s quality block when the week was ru
     expect(qualityCount($rows))->toBe(0);
 });
 
-it('never asks a week for more quality days than it has room to place', function (): void {
-    // Five sessions: Mon, Tue, Thu, Sat, Sun (long). Saturday and Monday flank
-    // the long run, leaving only Tue and Thu to carry quality work -- so the
-    // week keeps the two it already had rather than being promised a third.
-    $rows = $this->builder->build($this->monday, PlanPhase::Build, 5, [], null, true, null, 1);
-
-    expect(qualityCount($rows))->toBe(2);
-});
-
-it('never lets race-pace feedback add quality work to a taper or a deload', function (): void {
-    $taper = $this->builder->build($this->monday, PlanPhase::Taper, 6, [], 10_000.0, false, null, 1);
-    $deload = $this->builder->build($this->monday, PlanPhase::Deload, 6, [], null, true, null, 1);
+it('never lets feedback drop quality work from a taper or a deload', function (): void {
+    $taper = $this->builder->build($this->monday, PlanPhase::Taper, 6, [], 10_000.0, false, null, -1);
+    $deload = $this->builder->build($this->monday, PlanPhase::Deload, 6, [], null, true, null, -1);
 
     expect(qualityCount($taper))->toBe(2)
         ->and(qualityCount($deload))->toBe(0);
-});
-
-it('caps the quality block even when feedback keeps asking for more', function (): void {
-    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], null, true, null, 5);
-
-    expect(qualityCount($rows))->toBe(2);
 });
 
 it('leaves the season-goal slot count on the unadapted phase baseline', function (): void {
@@ -515,23 +456,6 @@ it('leaves a week the race does not fall in completely alone', function (): void
         ->and($withRace)->not->toContain(SessionType::Race);
 });
 
-/**
- * Base is documented as "predominantly easy, at most one threshold session",
- * but only Deload and Taper were exempt from the quality delta, so a
- * `behind_race_pace` verdict appended a second Tempo and made Base harder
- * than Build: 8.0 km hard of 26.8 (30%) against Build's 6.1 of 24.9 (24%).
- */
-it('holds Base at one quality session even when the adapter asks for more', function (): void {
-    $rows = $this->builder->build($this->monday, PlanPhase::Base, 5, [], 10_000.0, false, null, 1);
-
-    $quality = array_filter(
-        array_column($rows, 'session_type'),
-        fn (SessionType $type): bool => in_array($type, [SessionType::Tempo, SessionType::Interval], true),
-    );
-
-    expect($quality)->toHaveCount(1);
-});
-
 it('trains a race season\'s general-zone week by base rules: at most one quality slot, and it is a tempo', function (): void {
     $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, zone: PhaseSchedule::ZONE_GENERAL);
 
@@ -546,8 +470,8 @@ it('leaves a race season\'s block-zone week unchanged by the general-zone rule',
         ->and(collect($rows)->pluck('session_type'))->toContain(SessionType::Interval);
 });
 
-it('does not let quality_delta push a general-zone week past one quality session', function (): void {
-    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, null, 1, zone: PhaseSchedule::ZONE_GENERAL);
+it('does not let quality_delta take a general-zone week below its one quality session', function (): void {
+    $rows = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, null, -1, zone: PhaseSchedule::ZONE_GENERAL);
 
     expect(qualityCount($rows))->toBe(1);
 });
@@ -561,7 +485,7 @@ it('leaves a self-scaled (goal-less) season unchanged by the general-zone rule',
 });
 
 it('keeps a Base week under a fifth of its volume at threshold or faster', function (): void {
-    $rows = $this->builder->build($this->monday, PlanPhase::Base, 5, [], 10_000.0, false, null, 1);
+    $rows = $this->builder->build($this->monday, PlanPhase::Base, 5, [], 10_000.0, false);
 
     $weekKm = 0.0;
     $hardKm = 0.0;
@@ -575,28 +499,4 @@ it('keeps a Base week under a fifth of its volume at threshold or faster', funct
     }
 
     expect($hardKm / $weekKm)->toBeLessThan(0.20);
-});
-
-/**
- * A build week already carrying tempo + interval used to be handed a SECOND
- * tempo, doubling the stimulus it had most of instead of the one it had least.
- */
-it('alternates the stimulus when the adapter adds a quality day', function (): void {
-    $qualityOf = fn (int $sessions, float $projectedRaceSeconds): array => array_count_values(array_map(
-        fn (SessionType $type): string => $type->value,
-        array_filter(
-            array_column(
-                $this->builder->build($this->monday, PlanPhase::Build, $sessions, [], 10_000.0, false, null, 1, projectedRaceSeconds: $projectedRaceSeconds),
-                'session_type',
-            ),
-            fn (SessionType $type): bool => in_array($type, [SessionType::Tempo, SessionType::Interval], true),
-        ),
-    ));
-
-    // One of each already, so the tie falls back to what the phase would pick
-    // for a single quality day — Interval for a 35-minute 10K.
-    expect($qualityOf(6, 35 * 60.0))->toBe(['tempo' => 1, 'interval' => 1])
-        // A slow projection puts the lone slot on Tempo, so the added day is
-        // the stimulus the week does not have.
-        ->and($qualityOf(4, 75 * 60.0))->toBe(['tempo' => 1, 'interval' => 1]);
 });
