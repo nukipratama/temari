@@ -170,7 +170,7 @@ class DemoRunSeeder
             // stays suppressed: the demo never has a real connection, so an
             // enqueued (no-op) notification job per row would just be waste.
             $filled = $this->backfillWithFiller($user);
-            $log(sprintf('  %d AI analyses backfilled with rule-based content (hit "Reread" in the UI for real LLM narration).', $filled));
+            $log(sprintf('  %d AI analyses backfilled with rule-based content (demo narration stays rule-based, Reread included).', $filled));
 
             // Rebuilt rather than topped up. Inbox rows must be written
             // oldest-first (see writeInboxEntries), which a top-up

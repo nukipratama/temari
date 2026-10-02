@@ -23,7 +23,10 @@ class DemoSeedCommand extends Command
             $changed = $seeder->seedEdgeStates(fn (string $line) => $this->line($line));
             $this->info("Edge states applied: {$changed} Analysis rows.");
         }
-        $this->line('Set DEMO_LOGIN_ENABLED=true in .env to expose the demo button on /login.');
+
+        if (! config('demo.login_enabled')) {
+            $this->line('Set DEMO_LOGIN_ENABLED=true in .env to expose the demo button on /login.');
+        }
 
         return self::SUCCESS;
     }

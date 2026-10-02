@@ -385,6 +385,29 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     expect($runsPerDay->max())->toBe(1, 'A re-seed on a later day must replace the timeline, not stack a second run onto the same date.');
 });
 
+it('reminds the operator to enable the demo login only when it is off', function (): void {
+    ensureBareDemoSeeded();
+
+    config()->set('demo.login_enabled', false);
+    $this->artisan('demo:seed')
+        ->expectsOutputToContain('Set DEMO_LOGIN_ENABLED=true')
+        ->assertSuccessful();
+
+    config()->set('demo.login_enabled', true);
+    $this->artisan('demo:seed')
+        ->doesntExpectOutputToContain('DEMO_LOGIN_ENABLED')
+        ->assertSuccessful();
+});
+
+it('tells the operator the demo narration stays rule-based, Reread included', function (): void {
+    ensureBareDemoSeeded();
+
+    $this->artisan('demo:seed')
+        ->expectsOutputToContain('demo narration stays rule-based')
+        ->doesntExpectOutputToContain('real LLM narration')
+        ->assertSuccessful();
+});
+
 it('leaves every analysis done and rule-based-served unless --with-edge-states is passed', function (): void {
     try {
         ensureBareDemoSeeded();
