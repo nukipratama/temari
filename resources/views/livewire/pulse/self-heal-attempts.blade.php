@@ -11,7 +11,7 @@
         </x-slot:actions>
     </x-pulse::card-header>
 
-    <x-pulse::scroll :expand="$expand" wire:poll.30s="">
+    <x-pulse::scroll :expand="$expand" class="temari-card-body" wire:poll.30s="">
         <div class="text-label-micro text-text-3 mb-1">Failed blocks by attempts used</div>
         <div class="mb-4 flex gap-2 [&>*]:flex-1">
             @foreach ($buckets as $bucket)

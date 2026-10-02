@@ -34,6 +34,16 @@
             .dark .text-gray-400.text-gray-400,
             .dark .dark\:text-gray-600.dark\:text-gray-600 { color: #9ca3af; }
             .dark .hover\:text-gray-400.hover\:text-gray-400:hover { color: #d1d5db; }
+
+            @media (max-width: 1023.98px) {
+                .temari-card-body.temari-card-body { display: block; flex-basis: auto; }
+                .temari-card-body > [x-ref="content"] { overflow-y: visible; }
+                .temari-card-body [x-ref="fade"] { display: none; }
+            }
+
+            @media (max-width: 479.98px) {
+                .temari-card-body .grid-cols-4.grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            }
         </style>
         CSS;
 

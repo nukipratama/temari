@@ -5,7 +5,7 @@
         </x-slot:icon>
     </x-pulse::card-header>
 
-    <x-pulse::scroll :expand="$expand" wire:poll.30s="">
+    <x-pulse::scroll :expand="$expand" class="temari-card-body" wire:poll.30s="">
         @if ($tasks->isEmpty())
             <x-pulse::no-results />
         @else
