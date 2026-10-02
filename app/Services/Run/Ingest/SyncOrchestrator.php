@@ -48,7 +48,8 @@ class SyncOrchestrator
     /**
      * Walk at most `$maxPages` pages, starting below the `$before` epoch cursor
      * when given, and store what they hold. Returns the cursor to resume from,
-     * or null once the walk has finished.
+     * or null once the walk has finished. A walk skipped because another sync
+     * holds the user's lock returns `$before` unchanged.
      */
     public function syncUserPages(User $user, int $maxPages, ?int $before = null, StravaSyncSource $source = StravaSyncSource::Manual): ?int
     {
@@ -141,7 +142,7 @@ class SyncOrchestrator
         if (! $lock->get()) {
             Log::info('strava-sync skipped — another run holds the lock', ['user_id' => $user->id]);
 
-            return $finished;
+            return ['inserted' => 0, 'resume_before' => $before];
         }
 
         $credentialVersion = $connection->credential_version;

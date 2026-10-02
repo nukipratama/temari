@@ -44,9 +44,11 @@ class ActivityFetcher
      * window instead of pulling an athlete's entire history.
      *
      * When `$maxPages` is given, the walk stops after that many full pages and
-     * returns `resume_before`, the epoch start of the oldest activity it read;
-     * passing it back as `$before` resumes the walk just below that activity.
-     * `resume_before` is null once the walk has finished.
+     * returns `resume_before`, one second past the start of the oldest activity
+     * it read; passing it back as `$before` resumes the walk at that second, so
+     * a run sharing it is not lost, and the resumed walk skips runs it already
+     * holds instead of stopping on them. `resume_before` is null once the walk
+     * has finished.
      *
      * @return array{summaries: list<array<string, mixed>>, api_calls: int, resume_before: ?int}
      */
@@ -85,13 +87,14 @@ class ActivityFetcher
                 break;
             }
 
-            $stop = $this->collectNewSummaries($items, $existingSet, $windowStart, $since, $summaries);
+            $stop = $this->collectNewSummaries($items, $existingSet, $windowStart, $since, $summaries, stopOnKnown: $before === null);
 
             if ($stop || count($items) < self::PER_PAGE) {
                 break;
             }
             if ($maxPages !== null && $page >= $maxPages) {
-                $resumeBefore = $this->oldestStartEpoch($items);
+                $oldest = $this->oldestStartEpoch($items);
+                $resumeBefore = $oldest === null ? null : $oldest + 1;
                 break;
             }
             $page++;
@@ -127,7 +130,7 @@ class ActivityFetcher
      * @param  array<int, int>  $existingSet
      * @param  list<array<string, mixed>>  $summaries
      */
-    private function collectNewSummaries(array $items, array $existingSet, CarbonImmutable $windowStart, ?CarbonImmutable $since, array &$summaries): bool
+    private function collectNewSummaries(array $items, array $existingSet, CarbonImmutable $windowStart, ?CarbonImmutable $since, array &$summaries, bool $stopOnKnown): bool
     {
         foreach ($items as $item) {
             $id = (int) ($item['id'] ?? 0);
@@ -136,8 +139,9 @@ class ActivityFetcher
             }
             if (isset($existingSet[$id])) {
                 // Don't stop inside the trailing window: a backdated upload can
-                // still sit below this already-synced run.
-                if ($this->startedAfter($item, $windowStart)) {
+                // still sit below this already-synced run. A resumed backfill
+                // never stops on a known run; only Strava running out ends it.
+                if (! $stopOnKnown || $this->startedAfter($item, $windowStart)) {
                     continue;
                 }
 

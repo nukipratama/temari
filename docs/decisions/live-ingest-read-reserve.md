@@ -32,7 +32,7 @@ The two consumers are wildly asymmetric in cost:
 
 So **browsing costs far more than importing**, and it is user-driven and bursty. A cohort of new signups scrolling their archives is a plausible way to spend the whole pool in one 15-minute window.
 
-Meanwhile a run appearing promptly after it finishes is the product's core promise, and that path ([syncSingleActivity](app/Services/Run/Ingest/SyncOrchestrator.php#L59) → [IngestActivityJob](app/Jobs/Strava/IngestActivityJob.php#L20)) went through the exact same guard, with no notion of priority. Both paths even dispatch the *same job class*, so nothing downstream could tell them apart either.
+Meanwhile a run appearing promptly after it finishes is the product's core promise, and that path ([syncSingleActivity](app/Services/Run/Ingest/SyncOrchestrator.php#L60) → [IngestActivityJob](app/Jobs/Strava/IngestActivityJob.php#L20)) went through the exact same guard, with no notion of priority. Both paths even dispatch the *same job class*, so nothing downstream could tell them apart either.
 
 ## Decision
 

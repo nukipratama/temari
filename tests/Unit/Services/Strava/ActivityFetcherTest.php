@@ -293,7 +293,7 @@ it('reports how many Strava reads the walk spent', function (): void {
         ->and($result['summaries'])->toHaveCount(201);
 });
 
-it('stops at the page cap with the oldest start read as the resume cursor, and resumes below it', function (): void {
+it('stops at the page cap with one second past the oldest start read as the resume cursor, and resumes from it', function (): void {
     $connection = makeUnpersistedConnection();
     $page = fn (int $firstId, string $newest): array => array_map(fn (int $offset): array => [
         'id' => $firstId - $offset,
@@ -312,8 +312,8 @@ it('stops at the page cap with the oldest start read as the resume cursor, and r
 
     expect($capped['api_calls'])->toBe(1)
         ->and($capped['summaries'])->toHaveCount(200)
-        ->and($capped['resume_before'])->toBe(CarbonImmutable::parse('2026-03-01T06:00:00Z')->subHours(199)->getTimestamp())
-        ->and($resumed['resume_before'])->toBe(CarbonImmutable::parse('2026-02-01T06:00:00Z')->subHours(199)->getTimestamp());
+        ->and($capped['resume_before'])->toBe(CarbonImmutable::parse('2026-03-01T06:00:00Z')->subHours(199)->getTimestamp() + 1)
+        ->and($resumed['resume_before'])->toBe(CarbonImmutable::parse('2026-02-01T06:00:00Z')->subHours(199)->getTimestamp() + 1);
 
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), 'before='.$capped['resume_before'])
         && str_contains($request->url(), 'page=1'));

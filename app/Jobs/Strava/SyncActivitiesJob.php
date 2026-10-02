@@ -25,6 +25,8 @@ class SyncActivitiesJob implements ShouldQueue
 
     public const int PAGES_PER_ATTEMPT = 2;
 
+    public const int LOCK_RETRY_SECONDS = 30;
+
     public int $tries = 3;
 
     /**
@@ -67,7 +69,8 @@ class SyncActivitiesJob implements ShouldQueue
 
             $resumeBefore = $orchestrator->syncUserPages($user, self::PAGES_PER_ATTEMPT, $this->before, StravaSyncSource::Manual);
             if ($resumeBefore !== null) {
-                $this->prependToChain(new self($this->userId, before: $resumeBefore));
+                $next = new self($this->userId, before: $resumeBefore);
+                $this->prependToChain($resumeBefore === $this->before ? $next->delay(self::LOCK_RETRY_SECONDS) : $next);
             }
         } catch (StravaRateLimitedException $e) {
             Log::warning('strava-sync rate-limited', [

@@ -246,17 +246,18 @@ it('records the failure against the given user even when nothing was ever resolv
  * ceiling on every read so each page costs a worst-case slow call.
  *
  * @param  array<int, int>  $statusByRead  1-based read number => forced HTTP status
+ * @param  array<int, int>  $startOffsetByIndex  history index => start offset in hours, overriding the 12h spacing
  * @return list<array<string, mixed>>  the history, newest-first
  */
-function fakeSlowStravaHistory(int $runs, array $statusByRead = []): array
+function fakeSlowStravaHistory(int $runs, array $statusByRead = [], array $startOffsetByIndex = []): array
 {
     $newest = CarbonImmutable::parse('2026-08-01T06:00:00Z');
     $history = array_map(fn (int $offset): array => [
         'id' => 500_000 - $offset,
         'sport_type' => 'Run',
         'name' => 'Run',
-        'start_date' => $newest->subHours($offset * 12)->toIso8601String(),
-        'start_date_local' => $newest->subHours($offset * 12)->toIso8601String(),
+        'start_date' => $newest->subHours($startOffsetByIndex[$offset] ?? $offset * 12)->toIso8601String(),
+        'start_date_local' => $newest->subHours($startOffsetByIndex[$offset] ?? $offset * 12)->toIso8601String(),
         'distance' => 8_000.0,
         'moving_time' => 2_700,
         'elapsed_time' => 2_800,
@@ -342,7 +343,46 @@ it('walks at most PAGES_PER_ATTEMPT slow pages per attempt and chains a continua
     expect($next)->toBeInstanceOf(SyncActivitiesJob::class)
         ->and($next->userId)->toBe($user->id)
         ->and($next->stravaActivityId)->toBeNull()
-        ->and($next->before)->toBe(CarbonImmutable::parse($lastWalked['start_date'])->getTimestamp());
+        ->and($next->before)->toBe(CarbonImmutable::parse($lastWalked['start_date'])->getTimestamp() + 1);
+});
+
+it('chains a continuation that finds the per-user lock held again from the same cursor, after a delay', function (): void {
+    $user = connectedStravaUser();
+    fakeSlowStravaHistory(SyncActivitiesJob::PAGES_PER_ATTEMPT * 200 + 250);
+    Cache::lock("strava-sync:user-{$user->id}", 600)->get();
+
+    $job = new SyncActivitiesJob($user->id, before: 1_780_000_000);
+    $job->handle(app(SyncOrchestrator::class));
+
+    $next = unserialize($job->chained[0]);
+
+    expect(activityListReads())->toBe(0)
+        ->and($job->chained)->toHaveCount(1)
+        ->and($next->before)->toBe(1_780_000_000)
+        ->and($next->delay)->toBe(SyncActivitiesJob::LOCK_RETRY_SECONDS);
+});
+
+it('keeps walking past runs it already stored when a continuation resumes above them', function (): void {
+    $user = connectedStravaUser();
+    $history = fakeSlowStravaHistory(SyncActivitiesJob::PAGES_PER_ATTEMPT * 200 + 250);
+    new SyncActivitiesJob($user->id)->handle(app(SyncOrchestrator::class));
+
+    $retry = new SyncActivitiesJob($user->id, before: CarbonImmutable::parse($history[199]['start_date'])->getTimestamp());
+    $retry->handle(app(SyncOrchestrator::class));
+
+    expect(Activity::withStubs()->where('user_id', $user->id)->count())->toBe(600)
+        ->and($retry->chained)->toHaveCount(1);
+});
+
+it('stores both runs that start in the same second across a page boundary', function (): void {
+    $user = connectedStravaUser();
+    $boundary = SyncActivitiesJob::PAGES_PER_ATTEMPT * 200;
+    $runs = $boundary + 130;
+    fakeSlowStravaHistory($runs, startOffsetByIndex: [$boundary => ($boundary - 1) * 12]);
+
+    Bus::chain([new SyncActivitiesJob($user->id)])->dispatch();
+
+    expect(Activity::withStubs()->where('user_id', $user->id)->count())->toBe($runs);
 });
 
 it('completes a long backfill across chained attempts, ingesting every run exactly once before the chain moves on', function (): void {
