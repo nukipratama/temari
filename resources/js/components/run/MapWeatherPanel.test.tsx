@@ -159,6 +159,52 @@ describe('MapWeatherPanel', () => {
         ).not.toBeNull();
     });
 
+    it('keeps the wind and humidity units on one line', () => {
+        render(
+            <MapWeatherPanel detail={detail({ weather_wind_speed_kmh: 11 })} />,
+        );
+        expect(screen.getByText(/80% humidity/)).toHaveClass(
+            'whitespace-nowrap',
+        );
+        expect(screen.getByText(/11 km\/h/)).toHaveClass('whitespace-nowrap');
+    });
+
+    it('lets the weather row wrap and titles the place with its full name', () => {
+        const { container } = render(
+            <MapWeatherPanel
+                detail={detail({
+                    location_name:
+                        'Alun-alun Kidul, Yogyakarta, DIY, Indonesia',
+                })}
+            />,
+        );
+        expect(container.querySelector('[data-map-weather] > div')).toHaveClass(
+            'flex-wrap',
+        );
+        expect(
+            screen.getByTitle('Alun-alun Kidul, Yogyakarta, DIY, Indonesia'),
+        ).toBeInTheDocument();
+    });
+
+    it('gives the place its own top-ruled row on phones and a left-ruled cell beside the weather from sm up', () => {
+        render(
+            <MapWeatherPanel
+                detail={detail({ location_name: 'Senayan, Jakarta' })}
+            />,
+        );
+
+        expect(screen.getByTitle('Senayan, Jakarta')).toHaveClass(
+            'w-full',
+            'border-t',
+            'text-left',
+            'sm:w-auto',
+            'sm:ml-auto',
+            'sm:border-t-0',
+            'sm:border-l',
+            'sm:text-right',
+        );
+    });
+
     it('passes the className through to the wrapper', () => {
         const { container } = render(
             <MapWeatherPanel detail={detail()} className="flex" />,
