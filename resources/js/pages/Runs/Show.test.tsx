@@ -284,11 +284,13 @@ describe('Runs/Show', () => {
     it('asks how hard an unscored run felt at the top, before the hero', () => {
         renderShow({ detail: { ...detail, perceived_effort: null } });
         expect(
-            screen.getByRole('slider', { name: 'how hard did it feel' }),
+            screen.getByRole('slider', {
+                name: "forget the watch. how'd that one feel?",
+            }),
         ).toBeInTheDocument();
         expect(screen.queryByText(/\/10$/)).not.toBeInTheDocument();
-        expect(precedes('how hard did it feel', 'Activity')).toBe(true);
-        expect(precedes('how hard did it feel', 'Morning Run')).toBe(true);
+        expect(precedes('gut check', 'Activity')).toBe(true);
+        expect(precedes('gut check', 'Morning Run')).toBe(true);
     });
 
     it('collapses a saved score to a chip in the hero that reopens the picker', () => {
@@ -303,7 +305,9 @@ describe('Runs/Show', () => {
             screen.getByRole('button', { name: /change effort score/ }),
         );
         expect(
-            screen.getByRole('slider', { name: 'how hard did it feel' }),
+            screen.getByRole('slider', {
+                name: "forget the watch. how'd that one feel?",
+            }),
         ).toHaveAttribute('aria-valuetext', '7 of 10, very hard');
         expect(screen.queryByText('7/10')).not.toBeInTheDocument();
     });

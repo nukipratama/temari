@@ -373,8 +373,6 @@ describe('Home', () => {
         );
 
         expect(screen.queryByRole('slider')).not.toBeInTheDocument();
-        expect(
-            screen.queryByText('how hard did it feel'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('gut check')).not.toBeInTheDocument();
     });
 });

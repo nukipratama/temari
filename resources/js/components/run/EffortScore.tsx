@@ -3,6 +3,7 @@ import { useId, useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
+import TemariMascot from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
@@ -11,10 +12,13 @@ import {
     EFFORT_MAX,
     EFFORT_MIN,
     effortBand,
+    effortPose,
     effortWord,
 } from '@/lib/perceivedEffort';
 
 const UNRATED_START = 5;
+
+const VOICE_LINE = "forget the watch. how'd that one feel?";
 
 const SEGMENT_FILL = {
     easy: 'bg-leaf',
@@ -40,7 +44,7 @@ const SCORES = Array.from(
 );
 
 const quietButton =
-    'pressable focus-ring rounded text-[0.71875rem] font-bold text-text-2 hover:text-foreground disabled:opacity-60';
+    'pressable focus-ring-on-sky rounded text-[0.71875rem] font-bold text-cream/80 hover:text-cream disabled:opacity-60';
 
 function effortUrl(activityId: number): string {
     return `/activities/${activityId}/effort`;
@@ -109,30 +113,46 @@ export function EffortPicker({
     const [processing, setProcessing] = useState(false);
 
     return (
-        <div>
-            <Eyebrow token="small" tone="ink-3" as="div">
-                <label htmlFor={inputId}>how hard did it feel</label>
-            </Eyebrow>
+        <div
+            data-theme="dark"
+            className="rounded-panel bg-sky px-4 pb-3 pt-3.5 text-cream"
+        >
+            <div className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-x-2.5">
+                <TemariMascot pose={effortPose(draft)} size={44} onSky />
+                <div className="min-w-0">
+                    <Eyebrow token="small" tone="ink-on-sky">
+                        gut check
+                    </Eyebrow>
+                    <label
+                        htmlFor={inputId}
+                        className="mt-0.5 block font-serif text-quote-md italic text-cream"
+                    >
+                        {VOICE_LINE}
+                    </label>
+                </div>
+            </div>
 
             <div
                 data-score-row
-                className="mt-2 flex items-center justify-between gap-3"
+                className="mt-2.5 flex items-center justify-between gap-3"
             >
                 <p className="flex flex-wrap items-baseline gap-x-1.5">
                     <span
                         className={cn(
                             'text-stat',
-                            draft === null && 'text-text-3',
+                            draft === null ? 'text-ink-on-sky' : 'text-cream',
                         )}
                     >
                         {draft ?? '–'}
                     </span>
-                    <span className="text-label-small text-text-3">/ 10</span>
+                    <span className="text-label-small text-ink-on-sky">
+                        / 10
+                    </span>
                     <span
                         className={cn(
                             'ml-1 text-sm font-semibold',
                             draft === null
-                                ? 'text-text-3'
+                                ? 'text-ink-on-sky'
                                 : EFFORT_ICON_CLASS[effortBand(draft)],
                         )}
                     >
@@ -189,7 +209,7 @@ export function EffortPicker({
                 </div>
             </div>
 
-            <div className="relative mt-3 h-6">
+            <div className="relative mt-1.5 h-6">
                 <div
                     className="absolute inset-x-0 top-1/2 flex h-2 -translate-y-1/2 gap-0.5"
                     aria-hidden
@@ -222,14 +242,14 @@ export function EffortPicker({
                 />
             </div>
             <div
-                className="mt-1.5 grid grid-cols-10 gap-0.5 text-center"
+                className="mt-1 grid grid-cols-10 gap-0.5 text-center"
                 aria-hidden
             >
                 {ZONES.map((zone) => (
                     <span
                         key={zone.label}
                         className={cn(
-                            'text-label-micro text-text-3',
+                            'text-label-micro text-ink-on-sky',
                             zone.span,
                         )}
                     >

@@ -103,7 +103,7 @@ an activate pill of its own.
 
 ## Effort score
 
-Any run, of any age and with or without heart rate, can take an effort score. Unscored, an [EffortPicker](../../resources/js/components/run/EffortScore.tsx) sits at the top of the page, above the hero: "how hard did it feel" on a 1–10 slider with save on the score row. Saved, it collapses to a chip beside the mood chip in [RunHero](../../resources/js/components/run/RunHero.tsx) ("7/10 · very hard" in the band's ink on its tint) with "change", which reopens the picker, and "clear". The score is read from `detail.perceived_effort` and feeds no load; see [[an-effort-score-is-collected-on-every-run]].
+Any run, of any age and with or without heart rate, can take an effort score. Unscored, an [EffortPicker](../../resources/js/components/run/EffortScore.tsx) sits at the top of the page, above the hero, as a fixed-dark sky panel: a "gut check" eyebrow and the voice line "forget the watch. how'd that one feel?" beside a 44px [TemariMascot](../../resources/js/components/temari/TemariMascot.tsx) whose pose follows the slider ([effortPose](../../resources/js/lib/perceivedEffort.ts)), then the score row with save and the 1–10 slider. Saved, it collapses to a chip beside the mood chip in [RunHero](../../resources/js/components/run/RunHero.tsx) ("7/10 · very hard" in the band's ink on its tint) with "change", which reopens the picker, and "clear". The score is read from `detail.perceived_effort` and feeds no load; see [[an-effort-score-is-collected-on-every-run]].
 
 ## You vs past you
 

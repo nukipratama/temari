@@ -103,7 +103,7 @@ export default function RunsShow({
             <Head title={detail.name ?? 'Run'} />
             <PageContainer>
                 {!effortSaved && (
-                    <section className="mb-6 border-b border-dashed border-border pb-6">
+                    <section className="mb-6">
                         <EffortPicker
                             activityId={activity.id}
                             saved={effortScore}

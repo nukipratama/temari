@@ -1,3 +1,5 @@
+import type { Mood } from '@/types/inertia';
+
 export const EFFORT_MIN = 1;
 export const EFFORT_MAX = 10;
 
@@ -28,4 +30,24 @@ export function effortBand(score: number): EffortBand {
     }
 
     return score <= 6 ? 'steady' : 'hard';
+}
+
+export type EffortPose = Mood | 'neutral';
+
+/** Temari's face for a draft score: neutral until rated, then two scores per pose. */
+export function effortPose(score: number | null): EffortPose {
+    if (score === null) {
+        return 'neutral';
+    }
+    if (score <= 2) {
+        return 'chill';
+    }
+    if (score <= 4) {
+        return 'easy';
+    }
+    if (score <= 6) {
+        return 'blazing';
+    }
+
+    return score <= 8 ? 'gassed' : 'overloaded';
 }

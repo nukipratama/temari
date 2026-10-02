@@ -12,8 +12,17 @@ function renderPicker(saved: number | null = null, onClose = vi.fn()) {
     );
 }
 
+const VOICE_LINE = "forget the watch. how'd that one feel?";
+
 function slider(): HTMLElement {
-    return screen.getByRole('slider', { name: 'how hard did it feel' });
+    return screen.getByRole('slider', { name: VOICE_LINE });
+}
+
+function mascot(container: HTMLElement): Element {
+    const svg = container.querySelector('[data-mascot]');
+    expect(svg).not.toBeNull();
+
+    return svg as Element;
 }
 
 describe('EffortPicker', () => {
@@ -22,13 +31,65 @@ describe('EffortPicker', () => {
         vi.mocked(router.delete).mockReset();
     });
 
+    it('sits on a fixed-dark sky panel on both grounds', () => {
+        const { container } = renderPicker();
+
+        expect(container.firstElementChild).toHaveClass(
+            'bg-sky',
+            'rounded-panel',
+        );
+        expect(container.firstElementChild).toHaveAttribute(
+            'data-theme',
+            'dark',
+        );
+    });
+
+    it('opens with a gut-check eyebrow and a temari voice line', () => {
+        renderPicker();
+
+        expect(screen.getByText('gut check')).toHaveClass(
+            'text-label-small',
+            'text-ink-on-sky',
+        );
+        expect(screen.getByText(VOICE_LINE)).toHaveClass(
+            'font-serif',
+            'italic',
+            'text-cream',
+        );
+    });
+
+    it('holds the mascot in a fixed 44px column beside the text', () => {
+        const { container } = renderPicker();
+
+        const svg = mascot(container);
+        expect(svg).toHaveAttribute('width', '44');
+        expect(svg.parentElement).toHaveClass(
+            'grid',
+            'grid-cols-[44px_minmax(0,1fr)]',
+        );
+        expect(svg.parentElement?.firstElementChild).toBe(svg);
+        expect(svg.nextElementSibling).toContainElement(
+            screen.getByText('gut check'),
+        );
+    });
+
+    it('poses the mascot from the slider, neutral until it is touched', () => {
+        const { container } = renderPicker();
+
+        expect(mascot(container)).toHaveAttribute('data-mascot', 'neutral');
+        fireEvent.change(slider(), { target: { value: '3' } });
+        expect(mascot(container)).toHaveAttribute('data-mascot', 'easy');
+        fireEvent.change(slider(), { target: { value: '7' } });
+        expect(mascot(container)).toHaveAttribute('data-mascot', 'gassed');
+    });
+
     it('starts unrated: an en dash, a muted thumb, and save disabled until the slider moves', () => {
         renderPicker();
 
         expect(slider()).toHaveAttribute('aria-valuetext', 'not rated yet');
         expect(slider()).toHaveAttribute('data-rated', 'false');
         expect(screen.getByText('–')).toBeInTheDocument();
-        expect(screen.getByText('drag to rate')).toHaveClass('text-text-3');
+        expect(screen.getByText('drag to rate')).toHaveClass('text-ink-on-sky');
         expect(screen.getByRole('button', { name: 'save' })).toBeDisabled();
     });
 
