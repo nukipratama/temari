@@ -11,7 +11,7 @@ import type { AnalysisPayload } from '@/types/inertia';
 
 import { setMockPage } from '@/test/setup';
 
-import AnalysisStatus from './AnalysisStatus';
+import AnalysisStatus, { rendersNothing } from './AnalysisStatus';
 
 const BADGE_TEXT = /calculated with old zones/;
 const OLD_TS = '2026-01-01T00:00:00+00:00';
@@ -757,5 +757,26 @@ describe('AnalysisStatus', () => {
         expect(
             screen.getByRole('button', { name: 'flag this read' }),
         ).toBeInTheDocument();
+    });
+});
+
+describe('rendersNothing', () => {
+    it('is true for a plain pending block and false when window-gated', () => {
+        expect(rendersNothing('pending', null)).toBe(true);
+        expect(rendersNothing('pending', null, true)).toBe(false);
+    });
+
+    it('is false for queued, processing, failed and done-with-content', () => {
+        expect(rendersNothing('queued', null)).toBe(false);
+        expect(rendersNothing('processing', null)).toBe(false);
+        expect(rendersNothing('failed', null)).toBe(false);
+        expect(rendersNothing('done', 'text')).toBe(false);
+    });
+
+    it('agrees with the component for a pending block', () => {
+        const { container } = render(
+            <AnalysisStatus analysis={payload({ status: 'pending' })} />,
+        );
+        expect(container).toBeEmptyDOMElement();
     });
 });

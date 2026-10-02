@@ -2,7 +2,11 @@ import { usePage } from '@inertiajs/react';
 import { Clock, HeartPulse, RefreshCw } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
 
-import type { AnalysisPayload, SharedProps } from '@/types/inertia';
+import type {
+    AnalysisPayload,
+    AnalysisStatus as AnalysisStatusValue,
+    SharedProps,
+} from '@/types/inertia';
 
 import TemariMascot from '@/components/temari/TemariMascot';
 import { Icon } from '@/components/ui/Icon';
@@ -148,6 +152,21 @@ function RateLimitedNote({ onSky }: Readonly<{ onSky: boolean }>) {
             Easy there, Temari&apos;s overwhelmed. Try again in a bit.
         </span>
     );
+}
+
+export function rendersNothing(
+    status: AnalysisStatusValue,
+    content: string | null,
+    awaitingSchedule = false,
+): boolean {
+    if (status === 'queued' || status === 'processing' || status === 'failed') {
+        return false;
+    }
+    if (status === 'done' && content !== null) {
+        return false;
+    }
+
+    return !awaitingSchedule;
 }
 
 export default function AnalysisStatus({
@@ -360,7 +379,7 @@ export default function AnalysisStatus({
     // own, and a visible "not narrated yet" state reads as broken. A window-
     // gated block (awaitingSchedule) is a different, intentional case — it
     // explains why the recap isn't out yet, so it keeps its own message.
-    if (!awaitingSchedule) {
+    if (rendersNothing(effectiveStatus, content, awaitingSchedule)) {
         return null;
     }
 

@@ -140,13 +140,74 @@ describe('RunLenses', () => {
         expect(screen.queryByText('What stood out')).not.toBeInTheDocument();
     });
 
-    it('still shows the claims half while it is pending (nothing to parse yet)', () => {
+    it('hides the claims label while the insight is pending and empty', () => {
         const props = {
             ...defaultProps,
             insight: makeAnalysis(2, 'run_insight', 'pending'),
         };
+        const { container } = render(<RunLenses {...props} isChainHead />);
+        expect(screen.queryByText('What stood out')).not.toBeInTheDocument();
+        expect(container.querySelector('.border-dashed')).toBeNull();
+        expect(screen.getByText("This run's story")).toBeInTheDocument();
+    });
+
+    it('hides the story label while the story is pending and empty', () => {
+        const props = {
+            ...defaultProps,
+            story: makeAnalysis(1, 'post_run_speech', 'pending'),
+        };
         render(<RunLenses {...props} isChainHead />);
+        expect(screen.queryByText("This run's story")).not.toBeInTheDocument();
         expect(screen.getByText('What stood out')).toBeInTheDocument();
+    });
+
+    it.each(['queued', 'processing', 'failed'] as const)(
+        'keeps both labels while a block is %s',
+        (status) => {
+            const props = {
+                ...defaultProps,
+                story: {
+                    ...makeAnalysis(1, 'post_run_speech', 'pending'),
+                    status,
+                },
+                insight: {
+                    ...makeAnalysis(2, 'run_insight', 'pending'),
+                    status,
+                },
+            };
+            render(<RunLenses {...props} isChainHead />);
+            expect(screen.getByText("This run's story")).toBeInTheDocument();
+            expect(screen.getByText('What stood out')).toBeInTheDocument();
+        },
+    );
+
+    it('draws no "What Temari says" section when both lenses are empty', () => {
+        render(
+            <RunLenses
+                mood="easy"
+                story={makeAnalysis(1, 'post_run_speech', 'pending')}
+                insight={makeAnalysis(2, 'run_insight', 'pending')}
+                isChainHead
+            />,
+        );
+        expect(
+            screen.queryByRole('heading', { name: 'What Temari says' }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText("This run's story")).not.toBeInTheDocument();
+        expect(screen.queryByText('What stood out')).not.toBeInTheDocument();
+    });
+
+    it('keeps the section when only the insight claims are empty and the story is done', () => {
+        render(
+            <RunLenses
+                {...defaultProps}
+                insight={claimsAnalysis([])}
+                isChainHead
+            />,
+        );
+        expect(
+            screen.getByRole('heading', { name: 'What Temari says' }),
+        ).toBeInTheDocument();
     });
 
     it('shows the head-only reread control on the chain head', () => {
