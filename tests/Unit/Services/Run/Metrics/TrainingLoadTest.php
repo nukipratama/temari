@@ -111,6 +111,15 @@ it('does not roll future scored days into a pre-HR load date', function (): void
         ->and($this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::parse('2026-05-11'))['ctl_42d'])->toBeGreaterThan(0.0);
 });
 
+it('reads ATL and CTL from a series rolled past the load date exactly as rolling to it', function (): void {
+    $map = ['2026-03-02' => 80.0, '2026-03-05' => 45.5, '2026-04-20' => 120.0, '2026-05-01' => 60.0];
+    $asOf = Carbon::parse('2026-04-26');
+    $series = $this->load->rollDailySeries($map, Carbon::parse('2026-05-11'));
+
+    expect($this->load->summaryFromDailyMap($map, runDaysOf($map), $asOf, loadSeries: $series))
+        ->toBe($this->load->summaryFromDailyMap($map, runDaysOf($map), $asOf));
+});
+
 it('returns null from summaryFromDailyMap when the map is empty', function (): void {
     expect($this->load->summaryFromDailyMap([], [], Carbon::today()))->toBeNull();
 });

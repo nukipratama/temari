@@ -143,8 +143,7 @@ class WeeklyAggregator
                 return null;
             }
 
-            ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
-            $this->writeWeeks($user, $weekEnding, [$this->weekRow($user, $weekEnding, $details, $dailyTrimp, $runDays)]);
+            $this->writeWeeks($user, $weekEnding, $this->weekRows($user, $weekEnding, $weekEnding, $details));
 
             return $this->snapshotFor($user, $weekEnding);
         });
@@ -164,23 +163,14 @@ class WeeklyAggregator
             $lastWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
             // Load the lead-in window once (sized so even the anchor week has a
-            // converged CTL) and roll every week's snapshot from this shared series.
-            // weekRow filters to its own week and rolls the EWMA only through its
-            // $weekEnding, so a backdated activity propagates forward in one query.
+            // converged CTL) and roll every week's snapshot from this shared series,
+            // so a backdated activity propagates forward in one query.
             $details = $this->loadHistoryThrough($user, $lastWeekEnding, $this->leadInStart($anchorWeekEnding));
             if ($details->isEmpty()) {
                 return null;
             }
 
-            ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
-
-            $rows = [];
-            $weekEnding = $anchorWeekEnding->copy();
-            while ($weekEnding->lte($lastWeekEnding)) {
-                $rows[] = $this->weekRow($user, $weekEnding, $details, $dailyTrimp, $runDays);
-                $weekEnding = $weekEnding->copy()->addWeek();
-            }
-            $this->writeWeeks($user, $anchorWeekEnding, $rows);
+            $this->writeWeeks($user, $anchorWeekEnding, $this->weekRows($user, $anchorWeekEnding, $lastWeekEnding, $details));
 
             return $this->snapshotFor($user, $anchorWeekEnding);
         });
@@ -240,8 +230,6 @@ class WeeklyAggregator
                 return 0;
             }
 
-            ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
-
             // Non-empty (guarded above), so first() is present.
             $firstDetail = $details->first();
 
@@ -250,12 +238,7 @@ class WeeklyAggregator
             $firstWeekEnding = $earliest->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
             $today = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
-            $rows = [];
-            $weekEnding = $firstWeekEnding->copy();
-            while ($weekEnding->lte($today)) {
-                $rows[] = $this->weekRow($user, $weekEnding, $details, $dailyTrimp, $runDays);
-                $weekEnding = $weekEnding->copy()->addWeek();
-            }
+            $rows = $this->weekRows($user, $firstWeekEnding, $today, $details);
             $this->writeWeeks($user, $firstWeekEnding, $rows);
 
             return \count($rows);
@@ -276,21 +259,42 @@ class WeeklyAggregator
     }
 
     /**
-     * @param  Enumerable<int, ActivityDetail>  $details
+     * One row per week from $firstWeekEnding through $lastWeekEnding, each
+     * reading its own bucket of $details and its ATL/CTL from one EWMA roll
+     * over the whole range, so the cost stays linear in the history.
+     *
+     * @param  Collection<int, ActivityDetail>  $details
+     * @return list<array<string, mixed>>
+     */
+    private function weekRows(User $user, Carbon $firstWeekEnding, Carbon $lastWeekEnding, Collection $details): array
+    {
+        ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->dailyHistory($details);
+        $byWeek = $details->groupBy(
+            fn (ActivityDetail $d): string => (string) $d->start_date_local?->copy()->endOfWeek(Carbon::SUNDAY)->toDateString(),
+        );
+        $today = Carbon::today()->startOfDay();
+        $loadSeries = $dailyTrimp === []
+            ? []
+            : $this->trainingLoad->rollDailySeries($dailyTrimp, $lastWeekEnding->lessThan($today) ? $lastWeekEnding : $today);
+
+        $rows = [];
+        for ($weekEnding = $firstWeekEnding->copy(); $weekEnding->lte($lastWeekEnding); $weekEnding = $weekEnding->copy()->addWeek()) {
+            $weekDetails = $byWeek->get($weekEnding->toDateString(), new Collection());
+            $rows[] = $this->weekRow($user, $weekEnding, $weekDetails, $dailyTrimp, $runDays, $loadSeries, $today);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  Enumerable<int, ActivityDetail>  $weekDetails
      * @param  array<string, float>  $dailyTrimp
      * @param  array<string, true>  $runDays
+     * @param  array<string, array{0: float, 1: float}>  $loadSeries
      * @return array<string, mixed>
      */
-    private function weekRow(User $user, Carbon $weekEnding, Enumerable $details, array $dailyTrimp, array $runDays): array
+    private function weekRow(User $user, Carbon $weekEnding, Enumerable $weekDetails, array $dailyTrimp, array $runDays, array $loadSeries, Carbon $today): array
     {
-        $weekStart = $weekEnding->copy()->subDays(6)->startOfDay();
-        $weekEnd = $weekEnding->copy()->endOfDay();
-
-        $weekDetails = $details->filter(
-            fn (ActivityDetail $d): bool => $d->start_date_local !== null
-                && $d->start_date_local->between($weekStart, $weekEnd),
-        );
-
         $distanceKm = DistanceFormatter::km((float) $weekDetails->sum('distance'));
         $runs = $weekDetails->count();
         $elapsedTimeSec = (int) round((float) $weekDetails->sum('elapsed_time'));
@@ -300,9 +304,8 @@ class WeeklyAggregator
         // For the in-progress week, measure ATL/CTL as-of today rather than the
         // future Sunday, so days that have not happened yet are not zero-filled
         // (which would understate current fitness). Past weeks are unaffected.
-        $today = Carbon::today()->startOfDay();
         $loadAsOf = $weekEnding->lessThan($today) ? $weekEnding : $today;
-        $summary = $this->trainingLoad->summaryFromDailyMap($dailyTrimp, $runDays, $weekEnding, $loadAsOf);
+        $summary = $this->trainingLoad->summaryFromDailyMap($dailyTrimp, $runDays, $weekEnding, $loadAsOf, loadSeries: $loadSeries);
 
         return [
             'user_id' => $user->id,

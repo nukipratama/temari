@@ -87,9 +87,10 @@ class TrainingLoad
      *
      * @param  array<string, float>  $dailyTrimp  scored days only
      * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
+     * @param  array<string, array{0: float, 1: float}>|null  $loadSeries  {@see rollDailySeries} of the same $dailyTrimp, rolled through at least $loadAsOf
      * @return array<string, mixed>|null
      */
-    public function summaryFromDailyMap(array $dailyTrimp, array $runDays, Carbon $asOf, ?Carbon $loadAsOf = null, int $windowDays = 7): ?array
+    public function summaryFromDailyMap(array $dailyTrimp, array $runDays, Carbon $asOf, ?Carbon $loadAsOf = null, int $windowDays = 7, ?array $loadSeries = null): ?array
     {
         if ($dailyTrimp === []) {
             return null;
@@ -101,7 +102,7 @@ class TrainingLoad
             return null;
         }
 
-        [$atl, $ctl] = $this->rollLoads($dailyTrimp, $loadDate);
+        [$atl, $ctl] = $loadSeries === null ? $this->rollLoads($dailyTrimp, $loadDate) : $loadSeries[$loadDate->toDateString()];
         $form = round($ctl - $atl, 1);
         [$weeklyTrimp, $monotony, $strain] = $this->weekStats($dailyTrimp, $runDays, $weekAnchor, $windowDays);
         $ranges = $this->typicalWeeklyRanges($dailyTrimp, $runDays, $weekAnchor);
@@ -419,7 +420,7 @@ class TrainingLoad
      * @param  array<string, float>  $dailyTrimp
      * @return array<string, array{0: float, 1: float}>
      */
-    private function rollDailySeries(array $dailyTrimp, Carbon $today): array
+    public function rollDailySeries(array $dailyTrimp, Carbon $today): array
     {
         $decayAtl = exp(-1.0 / self::ATL_TAU);
         $decayCtl = exp(-1.0 / self::CTL_TAU);
