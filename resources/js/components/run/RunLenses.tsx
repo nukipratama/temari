@@ -10,7 +10,9 @@ import { useCallback, useMemo, useState } from 'react';
 
 import type { AnalysisPayload, Mood, SharedProps } from '@/types/inertia';
 
-import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import AnalysisStatus, {
+    rendersNothing,
+} from '@/components/temari/AnalysisStatus';
 import TemariMascot, { writingPose } from '@/components/temari/TemariMascot';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
@@ -90,13 +92,18 @@ function parseClaims(content: string): RunInsightClaim[] {
     }
 }
 
+function storyHasContent(story: AnalysisPayload): boolean {
+    return !rendersNothing(story.status, story.content);
+}
+
 /**
- * Whether the insight block has something to show. A block that is Done but
- * whose claims all failed the server-side anchor check decodes to an empty
- * list — render nothing for it, the same way a Pending block renders nothing,
- * rather than an empty half-card. Any other status defers to {@link AnalysisStatus}.
+ * A Done insight whose claims all failed the server-side anchor check decodes
+ * to an empty list, which counts as empty like a Pending block.
  */
 function insightHasContent(insight: AnalysisPayload): boolean {
+    if (rendersNothing(insight.status, insight.content)) {
+        return false;
+    }
     if (insight.status !== 'done' || insight.content === null) {
         return true;
     }
@@ -200,6 +207,7 @@ export default function RunLenses({
         Math.max(...lenses.map((a) => a.retry_after_seconds ?? 0)) || null,
     );
     const cooling = cooldownRemaining > 0;
+    const showStory = storyHasContent(story);
     const showInsight = insightHasContent(insight);
 
     const triggerAll = useCallback(async () => {
@@ -209,6 +217,10 @@ export default function RunLenses({
         router.reload({ only: inertiaReloadProps });
         setBulkPending(false);
     }, [bulkPending, cooling, lenses, inertiaReloadProps]);
+
+    if (!showStory && !showInsight) {
+        return null;
+    }
 
     return (
         <section className={className}>
@@ -228,22 +240,31 @@ export default function RunLenses({
             </header>
 
             <div className="mt-3">
-                <LensLabel icon={MessageCircle}>
-                    This run&apos;s story
-                </LensLabel>
-                <AnalysisStatus
-                    analysis={story}
-                    inertiaReloadProps={inertiaReloadProps}
-                    chained
-                    isChainHead={isChainHead}
-                    allowReanalyze={!isChainHead}
-                    renderContent={(text) => (
-                        <p className="narration">{renderBold(text)}</p>
-                    )}
-                />
+                {showStory && (
+                    <>
+                        <LensLabel icon={MessageCircle}>
+                            This run&apos;s story
+                        </LensLabel>
+                        <AnalysisStatus
+                            analysis={story}
+                            inertiaReloadProps={inertiaReloadProps}
+                            chained
+                            isChainHead={isChainHead}
+                            allowReanalyze={!isChainHead}
+                            renderContent={(text) => (
+                                <p className="narration">{renderBold(text)}</p>
+                            )}
+                        />
+                    </>
+                )}
 
                 {showInsight && (
-                    <div className="mt-3.5 border-t border-dashed border-border pt-3.5">
+                    <div
+                        className={cn(
+                            showStory &&
+                                'mt-3.5 border-t border-dashed border-border pt-3.5',
+                        )}
+                    >
                         <LensLabel icon={Lightbulb}>What stood out</LensLabel>
                         <AnalysisStatus
                             analysis={insight}

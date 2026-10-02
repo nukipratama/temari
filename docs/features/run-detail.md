@@ -148,7 +148,11 @@ which owns the pending / processing / failed / done states and the per-block
 "Try again" retry. These are **chained** analyses: only the chain head (the
 user's latest run, `isChainHead` from `Activity::latestIdForUser`) shows the
 single **Reread** control, a pill at the foot of the card that counts down the
-shared cooldown; historical runs are resume-only. See [[ai-pipeline]] for the
+shared cooldown; historical runs are resume-only. A half's label (and the
+hairline above it) is drawn only when its block will render something, decided by
+the same `rendersNothing` predicate `AnalysisStatus` uses: a plain pending block is
+empty, queued, processing and failed blocks keep their label, and when both halves
+are empty the whole section is not drawn. See [[ai-pipeline]] for the
 narrator/job model behind these rows.
 
 ## Ask about this run
