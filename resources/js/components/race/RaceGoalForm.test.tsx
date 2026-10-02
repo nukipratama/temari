@@ -341,6 +341,51 @@ describe('RaceGoalForm', () => {
         });
     });
 
+    it.each([
+        ['race_date', 'Race day', "That's further out than we can plan for."],
+        [
+            'distance_m',
+            'Custom distance in kilometers',
+            'A different distance is a different race.',
+        ],
+        [
+            'goal_time_sec',
+            'Hours',
+            'Goal time should be between 5 minutes and 72 hours.',
+        ],
+        ['name', 'Name (optional)', 'The name may not be greater than 120.'],
+    ])(
+        'shows the server error for %s beside its field',
+        (field, control, message) => {
+            setMockPage({ errors: { [field]: message } });
+            render(
+                <RaceGoalForm
+                    race={null}
+                    projection={null}
+                    onSaved={() => {}}
+                />,
+            );
+
+            const error = screen.getByText(message);
+            expect(error).toHaveAttribute('role', 'alert');
+            expect(error.closest('div')).toContainElement(
+                screen.getByLabelText(control),
+            );
+        },
+    );
+
+    it('shows the server error for intent beside the intent choice', () => {
+        setMockPage({ errors: { intent: 'The selected intent is invalid.' } });
+        render(
+            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+        );
+
+        const error = screen.getByText('The selected intent is invalid.');
+        expect(error.closest('div')).toContainElement(
+            screen.getByRole('group', { name: 'what are you changing?' }),
+        );
+    });
+
     it('restores the current race when switching back to updating it', () => {
         render(
             <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,

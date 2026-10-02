@@ -1,11 +1,12 @@
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { CircleAlert } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 
-import type { RaceProjection } from '@/types/inertia';
+import type { RaceProjection, SharedProps } from '@/types/inertia';
 
 import DateField from '@/components/ui/DateField';
 import Eyebrow from '@/components/ui/Eyebrow';
+import FieldError from '@/components/ui/FieldError';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
@@ -72,6 +73,7 @@ export default function RaceGoalForm({
     const [processing, setProcessing] = useState(false);
     const [intent, setIntent] = useState<RaceIntent>('update');
     const today = useTodayIso();
+    const errors = usePage<SharedProps>().props.errors ?? {};
 
     const updating = race !== null && intent === 'update';
 
@@ -160,6 +162,7 @@ export default function RaceGoalForm({
                                 </button>
                             ))}
                         </div>
+                        <FieldError message={errors.intent} />
                     </div>
                 )}
                 <div>
@@ -175,6 +178,7 @@ export default function RaceGoalForm({
                         placeholder="Jakarta Half 2026"
                         className={cn(inputVariants(), 'mt-1.5')}
                     />
+                    <FieldError message={errors.name} />
                 </div>
                 <div>
                     <label htmlFor="race_date" className={FIELD_LABEL}>
@@ -188,6 +192,7 @@ export default function RaceGoalForm({
                         onChange={setRaceDate}
                         className="mt-1.5"
                     />
+                    <FieldError message={errors.race_date} />
                 </div>
 
                 <div>
@@ -234,6 +239,7 @@ export default function RaceGoalForm({
                             &ldquo;add a new race&rdquo; to start one.
                         </p>
                     )}
+                    <FieldError message={errors.distance_m} />
                 </div>
 
                 <div>
@@ -279,14 +285,9 @@ export default function RaceGoalForm({
                         />
                         <span className={FIELD_LABEL}>sec</span>
                     </div>
-                    {goalTimeIssue && (
-                        <p
-                            role="alert"
-                            className="mt-1.5 font-sans text-xs text-ember-ink"
-                        >
-                            {goalTimeIssue}
-                        </p>
-                    )}
+                    <FieldError
+                        message={goalTimeIssue ?? errors.goal_time_sec}
+                    />
                     {!goalTimeIssue && goalTimeWarning && (
                         <p
                             role="alert"

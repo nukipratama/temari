@@ -29,6 +29,7 @@ import PushNotificationToggle from '@/components/PushNotificationToggle';
 import TemariMascot from '@/components/temari/TemariMascot';
 import Chip from '@/components/ui/Chip';
 import DateField from '@/components/ui/DateField';
+import FieldError from '@/components/ui/FieldError';
 import { Icon, IconComponent, TelegramIcon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
@@ -861,18 +862,6 @@ function SkipQuestionLink({ onClick }: Readonly<{ onClick: () => void }>) {
         >
             skip this
         </button>
-    );
-}
-
-function FieldError({ message }: Readonly<{ message?: string | null }>) {
-    if (!message) {
-        return null;
-    }
-
-    return (
-        <p role="alert" className="mt-1.5 font-sans text-xs text-ember-ink">
-            {message}
-        </p>
     );
 }
 
