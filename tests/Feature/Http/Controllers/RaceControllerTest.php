@@ -38,6 +38,16 @@ it('requires authentication for the index', function (): void {
     $this->get('/race')->assertRedirect('/login');
 });
 
+it('escapes a race name that would otherwise break out of the embedded page JSON', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['name' => '<!--<script>']);
+
+    $this->withoutVite()->actingAs($user)->get('/race')
+        ->assertSuccessful()
+        ->assertDontSee('<!--<script>', escape: false)
+        ->assertSee('"name":'.json_encode('<!--<script>', JSON_HEX_TAG), escape: false);
+});
+
 it('requires authentication for store', function (): void {
     $this->post('/race', racePayload())->assertRedirect('/login');
 });

@@ -690,9 +690,7 @@ final readonly class Periodizer
         $actuals = [];
         foreach ($inputs->actualSessions as $actual) {
             $date = $actual['date'];
-            if (! isset($actuals[$date])) {
-                $actuals[$date] = ['session_type' => SessionType::Easy, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'hard_minutes' => 0.0, 'duration_minutes' => 0, 'demanding' => false];
-            }
+            $actuals[$date] ??= ['session_type' => SessionType::Easy, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'hard_minutes' => 0.0, 'duration_minutes' => 0, 'demanding' => false];
             $actuals[$date]['duration_minutes'] += $actual['duration_minutes'] ?? 0;
             $actuals[$date]['demanding'] = $actuals[$date]['demanding'] || $actual['demanding'];
             $actuals[$date]['hard_minutes'] = $actuals[$date]['hard_minutes'] === null || ($actual['hard_minutes'] === null && $actual['demanding'])

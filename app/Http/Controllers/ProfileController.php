@@ -70,9 +70,7 @@ class ProfileController extends Controller
         // for, and the two that share the lifetime totals memoize them.
         $lifetime = null;
         $loadLifetime = function () use (&$lifetime, $lifetimeStats, $user): array {
-            if ($lifetime === null) {
-                $lifetime = $lifetimeStats->forUser($user);
-            }
+            $lifetime ??= $lifetimeStats->forUser($user);
 
             return $lifetime;
         };
