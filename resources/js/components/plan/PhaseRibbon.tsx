@@ -52,14 +52,16 @@ export default function PhaseRibbon({
 
     return (
         <div className="mt-3">
-            <div className="flex h-3 w-full overflow-hidden rounded-full border border-border">
+            <div className="flex h-3 w-full rounded-full border border-border">
                 {weeks.map((week, index) => (
                     <button
                         key={week.week_start}
                         type="button"
                         aria-label={cellLabel(week)}
                         className={cn(
-                            'focus-ring h-full min-w-0 flex-1',
+                            'focus-ring hit-area h-full min-w-0 flex-1',
+                            index === 0 && 'rounded-l-full',
+                            index === weeks.length - 1 && 'rounded-r-full',
                             week.zone === 'general' && 'bg-muted',
                             week.type === 'lookahead' && 'opacity-40',
                         )}

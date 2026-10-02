@@ -88,6 +88,9 @@ describe('PastYouCard', () => {
         expect(
             screen.getByRole('link', { name: /View that run/ }),
         ).toHaveAttribute('href', '/activities/42');
+        expect(screen.getByRole('link', { name: /View that run/ })).toHaveClass(
+            'hit-area',
+        );
     });
 
     it('tones a lower heart rate as good and a higher one as a warning', () => {

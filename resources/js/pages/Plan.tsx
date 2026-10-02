@@ -178,7 +178,7 @@ export default function Plan({
                     {` · ${sessionsPerWeek} sessions a week · `}
                     <Link
                         href="/race"
-                        className="focus-ring inline-flex items-center gap-0.5 font-semibold text-horizon-ink"
+                        className="focus-ring hit-area inline-flex items-center gap-0.5 font-semibold text-horizon-ink"
                     >
                         {race ? 'race goal' : 'set a race'}
                         <Icon
@@ -272,7 +272,7 @@ export default function Plan({
                     {disclaimerLine}{' '}
                     <Link
                         href="/training-disclaimer"
-                        className="focus-ring text-text-2 underline underline-offset-2 hover:text-foreground"
+                        className="focus-ring hit-area text-text-2 underline underline-offset-2 hover:text-foreground"
                     >
                         the full disclaimer
                     </Link>

@@ -144,6 +144,17 @@ describe('Race', () => {
             '/plan',
         );
         expect(screen.queryByText('race goal')).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'plan' })).toHaveClass(
+            'hit-area',
+        );
+    });
+
+    it('gives clear race a padded hit area', () => {
+        render(<Race race={RACE} projection={PROJECTION} />);
+
+        expect(screen.getByRole('button', { name: 'clear race' })).toHaveClass(
+            'hit-area',
+        );
     });
 
     it('shows the target alone when recent runs support no time yet', () => {

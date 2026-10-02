@@ -78,6 +78,14 @@ function openBand() {
 }
 
 describe('SeasonHeaderCard', () => {
+    it('pads the band toggle into a full-height hit area', () => {
+        renderCard();
+
+        expect(
+            screen.getByRole('button', { name: /^Week \d+ of \d+/ }),
+        ).toHaveClass('hit-area');
+    });
+
     it('places the athlete in the season', () => {
         renderCard();
 

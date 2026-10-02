@@ -114,7 +114,7 @@ export default function Inbox({
                                 <button
                                     type="button"
                                     onClick={markAllRead}
-                                    className="focus-ring shrink-0 rounded font-mono text-xs font-semibold text-text-3 transition hover:text-foreground"
+                                    className="focus-ring hit-area shrink-0 rounded font-mono text-xs font-semibold text-text-3 transition hover:text-foreground"
                                 >
                                     mark all read
                                 </button>

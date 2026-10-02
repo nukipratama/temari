@@ -166,6 +166,7 @@ describe('InboxRow', () => {
         renderRow({ created_at: '2026-08-13T07:30:00+07:00' });
 
         const toggle = screen.getByRole('button');
+        expect(toggle).toHaveClass('hit-area');
         const relativeText = toggle.textContent;
 
         await userEvent.click(toggle);
