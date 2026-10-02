@@ -4,19 +4,19 @@
 # syntax out from under us (a worker-directive rename took prod down once).
 # = dunglas/frankenphp:1.12.7-php8.5-alpine (PHP 8.5.11). Refresh after a bump with:
 #   docker buildx imagetools inspect dunglas/frankenphp:1-php8.5-alpine --format '{{.Manifest.Digest}}'
-ARG FRANKENPHP_DIGEST=sha256:34c27f58cd2343a004e836db3c82705150f4f47920b640b976707a6c7f4b8686
+FROM dunglas/frankenphp:1.12.7-php8.5-alpine@sha256:34c27f58cd2343a004e836db3c82705150f4f47920b640b976707a6c7f4b8686 AS frankenphp-base
 
 # Single pinned Node toolchain reused by the dev stage (copied in) and the
 # assets build, so dev/CI/prod all run the same Node. node:24.21.0-alpine
 # (Krypton LTS). Refresh after a version bump with:
 #   docker buildx imagetools inspect node:<ver>-alpine --format '{{.Manifest.Digest}}'
-FROM node@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS node-src
+FROM node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS node-src
 
 # ─── Stage: dev ─────────────────────────────────────────────────────────────
 # Local dev target — FrankenPHP traditional mode (no Octane worker).
 # Source code is volume-mounted at runtime; this stage only bakes in PHP
 # extensions and the dev Caddyfile. Run: `docker compose build --target dev`.
-FROM dunglas/frankenphp@${FRANKENPHP_DIGEST} AS dev
+FROM frankenphp-base AS dev
 WORKDIR /var/www/html
 
 # pcov is dev-stage only: local coverage runs need a coverage driver. The
@@ -89,7 +89,7 @@ EXPOSE 80
 # Digest-pinned like the other base images above. = composer:2.10.3. Refresh
 # after a bump with:
 #   docker buildx imagetools inspect composer:2 --format '{{json .Manifest.Digest}}'
-FROM composer@sha256:d8f6343d3fae98107426bc49163ccad46ef85aabd4a27d80a74401fab4aba332 AS vendor
+FROM composer:2.10.3@sha256:d8f6343d3fae98107426bc49163ccad46ef85aabd4a27d80a74401fab4aba332 AS vendor
 WORKDIR /var/www/html
 
 COPY composer.json composer.lock ./
@@ -125,7 +125,7 @@ RUN npm run build
 # ─── Stage 3: runtime ───────────────────────────────────────────────────────
 # FrankenPHP serves on :7001 (not :80) — auto_https is disabled in the
 # Caddyfile because Cloudflare terminates TLS at the edge.
-FROM dunglas/frankenphp@${FRANKENPHP_DIGEST}
+FROM frankenphp-base
 WORKDIR /var/www/html
 
 # Concrete thread count, not `auto`: the deploy runs docker-out-of-docker and
