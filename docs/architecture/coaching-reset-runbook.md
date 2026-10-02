@@ -23,7 +23,7 @@ Why the reset exists, and what it rewrites, is in [[a-one-time-reset-rebuilds-hi
 
 ## Steps on production
 
-Every step is an SSH or production action and needs the owner's approval each time it is used; an approval covers that one step only. Run artisan in the live app container, as the other production reads in [[deployment]] do.
+Every step is an SSH or production action and needs the owner's approval each time it is used; an approval covers that one step only. Run artisan in the live `app` service of [compose.prod.yaml](compose.prod.yaml), from the deploy directory on the host: `docker compose -f compose.prod.yaml exec app php artisan coaching:reset --dry-run`.
 
 1. Dry run: `php artisan coaching:reset --dry-run`. It prints, per athlete, runs summarised, personal records, weekly and trend snapshots, cards with a PR, past days by status, unknown effort, days ahead, seasons and stale narrations, before and after, then rolls back.
 2. The owner reviews the counts.
