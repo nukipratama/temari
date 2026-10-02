@@ -16,6 +16,7 @@ use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -35,7 +36,11 @@ class StravaClient
 
     public const int REFRESH_LOCK_TTL_SECONDS = 90;
 
-    private const int REFRESH_LOCK_WAIT_SECONDS = 15;
+    public const int REFRESH_LOCK_WAIT_SECONDS = 15;
+
+    public const int HTTP_CONNECT_TIMEOUT_SECONDS = 5;
+
+    public const int HTTP_TIMEOUT_SECONDS = 10;
 
     // Strava enforces rate limits per CLIENT (the whole app), not per athlete, so
     // these buckets are keyed globally and shared across every connected user. The
@@ -88,7 +93,7 @@ class StravaClient
         $this->guardRateLimit($priority);
 
         try {
-            $response = Http::baseUrl(self::apiBaseUrl())
+            $response = $this->http()->baseUrl(self::apiBaseUrl())
                 ->withToken($connection->access_token)
                 ->get($path, $query);
         } catch (ConnectionException $e) {
@@ -203,7 +208,7 @@ class StravaClient
         }
 
         try {
-            $response = Http::asForm()->post(self::DEAUTHORIZE_URL, [
+            $response = $this->http()->asForm()->post(self::DEAUTHORIZE_URL, [
                 'access_token' => $tokens['access_token'],
             ]);
         } catch (ConnectionException $e) {
@@ -230,6 +235,11 @@ class StravaClient
     public static function apiBaseUrl(): string
     {
         return rtrim((string) config('services.strava.api_base_url'), '/');
+    }
+
+    private function http(): PendingRequest
+    {
+        return Http::connectTimeout(self::HTTP_CONNECT_TIMEOUT_SECONDS)->timeout(self::HTTP_TIMEOUT_SECONDS);
     }
 
     private function breaker(): StravaCircuitBreaker
@@ -336,7 +346,7 @@ class StravaClient
     private function requestRefreshedTokens(string $refreshToken, bool $release = false): array
     {
         try {
-            $response = Http::asForm()->post(self::TOKEN_URL, [
+            $response = $this->http()->asForm()->post(self::TOKEN_URL, [
                 'client_id' => config('services.strava.client_id'),
                 'client_secret' => config('services.strava.client_secret'),
                 'grant_type' => 'refresh_token',
