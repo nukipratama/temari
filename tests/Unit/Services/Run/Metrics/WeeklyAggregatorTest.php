@@ -805,3 +805,42 @@ it('rebuilds a multi-year history into the same snapshot rows', function (Closur
     'one past week' => [fn (WeeklyAggregator $aggregator, User $user) => $aggregator->rebuildForWeekOf($user, Carbon::parse('2025-03-12')), '1:fef124f266e39ba634cd547c1bfca81b3b4203ac2f6391e44c244ec607902061'],
     'the in-progress week' => [fn (WeeklyAggregator $aggregator, User $user) => $aggregator->rebuildForWeekOf($user, Carbon::today()), '1:a62f714780bcca1c80f4a6175d608c1a2e921c982ff375ed84d2f33c4b13e103'],
 ]);
+
+it('finishes a rebuild that crosses midnight partway through', function (): void {
+    $user = User::factory()->create();
+    foreach ([9, 3, 1] as $daysAgo) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create([
+            'trimp_edwards' => 60.0,
+            'start_date_local' => Carbon::today()->subDays($daysAgo)->setTime(7, 0),
+        ]);
+    }
+    $beforeMidnight = Carbon::parse('2026-05-12 23:59:59');
+    $afterMidnight = Carbon::parse('2026-05-13 00:00:01');
+
+    $calls = 0;
+    Carbon::setTestNow(function () use (&$calls, $beforeMidnight): Carbon {
+        $calls++;
+
+        return $beforeMidnight->copy();
+    });
+    $this->aggregator->rebuildFor($user);
+    $totalCalls = $calls;
+
+    $failures = [];
+    for ($crossAfter = 1; $crossAfter < $totalCalls; $crossAfter++) {
+        $calls = 0;
+        Carbon::setTestNow(function () use (&$calls, $crossAfter, $beforeMidnight, $afterMidnight): Carbon {
+            return ++$calls <= $crossAfter ? $beforeMidnight->copy() : $afterMidnight->copy();
+        });
+
+        try {
+            $this->aggregator->rebuildFor($user);
+        } catch (Throwable $e) {
+            $failures[] = "{$crossAfter}: {$e->getMessage()}";
+        }
+    }
+
+    expect($totalCalls)->toBeGreaterThan(1)
+        ->and($failures)->toBe([]);
+});
