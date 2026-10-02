@@ -93,7 +93,7 @@ export default function MapWeatherPanel({
                     )}
                     {location != null && (
                         <div
-                            className="ml-auto max-w-full border-l border-border-strong pl-3 text-right"
+                            className="w-full max-w-full border-t border-border-strong pt-2 text-left sm:ml-auto sm:w-auto sm:border-t-0 sm:border-l sm:pt-0 sm:pl-3 sm:text-right"
                             title={location}
                         >
                             {(() => {

@@ -186,6 +186,25 @@ describe('MapWeatherPanel', () => {
         ).toBeInTheDocument();
     });
 
+    it('gives the place its own top-ruled row on phones and a left-ruled cell beside the weather from sm up', () => {
+        render(
+            <MapWeatherPanel
+                detail={detail({ location_name: 'Senayan, Jakarta' })}
+            />,
+        );
+
+        expect(screen.getByTitle('Senayan, Jakarta')).toHaveClass(
+            'w-full',
+            'border-t',
+            'text-left',
+            'sm:w-auto',
+            'sm:ml-auto',
+            'sm:border-t-0',
+            'sm:border-l',
+            'sm:text-right',
+        );
+    });
+
     it('passes the className through to the wrapper', () => {
         const { container } = render(
             <MapWeatherPanel detail={detail()} className="flex" />,
