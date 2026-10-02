@@ -49,11 +49,14 @@ const WeekSection = memo(function WeekSection({
 
     return (
         <div>
-            <div className="mb-2.5 flex items-baseline justify-between px-0.5">
-                <Eyebrow token="small" className="text-foreground">
+            <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 px-0.5">
+                <Eyebrow
+                    token="small"
+                    className="whitespace-nowrap text-foreground"
+                >
                     {bucket.label}
                 </Eyebrow>
-                <div className="font-mono text-[0.75rem] leading-[1.2] tabular-nums text-text-3">
+                <div className="ml-auto font-mono text-[0.75rem] leading-[1.2] whitespace-nowrap tabular-nums text-text-3">
                     {Math.round(countedRunCount)} run
                     {Math.round(countedRunCount) === 1 ? '' : 's'} ·{' '}
                     {countedTotalKm.toFixed(1)} km ·{' '}

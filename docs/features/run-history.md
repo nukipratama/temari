@@ -99,7 +99,9 @@ renders a plain mono meta line (runs / km / TRIMP), then the week's
 [RecapCard](../../resources/js/components/history/RecapCard.tsx) (mood-ringed
 Temari, narration, a tappable `WeeklyStatLine` — fatigue/ATL,
 variety/monotony, drift/decoupling, form/readiness word), then the runs via
-[RunListRow](../../resources/js/components/run/RunListRow.tsx). The stat line
+[RunListRow](../../resources/js/components/run/RunListRow.tsx) (the title, km and
+card sparkle own the first line; the date and time sit at the right of the
+time/pace/bpm line and drop to their own line on narrow screens). The stat line
 itself lives in [WeeklyStatLine](../../resources/js/components/history/WeeklyStatLine.tsx),
 shared with the Calendar's week disclosure below. Tapping a metric word
 reveals a plain explanation inline (no popover, so nothing gets clipped by
