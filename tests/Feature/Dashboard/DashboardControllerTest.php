@@ -618,3 +618,14 @@ it('ships no race-outcome prompt once every passed race has its outcome', functi
     $this->actingAs($user)->get('/')
         ->assertInertia(fn (Assert $page) => $page->where('pendingRaceOutcome', null));
 });
+
+it('does not ask how a race went on the morning of the race itself', function (): void {
+    Carbon::setTestNow('2026-10-04 06:00:00');
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-04', 'outcome' => RaceOutcome::Pending, 'completed_at' => null]);
+
+    $this->actingAs($user)->get('/')
+        ->assertInertia(fn (Assert $page) => $page->where('pendingRaceOutcome', null));
+
+    Carbon::setTestNow();
+});

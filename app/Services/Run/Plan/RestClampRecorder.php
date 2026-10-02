@@ -153,7 +153,7 @@ final readonly class RestClampRecorder
         }
         if ($session->readiness_assessment !== null
             && $session->readiness_assessment['ceiling'] === $assessment['ceiling']
-            && ($session->readiness_assessment['adjustment'] ?? null) === ($assessment['adjustment'] ?? null)
+            && ($session->readiness_assessment['adjustment'] ?? null) == ($assessment['adjustment'] ?? null)
             && $session->readiness_assessment['reasons'] === $assessment['reasons']) {
             $assessment = $session->readiness_assessment;
         }
@@ -182,7 +182,7 @@ final readonly class RestClampRecorder
             : ($adjustment['clamped_km'] !== null ? SessionType::Easy : $session->session_type);
         $session->update($attributes);
 
-        if ($notification !== null && ($oldSessionType !== $newSessionType || $oldClampedKm != $adjustment['clamped_km'] || $oldDose !== ($assessment['adjustment']['quality_dose'] ?? null))) {
+        if ($notification !== null && ($oldSessionType !== $newSessionType || $oldClampedKm != $adjustment['clamped_km'] || $oldDose != ($assessment['adjustment']['quality_dose'] ?? null))) {
             $this->tell($user, $today, $notification['session_type'], $notification['note']);
         }
 

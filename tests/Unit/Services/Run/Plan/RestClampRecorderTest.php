@@ -67,6 +67,18 @@ it('records a smaller quality dose and clears it when current feedback recovers'
     expect($session->clamped_km)->toBeNull()->and($session->readiness_assessment)->toBeNull();
 });
 
+it('keeps an unchanged quality dose as it is and tells the athlete once', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    moderateReadiness($user);
+    $session = todaysSession($user, 'tempo');
+    $session->update(['prescribed_hard_minutes' => 20, 'prescribed_pace_band' => 'threshold', 'prescribed_pace_sec_per_km' => 270]);
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
+        ->and(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse();
+    Notification::assertSentToTimes($user, DayClampedNotification::class, 1);
+});
+
 /** A current pain report is a strong readiness concern. */
 function bottomOutReadiness(User $user): void
 {
