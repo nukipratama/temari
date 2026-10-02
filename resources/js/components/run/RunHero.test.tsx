@@ -118,6 +118,14 @@ describe('RunHero', () => {
         expect(onShare).toHaveBeenCalledOnce();
     });
 
+    it('keeps the share button inside the clipped hero, with no negative margin', () => {
+        renderHero({ onShare: vi.fn() });
+
+        const button = screen.getByRole('button', { name: /Share/ });
+        expect(button).not.toHaveClass('-mr-1');
+        expect(button).not.toHaveClass('-mt-1');
+    });
+
     it('mounts the route + conditions slab from the same detail', () => {
         renderHero({}, { weather_temp_c: 24, location_name: 'Senayan' });
         expect(screen.getByText(/24°/)).toBeInTheDocument();

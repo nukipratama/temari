@@ -126,7 +126,7 @@ export default function RunHero({
                     <button
                         type="button"
                         onClick={onShare}
-                        className="focus-ring pressable -mr-1 -mt-1 inline-flex flex-none items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-label-micro text-text-2 transition hover:text-foreground"
+                        className="focus-ring pressable inline-flex flex-none items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-label-micro text-text-2 transition hover:text-foreground"
                     >
                         <Icon
                             icon={Share2}
