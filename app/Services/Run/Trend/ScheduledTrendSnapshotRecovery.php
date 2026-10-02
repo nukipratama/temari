@@ -30,9 +30,7 @@ final readonly class ScheduledTrendSnapshotRecovery
             $latest = Carbon::today()->startOfDay()->subDay();
             $cursor = $locked->trend_snapshots_scheduled_through;
 
-            if ($cursor === null) {
-                $cursor = $this->anchorFor($locked)->subDay();
-            }
+            $cursor ??= $this->anchorFor($locked)->subDay();
 
             if ($cursor->gte($latest)) {
                 $locked->forceFill(['trend_snapshots_scheduled_through' => $latest])->saveQuietly();

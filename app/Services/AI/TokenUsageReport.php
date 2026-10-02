@@ -188,14 +188,12 @@ class TokenUsageReport
             $cached = (int) $row->cached;
             $cost = $this->costCalculator->costFor($modelKey, $prompt, $completion, $cached);
 
-            if (! isset($kinds[$kindKey])) {
-                $kinds[$kindKey] = [
-                    'kind' => $kindKey,
-                    'prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'truncated_calls' => 0,
-                    'cached' => 0, 'reasoning' => 0, 'steps' => 0,
-                    'avg_sum' => 0.0, 'latency_calls' => 0, 'max_latency_ms' => null, 'cost' => 0.0,
-                ];
-            }
+            $kinds[$kindKey] ??= [
+                'kind' => $kindKey,
+                'prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'truncated_calls' => 0,
+                'cached' => 0, 'reasoning' => 0, 'steps' => 0,
+                'avg_sum' => 0.0, 'latency_calls' => 0, 'max_latency_ms' => null, 'cost' => 0.0,
+            ];
 
             $kinds[$kindKey]['prompt'] += $prompt;
             $kinds[$kindKey]['completion'] += $completion;
@@ -220,9 +218,7 @@ class TokenUsageReport
                 );
             }
 
-            if (! isset($models[$modelKey])) {
-                $models[$modelKey] = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'cached' => 0];
-            }
+            $models[$modelKey] ??= ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'cached' => 0];
             $models[$modelKey]['prompt'] += $prompt;
             $models[$modelKey]['completion'] += $completion;
             $models[$modelKey]['total'] += (int) $row->total;

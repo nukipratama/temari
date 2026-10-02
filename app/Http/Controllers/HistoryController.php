@@ -86,9 +86,7 @@ class HistoryController extends Controller
         /** @var array{notes: array<int, array{oneline: string, mood: string}>, moods: array<int, string>}|null $loadedNotes */
         $loadedNotes = null;
         $loadNotes = function () use ($loadRuns, &$loadedNotes): array {
-            if ($loadedNotes === null) {
-                $loadedNotes = $this->noteReader->bundleFor($loadRuns()->pluck('id')->all());
-            }
+            $loadedNotes ??= $this->noteReader->bundleFor($loadRuns()->pluck('id')->all());
 
             return $loadedNotes;
         };
