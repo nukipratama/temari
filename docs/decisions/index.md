@@ -139,6 +139,7 @@ _Design_
 - [[mascot-is-the-living-brand-mark]] — Temari is the logo's two arcs posed per mood; one mascot per card, a corner peek at most once per page, and the logo never reacts
 - [[mascot-watermark-replaces-the-corner-peek]] — the corner peek becomes a faint 200px watermark bleeding off the edge of every hero and recap card, placed where each card's content leaves room; the gutter tag grows to a 40px full face
 - [[a-runs-mood-follows-its-effort]] — a run's fallback mood follows the effort scale its colour uses, so a steady or hard run never gets the rest-day chill mood
+- [[a-quality-sessions-mood-follows-its-purpose]] — on a planned quality day a run's mood follows the session's purpose and its grade, a too-hard grade reads overloaded, and an eased day reads as what it was eased to
 - [[dark-is-the-default-ground]] — two authored grounds switched by `data-theme` on `<html>`, dark by default, with a ground-reactive semantic layer over a fixed named palette *(its default-ground half superseded by [[system-is-the-default-ground]]; the architecture still stands)*
 - [[system-is-the-default-ground]] — with no explicit Settings choice the ground follows `prefers-color-scheme`, and a missing key resolves the same way a stored `system` does
 - [[ink-grounds-derived-not-listed]] — the `-ink` tier is derived and audited against grounds read from the stylesheet and the components, and an unclassified background fails the build
