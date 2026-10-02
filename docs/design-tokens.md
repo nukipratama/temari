@@ -38,7 +38,7 @@ stylesheet, and a pruned variable would read there as a missing token.
 
 **Two guards enforce this page.** [scripts/check-raw-palette.mjs](../scripts/check-raw-palette.mjs)
 (`npm run check:palette`) fails CI on a value that never reached a token — a raw Tailwind
-shade, a default `shadow-lg`, an off-scale `rounded-2xl`. `/devtools/design`
+shade, a default `shadow-lg`, a sub-11px rem font size outside the card art. `/devtools/design`
 ([Design.tsx](../resources/js/pages/Devtools/Design.tsx)) catches the other half: values that
 *are* tokenised but inconsistent, by rendering the audits against the live CSS.
 
@@ -400,7 +400,9 @@ readable range, with one `max-w-none` opt-out on the truncated run note in
 left in the recap and today cards read as a layout fault rather than a reading aid, so narrator prose
 fills its container again and the opt-out went with it.
 
-Text floor is **11px** in app chrome — no `text-[9px]` / `text-[10px]`. Prefer a role utility over a raw size.
+Text floor is **11px** in app chrome — no `text-[9px]` / `text-[10px]`, and no rem literal under
+`text-[0.6875rem]`, which renders under 11px on the 16px phone root. Prefer a role utility over a raw
+size. `npm run check:palette` enforces the rem floor everywhere outside `resources/js/components/card/`.
 
 **Card-scoped exception:** the collectible **card** (`RunCardMini`, and the two share-image
 renderers) is a deliberate TCG artifact, where a sub-11px nameplate, `km` unit and edition number

@@ -5,7 +5,7 @@
  * templates under resources/views (error pages + the first-party Pulse cards),
  * minus the published vendor templates listed in EXCLUDED.
  *
- * Five rules, all enforcing the same thing — a value a designer can move must
+ * Six rules, all enforcing the same thing — a value a designer can move must
  * live in the `@theme` block of resources/css/app.css, not at a call site:
  *
  *   1. Colour must resolve through a semantic `--color-*` token (`bg-horizon`,
@@ -15,7 +15,8 @@
  *      defaults are neutral black, which reads dirty on a cream ground.
  *   3. Font size must resolve through a `--text-*` token, never a px literal in
  *      an arbitrary class. T2 stepped the root 20% at >=1280px; a px value opts
- *      out of that step while the type around it scales. A rem literal is fine.
+ *      out of that step while the type around it scales. A rem literal at or
+ *      above the floor (rule 6) is fine.
  *   4. The same, for an inline `fontSize` style prop. Canvas `ctx.font` strings
  *      are deliberately not matched — a canvas is a fixed raster, so px is
  *      correct there.
@@ -28,6 +29,9 @@
  *      flat colour, and an island scan misses it because `backgroundColor` on a
  *      gradient element is transparent — so a fixed-light stop under reactive
  *      text goes unreadable on the dark ground with nothing reporting it.
+ *   6. A rem font-size literal must not fall below the 11px floor
+ *      (`0.6875rem` at the 16px phone root). Card art under
+ *      resources/js/components/card/ is exempt, as MASTER.md documents.
  *
  * A third rule (off-scale radius: `rounded-2xl`/`3xl`/`4xl` sitting outside
  * the `--radius-*` scale) existed from the v2 token set until F2, which
@@ -167,6 +171,12 @@ const RULES = [
         fix: 'Use a ground-reactive token for a gradient stop (`from-popover`, `from-card`, `to-background`). A gradient is invisible to every contrast audit — contrast.mjs skips it for want of a flat colour to score, and an island scan misses it because `backgroundColor` on a gradient element is transparent — so a fixed-light stop under reactive text is unreadable on the dark ground and nothing reports it. Both 1.00:1 bugs the wrong-ground audit found were exactly this shape.',
         re: /\b(?:from|via|to)-(?:cream-deep|cream|surface-card|surface-elev|surface-warm|surface-sunken|surface|line-strong|line|ink-2|ink-3|ink|sky-deep|sky-2|sky)(?:\/[\w.[\]]+)?\b/g,
     },
+    {
+        name: 'sub-11px rem font-size',
+        fix: 'Use `.text-label-micro` or `.text-meta` (11px) where the role fits, otherwise `text-xs`. The root is 16px below 1280px, so a rem literal under `0.6875rem` renders under the 11px floor on every phone; only card art (resources/js/components/card/) is exempt.',
+        re: /\btext-\[(?:length:)?0?\.(?:[0-5]\d*|6(?:[0-7]\d*)?|68(?:[0-6]\d*)?|687(?:[0-4]\d*)?)rem\]/g,
+        exemptDir: 'resources/js/components/card/',
+    },
 ];
 
 /** `.blade.php` has a two-part extension, so match on the suffix, not extname(). */
@@ -188,22 +198,28 @@ function walk(dir) {
         );
 }
 
-export { RULES };
+function rulesFor(relativePath) {
+    return RULES.filter(
+        (rule) => !rule.exemptDir || !relativePath.startsWith(rule.exemptDir),
+    );
+}
+
+export { RULES, rulesFor };
 
 if (process.argv[1]?.endsWith('check-raw-palette.mjs')) {
     const files = scanDirs.flatMap(walk);
     const problems = new Map(RULES.map((rule) => [rule.name, []]));
 
     for (const file of files) {
+        const relative = path.relative(root, file);
+        const rules = rulesFor(relative);
         const lines = readFileSync(file, 'utf8').split('\n');
         lines.forEach((line, i) => {
-            for (const rule of RULES) {
+            for (const rule of rules) {
                 for (const match of line.match(rule.re) ?? []) {
                     problems
                         .get(rule.name)
-                        .push(
-                            `${path.relative(root, file)}:${i + 1}  ${match}`,
-                        );
+                        .push(`${relative}:${i + 1}  ${match}`);
                 }
             }
         });

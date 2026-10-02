@@ -1,4 +1,4 @@
-import { RULES } from '@scripts/check-raw-palette.mjs';
+import { RULES, rulesFor } from '@scripts/check-raw-palette.mjs';
 
 // Every fixture below is built via concatenation rather than written as one
 // literal, in code AND in comments — check-raw-palette.mjs itself scans
@@ -12,7 +12,7 @@ const rawShade = ['bg', 'blue', '500'].join('-');
 const legitToken = ['bg', 'sky', '2'].join('-');
 const offTokenShadow = ['shadow', 'lg'].join('-');
 const pxFontSize = ['text', '[13px]'].join('-');
-const remFontSize = ['text', '[0.8125rem]'].join('-');
+const remFontSize = ['text', '[0.6875rem]'].join('-');
 const inlinePxFont = ['fontSize', ' 20'].join(':');
 const canvasFont = ['700 30px "JetBrains', 'Mono"'].join(' ');
 
@@ -44,7 +44,7 @@ describe('check-raw-palette rules', () => {
         expect(inlinePxFont.match(RULES[3].re)).toEqual([inlinePxFont]);
     });
 
-    it('leaves rem font-sizes alone, since those scale with the root', () => {
+    it('leaves rem font-sizes at the 11px floor alone, since those scale with the root', () => {
         expect(RULES.some((rule) => remFontSize.match(rule.re) !== null)).toBe(
             false,
         );
@@ -68,13 +68,14 @@ describe('check-raw-palette rules', () => {
      * anything — proving the rule went away because it ran out of a
      * violation to find, not because RULES was silently trimmed further.
      */
-    it('has exactly the five rules the docstring documents', () => {
+    it('has exactly the six rules the docstring documents', () => {
         expect(RULES.map((rule) => rule.name)).toEqual([
             'raw Tailwind palette utility',
             'off-token shadow utility',
             'px font-size utility',
             'inline px font-size',
             'ground-fixed gradient stop',
+            'sub-11px rem font-size',
         ]);
     });
 
@@ -137,5 +138,47 @@ describe('ground-fixed gradient stop', () => {
             `bg-gradient-to-l ${reactiveFrom} to-transparent`.match(rule),
         ).toBeNull();
         expect(`bg-gradient-to-br ${identityFrom}`.match(rule)).toBeNull();
+    });
+});
+
+describe('sub-11px rem font-size', () => {
+    const rule = RULES[5].re;
+    const remSize = (value: string) => ['text', `[${value}rem]`].join('-');
+
+    it.each([
+        '0.625',
+        '0.59375',
+        '0.5625',
+        '0.5',
+        '.65',
+        '0.6',
+        '0.68',
+        '0.6874',
+    ])('flags %srem, which renders under 11px on a phone', (value) => {
+        expect(remSize(value).match(rule)).toEqual([remSize(value)]);
+    });
+
+    it('flags the length-hinted form too', () => {
+        const hinted = ['text', '[length:0.625rem]'].join('-');
+        expect(hinted.match(rule)).toEqual([hinted]);
+    });
+
+    it.each(['0.6875', '0.68751', '0.69', '0.75', '0.8125', '1.25'])(
+        'leaves %srem alone, at or above the floor',
+        (value) => {
+            expect(remSize(value).match(rule)).toBeNull();
+        },
+    );
+
+    it('applies everywhere except the card art', () => {
+        const names = (relativePath: string) =>
+            rulesFor(relativePath).map((r) => r.name);
+
+        expect(names('resources/js/components/home/NoPlanCard.tsx')).toContain(
+            'sub-11px rem font-size',
+        );
+        expect(names('resources/js/components/card/Card.tsx')).toEqual(
+            RULES.slice(0, 5).map((r) => r.name),
+        );
     });
 });

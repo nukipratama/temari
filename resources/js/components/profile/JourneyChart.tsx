@@ -246,7 +246,7 @@ export default function JourneyChart({
             {selected && (
                 <div
                     ref={tipRef}
-                    className="pointer-events-none absolute -translate-x-1/2 -translate-y-[130%] rounded-sm bg-sky px-2 py-1 font-mono text-[0.625rem] font-bold whitespace-nowrap text-cream shadow-e2"
+                    className="pointer-events-none absolute -translate-x-1/2 -translate-y-[130%] rounded-sm bg-sky px-2 py-1 text-meta font-bold whitespace-nowrap text-cream shadow-e2"
                     style={{ top: selected.y }}
                 >
                     <span>{`${selected.label}${selected.pr ? ' · PR' : ''} · ${formatDurationHMS(selected.time)}`}</span>

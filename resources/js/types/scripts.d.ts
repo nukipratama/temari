@@ -6,9 +6,13 @@
  */
 
 declare module '@scripts/check-raw-palette.mjs' {
-    export const RULES: ReadonlyArray<{
+    interface Rule {
         name: string;
         fix: string;
         re: RegExp;
-    }>;
+        exemptDir?: string;
+    }
+
+    export const RULES: ReadonlyArray<Rule>;
+    export function rulesFor(relativePath: string): Rule[];
 }
