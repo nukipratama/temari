@@ -392,14 +392,6 @@ describe('server-day helpers', () => {
         );
     });
 
-    it('useTodayIso falls back to the device date without a shared date', () => {
-        setMockPage({ today: undefined });
-
-        expect(renderHook(() => useTodayIso()).result.current).toBe(
-            '2026-10-03',
-        );
-    });
-
     it('daysUntilId counts from the given server date, not the device clock', () => {
         expect(daysUntilId('2026-10-05', '2026-10-02')).toBe(3);
         expect(daysUntilId('2026-10-02', '2026-10-02')).toBe(0);

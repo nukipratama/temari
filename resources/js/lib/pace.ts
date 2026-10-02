@@ -1,5 +1,4 @@
 import { usePage } from '@inertiajs/react';
-import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
@@ -311,10 +310,9 @@ export function isoDateLocal(d: Date): string {
     return `${y}-${m}-${day}`;
 }
 
-/** The server's calendar day as YYYY-MM-DD, falling back to the device date on a page without shared props. */
+/** The server's calendar day as YYYY-MM-DD. */
 export function useTodayIso(): string {
-    const [deviceToday] = useState(() => isoDateLocal(new Date()));
-    return usePage<SharedProps>().props.today ?? deviceToday;
+    return usePage<SharedProps>().props.today;
 }
 
 // Inverse of formatPace: parses "M:SS" (or "MM:SS") back to seconds-per-km.
