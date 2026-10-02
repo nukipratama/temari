@@ -148,12 +148,6 @@ final readonly class EffectiveSession
         return $this->easedPaceSecPerKm !== null;
     }
 
-    /** The km the ease took off the day, zero when nothing was eased. */
-    public function easedAwayKm(): float
-    {
-        return $this->isEased() ? $this->easedFromKm - $this->coreKm : 0.0;
-    }
-
     /** The ceiling a recorded ease implies, for the templated note it falls back to. */
     public function impliedCeiling(): ReadinessCeiling
     {

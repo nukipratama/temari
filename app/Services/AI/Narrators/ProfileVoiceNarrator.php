@@ -117,10 +117,11 @@ class ProfileVoiceNarrator
         patient style perfectly"). This page isn't a training dashboard: don't list
         out metrics, don't prescribe a session, don't make VDOT the main subject.
 
-        form_status (current load state: fresh/optimal/fatigued/overreaching) is
-        only for tuning the tone of the nudge, not the main subject. If
-        fatigued/overreaching, lean the nudge toward recovery, not "keep pushing",
-        and don't contradict the recap. If it's missing, ignore it.
+        load_balance (current running-load state: fresh/steady/heavy) is only for
+        tuning the tone of the nudge, not the main subject. If heavy, lean the nudge
+        toward easing off, not "keep pushing", and don't contradict the recap. It
+        counts running only, so never call it fatigue or fitness. If it's missing,
+        ignore it.
 
         If the user's just getting started (few total runs, thin mix), don't invent
         a big persona. Read it as-is and nudge gently.

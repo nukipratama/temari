@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Enums\Effort;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\Run\Metrics\DecouplingBands;
+use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
 use Illuminate\Support\Carbon;
@@ -41,7 +43,7 @@ class Temari
 
     public function postRunLine(Activity $activity, ActivityDetail $detail): StoryLine
     {
-        $mood = self::moodForActivity($detail, self::hasPr($activity));
+        $mood = self::moodForActivity($detail, self::hasPr($activity), self::effortOf($activity, $detail));
 
         return StoryLine::query()->updateOrCreate(
             [
@@ -95,7 +97,7 @@ class Temari
             return self::MOOD_ADEM;
         }
 
-        return self::moodForActivity($detail, self::hasPr($activity));
+        return self::moodForActivity($detail, self::hasPr($activity), self::effortOf($activity, $detail));
     }
 
     private static function hasPr(Activity $activity): bool
@@ -104,7 +106,7 @@ class Temari
     }
 
     // Order matters — first matching rule wins, most-prestigious mood first.
-    private static function moodForActivity(ActivityDetail $detail, bool $hasPr): string
+    private static function moodForActivity(ActivityDetail $detail, bool $hasPr, Effort $effort): string
     {
         $summary = StreamSummary::fromArray($detail->streamSummary());
         $hardShare = $summary->hardZoneShare();
@@ -132,8 +134,18 @@ class Temari
             // Finished strong (a hard-but-controlled session lands here too, since
             // an uncontrolled hard session was already caught as overloaded above).
             $negativeSplit => self::MOOD_ENTENG,
+            // Chill is the rest-day mood, so a run the effort scale reads as
+            // steady or hard never falls back to it.
+            $effort === Effort::Hard => self::MOOD_NYALA,
+            $effort === Effort::Steady => self::MOOD_ENTENG,
             default => self::MOOD_ADEM,
         };
+    }
+
+    /** The same effort the run's colour shows, from {@see RunEffort}. */
+    private static function effortOf(Activity $activity, ActivityDetail $detail): Effort
+    {
+        return RunEffort::forDetails($activity->user_id, collect([$detail]))[$activity->id] ?? Effort::Unknown;
     }
 
     public function moodForVibe(string $vibe): string

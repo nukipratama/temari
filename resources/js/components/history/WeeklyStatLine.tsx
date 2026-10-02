@@ -3,7 +3,11 @@ import { useId, useState } from 'react';
 import type { WeeklySnapshotWithRecap } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
-import { formStatusMeaning, formStatusWord } from '@/lib/formStatus';
+import {
+    formStatusMeaning,
+    formStatusWord,
+    loadBalanceOf,
+} from '@/lib/formStatus';
 import { METRIC_GLOSSARY } from '@/lib/metricGlossary';
 
 const MONOTONY_ALERT_AT = 1.5;
@@ -24,7 +28,7 @@ function buildMetrics(snapshot: WeeklySnapshotWithRecap): StatMetric[] {
     if (snapshot.atl_7d !== null) {
         metrics.push({
             key: 'atl',
-            word: 'fatigue',
+            word: 'short-term load',
             value: snapshot.atl_7d.toFixed(1),
             flagged: false,
             explanation: METRIC_GLOSSARY.atl.body,
@@ -40,7 +44,7 @@ function buildMetrics(snapshot: WeeklySnapshotWithRecap): StatMetric[] {
             value,
             flagged,
             explanation: flagged
-                ? `variety ${value}: slip in an easy day to break the week up, since intensity this flat nudges injury risk up.`
+                ? `variety ${value}: every day looked the same this week. an easy or rest day breaks it up.`
                 : METRIC_GLOSSARY.monotony.body,
         });
     }
@@ -62,9 +66,9 @@ function buildMetrics(snapshot: WeeklySnapshotWithRecap): StatMetric[] {
     if (snapshot.form_status !== null) {
         metrics.push({
             key: 'form',
-            word: 'form',
+            word: 'load balance',
             value: formStatusWord(snapshot.form_status),
-            flagged: snapshot.form_status === 'overreaching',
+            flagged: loadBalanceOf(snapshot.form_status) === 'heavy',
             explanation: formStatusMeaning(snapshot.form_status),
         });
     }

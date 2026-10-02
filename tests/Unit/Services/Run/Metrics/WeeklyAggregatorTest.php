@@ -218,8 +218,7 @@ it('keeps pre-HR load unknown after later scored runs arrive', function (string 
     $snapshot = $before->fresh();
     expect($snapshot->only($loadFields))->toBe(array_fill_keys($loadFields, null));
     $recapTotals = new WeekTotalsTool($snapshot)->handle([]);
-    expect($recapTotals['form_status'])->toBeNull()
-        ->and($recapTotals['form'])->toBeNull();
+    expect($recapTotals['load_balance'])->toBeNull();
 })->with(['full', 'forward', 'week']);
 
 it('persists a scored, a rest and an unscored week as three different facts', function (): void {

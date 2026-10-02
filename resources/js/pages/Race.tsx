@@ -2,9 +2,9 @@ import { Head, Link, router } from '@inertiajs/react';
 import { ArrowRight, CalendarX, Pencil } from 'lucide-react';
 import { useState } from 'react';
 
-import type { PastRace, RaceDetails } from '@/types/inertia';
+import type { PastRace, RaceDetails, RaceProjection } from '@/types/inertia';
 
-import RaceDuel, { type RaceProjection } from '@/components/race/RaceDuel';
+import RaceDuel from '@/components/race/RaceDuel';
 import RaceGoalForm from '@/components/race/RaceGoalForm';
 import RaceOutcomeCard from '@/components/race/RaceOutcomeCard';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
@@ -30,9 +30,9 @@ const MUTED_PILL =
     'focus-ring pressable inline-flex h-8 items-center gap-1.5 rounded-full bg-muted px-3 text-label-micro text-foreground transition-colors hover:bg-accent';
 
 /**
- * Race leads with the goal against the projection: one duel card under a
- * compact header, with the goal form folded behind "edit race". The CTL/ATL
- * fitness chart lives on Trends.
+ * Race leads with the target against the time recent runs support: one duel
+ * card under a compact header, with the goal form folded behind "edit race".
+ * The Riegel projection only backs the form's typed-goal warning.
  */
 export default function Race({
     race,
@@ -70,7 +70,8 @@ export default function Race({
                     <>
                         <RaceDuel
                             race={race}
-                            projection={projection}
+                            ambition={race.ambition}
+                            support={race.support}
                             className="mt-4"
                         />
                         <div className="mt-3 flex items-center justify-between gap-3 border-t border-dashed border-border pt-3">
@@ -115,8 +116,8 @@ export default function Race({
                 ) : (
                     <div className="mt-4 flex flex-col items-start gap-3">
                         <p className="text-sm leading-relaxed text-text-2">
-                            set a race and temari projects your finish from your
-                            own PRs.
+                            set a race and temari compares your target with what
+                            your recent runs support.
                         </p>
                         <button
                             type="button"

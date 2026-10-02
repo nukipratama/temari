@@ -393,7 +393,8 @@ it('weaves the snapshot real numbers into the weekly recap', function (): void {
 
     expect($recap)->toContain('24.6')
         ->and($recap)->toMatch('/\b4 (runs|sessions|times)\b/')
-        ->and($recap)->toContain('recovery next week');
+        ->and($recap)->toContain('illness, poor sleep or under-fuelling')
+        ->and($recap)->toContain('tell me how you feel');
 });
 
 /**
@@ -451,12 +452,12 @@ it('does not praise a week that is well below the athlete\'s usual', function ()
 
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    expect($recap)->not->toContain("that's the range where the work actually banks.")
+    expect($recap)->not->toContain('right around your usual week.')
         ->and($recap)->not->toContain('above your usual week')
         ->and($recap)->toContain('not a verdict on it');
 });
 
-it('keeps the banking line for a week in the athlete\'s usual range', function (): void {
+it('keeps the usual-week line for a week in the athlete\'s usual range', function (): void {
     $userId = WeeklySnapshot::factory()->create(['week_ending' => '2026-08-02', 'distance_km' => 30.0])->user_id;
     WeeklySnapshot::factory()->create(['user_id' => $userId, 'week_ending' => '2026-08-09', 'distance_km' => 32.0]);
     WeeklySnapshot::factory()->create(['user_id' => $userId, 'week_ending' => '2026-08-16', 'distance_km' => 28.0]);
@@ -471,7 +472,7 @@ it('keeps the banking line for a week in the athlete\'s usual range', function (
 
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    expect($recap)->toContain("that's the range where the work actually banks.");
+    expect($recap)->toContain('right around your usual week.');
 });
 
 it('reads a week well above the athlete\'s usual as a big week', function (): void {
@@ -489,7 +490,7 @@ it('reads a week well above the athlete\'s usual as a big week', function (): vo
 
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    expect($recap)->not->toContain("that's the range where the work actually banks.")
+    expect($recap)->not->toContain('right around your usual week.')
         ->and($recap)->toContain('above your usual week');
 });
 
@@ -764,4 +765,28 @@ it('keeps all copy free of em-dashes', function (): void {
     foreach ($samples as $sample) {
         expect($sample)->not->toContain('—');
     }
+});
+
+it('words every stored form status as fresh, steady or heavy with no diagnosis', function (string $status): void {
+    $snapshot = WeeklySnapshot::factory()->create([
+        'distance_km' => 24.6,
+        'runs' => 4,
+        'form_status' => $status,
+    ]);
+
+    $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
+
+    expect($recap)->not->toMatch('/overreach|fatigue|fitness|injur|sore|readiness/i');
+})->with(['fresh', 'optimal', 'fatigued', 'overreaching']);
+
+it('gives overreaching and fatigued weeks the same heavy closer', function (): void {
+    $closer = static function (string $status): string {
+        $snapshot = WeeklySnapshot::factory()->create(['distance_km' => 24.6, 'runs' => 4, 'form_status' => $status]);
+        $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
+
+        return substr($recap, (int) strpos($recap, 'your recent running is above'));
+    };
+
+    expect($closer('overreaching'))->toBe($closer('fatigued'))
+        ->and($closer('fatigued'))->toContain('under-fuelling');
 });

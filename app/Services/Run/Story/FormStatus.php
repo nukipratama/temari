@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Services\Run\Metrics\LoadBalance;
+use App\Services\Run\Metrics\TrainingFormStatus;
+
 final class FormStatus
 {
     /**
@@ -15,14 +18,7 @@ final class FormStatus
             return 'not read yet';
         }
 
-        // Mirror of resources/js/lib/formStatus.ts LABELS (keep both in sync).
-        return match ($load['form_status']) {
-            'fresh' => 'feeling fresh',
-            'optimal' => 'right on track',
-            'fatigued' => 'getting tired',
-            'overreaching' => 'overreaching',
-            default => 'right on track',
-        };
+        return self::balance($load)->value;
     }
 
     /**
@@ -34,11 +30,20 @@ final class FormStatus
             return 'neutral';
         }
 
-        return match ($load['form_status']) {
-            'fresh' => 'positive',
-            'fatigued' => 'warning',
-            'overreaching' => 'alert',
-            default => 'neutral',
+        return match (self::balance($load)) {
+            LoadBalance::Fresh => 'positive',
+            LoadBalance::Steady => 'neutral',
+            LoadBalance::Heavy => 'warning',
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $load
+     */
+    private static function balance(array $load): LoadBalance
+    {
+        $status = is_string($load['form_status'] ?? null) ? TrainingFormStatus::tryFrom($load['form_status']) : null;
+
+        return $status?->loadBalance() ?? LoadBalance::Steady;
     }
 }

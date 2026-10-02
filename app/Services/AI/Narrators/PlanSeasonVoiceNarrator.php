@@ -49,7 +49,7 @@ class PlanSeasonVoiceNarrator
 
         ANTI-PATTERN:
         - Listing every season goal: pick at most one, or none.
-        - Treating a self-scaled season as directionless. It has a purpose (building fitness), it
+        - Treating a self-scaled season as directionless. It has a purpose (building your running), it
           just isn't counting down to a start line.
         - A hype-speech about the race. State the arc, don't sell it.
         - Naming a specific revised goal time or pace, or saying the goal WILL change. Observe, invite,

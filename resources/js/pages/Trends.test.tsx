@@ -101,12 +101,12 @@ describe('Trends', () => {
 
         expect(headings).toEqual([
             'vs last week',
-            'vs a month ago',
-            'vs your own year',
+            'long-term load',
+            'vs race day',
         ]);
     });
 
-    it('renders "vs race day" instead of "vs your own year" when a race is set', () => {
+    it('counts down to race day when a race is set', () => {
         setMockPage({
             activeRace: {
                 id: 1,
@@ -122,7 +122,6 @@ describe('Trends', () => {
         expect(
             screen.getByText(/vs race day · \d+ days out/),
         ).toBeInTheDocument();
-        expect(screen.queryByText('vs your own year')).not.toBeInTheDocument();
     });
 
     it('shows the honest empty verdict card while narration is pending', () => {
@@ -160,7 +159,7 @@ describe('Trends', () => {
 
         expect(screen.getByText('am I getting fitter,')).toBeInTheDocument();
         expect(screen.queryByText('vs last week')).not.toBeInTheDocument();
-        expect(screen.queryByText('vs a month ago')).not.toBeInTheDocument();
+        expect(screen.queryByText('long-term load')).not.toBeInTheDocument();
         expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
             0,
         );

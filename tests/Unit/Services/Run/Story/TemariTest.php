@@ -2,13 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Enums\Effort;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PersonalRecord;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -271,9 +275,56 @@ it('no longer flags a moderately hard run (50% hard zone) as overloaded', functi
         'weather_temp_c' => 25,
     ]);
 
-    // hardShare 50 is under the raised 80 threshold, so this reads calm, not overreaching.
+    // hardShare 50 is under the raised 80 threshold, so this is not overloaded;
+    // its 20% in Z4 reads as hard work on the effort scale, so not the rest-day chill either.
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_ADEM);
+        ->toBe(Temari::MOOD_NYALA);
+});
+
+/** #1527: the run's effort colour and its mood tell one story. */
+it('never gives a planned tempo run the rest-day chill mood beside its moderate effort colour', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-09-14',
+        'session_type' => SessionType::Tempo,
+    ]);
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => '2026-09-14 06:00:00',
+        'elapsed_time' => 3_000,
+        'distance' => 9_000,
+        'workout_type' => null,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z2' => 60, 'Z3' => 30, 'Z4' => 10],
+            'negative_split' => false,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+
+    expect(RunEffort::forDetails($user->id, collect([$detail]))[$activity->id])->toBe(Effort::Steady)
+        ->and(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_ENTENG)
+        ->and(Temari::moodForActivityOrDefault($activity->fresh()))->toBe(Temari::MOOD_ENTENG);
+});
+
+it('keeps chill for an easy run with nothing else to say', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-09-14',
+        'session_type' => SessionType::Easy,
+    ]);
+    $activity = Activity::factory()->for($user)->create();
+    $detail = ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => '2026-09-14 06:00:00',
+        'elapsed_time' => 2_400,
+        'distance' => 6_000,
+        'stream_summary' => [
+            'time_in_zone_pct' => ['Z1' => 30, 'Z2' => 70],
+            'negative_split' => false,
+        ],
+        'weather_temp_c' => 25,
+    ]);
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_ADEM);
 });
 
 it('picks squished mood on hot-weather easy runs', function (): void {

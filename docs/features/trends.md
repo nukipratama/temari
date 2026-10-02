@@ -3,7 +3,7 @@ title: Trends
 description: /trends — Temari's 7-day verdict, then three stacked comparisons (vs last week, vs a month ago, vs race day)
 tags: [feature, trends]
 status: living
-reviewed: 2026-09-17
+reviewed: 2026-10-02
 code_refs:
   - resources/js/pages/Trends.tsx
   - app/Http/Controllers/TrendsController.php
@@ -50,7 +50,7 @@ remains the fingerprint-gated fallback. First connect still uses
 
 [WeekComparison](resources/js/components/trends/WeekComparison.tsx) is the widest section, since it
 carries both halves of the page's question in one card, separated by a rule: km and runs this week
-against last week through the same weekday (the gain), then form in words, weekly TRIMP, monotony
+against last week through the same weekday (the gain), then load balance in words, weekly TRIMP, monotony
 and strain (the cost). Every number keeps its own label, and every training-load term carries a
 one-line plain-language gloss (`formStatusMeaning`, `resources/js/lib/formStatus.ts`) per the
 jargon-accessibility rule in [[voice-and-tone]].
@@ -60,32 +60,34 @@ jargon-accessibility rule in [[voice-and-tone]].
 `load` is one [TrainingLoad::summary()](app/Services/Run/Metrics/TrainingLoad.php) call at the
 7-day window, not one entry per range. The comparison labels carry the current Monday-to-today
 slice and the prior week's matching weekdays; the load tiles carry their trailing seven calendar
-dates. The form value is labelled with its as-of date. All three windows share the controller's
+dates. The load balance value is labelled with its as-of date. All three windows share the controller's
 app-local `today`, and the calendar slice uses the same Sunday-ending week boundaries as
 `BriefingContext`. See [[training-load-metrics]].
 
-## vs a month ago
+## Long-term load (vs a month ago)
 
-[MonthComparison](resources/js/components/trends/MonthComparison.tsx) owns the fitness chart: one
+[MonthComparison](resources/js/components/trends/MonthComparison.tsx) owns the long-term load chart: one
 CTL line over the full 365-day `ctlTrend` series (Chart.js, via
 [FitnessPanel](resources/js/components/trends/panels/FitnessPanel.tsx)), with the trailing 30 days
 shaded and the deload marker kept — no ATL line, no stat tiles on the chart itself, no badge chips.
-The categorical form-status band beneath the line is a plain flex strip, not a second Chart.js
-dataset: each day's status ([`formStatusFor`](resources/js/lib/formStatus.ts), mirroring
+The categorical load balance band beneath the line is a plain flex strip, not a second Chart.js
+dataset: each day's status (`BAND_BUCKET` in [FitnessPanel](resources/js/components/trends/panels/FitnessPanel.tsx), mirroring
 [TrainingLoad::formStatus()](app/Services/Run/Metrics/TrainingLoad.php)) is bucketed into
-fresh/balanced/tired and collapsed into runs.
+fresh/steady/heavy (`fatigued` and `overreaching` both heavy) and collapsed into runs.
 
-Fitness-now, a-month-ago and best-this-year are read off that same `ctlTrend` series client-side
+Long-term load now, a-month-ago and best-this-year are read off that same `ctlTrend` series client-side
 ([resources/js/lib/trends.ts](resources/js/lib/trends.ts): `ctlNow`, `ctlDaysAgo`, `ctlPeak`) —
 no new backend query, so the card and the line can never disagree.
 
 ## vs race day
 
-[RaceComparison](resources/js/components/trends/RaceComparison.tsx) closes the page: days out, the
-target time and pace, and where fitness sits today, read from the `activeRace` shared prop
-([GamificationProps](app/Services/Inertia/GamificationProps.php)) rather than a page-specific
-query. With no race set it renders **vs your own year** instead — today against the highest CTL in
-the same 365-day series — plus a "set a race" link to `/race`.
+[RaceComparison](resources/js/components/trends/RaceComparison.tsx#L40) closes the page: days out, then
+"your target" with its time and pace beside "supported by your recent runs", the VDOT race equivalent,
+and the one sentence that states the band, all from the same `RacePresenter` as `/race`
+([TrendsController::raceOutlook()](app/Http/Controllers/TrendsController.php#L55), [[race-projection]],
+[[the-race-page-sets-the-target-beside-supported-time]]). It repeats no long-term load hero: a single
+"load balance today" line closes the section. With no race set it is one line and a "set a race" link
+to `/race`, with no repeated long-term load.
 
 ## Removed (#967)
 

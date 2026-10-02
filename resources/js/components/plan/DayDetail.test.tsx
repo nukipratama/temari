@@ -53,11 +53,12 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
-        clamp: null,
+        advice_note: null,
         eased_from: null,
         pace_eased_from: null,
         credit_note: null,
-        hot_note: null,
+        ran_hot: false,
+        result_note: null,
         ran_pace_sec_per_km: null,
         actual_km: null,
         credited_km: null,
@@ -629,29 +630,18 @@ describe('DayHeadline and DayDetail', () => {
         ).toBeInTheDocument();
     });
 
-    /**
-     * The clamp is advisory: it eases today, it does not replace the plan. The
-     * card must still lead with what the plan asked for, because that is what
-     * the narration above it describes and what compliance grades against.
-     */
-    it('shows the readiness step-down beside the day, not instead of it', () => {
+    it('keeps a pinned day leading with the safety advice as one line, not a second session', () => {
         renderRow({
             day: day({
                 date: TODAY,
                 distance_km: 9.1,
-                clamp: {
-                    session_type: 'easy',
-                    distance_km: 5.9,
-                    pace_sec_per_km: 450,
-                    note: 'Eased off, you slept badly.',
-                    label: 'eased today',
-                },
+                pinned: true,
+                advice_note: 'Eased off, you slept badly.',
             }),
         });
 
         expect(screen.getByText('9.1 km · 5:00/km')).toBeInTheDocument();
-        expect(screen.getByText('eased today')).toBeInTheDocument();
-        expect(screen.getByText('easy · 5.9 km · 7:30/km')).toBeInTheDocument();
+        expect(screen.queryByText('eased today')).not.toBeInTheDocument();
         expect(
             screen.getByText('Eased off, you slept badly.'),
         ).toBeInTheDocument();
@@ -901,35 +891,14 @@ describe('DayHeadline and DayDetail', () => {
         expect(document.body).toHaveTextContent(/5\.9\s*[↑↓]\s*4\.1/);
     });
 
-    /** The server decides what the step-down is for; the row must not hardcode
-     *  a label that contradicts the note beside it. */
-    it('renders the server label rather than a fixed one', () => {
-        renderRow({
-            day: day({
-                date: TODAY,
-                distance_km: 9.1,
-                clamp: {
-                    session_type: 'easy',
-                    distance_km: 3.6,
-                    pace_sec_per_km: 450,
-                    note: 'Quality work waits until you are fresher.',
-                    label: 'stepped down',
-                },
-            }),
-        });
-
-        expect(screen.getByText('stepped down')).toBeInTheDocument();
-        expect(screen.queryByText('eased today')).not.toBeInTheDocument();
-    });
-
     /** A finished day states what it came to; the second-menu prompt is gone,
-     *  and the server ships no clamp once the day is credited. */
+     *  and the server ships no advice once the day is credited. */
     it('explains a long day whose distance arrived in pieces', () => {
         renderRow({
             day: day({
                 date: TODAY,
                 status: 'partial',
-                clamp: null,
+                advice_note: null,
                 credit_note:
                     'the distance was there, but not in one run. a long day is time on feet in one go.',
             }),
@@ -938,7 +907,7 @@ describe('DayHeadline and DayDetail', () => {
         expect(screen.getByText(/not in one run/)).toBeInTheDocument();
     });
 
-    it('shows no step-down on a day the clamp did not touch', () => {
+    it('shows no advice line on a day nothing eased', () => {
         renderRow();
 
         expect(screen.queryByText('eased today')).not.toBeInTheDocument();
@@ -1051,7 +1020,9 @@ describe('DayHeadline and DayDetail', () => {
                 prescribed_km: 6.8,
                 actual_km: 7,
                 credited_km: 7,
-                hot_note: '64% of the run sat above Z2.',
+                ran_hot: true,
+                result_note:
+                    'it ran harder than the easy effort the day asked for.',
             }),
         });
 
@@ -1059,7 +1030,9 @@ describe('DayHeadline and DayDetail', () => {
         expect(screen.queryByText(/^overreached/)).not.toBeInTheDocument();
 
         expect(
-            screen.getByText('64% of the run sat above Z2.'),
+            screen.getByText(
+                'it ran harder than the easy effort the day asked for.',
+            ),
         ).toBeInTheDocument();
     });
 
@@ -1117,19 +1090,13 @@ describe('hasDayDetail', () => {
         );
     });
 
-    it('has detail for a clamped day even with no segments', () => {
+    it('has detail for a day carrying safety advice even with no segments', () => {
         expect(
             hasDayDetail(
                 day({
                     date: TODAY,
                     segments: [],
-                    clamp: {
-                        label: 'eased for today',
-                        session_type: 'easy',
-                        distance_km: 6,
-                        pace_sec_per_km: null,
-                        note: 'legs need it.',
-                    },
+                    advice_note: 'legs need it.',
                 }),
                 [],
                 TODAY,

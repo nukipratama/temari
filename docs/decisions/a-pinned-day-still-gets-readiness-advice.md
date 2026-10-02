@@ -12,6 +12,8 @@ code_refs:
   - app/Http/Controllers/PlanController.php
 ---
 
+> **Partly superseded (2026-10-02) by [[the-advised-session-leads-every-day]].** A pinned day keeps its prescription and carries the advice as one note rather than a step-down; the rest of this decision stands.
+
 # A pinned day still gets readiness advice
 
 ## Context

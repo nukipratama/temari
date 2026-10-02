@@ -53,7 +53,7 @@ export const CHART_GROUND = {
     light: {
         grid: 'rgba(22,24,27,.08)',
         tick: '#34373c', // = text-2 on light
-        secondaryLine: '#60666d', // = text-3 on light — the Fatigue/ATL stroke
+        secondaryLine: '#60666d', // = text-3 on light — the short-term load/ATL stroke
         pointBorder: '#f1f5f8', // = card on light
         line: PALETTE.horizonInk, // primary accent stroke, ink-safe on light
         border: '#bfc5cc', // = border on light — neutral marker outlines

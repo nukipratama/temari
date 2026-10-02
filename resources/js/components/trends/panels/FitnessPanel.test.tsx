@@ -72,7 +72,7 @@ describe('FitnessPanel', () => {
 
         expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
         expect(lastData!.datasets).toHaveLength(1);
-        expect(lastData!.datasets[0].label).toBe('fitness');
+        expect(lastData!.datasets[0].label).toBe('long-term load');
         expect(lastData!.datasets[0].data).toHaveLength(90);
     });
 
@@ -112,7 +112,7 @@ describe('FitnessPanel', () => {
         });
 
         expect(
-            await screen.findByText(/jan 6 · fitness 41/),
+            await screen.findByText(/jan 6 · long-term load 41/),
         ).toBeInTheDocument();
     });
 
@@ -138,10 +138,10 @@ describe('FitnessPanel', () => {
         render(<FitnessPanel trend={pointsOverDays(30, { dip: true })} />);
 
         expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
-        // Fresh (from the -5 gap) and tired (from the injected spike) both
+        // Fresh (from the -5 gap) and heavy (from the injected spike) both
         // surface in the legend.
         expect(screen.getByText('fresh')).toBeInTheDocument();
-        expect(screen.getByText('tired')).toBeInTheDocument();
+        expect(screen.getByText('heavy')).toBeInTheDocument();
     });
 
     it('shades warm-up days as still learning rather than any verdict', async () => {
@@ -157,7 +157,7 @@ describe('FitnessPanel', () => {
         expect(screen.getByText('fresh')).toBeInTheDocument();
     });
 
-    it('mentions the current fitness reading in the accessible summary', async () => {
+    it('mentions the current long-term load reading in the accessible summary', async () => {
         const trend = pointsOverDays(10);
         render(<FitnessPanel trend={trend} />);
 

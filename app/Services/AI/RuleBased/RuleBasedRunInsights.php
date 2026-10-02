@@ -71,7 +71,7 @@ final class RuleBasedRunInsights
         $text = match (true) {
             $decoupling > DecouplingBands::HIGH => self::decouplingHighText($detail),
             $decoupling > DecouplingBands::TIGHT => 'Decoupling stayed within a normal range, HR tracked pace pretty well.',
-            default => 'Decoupling stayed tight, your aerobic fitness held up well across the run.',
+            default => 'Decoupling stayed tight, your heart rate held steady against pace across the run.',
         };
 
         $claims[] = ['anchor' => 'metric:decoupling', 'text' => $text, 'value' => $value, 'delta' => null];
@@ -83,7 +83,7 @@ final class RuleBasedRunInsights
 
         return $temp !== null && $temp >= self::DECOUPLING_HOT_TEMP_C
             ? "Decoupling climbed, but that's the ~{$temp} degree heat talking, not your aerobic base slipping."
-            : "Decoupling drifted up, your aerobic base isn't quite solid yet.";
+            : 'Decoupling drifted up. A long run, warmth and not drinking enough all raise it, so read it next to how the run went.';
     }
 
     /**

@@ -24,6 +24,11 @@ code_refs:
   - app/Services/Run/Plan/RaceAmbition.php
   - app/Services/Run/Metrics/RiegelProjector.php
   - app/Services/Gamification/SeasonGamificationContext.php
+  - app/Services/Run/Metrics/TrainingFormStatus.php
+  - app/Services/Run/Plan/PlanRenderer.php
+  - app/Services/Run/Story/Temari.php
+  - resources/js/components/settings/HrZonesDisclosure.tsx
+  - resources/js/lib/raceGoal.ts
 ---
 
 # Coaching evidence
@@ -66,6 +71,12 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | The 3% and 6% ambition bands against supported race time | [RaceAmbitionAssessor.php:17](app/Services/Run/Plan/RaceAmbitionAssessor.php#L17), [RaceAmbitionAssessor.php:19](app/Services/Run/Plan/RaceAmbitionAssessor.php#L19) | heuristic | — |
 | A Riegel projection slower than the goal adds no quality session; the projection is display only, with its fitted exponent floored at 1.0 and efforts under 3.5 min excluded | [PlanAdapter.php:148](app/Services/Run/Plan/PlanAdapter.php#L148), [RiegelProjector.php:52](app/Services/Run/Metrics/RiegelProjector.php#L52), [RiegelProjector.php:57](app/Services/Run/Metrics/RiegelProjector.php#L57) | evidence-supported | [[#Riegel1981]], [[#BlytheKiraly2016]], [[#VickersVertosick2016]] |
 | A goal-less season's goal counts weeks that reached 85% of the planned km, not CTL growth | [SeasonGamificationContext.php:176](app/Services/Gamification/SeasonGamificationContext.php#L176), [SeasonService.php:473](app/Services/Run/Plan/SeasonService.php#L473) | product choice | [[#Vermeire2022]], [[#Doherty2020]] |
+| Load numbers are presented as running load: long-term load, short-term load and a three-state load balance (fresh, steady, heavy); no copy reads them as fitness, readiness, overreaching, injury or soreness | [TrainingFormStatus.php:17](app/Services/Run/Metrics/TrainingFormStatus.php#L17) | evidence-supported | [[#Meeusen2013]], [[#Vermeire2022]], [[#Foster1998]], [[#JonesCM2017]], [[#Smyth2022]], [[#Mountjoy2023]] |
+| Heart-rate zones without a measured max or synced bands are labelled estimated, and heart-rate intent verdicts on them are marked a rough read | [HrZonesDisclosure.tsx:95](resources/js/components/settings/HrZonesDisclosure.tsx#L95), [ComplianceScorer.php:57](app/Services/Run/Plan/ComplianceScorer.php#L57) | evidence-supported | [[#Tanaka2001]], [[#Nes2013]], [[#RobergsLandwehr2002]] |
+| No age is collected to predict a max heart rate; the default 180 and the observed-peak raise stand | [runner.php:8](config/runner.php#L8) | product choice | — |
+| The Race page and Trends show the target beside the supported time, and "on track for" only in the on-track band with the supported time not behind the target | [raceGoal.ts:169](resources/js/lib/raceGoal.ts#L169), [TrendsController.php:55](app/Http/Controllers/TrendsController.php#L55) | product choice | [[#VickersVertosick2016]] |
+| The advised session (a recorded ease, or today's advisory) leads the day on every surface; a pinned or Race day keeps its prescription and carries the advice as a note | [PlanRenderer.php:238](app/Services/Run/Plan/PlanRenderer.php#L238) | product choice | — |
+| A run's fallback mood follows the same effort scale as its colour | [Temari.php:109](app/Services/Run/Story/Temari.php#L109) | product choice | — |
 
 ## Sources
 
@@ -170,3 +181,15 @@ Blythe DAJ, Király FJ. Prediction and quantification of individual athletic per
 
 ### Riegel1981
 Riegel PS. Athletic records and human endurance. *Am Sci* 1981;69(3):285–290. https://pubmed.ncbi.nlm.nih.gov/7235349/. T2 = T1·(D2/D1)^1.06, fitted to world records from about 3.5 to 230 min; a fatigue factor, not physiology. Grade NONE · access NR.
+
+### Mountjoy2023
+Mountjoy M, Ackerman KE, Bailey DM, et al. 2023 International Olympic Committee's (IOC) consensus statement on Relative Energy Deficiency in Sport (REDs). *Br J Sports Med* 2023;57(17):1073–1097. https://doi.org/10.1136/bjsports-2023-106994. Low energy availability has health and performance effects that no training-load number identifies. Grade CON · access ABS.
+
+### Tanaka2001
+Tanaka H, Monahan KD, Seals DR. Age-predicted maximal heart rate revisited. *J Am Coll Cardiol* 2001;37:153–156. https://doi.org/10.1016/s0735-1097(00)01054-8. A meta-analysis of 351 studies (18,712 subjects) giving HRmax = 208 − 0.7 × age, independent of sex and activity level; any age formula is an estimate, not a measurement. Grade MA · access ABS.
+
+### Nes2013
+Nes BM, Janszky I, Wisløff U, Støylen A, Karlsen T. Age-predicted maximal heart rate in healthy subjects: the HUNT Fitness Study. *Scand J Med Sci Sports* 2013;23(6):697–704. https://doi.org/10.1111/j.1600-0838.2012.01445.x. In a large healthy cohort HRmax = 211 − 0.64 × age fitted better than 220 − age, with individual error still around ±10 bpm. Grade COH · access ABS.
+
+### RobergsLandwehr2002
+Robergs RA, Landwehr R. The surprising history of the "HRmax = 220 − age" equation. *J Exerc Physiol Online* 2002;5(2):1–10. https://www.asep.org/asep/asep/Robergs2.pdf (no DOI). The 220 − age equation was fitted by eye to about eleven heterogeneous sources and carries a 7–11 bpm prediction error. Grade REV · access ABS.

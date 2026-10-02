@@ -121,7 +121,7 @@ export default function RaceOutcomeCard({
 
                     <form onSubmit={saveTime} className="flex flex-col gap-1.5">
                         <span className={FIELD_LABEL}>or enter your time</span>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                             <input
                                 type="number"
                                 min={0}

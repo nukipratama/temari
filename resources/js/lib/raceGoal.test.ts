@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import type { RaceAmbition, RaceSupport } from '@/types/inertia';
+
 import {
+    ambitionNote,
     ambitiousGoalWarning,
     earliestRaceDate,
     goalGap,
@@ -10,6 +13,7 @@ import {
     MAX_GOAL_TIME_SEC,
     MIN_GOAL_TIME_SEC,
     ON_GOAL_TOLERANCE_SEC,
+    supportedEyebrow,
 } from './raceGoal';
 
 describe('earliestRaceDate', () => {
@@ -154,4 +158,81 @@ describe('goalGapPose', () => {
             expect(goalGapPose(10_000, predicted)).toBe(pose);
         },
     );
+});
+
+describe('ambitionNote', () => {
+    const ambition: RaceAmbition = {
+        state: 'on_track',
+        target_time_sec: 3_000,
+        target_pace_sec_per_km: 300,
+        supported_time_sec: 3_050,
+        supported_pace_sec_per_km: 305,
+        prescribed_time_sec: 3_000,
+        gap_pct: 1.6,
+        evidence_confidence: 'confirmed',
+    };
+    const support: RaceSupport = {
+        mode: 'road',
+        dedicated_preparation: true,
+        limitation: null,
+    };
+
+    it.each([
+        ['on_track', /^on track: your target is within 3%/],
+        [
+            'ambitious',
+            /^ambitious: your target is 1\.6% faster.*trains at your target/,
+        ],
+        ['unsupported', /^unsupported: .*trains at the supported effort/],
+        ['low_evidence', /^low evidence: .*less than half this distance/],
+    ] as const)('words the %s state', (state, expected) => {
+        expect(ambitionNote({ ...ambition, state }, support)).toMatch(expected);
+    });
+
+    it('falls back to the honest limit, then to too few results', () => {
+        const unknown = {
+            ...ambition,
+            state: 'unknown' as const,
+            supported_time_sec: null,
+        };
+
+        expect(
+            ambitionNote(unknown, {
+                ...support,
+                limitation: 'general aerobic only.',
+            }),
+        ).toBe('general aerobic only.');
+        expect(ambitionNote(unknown, support)).toBe(
+            'not enough recent results to compare yet.',
+        );
+    });
+});
+
+describe('supportedEyebrow', () => {
+    const base: RaceAmbition = {
+        state: 'on_track',
+        target_time_sec: 3_000,
+        target_pace_sec_per_km: 300,
+        supported_time_sec: 2_990,
+        supported_pace_sec_per_km: 299,
+        prescribed_time_sec: 3_000,
+        gap_pct: -0.3,
+        evidence_confidence: 'confirmed',
+    };
+
+    it('reads on track for only in the band with the supported time not behind', () => {
+        expect(supportedEyebrow(base)).toBe('on track for');
+        expect(supportedEyebrow({ ...base, supported_time_sec: 3_004 })).toBe(
+            'on track for',
+        );
+        expect(supportedEyebrow({ ...base, supported_time_sec: 3_060 })).toBe(
+            'supported',
+        );
+        expect(supportedEyebrow({ ...base, state: 'ambitious' })).toBe(
+            'supported',
+        );
+        expect(supportedEyebrow({ ...base, state: 'low_evidence' })).toBe(
+            'supported',
+        );
+    });
 });

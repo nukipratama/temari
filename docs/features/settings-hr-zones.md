@@ -3,10 +3,12 @@ title: HR zones
 description: Max/resting HR input, Karvonen-derived Z1–Z5 with one editable bound per zone, source badges — inlined into Settings as an expand/collapse disclosure.
 tags: [feature, settings]
 status: living
-reviewed: 2026-08-19
+reviewed: 2026-10-02
 code_refs:
   - resources/js/components/settings/HrZonesDisclosure.tsx
   - app/Services/Run/Ingest/ActivityPipeline.php
+  - app/Services/Run/Plan/ComplianceScorer.php
+  - app/Services/Run/Plan/IntentOutcome.php
   - app/Models/RunnerProfile.php
   - resources/js/pages/Settings/Index.tsx
   - app/Http/Controllers/SettingsController.php
@@ -52,6 +54,12 @@ Submit posts `router.patch('/settings/zones', …)` with `max_hr`, `resting_hr` 
 - `resyncFromStrava()` runs `SyncZonesJob::dispatchSync(..., force: true)` inline (not queued), scope-gated on `profile:read_all`.
 
 Every Strava zone write, from `SyncZonesJob` or `strava:sync-zones`, goes through [RunnerProfile::applyStravaZones](../../app/Models/RunnerProfile.php#L92). It re-reads the user and profile under row locks after the Strava fetch, so a manual save or an account deletion that lands during the fetch wins unless the sync is a forced resync. It requests plan recalibration only when the stored zones actually change.
+
+## Estimated zones
+
+Zones without a measured max are estimates, and the card says so ([[zones-without-a-measured-max-are-estimates]]). [HrZonesDisclosure](../../resources/js/components/settings/HrZonesDisclosure.tsx#L95) labels the `default` source "estimated from a default max HR" and the `observed` source "estimated from your highest recorded heart rate", and opens with one line asking for a max from a race or hard test, or a Strava zone sync. `strava` and `manual` read as before.
+
+Heart-rate intent verdicts carry the same caveat. [ComplianceScorer::verdictsFor()](../../app/Services/Run/Plan/ComplianceScorer.php#L57) adds `zones => estimated` to heart-rate-based evidence whenever [RunnerProfile::hasExplicitZones()](../../app/Models/RunnerProfile.php#L79) is false, and [IntentOutcome::detail()](../../app/Services/Run/Plan/IntentOutcome.php#L59) appends "the heart-rate zones behind this are estimated, so it is a rough read". The verdict is unchanged. The app collects no age, so it has no age-predicted max; the default 180 and the observed-peak raise stand.
 
 ## The app-wide reconnect nudge
 

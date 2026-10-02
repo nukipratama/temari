@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\DistanceFormatter;
+use App\Services\Run\Metrics\LoadBalance;
 use App\Services\Run\Metrics\RecentTrainingStress;
 use App\Services\Run\Metrics\Readiness;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -253,7 +254,7 @@ final readonly class BriefingContext
     }
 
     /**
-     * Direction of the CTL (fitness) slope over the most recent weeks, from the
+     * Direction of the CTL (long-term load) slope over the most recent weeks, from the
      * snapshot rows already loaded. `up` when the latest reading is clearly
      * above the oldest in the window, `down` when clearly below, else
      * `plateau` (including too-few data points to judge a trend).
@@ -414,7 +415,7 @@ final readonly class BriefingContext
             'pct' => abs($this->volumeRampPct),
             'relation' => self::volumeRampRelation($this->volumeRampPct),
         ];
-        $readinessInputs = $this->readinessAssessment['inputs'];
+        $readinessInputs = self::llmInputs($this->readinessAssessment['inputs']);
         unset($readinessInputs['volume_ramp_pct']);
 
         return [
@@ -425,10 +426,10 @@ final readonly class BriefingContext
             'recovery_hours' => $this->recoveryHours,
             'ran_today' => $this->ranToday,
             'days_since_last_run' => $this->daysSinceLastRun,
-            'form_status' => $this->readinessAssessment['inputs']['form_status'],
+            'load_balance' => $readinessInputs['load_balance'],
             'time_bucket' => $this->timeBucket,
             'consecutive_weeks_active' => $this->consecutiveWeeksActive,
-            'fitness_trend' => $this->fitnessTrend,
+            'long_term_load_trend' => $this->fitnessTrend,
             'volume_ramp' => $volumeRamp,
             'readiness_ceiling' => $this->readinessCeiling,
             'build_nudge' => $this->buildNudge,
@@ -438,6 +439,23 @@ final readonly class BriefingContext
                 'inputs' => [...$readinessInputs, 'volume_ramp' => $volumeRamp],
             ],
             ...($this->historyLoading ? ['history_loading' => true] : []),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     * @return array<string, mixed>
+     */
+    private static function llmInputs(array $inputs): array
+    {
+        $formStatus = $inputs['form_status'] ?? null;
+        $trend = $inputs['fitness_trend'] ?? null;
+        unset($inputs['form_status'], $inputs['fitness_trend']);
+
+        return [
+            'load_balance' => is_string($formStatus) ? LoadBalance::fromStored($formStatus)?->value : null,
+            'long_term_load_trend' => $trend,
+            ...$inputs,
         ];
     }
 

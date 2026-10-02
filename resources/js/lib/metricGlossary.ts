@@ -21,17 +21,17 @@ export interface MetricGlossaryEntry {
 export const METRIC_GLOSSARY = {
     ctl: {
         acronym: 'CTL',
-        label: 'fitness',
-        body: 'your average fitness over the last 42 days. the higher it is, the more ready you are for long or intense runs. it climbs slowly, and only with consistency.',
+        label: 'long-term load',
+        body: "your running load averaged over about six weeks (42 days). it counts running only and shows how much you've been running, not how fit you are.",
     },
     atl: {
         acronym: 'ATL',
-        label: 'fatigue',
-        body: "your training load over the last 7 days. high means you've just put in hard work and need some recovery before pushing again.",
+        label: 'short-term load',
+        body: 'your running load over about the last week (7 days). it counts running only. a high number means a big recent week, not a measure of how tired you are.',
     },
     form: {
-        label: 'readiness',
-        body: "how ready your body is to run today, from fitness minus fatigue. positive means you're fresh and ready. negative isn't necessarily bad, it means you're carrying some fatigue but still in the ideal zone for adaptation.",
+        label: 'load balance',
+        body: "long-term load minus short-term load. above zero reads fresh, near zero steady, well below zero heavy. it compares running load only; it can't tell how ready your body is.",
     },
     trimp: {
         acronym: 'TRIMP',
@@ -40,23 +40,23 @@ export const METRIC_GLOSSARY = {
     },
     monotony: {
         label: 'monotony',
-        body: 'how much your weekly intensity varies. above 2, slip in an easy day to break the week up, since a week this uniform nudges injury risk up.',
+        body: "how alike each day's load was this week. above 2, every day looked the same; an easy or rest day breaks it up.",
     },
     strain: {
         label: 'strain',
-        body: 'total stress for the week, TRIMP multiplied by monotony. high strain means load is piling up.',
+        body: "the week's TRIMP multiplied by monotony. a high number means a big, uniform week of running load.",
     },
     decoupling: {
         label: 'decoupling',
-        body: "the efficiency gap between the first and second half of a run's steadiest stretch. above 12% means HR drift, either your aerobic base isn't solid yet or you were already gassed.",
+        body: 'how much your heart rate drifted against pace across the steadiest stretch of a run. above 12% is a lot of drift. heat, a long duration and not drinking enough all raise it, so read it next to the conditions.',
     },
     recovery: {
         label: 'break',
-        body: "how long it's been since your last run, not an actual measurement of physical recovery (there's no sensor for that here). as a rough rule, around 72 hours is usually enough to be ready for another hard session, but an easy run doesn't need to wait that long.",
+        body: "time since your last run, not a measurement of recovery. one demanding session in the last 24 hours, or more than one in the last 48 hours, holds back full-dose quality. an easy run doesn't need to wait.",
     },
     vibe: {
         label: 'vibe',
-        body: "a summary of how you're doing today, drawn from form and your weekly trend. i use this to set the tone of your briefing.",
+        body: "a summary of how you're doing today, drawn from load balance and your weekly trend. i use this to set the tone of your briefing.",
     },
     cadence: {
         label: 'cadence',
@@ -102,24 +102,20 @@ export const METRIC_GLOSSARY = {
         body: 'sprint mode, no talking at all. used only for short intervals.',
     },
     status_fresh: {
-        label: 'feeling fresh',
-        body: "you're fresh and ready for a hard session. readiness is positive, fatigue is low.",
+        label: 'fresh',
+        body: 'your recent running load is lighter than your longer-term load. it counts running only.',
     },
-    status_optimal: {
-        label: 'right on track',
-        body: 'right where you want to be, load and fitness are balanced. the sweet spot for consistent training.',
+    status_steady: {
+        label: 'steady',
+        body: 'your recent running load is close to your longer-term load. it counts running only.',
     },
-    status_fatigued: {
-        label: 'getting tired',
-        body: "you're tired, ease off the intensity for now. give yourself an easy day or rest so fatigue can drop.",
-    },
-    status_overreaching: {
-        label: 'overreaching',
-        body: 'the load is way too much. rest for a few days before you carry on, since pushing through is how injury or illness sneaks in.',
+    status_heavy: {
+        label: 'heavy',
+        body: 'your recent running load is above your longer-term load, which is normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be the cause too, so tell temari how you feel.',
     },
     vibe_vs_mood: {
         label: 'vibe vs mood',
-        body: 'vibe is your overall state today, calculated from fitness, fatigue and form. mood is the feel of a single run. vibe is one per day, mood is one per run.',
+        body: "vibe is your overall state today, calculated from your load numbers and the week's trend. mood is the feel of a single run. vibe is one per day, mood is one per run.",
     },
     ascent: {
         label: 'ascent',
@@ -128,11 +124,11 @@ export const METRIC_GLOSSARY = {
     vdot: {
         acronym: 'VDOT',
         label: 'VDOT',
-        body: 'a running fitness score from your best PR, using the Jack Daniels formula. the higher it is, the more efficient your threshold pace.',
+        body: 'a running score from your most conservative recent result, using the Jack Daniels formula. your training paces come from it.',
     },
     threshold_pace: {
         label: 'threshold pace',
-        body: 'an estimate of your lactate-threshold pace, derived from your VDOT score. the ideal pace for a tempo run.',
+        body: 'comfortably hard, about the pace you could race for one hour. derived from your VDOT.',
     },
     pace_easy: {
         label: 'easy pace',
@@ -148,7 +144,7 @@ export const METRIC_GLOSSARY = {
     },
     pace_tempo: {
         label: 'tempo pace',
-        body: 'a target pace for tempo sessions, derived from your VDOT score. different from the "threshold pace" card above, which is your current estimated lactate threshold from recent hard runs.',
+        body: 'a target pace for tempo sessions, derived from your VDOT score. comfortably hard, about one-hour race effort. different from the "threshold pace" card above, which is estimated from your recent hard runs.',
     },
 } as const satisfies Record<string, MetricGlossaryEntry>;
 

@@ -10,6 +10,7 @@ use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
 use App\Services\Run\Plan\TrainingBaseline;
@@ -222,8 +223,8 @@ function seasonSummaryTempoToday(User $user): array
     return [$row, PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled'])];
 }
 
-/** Today's step-down no longer subtracts from the arc's current-week target. */
-it('keeps the current week\'s target at the un-eased distance while todays ease is only a step-down', function (): void {
+/** The current week's target is the one Home shows: the days the plan holds, today's ease included. */
+it('gives the current week the same target and eased-from figure as Home', function (): void {
     $user = User::factory()->create();
     $season = Season::factory()->for($user)->create([
         'race_goal_id' => null,
@@ -233,19 +234,50 @@ it('keeps the current week\'s target at the un-eased distance while todays ease 
     [$row] = seasonSummaryTempoToday($user);
     $row->update(['clamped_km' => 1.0]);
 
-    $currentWeekStart = Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString();
-    $rawWeek = collect($this->builder->plannedWeeks($user, $season))
-        ->first(fn (array $w): bool => $w['week_start']->toDateString() === $currentWeekStart);
+    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
     $weeks = $this->builder->build($user, $season, Carbon::today());
     $current = collect($weeks)->firstWhere('type', 'current');
 
-    expect($current['eased_from_km'])->toBeNull()
-        ->and($current['planned_km'])->toBe(round($rawWeek['planned_km'], 1))
+    expect($current['planned_km'])->toBe($home['planned_km_this_week'])
+        ->and($current['eased_from_km'])->toBe($home['planned_km_eased_from'])
+        ->and($current['eased_from_km'])->not->toBeNull()
         ->and($weeks[0]['eased_from_km'])->toBeNull()
         ->and($weeks[2]['eased_from_km'])->toBeNull();
 });
 
-/** A past day's recorded ease, unlike today's, still counts toward the week total. */
+/** #1433: a reactive deload reads the same on Plan's header, the season list and Home, with the arc as eased-from. */
+it('shows a reactively deloaded current week at its held target, the arc figure as eased-from, future weeks unchanged', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create([
+        'race_goal_id' => null,
+        'starts_at' => '2026-08-03',
+        'ends_at' => '2026-10-26',
+    ]);
+    $arc = collect($this->builder->plannedWeeks($user, $season))
+        ->mapWithKeys(fn (array $w): array => [$w['week_start']->toDateString() => $w]);
+    expect($arc['2026-08-10']['phase'])->not->toBe(PlanPhase::Deload);
+
+    foreach (range(0, 6) as $offset) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => Carbon::parse('2026-08-10')->addDays($offset)->toDateString(),
+            'phase' => PlanPhase::Deload,
+            'session_type' => in_array($offset, [1, 3, 6], true) ? SessionType::Rest : SessionType::Easy,
+        ]);
+    }
+
+    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $weeks = collect($this->builder->build($user, $season, Carbon::today()))->keyBy('week_start');
+
+    expect($home['phase'])->toBe('deload')
+        ->and($weeks['2026-08-10']['phase'])->toBe('deload')
+        ->and($weeks['2026-08-10']['planned_km'])->toBe($home['planned_km_this_week'])
+        ->and($weeks['2026-08-10']['eased_from_km'])->toBe(round($arc['2026-08-10']['planned_km'], 1))
+        ->and($weeks['2026-08-17']['planned_km'])->toBe(round($arc['2026-08-17']['planned_km'], 1))
+        ->and($weeks['2026-08-17']['phase'])->toBe($arc['2026-08-17']['phase']->value)
+        ->and($weeks['2026-08-17']['eased_from_km'])->toBeNull();
+});
+
+/** A past day's recorded ease counts toward the week total. */
 it('still takes a past day\'s recorded ease off the current week\'s target', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00'); // Wednesday of the same week as beforeEach's Monday
     $user = User::factory()->create();

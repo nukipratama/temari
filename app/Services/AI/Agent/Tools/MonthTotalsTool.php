@@ -9,6 +9,7 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\DistanceFormatter;
+use App\Services\Run\Metrics\LoadBalance;
 use App\Services\Run\Story\MoodMix;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -35,9 +36,9 @@ final class MonthTotalsTool extends NoArgumentTool
     public function description(): string
     {
         return "The recap for the month you're telling: total runs and km, longest run, PR count, "
-            .'km per week within that month, mood distribution, and fitness direction (ctl_start vs '
-            ."ctl_end plus form_status_end). An empty mood_mix means there's no mood data yet, so "
-            .'skip the mood section silently. If fitness is missing, that month has no snapshot.';
+            .'km per week within that month, mood distribution, and the long-term load (ctl_start vs '
+            ."ctl_end plus load_balance_end). An empty mood_mix means there's no mood data yet, so "
+            .'skip the mood section silently. If long_term_load is missing, that month has no snapshot.';
     }
 
     /** @return array<string, mixed> */
@@ -64,7 +65,7 @@ final class MonthTotalsTool extends NoArgumentTool
             // than this month's inclusive end -- passing $end would drop a run
             // logged in the final second.
             'mood_mix' => MoodMix::between($this->user->id, $start, $start->copy()->addMonth()->startOfMonth()),
-            'fitness' => $this->fitnessArc($start, $end),
+            'long_term_load' => $this->longTermLoadArc($start, $end),
         ];
     }
 
@@ -108,12 +109,12 @@ final class MonthTotalsTool extends NoArgumentTool
     }
 
     /**
-     * The month's fitness arc from the weekly snapshots ending within it: CTL at
-     * the start vs end, and the closing form_status.
+     * The month's long-term load arc from the weekly snapshots ending within it: CTL at
+     * the start vs end, and the closing load balance.
      *
-     * @return array{ctl_start: float|null, ctl_end: float|null, form_status_end: string|null}|null
+     * @return array{ctl_start: float|null, ctl_end: float|null, load_balance_end: string|null}|null
      */
-    private function fitnessArc(Carbon $start, Carbon $end): ?array
+    private function longTermLoadArc(Carbon $start, Carbon $end): ?array
     {
         $snapshots = WeeklySnapshot::query()
             ->where('user_id', $this->user->id)
@@ -128,7 +129,7 @@ final class MonthTotalsTool extends NoArgumentTool
         return [
             'ctl_start' => $snapshots->first()->ctl_42d,
             'ctl_end' => $snapshots->last()->ctl_42d,
-            'form_status_end' => $snapshots->last()->form_status,
+            'load_balance_end' => LoadBalance::fromStored($snapshots->last()->form_status)?->value,
         ];
     }
 }

@@ -120,6 +120,11 @@ final readonly class ComplianceScorer
         $typesByDate = array_map(static fn (RecommendationRevision $revision): SessionType => SessionType::from($revision->effective['session_type']), $recommendationsByDate);
         $verdicts = $this->sessionMatcher->scoreRange($user, $plannedKmByDate, $excusedByDate, $today, $typesByDate);
         $intents = $this->intentsFor($rows, $effectiveByDate, $verdicts, $recommendationsByDate, $runsByDate);
+        if ($user->runnerProfile?->hasExplicitZones() !== true) {
+            $intents = array_map(static fn (array $intent): array => self::onHeartRate($intent['evidence'])
+                ? ['verdict' => $intent['verdict'], 'evidence' => $intent['evidence'] + ['zones' => 'estimated']]
+                : $intent, $intents);
+        }
 
         $graded = [];
         foreach ($verdicts as $date => $verdict) {
@@ -208,6 +213,12 @@ final readonly class ComplianceScorer
         }
 
         return ['verdict' => $verdict, 'evidence' => $evidence];
+    }
+
+    /** @param  array<string, int|float|string>  $evidence */
+    private static function onHeartRate(array $evidence): bool
+    {
+        return ($evidence['basis'] ?? null) === 'heart_rate' || ($evidence['stimulus_source'] ?? null) === 'heart_rate';
     }
 
     /**

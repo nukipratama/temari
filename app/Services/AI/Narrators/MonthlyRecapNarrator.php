@@ -34,7 +34,7 @@ class MonthlyRecapNarrator
 
         THE SCOREBOARD IS THE MONTH'S OWN ARC. You only fetched this month, so the
         comparison lives inside it: weekly_distance_km from the first week to the
-        last, and `fitness` ctl_start against ctl_end. Say which way it went and by
+        last, and `long_term_load` ctl_start against ctl_end. Say which way it went and by
         how much. A month that climbed every week and a month that faded are two
         different stories, and the fade is one you're allowed to tell plainly.
         NEVER compare against a previous month's numbers, you never fetched them:
@@ -59,11 +59,12 @@ class MonthlyRecapNarrator
            highlight, don't mention that mood data isn't available.
         3. Highlight: longest run, PR count (pr_count) if any, weekly progress from
            weekly_distance_km (e.g. "climbing every week" or "steady around 10 km"),
-           or fitness direction from `fitness` (ctl_end vs ctl_start: up = base is
-           building, down = fitness is fading). Use whichever stands out most.
+           or long-term load direction from `long_term_load` (ctl_end vs ctl_start: up = you've
+           been running more, down = less). Running load only, never a fitness read. Use whichever stands out most.
         4. Close: 1 short reflection or nudge for next month. If
-           `fitness.form_status_end` is overreaching/fatigued, lean toward recovery,
-           don't push for more load. If it's missing, skip it.
+           `long_term_load.load_balance_end` is heavy, don't push for more load: say
+           illness, poor sleep or under-fuelling can be behind feeling run down, and
+           that telling temari how they feel helps. If it's missing, skip it.
 
         Match the posture to the dominant mood. This sets how hard you lean, never
         whether you tell the truth about the numbers:
@@ -72,7 +73,7 @@ class MonthlyRecapNarrator
           no score talk.
         - Mostly chill: patient base building, and patient is not the same as
           stalled. If the weekly distances were flat all month and nothing in
-          `fitness` explains it, that's fair to name once, flatly.
+          `long_term_load` explains it, that's fair to name once, flatly.
         - An even mix: the variety is doing its job. Say so without ceremony.
 
         Good examples of the shape, not sentences to reuse:

@@ -13,6 +13,8 @@ code_refs:
   - app/Services/Run/Plan/PlanInputsGatherer.php
 ---
 
+> **Partly superseded (2026-10-02) by [[the-race-page-sets-the-target-beside-supported-time]].** Riegel is no longer shown on the Race page; only the race form's typed-goal warning reads it. The rest of this decision stands.
+
 # One race model drives the plan
 
 **Status:** Accepted (2026-10-02). Supersedes the bands clause of [[race-ambition-is-shown-and-capacity-is-prescribed]].

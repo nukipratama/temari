@@ -1,4 +1,9 @@
-import type { Mood } from '@/types/inertia';
+import type {
+    Mood,
+    RaceAmbition,
+    RaceAmbitionState,
+    RaceSupport,
+} from '@/types/inertia';
 
 import { formatDurationHMS, formatPace } from '@/lib/pace';
 
@@ -126,4 +131,50 @@ export function goalGapPose(goalSec: number, predictedSec: number): Mood {
     }
 
     return 'gassed';
+}
+
+const STATE_LABEL: Record<Exclude<RaceAmbitionState, 'unknown'>, string> = {
+    on_track: 'on track',
+    ambitious: 'ambitious',
+    unsupported: 'unsupported',
+    low_evidence: 'low evidence',
+};
+
+/** The race ambition in one plain sentence: the band, what it compares, and what the plan trains at. */
+export function ambitionNote(
+    ambition: RaceAmbition,
+    support: RaceSupport,
+): string {
+    if (ambition.state === 'unknown' || ambition.supported_time_sec === null) {
+        return (
+            support.limitation ?? 'not enough recent results to compare yet.'
+        );
+    }
+    const label = STATE_LABEL[ambition.state];
+    const gap = Math.abs(ambition.gap_pct ?? 0);
+
+    switch (ambition.state) {
+        case 'low_evidence':
+            return `${label}: your recent results cover less than half this distance, so the supported time is a rough guide and race pace won't be set faster than it.`;
+        case 'unsupported':
+            return `${label}: your target is ${gap}% faster than your recent runs support, so the plan trains at the supported effort. your target stays yours.`;
+        case 'ambitious':
+            return `${label}: your target is ${gap}% faster than your recent runs support. the plan trains at your target.`;
+        default:
+            return `${label}: your target is within 3% of what your recent runs support.`;
+    }
+}
+
+/** The duel's right-hand eyebrow: "on track for" only in the on-track band with the supported time not behind the target. */
+export function supportedEyebrow(ambition: RaceAmbition): string {
+    if (
+        ambition.state === 'on_track' &&
+        ambition.supported_time_sec !== null &&
+        goalGap(ambition.target_time_sec, ambition.supported_time_sec)
+            .verdict !== 'behind'
+    ) {
+        return 'on track for';
+    }
+
+    return 'supported';
 }

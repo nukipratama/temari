@@ -19,21 +19,21 @@ function series(ctls: number[]): FitnessTrendPoint[] {
 }
 
 describe('MonthComparison', () => {
-    it('labels the section and embeds the fitness chart', () => {
+    it('labels the section and embeds the long-term load chart', () => {
         render(<MonthComparison trend={series([40, 41, 42])} />);
 
-        expect(screen.getByText('vs a month ago')).toBeInTheDocument();
+        expect(screen.getByText('long-term load')).toBeInTheDocument();
         expect(screen.getByTestId('fitness-panel')).toBeInTheDocument();
     });
 
-    it('reads fitness now and a month ago off the same series, with a delta', () => {
+    it('reads long-term load now and a month ago off the same series, with a delta', () => {
         // 35 points: last is "now", index length-1-30 is "a month ago". An
         // earlier spike keeps "best this year" distinct from "now".
         const values = Array.from({ length: 35 }, (_, i) => 30 + i);
         values[10] = 90;
         render(<MonthComparison trend={series(values)} />);
 
-        expect(screen.getByText('fitness now')).toBeInTheDocument();
+        expect(screen.getByText('long-term load now')).toBeInTheDocument();
         expect(screen.getByText('64.0')).toBeInTheDocument(); // last value
         expect(screen.getByText('+30')).toBeInTheDocument(); // 64 - 34
         expect(

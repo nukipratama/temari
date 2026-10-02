@@ -13,4 +13,13 @@ enum TrainingFormStatus: string
     case Optimal = 'optimal';
     case Fatigued = 'fatigued';
     case Overreaching = 'overreaching';
+
+    public function loadBalance(): LoadBalance
+    {
+        return match ($this) {
+            self::Fresh => LoadBalance::Fresh,
+            self::Optimal => LoadBalance::Steady,
+            self::Fatigued, self::Overreaching => LoadBalance::Heavy,
+        };
+    }
 }

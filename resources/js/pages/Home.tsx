@@ -11,6 +11,9 @@ import type {
 import EvidenceList from '@/components/home/EvidenceList';
 import NoPlanCard from '@/components/home/NoPlanCard';
 import NoVerdictPanel from '@/components/home/NoVerdictPanel';
+import RaceOutcomePrompt, {
+    type PendingRaceOutcome,
+} from '@/components/home/RaceOutcomePrompt';
 import TodaySession from '@/components/home/TodaySession';
 import VerdictHero from '@/components/home/VerdictHero';
 import WeekPlanWidget from '@/components/home/WeekPlanWidget';
@@ -29,6 +32,7 @@ interface HomeProps {
     weekPlan?: WeekPlan | null;
     /** Only shipped, deferred, on a planned rest day. */
     restDayEasePace?: RestDayEasePace | null;
+    pendingRaceOutcome?: PendingRaceOutcome | null;
 }
 
 /**
@@ -44,6 +48,7 @@ export default function Home({
     pastYouTrend = null,
     weekPlan = null,
     restDayEasePace = null,
+    pendingRaceOutcome = null,
 }: Readonly<HomeProps>) {
     const todayIso = todayLocalIso();
     const todayPlan =
@@ -61,6 +66,9 @@ export default function Home({
                     <EmptyRunsState />
                 ) : (
                     <div className={laneStack}>
+                        {pendingRaceOutcome !== null && (
+                            <RaceOutcomePrompt race={pendingRaceOutcome} />
+                        )}
                         <TodaySession
                             briefing={briefing}
                             today={todayPlan}

@@ -11,7 +11,7 @@ import FitnessPanel, {
 import { Stat, StatDelta } from './Stat';
 
 const CTL_MEANING =
-    "fitness builds slowly from six weeks of training. climbing means you're able to handle more without breaking down.";
+    "long-term load builds slowly from six weeks of running. it counts running only, so it tracks how much you've run, not fitness.";
 const DAYS_AGO = 30;
 const CLIMB_THRESHOLD = 2;
 
@@ -28,9 +28,9 @@ interface MonthComparisonProps {
 }
 
 /**
- * "vs a month ago" owns the fitness chart: fitness-now and a-month-ago are
+ * "long-term load" owns the CTL chart: load-now and a-month-ago are
  * read off the same 365-day series the chart plots, so the card and the
- * line can never disagree (direction A, #967). Fitness now is the
+ * line can never disagree (direction A, #967). Long-term load now is the
  * section's hero number; best-this-year is a plain secondary reading below
  * it, not paired side-by-side with anything, so it stays a Stat rather than
  * a tile (MASTER.md's tile rule only fires once two numbers sit side by
@@ -49,7 +49,7 @@ export default function MonthComparison({
     return (
         <section className={className}>
             <Eyebrow as="h2" token="small" tone="ink-2">
-                vs a month ago
+                long-term load
             </Eyebrow>
             <p className="mt-1 text-xs text-text-3">{CTL_MEANING}</p>
             <div className="mt-3">
@@ -63,7 +63,7 @@ export default function MonthComparison({
             <Stat
                 label={
                     <>
-                        fitness now
+                        long-term load now
                         <MetricExplainer metricKey="ctl" size="xs" />
                     </>
                 }

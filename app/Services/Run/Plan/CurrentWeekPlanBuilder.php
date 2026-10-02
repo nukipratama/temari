@@ -89,7 +89,6 @@ final readonly class CurrentWeekPlanBuilder
         $primaryEasyDate = PlanRenderer::primaryEasyDate($currentWeekSessions);
 
         $plannedKmByDate = [];
-        $easedAwayKmByDate = [];
         foreach ($currentWeekSessions as $s) {
             $effective = EffectiveSession::of($s, SegmentGenerator::coreKmFor(
                 $s->session_type,
@@ -101,7 +100,6 @@ final readonly class CurrentWeekPlanBuilder
                 $baselineData['long_run_progression_cap_km'],
             ));
             $plannedKmByDate[$s->date->toDateString()] = $effective->coreKm;
-            $easedAwayKmByDate[$s->date->toDateString()] = $effective->easedAwayKm();
         }
 
         // Every past row should already carry its real status —
@@ -126,12 +124,6 @@ final readonly class CurrentWeekPlanBuilder
             ],
         )->all();
 
-        // Today's uncredited ease is only a step-down, so it shouldn't shrink the week total.
-        $todayKey = $today->toDateString();
-        if (isset($easedAwayKmByDate[$todayKey]) && ! ($resolvedStatuses[$todayKey] ?? PlannedSessionStatus::Planned)->isCredited()) {
-            $easedAwayKmByDate[$todayKey] = 0.0;
-        }
-        $easedAwayKm = array_sum($easedAwayKmByDate);
 
         $todaySession = $currentWeekSessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $strongHealthConcern = array_intersect(
@@ -205,6 +197,10 @@ final readonly class CurrentWeekPlanBuilder
             ->all();
 
         $plannedKmThisWeek = round(array_sum(array_column($days, 'distance_km')), 1);
+        $easedAwayKm = array_sum(array_map(
+            static fn (array $day): float => isset($day['eased_from']['distance_km']) ? $day['eased_from']['distance_km'] - $day['distance_km'] : 0.0,
+            $days,
+        ));
 
         return [
             'sessions_this_week' => count($trainingDates),

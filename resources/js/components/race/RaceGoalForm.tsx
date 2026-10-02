@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { CircleAlert } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 
-import type { RaceProjection } from '@/components/race/RaceDuel';
+import type { RaceProjection } from '@/types/inertia';
 
 import DateField from '@/components/ui/DateField';
 import Eyebrow from '@/components/ui/Eyebrow';

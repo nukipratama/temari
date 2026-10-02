@@ -1,62 +1,51 @@
 import type { FormStatus } from '@/types/inertia';
 
-// Mirrors App\Services\Run\Story\FormStatus::label/tone.
+export type LoadBalance = 'fresh' | 'steady' | 'heavy';
 
-const LABELS: Record<FormStatus, string> = {
-    fresh: 'feeling fresh',
-    optimal: 'right on track',
-    fatigued: 'getting tired',
-    overreaching: 'overreaching',
+// Mirrors App\Services\Run\Metrics\TrainingFormStatus::loadBalance().
+const BALANCE: Record<FormStatus, LoadBalance> = {
+    fresh: 'fresh',
+    optimal: 'steady',
+    fatigued: 'heavy',
+    overreaching: 'heavy',
 };
 
-export function formStatusLabel(status: FormStatus | null): string {
-    return status === null ? '—' : LABELS[status];
+export function loadBalanceOf(status: FormStatus): LoadBalance {
+    return BALANCE[status];
 }
 
-// A one-line plain-language gloss of what the form status means, for the
-// vs-last-week comparison card — the jargon-accessibility rule for
-// training-load terms (see docs/voice-and-tone.md).
-const MEANING: Record<FormStatus, string> = {
-    fresh: 'the last week has been lighter than your six-week average. nothing is sore.',
-    optimal:
-        "the last week landed right around your six-week average — nothing's piling up.",
-    fatigued:
-        'the last week has been heavier than your six-week average. legs are carrying it.',
-    overreaching:
-        'the last week has piled well past your six-week average. this is the kind of load that catches up with you.',
+// Mirrors App\Services\Run\Story\FormStatus::label/tone.
+export function formStatusLabel(status: FormStatus | null): string {
+    return status === null ? '—' : BALANCE[status];
+}
+
+const MEANING: Record<LoadBalance, string> = {
+    fresh: 'your recent running load is lighter than your longer-term load.',
+    steady: 'your recent running load is close to your longer-term load.',
+    heavy: "your recent running load is above your longer-term load. that's normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be the cause too, so tell temari how you feel.",
 };
 
 export function formStatusMeaning(status: FormStatus): string {
-    return MEANING[status];
+    return MEANING[BALANCE[status]];
 }
 
-// The short word a chip renders, distinct from formStatusLabel's fuller
-// sentence-fragment ("getting tired") — a pill wants one word.
-const WORD: Record<FormStatus, string> = {
-    fresh: 'fresh',
-    optimal: 'balanced',
-    fatigued: 'tired',
-    overreaching: 'overreaching',
-};
-
 export function formStatusWord(status: FormStatus): string {
-    return WORD[status];
+    return BALANCE[status];
 }
 
 export type FormStatusTone = 'positive' | 'neutral' | 'warning';
 
-const TONE: Record<FormStatus, FormStatusTone> = {
+const TONE: Record<LoadBalance, FormStatusTone> = {
     fresh: 'positive',
-    optimal: 'neutral',
-    fatigued: 'warning',
-    overreaching: 'warning',
+    steady: 'neutral',
+    heavy: 'warning',
 };
 
 export function formStatusTone(status: FormStatus): FormStatusTone {
-    return TONE[status];
+    return TONE[BALANCE[status]];
 }
 
-/** `+18.5` / `-18.5` — a form value keeps its own sign, never a bare number. */
+/** `+18.5` / `-18.5` — a load balance value keeps its own sign, never a bare number. */
 export function formatSignedForm(form: number): string {
     return form >= 0 ? `+${form.toFixed(1)}` : form.toFixed(1);
 }

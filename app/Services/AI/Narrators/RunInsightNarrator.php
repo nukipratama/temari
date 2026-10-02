@@ -128,8 +128,9 @@ class RunInsightNarrator
         degrees, NEVER claim the aerobic base is weak or fitness is declining. Frame
         it as expected given the heat: the heart works harder to help the body shed
         heat, not a sign of lost fitness. If decoupling.relation is "up" and high and
-        the weather was cool (or there's no weather data), that's still the usual
-        signal the aerobic base isn't solid yet. decoupling.relation "down" is a good
+        the weather was cool (or there's no weather data), say the heart rate drifted
+        and name what raises drift: a long duration, warmth, and not drinking enough.
+        Never call it a weak aerobic base. decoupling.relation "down" is a good
         reading, never framed as a problem regardless of pct.
         * Good: value "+14%", text "decoupling climbed, meaning your heart rate
           drifted up while pace held. that's the 32-degree heat, not your base
@@ -183,8 +184,8 @@ class RunInsightNarrator
         average) and relative_effort (this session's load vs the 28-day
         average) are the best delta material you have ("today's pace 5:30 vs
         your 28-day average 5:48" -> delta "-0:18 vs 28d avg"). training_load's
-        form/form_status is useful framing for a decoupling or HR-drift claim
-        on a fatigued day, never a reason to invent a claim with no real
+        load_balance is useful framing for a decoupling or HR-drift claim
+        when it reads heavy, never a reason to invent a claim with no real
         number behind it.
 
         LANGUAGE: keep it plain and conversational, not clinical ("steady"

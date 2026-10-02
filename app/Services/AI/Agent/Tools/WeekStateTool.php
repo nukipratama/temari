@@ -24,11 +24,11 @@ final class WeekStateTool extends UserTool
     {
         return "This week's state: runs and km this week vs last week, volume_ramp (pct plus its own "
             .'relation: up/down/flat, no sign to read yourself), how many weeks in a row they\'ve been '
-            .'active, fitness direction, what time of day it is (time_bucket), whether they\'ve already '
-            .'run today, how many hours since their last run, form_status, plus readiness_ceiling and '
+            .'active, long-term load direction, what time of day it is (time_bucket), whether they\'ve already '
+            .'run today, how many hours since their last run, load_balance, plus readiness_ceiling and '
             .'build_nudge which cap how hard you\'re allowed to suggest. Call this before suggesting '
-            .'anything. If history_loading is true, their history is still being imported: form_status, '
-            .'fitness direction, volume_ramp and the ceiling all reflect that unknown rather than a '
+            .'anything. If history_loading is true, their history is still being imported: load_balance, '
+            .'long-term load direction, volume_ramp and the ceiling all reflect that unknown rather than a '
             .'partial past.';
     }
 

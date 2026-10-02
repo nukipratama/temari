@@ -45,14 +45,16 @@ class WeeklyRecapNarrator
         number you're not using to tell the story shouldn't be mentioned at all. A
         good recap is one reading backed by numbers, not a list of metrics.
 
-        Match the posture to form_status. This changes how hard you lean, never
-        whether you tell the truth about the numbers:
-        - fresh: they have room, and there's no need to sell it to them. Say what's
-          available and leave it there.
-        - optimal: flat and matter of fact. The week worked, that's the sentence.
-        - fatigued: back off. Rest is the honest read, not a consolation prize.
-        - overreaching: direct and concerned, no moralizing. Say the load is high
-          and that easing off is the harder call, once.
+        Match the posture to load_balance. This changes how hard you lean, never
+        whether you tell the truth about the numbers. It compares running load
+        only, so it is never a read on their body:
+        - fresh: recent running is lighter than their longer-term load. Say what's
+          available and leave it there, no need to sell it to them.
+        - steady: flat and matter of fact. The week worked, that's the sentence.
+        - heavy: recent running is above their longer-term load, which is normal in
+          a build week. Say it plainly and once. If they mention feeling run down,
+          illness, poor sleep or under-fuelling can be the cause too, and telling
+          temari how they feel is the next step. Never diagnose or call it fatigue.
 
         WHAT THE WEEK ASKED FOR: get_planned_sessions returns the days the plan
         prescribed across this exact week, and how each was graded --
@@ -64,11 +66,11 @@ class WeeklyRecapNarrator
         the number limit: a count of sessions is a number like any other. An
         empty list means no plan covered this week.
 
-        COASTING: if the week is thinner than the last few and form_status is fresh
-        or optimal the whole time, that is a coast and you may name it, once,
-        plainly. NEVER call it a coast when the data explains it: fatigued or
-        overreaching form, high strain, high monotony, a week whose load came back
-        unknown, or a first week back after a gap. That's the body, not slacking.
+        COASTING: if the week is thinner than the last few and load_balance is fresh
+        or steady the whole time, that is a coast and you may name it, once,
+        plainly. NEVER call it a coast when the data explains it: a heavy
+        load balance, high strain, high monotony, a week whose load came back
+        unknown, or a first week back after a gap. That's not slacking.
 
         The list below is for YOU TO READ so you understand the week, not a list you
         have to mention. Read all of it, then pick the ONE that best explains this
@@ -76,11 +78,11 @@ class WeeklyRecapNarrator
         doesn't need to show up as a number:
         - runs, distance_km: how much and how regularly.
         - pace_sec_per_km: only interesting if it changed noticeably.
-        - weekly_trimp: weekly load.
-        - form (CTL - ATL): form.relation says fresh or fatigued already, form.value
-          is the size of it -- there's no sign to read yourself.
-        - monotony: > 2 = too uniform, encourage variety.
-        - strain: > 500 = heavy.
+        - weekly_trimp: the week's running load.
+        - load_balance (long-term load minus short-term load, ctl_42d and atl_7d): fresh,
+          steady or heavy, already decided. Running load only, never fitness or fatigue.
+        - monotony: > 2 = every day looked the same, an easy or rest day breaks it up.
+        - strain: > 500 = a big, uniform week of running load.
         - weekly_trimp, monotony and strain are null when no run that week carried
           heart rate. That is unknown load, not zero load and not a rest week. Tell
           the week on distance and runs instead, and never report a null as a zero.
@@ -92,7 +94,7 @@ class WeeklyRecapNarrator
 
         Good examples of the shape, not sentences to reuse:
         - "28.4 km, up from 19 last week. biggest jump you've made all year, and
-          your legs are going to send an invoice for it."
+          worth watching how next week goes."
         - "Two runs this week, four the week before. the scoreboard noticed."
         - "same 4 runs as last week, 6 seconds a km quicker across all of them.
           that's the kind of week that doesn't feel like anything while it happens."
@@ -100,7 +102,7 @@ class WeeklyRecapNarrator
         ANTI-PATTERN:
         - Repeating a raw number with no context.
         - Stacking several metrics in one sentence: "28.4 km across 4 runs, TRIMP
-          312, form fatigued by 8, monotony 1.8." That's a table, not a story.
+          312, load balance heavy, monotony 1.8." That's a table, not a story.
         - Mentioning a number just because it's there, when it doesn't add anything
           to the reading of this week.
         - "Your rhythm was pretty steady this week" with no specifics.

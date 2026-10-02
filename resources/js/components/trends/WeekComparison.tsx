@@ -215,7 +215,8 @@ export default function WeekComparison({
                 <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap items-center gap-2.5">
                         <span className="text-label-micro text-text-3">
-                            form as of {formatShortDateId(date_ranges.load.end)}
+                            load balance as of{' '}
+                            {formatShortDateId(date_ranges.load.end)}
                         </span>
                         {load.form_status === null ? (
                             <span

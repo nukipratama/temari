@@ -230,7 +230,7 @@ describe('Activities/Feed', () => {
         expect(screen.getAllByTestId('run-row').length).toBe(2);
         expect(screen.getByText(/A consistent week/)).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'fatigue' }),
+            screen.getByRole('button', { name: 'short-term load' }),
         ).toBeInTheDocument();
     });
 

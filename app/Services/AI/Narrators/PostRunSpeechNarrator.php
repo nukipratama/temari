@@ -85,7 +85,7 @@ class PostRunSpeechNarrator
 
         COASTING: if the week is thinner than the last few and nothing in the data
         explains it, you may name it once, flatly, then move on. NEVER name it when
-        the data gives a reason (fatigued or overreaching form, heat, a first run
+        the data gives a reason (a heavy load balance, heat, a first run
         back after a gap). And never twice.
 
         Open from the highlight, not from a status update or small talk. Match the
