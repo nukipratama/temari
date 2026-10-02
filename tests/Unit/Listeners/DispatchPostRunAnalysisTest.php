@@ -7,6 +7,9 @@ use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\Run\ReconcilePlanJob;
+use App\Jobs\Run\RecalibrateTrainingHistoryJob;
+use App\Services\Run\Plan\PlanRecalibrationService;
+use Illuminate\Support\Facades\Cache;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
@@ -262,6 +265,60 @@ it('stages the weekly recap Pending without an LLM dispatch (weekly cadence)', f
         ->where('analysis_type', AnalysisType::WeeklyRecap)
         ->firstOrFail();
     expect($row->status)->toBe(AnalysisStatus::Pending);
+});
+
+it('skips its weekly rebuild and marks recalibration dirty while recalibration runs', function (): void {
+    $activity = analyzedActivity();
+    $recalibration = Cache::lock(RecalibrateTrainingHistoryJob::overlapLockKey($activity->user_id), 150);
+    $recalibration->get();
+
+    try {
+        fire($activity);
+    } finally {
+        $recalibration->release();
+    }
+
+    expect(WeeklySnapshot::query()->where('user_id', $activity->user_id)->exists())->toBeFalse()
+        ->and(Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($activity->user_id)))->toBeTrue()
+        ->and(Cache::lock(WeeklyAggregator::lockKey($activity->user_id), 1)->get())->toBeTrue();
+    Bus::assertDispatched(AnalyzeActivityJob::class);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+});
+
+it('leaves the recalibration lock free after rebuilding when no recalibration runs', function (): void {
+    $activity = analyzedActivity();
+
+    fire($activity);
+
+    expect(WeeklySnapshot::query()->where('user_id', $activity->user_id)->exists())->toBeTrue()
+        ->and(Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($activity->user_id)))->toBeNull()
+        ->and(Cache::lock(RecalibrateTrainingHistoryJob::overlapLockKey($activity->user_id), 1)->get())->toBeTrue();
+});
+
+it('lets the recalibration re-run cover a run ingested while it held its lock', function (): void {
+    $activity = analyzedActivity();
+    $user = $activity->user;
+
+    app(PlanRecalibrationService::class)->exclusively($user, false, 150, function () use ($activity): array {
+        fire($activity);
+
+        return [];
+    });
+
+    expect(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeFalse();
+    $rerun = null;
+    Bus::assertDispatched(RecalibrateTrainingHistoryJob::class, function (RecalibrateTrainingHistoryJob $job) use ($user, &$rerun): bool {
+        $rerun = $job;
+
+        return $job->userId === $user->id;
+    });
+
+    $rerun->handle(app(PlanRecalibrationService::class));
+
+    $week = WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', '2026-05-10')->firstOrFail();
+    expect($week->runs)->toBe(1)
+        ->and($week->distance_km)->toBe(5.0)
+        ->and(Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id)))->toBeNull();
 });
 
 it('leaves a Done weekly recap untouched on re-ingest (no mid-week invalidation)', function (): void {

@@ -7,10 +7,12 @@ namespace App\Listeners;
 use App\Actions\AI\StaggerBackfillAction;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
+use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
+use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
@@ -26,6 +28,7 @@ use App\Services\Run\Story\Temari;
 use App\Services\Run\Trend\TrendSnapshotRepairDispatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 
@@ -120,7 +123,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         if ($detail->start_date_local === null) {
             return;
         }
-        $snapshot = $this->weeklyAggregator->rebuildForwardFrom($user, $detail->start_date_local);
+        $snapshot = $this->rebuildWeeksUnlessRecalibrating($user, $detail->start_date_local);
         $this->trendSnapshots->forActivity($activity);
 
         if ($isToday && ! $athleteAway) {
@@ -152,6 +155,22 @@ class DispatchPostRunAnalysis implements ShouldQueue
                 $detail->start_date_local->format('Y-m'),
             );
         }
+    }
+
+    private function rebuildWeeksUnlessRecalibrating(User $user, Carbon $from): ?WeeklySnapshot
+    {
+        $recalibration = Cache::lock(
+            RecalibrateTrainingHistoryJob::overlapLockKey($user->id),
+            RecalibrateTrainingHistoryJob::overlapLockTtlSeconds(),
+        );
+        if (! $recalibration->get()) {
+            RecalibrateTrainingHistoryJob::markDirty($user->id);
+
+            return null;
+        }
+        $recalibration->release();
+
+        return $this->weeklyAggregator->rebuildForwardFrom($user, $from);
     }
 
     private function requestCardFlavor(Activity $activity, bool $ruleBased, bool $stageOnly, int $delaySec): void
