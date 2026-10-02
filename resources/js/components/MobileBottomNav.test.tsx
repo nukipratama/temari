@@ -350,7 +350,7 @@ describe('MobileBottomNav', () => {
         render(<MobileBottomNav />);
         expect(screen.getByRole('navigation')).toHaveClass(
             'mx-auto',
-            'max-w-column',
+            'min-[900px]:max-w-column',
         );
     });
 
@@ -362,5 +362,14 @@ describe('MobileBottomNav', () => {
         expect(screen.getByRole('navigation')).toHaveClass(
             'min-[1280px]:max-w-column-wide',
         );
+    });
+});
+
+describe('MobileBottomNav column cap', () => {
+    it('caps the column only from 900px up', () => {
+        const { container } = render(<MobileBottomNav />);
+        const box = container.querySelector('[class*="max-w-column"]')!;
+        expect(box.classList.contains('max-w-column')).toBe(false);
+        expect(box.classList.contains('min-[900px]:max-w-column')).toBe(true);
     });
 });
