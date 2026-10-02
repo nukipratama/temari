@@ -48,6 +48,7 @@ function RunListRow({
             ? Math.round(detail.average_heartrate)
             : null;
     const knownMood: Mood | null = note?.mood ?? mood ?? null;
+    const name = detail.name ?? 'Run';
     const startTime = formatNaiveTimeId(detail.start_date_local);
     const stripeClass = EFFORT_STRIPE_CLASS[detail.effort ?? 'unknown'];
 
@@ -59,42 +60,36 @@ function RunListRow({
                 stripeClass,
             )}
         >
-            <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-1.5">
-                    {knownMood !== null && (
-                        <span
-                            aria-hidden
-                            className={cn(
-                                'size-[7px] flex-none rounded-full',
-                                MOOD_FILL[knownMood],
-                            )}
-                        />
-                    )}
-                    <span className="truncate text-[0.8125rem] leading-[1.2] font-bold text-foreground">
-                        {detail.name ?? 'Run'}
-                    </span>
-                    <span className="flex-none font-mono text-[0.8125rem] leading-[1.2] font-bold text-foreground tabular-nums">
-                        · {km} km
-                    </span>
-                    {runCard && (
-                        <Icon
-                            icon={Sparkle}
-                            width={12}
-                            height={12}
-                            className={cn(
-                                'flex-none',
-                                RARITY_INK[runCard.rarity],
-                            )}
-                            aria-label={`${runCard.rarity} card`}
-                        />
-                    )}
-                </div>
-                <span className="flex-none font-mono text-[0.59375rem] leading-[1.2] text-text-3">
-                    {formatNaiveMonthDayId(detail.start_date_local)}
-                    {startTime && ` · ${startTime}`}
+            <div className="flex min-w-0 items-center gap-1.5">
+                {knownMood !== null && (
+                    <span
+                        aria-hidden
+                        className={cn(
+                            'size-[7px] flex-none rounded-full',
+                            MOOD_FILL[knownMood],
+                        )}
+                    />
+                )}
+                <span
+                    title={name}
+                    className="truncate text-[0.8125rem] leading-[1.2] font-bold text-foreground"
+                >
+                    {name}
                 </span>
+                <span className="flex-none font-mono text-[0.8125rem] leading-[1.2] font-bold text-foreground tabular-nums">
+                    · {km} km
+                </span>
+                {runCard && (
+                    <Icon
+                        icon={Sparkle}
+                        width={12}
+                        height={12}
+                        className={cn('flex-none', RARITY_INK[runCard.rarity])}
+                        aria-label={`${runCard.rarity} card`}
+                    />
+                )}
             </div>
-            <div className="mt-1.25 flex items-baseline gap-1.75 font-mono tabular-nums">
+            <div className="mt-1.25 flex flex-wrap items-baseline gap-x-1.75 gap-y-0.5 font-mono tabular-nums">
                 <b className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
                     {formatDurationHMS(detail.elapsed_time)}
                 </b>
@@ -105,6 +100,14 @@ function RunListRow({
                 <span className="text-[0.6875rem] text-border-strong">·</span>
                 <span className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
                     {hr ?? '—'} bpm
+                </span>
+                <span className="ml-auto text-[0.6875rem] leading-[1.2] whitespace-nowrap text-text-3">
+                    {formatNaiveMonthDayId(detail.start_date_local)}
+                    {startTime && (
+                        <span className="max-[359px]:hidden">
+                            {` · ${startTime}`}
+                        </span>
+                    )}
                 </span>
             </div>
             {note && (

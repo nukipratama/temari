@@ -176,4 +176,29 @@ describe('RunListRow', () => {
         render(<RunListRow detail={detail({ effort: undefined })} />);
         expect(screen.getByRole('link')).toHaveClass('border-border');
     });
+
+    it('puts the date and time on the metrics line, not beside the title', () => {
+        render(<RunListRow detail={detail()} />);
+        const time = screen.getByText(/· 07:00$/);
+        const when = time.parentElement;
+        const metricsLine = screen.getByText('150 bpm').parentElement;
+        expect(metricsLine).toContainElement(when);
+        expect(when?.className).toContain('text-[0.6875rem]');
+        expect(time).toHaveClass('max-[359px]:hidden');
+        const titleLine = screen.getByText('Morning Run').parentElement;
+        expect(titleLine).not.toContainElement(when);
+    });
+
+    it('lets the title own the first line and exposes the full name as a title attribute', () => {
+        render(
+            <RunListRow detail={detail({ name: 'Morning intervals 2x10' })} />,
+        );
+        const name = screen.getByText('Morning intervals 2x10');
+        expect(name).toHaveAttribute('title', 'Morning intervals 2x10');
+        expect(name.className).toContain('truncate');
+        expect(name.parentElement?.className).not.toContain('justify-between');
+        expect(name.parentElement?.parentElement?.className).not.toContain(
+            'justify-between',
+        );
+    });
 });

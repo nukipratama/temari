@@ -262,4 +262,21 @@ describe('WeekSection', () => {
         expect(screen.getByText(/— TRIMP/)).toBeInTheDocument();
         expect(screen.queryByText(/\b0 TRIMP\b/)).not.toBeInTheDocument();
     });
+
+    it('keeps the week label and the stats line from wrapping', () => {
+        render(
+            <WeekSection
+                bucket={bucket([run(101, 'Morning')])}
+                snapshot={null}
+                notes={{}}
+                moods={{}}
+            />,
+        );
+        expect(screen.getByText('may 18–24').className).toContain(
+            'whitespace-nowrap',
+        );
+        expect(screen.getByText(/TRIMP/).className).toContain(
+            'whitespace-nowrap',
+        );
+    });
 });
