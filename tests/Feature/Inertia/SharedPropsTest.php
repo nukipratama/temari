@@ -43,6 +43,7 @@ it('shares every documented key on every response', function (): void {
         'webPushSubscribed',
         'unreadNotifications',
         'aiPaused',
+        'aiPauseRetriesFailed',
         'aiCatchingUp',
     ]);
 });

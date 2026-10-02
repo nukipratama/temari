@@ -252,3 +252,16 @@ it('still catches a plain queued row for a long-connected athlete outside the gr
 
     Carbon::setTestNow();
 });
+
+it('promises a retry on resume only for a pause that retries failed blocks when it lifts', function (bool $paused, ?string $reason, bool $retries): void {
+    $analyses = Mockery::mock(AnalysisService::class);
+    $analyses->shouldReceive('generationPaused')->andReturn($paused);
+    $analyses->shouldReceive('pauseReason')->andReturn($reason);
+    app()->instance(AnalysisService::class, $analyses);
+
+    expect((aiPropsFor(User::factory()->create())['aiPauseRetriesFailed'])())->toBe($retries);
+})->with([
+    'generating' => [false, null, false],
+    'kill switch' => [true, 'kill_switch', true],
+    'app-wide cost ceiling' => [true, 'cost_ceiling', false],
+]);

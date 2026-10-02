@@ -46,8 +46,10 @@ it burned says little about the block itself.
   re-dispatch runs from [`SelfHealCommand`](app/Console/Commands/AI/SelfHealCommand.php#L27) before
   the ordinary sweep.
 - **The copy while paused.** A failed block says it "will be written once Temari is back", with no
-  button ([`AnalysisStatus`](resources/js/components/temari/AnalysisStatus.tsx#L337)). Once generation
-  is back, the normal failed copy and its "try again" button return.
+  button ([`AnalysisStatus`](resources/js/components/temari/AnalysisStatus.tsx#L337)). It says so only
+  while the `aiPauseRetriesFailed` shared prop is true ([`AiProps`](app/Services/Inertia/AiProps.php#L38)):
+  under the app-wide cost ceiling, whose lift retries nothing, a failed block keeps the plain failed
+  copy. Once generation is back, the normal failed copy and its "try again" button return.
 
 ## Why one sweep before the pause
 

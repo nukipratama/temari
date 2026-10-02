@@ -36,6 +36,7 @@ final readonly class AiProps
     {
         return [
             'aiPaused' => fn (): bool => $this->aiPausedFor($user),
+            'aiPauseRetriesFailed' => fn (): bool => $this->aiPausedFor($user) && $this->analyses->pauseReason() !== 'cost_ceiling',
             'aiCatchingUp' => fn (): bool => $this->aiCatchingUpFor($user),
         ];
     }
