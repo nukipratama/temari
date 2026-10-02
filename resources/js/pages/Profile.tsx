@@ -8,6 +8,7 @@ import type { TimeInZone } from '@/components/profile/TimeInZoneBar';
 import type { SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload, Mood, SharedProps } from '@/types/inertia';
 
+import AiOutageBanner from '@/components/AiOutageBanner';
 import PaceTargetsCard, {
     type TrainingPaces,
     type VdotSource,
@@ -118,6 +119,7 @@ export default function Profile({
     return (
         <>
             <Head title="Profile" />
+            <AiOutageBanner />
             <PageContainer>
                 <Eyebrow token="hero" tone="ink-2">
                     Profile

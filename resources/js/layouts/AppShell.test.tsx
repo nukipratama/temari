@@ -63,8 +63,8 @@ describe('AppShell', () => {
         expect(screen.queryByTestId('route-progress-bar')).toBeNull();
     });
 
-    // The shell owns the cross-page banners; pages no longer render them, so
-    // this is the only place their mounting is asserted.
+    // The shell owns the cross-page banners except the AI pause banner, which
+    // the narration pages mount; this is the only place the rest are asserted.
     it('mounts the Strava zone reconnect banner as shell chrome', () => {
         setMockPage({
             auth: { user: andiUser },
@@ -80,6 +80,23 @@ describe('AppShell', () => {
         expect(
             screen.getByText(/Strava only shares your HR zones/),
         ).toBeInTheDocument();
+    });
+
+    it('leaves the AI pause banner to the pages that render narration', () => {
+        setMockPage({
+            auth: { user: andiUser },
+            flash: {},
+            demoLoginEnabled: false,
+            aiPaused: true,
+        });
+        render(
+            <AppShell>
+                <p>child content</p>
+            </AppShell>,
+        );
+        expect(
+            screen.queryByText(/catching her breath/),
+        ).not.toBeInTheDocument();
     });
 
     it('mounts the flash notice as shell chrome', () => {

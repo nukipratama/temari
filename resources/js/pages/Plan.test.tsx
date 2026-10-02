@@ -121,6 +121,14 @@ describe('Plan', () => {
         clearNavigationMemory();
     });
 
+    it('shows the AI pause banner while generation is paused', () => {
+        setMockPage({ today: '2026-06-17', aiPaused: true }, '/plan', 'Plan');
+
+        renderPlan();
+
+        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
+    });
+
     it("keeps the server's tomorrow editable while the device clock already reads that day", () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date(2026, 5, 18, 0, 30));

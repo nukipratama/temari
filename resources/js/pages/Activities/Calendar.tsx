@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from 'react';
 
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
+import AiOutageBanner from '@/components/AiOutageBanner';
 import CalendarGrid from '@/components/history/CalendarGrid';
 import ConsistencyLine from '@/components/history/ConsistencyLine';
 import EffortLegend from '@/components/history/EffortLegend';
@@ -103,6 +104,7 @@ export default function Calendar({
     return (
         <>
             <Head title={`History · Calendar · ${monthLabel}`} />
+            <AiOutageBanner />
             <PageContainer>
                 <HistoryHeader
                     active="calendar"

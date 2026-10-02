@@ -13,6 +13,7 @@ import type {
     WeekComparison as WeekComparisonPayload,
 } from '@/types/inertia';
 
+import AiOutageBanner from '@/components/AiOutageBanner';
 import MonthComparison from '@/components/trends/MonthComparison';
 import NarrationCard from '@/components/trends/NarrationCard';
 import RaceComparison from '@/components/trends/RaceComparison';
@@ -62,6 +63,7 @@ export default function Trends({
     return (
         <>
             <Head title="Trends" />
+            <AiOutageBanner />
             <PageContainer>
                 <Eyebrow token="hero" tone="ink-2">
                     Trends

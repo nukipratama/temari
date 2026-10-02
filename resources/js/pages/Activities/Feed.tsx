@@ -9,6 +9,7 @@ import type {
     WeeklySnapshotWithRecap,
 } from '@/types/inertia';
 
+import AiOutageBanner from '@/components/AiOutageBanner';
 import EffortLegend from '@/components/history/EffortLegend';
 import HistoryHeader from '@/components/history/HistoryHeader';
 import {
@@ -83,6 +84,7 @@ export default function RunsIndex({
     return (
         <>
             <Head title="History · Log" />
+            <AiOutageBanner />
             <PageContainer>
                 <HistoryHeader
                     active="feed"

@@ -27,6 +27,16 @@ beforeEach(() => {
 });
 
 describe('Settings', () => {
+    it('shows nothing about an AI pause, since it renders no narration', () => {
+        setMockPage({ auth: { user: makeUser() }, aiPaused: true });
+
+        render(Settings.layout(<Settings />));
+
+        expect(
+            screen.queryByText(/catching her breath/),
+        ).not.toBeInTheDocument();
+    });
+
     it('renders the settings sections', () => {
         render(<Settings />);
         expect(screen.getByText('Notifications')).toBeInTheDocument();

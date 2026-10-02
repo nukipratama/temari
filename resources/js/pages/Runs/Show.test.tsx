@@ -129,11 +129,15 @@ function runInsight(
     };
 }
 
-function renderShow(overrides: Partial<Parameters<typeof RunsShow>[0]> = {}) {
+function renderShow(
+    overrides: Partial<Parameters<typeof RunsShow>[0]> = {},
+    pageProps: Record<string, unknown> = {},
+) {
     setMockPage({
         auth: { user: { id: 1, name: 'A', first_name: 'A', avatar_url: null } },
         flash: {},
         demoLoginEnabled: false,
+        ...pageProps,
     });
     return render(
         <RunsShow
@@ -178,6 +182,12 @@ function precedes(first: string, second: string): boolean {
 }
 
 describe('Runs/Show', () => {
+    it('shows the AI pause banner while generation is paused', () => {
+        renderShow({}, { aiPaused: true });
+
+        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
+    });
+
     it('renders the prototype section list in order', () => {
         renderShow();
         expect(screen.getByText('Activity')).toBeInTheDocument();

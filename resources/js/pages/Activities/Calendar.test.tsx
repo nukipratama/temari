@@ -129,6 +129,15 @@ const BASE_PROPS = {
 };
 
 describe('calendar', () => {
+    it('shows the AI pause banner while paused, before the deferred recap lands', () => {
+        setMockPage({ auth: { user: makeUser() }, aiPaused: true });
+        setMockDeferred(['cells', 'weeklySnapshots', 'monthlyRecap']);
+
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+
+        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
+    });
+
     it('renders the month label and the lowercase two-letter weekday header', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(

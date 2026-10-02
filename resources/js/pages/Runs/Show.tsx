@@ -9,6 +9,7 @@ import type {
     StoryLine,
 } from '@/types/inertia';
 
+import AiOutageBanner from '@/components/AiOutageBanner';
 import TimeInZoneBar from '@/components/profile/TimeInZoneBar';
 import AskAboutRun from '@/components/run/AskAboutRun';
 import { EffortPicker, EffortSaved } from '@/components/run/EffortScore';
@@ -101,6 +102,7 @@ export default function RunsShow({
     return (
         <>
             <Head title={detail.name ?? 'Run'} />
+            <AiOutageBanner />
             <PageContainer>
                 {!effortSaved && (
                     <section className="mb-6">

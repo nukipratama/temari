@@ -8,6 +8,7 @@ import type {
     WeeklySnapshot,
 } from '@/types/inertia';
 
+import AiOutageBanner from '@/components/AiOutageBanner';
 import EvidenceList from '@/components/home/EvidenceList';
 import NoPlanCard from '@/components/home/NoPlanCard';
 import NoVerdictPanel from '@/components/home/NoVerdictPanel';
@@ -61,6 +62,7 @@ export default function Home({
     return (
         <>
             <Head title="Home" />
+            <AiOutageBanner />
             <PageContainer>
                 {!hasRuns ? (
                     <EmptyRunsState />
