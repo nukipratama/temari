@@ -23,6 +23,7 @@ use Override;
  * @property int $activity_id
  * @property string|null $name
  * @property Carbon|null $start_date_local
+ * @property Carbon|null $start_date_utc
  * @property float|null $distance
  * @property int|null $moving_time
  * @property int|null $elapsed_time
@@ -64,6 +65,7 @@ use Override;
     'activity_id',
     'name',
     'start_date_local',
+    'start_date_utc',
     'distance',
     'moving_time',
     'elapsed_time',
@@ -199,6 +201,7 @@ class ActivityDetail extends Model
         return [
             'activity_id' => 'integer',
             'start_date_local' => 'datetime:Y-m-d\TH:i:s',
+            'start_date_utc' => 'datetime:Y-m-d\TH:i:s',
             'distance' => 'float',
             'moving_time' => 'integer',
             'elapsed_time' => 'integer',

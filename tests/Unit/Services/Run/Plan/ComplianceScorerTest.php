@@ -17,10 +17,31 @@ use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\ComplianceScorer;
+use App\Services\Run\Plan\RecommendationHistory;
+use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
+
+it('grades the shown target rather than a later reconstructed distance', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-10-01');
+    $history = app(RecommendationHistory::class);
+    $revision = $history->record($user->id, '2026-10-01', ['session_type' => 'easy'], [
+        'session_type' => 'easy', 'distance_km' => 6.0, 'segments' => [], 'paces' => null, 'skipped' => false,
+    ]);
+    Carbon::setTestNow('2026-10-01 01:00:00 UTC');
+    $history->shown($revision, (string) Str::uuid());
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'start_date_local' => '2026-10-01 09:00:00', 'start_date_utc' => '2026-10-01 02:00:00', 'distance' => 6000,
+    ]);
+    $verdict = app(ComplianceScorer::class)->verdictsFor($user, new Collection([$row]), Carbon::parse('2026-10-02'))['2026-10-01'];
+    expect($verdict['prescribed_km'])->toBe(6.0)->and($verdict['distance_score'])->toBe(100)
+        ->and($verdict['intent']['evidence']['recommendation_revision_id'])->toBe($revision->id);
+    Carbon::setTestNow();
+});
 
 function scorerDay(User $user, string $date, array $attributes = []): PlannedSession
 {

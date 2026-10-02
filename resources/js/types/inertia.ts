@@ -455,6 +455,7 @@ export interface PlanDayPaceEasedFrom {
 /** One day within `WeekPlan['days']`, as `PlanRenderer::dayPayload()` ships
  *  it — the same shape Plan's own day rows use. */
 export interface WeekPlanDay {
+    recommendation_token?: string;
     id: number;
     date: string;
     phase: string;

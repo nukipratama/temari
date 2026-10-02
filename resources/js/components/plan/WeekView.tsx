@@ -14,6 +14,7 @@ import FlagWrong from '@/components/temari/FlagWrong';
 import Chip from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
 import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
+import { useRecommendationView } from '@/hooks/useRecommendationView';
 import { rememberPlanSelectedDay } from '@/lib/navigationMemory';
 import { formatNaiveMonthDayId } from '@/lib/pace';
 import {
@@ -121,6 +122,7 @@ export default function WeekView({
     }, [focusHere]);
 
     const selected = days.find((day) => day.date === selectedDate) ?? null;
+    useRecommendationView(panelRef, selected?.recommendation_token);
     const selectDate = (date: string) => {
         setSelectedDate(date);
         rememberPlanSelectedDay(date);

@@ -345,8 +345,27 @@ final class PlanRenderer
             ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [])
             : null;
 
+        $originalSegments = self::segmentsFor($s, $s->session_type, $s->phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm);
+        $shownClamp = $isToday && ! $status->isCredited() ? $clamp : null;
+        $recommendationToken = app(RecommendationHistory::class)->token($s->user_id, $s->date->toDateString(), [
+            'session_type' => $s->session_type->value,
+            'phase' => $s->phase->value,
+            'hard_minutes' => $s->prescribed_hard_minutes,
+            'distance_km' => SegmentGenerator::segmentSumKm($originalSegments) ?? $askedKm,
+            'reason' => $s->prescription_reason,
+            'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $originalSegments),
+        ], [
+            'session_type' => ($shownClamp['session_type'] ?? $sessionType)->value,
+            'distance_km' => $shownClamp['core_km'] ?? $distanceKm,
+            'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $shownClamp['segments'] ?? $segments),
+            'paces' => $paces,
+            'skipped' => $s->skipped,
+            'reason' => $shownClamp['note'] ?? ($effective->isEased() ? ReadinessClamp::noteFor($s->session_type, $effective->impliedCeiling()) : $s->prescription_reason),
+        ]);
+
         return [
             'id' => $s->id,
+            'recommendation_token' => $recommendationToken,
             'date' => $s->date->toDateString(),
             'phase' => $s->phase->value,
             'session_type' => $sessionType->value,

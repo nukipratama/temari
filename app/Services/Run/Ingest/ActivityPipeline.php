@@ -246,6 +246,7 @@ class ActivityPipeline
             [
                 'name' => $detail['name'] ?? null,
                 'start_date_local' => is_string($start) ? Carbon::parse($start) : null,
+                'start_date_utc' => is_string($detail['start_date'] ?? null) && $detail['start_date'] !== '' ? Carbon::parse($detail['start_date'])->utc()->toDateTimeString() : null,
                 'distance' => $detail['distance'] ?? null,
                 'moving_time' => $detail['moving_time'] ?? null,
                 'elapsed_time' => $detail['elapsed_time'] ?? null,
