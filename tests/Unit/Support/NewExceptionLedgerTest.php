@@ -64,6 +64,43 @@ it('forgets a fingerprint after the seen window, so it can be new again', functi
     expect(NewExceptionLedger::pull())->toHaveCount(1);
 });
 
+function thrownInVendor(): RuntimeException
+{
+    $exception = new RuntimeException('SQLSTATE');
+    $file = new ReflectionProperty(Exception::class, 'file');
+    $file->setValue($exception, base_path('vendor/laravel/framework/src/Illuminate/Database/Connection.php'));
+    $line = new ReflectionProperty(Exception::class, 'line');
+    $line->setValue($exception, 825);
+
+    return $exception;
+}
+
+it('keys an exception thrown inside vendor on the first app frame that reached it', function (): void {
+    $fromOneCaller = thrownInVendor();
+    $fromAnotherCaller = thrownInVendor();
+
+    NewExceptionLedger::recordServer($fromOneCaller);
+    NewExceptionLedger::recordServer($fromAnotherCaller);
+
+    $labels = array_column(NewExceptionLedger::pull(), 'label');
+
+    expect($labels)->toHaveCount(2)
+        ->and($labels[0])->toBe('RuntimeException at tests/Unit/Support/NewExceptionLedgerTest.php:'.$fromOneCaller->getTrace()[0]['line'])
+        ->and(implode(' ', $labels))->not->toContain('vendor/');
+});
+
+it('does not wait on the ledger lock to count a fingerprint it has already seen', function (): void {
+    Carbon::setTestNow();
+    $exception = serverException();
+    NewExceptionLedger::recordServer($exception);
+    Cache::lock('ops.exceptions.lock', 10)->get();
+
+    $startedAt = microtime(true);
+    NewExceptionLedger::recordServer($exception);
+
+    expect(microtime(true) - $startedAt)->toBeLessThan(1.0);
+});
+
 it('records a browser error by message and first frame, showing only the frame path', function (): void {
     $stack = "TypeError: athlete 42 is undefined\n    at Run (https://temari.example/build/assets/app-abc123.js:1:2345)\n    at x (https://temari.example/build/assets/app-abc123.js:1:99)";
 

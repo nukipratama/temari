@@ -30,8 +30,7 @@ final class NewExceptionLedger
 
     public static function recordServer(Throwable $exception): void
     {
-        $where = Str::after($exception->getFile(), base_path().DIRECTORY_SEPARATOR).':'.$exception->getLine();
-        $label = $exception::class.' at '.$where;
+        $label = $exception::class.' at '.self::firstAppFrame($exception);
 
         self::record(sha1($label), $label);
     }
@@ -60,25 +59,65 @@ final class NewExceptionLedger
         });
     }
 
+    /**
+     * Only a first sighting waits for the ledger lock; a repeat counts itself
+     * when the lock is free and is dropped from the count when it is not, so
+     * an error storm never queues its requests behind this bookkeeping.
+     */
     private static function record(string $fingerprint, string $label): void
     {
         try {
-            self::locked(function () use ($fingerprint, $label): void {
+            if (Cache::add(self::seenKey($fingerprint), true, Carbon::now()->addDays(self::SEEN_DAYS))) {
+                self::locked(function () use ($fingerprint, $label): void {
+                    $pending = self::pending();
+
+                    if (count($pending) >= self::MAX_PENDING) {
+                        Cache::forget(self::seenKey($fingerprint));
+
+                        return;
+                    }
+
+                    $pending[$fingerprint] = ['label' => $label, 'first_seen' => Carbon::now()->toIso8601String(), 'count' => 1];
+                    self::store($pending);
+                });
+
+                return;
+            }
+
+            Cache::lock(self::LOCK_KEY, 10)->get(function () use ($fingerprint): void {
                 $pending = self::pending();
 
                 if (isset($pending[$fingerprint])) {
                     $pending[$fingerprint]['count']++;
-                } elseif (count($pending) < self::MAX_PENDING && Cache::add(self::seenKey($fingerprint), true, Carbon::now()->addDays(self::SEEN_DAYS))) {
-                    $pending[$fingerprint] = ['label' => $label, 'first_seen' => Carbon::now()->toIso8601String(), 'count' => 1];
-                } else {
-                    return;
+                    self::store($pending);
                 }
-
-                Cache::put(self::PENDING_KEY, $pending, Carbon::now()->addDays(self::SEEN_DAYS));
             });
         } catch (Throwable) {
             return;
         }
+    }
+
+    /**
+     * @param  array<string, array{label: string, first_seen: string, count: int}>  $pending
+     */
+    private static function store(array $pending): void
+    {
+        Cache::put(self::PENDING_KEY, $pending, Carbon::now()->addDays(self::SEEN_DAYS));
+    }
+
+    /** The first `path:line` outside `vendor/`, so errors thrown inside a library are told apart by the app code that reached them. */
+    private static function firstAppFrame(Throwable $exception): string
+    {
+        $vendor = base_path('vendor').DIRECTORY_SEPARATOR;
+        $frames = [['file' => $exception->getFile(), 'line' => $exception->getLine()], ...$exception->getTrace()];
+
+        foreach ($frames as $frame) {
+            if (isset($frame['file'], $frame['line']) && ! str_starts_with($frame['file'], $vendor)) {
+                return Str::after($frame['file'], base_path().DIRECTORY_SEPARATOR).':'.$frame['line'];
+            }
+        }
+
+        return Str::after($exception->getFile(), base_path().DIRECTORY_SEPARATOR).':'.$exception->getLine();
     }
 
     /**

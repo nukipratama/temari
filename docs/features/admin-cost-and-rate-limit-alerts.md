@@ -66,12 +66,12 @@ stderr, and Pulse's Exceptions card, which trims after 7 days. Now every reporte
 error posted to [ClientErrorController](../../app/Http/Controllers/ClientErrorController.php#L35)
 is fingerprinted:
 
-- **Server:** the exception class plus its `file:line`.
+- **Server:** the exception class plus the first `file:line` outside `vendor/`, so a library error (a `QueryException`, an HTTP client error) is told apart by the app code that reached it.
 - **Browser:** a hash of the message plus the first stack frame. The frame's origin and query
   string are dropped and numeric path segments are masked.
 
-The first sighting in 30 days queues the fingerprint. Repeats only raise its count until the next
-digest. At 21:00 [`MaintainerAlerter::exceptionDigest()`](../../app/Services/AI/MaintainerAlerter.php#L355)
+The first sighting in 30 days queues the fingerprint. Repeats raise its count until the next
+digest, skipping the count rather than waiting when the ledger lock is busy. At 21:00 [`MaintainerAlerter::exceptionDigest()`](../../app/Services/AI/MaintainerAlerter.php#L355)
 sends one message: a line per fingerprint with its first-seen time and count, folded to
 "and N more" past 25 lines so it stays under Telegram's message limit.
 
