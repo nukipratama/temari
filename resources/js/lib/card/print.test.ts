@@ -99,6 +99,7 @@ describe('rasterising', () => {
         fontsResolved = false;
 
         vi.stubGlobal('fetch', async () => ({
+            ok: true,
             arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
         }));
         vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
@@ -195,6 +196,57 @@ describe('rasterising', () => {
 
         expect(print.blob.type).toBe('image/png');
         expect(drawn).not.toContain('@font-face');
+    });
+
+    it('fetches the faces again on the next print after a failed fetch', async () => {
+        const fetchFaces = vi
+            .fn()
+            .mockRejectedValueOnce(new Error('offline'))
+            .mockResolvedValue({
+                ok: true,
+                arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+            });
+        vi.stubGlobal('fetch', fetchFaces);
+
+        await renderPrint(makeCardFacts(), ALL_FACTS, 'ticket', 'feed');
+        expect(drawn).not.toContain('@font-face');
+
+        await renderPrint(makeCardFacts(), ALL_FACTS, 'ticket', 'feed');
+        await vi.waitFor(() => expect(drawn).toContain('@font-face'));
+        expect(fetchFaces.mock.calls.length).toBeGreaterThan(3);
+    });
+
+    it('never embeds an error page as a face', async () => {
+        vi.stubGlobal('fetch', async () => ({
+            ok: false,
+            status: 404,
+            arrayBuffer: async () =>
+                new TextEncoder().encode('<html>not found</html>').buffer,
+        }));
+
+        const print = await renderPrint(
+            makeCardFacts(),
+            ALL_FACTS,
+            'broadsheet',
+            'feed',
+        );
+
+        expect(print.blob.type).toBe('image/png');
+        await vi.waitFor(() => expect(drawn).not.toBe(''));
+        expect(drawn).not.toContain('data:font/woff2');
+    });
+
+    it('fetches the faces once across prints after a successful fetch', async () => {
+        const fetchFaces = vi.fn(async () => ({
+            ok: true,
+            arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+        }));
+        vi.stubGlobal('fetch', fetchFaces);
+
+        await renderPrint(makeCardFacts(), ALL_FACTS, 'ticket', 'feed');
+        await renderPrint(makeCardFacts(), ALL_FACTS, 'topo', 'story');
+
+        expect(fetchFaces).toHaveBeenCalledTimes(3);
     });
 
     it('rejects when the svg will not load', async () => {
