@@ -109,6 +109,10 @@ describe('app.css integrity', () => {
         expect(block).toContain('active:scale-100');
     });
 
+    it('defines the wide page column in rem so it scales with the type step', () => {
+        expect(css).toMatch(/--container-column-wide:\s*65rem;/);
+    });
+
     it('still declares the press-feedback rule', () => {
         const blocks = [...css.matchAll(/\.pressable\s*\{[^}]*\}/g)].map(
             (m) => m[0],
