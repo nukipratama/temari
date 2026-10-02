@@ -25,8 +25,18 @@ class ProgressionSeriesBuilder
 
     private const float DISTANCE_TOLERANCE = 0.05;
 
+    private const int WINDOW_WEEKS = 4;
+
+    private const float FLAT_SHARE = 0.01;
+
+    public const string FASTER = 'faster';
+
+    public const string SLOWER = 'slower';
+
+    public const string FLAT = 'flat';
+
     /**
-     * @return array{category:string, weeks:array<int,string>, times_sec:array<int,int>, activity_ids:array<int,int|null>, goal_sec:int|null}|null
+     * @return array{category:string, weeks:array<int,string>, times_sec:array<int,int>, activity_ids:array<int,int|null>, goal_sec:int|null, progress:array{relation:string, delta_sec:int, from_sec:int, to_sec:int, weeks:int}|null}|null
      */
     public function build(User $user, PersonalRecord $featured, ?int $goalSec): ?array
     {
@@ -42,7 +52,7 @@ class ProgressionSeriesBuilder
      *
      * @param  list<PersonalRecord>  $records
      * @param  callable(PersonalRecord): (int|null)  $goalResolver
-     * @return array<string, array{category:string, weeks:array<int,string>, times_sec:array<int,int>, activity_ids:array<int,int|null>, goal_sec:int|null}>
+     * @return array<string, array{category:string, weeks:array<int,string>, times_sec:array<int,int>, activity_ids:array<int,int|null>, goal_sec:int|null, progress:array{relation:string, delta_sec:int, from_sec:int, to_sec:int, weeks:int}|null}>
      */
     public function buildMany(User $user, array $records, callable $goalResolver): array
     {
@@ -97,10 +107,62 @@ class ProgressionSeriesBuilder
                 'times_sec' => array_map(fn (array $row): int => $row['time'], array_values($bestByWeek)),
                 'activity_ids' => array_map(fn (array $row): ?int => $row['activity_id'], array_values($bestByWeek)),
                 'goal_sec' => $goalResolver($band['record']),
+                'progress' => $this->progress($bestByWeek, $since),
             ];
         }
 
         return $out;
+    }
+
+    /**
+     * The best of the lookback's first four weeks against the best of its last
+     * four, as a relation word beside an unsigned delta. Null when either
+     * window has no run.
+     *
+     * @param  array<string, array{time:int, activity_id:int|null}>  $bestByWeek
+     * @return array{relation:string, delta_sec:int, from_sec:int, to_sec:int, weeks:int}|null
+     */
+    private function progress(array $bestByWeek, Carbon $since): ?array
+    {
+        $earliestEnd = $since->copy()->addWeeks(self::WINDOW_WEEKS)->toDateString();
+        $latestStart = Carbon::now()->startOfWeek(Carbon::MONDAY)->subWeeks(self::WINDOW_WEEKS - 1)->toDateString();
+
+        $from = $this->windowBest(array_filter($bestByWeek, fn (string $week): bool => $week < $earliestEnd, ARRAY_FILTER_USE_KEY));
+        $to = $this->windowBest(array_filter($bestByWeek, fn (string $week): bool => $week >= $latestStart, ARRAY_FILTER_USE_KEY));
+        if ($from === null || $to === null) {
+            return null;
+        }
+
+        $saved = $from['time'] - $to['time'];
+        $relation = match (true) {
+            abs($saved) < $from['time'] * self::FLAT_SHARE => self::FLAT,
+            $saved > 0 => self::FASTER,
+            default => self::SLOWER,
+        };
+
+        return [
+            'relation' => $relation,
+            'delta_sec' => abs($saved),
+            'from_sec' => $from['time'],
+            'to_sec' => $to['time'],
+            'weeks' => (int) Carbon::parse($from['week'])->diffInWeeks(Carbon::parse($to['week'])),
+        ];
+    }
+
+    /**
+     * @param  array<string, array{time:int, activity_id:int|null}>  $window
+     * @return array{week:string, time:int}|null
+     */
+    private function windowBest(array $window): ?array
+    {
+        $best = null;
+        foreach ($window as $week => $row) {
+            if ($best === null || $row['time'] < $best['time']) {
+                $best = ['week' => $week, 'time' => $row['time']];
+            }
+        }
+
+        return $best;
     }
 
     /**

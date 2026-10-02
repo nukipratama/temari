@@ -1543,6 +1543,8 @@ it('ProfileVoiceNarrator bounds its quotable numbers to two schema slots', funct
     expect(narratorPrompt(ProfileVoiceNarrator::class))
         ->toContain('COMMIT TO IT FIRST')
         ->toContain('delta_formatted')
+        ->toContain('Take the direction from relation alone')
+        ->not->toContain('a bigger delta means')
         ->not->toContain('a falling delta_sec')
         ->not->toContain('fine to use as evidence of consistency');
 });

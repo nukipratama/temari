@@ -284,3 +284,73 @@ it('ignores another user\'s runs and un-analyzed activities', function (): void 
 
     expect(new ProgressionSeriesBuilder()->build($user, $featured, 1_485))->toBeNull();
 });
+
+function progressionRun(User $user, string $date, int $distance, int $elapsed): void
+{
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'distance' => $distance,
+        'elapsed_time' => $elapsed,
+        'start_date_local' => Carbon::parse($date.' 07:00:00'),
+    ]);
+}
+
+it('reads a regressing series as slower, earliest 4-week best against latest 4-week best', function (): void {
+    ['user' => $user, 'featured' => $featured] = progressionFixture('5km', 1_500);
+
+    progressionRun($user, '2025-11-20', 5_000, 1_500);
+    progressionRun($user, '2026-02-10', 5_000, 1_450);
+    progressionRun($user, '2026-05-12', 5_000, 1_980);
+
+    $series = new ProgressionSeriesBuilder()->build($user, $featured, null);
+
+    expect($series['progress'] ?? null)->toBe([
+        'relation' => 'slower',
+        'delta_sec' => 480,
+        'from_sec' => 1_500,
+        'to_sec' => 1_980,
+        'weeks' => 25,
+    ]);
+});
+
+it('reads an improving series as faster from the best of each window', function (): void {
+    ['user' => $user, 'featured' => $featured] = progressionFixture('5km', 1_400);
+
+    progressionRun($user, '2025-11-20', 5_000, 1_560);
+    progressionRun($user, '2025-12-10', 5_000, 1_500);
+    progressionRun($user, '2026-04-29', 5_000, 1_440);
+    progressionRun($user, '2026-05-19', 5_000, 1_470);
+
+    expect(new ProgressionSeriesBuilder()->build($user, $featured, null)['progress'] ?? null)->toBe([
+        'relation' => 'faster',
+        'delta_sec' => 60,
+        'from_sec' => 1_500,
+        'to_sec' => 1_440,
+        'weeks' => 20,
+    ]);
+});
+
+it('reads a change inside one percent as flat', function (): void {
+    ['user' => $user, 'featured' => $featured] = progressionFixture('5km', 1_400);
+
+    progressionRun($user, '2025-11-20', 5_000, 1_500);
+    progressionRun($user, '2026-05-12', 5_000, 1_490);
+
+    $progress = new ProgressionSeriesBuilder()->build($user, $featured, null)['progress'] ?? null;
+
+    expect($progress['relation'] ?? null)->toBe('flat')
+        ->and($progress['delta_sec'] ?? null)->toBe(10);
+});
+
+it('gives no progress figure when either 4-week window has no runs', function (): void {
+    ['user' => $user, 'featured' => $featured] = progressionFixture('5km', 1_400);
+    progressionRun($user, '2025-11-20', 5_000, 1_500);
+    progressionRun($user, '2026-03-10', 5_000, 1_450);
+
+    ['user' => $recentOnly, 'featured' => $recentPr] = progressionFixture('5km', 1_400);
+    progressionRun($recentOnly, '2026-03-10', 5_000, 1_500);
+    progressionRun($recentOnly, '2026-05-12', 5_000, 1_450);
+
+    expect(new ProgressionSeriesBuilder()->build($user, $featured, null))->toHaveKey('progress', null)
+        ->and(new ProgressionSeriesBuilder()->build($recentOnly, $recentPr, null))->toHaveKey('progress', null);
+});

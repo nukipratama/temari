@@ -8,12 +8,33 @@ import { formatDurationHMS } from '@/lib/pace';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
 import { outlineChipVariants } from '@/lib/variants';
 
+export interface ProgressionProgress {
+    relation: 'faster' | 'slower' | 'flat';
+    delta_sec: number;
+    from_sec: number;
+    to_sec: number;
+    weeks: number;
+}
+
 export interface ProgressionSeries {
     category: string;
     weeks: string[];
     times_sec: Array<number | null>;
     activity_ids: Array<number | null>;
     goal_sec: number | null;
+    progress: ProgressionProgress | null;
+}
+
+const TOTAL_SIGN: Record<ProgressionProgress['relation'], string | null> = {
+    faster: '−',
+    slower: '+',
+    flat: null,
+};
+
+function gapLine(progress: ProgressionProgress, delta: string): string {
+    return progress.relation === 'flat'
+        ? `“holding steady over ${progress.weeks} weeks.”`
+        : `“${delta} ${progress.relation} over ${progress.weeks} weeks.”`;
 }
 
 const TABS = ['5km', '10km', 'half_marathon', 'marathon'] as const;
@@ -37,15 +58,14 @@ export default function ProgressionCard({
     const [selected, setSelected] = useState<string>(tabs.at(-1) ?? tabs[0]);
     const series = byCategory[selected] ?? byCategory[tabs[0]];
 
-    const times = series.times_sec.filter((t): t is number => t != null);
-    const worst = times.length > 0 ? Math.max(...times) : 0;
-    const best = times.length > 0 ? Math.min(...times) : 0;
-    const delta = Math.max(0, worst - best);
+    const progress = series.progress;
+    const totalSign = progress ? TOTAL_SIGN[progress.relation] : null;
     const label = PR_CATEGORY_LABELS[series.category] ?? series.category;
 
-    const worstCount = useCountUp(worst);
-    const bestCount = useCountUp(best);
-    const deltaCount = useCountUp(delta);
+    const fromCount = useCountUp(progress?.from_sec ?? 0);
+    const toCount = useCountUp(progress?.to_sec ?? 0);
+    const deltaCount = useCountUp(progress?.delta_sec ?? 0);
+    const delta = formatDurationHMS(Math.round(deltaCount));
 
     return (
         <section>
@@ -75,25 +95,31 @@ export default function ProgressionCard({
             <Eyebrow token="micro" tone="ink-3">
                 {`Journey · ${label}`}
             </Eyebrow>
-            <p className="mt-1 flex items-baseline gap-1.5">
-                <span className="text-stat">
-                    {formatDurationHMS(Math.round(bestCount))}
-                </span>
-                <span className="text-meta">
-                    from {formatDurationHMS(Math.round(worstCount))}
-                </span>
-            </p>
-            {delta > 0 && (
-                <p className="mt-2 text-sm leading-relaxed text-text-2">
-                    {`“${formatDurationHMS(Math.round(deltaCount))} faster over ${series.weeks.length} weeks.”`}
-                </p>
+            {progress && (
+                <>
+                    <p className="mt-1 flex items-baseline gap-1.5">
+                        <span className="text-stat">
+                            {formatDurationHMS(Math.round(toCount))}
+                        </span>
+                        <span className="text-meta">
+                            from {formatDurationHMS(Math.round(fromCount))}
+                        </span>
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-text-2">
+                        {gapLine(progress, delta)}
+                    </p>
+                </>
             )}
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-                <Chip>{`−${formatDurationHMS(Math.round(deltaCount))} total`}</Chip>
-                {series.goal_sec != null && (
-                    <Chip tone="horizon">{`goal: sub-${formatDurationHMS(series.goal_sec)}`}</Chip>
-                )}
-            </div>
+            {(totalSign != null || series.goal_sec != null) && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {totalSign != null && (
+                        <Chip>{`${totalSign}${delta} total`}</Chip>
+                    )}
+                    {series.goal_sec != null && (
+                        <Chip tone="horizon">{`goal: sub-${formatDurationHMS(series.goal_sec)}`}</Chip>
+                    )}
+                </div>
+            )}
 
             <JourneyChart
                 key={selected}

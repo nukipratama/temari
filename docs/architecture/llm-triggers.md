@@ -420,7 +420,7 @@ inline in its `toolbox()` method.
 | `RecentRunsTool` · `get_recent_runs` | `recent_runs`: up to 5 × `{mood, km, intensity, oneline}` | `VerdictNarrator::recent()` |
 | `LifetimeStatsTool` · `get_lifetime_stats` | `name`, `total_runs`, `total_km`, `longest_run_km`, `months_running`, `pr_count`, `weekly_streak`, `favorite_time`, `strava_connected`, `form_status` | `LifetimeStats`, `WeeklySnapshot::consecutiveWeekStreak()` / `::latestFormStatus()` |
 | `PersonaMixTool` · `get_persona_mix` | `lookback_weeks`, `total_runs`, `persona_mix`, `persona_mix_recent`, `persona_mix_earlier`, `form_status` | `MoodMix`, `WeeklySnapshot::latestFormStatus()` |
-| `ProgressionSignalTool` · `get_progression_signal` | `progression_signal`: `{label, delta_sec}` | `ProgressionSeriesBuilder` over `PersonalRecord` rows |
+| `ProgressionSignalTool` · `get_progression_signal` | `progression_signal`: `{label, relation, delta_sec, delta_formatted}` (relation is the only direction; `delta_sec` is unsigned) | `ProgressionSeriesBuilder` progress figure over `PersonalRecord` rows |
 
 ### Bound to one specific row (`NoArgumentTool`)
 
