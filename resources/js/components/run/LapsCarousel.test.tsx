@@ -1,9 +1,54 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import {
+    afterAll,
+    afterEach,
+    beforeAll,
+    describe,
+    expect,
+    it,
+    vi,
+} from 'vitest';
 
 import type { StreamSummaryLap } from '@/types/inertia';
 
+import { SCROLL_FADE_MASK } from '@/hooks/useScrollFade';
+
 import LapsCarousel from './LapsCarousel';
+
+function stubRailGeometry(scrollWidth: number, clientWidth: number) {
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
+        scrollWidth,
+    );
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(
+        clientWidth,
+    );
+}
+
+const maskImages = new WeakMap<CSSStyleDeclaration, string>();
+const styleProto: object = Object.getPrototypeOf(
+    document.createElement('ul').style,
+);
+
+/** jsdom has no `maskImage` accessor, so the value React writes is recorded here. */
+beforeAll(() => {
+    Object.defineProperty(styleProto, 'maskImage', {
+        configurable: true,
+        get(this: CSSStyleDeclaration) {
+            return maskImages.get(this) ?? '';
+        },
+        set(this: CSSStyleDeclaration, value: string | null) {
+            maskImages.set(this, value ?? '');
+        },
+    });
+});
+
+afterAll(() => {
+    Reflect.deleteProperty(styleProto, 'maskImage');
+});
+
+afterEach(() => {
+    vi.restoreAllMocks();
+});
 
 const laps: StreamSummaryLap[] = [
     {
@@ -82,5 +127,17 @@ describe('LapsCarousel', () => {
         render(<LapsCarousel laps={laps} />);
         expect(screen.getByRole('list')).toHaveClass('overflow-x-auto');
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('fades the trailing edge while laps run past it', () => {
+        stubRailGeometry(612, 284);
+        render(<LapsCarousel laps={laps} />);
+        expect(screen.getByRole('list').style.maskImage).toBe(SCROLL_FADE_MASK);
+    });
+
+    it('leaves the rail unmasked when every lap fits', () => {
+        stubRailGeometry(284, 284);
+        render(<LapsCarousel laps={laps} />);
+        expect(screen.getByRole('list').style.maskImage).toBe('');
     });
 });

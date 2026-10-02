@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Keeps a closing element mounted for `exitMs` so its CSS exit animation can
@@ -11,10 +11,10 @@ export function useExitTransition(
     exitMs: number,
 ): { rendered: boolean; closing: boolean } {
     const [closing, setClosing] = useState(false);
-    const wasOpenRef = useRef(open);
+    const [wasOpen, setWasOpen] = useState(open);
 
-    if (wasOpenRef.current !== open) {
-        wasOpenRef.current = open;
+    if (wasOpen !== open) {
+        setWasOpen(open);
         setClosing(!open);
     }
 

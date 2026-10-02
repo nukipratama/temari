@@ -33,6 +33,18 @@ const ERROR_BY_STATUS: Readonly<Record<number, AskError>> = {
     429: 'rate_limited',
 };
 
+interface ThreadBody {
+    questions?: ReadonlyArray<RunQuestion>;
+    suggestions?: ReadonlyArray<string>;
+    at_run_cap?: boolean;
+}
+
+/** A finished thread read; a null body means the server refused it. */
+interface ThreadRead {
+    generation: number;
+    body: ThreadBody | null;
+}
+
 function isPending(question: RunQuestion): boolean {
     return question.status === 'queued' || question.status === 'processing';
 }
@@ -90,33 +102,47 @@ export function useRunQuestions(activityId: number) {
         };
     }, []);
 
-    const load = useCallback(async () => {
+    const isStale = useCallback(
+        (generation: number) =>
+            !mountedRef.current || generation < newestAppliedRef.current,
+        [],
+    );
+
+    const read = useCallback(async (): Promise<ThreadRead | null> => {
         const generation = ++loadsStartedRef.current;
-        const isStale = () =>
-            !mountedRef.current || generation < newestAppliedRef.current;
 
         const response = await getJson(url);
-        if (isStale()) {
-            return;
+        if (isStale(generation)) {
+            return null;
         }
         if (!response.ok) {
+            return { generation, body: null };
+        }
+        const body: ThreadBody = await response.json();
+
+        return { generation, body };
+    }, [url, isStale]);
+
+    const apply = useCallback(
+        (thread: ThreadRead | null) => {
+            if (thread === null || isStale(thread.generation)) {
+                return;
+            }
+            const { generation, body } = thread;
+            if (body === null) {
+                setLoaded(true);
+                return;
+            }
+            newestAppliedRef.current = generation;
+            setQuestions((prev) => mergeThread(prev, body.questions ?? []));
+            setSuggestions(body.suggestions ?? []);
+            setAtRunCap(body.at_run_cap === true);
             setLoaded(true);
-            return;
-        }
-        const body: {
-            questions?: ReadonlyArray<RunQuestion>;
-            suggestions?: ReadonlyArray<string>;
-            at_run_cap?: boolean;
-        } = await response.json();
-        if (isStale()) {
-            return;
-        }
-        newestAppliedRef.current = generation;
-        setQuestions((prev) => mergeThread(prev, body.questions ?? []));
-        setSuggestions(body.suggestions ?? []);
-        setAtRunCap(body.at_run_cap === true);
-        setLoaded(true);
-    }, [url]);
+        },
+        [isStale],
+    );
+
+    const load = useCallback(() => read().then(apply), [read, apply]);
 
     const [threadUrl, setThreadUrl] = useState(url);
     if (threadUrl !== url) {

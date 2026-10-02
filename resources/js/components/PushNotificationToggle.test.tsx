@@ -49,6 +49,18 @@ it('shows the enable button when ready and subscribes on click', async () => {
     );
 });
 
+it('offers a re-register when permission is granted but the subscription is gone', async () => {
+    vi.stubGlobal('Notification', { permission: 'granted' });
+    render(<PushNotificationToggle />);
+
+    expect(await screen.findByText(/re-registered/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Fix/ }));
+
+    await waitFor(() =>
+        expect(webPush.subscribe).toHaveBeenCalledWith('test-key'),
+    );
+});
+
 it('shows the Home-Screen install hint on Safari when not standalone', async () => {
     vi.mocked(webPush.isStandalone).mockReturnValue(false);
     render(<PushNotificationToggle />);

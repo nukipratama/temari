@@ -39,6 +39,7 @@ export function useCardPrints(
     const [results, setResults] = useState<Partial<Record<CardStyle, Result>>>(
         {},
     );
+    const [prints, setPrints] = useState<Record<string, Print>>({});
     const [attempt, setAttempt] = useState(0);
     const memoRef = useRef(new Map<string, Print>());
     const openRef = useRef(true);
@@ -82,6 +83,8 @@ export function useCardPrints(
                         return;
                     }
                     memoRef.current.set(key, print);
+                    const kept = print;
+                    setPrints((prev) => ({ ...prev, [key]: kept }));
                 }
                 if (!live) return;
                 setResults((prev) => ({ ...prev, [each]: { key, print } }));
@@ -100,7 +103,7 @@ export function useCardPrints(
         const key = printKey(each, aspect, options);
         const result = results[each];
         states[each] = {
-            print: memoRef.current.get(key) ?? null,
+            print: prints[key] ?? null,
             previous: result?.print ?? null,
             failed: result?.key === key && result.print === null,
         };
