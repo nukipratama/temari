@@ -62,3 +62,5 @@ suite as a unit. A missing, cancelled or failed shard therefore reds the gate â€
 [docs/decisions/sharded-pr-coverage.md](../decisions/sharded-pr-coverage.md).
 
 See also: [[deployment]].
+
+Scratch: [missing](scripts/ci/does-not-exist.sh).
