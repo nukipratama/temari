@@ -200,7 +200,7 @@ export default function SplitsChart({
                                         ? 'border border-dashed border-border-strong'
                                         : bar.fastest
                                           ? 'bg-horizon'
-                                          : 'bg-sky-2',
+                                          : 'bg-muted',
                                     tip && tip.key !== bar.key && 'opacity-40',
                                 )}
                                 style={{ height: barHeight(bar) }}
