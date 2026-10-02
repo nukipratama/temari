@@ -43,7 +43,7 @@ function runRestoreDryRunCountCheck(
 it('restore-dry-run.yml delegates count validation to the tested helper', function (): void {
     $workflow = Yaml::parseFile(base_path('.github/workflows/restore-dry-run.yml'));
     $steps = $workflow['jobs']['restore-dry-run']['steps'];
-    $verifyStep = collect($steps)->firstWhere('name', 'Verify the restore against live (read-only)');
+    $verifyStep = collect($steps)->firstWhere('id', 'verify');
 
     expect($verifyStep['run'] ?? '')
         ->toContain('scripts/deploy/check-restore-counts.sh')

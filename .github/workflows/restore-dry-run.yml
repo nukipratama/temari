@@ -78,6 +78,8 @@ jobs:
             echo "app=$app"
             echo "analytics=$analytics"
             echo "label=$(basename "$app")"
+            echo "app_manifest=${app%.sql.gz}.manifest"
+            echo "analytics_manifest=${analytics%.sql.gz}.manifest"
           } >> "$GITHUB_OUTPUT"
 
           echo "Selected pair ($(basename "$app")):"
@@ -105,11 +107,16 @@ jobs:
           RESTORE_DB_ASSUME_YES: '1'
         run: ./scripts/restore-db.sh "${{ steps.pick.outputs.analytics }}"
 
-      # Read-only against the live mysql (SELECT COUNT / SHOW TABLES only, never
-      # a write) so this step is safe to run beside a live deploy even though
-      # concurrency already keeps them from overlapping.
-      - name: Verify the restore against live (read-only)
+      # A nightly pair is checked against the manifest its backup wrote just before
+      # dumping; a pre-deploy pair, taken minutes before a deploy, against the live
+      # mysql, read-only (SELECT COUNT / SHOW TABLES only, never a write).
+      - name: Verify the restore
+        id: verify
         timeout-minutes: 5
+        env:
+          KIND: ${{ inputs.kind || 'nightly' }}
+          APP_MANIFEST: ${{ steps.pick.outputs.app_manifest }}
+          ANALYTICS_MANIFEST: ${{ steps.pick.outputs.analytics_manifest }}
         run: |
           set -euo pipefail
 
@@ -158,15 +165,38 @@ jobs:
             rm -f "$live_err" "$throwaway_err"
           }
 
-          echo "== default schema =="
-          check_tables sql "default"
-          for t in users activities ai_analyses planned_sessions; do
-            check_counts sql "default" "$t"
-          done
+          check_manifest() { # $1=sql-fn  $2=schema  $3=manifest
+            local fn="$1" schema="$2" manifest="$3" query restored
+            if [ ! -f "$manifest" ]; then
+              echo "::warning::$schema — no manifest at $manifest, so this dump predates manifests; count check skipped."
+              return 0
+            fi
+            query=$("$fn" "docker compose -p $RESTORE_PROJECT -f $RESTORE_COMPOSE_FILE" "$RESTORE_SERVICE" "SHOW TABLES" | scripts/deploy/count-rows-query.sh)
+            restored="$(mktemp)"
+            "$fn" "docker compose -p $RESTORE_PROJECT -f $RESTORE_COMPOSE_FILE" "$RESTORE_SERVICE" "$query" > "$restored"
+            if ! scripts/deploy/check-restore-manifest.sh "$schema" "$manifest" "$restored"; then
+              fail=1
+            fi
+            rm -f "$restored"
+          }
 
-          echo "== analytics schema =="
-          check_tables sql_analytics "analytics"
-          check_counts sql_analytics "analytics" ai_token_usages
+          if [ "$KIND" = "nightly" ]; then
+            echo "== default schema (against the dump-time manifest) =="
+            check_manifest sql "default" "$APP_MANIFEST"
+
+            echo "== analytics schema (against the dump-time manifest) =="
+            check_manifest sql_analytics "analytics" "$ANALYTICS_MANIFEST"
+          else
+            echo "== default schema =="
+            check_tables sql "default"
+            for t in users activities ai_analyses planned_sessions; do
+              check_counts sql "default" "$t"
+            done
+
+            echo "== analytics schema =="
+            check_tables sql_analytics "analytics"
+            check_counts sql_analytics "analytics" ai_token_usages
+          fi
 
           if [ "$fail" -ne 0 ]; then
             echo "::error::restore dry-run FAILED verification"
@@ -181,7 +211,7 @@ jobs:
           {
             echo "## Restore dry-run"
             if [ "${{ job.status }}" = "success" ]; then
-              echo "PASS — \`${{ steps.pick.outputs.label }}\` restored clean into a throwaway database and verified against live."
+              echo "PASS — \`${{ steps.pick.outputs.label }}\` restored clean into a throwaway database and verified (nightly: against its dump-time manifest; pre-deploy: against live)."
             else
               echo "FAIL — \`${{ steps.pick.outputs.label }}\`, see the Verify step above."
             fi
