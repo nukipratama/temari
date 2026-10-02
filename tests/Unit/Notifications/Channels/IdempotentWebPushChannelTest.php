@@ -199,7 +199,6 @@ it('reclaims and sends a stale web push once with the new claim version', functi
 });
 
 it('delivers an encrypted, VAPID-signed push to the subscription endpoint through the HTTP client', function (): void {
-    Http::preventStrayRequests();
     Http::fake(['push.example/*' => Http::response('', 201)]);
     $vapid = VAPID::createVapidKeys();
     config(['webpush.vapid.public_key' => $vapid['publicKey'], 'webpush.vapid.private_key' => $vapid['privateKey']]);
