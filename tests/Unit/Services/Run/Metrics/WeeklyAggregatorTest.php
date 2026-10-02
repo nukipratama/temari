@@ -681,3 +681,58 @@ it('lets a second rebuild in the same transaction reuse the athlete lock it alre
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeTrue()
         ->and(Cache::lock(WeeklyAggregator::lockKey($user->id), 1)->get())->toBeTrue();
 });
+
+function seedWeeklyAggregatorMultiYearHistory(User $user): void
+{
+    $first = Carbon::parse('2023-01-02');
+    $days = (int) $first->diffInDays(Carbon::today());
+    for ($d = 0; $d <= $days; $d++) {
+        if (($d >= 400 && $d < 440) || ($d % 4 !== 0 && $d % 9 !== 5)) {
+            continue;
+        }
+        $starts = [$first->copy()->addDays($d)->setTime($d % 13 === 0 ? 23 : 6 + ($d % 5) * 3, $d % 13 === 0 ? 45 : 10)];
+        if ($d % 10 === 2) {
+            $starts[] = $first->copy()->addDays($d)->setTime(18, 30);
+        }
+        foreach ($starts as $n => $start) {
+            $summary = match (true) {
+                $d % 6 === 0 => ['decoupling_pct' => ($d % 17) - 3.25, 'drift_metric_version' => 2, 'steady_effort_decoupling_pct' => ($d % 13) * 0.7],
+                $d % 3 === 0 => ['decoupling_pct' => ($d % 11) * 0.45],
+                default => null,
+            };
+            $activity = Activity::factory()->for($user)->analyzed()->create();
+            ActivityDetail::factory()->for($activity)->create([
+                'distance' => 3000 + ($d * 271 + $n * 97) % 15000 + 0.5,
+                'moving_time' => 1200 + ($d * 53) % 4000,
+                'elapsed_time' => 1260 + ($d * 53 + $n * 11) % 4000,
+                'trimp_edwards' => $d < 60 || $d % 11 === 0 ? null : 30 + ($d * 37 + $n * 5) % 90 + 0.3,
+                'start_date_local' => $start,
+                'stream_summary' => $summary,
+            ]);
+        }
+    }
+}
+
+function weeklySnapshotFingerprint(User $user): string
+{
+    $rows = DB::table('weekly_snapshots')
+        ->where('user_id', $user->id)
+        ->orderBy('week_ending')
+        ->get(['week_ending', 'distance_km', 'runs', 'elapsed_time_sec', 'weekly_trimp', 'atl_7d', 'ctl_42d', 'form', 'form_status', 'avg_decoupling', 'avg_decoupling_v2', 'monotony', 'strain']);
+
+    return \count($rows).':'.hash('sha256', json_encode($rows, JSON_THROW_ON_ERROR));
+}
+
+it('rebuilds a multi-year history into the same snapshot rows', function (Closure $rebuild, string $fingerprint): void {
+    $user = User::factory()->create();
+    seedWeeklyAggregatorMultiYearHistory($user);
+
+    $rebuild($this->aggregator, $user);
+
+    expect(weeklySnapshotFingerprint($user))->toBe($fingerprint);
+})->with([
+    'full rebuild' => [fn (WeeklyAggregator $aggregator, User $user) => $aggregator->rebuildFor($user), '176:ada7ed55b2209046190ff26f249f2b37441b7fdf58022e833159663e2a0e23d0'],
+    'forward from two years back' => [fn (WeeklyAggregator $aggregator, User $user) => $aggregator->rebuildForwardFrom($user, Carbon::today()->subWeeks(104)->addDays(3)), '105:93e16f873e952efcbcc66961a6cd85a3a58a7184240ad2451e299f71d21d26b2'],
+    'one past week' => [fn (WeeklyAggregator $aggregator, User $user) => $aggregator->rebuildForWeekOf($user, Carbon::parse('2025-03-12')), '1:fef124f266e39ba634cd547c1bfca81b3b4203ac2f6391e44c244ec607902061'],
+    'the in-progress week' => [fn (WeeklyAggregator $aggregator, User $user) => $aggregator->rebuildForWeekOf($user, Carbon::today()), '1:a62f714780bcca1c80f4a6175d608c1a2e921c982ff375ed84d2f33c4b13e103'],
+]);
