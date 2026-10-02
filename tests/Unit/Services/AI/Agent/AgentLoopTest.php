@@ -16,6 +16,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use OpenAI\Exceptions\ErrorException;
 use OpenAI\Resources\Responses;
+use OpenAI\Responses\Meta\MetaInformation;
+use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Testing\ClientFake;
 
 /**
@@ -79,6 +81,70 @@ it('folds the cached and reasoning breakdown of a turn into the budget', functio
     $loop->converse('briefing', agentLoopPayload(), null, $budget, microtime(true));
 
     expect($budget->cachedTokens())->toBe(25)->and($budget->reasoningTokens())->toBe(4);
+});
+
+it('meters a recorded reasoning-model response carrying cache-write token details', function (): void {
+    $recorded = json_decode(<<<'JSON'
+        {
+            "id": "resp_recorded",
+            "object": "response",
+            "created_at": 1790000000,
+            "status": "completed",
+            "background": false,
+            "content_filters": null,
+            "error": null,
+            "incomplete_details": null,
+            "instructions": null,
+            "max_output_tokens": 1200,
+            "max_tool_calls": null,
+            "model": "gpt-5-mini",
+            "output": [
+                {"id": "rs_recorded", "type": "reasoning", "summary": []},
+                {
+                    "id": "msg_recorded",
+                    "type": "message",
+                    "status": "completed",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": "{\"read\":\"steady\"}", "annotations": [], "logprobs": []}]
+                }
+            ],
+            "parallel_tool_calls": true,
+            "previous_response_id": null,
+            "prompt_cache_key": null,
+            "reasoning": {"effort": "low", "summary": null},
+            "safety_identifier": null,
+            "service_tier": "default",
+            "store": true,
+            "temperature": 1.0,
+            "text": {"format": {"type": "text"}, "verbosity": "medium"},
+            "tool_choice": "auto",
+            "tools": [],
+            "top_logprobs": 0,
+            "top_p": 1.0,
+            "truncation": "disabled",
+            "usage": {
+                "input_tokens": 2310,
+                "input_tokens_details": {"cached_tokens": 1792, "cache_write_tokens": 512},
+                "output_tokens": 418,
+                "output_tokens_details": {"reasoning_tokens": 256},
+                "total_tokens": 2728
+            },
+            "user": null,
+            "metadata": {}
+        }
+        JSON, true, flags: JSON_THROW_ON_ERROR);
+
+    [$loop] = agentLoopWith([CreateResponse::from($recorded, MetaInformation::from([]))]);
+    $budget = agentLoopBudget();
+
+    [$response] = $loop->converse('briefing', agentLoopPayload(), null, $budget, microtime(true));
+
+    expect($response->outputText)->toBe('{"read":"steady"}')
+        ->and($budget->inputTokens())->toBe(2310)
+        ->and($budget->outputTokens())->toBe(418)
+        ->and($budget->totalTokens())->toBe(2728)
+        ->and($budget->cachedTokens())->toBe(1792)
+        ->and($budget->reasoningTokens())->toBe(256);
 });
 
 // ── the tool loop ─────────────────────────────────────────────────────
