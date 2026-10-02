@@ -67,9 +67,16 @@ describe('RunCardMini', () => {
         expect(screen.queryByText('18 Mei')).not.toBeInTheDocument();
         expect(screen.getByText(/legendary/i)).toBeInTheDocument();
         expect(screen.getByLabelText('Sunset 5K')).toHaveClass(
-            'h-[84px]',
-            'w-[78px]',
+            'h-[5.25rem]',
+            'w-[4.875rem]',
         );
+    });
+
+    it('sizes the full-width tile in rem so it grows with the root type step', () => {
+        render(<RunCardMini name="Sunset 5K" />);
+        const tile = screen.getByLabelText('Sunset 5K');
+        expect(tile).toHaveClass('w-[8.75rem]');
+        expect(tile.className).not.toMatch(/\b[hw]-\[\d+px\]/);
     });
 
     it('signs the art zone with the brand mark', () => {

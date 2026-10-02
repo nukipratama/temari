@@ -33,7 +33,7 @@ interface RunCardMiniProps {
 
 /**
  * Compact mini-TCG tile: the same dark-frame language as the full card at
- * 140px. Bright art window with the route hero + a tiny corner brand mark, a
+ * 8.75rem. Bright art window with the route hero + a tiny corner brand mark, a
  * dark stat block with the rarity ribbon, name, and edition/date.
  */
 export default function RunCardMini({
@@ -70,7 +70,7 @@ export default function RunCardMini({
             style={rootStyle}
             className={cn(
                 'relative flex flex-none flex-col overflow-hidden rounded-[12px] border-[1.5px] bg-sky-deep p-1',
-                compact ? 'h-[84px] w-[78px]' : 'w-[140px]',
+                compact ? 'h-[5.25rem] w-[4.875rem]' : 'w-[8.75rem]',
                 rarityVariants.border({ rarity }),
                 className,
             )}
