@@ -42,7 +42,7 @@ function unscoredRun(User $user, array $attributes = []): array
     return [$activity, $detail];
 }
 
-function weekOf(User $user): ?WeeklySnapshot
+function effortScoredWeek(User $user): ?WeeklySnapshot
 {
     return WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', '2026-06-14')->first();
 }
@@ -60,8 +60,8 @@ it('scores a run without heart rate as RPE times moving minutes over two, throug
     expect($detail->perceived_effort)->toBe(6)
         ->and($detail->trimp_edwards)->toBe(120.0)
         ->and($detail->distance)->toBe(6000.0)
-        ->and(weekOf($user)?->weekly_trimp)->toBe(120.0)
-        ->and(weekOf($user)?->distance_km)->toBe(6.0);
+        ->and(effortScoredWeek($user)?->weekly_trimp)->toBe(120.0)
+        ->and(effortScoredWeek($user)?->distance_km)->toBe(6.0);
 });
 
 it('recomputes on a changed score and marks the trend snapshots dirty from the run date', function (): void {
@@ -71,7 +71,7 @@ it('recomputes on a changed score and marks the trend snapshots dirty from the r
     $this->actingAs($user)->patch(route('activities.effort.update', $activity), ['score' => 3])->assertRedirect();
 
     expect($detail->fresh()->trimp_edwards)->toBe(60.0)
-        ->and(weekOf($user)?->weekly_trimp)->toBe(60.0)
+        ->and(effortScoredWeek($user)?->weekly_trimp)->toBe(60.0)
         ->and($user->fresh()->trend_snapshots_pending_from?->toDateString())->toBe('2026-06-10');
     Queue::assertPushed(RebuildTrendSnapshotsJob::class);
 });
@@ -109,8 +109,8 @@ it('clears a score back to unscored, not zero', function (): void {
     $detail->refresh();
     expect($detail->perceived_effort)->toBeNull()
         ->and($detail->trimp_edwards)->toBeNull()
-        ->and(weekOf($user)?->weekly_trimp)->toBeNull()
-        ->and(weekOf($user)?->distance_km)->toBe(6.0);
+        ->and(effortScoredWeek($user)?->weekly_trimp)->toBeNull()
+        ->and(effortScoredWeek($user)?->distance_km)->toBe(6.0);
 });
 
 it('refuses a new, changed or cleared score once 72 hours have passed since the start', function (): void {

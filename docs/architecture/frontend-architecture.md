@@ -20,7 +20,7 @@ code_refs:
 
 # Frontend Architecture (Inertia 2 + React 19)
 
-There is no client-side router and no REST/JSON API for pages. Every screen is a Laravel controller that returns [`Inertia::render('PageName', $props)`](app/Http/Controllers/DashboardController.php#L74); Inertia ships those props to a React page component, and `<Link>` navigation re-runs the controller and swaps the page in place. This note is the wiring overview — individual screens have their own notes ([[dashboard]], [[run-history]], [[run-detail]], [[profile]], [[cards-collection]], [[records]]).
+There is no client-side router and no REST/JSON API for pages. Every screen is a Laravel controller that returns [`Inertia::render('PageName', $props)`](app/Http/Controllers/DashboardController.php#L99); Inertia ships those props to a React page component, and `<Link>` navigation re-runs the controller and swaps the page in place. This note is the wiring overview — individual screens have their own notes ([[dashboard]], [[run-history]], [[run-detail]], [[profile]], [[cards-collection]], [[records]]).
 
 ## The request lifecycle
 
