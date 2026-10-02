@@ -8,14 +8,14 @@ export default tseslint.config(
     ...tseslint.configs.recommended,
     {
         files: ['resources/js/**/*.{ts,tsx}'],
-        extends: [eslintReact.configs['recommended-typescript']],
+        extends: [
+            eslintReact.configs['recommended-typescript'],
+            reactHooks.configs.flat['recommended-latest'],
+        ],
         plugins: {
-            'react-hooks': reactHooks,
             perfectionist,
         },
         rules: {
-            'react-hooks/rules-of-hooks': 'error',
-            'react-hooks/exhaustive-deps': 'warn',
             'perfectionist/sort-imports': [
                 'error',
                 {

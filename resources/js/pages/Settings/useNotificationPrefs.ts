@@ -37,7 +37,6 @@ export function useNotificationPrefs({ prefs }: UseNotificationPrefsArgs) {
         telegramEnabled,
         pushEnabled,
     });
-    latestRef.current = { notificationsEnabled, telegramEnabled, pushEnabled };
 
     const savePrefs = useCallback(() => {
         const current = latestRef.current;

@@ -105,6 +105,28 @@ describe('useCardPrints', () => {
         expect(renderPrint).toHaveBeenCalledTimes(drawn + 2);
     });
 
+    it('shows a memoised print on the very render that switches back to it', async () => {
+        const { result, rerender } = renderHook(
+            ({ aspect }: { aspect: 'story' | 'feed' }) =>
+                useCardPrints(facts, ALL_FACTS, aspect, 'broadsheet'),
+            {
+                initialProps: { aspect: 'story' } as {
+                    aspect: 'story' | 'feed';
+                },
+            },
+        );
+
+        await waitFor(() => expect(renderPrint).toHaveBeenCalledTimes(3));
+        const story = result.current.states.broadsheet.print;
+        expect(story).not.toBeNull();
+        rerender({ aspect: 'feed' });
+        await waitFor(() => expect(renderPrint).toHaveBeenCalledTimes(6));
+
+        rerender({ aspect: 'story' });
+
+        expect(result.current.states.broadsheet.print).toBe(story);
+    });
+
     it('draws nothing at all without facts', () => {
         renderHook(() => useCardPrints(null, ALL_FACTS, 'story', 'ticket'));
 

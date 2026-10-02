@@ -90,6 +90,31 @@ describe('useRunQuestions', () => {
         expect(result.current.error).toBeNull();
     });
 
+    it('settles as loaded when the thread read answers with an error status', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue(new Response('', { status: 500 })),
+        );
+
+        const { result } = renderHook(() => useRunQuestions(9));
+
+        expect(result.current.loaded).toBe(false);
+        await waitFor(() => expect(result.current.loaded).toBe(true));
+    });
+
+    it('settles as loaded when the thread read never reaches the server', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockRejectedValue(new TypeError('offline')),
+        );
+
+        const { result } = renderHook(() => useRunQuestions(9));
+
+        await waitFor(() => expect(result.current.loaded).toBe(true));
+        expect(result.current.questions).toEqual([]);
+        expect(result.current.error).toBeNull();
+    });
+
     it('appends the queued row on a 201 and reports it as awaiting an answer', async () => {
         const fetchMock = vi
             .fn()

@@ -19,7 +19,7 @@ export default function LapsCarousel({
     className,
 }: Readonly<{ laps: StreamSummaryLap[]; className?: string }>) {
     const { fastest } = paceScale(laps);
-    const rail = useScrollFade<HTMLUListElement>();
+    const { ref: setRail, faded } = useScrollFade<HTMLUListElement>();
 
     return (
         <section className={className}>
@@ -27,9 +27,9 @@ export default function LapsCarousel({
                 Laps
             </Eyebrow>
             <ul
-                ref={rail.ref}
+                ref={setRail}
                 style={{
-                    maskImage: rail.faded ? SCROLL_FADE_MASK : undefined,
+                    maskImage: faded ? SCROLL_FADE_MASK : undefined,
                 }}
                 className="-mx-4 flex list-none gap-2.5 overflow-x-auto px-4 pb-1 scrollbar-thin-fine"
             >

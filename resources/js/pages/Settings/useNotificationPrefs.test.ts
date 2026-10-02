@@ -74,6 +74,28 @@ describe('useNotificationPrefs', () => {
         );
     });
 
+    it('carries both flips when two toggles change before a re-render', () => {
+        vi.mocked(router.patch).mockReset();
+        const { result } = renderHook(() =>
+            useNotificationPrefs({ prefs: PREFS }),
+        );
+
+        act(() => {
+            result.current.setTelegramEnabled(false);
+            result.current.setPushEnabled(false);
+        });
+
+        expect(router.patch).toHaveBeenLastCalledWith(
+            '/profile/notifications',
+            {
+                notifications_enabled: false,
+                telegram_enabled: false,
+                push_enabled: false,
+            },
+            { preserveScroll: true },
+        );
+    });
+
     it('opens the demo-blocked modal instead of patching for a demo user', () => {
         setMockPage({
             auth: { user: makeUser({ is_demo: true }) },
