@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Enumerable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class WeeklyAggregator
 {
@@ -26,6 +28,9 @@ class WeeklyAggregator
     private const int LOCK_SECONDS = 120;
 
     private const int LOCK_WAIT_SECONDS = 20;
+
+    /** @var array<int, true> */
+    private static array $held = [];
 
     /** @var list<string> */
     private const array REBUILT_COLUMNS = [
@@ -92,7 +97,36 @@ class WeeklyAggregator
      */
     private function exclusively(User $user, callable $rebuild): mixed
     {
-        return Cache::lock(self::lockKey($user->id), self::LOCK_SECONDS)->block(self::LOCK_WAIT_SECONDS, $rebuild);
+        if (isset(self::$held[$user->id]) && DB::transactionLevel() > 0) {
+            return $rebuild();
+        }
+
+        $lock = Cache::lock(self::lockKey($user->id), self::LOCK_SECONDS);
+        $lock->block(self::LOCK_WAIT_SECONDS);
+        self::$held[$user->id] = true;
+
+        $released = false;
+        $release = function () use ($lock, $user, &$released): void {
+            if ($released) {
+                return;
+            }
+            $released = true;
+            unset(self::$held[$user->id]);
+            $lock->release();
+        };
+
+        try {
+            $result = $rebuild();
+        } catch (Throwable $e) {
+            $release();
+
+            throw $e;
+        }
+
+        DB::afterRollBack($release);
+        DB::afterCommit($release);
+
+        return $result;
     }
 
     public function rebuildForWeekOf(User $user, Carbon $when): ?WeeklySnapshot
