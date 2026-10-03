@@ -1,9 +1,7 @@
-import { usePage } from '@inertiajs/react';
 import { Moon } from 'lucide-react';
 
-import type { SharedProps } from '@/types/inertia';
-
 import Banner from '@/components/ui/Banner';
+import { useSharedProps } from '@/hooks/useSharedProps';
 
 /**
  * Calm reassurance shown when LLM narration is globally paused (`aiPaused`), so
@@ -16,7 +14,7 @@ import Banner from '@/components/ui/Banner';
  * (not dismissable) and action-less, this is a friendly heads-up, not an error.
  */
 export default function AiOutageBanner() {
-    const paused = usePage<SharedProps>().props.aiPaused ?? false;
+    const paused = useSharedProps().aiPaused ?? false;
 
     if (!paused) {
         return null;

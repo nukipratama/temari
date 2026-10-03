@@ -11,6 +11,28 @@ import { cva } from 'class-variance-authority';
  * `Record` lookups and are not folded in here.
  */
 
+/** The tone, size and onSky axes {@link pillButtonVariants} is built from. */
+export const pillButtonVariantMap = {
+    tone: {
+        horizon: 'bg-horizon text-sky hover:bg-horizon-deep',
+        sky: 'bg-foreground text-background hover:bg-foreground/85',
+        ghost: 'bg-transparent text-foreground border-[1.5px] border-foreground/20 hover:border-foreground/40',
+        outline:
+            'bg-card border-[1.5px] border-border text-text-2 hover:border-foreground/40 hover:text-foreground',
+        danger: 'bg-ember-deep text-cream hover:opacity-90',
+        muted: 'bg-muted text-foreground hover:bg-accent',
+    },
+    size: {
+        xs: 'h-8 gap-1.5 px-3 text-label-micro',
+        sm: 'px-3.5 py-2 font-sans font-medium text-xs',
+        md: 'px-[22px] py-3 font-sans font-medium text-sm',
+    },
+    onSky: {
+        true: '',
+        false: '',
+    },
+};
+
 /**
  * Pill button tone + size, with an `onSky` compound that flips the `ghost`
  * tone to its cream-on-sky variant. Mirrors TONE_CLASS + size ternary +
@@ -19,26 +41,7 @@ import { cva } from 'class-variance-authority';
 export const pillButtonVariants = cva(
     'pressable inline-flex items-center gap-2 rounded-full transition focus-ring disabled:pointer-events-none disabled:opacity-60',
     {
-        variants: {
-            tone: {
-                horizon: 'bg-horizon text-sky hover:bg-horizon-deep',
-                sky: 'bg-foreground text-background hover:bg-foreground/85',
-                ghost: 'bg-transparent text-foreground border-[1.5px] border-foreground/20 hover:border-foreground/40',
-                outline:
-                    'bg-card border-[1.5px] border-border text-text-2 hover:border-foreground/40 hover:text-foreground',
-                danger: 'bg-ember-deep text-cream hover:opacity-90',
-                muted: 'bg-muted text-foreground hover:bg-accent',
-            },
-            size: {
-                xs: 'h-8 gap-1.5 px-3 text-label-micro',
-                sm: 'px-3.5 py-2 font-sans font-medium text-xs',
-                md: 'px-[22px] py-3 font-sans font-medium text-sm',
-            },
-            onSky: {
-                true: '',
-                false: '',
-            },
-        },
+        variants: pillButtonVariantMap,
         compoundVariants: [
             {
                 tone: 'ghost',
@@ -61,24 +64,27 @@ export const pillButtonVariants = cva(
     },
 );
 
+/** The tone and size axes {@link chipVariants} is built from. */
+export const chipVariantMap = {
+    tone: {
+        neutral: 'bg-muted text-text-2',
+        horizon: 'bg-horizon/[0.18] text-horizon-ink',
+        sky: 'bg-sky/[0.08] text-sky',
+        onSky: 'bg-cream/10 text-cream/80',
+        positive: 'bg-leaf/[0.18] text-leaf-ink',
+        warning: 'bg-ember/[0.18] text-ember-ink',
+    },
+    size: {
+        sm: 'text-[0.6875rem]',
+        md: 'text-xs',
+    },
+};
+
 /** Chip tone + size. Mirrors TONE_CLASS + size ternary in components/ui/Chip.tsx. */
 export const chipVariants = cva(
     'pad-chip inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold tracking-[0.08em]',
     {
-        variants: {
-            tone: {
-                neutral: 'bg-muted text-text-2',
-                horizon: 'bg-horizon/[0.18] text-horizon-ink',
-                sky: 'bg-sky/[0.08] text-sky',
-                onSky: 'bg-cream/10 text-cream/80',
-                positive: 'bg-leaf/[0.18] text-leaf-ink',
-                warning: 'bg-ember/[0.18] text-ember-ink',
-            },
-            size: {
-                sm: 'text-[0.6875rem]',
-                md: 'text-xs',
-            },
-        },
+        variants: chipVariantMap,
         defaultVariants: {
             tone: 'neutral',
             size: 'sm',
@@ -141,24 +147,24 @@ export const inputVariants = cva(
 );
 
 /** Eyebrow's type tier, one of the `.text-label-*` role utilities in app.css. */
-export const eyebrowVariants = cva('', {
-    variants: {
-        token: {
-            micro: 'text-label-micro',
-            small: 'text-label-small',
-            hero: 'text-label-hero',
-        },
-        tone: {
-            'ink-2': 'text-text-2',
-            'ink-3': 'text-text-3',
-            horizon: 'text-horizon',
-            'horizon-ink': 'text-horizon-ink',
-            'icon-accent': 'text-icon-accent',
-            'ink-on-sky': 'text-ink-on-sky',
-            cream: 'text-cream',
-        },
+export const eyebrowVariantMap = {
+    token: {
+        micro: 'text-label-micro',
+        small: 'text-label-small',
+        hero: 'text-label-hero',
     },
-});
+    tone: {
+        'ink-2': 'text-text-2',
+        'ink-3': 'text-text-3',
+        horizon: 'text-horizon',
+        'horizon-ink': 'text-horizon-ink',
+        'icon-accent': 'text-icon-accent',
+        'ink-on-sky': 'text-ink-on-sky',
+        cream: 'text-cream',
+    },
+};
+
+export const eyebrowVariants = cva('', { variants: eyebrowVariantMap });
 
 /** MASTER.md's lane stack: sections separated by dashed hairlines, no card per section. */
 export const laneStack =

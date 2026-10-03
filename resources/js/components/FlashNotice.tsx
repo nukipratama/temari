@@ -1,11 +1,9 @@
-import { usePage } from '@inertiajs/react';
 import { CircleAlert, CircleCheck, Info } from 'lucide-react';
 import { useState } from 'react';
 
-import type { SharedProps } from '@/types/inertia';
-
 import Banner, { type BannerTone } from '@/components/ui/Banner';
 import { type IconComponent } from '@/components/ui/Icon';
+import { useSharedProps } from '@/hooks/useSharedProps';
 
 type FlashTone = 'error' | 'info' | 'success';
 
@@ -25,7 +23,7 @@ const ORDER: readonly FlashTone[] = ['error', 'info', 'success'];
  * {@link ErrorBanner}, which does the same job for the `withErrors()` bag.
  */
 export default function FlashNotice() {
-    const { flash } = usePage<SharedProps>().props;
+    const { flash } = useSharedProps();
     const tone =
         ORDER.find(
             (key) => typeof flash?.[key] === 'string' && flash[key] !== '',

@@ -1,11 +1,9 @@
-import { usePage } from '@inertiajs/react';
 import { HeartPulse } from 'lucide-react';
 import { useState } from 'react';
 
-import type { SharedProps } from '@/types/inertia';
-
 import Banner from '@/components/ui/Banner';
 import { Icon, StravaIcon } from '@/components/ui/Icon';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { cn } from '@/lib/cn';
 import { pillButtonVariants } from '@/lib/variants';
 
@@ -40,7 +38,7 @@ function rememberDismissed(key: string): void {
  * one, until the scope is actually granted.
  */
 export default function StravaZoneReconnectBanner() {
-    const { props } = usePage<SharedProps>();
+    const props = useSharedProps();
     const missing = props.stravaZoneScopeMissing ?? false;
     const key = dismissKeyFor(props.auth.user?.id ?? null);
     const [dismissed, setDismissed] = useState(() => readDismissed(key));

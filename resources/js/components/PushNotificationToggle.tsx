@@ -1,8 +1,5 @@
-import { usePage } from '@inertiajs/react';
 import { Bell, BellRing, Smartphone } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-import type { SharedProps } from '@/types/inertia';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import { Icon } from '@/components/ui/Icon';
@@ -11,6 +8,7 @@ import SettingsDisconnectLink from '@/components/ui/SettingsDisconnectLink';
 import SettingsRow from '@/components/ui/SettingsRow';
 import Toggle from '@/components/ui/Switch';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import {
     currentSubscription,
     isIosNonSafari,
@@ -70,7 +68,7 @@ export default function PushNotificationToggle({
     muted?: boolean;
     onMuteChange?: (muted: boolean) => void;
 }> = {}) {
-    const publicKey = usePage<SharedProps>().props.webPushPublicKey ?? '';
+    const publicKey = useSharedProps().webPushPublicKey ?? '';
     const { open, setOpen, guard } = useDemoGuard();
     const [state, setState] = useState<PushState>('loading');
     const [busy, setBusy] = useState(false);

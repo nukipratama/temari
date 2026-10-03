@@ -1,11 +1,10 @@
-import { usePage } from '@inertiajs/react';
 import { Flag } from 'lucide-react';
 import { Suspense, useState } from 'react';
 
 import type { FeedbackSubject } from '@/types/generated';
-import type { SharedProps } from '@/types/inertia';
 
 import { Icon } from '@/components/ui/Icon';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
 
@@ -45,7 +44,7 @@ export default function FlagWrong({
     /** Draw on a small box, keeping the 44px target — see {@link COMPACT_BUTTON_CLASS}. */
     compact?: boolean;
 }>) {
-    const isDemo = usePage<SharedProps>().props.auth.user?.is_demo === true;
+    const isDemo = useSharedProps().auth.user?.is_demo === true;
     const [open, setOpen] = useState(false);
     const [asked, setAsked] = useState(false);
     const [sent, setSent] = useState(false);

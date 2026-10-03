@@ -1,9 +1,7 @@
-import { usePage } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 
-import type { SharedProps } from '@/types/inertia';
-
 import Banner from '@/components/ui/Banner';
+import { useSharedProps } from '@/hooks/useSharedProps';
 
 /**
  * Calm, app-wide reassurance shown while the auth user has at least one
@@ -16,7 +14,7 @@ import Banner from '@/components/ui/Banner';
  * explains it.
  */
 export default function AiCatchingUpBanner() {
-    const catchingUp = usePage<SharedProps>().props.aiCatchingUp ?? false;
+    const catchingUp = useSharedProps().aiCatchingUp ?? false;
 
     if (!catchingUp) {
         return null;
