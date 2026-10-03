@@ -7,7 +7,7 @@ beside the screenshots; add a slowed clip only when a 150-300ms effect is hard t
 Two scripts, split by where they run:
 
 - `scripts/record.mjs` runs in the Sail `app` container with the same Playwright, Chromium and demo login as the other scripts. It captures a CDP screencast and writes JPEG frames with real frame timing.
-- `scripts/clips.sh` encodes with `ffmpeg`. The container has no ffmpeg (adding it is a large `apk` download), so run it on the host (`brew install ffmpeg` once). It also works inside the container after `apk add ffmpeg`. `storage/app` is bind-mounted, so frames recorded in the container are visible on the host.
+- `scripts/clips.sh` encodes with `ffmpeg`. Until it ships in the dev image (#1704), add it to the running container once with `docker compose exec -u root app apk add ffmpeg`, then run `clips.sh` through `./vendor/bin/sail exec app sh ...`. A container recreate drops it, and `clips.sh` says so when it is missing.
 
 ### Run it
 
