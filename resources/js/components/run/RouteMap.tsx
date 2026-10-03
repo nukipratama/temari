@@ -43,14 +43,14 @@ export default function RouteMap({
     if (positions.length < 2) {
         return (
             <div className="flex h-56 items-center justify-center rounded-lg border border-dashed border-border text-sm text-text-3">
-                Route not available
+                route not available
             </div>
         );
     }
 
     const mapLabel = distanceKm
-        ? `Run route map, ${distanceKm} km`
-        : 'Run route map';
+        ? `run route map, ${distanceKm} km`
+        : 'run route map';
 
     // Anonymous CARTO tiles now render an "API key required" watermark, so the
     // CARTO style only applies once the owner has configured a key; empty

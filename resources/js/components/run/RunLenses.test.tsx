@@ -257,7 +257,7 @@ describe('RunLenses', () => {
             });
         });
         await waitFor(() => {
-            expect(screen.getByText('Reread')).toBeInTheDocument();
+            expect(screen.getByText('reread')).toBeInTheDocument();
         });
         expect(
             screen.getByRole('button', { name: /reread/i }),
@@ -281,7 +281,7 @@ describe('RunLenses', () => {
             name: /Wait 2:00 before rereading all/i,
         });
         expect(button).toBeDisabled();
-        expect(button.textContent).toContain('Next in 2:00');
+        expect(button.textContent).toContain('next in 2:00');
     });
 });
 

@@ -222,27 +222,16 @@ class SelfHealer
         // discriminator carries week_ending here (see ChainResolver::stalledWeeklyLinkPerUser).
         $tooOld = fn (ChainLink $link): bool => $link->discriminator !== null && $link->discriminator < $oldestReal;
 
-        $ready = $this->readyWeekIds($links->reject($tooOld));
+        $ready = $this->readyWeekIds($links);
         $resumed = 0;
         $index = 0;
 
         foreach ($links as $link) {
-            if ($tooOld($link)) {
-                $this->service->requestRuleBased(
-                    subjectOrType: WeeklySnapshot::class,
-                    subjectId: $link->subjectId,
-                    type: AnalysisType::WeeklyRecap,
-                );
-                $resumed++;
-
-                continue;
-            }
-
             if (! $ready->has($link->subjectId)) {
                 continue;
             }
 
-            if ($preConnect($link)) {
+            if ($tooOld($link) || $preConnect($link)) {
                 $this->service->requestRuleBased(
                     subjectOrType: WeeklySnapshot::class,
                     subjectId: $link->subjectId,

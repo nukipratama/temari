@@ -225,10 +225,10 @@ describe('calendar', () => {
     it('renders prev / next nav links with correct hrefs and a partial reload', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
-            screen.getByRole('link', { name: 'Previous month' }),
+            screen.getByRole('link', { name: 'previous month' }),
         ).toHaveAttribute('href', '/history?view=calendar&month=2026-04');
         expect(
-            screen.getByRole('link', { name: 'Next month' }),
+            screen.getByRole('link', { name: 'next month' }),
         ).toHaveAttribute('href', '/history?view=calendar&month=2026-06');
     });
 

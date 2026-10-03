@@ -139,13 +139,19 @@ export async function discoverPageRoutes(page) {
   }
 
   // Single-param pages: resolve a real id by scraping the first matching link. Try the
-  // route's own base path first (/activities), then every simple page — a detail screen
-  // is often only linked from a differently-named index (/history owns the run feed).
+  // route's own base path first when it is a real page (/activities has no index route, so it
+  // is skipped), then every simple page — a detail screen is often only linked from a
+  // differently-named index (/history owns the run feed).
   for (const base of paramBases) {
     let found = null;
-    for (const candidate of [`/${base}`, ...pages.map((p) => p.path)]) {
+    const own = pages.filter((p) => p.path === `/${base}`);
+    const others = pages.filter((p) => p.path !== `/${base}`);
+    for (const candidate of [...own, ...others].map((p) => p.path)) {
       await page.goto(`${BASE}${candidate}`, { waitUntil: 'load' }).catch(() => {});
-      const href = await page.locator(`a[href^="/${base}/"]`).first().getAttribute('href').catch(() => null);
+      const href = await page.evaluate(
+        (prefix) => document.querySelector(`a[href^="${prefix}"]`)?.getAttribute('href') ?? null,
+        `/${base}/`,
+      ).catch(() => null);
       if (href && new RegExp(`^/${base}/[^/]+$`).test(href)) { found = href; break; }
     }
     if (found) pages.push({ name: `${base}-detail`, path: found });

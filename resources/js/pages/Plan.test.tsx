@@ -235,7 +235,7 @@ describe('Plan', () => {
     it('renders the season header card above the week and the weeks list', () => {
         renderPlan();
 
-        expect(screen.getByText(/^Week 1 of 12/)).toBeInTheDocument();
+        expect(screen.getByText(/^week 1 of 12/)).toBeInTheDocument();
         expect(screen.getByText('82%')).toBeInTheDocument();
         expect(
             screen.getByRole('list', { name: 'season weeks' }),
@@ -389,7 +389,7 @@ describe('Plan', () => {
         renderPlan({ weeks: [] });
 
         expect(screen.getByText('no plan yet.')).toBeInTheDocument();
-        expect(screen.queryByText(/^Week 1 of 12/)).toBeNull();
+        expect(screen.queryByText(/^week 1 of 12/)).toBeNull();
     });
 
     it('keeps the training disclaimer as a one-line footer with its legal link', () => {

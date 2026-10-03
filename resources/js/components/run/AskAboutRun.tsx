@@ -95,7 +95,7 @@ export default function AskAboutRun({
             </div>
             {loaded && questions.length === 0 && (
                 <p className="narration mt-2">
-                    The numbers are up there. Ask me why.
+                    the numbers are up there. ask me why.
                 </p>
             )}
 
@@ -104,8 +104,8 @@ export default function AskAboutRun({
                     role="status"
                     className="mt-4 rounded-sm bg-secondary px-3.5 py-2.5 font-sans text-xs leading-relaxed text-text-2"
                 >
-                    Only the summary has landed for this run, so no splits,
-                    zones or terrain yet. I'll answer from what's here.
+                    only the summary has landed for this run, so no splits,
+                    zones or terrain yet. i'll answer from what's here.
                 </p>
             )}
 
@@ -274,7 +274,7 @@ function QuestionRow({
                             size="sm"
                             onClick={onCheckAgain}
                         >
-                            Check again
+                            check again
                         </PillButton>
                     )}
                 </div>
@@ -282,7 +282,7 @@ function QuestionRow({
             {question.status === 'failed' && (
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                     <span className="font-sans text-xs text-ember-ink">
-                        This one didn't come back.
+                        this one didn't come back.
                     </span>
                     <PillButton
                         tone="outline"

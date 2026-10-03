@@ -136,7 +136,7 @@ export default function VitalsCard({
         return (
             <EmptyPanel
                 as="section"
-                title="Technical detail hasn't been read yet."
+                title="technical detail hasn't been read yet."
                 className={className}
             />
         );

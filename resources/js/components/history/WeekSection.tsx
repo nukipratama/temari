@@ -99,14 +99,14 @@ function ruleBasedFallback(snap: WeeklySnapshotWithRecap): string {
     const parts: string[] = [];
     if (snap.runs !== null && snap.distance_km !== null) {
         parts.push(
-            `You ran ${snap.runs}x this week for ${snap.distance_km.toFixed(1)} km.`,
+            `you ran ${snap.runs}x this week for ${snap.distance_km.toFixed(1)} km.`,
         );
     }
     if (snap.form !== null && snap.form_status) {
         const formLabel = formStatusLabel(snap.form_status);
         parts.push(
-            `Load balance ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, ${formLabel.toLowerCase()}.`,
+            `load balance ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, ${formLabel.toLowerCase()}.`,
         );
     }
-    return parts.join(' ') || 'No data for this week yet, hang tight.';
+    return parts.join(' ') || 'no data for this week yet, hang tight.';
 }

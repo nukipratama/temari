@@ -46,12 +46,12 @@ export default function SeasonCard({
             </Eyebrow>
             {season === null ? (
                 <p className="mt-2 text-sm leading-relaxed text-text-2">
-                    No season yet.{' '}
+                    no season yet.{' '}
                     <Link
                         href="/plan"
                         className="focus-ring inline-flex items-center gap-0.5 font-semibold text-horizon-ink"
                     >
-                        Start one on Plan
+                        start one on plan
                         <Icon
                             icon={ArrowRight}
                             width={12}

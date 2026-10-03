@@ -74,7 +74,7 @@ function renderCard(
 }
 
 function openBand() {
-    fireEvent.click(screen.getByRole('button', { name: /^Week \d+ of \d+/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^week \d+ of \d+/ }));
 }
 
 describe('SeasonHeaderCard', () => {
@@ -82,14 +82,14 @@ describe('SeasonHeaderCard', () => {
         renderCard();
 
         expect(
-            screen.getByRole('button', { name: /^Week \d+ of \d+/ }),
+            screen.getByRole('button', { name: /^week \d+ of \d+/ }),
         ).toHaveClass('hit-area');
     });
 
     it('places the athlete in the season', () => {
         renderCard();
 
-        expect(screen.getByText('Week 2 of 12 · build')).toBeInTheDocument();
+        expect(screen.getByText('week 2 of 12 · build')).toBeInTheDocument();
         expect(screen.queryByText('jun 15 – sep 4')).not.toBeInTheDocument();
 
         openBand();
@@ -172,7 +172,7 @@ describe('SeasonHeaderCard', () => {
 
         // Not the raw phase ('build'), and not the whole season's span
         // ('2026-05-25 – 2026-08-10') — just the general run's own dates.
-        expect(screen.getByText('Week 2 of 12 · maintain')).toBeInTheDocument();
+        expect(screen.getByText('week 2 of 12 · maintain')).toBeInTheDocument();
         expect(screen.getByText('may 25 – jun 7')).toBeInTheDocument();
         expect(screen.queryByText(/· build$/)).not.toBeInTheDocument();
     });

@@ -53,8 +53,10 @@ Every inspector **must verify before returning a finding**, and the result requi
 so the requirement cannot be quietly skipped. `probe.mjs` makes that one command:
 
 ```bash
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] [--shot] '<expression>'
+./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] [--viewport=<key>] [--shot] '<expression>'
 ```
+
+`--viewport` takes a `VIEWPORT_DEFS` key (`mobile`, `se`, `tablet`, `laptop`, `desktop`) and defaults to the 390x844 mobile context; an unknown key exits with the valid list.
 
 It logs in, sets the ground, optionally drives one control, evaluates the expression in the page and
 prints JSON — `{ result, console, shot }`, where `console` is any console/pageerror messages captured

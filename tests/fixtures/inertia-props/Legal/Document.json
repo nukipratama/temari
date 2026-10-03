@@ -1,0 +1,10 @@
+[
+    "intro",
+    "sections",
+    "sections[].heading",
+    "sections[].paragraphs",
+    "slug",
+    "summary",
+    "title",
+    "updated"
+]

@@ -147,7 +147,7 @@ describe('VitalsCard', () => {
             },
         );
         expect(
-            screen.getByText(/Technical detail hasn't been read yet/),
+            screen.getByText(/technical detail hasn't been read yet/),
         ).toBeInTheDocument();
     });
 });

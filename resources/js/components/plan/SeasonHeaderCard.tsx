@@ -83,7 +83,7 @@ export default function SeasonHeaderCard({
             <Collapsible className="mt-2">
                 <CollapsibleTrigger className="group focus-ring hit-area flex w-full items-center gap-3 text-left">
                     <span className="min-w-0 flex-1 text-xs text-text-2">
-                        Week {weekIndex} of {totalWeeks}
+                        week {weekIndex} of {totalWeeks}
                         {currentGroupKey
                             ? ` · ${PHASE_LABEL[currentGroupKey] ?? currentGroupKey}`
                             : ''}

@@ -41,7 +41,7 @@ describe('TemariNudgeDialog', () => {
             screen.getByRole('button', { name: 'Do it' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Not now' }),
+            screen.getByRole('button', { name: 'not now' }),
         ).toBeInTheDocument();
     });
 
@@ -113,7 +113,7 @@ describe('TemariNudgeDialog', () => {
     it('calls onClose from both the dismiss CTA and the top-left close button', () => {
         const onClose = vi.fn();
         render(<TemariNudgeDialog open onClose={onClose} {...baseProps} />);
-        fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
         fireEvent.click(screen.getByLabelText('Close'));
         expect(onClose).toHaveBeenCalledTimes(2);
     });

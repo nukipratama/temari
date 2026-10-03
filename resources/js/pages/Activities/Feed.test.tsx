@@ -330,7 +330,7 @@ describe('Activities/Feed', () => {
             />,
         );
 
-        expect(screen.getByText(/Viewing the week of/)).toBeInTheDocument();
+        expect(screen.getByText(/viewing the week of/)).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /View all runs/ }),
         ).toHaveAttribute('href', '/history');
@@ -346,7 +346,7 @@ describe('Activities/Feed', () => {
         );
 
         expect(
-            screen.queryByText(/Viewing the week of/),
+            screen.queryByText(/viewing the week of/),
         ).not.toBeInTheDocument();
     });
 

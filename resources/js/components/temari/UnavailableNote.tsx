@@ -16,7 +16,7 @@ const SIZE_CLASSES: Record<UnavailableNoteSize, string> = {
 };
 
 export default function UnavailableNote({
-    message = 'Temari is taking a moment. Try again shortly.',
+    message = 'temari is taking a moment. try again shortly.',
     size = 'md',
 }: Readonly<Props>) {
     return (

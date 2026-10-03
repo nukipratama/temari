@@ -23,7 +23,7 @@ export default function RaceCard({
             >
                 <span className="flex items-center gap-2 text-sm font-bold text-foreground">
                     <Icon icon={Flag} width={15} height={15} aria-hidden />
-                    Got a race coming up?
+                    got a race coming up?
                 </span>
                 <span className="text-label-micro text-text-3">
                     Set your race &rarr;
@@ -48,7 +48,7 @@ export default function RaceCard({
             />
             <div className="min-w-0 flex-1">
                 <b className="block truncate text-sm font-bold text-foreground">
-                    {race.name ?? 'Your race'}
+                    {race.name ?? 'your race'}
                 </b>
                 <span className="mt-0.5 block text-label-micro text-text-2">
                     {(race.distance_m / 1000).toFixed(1)} km ·{' '}

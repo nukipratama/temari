@@ -99,7 +99,7 @@ function zonesEstimated(source: ZoneSource): boolean {
 function collapsedCopy(hrZones: HrZonesPayload): string {
     if (hrZones.source === 'strava') {
         return hrZones.stravaSyncedLabel
-            ? `Synced from Strava · last synced ${hrZones.stravaSyncedLabel}`
+            ? `synced from Strava · last synced ${hrZones.stravaSyncedLabel}`
             : 'synced from Strava';
     }
     if (hrZones.source === 'manual') {
@@ -298,7 +298,7 @@ export default function HrZonesDisclosure({
                             size="sm"
                             onClick={applyDerived}
                         >
-                            Auto-calculate
+                            auto-calculate
                         </PillButton>
                     </div>
 
@@ -339,7 +339,7 @@ export default function HrZonesDisclosure({
                             }
                             className="reveal mb-2.5 rounded-lg border border-ember/30 bg-ember/[0.08] px-3 py-2 font-sans text-xs text-ember-ink"
                         >
-                            Each zone has to start above the one before it, and
+                            each zone has to start above the one before it, and
                             Z1 no lower than your resting HR.
                         </p>
                     )}
@@ -352,7 +352,7 @@ export default function HrZonesDisclosure({
                             onClick={submit}
                             disabled={processing || !isDirty}
                         >
-                            Save zones
+                            save zones
                         </PillButton>
                         {canShowReset && (
                             <PillButton
@@ -361,7 +361,7 @@ export default function HrZonesDisclosure({
                                 className="flex-1 justify-center"
                                 onClick={resetToDefault}
                             >
-                                Reset to default
+                                reset to default
                             </PillButton>
                         )}
                     </div>
@@ -390,7 +390,7 @@ export default function HrZonesDisclosure({
                                         aria-hidden
                                     />
                                     {resyncing
-                                        ? 'Syncing…'
+                                        ? 'syncing…'
                                         : 'resync from Strava'}
                                 </PillButton>
                             </StravaAction>
@@ -409,7 +409,7 @@ export default function HrZonesDisclosure({
                                 height={16}
                                 aria-hidden
                             />
-                            Saved
+                            saved
                         </span>
                     )}
                 </div>

@@ -176,7 +176,7 @@ describe('TrainingPreferencesCard', () => {
             options.onFinish?.();
         });
 
-        expect(screen.getByRole('status')).toHaveTextContent('Saved');
+        expect(screen.getByRole('status')).toHaveTextContent('saved');
     });
 
     it('sends null run_days when every day has been cleared', () => {

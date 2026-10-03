@@ -88,7 +88,7 @@ export default function RecapCard({
                     <p className="narration-dense m-0">
                         {awaitingSchedule && (
                             <span className="font-semibold text-text-3">
-                                For now:{' '}
+                                for now:{' '}
                             </span>
                         )}
                         {fallback}

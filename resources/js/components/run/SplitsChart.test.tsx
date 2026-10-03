@@ -15,14 +15,14 @@ describe('SplitsChart', () => {
     it('draws one bar per km and explains how to read them', () => {
         render(<SplitsChart rows={rows} />);
         expect(screen.getByText('Splits per km')).toBeInTheDocument();
-        expect(screen.getByText(/Taller bar, faster km/)).toBeInTheDocument();
+        expect(screen.getByText(/taller bar, faster km/)).toBeInTheDocument();
         expect(screen.getAllByRole('button')).toHaveLength(3);
     });
 
     it('calls out the fastest km with its pace and heart rate', () => {
         render(<SplitsChart rows={rows} />);
         expect(
-            screen.getByText('Km 2 · fastest · 152 bpm'),
+            screen.getByText('km 2 · fastest · 152 bpm'),
         ).toBeInTheDocument();
         expect(screen.getByText('4:40/km')).toBeInTheDocument();
     });
@@ -79,7 +79,7 @@ describe('SplitsChart', () => {
         expect(container.querySelector('.border-dashed')).not.toBeNull();
         // The remainder never wins "fastest" even at a quicker normalized pace.
         expect(
-            screen.getByText('Km 2 · fastest · 152 bpm'),
+            screen.getByText('km 2 · fastest · 152 bpm'),
         ).toBeInTheDocument();
     });
 
