@@ -12,7 +12,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\RunQuestion;
 use App\Models\User;
-use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationGate;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\RunQuestion\RuleBasedRunAnswer;
@@ -34,7 +34,7 @@ use Illuminate\Support\Carbon;
  */
 class RunQuestionController extends Controller
 {
-    public function index(Request $request, AnalysisService $service, int $activity): JsonResponse
+    public function index(Request $request, NarrationGate $gate, int $activity): JsonResponse
     {
         $user = $this->user($request);
         [, $detail] = $this->ownedRun($user, $activity);
@@ -47,13 +47,13 @@ class RunQuestionController extends Controller
                 fn (RunQuestionTopic $topic): string => $topic->question(),
                 RunQuestionSeeds::for($detail),
             ),
-            'at_run_cap' => ! $service->shouldServeRuleBased($user) && $this->atRunCap($user, $activity),
+            'at_run_cap' => ! $gate->shouldServeRuleBased($user) && $this->atRunCap($user, $activity),
         ]);
     }
 
     public function store(
         AskRunQuestionRequest $request,
-        AnalysisService $service,
+        NarrationGate $gate,
         CostCeilingLedger $ledger,
         int $activity,
     ): JsonResponse {
@@ -65,7 +65,7 @@ class RunQuestionController extends Controller
         // demo is answered from this run's own stored numbers instead — the same
         // stance the "Reread" trigger takes, keyed on is_demo rather than on
         // the route. See docs/decisions/demo-triggers-served-rule-based.md.
-        if ($service->shouldServeRuleBased($user)) {
+        if ($gate->shouldServeRuleBased($user)) {
             return $this->created($this->ruleBasedRow($user, $activity, $question, $detail));
         }
 
@@ -73,13 +73,13 @@ class RunQuestionController extends Controller
             return response()->json(['error' => 'run_cap'], 429);
         }
 
-        if ($service->costCeilingDegraded($user->id)) {
+        if ($gate->costCeilingDegraded($user->id)) {
             $ledger->recordDegradedFill('run_question', $user->id);
 
             return $this->created($this->ruleBasedRow($user, $activity, $question, $detail));
         }
 
-        if ($service->generationPaused($user->id)) {
+        if ($gate->generationPaused($user->id)) {
             return response()->json(['error' => 'generation_paused'], 409);
         }
 

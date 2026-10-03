@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationGate;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\NarrationOrigin;
@@ -31,10 +32,10 @@ it('early-exits without sweeping when AI generation is paused', function (): voi
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $service = Mockery::mock(AnalysisService::class);
+    $service = Mockery::mock(NarrationGate::class);
     $service->shouldReceive('generationPaused')->andReturn(true);
     $service->shouldReceive('pauseReason')->andReturn('cost_ceiling');
-    $this->app->instance(AnalysisService::class, $service);
+    $this->app->instance(NarrationGate::class, $service);
 
     $healer = Mockery::mock(SelfHealer::class);
     $healer->shouldNotReceive('run');
@@ -46,10 +47,10 @@ it('early-exits without sweeping when AI generation is paused', function (): voi
 });
 
 it('delegates the sweep to SelfHealer and prints the resumed count', function (): void {
-    $service = Mockery::mock(AnalysisService::class);
+    $service = Mockery::mock(NarrationGate::class);
     $service->shouldReceive('generationPaused')->andReturn(false);
     $service->shouldReceive('pauseReason')->andReturn(null);
-    $this->app->instance(AnalysisService::class, $service);
+    $this->app->instance(NarrationGate::class, $service);
 
     $healer = Mockery::mock(SelfHealer::class);
     $healer->shouldReceive('run')->once()->andReturn(4);
@@ -117,10 +118,10 @@ it('gives a block that failed during a pause one fresh attempt when generation r
 });
 
 it('does not treat the app-wide cost ceiling lifting as a resume', function (): void {
-    $service = Mockery::mock(AnalysisService::class);
+    $service = Mockery::mock(NarrationGate::class);
     $service->shouldReceive('generationPaused')->andReturn(false);
     $service->shouldReceive('pauseReason')->andReturn(null);
-    $this->app->instance(AnalysisService::class, $service);
+    $this->app->instance(NarrationGate::class, $service);
     app(AppConfig::class)->set(AppConfigKey::AiLastPauseReason, 'cost_ceiling');
     app(AppConfig::class)->set(AppConfigKey::AiPauseStartedAt, Carbon::now()->subHours(3)->toIso8601String());
 

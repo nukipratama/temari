@@ -8,7 +8,7 @@ use App\Jobs\AI\AnalyzeBaseJob;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
-use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationGate;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\LlmCostCalculator;
 use Illuminate\Contracts\Support\Renderable;
@@ -33,7 +33,7 @@ class AiPipelineHealth extends Card
 {
     use SumsPulseTotals;
 
-    public function render(AnalysisService $analyses, LlmCostCalculator $cost): Renderable
+    public function render(NarrationGate $gate, LlmCostCalculator $cost): Renderable
     {
         $statusCounts = Analysis::query()
             ->selectRaw('status, COUNT(*) as total')
@@ -54,7 +54,7 @@ class AiPipelineHealth extends Card
         $failed = (int) ($statusCounts[AnalysisStatus::Failed->value] ?? 0);
         $deadLettered = Analysis::query()->deadLettered()->count();
         $failedJobs = DB::table('failed_jobs')->count();
-        $pauseReason = $analyses->pauseReason();
+        $pauseReason = $gate->pauseReason();
 
         $statusBoxes = [
             ['label' => 'pending',     'count' => (int) ($statusCounts[AnalysisStatus::Pending->value] ?? 0),    'alert' => false],

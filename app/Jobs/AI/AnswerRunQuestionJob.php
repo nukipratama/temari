@@ -8,7 +8,7 @@ use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\AI\RunQuestion;
-use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationGate;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\CostCeilingLedger;
@@ -49,7 +49,7 @@ class AnswerRunQuestionJob implements ShouldQueue
         $this->onQueue(AnalyzeBaseJob::QUEUE);
     }
 
-    public function handle(AnalysisService $service, RunQuestionNarrator $narrator): void
+    public function handle(NarrationGate $gate, RunQuestionNarrator $narrator): void
     {
         // Always user-initiated: the only way a RunQuestion row exists is
         // somebody typing a question on a run.
@@ -73,7 +73,7 @@ class AnswerRunQuestionJob implements ShouldQueue
             return;
         }
 
-        if ($service->costCeilingDegraded($activity->user_id)) {
+        if ($gate->costCeilingDegraded($activity->user_id)) {
             if ($this->settle($question, $claimToken, [
                 'status' => AnalysisStatus::Done,
                 'answer' => RuleBasedRunAnswer::for($detail, $question->question),
@@ -89,7 +89,7 @@ class AnswerRunQuestionJob implements ShouldQueue
             return;
         }
 
-        if ($service->generationPaused($activity->user_id)) {
+        if ($gate->generationPaused($activity->user_id)) {
             $this->settleFailed($question, self::PAUSED_ERROR, $claimToken);
 
             return;

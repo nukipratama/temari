@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationGate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -15,7 +15,7 @@ uses(RefreshDatabase::class);
 beforeEach(fn () => Cache::flush());
 
 it('shares true when LLM generation is paused', function (): void {
-    $analyses = $this->partialMock(AnalysisService::class);
+    $analyses = $this->partialMock(NarrationGate::class);
     $analyses->shouldReceive('generationPaused')->andReturn(true);
     $analyses->shouldReceive('pauseReason')->andReturn('kill_switch');
 
@@ -25,7 +25,7 @@ it('shares true when LLM generation is paused', function (): void {
 });
 
 it('shares false when the pipeline is healthy', function (): void {
-    $this->partialMock(AnalysisService::class)
+    $this->partialMock(NarrationGate::class)
         ->shouldReceive('generationPaused')
         ->andReturn(false);
 

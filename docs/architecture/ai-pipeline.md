@@ -60,7 +60,7 @@ There are two job base classes, both extending [AnalyzeBaseJob](app/Jobs/AI/Anal
 
 ## Dispatch, idempotency, and the cost ceiling
 
-`AnalysisService::request()` upserts the row (`firstOrCreate`) and only dispatches when `autoDispatchEnabled()` is true AND the row actually needs work. The guards (see [[idempotent-dispatch-cost-ceiling]]):
+`AnalysisService::request()` upserts the row (`firstOrCreate`) and only dispatches when `NarrationGate::autoDispatchEnabled()` is true AND the row actually needs work. The guards (see [[idempotent-dispatch-cost-ceiling]]):
 
 - **Idempotency at upsert** — row jobs use `claimForDispatch()`'s conditional update over a Pending/Failed row. Group jobs lock the full sibling set in one transaction, assign a shared generation token, and queue the eligible rows together; they dispatch only when no sibling is already Queued or Processing. `wasRecentlyCreated` is true only for rows this call inserted, even when another caller wins an `INSERT IGNORE` race. A `Done` or `Queued` row is left alone unless explicitly invalidated, so a same-day re-run of the daily briefing dispatches only the still-missing types.
 - **Idempotency at execution** — jobs carry their generation token, and every state write checks that the row still has that token. Group jobs also require the token on every sibling before starting. A stale job exits without changing the newer generation, while `AnalyzeRowJob::handle()` and `AnalyzeGroupJob::handle()` still early-exit for rows already `Done`.

@@ -29,7 +29,7 @@ configured. It bypasses `ChannelRouter` and the channel mutes on purpose
 |---|---|---|
 | Evening spend digest | [SpendDigestCommand](../../app/Console/Commands/AI/SpendDigestCommand.php#L17), scheduled daily at 21:00 in [routes/console.php](../../routes/console.php#L142) | None needed — the scheduler runs it once |
 | Evening new-exception digest | [ExceptionDigestCommand](../../app/Console/Commands/ExceptionDigestCommand.php#L15), scheduled daily at 21:00 in [routes/console.php](../../routes/console.php#L145); silent on a day with nothing new | A fingerprint is listed once per 30-day seen window ([NewExceptionLedger](../../app/Support/NewExceptionLedger.php#L21)) |
-| Per-athlete ceiling trip | [`AnalysisService::ceilingExceeded()`](../../app/Services/AI/AnalysisService.php#L1203) | `Cache::add` on a date-and-athlete key: once per athlete per day, not once per gated dispatch |
+| Per-athlete ceiling trip | [`NarrationGate::ceilingExceeded()`](../../app/Services/AI/NarrationGate.php#L256) | `Cache::add` on a date-and-athlete key: once per athlete per day, not once per gated dispatch |
 | App-wide ceiling at 80% | same gate, on the *under*-ceiling branch | `Cache::add` on one global key, 1h cooldown |
 | Strava 15-minute budget under 10% | [`SyncOrchestrator::logSync()`](../../app/Services/Run/Ingest/SyncOrchestrator.php#L231) | `Cache::add` on a **global** key naming the quarter-hour window: once per window, and the next window may warn again |
 

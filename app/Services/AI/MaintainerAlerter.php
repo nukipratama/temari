@@ -150,7 +150,7 @@ class MaintainerAlerter
 
     /**
      * Alert on a generation pause on/off transition, with the reason. Compares the
-     * current {@see AnalysisService::pauseReason()} to the last one alerted (stored
+     * current {@see NarrationGate::pauseReason()} to the last one alerted (stored
      * durably) and pushes only on a change, so an ongoing pause is not re-sent on
      * every hourly self-heal run. A null reason means generation resumed.
      *
