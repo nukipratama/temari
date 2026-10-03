@@ -60,6 +60,18 @@ export default defineConfig(
                             group: ['**/ui/SectionLabel', './SectionLabel'],
                             message: 'SectionLabel is retired. Use Eyebrow from @/components/ui/Eyebrow with rule.',
                         },
+                        {
+                            group: ['**/ui/PillLink', './PillLink'],
+                            message: 'PillLink is retired. Use PillButton from @/components/ui/PillButton, or apply pillButtonVariants to an <a>.',
+                        },
+                        {
+                            group: ['**/ui/MiniRow', './MiniRow'],
+                            message: 'MiniRow is retired. Write the label/value pair inline.',
+                        },
+                        {
+                            group: ['**/ui/ReadMoreToggle', './ReadMoreToggle'],
+                            message: 'ReadMoreToggle is retired. Write the toggle inline in the clamped block.',
+                        },
                     ],
                 },
             ],

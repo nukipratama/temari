@@ -164,30 +164,6 @@ export interface PastRace {
     outcome: RaceOutcomeSummary;
 }
 
-export type SeasonPerformanceState =
-    | 'none'
-    | 'unrecorded'
-    | 'pending'
-    | 'met'
-    | 'not_met'
-    | 'did_not_run'
-    | 'cancelled';
-
-/** Season process (training done) and performance (race result), reported apart. */
-export interface SeasonRecord {
-    process: {
-        pct: number | null;
-        goals_met: number;
-        goals_total: number;
-    };
-    performance: {
-        state: SeasonPerformanceState;
-        target_time_sec: number | null;
-        finish_time_sec: number | null;
-        margin_pct: number | null;
-    };
-}
-
 export interface PlanRecalibrationState {
     pending: boolean;
     started_at: string | null;

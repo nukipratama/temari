@@ -2,8 +2,6 @@
     "activeView",
     "hasOlderWeeks",
     "lifetime",
-    "lifetime.first_run_at",
-    "lifetime.total_km",
     "lifetime.total_runs",
     "moods",
     "moods.*",

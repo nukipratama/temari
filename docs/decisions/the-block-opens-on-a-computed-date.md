@@ -22,6 +22,8 @@ code_refs:
 
 > **Partly superseded (2026-10-02) by [[a-goalless-season-counts-consistent-weeks]].** A goal-less season's fifth goal is no longer CTL growth but a consistency goal. The rest of this decision stands.
 
+> **Partly superseded (2026-10-03).** The season payload no longer carries `block_opens_on`; the phase ribbon reads each week's `zone`. The rest of this decision stands.
+
 # The race block opens on a computed date, inside one continuous season
 
 **Status:** Accepted (2026-09-17)

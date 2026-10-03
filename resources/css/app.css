@@ -1087,7 +1087,7 @@ body {
         --color-btn-primary-fg: #16181b; /* ink — same pairing as --color-primary-foreground */
 
         --color-horizon-ink: #ade047; /* = --color-horizon, already clears 8.6:1+ */
-        --color-leaf-ink: #57a581;
+        --color-leaf-ink: #77b699; /* worst-cased incl. bg-leaf/0.18 on accent, at 4.6 */
         --color-ember-ink: #d28b97; /* worst-cased incl. bg-ember/0.18 on accent, not sky-2 alone */
         --color-citrus-ink: #c9971f; /* = --color-citrus, already clears 5:1+ */
         --color-rarity-common-ink: #8f97a3;

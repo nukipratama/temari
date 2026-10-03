@@ -39,8 +39,6 @@ export type MonthlyRecap = AnalysisPayload & {
 
 interface LifetimeStats {
     total_runs: number;
-    total_km: number;
-    first_run_at: string | null;
 }
 
 interface CalendarProps {

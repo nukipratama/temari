@@ -99,8 +99,6 @@
     "season.goals[].title",
     "season.goals[].unit",
     "season.starts_at",
-    "season.total_weeks",
-    "season.week_index",
     "seasonWeeks",
     "seasonWeeks[].actual_km",
     "seasonWeeks[].eased_from_km",

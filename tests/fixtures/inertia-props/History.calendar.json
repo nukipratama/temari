@@ -21,8 +21,6 @@
     "cells[].runs[].pace_sec_per_km",
     "cells[].trimp",
     "lifetime",
-    "lifetime.first_run_at",
-    "lifetime.total_km",
     "lifetime.total_runs",
     "month",
     "monthLabel",

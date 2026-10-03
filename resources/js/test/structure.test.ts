@@ -125,20 +125,7 @@ const CATALOGUED_FILES = new Set([
  * In-scope files (`path`) and exports (`path#Name`) left out of the
  * catalogue, each with its reason. Drop an entry once the reason is gone.
  */
-const NOT_CATALOGUED = new Map<string, string>([
-    ['components/ui/PillLink.tsx', 'unused; its deletion is in flight'],
-    ['components/ui/MiniRow.tsx', 'unused; its deletion is in flight'],
-    ['components/ui/ReadMoreToggle.tsx', 'unused; its deletion is in flight'],
-    ['components/ui/card.tsx#CardHeader', 'unused; its deletion is in flight'],
-    ['components/ui/card.tsx#CardTitle', 'unused; its deletion is in flight'],
-    [
-        'components/ui/card.tsx#CardDescription',
-        'unused; its deletion is in flight',
-    ],
-    ['components/ui/card.tsx#CardAction', 'unused; its deletion is in flight'],
-    ['components/ui/card.tsx#CardContent', 'unused; its deletion is in flight'],
-    ['components/ui/card.tsx#CardFooter', 'unused; its deletion is in flight'],
-]);
+const NOT_CATALOGUED = new Map<string, string>();
 
 const IMPORTS = /^import[\s\S]*?from\s+'[^']+';$/gm;
 

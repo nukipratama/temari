@@ -172,11 +172,7 @@ describe('calendar', () => {
             <Calendar
                 {...BASE_PROPS}
                 cells={TWO_WEEK_CELLS}
-                lifetime={{
-                    total_runs: 63,
-                    total_km: 544,
-                    first_run_at: '2026-02-19T06:00:00+07:00',
-                }}
+                lifetime={{ total_runs: 63 }}
             />,
         );
         expect(screen.getByText('History · 63 activities')).toBeInTheDocument();

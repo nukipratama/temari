@@ -183,11 +183,7 @@ describe('Activities/Feed', () => {
             <RunsIndex
                 runs={[run(101, 'Morning', '2026-05-19T06:00:00')]}
                 rangeFilter="8w"
-                lifetime={{
-                    total_runs: 42,
-                    total_km: 310,
-                    first_run_at: '2025-01-01',
-                }}
+                lifetime={{ total_runs: 42 }}
                 weeklySnapshots={[]}
             />,
         );

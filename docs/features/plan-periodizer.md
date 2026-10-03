@@ -232,7 +232,7 @@ The Plan tab's top-of-page summary section is the same periodized arc viewed at 
 
 [SeasonHeaderCard](../../resources/js/components/plan/SeasonHeaderCard.tsx) heads the page as a one-line band: week X of N with the current phase, the season adherence figure and the phase ribbon. Opening it shows the season's date span, one bar per phase (height by that phase's mean weekly volume, so the bar chart traces the season's real arc), the one-time under-ready line when the season payload carries one, and Temari's season narration. Its `phasesOf()` builds the bars from the phase sequence the season actually has, so a self-scaled season's repeating Build/Deload cycle renders honestly rather than being forced into a fixed Base/Build/Peak/Taper four (see `App\Enums\PlanPhase`'s own docblock on which phases exist in which mode).
 
-**The phase ribbon** ([PhaseRibbon](../../resources/js/components/plan/PhaseRibbon.tsx)), bordered in `border-border` to hold its shape against either ground, is one cell per week of `seasonSummary`, season start to race day: a flat neutral "maintain" fill for every `zone: general` week regardless of its own `phase` (the self-scaled cycle alternates Build/Deload before the block opens, and showing that would read as noise), and a `PHASE_COLORS` fill per `zone: block` week. It reads `zone` off each week directly rather than the season payload's separate `block_opens_on` date — the per-week flag is already the boundary, so there's nothing left for a date comparison to add. No number ever appears in it: hovering, tapping or focusing a cell is the only way to see its phase name, which is also the cell's accessible name, and the current week is marked by drawing every week up to and including it solid, with every week still ahead faded (`opacity-40`) — the solid/faded edge is "now", not a separate ring or dot. A self-scaled season carries no `block` week at all, so it renders nothing. "Maintain" is a display label only: the season payload's own `zone` value stays `general`.
+**The phase ribbon** ([PhaseRibbon](../../resources/js/components/plan/PhaseRibbon.tsx)), bordered in `border-border` to hold its shape against either ground, is one cell per week of `seasonSummary`, season start to race day: a flat neutral "maintain" fill for every `zone: general` week regardless of its own `phase` (the self-scaled cycle alternates Build/Deload before the block opens, and showing that would read as noise), and a `PHASE_COLORS` fill per `zone: block` week. It reads `zone` off each week directly: the per-week flag is already the boundary, so the season payload carries no block-open date. No number ever appears in it: hovering, tapping or focusing a cell is the only way to see its phase name, which is also the cell's accessible name, and the current week is marked by drawing every week up to and including it solid, with every week still ahead faded (`opacity-40`) — the solid/faded edge is "now", not a separate ring or dot. A self-scaled season carries no `block` week at all, so it renders nothing. "Maintain" is a display label only: the season payload's own `zone` value stays `general`.
 
 [SeasonTimeline](../../resources/js/components/plan/SeasonTimeline.tsx) sits beneath it: one week laid out open, then a list of every week in the season ([[plan-page-leads-with-this-week]]). There is no rail, no dots and no folded "weeks behind/ahead" clusters any more.
 
@@ -314,10 +314,9 @@ frame alone, with no goals and no season record.
 
 The per-goal `GoalCard` grid under the season summary is gone: P24 replaced the tier module with
 the prototype's single progress line, and `W2` swept the orphaned component. The week-grained
-lifetime streak
-(`WeeklySnapshot::consecutiveWeekStreak()`, wrapped by `SeasonStreakSummaryBuilder::streakPayload()`)
-does not render here either — it lives on Trends as a badge chip. `PlanPageAssembler` still calls
-`seasonPayload()`, never `streakPayload()`.
+lifetime streak (`WeeklySnapshot::consecutiveWeekStreak()`) does not render here either; its
+page-level wrapper, `SeasonStreakSummaryBuilder::streakPayload()`, had no caller and is deleted.
+`PlanPageAssembler` calls `seasonPayload()` only.
 
 ## Extracted: interval detection
 

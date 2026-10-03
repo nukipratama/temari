@@ -41,7 +41,6 @@ export interface WeekRow {
     weekNumber: number;
     days: CalendarCell[];
     totalKm: number;
-    runCount: number;
     /** Null when the week ran but nothing scored (unknown, not zero). */
     totalTrimp: number | null;
     /** The week's rarest earned card, across all seven days. */
@@ -94,12 +93,10 @@ export function chunkIntoWeeks(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
         const days = cells.slice(i, i + 7);
         if (days.length === 0) continue;
         let totalKm = 0;
-        let runCount = 0;
         let totalTrimp: number | null = null;
         for (const day of days) {
             if (day.distance_km !== null && day.distance_km > 0) {
                 totalKm += day.distance_km;
-                runCount += 1;
             }
             if (day.trimp !== null) {
                 totalTrimp = (totalTrimp ?? 0) + day.trimp;
@@ -111,7 +108,6 @@ export function chunkIntoWeeks(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
             weekNumber: weeks.length + 1,
             days,
             totalKm,
-            runCount,
             totalTrimp,
             rarity: rarestRarityOf(days),
         });

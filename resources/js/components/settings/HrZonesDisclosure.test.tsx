@@ -4,13 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { setMockPage } from '@/test/setup';
 
-import HrZonesDisclosure, {
-    deriveBounds,
-    toZonePairs,
-    type HrZonesPayload,
-} from './HrZonesDisclosure';
+import HrZonesDisclosure, { type HrZonesPayload } from './HrZonesDisclosure';
 
-const DEFAULT_BOUNDS = deriveBounds(180, 55);
+const DEFAULT_BOUNDS = { Z1: 116, Z2: 138, Z3: 154, Z4: 168, Z5: 176 };
 
 const DEFAULT_PROFILE = {
     max_hr: 180,
@@ -35,29 +31,6 @@ const DEFAULT_PAYLOAD: HrZonesPayload = {
 function open() {
     fireEvent.click(screen.getByRole('button', { name: /heart-rate zones/ }));
 }
-
-describe('deriveBounds', () => {
-    it('derives ascending lower bounds from the heart-rate reserve', () => {
-        const bounds = deriveBounds(190, 50);
-        expect(bounds.Z1).toBe(118);
-        expect(bounds.Z2).toBeGreaterThan(bounds.Z1);
-        expect(bounds.Z5).toBeGreaterThan(bounds.Z4);
-    });
-});
-
-describe('toZonePairs', () => {
-    // The server rejects any submission where a zone's hi is not the next
-    // zone's lo, so the pairs are reconstituted rather than entered.
-    it('widens five lower bounds into gapless pairs with an open-ended Z5', () => {
-        expect(toZonePairs(deriveBounds(190, 50))).toEqual([
-            { lo: 118, hi: 143 },
-            { lo: 143, hi: 161 },
-            { lo: 161, hi: 177 },
-            { lo: 177, hi: 186 },
-            { lo: 186, hi: 999 },
-        ]);
-    });
-});
 
 describe('HrZonesDisclosure', () => {
     beforeEach(() => {
@@ -159,9 +132,14 @@ describe('HrZonesDisclosure', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'auto-calculate' }));
 
-        expect(screen.getByTestId('zone-Z1-lo')).toHaveValue(
-            deriveBounds(200, DEFAULT_PROFILE.resting_hr).Z1,
-        );
+        expect(
+            (['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const).map((zone) =>
+                Number(
+                    (screen.getByTestId(`zone-${zone}-lo`) as HTMLInputElement)
+                        .value,
+                ),
+            ),
+        ).toEqual([126, 151, 170, 186, 195]);
     });
 
     it('keeps each zone bound individually editable', () => {
@@ -205,7 +183,13 @@ describe('HrZonesDisclosure', () => {
             {
                 max_hr: DEFAULT_PROFILE.max_hr,
                 resting_hr: 50,
-                zones: toZonePairs(DEFAULT_BOUNDS),
+                zones: [
+                    { lo: 116, hi: 138 },
+                    { lo: 138, hi: 154 },
+                    { lo: 154, hi: 168 },
+                    { lo: 168, hi: 176 },
+                    { lo: 176, hi: 999 },
+                ],
             },
             expect.objectContaining({ preserveScroll: true }),
         );
