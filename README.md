@@ -25,7 +25,7 @@ Full feature map: [docs/features/index.md](docs/features/index.md).
 
 - **Backend**: Laravel 13 · PHP 8.5 (FrankenPHP + Octane in prod, Sail's PHP image in dev) · Larastan L8 · Pint · Rector
 - **Frontend**: Inertia 3 + React 19 + TypeScript · Tailwind v4 (`@tailwindcss/vite`) · Vitest
-- **Data**: MySQL 8.4 + Redis (separate dev / test / prod stacks for parity)
+- **Data**: MySQL 9.7 + Redis (separate dev / test / prod stacks for parity)
 - **Async**: Horizon (queues) · Scheduler
 - **Observability**: Pulse (perf) · Horizon (queues)
 - **LLM**: Azure OpenAI via `openai-php/laravel` for briefing/verdict narration; when credentials are unset, narration silently falls back to deterministic rule-based content. Per-block `AnalysisStatus` (pending / failed + a "Try again" retry button) is the source of truth — there is no global emergency-mode chip
@@ -92,7 +92,7 @@ The test stack (`mysql_test`, `redis_test`) runs on the compose network only —
 
 **Frontend** — Vitest with jsdom against React 19 + Inertia components. Same 1:1 convention. Gates: 95% lines + 95% functions ([vitest.config.ts](vitest.config.ts)). Branches relaxed because hitting every `?? null` fallback in defensive code is contortionist, not signal.
 
-CI uses GitHub Actions service containers (`mysql:8.4` + `redis:8-alpine`) for the PHP suite — every workflow run gets a fresh DB. FE suite is pure-node, no services.
+CI uses GitHub Actions service containers (`mysql:9.7` + `redis:8-alpine`) for the PHP suite — every workflow run gets a fresh DB. FE suite is pure-node, no services.
 
 Nothing is excluded from coverage: `phpunit.xml` measures all of `app/`, service providers included — [HorizonServiceProviderTest](tests/Unit/Providers/HorizonServiceProviderTest.php) and [AppServiceProviderTest](tests/Unit/Providers/AppServiceProviderTest.php) cover the two that ship. The 1:1 structural gate is what exempts provider classes from needing a test, not the coverage config.
 
@@ -104,7 +104,7 @@ Nothing is excluded from coverage: `phpunit.xml` measures all of `app/`, service
 | commit-msg      | Conventional Commits format check                                      |
 | pre-push        | Block direct pushes to `main` (force or not). Use feature branch + PR  |
 | CI — `lint`     | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |
-| CI — `pest`     | `pest` against mysql:8.4 + redis:8-alpine services — `--coverage --min=95` on pull requests, bare on the `main` push |
+| CI — `pest`     | `pest` against mysql:9.7 + redis:8-alpine services — `--coverage --min=95` on pull requests, bare on the `main` push |
 | CI — `vitest`   | `npm run test:coverage` — 95% lines + functions, jsdom only            |
 | CI — `deploy`   | On push to `main`: build, migration-only maintenance, migrate, roll, check `/ready` + `/up` |
 | Nightly         | `composer audit` + `npm audit` (prod deps, high+) — scheduled, off the PR/deploy path so an upstream advisory can't block an unrelated change |
@@ -179,7 +179,7 @@ The Strava redirect URL is derived from `APP_URL` + the `auth.strava.callback` r
 
 In **Cloudflare Zero Trust → tunnel → Public Hostnames**, route `<your-domain>` to `http://localhost:7001`.
 
-After both are in place, merging the PR triggers the first deploy: mysql initializes its volume with `MYSQL_ROOT_PASSWORD`, the app image is built on a GitHub-hosted runner and pulled onto the host from GHCR, migrations run, containers come up, healthcheck passes. Subsequent deploys are fully automatic.
+After both are in place, start mysql once by hand from a checkout on the host (`docker compose -f compose.prod.yaml up -d --wait mysql`, which builds `temari/mysql` and initializes its volume with `MYSQL_ROOT_PASSWORD`; deploys never create or recreate mysql). Then merging the PR triggers the first deploy: the app image is built on a GitHub-hosted runner and pulled onto the host from GHCR, migrations run, containers come up, healthcheck passes. Subsequent deploys are fully automatic.
 
 ### Rollback
 

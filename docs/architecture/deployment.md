@@ -58,7 +58,7 @@ The runtime stage serves on **`:7001`** plain HTTP — TLS terminates at Cloudfl
 - **`horizon`** — `php artisan horizon` queue worker, `stop_grace_period: 60s` for graceful drain. Its healthcheck overrides the image's HTTP `/up` probe with `php artisan horizon:status` (exit `0` running / `1` paused / `2` inactive), so a wedged supervisor surfaces as `unhealthy` instead of a live-but-idle container.
 - **`scheduler`** — `php artisan schedule:work`. Also overrides the image's HTTP probe, with a **liveness heartbeat**: [ScheduleHeartbeatCommand](app/Console/Commands/ScheduleHeartbeatCommand.php) is scheduled every minute in [routes/console.php](routes/console.php) to `SETEX` a unix timestamp on the **durable** `default` Redis connection, and the healthcheck re-runs the same command with `--check`, failing once that stamp is older than `STALE_AFTER_SECONDS` (300s). The service previously ran `healthcheck: disable: true`, so a wedged or dead `schedule:work` was completely silent — `ai:self-heal`, `strava:sync`, `weather:correct-forecast`, `streak:remind`, the daily briefing kickoff and the log pruning all just stopped, and the `$alertOnFailure` hooks in [routes/console.php](routes/console.php) could not see it because they only fire for commands that actually *run*. The probe's three states are distinguishable in `docker inspect --format '{{json .State.Health}}'`: `STALE` (with the age in seconds) / `MISSING` (no beat within the key's 1h TTL) / `UNKNOWN: redis unreachable`.
 - **`pulse`** — combined daemon: `pulse:check` (Servers recorder, host root bind-mounted read-only at `/host`) + `pulse:work` (ingest drain), where either child dying exits the wrapper so Docker restarts it. The wrapper shell is PID 1 (the base image's entrypoint `exec`s straight into `command:`), so it traps `TERM`/`INT` to kill both children and exit immediately — a bare PID 1 default-ignores signals it hasn't trapped, which used to strand the container for the full `stop_grace_period` (now 10s, a backstop; was 30s) until SIGKILL. It rolls onto the new image **after** the deploy is green rather than with `app`/`horizon`, since it's monitoring-only and off the healthcheck's dependency graph — see "How a deploy runs" below.
-- **`mysql`** — custom `temari/mysql:8.4` (stock + initdb bootstrap) on a persistent `mysql_data` volume, tuned via command flags (`innodb-buffer-pool-size=1536M`, `max-connections=40`, `skip-name-resolve`). Stays on the internal network only.
+- **`mysql`** — custom `temari/mysql:9.7` (MySQL 9.7 LTS, stock + initdb bootstrap) on a persistent `mysql_data` volume, tuned via command flags (`innodb-buffer-pool-size=1536M`, `max-connections=40`, `skip-name-resolve`). Stays on the internal network only. No workflow builds or recreates it; changing its image is the manual [Upgrading MySQL](#upgrading-mysql) window.
 - **`redis`** — durable store: `redis:8.8-alpine` (digest-pinned, and dev/CI pin the same digest), AOF `everysec`, `maxmemory 512mb` / `noeviction`, persistent `redis_data` volume. The healthcheck is a **write probe** (`SET`), not `ping`, because Redis answers PONG while still replaying AOF but rejects writes — a ping would let app/horizon connect mid-replay and read empty sessions.
 - **`redis-cache`** — dedicated cache store split off `redis`: the same `redis:8.8-alpine` image, `maxmemory 256mb` / `allkeys-lru`, `appendonly no` and **no volume** (cache is ephemeral, rebuilds lazily). Split out so cache growth can only ever evict itself, never push the durable queue/session store into `noeviction` and stall enqueues. Reuses the same `SET` write-probe healthcheck.
 
@@ -100,19 +100,20 @@ On pull requests, the `changes` job in [.github/workflows/ci.yml](.github/workfl
 
 The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on the `[self-hosted, homelab]` runner, only on `push` to `main`, after `ci-gate` (lint + pest + vitest + secret-scan) **and** `build` pass. `concurrency: deploy-prod` with `cancel-in-progress: false` serializes deploys. Main runs are not serialized against each other (each gets its own workflow concurrency group), so a merge burst tests in parallel; GitHub keeps one pending deploy, a newer one replacing it. Once the job holds the lock, its first step compares `github.sha` with `git ls-remote origin refs/heads/main` and, when main has moved on, skips every later step as a success with "Superseded by <sha>, skipped" in the summary, so a late-finishing older commit can never roll prod back behind a newer one. In order:
 
-1. Pull `ghcr.io/<owner>/<repo>/app:<git-sha>` (token widened to `packages: read`).
-2. Tag current `:latest` → `:previous` (rollback target) — **skipped** when the just-pulled image is already what `:latest` points to, so a re-run of a deploy for a sha that's already live doesn't collapse `:previous` onto the release it's re-running (that would make a rollback roll back to itself).
-3. Tag the pulled image as `temari/app:latest`; bring up mysql + redis with `--wait` (cold-start safe — a fresh box self-bootstraps). Every later step resolves the image through that local tag via the `x-app-image` anchor in [compose.prod.yaml](compose.prod.yaml), so nothing downstream is registry-aware.
-4. Record whether maintenance was already active, then tag the new image with the git SHA.
-5. **Backup** the app DB and the analytics schema to `/var/lib/temari-backups` (gzip, `pipefail`-guarded, tiny-dump check skipped only when the schema is genuinely empty). Every dump passes `--set-gtid-purged=OFF --loose-skip-masking-policies`: MySQL 9.7 enables GTIDs by default, which makes an app-user `--single-transaction` dump run `FLUSH TABLES` and a restore need admin rights, and it adds masking policies the app user cannot read. The `--loose-` prefix lets the 8.4 client ignore the option with a warning. Filenames carry a UTC timestamp plus the run id and run attempt after the sha, so a retried or re-run deploy for the same sha writes a new file beside the old one instead of overwriting it — see "Backup naming and retention" below.
-6. **Quiesce** scheduler + horizon (SIGTERM, kept down) so no scheduled command/job is mid-run during the roll.
-7. Detect pending migrations in both schemas. Only when either has work, enable maintenance unless the owner already did.
-8. `migrate --force`, then `migrate --database=analytics --path=database/migrations/analytics --force` (one-shot `compose run --rm app`).
-9. Roll `app horizon` onto the new image (`up -d --no-deps`) — the recreate gives Horizon fresh workers, so no separate `horizon:terminate`.
-10. `artisan optimize` (caches config inside the running container, where the real env is loaded).
-11. Poll shallow `/ready`, then deep `/up`, and smoke-test `/login` (which must carry no `X-Powered-By` header) plus the PWA assets while maintenance is still active.
-12. Resume `scheduler`, roll `pulse`, then lift maintenance only if this deploy enabled it. Owner maintenance remains untouched.
-13. Prune SHA-tagged `temari/app` images that aren't `:latest`/`:previous`.
+1. **Require a running `mysql`.** The step fails when `$COMPOSE ps -q mysql` is empty, and only warns when the running container uses a different image than [compose.prod.yaml](compose.prod.yaml) pins. No deploy step builds, starts or recreates `mysql`: the data-layer `up` names only `redis redis-cache`, and every `up`/`run` passes `--no-deps` (pinned by [ProdMysqlDeployGuardTest](tests/Unit/Architecture/ProdMysqlDeployGuardTest.php)). An image change is the manual [Upgrading MySQL](#upgrading-mysql) window.
+2. Pull `ghcr.io/<owner>/<repo>/app:<git-sha>` (token widened to `packages: read`).
+3. Tag current `:latest` → `:previous` (rollback target) — **skipped** when the just-pulled image is already what `:latest` points to, so a re-run of a deploy for a sha that's already live doesn't collapse `:previous` onto the release it's re-running (that would make a rollback roll back to itself).
+4. Tag the pulled image as `temari/app:latest`; bring up `redis` + `redis-cache` with `--wait --no-deps`. On a fresh box, start `mysql` by hand first (`docker compose -f compose.prod.yaml up -d --wait mysql` builds its image and self-initializes the volume). Every later step resolves the image through that local tag via the `x-app-image` anchor in [compose.prod.yaml](compose.prod.yaml), so nothing downstream is registry-aware.
+5. Record whether maintenance was already active, then tag the new image with the git SHA.
+6. **Backup** the app DB and the analytics schema to `/var/lib/temari-backups` (gzip, `pipefail`-guarded, tiny-dump check skipped only when the schema is genuinely empty). Every dump passes `--set-gtid-purged=OFF --loose-skip-masking-policies`: MySQL 9.7 enables GTIDs by default, which makes an app-user `--single-transaction` dump run `FLUSH TABLES` and a restore need admin rights, and it adds masking policies the app user cannot read. The `--loose-` prefix lets the 8.4 client ignore the option with a warning. Filenames carry a UTC timestamp plus the run id and run attempt after the sha, so a retried or re-run deploy for the same sha writes a new file beside the old one instead of overwriting it — see "Backup naming and retention" below.
+7. **Quiesce** scheduler + horizon (SIGTERM, kept down) so no scheduled command/job is mid-run during the roll.
+8. Detect pending migrations in both schemas. Only when either has work, enable maintenance unless the owner already did.
+9. `migrate --force`, then `migrate --database=analytics --path=database/migrations/analytics --force` (one-shot `compose run --rm --no-deps app`).
+10. Roll `app horizon` onto the new image (`up -d --no-deps`) — the recreate gives Horizon fresh workers, so no separate `horizon:terminate`.
+11. `artisan optimize` (caches config inside the running container, where the real env is loaded).
+12. Poll shallow `/ready`, then deep `/up`, and smoke-test `/login` (which must carry no `X-Powered-By` header) plus the PWA assets while maintenance is still active.
+13. Resume `scheduler`, roll `pulse`, then lift maintenance only if this deploy enabled it. Owner maintenance remains untouched.
+14. Prune SHA-tagged `temari/app` images that aren't `:latest`/`:previous`.
 
 ### Migrations must be expand/contract
 
@@ -170,3 +171,75 @@ Every successful deploy leaves `temari/app:previous` and `temari/app:<git-sha>` 
 The `Rollback prod` workflow ([.github/workflows/rollback.yml](.github/workflows/rollback.yml)) is **deliberately registry-unaware**: it only inspects and re-tags local `temari/app` images. Building on a hosted runner does not change that, because the deploy still lands `temari/app:latest` as a local tag on the host and still tags the outgoing one `:previous` before it does. Keep it that way — a rollback that has to reach the network is a rollback that can fail when the network is why you're rolling back.
 
 **On the host you can still only go back one deploy.** The prune step runs `if: always()` on every deploy and deletes every `temari/app` tag except `:latest`, `:previous` and the SHA just deployed ([.github/workflows/ci.yml](.github/workflows/ci.yml#L423)), so the host holds exactly two recoverable images. What is new is that GHCR keeps a `:<git-sha>` per deploy, so recovering further back is now a `docker pull ghcr.io/<owner>/<repo>/app:<sha>` + local re-tag instead of a rebuild from source.
+
+## Upgrading MySQL
+
+The `mysql` image changes only in a manual, announced window. Deploys never build, start or recreate `mysql` (step 1 of "How a deploy runs"). After a merge that renames the tag in [compose.prod.yaml](compose.prod.yaml), deploys keep the old container running and warn until this window has run. A tag that is still missing makes the restore dry run fail instead of pulling it from a registry ([deploy/restore-dry-run-compose.yml](deploy/restore-dry-run-compose.yml) sets `pull_policy: never`). Every dump already carries the 9.7-safe flags (step 6 above).
+
+**Window.** No deploy is running or queued (`gh run list --workflow ci.yml --status in_progress`, and again with `--status queued`), and nothing merges until the window ends. Keep well clear of the nightly backup (23:40 WIB) and the Sunday restore dry run (04:07 WIB), both of which share the `deploy-prod` lock. Users see the maintenance page from step 3 to step 8.
+
+Run each command on its own, on the host, from a fresh checkout of `main` at the merge commit. The 8.4 → 9.7 values are shown; set `OLD`/`NEW` for a later upgrade.
+
+```bash
+git clone https://github.com/nukipratama/temari.git /tmp/temari-mysql && cd /tmp/temari-mysql
+COMPOSE="docker compose -f compose.prod.yaml"; OLD=temari/mysql:8.4; NEW=temari/mysql:9.7
+VOL=temari-prod_mysql_data; COPY=temari-prod_mysql_data_before_upgrade
+
+# 1. Preflight: mysql runs $OLD, the image is kept for rollback, and the disk fits one more copy of the volume.
+$COMPOSE ps mysql
+docker image inspect "$OLD" --format '{{.Id}}'
+docker run --rm --entrypoint du -v "$VOL":/d:ro "$OLD" -sh /d
+df -h /var/lib/docker
+
+# 2. Build the new image. The running container is untouched.
+$COMPOSE build mysql
+docker run --rm --entrypoint mysqld "$NEW" --version
+
+# 3. Maintenance on, writers off.
+$COMPOSE exec -T app php artisan down
+$COMPOSE stop scheduler horizon pulse
+
+# 4. Verified backup, run from your machine. The dry run restores the dump into a throwaway $NEW
+#    and checks every table against its manifest. Continue only when both runs succeed.
+gh workflow run nightly-backup.yml --ref main
+gh workflow run restore-dry-run.yml --ref main -f kind=nightly
+APP_MANIFEST=$(ls -t /var/lib/temari-backups/nightly-*.manifest | head -1); echo "$APP_MANIFEST"
+
+# 5. Cold copy of the data volume, the fast rollback path.
+$COMPOSE stop mysql
+docker volume create "$COPY"
+docker run --rm --entrypoint cp -v "$VOL":/from:ro -v "$COPY":/to "$OLD" -a /from/. /to/
+docker run --rm --entrypoint sh -v "$VOL":/a:ro -v "$COPY":/b:ro "$OLD" -c 'cd /a && find . -type f -exec md5sum {} + | sort > /tmp/a; cd /b && find . -type f -exec md5sum {} + | sort > /tmp/b; [ "$(md5sum < /tmp/a)" = "$(md5sum < /tmp/b)" ] && echo "copy identical"'
+
+# 6. Recreate mysql only, on $NEW. This step upgrades the data dictionary and cannot be undone in place.
+$COMPOSE up -d --no-deps --wait --wait-timeout 600 mysql
+$COMPOSE logs --no-log-prefix mysql | grep -E 'upgrad|ERROR'
+
+# 7. Checks. Every one must pass before step 8.
+$COMPOSE exec -T mysql sh -c 'MYSQL_PWD="$DB_PASSWORD" mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT VERSION()"'
+$COMPOSE run --rm --no-deps app php artisan migrate:status --pending=1 && echo "default: none pending"
+$COMPOSE run --rm --no-deps app php artisan migrate:status --database=analytics --path=database/migrations/analytics --pending=1 && echo "analytics: none pending"
+$COMPOSE exec -T mysql sh -c 'MYSQL_PWD="$DB_PASSWORD" mysql -h 127.0.0.1 -N -B -u"$DB_USERNAME" "$DB_DATABASE" -e "SHOW TABLES"' | scripts/deploy/count-rows-query.sh > /tmp/count-rows.sql
+$COMPOSE exec -T mysql sh -c 'MYSQL_PWD="$DB_PASSWORD" mysql -h 127.0.0.1 -N -B -u"$DB_USERNAME" "$DB_DATABASE"' < /tmp/count-rows.sql | sort > /tmp/live-counts.tsv
+sort "$APP_MANIFEST" | diff - /tmp/live-counts.tsv && echo "row counts match the manifest"
+$COMPOSE exec -T mysql sh -c 'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" "$DB_DATABASE"' | gzip > /tmp/mysql-check.sql.gz && gzip -t /tmp/mysql-check.sql.gz && ls -l /tmp/mysql-check.sql.gz
+
+# 8. Services back.
+$COMPOSE restart app
+$COMPOSE start scheduler horizon pulse
+$COMPOSE exec -T app php artisan up
+curl -fsS http://127.0.0.1:7001/ready && curl -fsS http://127.0.0.1:7001/up
+rm -f /tmp/mysql-check.sql.gz /tmp/count-rows.sql /tmp/live-counts.tsv
+```
+
+**Rollback**, if step 6 or 7 fails. The upgraded data dictionary cannot be opened by `$OLD`, so put the cold copy back and point the container at `$OLD`:
+
+```bash
+$COMPOSE stop mysql
+docker run --rm --entrypoint sh -v "$VOL":/data -v "$COPY":/from:ro "$OLD" -c 'find /data -mindepth 1 -delete && cp -a /from/. /data/'
+printf 'services:\n  mysql:\n    image: %s\n' "$OLD" > /tmp/mysql-rollback.yml
+docker compose -f compose.prod.yaml -f /tmp/mysql-rollback.yml up -d --no-deps --wait mysql
+# then step 8, and revert the merge that renamed the tag
+```
+
+Until that revert lands, deploys only warn that mysql runs `$OLD`. If the cold copy is unusable, start `$OLD` on an empty volume, then restore the step-4 dumps with `./scripts/restore-db.sh`. Keep `$COPY` and `$OLD` for a week of normal running, then remove them with `docker volume rm "$COPY"` and `docker rmi "$OLD"`.

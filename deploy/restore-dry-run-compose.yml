@@ -5,7 +5,8 @@
 # anonymous volume and no published ports, so it never touches the live stack.
 services:
   mysql_restore:
-    image: temari/mysql:8.4
+    image: temari/mysql:9.7
+    pull_policy: never
     env_file:
       - /opt/temari/.env
     volumes:

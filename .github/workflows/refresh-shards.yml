@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-26.04-arm
     services:
       mysql:
-        image: mysql:8.4@sha256:c592c15aaf4a1961e15d82eb31ea5987dda862d1c4b1e93424438c0e91dc1f8d
+        image: mysql:9.7@sha256:e2bde46db6563855d7177adb5f0b57b9dc663f5a20927a90f4259d3312068497
         env:
           MYSQL_ROOT_PASSWORD: password
           MYSQL_DATABASE: temari_testing
