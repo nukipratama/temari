@@ -18,7 +18,7 @@ export default defineConfig({
         tailwindcss(),
     ],
     build: {
-        rollupOptions: {
+        rolldownOptions: {
             output: {
                 // Split heavy vendors into their own chunks so a page that doesn't use
                 // charts/maps/animation doesn't pull the whole bundle. Without this
