@@ -68,9 +68,9 @@ Files land in `storage/app/clips/` (gitignored), named
 `morph-dark-mobile-sbs.mp4`, `morph-light-laptop-after.mp4`, `explainer-dark-mobile-reduced-after.mp4`.
 `render` deletes the raw frames after encoding.
 
-GitHub takes images and gifs up to 10 MB and videos up to 100 MB on a public repo (10 MB on a free
-private one). The script keeps each clip within 1280x900 (a side-by-side within 960x900 per side) at
-CRF 28 and warns above 10 MB, so the defaults fit every case. Typical clips: 80-200 KB for a
+Keep every attachment under 10 MB, which GitHub accepts for images, gifs and videos on any plan. The
+script keeps each clip within 1280x900 (a side-by-side within 960x900 per side) at CRF 28 and warns
+above 10 MB. Typical clips: 80-200 KB for a
 1-2s mobile interaction, under 1 MB side by side. Raise `CRF` or shorten the scenario if it warns.
 `clips.sh gif <clip.mp4>` makes a 480px gif for places that do not render video.
 
