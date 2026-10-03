@@ -91,6 +91,15 @@
     --text-stat: 2rem;
     --text-stat--line-height: 1;
 
+    /* Stat tile number: full size from tablet up, and on a phone up to 24px
+       but never wider than a six-character number fits in its tile (28cqi). */
+    --text-stat-tile: 1.875rem;
+    --text-stat-tile--line-height: 1;
+    --text-stat-tile--letter-spacing: -0.02em;
+    --text-stat-tile-fit: min(1.5rem, 28cqi);
+    --text-stat-tile-fit--line-height: 1;
+    --text-stat-tile-fit--letter-spacing: -0.02em;
+
     /* Fluid variant for stat numbers in narrow grid columns (e.g. the 3-up
        VitalChips row): shrinks on small viewports so signed values still fit.
        Tuned against the live rendered element at 320px (iPhone SE) across the

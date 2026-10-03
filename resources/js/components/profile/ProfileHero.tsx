@@ -18,6 +18,7 @@ export interface HeroStat {
     icon: IconComponent;
     label: string;
     value: string;
+    unit?: string;
 }
 
 /**
@@ -103,7 +104,13 @@ export default function ProfileHero({
                             icon={stat.icon}
                             label={stat.label}
                             value={stat.value}
-                            size="xs"
+                            delta={
+                                stat.unit && (
+                                    <span className="text-label-micro text-text-2">
+                                        {stat.unit}
+                                    </span>
+                                )
+                            }
                         />
                     ))}
                 </div>

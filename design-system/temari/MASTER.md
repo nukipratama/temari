@@ -119,6 +119,11 @@ component instead of hand-rolling a near copy.
 
 - Two or more side-by-side numbers go in tiles: `bg-secondary`, `rounded-sm`, no border, no shadow.
 - A tile holds one eyebrow and one number. Tiles are the only filled blocks inside a section.
+- The icon and label sit on top and the number reads first, big, below them: `ui/StatTile` sets it
+  at `text-stat-tile-fit` (up to 24px on a phone, never wider than its tile) and
+  `md:text-stat-tile` (30px from tablet up). A unit sits beside the number at label size and drops
+  to its own line when the tile is too narrow. A three-up tile row falls back to two columns below
+  360px (`grid-cols-2 min-[360px]:grid-cols-3`).
 - A lone secondary number is a plain stat line, never a single tile. A section's hero number is
   never tiled either — it sits large and untiled above whatever follows.
 

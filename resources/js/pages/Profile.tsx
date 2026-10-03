@@ -102,7 +102,8 @@ export default function Profile({
               {
                   icon: Trophy,
                   label: 'Longest run',
-                  value: `${stats.longest_run_km.toFixed(1)} km`,
+                  value: stats.longest_run_km.toFixed(1),
+                  unit: 'km',
               },
           ]
         : [];
@@ -117,7 +118,8 @@ export default function Profile({
         heroStats.push({
             icon: Timer,
             label: 'Threshold',
-            value: `${formatPace(fitness.threshold_pace_sec)}/km`,
+            value: formatPace(fitness.threshold_pace_sec),
+            unit: '/km',
         });
     }
 

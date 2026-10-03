@@ -3,12 +3,12 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Icon, type IconComponent } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
-type StatSize = 'lg' | 'sm' | 'xs';
+type StatSize = 'lg' | 'sm' | 'tile';
 
 const VALUE_SIZE: Record<StatSize, string> = {
     lg: 'text-stat',
     sm: 'text-stat-sm',
-    xs: 'text-sm',
+    tile: 'text-stat-tile-fit md:text-stat-tile',
 };
 
 interface StatProps {
@@ -19,7 +19,7 @@ interface StatProps {
     /** Rendered next to the value — {@link StatDelta} or a plain string. */
     delta?: ReactNode;
     sub?: string;
-    /** Default `lg`; `sm` for a tile, `xs` for a dense three-up tile row. */
+    /** Default `lg`; `sm` for a secondary stat line; `tile` is StatTile's own step. */
     size?: StatSize;
     className?: string;
 }
@@ -37,11 +37,11 @@ export function Stat({
     return (
         <div className={className}>
             <span className="text-label-micro text-text-3">{label}</span>
-            <div className="mt-1 flex items-baseline gap-2">
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
                 <span
                     className={cn(
                         VALUE_SIZE[size],
-                        'font-mono font-bold tabular-nums text-foreground',
+                        'font-mono font-bold whitespace-nowrap tabular-nums text-foreground',
                     )}
                 >
                     {value}
@@ -86,8 +86,6 @@ export function StatDelta({
 }
 
 interface StatTileProps extends Omit<StatProps, 'className' | 'size'> {
-    /** Default `sm`; `xs` for a dense three-up row. */
-    size?: StatSize;
     /** Drawn before the label. */
     icon?: IconComponent;
     as?: 'div' | 'li';
@@ -102,7 +100,6 @@ interface StatTileProps extends Omit<StatProps, 'className' | 'size'> {
 export default function StatTile({
     label,
     icon,
-    size = 'sm',
     as: Tag = 'div',
     children,
     id,
@@ -114,10 +111,13 @@ export default function StatTile({
         <Tag
             id={id}
             style={style}
-            className={cn('rounded-sm bg-secondary pad-panel', className)}
+            className={cn(
+                '@container rounded-sm bg-secondary pad-panel',
+                className,
+            )}
         >
             <Stat
-                size={size}
+                size="tile"
                 label={
                     icon ? (
                         <span className="inline-flex items-center gap-1.5">
