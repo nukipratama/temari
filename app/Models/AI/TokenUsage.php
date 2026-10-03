@@ -35,6 +35,7 @@ use Override;
  * @property Carbon $created_at
  */
 #[Fillable(['user_id', 'analysis_id', 'run_question_id', 'user_name', 'strava_athlete_id', 'kind', 'origin', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'cached_tokens', 'reasoning_tokens', 'steps', 'tool_calls', 'model', 'latency_ms', 'truncated', 'created_at'])]
+// The analytics schema keeps cost history safe from a `migrate:fresh` of the app DB.
 #[Connection('analytics')]
 #[Table(name: 'ai_token_usages')]
 #[WithoutTimestamps]

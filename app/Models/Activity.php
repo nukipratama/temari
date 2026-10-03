@@ -55,6 +55,7 @@ use Override;
     'milestone_payload',
     'detail_fail_count',
 ])]
+// Keeps the per-row milestone JSON out of every Inertia payload that serializes activities.
 #[Hidden(['milestone_payload'])]
 class Activity extends Model
 {
