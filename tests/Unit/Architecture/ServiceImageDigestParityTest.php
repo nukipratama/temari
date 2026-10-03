@@ -13,7 +13,7 @@ dataset('dev and ci service manifests', [
 ]);
 
 it('pins dev and CI MySQL and Redis to the digests prod runs', function (string $manifest): void {
-    preg_match('/^FROM mysql@(sha256:[0-9a-f]{64})$/m', (string) File::get(base_path('docker/mysql/Dockerfile')), $mysql);
+    preg_match('/^FROM mysql(?::[^@\s]+)?@(sha256:[0-9a-f]{64})$/m', (string) File::get(base_path('docker/mysql/Dockerfile')), $mysql);
     preg_match('/^\s*image:\s*(redis:[^@\s]+@sha256:[0-9a-f]{64})$/m', (string) File::get(base_path('compose.prod.yaml')), $redis);
     $contents = (string) File::get(base_path($manifest));
     preg_match_all('/^\s*image:\s*\'?((?:mysql|redis)[^\'\s]*)\'?\s*$/m', $contents, $images);

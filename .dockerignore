@@ -39,7 +39,6 @@ phpstan.neon
 rector.php
 pint.json
 boost.json
-renovate.json
 
 README.md
 LICENSE
