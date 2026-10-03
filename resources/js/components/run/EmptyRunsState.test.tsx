@@ -34,7 +34,7 @@ const HERO_COPY: Record<StravaSyncState, { headline: string; copy: string }> = {
 function renderWithState(state: StravaSyncState) {
     const start = vi.fn();
     const stop = vi.fn();
-    vi.mocked(usePoll).mockReturnValue({ start, stop });
+    vi.mocked(usePoll).mockReturnValue({ start, stop, polling: false });
     setMockPage({
         auth: { user: null },
         flash: {},
