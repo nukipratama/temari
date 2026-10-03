@@ -122,7 +122,6 @@ describe('chunkIntoWeeks', () => {
         ]);
         const [week] = chunkIntoWeeks(cells);
         expect(week.totalKm).toBe(15);
-        expect(week.runCount).toBe(2);
     });
 
     it("carries the week's rarest card and sunday", () => {

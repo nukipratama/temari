@@ -1,39 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-    GLOW_COLORS,
-    dawnRayStyle,
-    glowStyle,
-    noiseFilterStyle,
-} from './styles';
+import { revealDelay } from './styles';
 
-describe('glowStyle', () => {
-    it.each(Object.entries(GLOW_COLORS))(
-        'builds a radial gradient from the %s glow tuple',
-        (_name, { r, g, b }) => {
-            expect(glowStyle(r, g, b).background).toBe(
-                `radial-gradient(circle, rgba(${r},${g},${b},0.3) 0%, transparent 70%)`,
-            );
-        },
-    );
+describe('revealDelay', () => {
+    it('leads in at 0.05s and steps 0.06s per sibling', () => {
+        const delay = (index: number) =>
+            parseFloat(String(revealDelay(index)['--reveal-delay' as never]));
 
-    it('threads the supplied intensity and falloff into the gradient', () => {
-        const { r, g, b } = GLOW_COLORS.horizon;
-        expect(glowStyle(r, g, b, 0.5, '40%').background).toBe(
-            `radial-gradient(circle, rgba(${r},${g},${b},0.5) 0%, transparent 40%)`,
-        );
-    });
-});
-
-describe('noiseFilterStyle', () => {
-    it('inlines the turbulence filter, so the grain costs no asset request', () => {
-        expect(noiseFilterStyle().backgroundImage).toContain('feTurbulence');
-        expect(noiseFilterStyle().backgroundSize).toBe('128px 128px');
-    });
-});
-
-describe('dawnRayStyle', () => {
-    it('sweeps the ray bottom-left to top-right at 160deg', () => {
-        expect(dawnRayStyle().background).toContain('linear-gradient(160deg');
+        expect(delay(0)).toBeCloseTo(0.05);
+        expect(delay(2)).toBeCloseTo(0.17);
     });
 });

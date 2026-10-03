@@ -83,7 +83,7 @@ export function parseNaiveLocalDate(iso: string): Date | null {
 
 // Shared wording for the relative formatters below. Negative (future/skewed)
 // deltas clamp to "just now" rather than leaking "-3 hr ago" into the UI.
-function relativeIdFromDelta(ms: number, iso: string, naive: boolean): string {
+function relativeIdFromDelta(ms: number, iso: string): string {
     if (!Number.isFinite(ms)) return '—';
     if (ms < 0) return 'just now';
     const sec = Math.round(ms / 1000);
@@ -97,23 +97,18 @@ function relativeIdFromDelta(ms: number, iso: string, naive: boolean): string {
     if (day < 7) return `${day} days ago`;
     const week = Math.floor(day / 7);
     if (week < 5) return `${week} wk ago`;
-    return naive ? formatNaiveIdDate(iso, 'short') : formatIdDate(iso, 'short');
+    return formatIdDate(iso, 'short');
 }
 
 // "5 min ago", "2 hr ago", "yesterday", "3 days ago" for TRUE INSTANTS
 // (created_at / generated_at / fetched_at style UTC timestamps, or local Dates
 // round-tripped through toISOString). Falls back to '—' on null/invalid.
-// For naive wall-clock values (start_date_local), use formatNaiveRelativeId.
 export function formatRelativeId(
     iso: string | null | undefined,
     now: Date = new Date(),
 ): string {
     if (!iso) return '—';
-    return relativeIdFromDelta(
-        now.getTime() - new Date(iso).getTime(),
-        iso,
-        false,
-    );
+    return relativeIdFromDelta(now.getTime() - new Date(iso).getTime(), iso);
 }
 
 // "aug 25 · 07:12" — short month/day + local time, for TRUE INSTANTS. The
@@ -128,20 +123,6 @@ export function formatAbsoluteId(iso: string | null | undefined): string {
         hour12: false,
     });
     return `${formatMonthDayId(d)} · ${time}`;
-}
-
-// Relative wording for NAIVE wall-clock values (Strava's start_date_local,
-// serialized with a misleading trailing Z): the delta is measured against the
-// as-recorded local clock, so a 06:30 run reads "12 hr ago" at 18:30 local
-// instead of being shifted by the viewer's offset.
-export function formatNaiveRelativeId(
-    iso: string | null | undefined,
-    now: Date = new Date(),
-): string {
-    if (!iso) return '—';
-    const d = parseNaiveLocalDate(iso);
-    if (d === null) return '—';
-    return relativeIdFromDelta(now.getTime() - d.getTime(), iso, true);
 }
 
 /**
@@ -194,17 +175,6 @@ export function formatNaiveIdDate(
     const d = parseNaiveLocalDate(iso);
     if (d === null) return '—';
     return idDateFromDate(d, format);
-}
-
-/** "mon, may 11" — short weekday + numeric day + short month. */
-export function formatShortWeekdayDateId(date: Date): string {
-    return idCase(
-        date.toLocaleDateString('en-US', {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-        }),
-    );
 }
 
 /** "may 11" — numeric day + short month, no weekday or year. */

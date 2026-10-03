@@ -14,7 +14,7 @@ const BUCKET_ORDER: readonly InboxBucket[] = ['today', 'week', 'earlier'];
  * `created_at` arrives stamped in the server's zone, so its leading date is
  * the server's calendar day; weeks are Monday-start like the backend's.
  */
-export function bucketOf(createdAt: string | null, today: string): InboxBucket {
+function bucketOf(createdAt: string | null, today: string): InboxBucket {
     const created = createdAt ? parseNaiveLocalDate(createdAt) : null;
     if (created === null) return 'earlier';
 

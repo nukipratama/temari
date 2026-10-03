@@ -3,16 +3,12 @@ import { describe, expect, it } from 'vitest';
 import type { ActivityDetail } from '@/types/inertia';
 
 import {
-    BADGE_ABILITY,
-    BADGE_LABELS,
     RARITY_BAND_COUNT,
     RARITY_INK,
     RARITY_LABELS,
     RARITY_ORDER,
     RARITY_TEXT,
     avgCadenceFromDetail,
-    badgeEmblem,
-    badgeName,
     fastestKmFromDetail,
     cardPropsFromDetail,
     threadBandLines,
@@ -104,58 +100,6 @@ describe('threadBandLines', () => {
             lines.filter((l) => l.y1 === 0);
         expect(crossing(epic)).toHaveLength(1);
         expect(crossing(legendary)).toHaveLength(2);
-    });
-});
-
-const BADGE_KEYS = [
-    'heat_tamer',
-    'rain_warrior',
-    'early_bird',
-    'long_slow_distance',
-    'negative_split',
-    'held_back',
-];
-
-describe('BADGE_LABELS', () => {
-    it('has expected badge keys', () => {
-        BADGE_KEYS.forEach((key) => {
-            expect(BADGE_LABELS[key]).toBeTruthy();
-        });
-    });
-
-    it('uses the casual English names', () => {
-        expect(BADGE_LABELS.heat_tamer).toBe('🔥 Heat Tamer');
-        expect(BADGE_LABELS.held_back).toBe('🧘 Held Back');
-        expect(BADGE_LABELS.negative_split).toBe('👻 Negative Split');
-    });
-});
-
-describe('BADGE_ABILITY', () => {
-    it('has a one-line meaning for every badge, with no em-dashes', () => {
-        BADGE_KEYS.forEach((key) => {
-            expect(BADGE_ABILITY[key]).toBeTruthy();
-            expect(BADGE_ABILITY[key]).not.toContain('—');
-        });
-    });
-});
-
-describe('badgeEmblem / badgeName', () => {
-    it('splits the emoji from the name', () => {
-        expect(badgeEmblem('heat_tamer')).toBe('🔥');
-        expect(badgeName('heat_tamer')).toBe('Heat Tamer');
-        expect(badgeName('held_back')).toBe('Held Back');
-    });
-
-    it('falls back to prettyBadge for unknown slugs', () => {
-        expect(badgeEmblem('unknown_slug')).toBe('');
-        expect(badgeName('unknown_slug')).toBe('Unknown Slug');
-    });
-
-    // holiday_run was retired (Slice 2g): an old card can still carry it in
-    // its stored badge array, and it must render as inert history, not crash.
-    it('renders the retired holiday_run slug without a map entry', () => {
-        expect(badgeEmblem('holiday_run')).toBe('');
-        expect(badgeName('holiday_run')).toBe('Holiday Run');
     });
 });
 

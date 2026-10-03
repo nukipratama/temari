@@ -6,7 +6,6 @@ import type { Rarity } from '@/types/inertia';
  * rather than a ground-reactive one — the popup chrome follows the ground, the
  * print never does.
  */
-export const SKY = '#171f28';
 export const SKY_DEEP = '#0b1017';
 export const HORIZON = '#ade047';
 export const HORIZON_INK = '#546d23';

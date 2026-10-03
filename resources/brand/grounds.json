@@ -243,20 +243,6 @@
                 "ember-ink"
             ]
         },
-        "foreground/0.03": {
-            "over": {
-                "resources/js/lib/splits.ts": [
-                    "paper"
-                ],
-                "resources/js/lib/splits.test.ts": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "text-2",
-                "foreground"
-            ]
-        },
         "foreground/0.85": {
             "over": {
                 "resources/js/lib/variants.ts": [
@@ -266,9 +252,6 @@
             "text": [
                 "background"
             ]
-        },
-        "horizon/0.08": {
-            "text": []
         },
         "horizon/0.14": {
             "over": {
@@ -375,12 +358,6 @@
         "muted/0.6": {
             "over": {
                 "resources/js/components/NotificationBell.tsx": [
-                    "paper"
-                ],
-                "resources/js/lib/splits.test.ts": [
-                    "paper"
-                ],
-                "resources/js/lib/splits.ts": [
                     "paper"
                 ]
             },
