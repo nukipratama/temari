@@ -801,6 +801,14 @@ body {
     animation-duration: 180ms;
 }
 
+/* A History run row flying up into the run page's header (lib/runMorph). */
+::view-transition-group(.run-morph),
+::view-transition-old(.run-morph),
+::view-transition-new(.run-morph) {
+    animation-duration: 280ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Hide native scrollbar — used on horizontal strips where explicit
    arrow buttons or swipe are the scroll affordance, so the native bar
    would just be visual noise. */

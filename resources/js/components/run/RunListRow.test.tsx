@@ -59,6 +59,13 @@ describe('RunListRow', () => {
         );
     });
 
+    it('marks itself as the morph source for its run, unnamed until a transition starts', () => {
+        render(<RunListRow detail={detail({ activity_id: 7 })} />);
+        const link = screen.getByRole('link');
+        expect(link.dataset.runMorph).toBe('7');
+        expect(link.style.getPropertyValue('view-transition-name')).toBe('');
+    });
+
     it('renders an em-dash placeholder when numeric fields are null', () => {
         render(
             <RunListRow

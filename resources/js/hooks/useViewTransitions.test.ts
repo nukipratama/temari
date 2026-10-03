@@ -4,15 +4,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import useViewTransitions from './useViewTransitions';
 
-type Visit = { showProgress: boolean; viewTransition?: boolean };
+type Visit = {
+    showProgress: boolean;
+    viewTransition?: boolean | ((transition: ViewTransition) => void);
+};
 
 type BeforeHandler = (event: { detail: { visit: Visit } }) => void;
 
-function fireBefore(showProgress: boolean): Visit {
+function fireBefore(
+    showProgress: boolean,
+    viewTransition?: Visit['viewTransition'],
+): Visit {
     const handler = vi
         .mocked(router.on)
         .mock.calls.at(-1)?.[1] as BeforeHandler;
-    const visit: Visit = { showProgress };
+    const visit: Visit = { showProgress, viewTransition };
     handler({ detail: { visit } });
 
     return visit;
@@ -45,7 +51,21 @@ describe('useViewTransitions', () => {
         renderHook(() => useViewTransitions());
         setReducedMotion(true);
 
-        expect(fireBefore(true).viewTransition).toBeUndefined();
+        expect(fireBefore(true).viewTransition).toBe(false);
+    });
+
+    it("keeps a link's own transition callback on a real navigation", () => {
+        const morph = vi.fn<(transition: ViewTransition) => void>();
+        renderHook(() => useViewTransitions());
+
+        expect(fireBefore(true, morph).viewTransition).toBe(morph);
+    });
+
+    it("drops a link's own transition callback under reduced motion", () => {
+        renderHook(() => useViewTransitions());
+        setReducedMotion(true);
+
+        expect(fireBefore(true, () => undefined).viewTransition).toBe(false);
     });
 
     it('reads the motion preference per visit, not once on mount', () => {
@@ -54,7 +74,7 @@ describe('useViewTransitions', () => {
         expect(fireBefore(true).viewTransition).toBe(true);
 
         setReducedMotion(true);
-        expect(fireBefore(true).viewTransition).toBeUndefined();
+        expect(fireBefore(true).viewTransition).toBe(false);
     });
 
     it('stops listening when the shell unmounts', () => {

@@ -20,6 +20,9 @@ import { useEffect } from 'react';
  * `showProgress` is Inertia's own flag for separating a real navigation from
  * the background `only`/`except` reloads this app runs for AI polling and card
  * reveals. Those must not animate — a poll tick is not a navigation.
+ *
+ * A link's own `viewTransition` callback (the run-card morph) is kept on a
+ * real navigation and dropped under reduced motion.
  */
 export default function useViewTransitions(): void {
     useEffect(
@@ -33,9 +36,13 @@ export default function useViewTransitions(): void {
                     '(prefers-reduced-motion: reduce)',
                 ).matches;
 
-                if (visit.showProgress && !reducedMotion) {
-                    visit.viewTransition = true;
+                if (!visit.showProgress) {
+                    return;
                 }
+
+                visit.viewTransition = reducedMotion
+                    ? false
+                    : visit.viewTransition || true;
             }),
         [],
     );
