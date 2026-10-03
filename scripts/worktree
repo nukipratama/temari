@@ -333,11 +333,15 @@ EOF
 
   app() { docker compose exec -T app "$@"; }
 
-  [ -f vendor/autoload.php ] || step "composer install" app composer install
+  app sha256sum -c vendor/.composer.lock.sha256 >/dev/null 2>&1 ||
+    step "composer install" app sh -c 'composer install && sha256sum composer.lock > vendor/.composer.lock.sha256'
   grep -qE '^APP_KEY=.+' .env || step "app key" app php artisan key:generate
   step "migrations" app php artisan migrate --force
   step "analytics migrations" app php artisan migrate --database=analytics --path=database/migrations/analytics --force
-  app test -x node_modules/.bin/vite || step "npm ci" app npm ci --no-audit --no-fund
+  app sha256sum -c node_modules/.package-lock.sha256 >/dev/null 2>&1 || {
+    step "npm ci" app sh -c 'npm ci --no-audit --no-fund && sha256sum package-lock.json > node_modules/.package-lock.sha256'
+    echo 'worktree: npm ci wiped Playwright; re-run .agents/skills/browser-review/scripts/setup.sh before the next browser review.'
+  }
   step "asset build" app npm run build
 
   cat <<EOF

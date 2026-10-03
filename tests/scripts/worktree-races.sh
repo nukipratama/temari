@@ -91,6 +91,7 @@ init_case() {
   export FAKE_WORKTREE_ADD_DONE="${case_dir}/worktree-add-done"
   export FAKE_REMOVE_AFTER_REMOVE="${case_dir}/remove-after-git"
   export FAKE_RELEASE_REMOVE="${case_dir}/release-remove"
+  export FAKE_INSTALL_LOG="${case_dir}/install-log"
   export FAKE_REAL_PERL="$real_perl"
   export FAKE_REAL_FLOCK="$real_flock"
   export TEMARI_FORCE_PERL_FLOCK="$force_perl_flock"
@@ -103,8 +104,11 @@ init_case() {
   touch "${FAKE_MAIN}/.env.example" "${FAKE_MAIN}/.env.testing.example" \
     "${FAKE_MAIN}/compose.shared-services.yml" \
     "${FAKE_MAIN}/docker/mysql/init/01-databases.sh"
+  printf 'composer lock\n' > "${FAKE_MAIN}/composer.lock"
+  printf 'npm lock\n' > "${FAKE_MAIN}/package-lock.json"
   : > "$FAKE_LOCK_ATTEMPTS"
   : > "$FAKE_CLEAN_LOG"
+  : > "$FAKE_INSTALL_LOG"
 
   cat > "${FAKE_BIN}/git" <<'EOF'
 #!/usr/bin/env bash
@@ -153,7 +157,8 @@ case "${1:-}" in
         target="$3"
         branch="$5"
         mkdir -p "${target}/storage/logs" "${target}/docker/mysql/init"
-        cp "$FAKE_MAIN/.env.example" "$FAKE_MAIN/.env.testing.example" "$target/"
+        cp "$FAKE_MAIN/.env.example" "$FAKE_MAIN/.env.testing.example" \
+          "$FAKE_MAIN/composer.lock" "$FAKE_MAIN/package-lock.json" "$target/"
         cp "$FAKE_MAIN/docker/mysql/init/01-databases.sh" "$target/docker/mysql/init/"
         printf 'gitdir: %s/worktrees/%s\n' "$FAKE_COMMON" "$(basename "$target")" > "${target}/.git"
         touch "${target}/.active"
@@ -214,6 +219,31 @@ printf 'temari\n'
 EOF
   chmod +x "${FAKE_BIN}/jq"
 
+  cat > "${FAKE_BIN}/composer" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+printf 'composer %s\n' "$*" >> "$FAKE_INSTALL_LOG"
+mkdir -p vendor
+EOF
+  chmod +x "${FAKE_BIN}/composer"
+
+  cat > "${FAKE_BIN}/npm" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+[ "${1:-}" = ci ] || exit 0
+printf 'npm %s\n' "$*" >> "$FAKE_INSTALL_LOG"
+mkdir -p node_modules
+EOF
+  chmod +x "${FAKE_BIN}/npm"
+
+  printf '#!/usr/bin/env bash\nexit 0\n' > "${FAKE_BIN}/php"
+  chmod +x "${FAKE_BIN}/php"
+
+  command -v sha256sum >/dev/null || {
+    printf '#!/usr/bin/env bash\nexec shasum -a 256 "$@"\n' > "${FAKE_BIN}/sha256sum"
+    chmod +x "${FAKE_BIN}/sha256sum"
+  }
+
   cat > "${FAKE_BIN}/mysql" <<'EOF'
 #!/usr/bin/env bash
 set -Eeuo pipefail
@@ -244,6 +274,10 @@ case "${1:-}" in
       printf '{"name":"temari"}\n'
     elif [[ "$arguments" == *" ps --status running -q "* ]]; then
       printf 'fake-container\n'
+    elif [[ "$arguments" == *" exec -T app "* ]]; then
+      while [ "$1" != app ]; do shift; done
+      shift
+      "$@"
     elif [[ "$arguments" == *" exec "* ]]; then
       if [[ "$arguments" == *" mysql mysql "* || "$arguments" == *" mysql-test mysql "* ]]; then
         printf '%s\n' "$arguments" | "$FAKE_BIN/mysql"
@@ -266,7 +300,8 @@ EOF
 make_worktree() {
   local path="$1"
   mkdir -p "${path}/storage/logs" "${path}/docker/mysql/init"
-  cp "$FAKE_MAIN/.env.example" "$FAKE_MAIN/.env.testing.example" "$path/"
+  cp "$FAKE_MAIN/.env.example" "$FAKE_MAIN/.env.testing.example" \
+    "$FAKE_MAIN/composer.lock" "$FAKE_MAIN/package-lock.json" "$path/"
   cp "$FAKE_MAIN/docker/mysql/init/01-databases.sh" "$path/docker/mysql/init/"
   printf 'gitdir: %s/worktrees/%s\n' "$FAKE_COMMON" "$(basename "$path")" > "${path}/.git"
   touch "${path}/.active"
@@ -459,4 +494,34 @@ running_pids=(none)
 assert_eq "${FAKE_MAIN}/.claude/worktrees/creator" "$(<"${FAKE_COMMON}/temari-worktree-slots/slot-1/path")" 'remove erased the new owner reservation'
 assert_eq 0 "$(wc -l < "$FAKE_CLEAN_LOG" | tr -d ' ')" 'create redundantly reclaimed the slot while remove held it'
 echo 'PASS: remove holds the slot through Git removal and preserves safety refusals'
+case_dir="${test_root}/dependency-refresh"
+init_case "$case_dir"
+make_worktree "${case_dir}/refresher"
+adopt_refresher() {
+  : > "$FAKE_INSTALL_LOG"
+  "${FAKE_MAIN}/scripts/worktree" adopt "${case_dir}/refresher" > "${case_dir}/adopt.out" 2>&1 || {
+    cat "${case_dir}/adopt.out" >&2
+    fail 'adopt failed while refreshing dependencies'
+  }
+}
+
+adopt_refresher
+assert_eq 'composer install
+npm ci --no-audit --no-fund' "$(<"$FAKE_INSTALL_LOG")" 'first adopt did not install both dependency sets'
+grep -q 'browser-review/scripts/setup.sh' "${case_dir}/adopt.out" || fail 'npm ci did not say to re-run browser-review setup'
+
+adopt_refresher
+assert_eq '' "$(<"$FAKE_INSTALL_LOG")" 'adopt reinstalled dependencies whose lockfiles are unchanged'
+! grep -q 'browser-review/scripts/setup.sh' "${case_dir}/adopt.out" || fail 'unchanged lockfiles still printed the browser-review notice'
+
+printf 'bumped\n' >> "${case_dir}/refresher/composer.lock"
+printf 'bumped\n' >> "${case_dir}/refresher/package-lock.json"
+adopt_refresher
+assert_eq 'composer install
+npm ci --no-audit --no-fund' "$(<"$FAKE_INSTALL_LOG")" 'adopt did not reinstall both sets after both lockfiles changed'
+
+printf 'bumped again\n' >> "${case_dir}/refresher/package-lock.json"
+adopt_refresher
+assert_eq 'npm ci --no-audit --no-fund' "$(<"$FAKE_INSTALL_LOG")" 'adopt did not limit the reinstall to the changed lockfile'
+echo 'PASS: adopt reinstalls dependencies only when a lockfile changed'
 echo "PASS: lock backend ${backend}"
