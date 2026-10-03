@@ -45,7 +45,7 @@ code_refs:
   - app/Models/SeasonGoal.php
   - database/migrations/2026_09_28_000000_add_unique_metric_to_season_goals_table.php
   - app/Http/Controllers/PlanController.php
-  - app/Services/Gamification/SeasonStreakSummaryBuilder.php
+  - app/Services/Gamification/SeasonPayloadBuilder.php
   - app/Services/Run/Plan/SeasonSummaryBuilder.php
   - app/Console/Commands/Run/RegeneratePlanCommand.php
   - app/Console/Commands/Run/RegradeSeasonCommand.php
@@ -315,7 +315,7 @@ frame alone, with no goals and no season record.
 The per-goal `GoalCard` grid under the season summary is gone: P24 replaced the tier module with
 the prototype's single progress line, and `W2` swept the orphaned component. The week-grained
 lifetime streak (`WeeklySnapshot::consecutiveWeekStreak()`) does not render here either; its
-page-level wrapper, `SeasonStreakSummaryBuilder::streakPayload()`, had no caller and is deleted.
+page-level wrapper, `streakPayload()` on what is now `SeasonPayloadBuilder`, had no caller and is deleted.
 `PlanPageAssembler` calls `seasonPayload()` only.
 
 ## Extracted: interval detection

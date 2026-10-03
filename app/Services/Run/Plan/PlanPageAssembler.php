@@ -12,7 +12,7 @@ use App\Models\Season;
 use App\Models\User;
 use App\Services\AI\HydrationBacklog;
 use App\Services\AI\PlanNarrationRequester;
-use App\Services\Gamification\SeasonStreakSummaryBuilder;
+use App\Services\Gamification\SeasonPayloadBuilder;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -45,7 +45,7 @@ final class PlanPageAssembler
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $paceCalculator,
         private readonly SeasonService $seasonService,
-        private readonly SeasonStreakSummaryBuilder $seasonStreakBuilder,
+        private readonly SeasonPayloadBuilder $seasonPayloadBuilder,
         private readonly SeasonSummaryBuilder $seasonSummaryBuilder,
         private readonly SessionMatcher $sessionMatcher,
         private readonly PlanNarrationRequester $narrationRequester,
@@ -78,7 +78,7 @@ final class PlanPageAssembler
     public function season(User $user, Carbon $today): ?array
     {
         $season = $this->currentSeason($user, $today);
-        $payload = $this->seasonStreakBuilder->seasonPayload($season, $today);
+        $payload = $this->seasonPayloadBuilder->seasonPayload($season, $today);
 
         return $payload === null ? null : [...$payload, 'under_ready_line' => $this->seasonService->takeUnderReadyLine($season)];
     }

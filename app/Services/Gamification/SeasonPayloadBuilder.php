@@ -18,7 +18,7 @@ use Illuminate\Support\Carbon;
  * (possibly `null`) — a second page load must never trigger season creation
  * on its own.
  */
-final readonly class SeasonStreakSummaryBuilder
+final readonly class SeasonPayloadBuilder
 {
     public function __construct(
         private SeasonGoalResolver $seasonGoalResolver,

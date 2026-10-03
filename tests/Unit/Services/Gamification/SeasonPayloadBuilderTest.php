@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use App\Services\Gamification\SeasonStreakSummaryBuilder;
+use App\Services\Gamification\SeasonPayloadBuilder;
 use App\Services\Run\Plan\SeasonService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -12,7 +12,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
-    $this->builder = app(SeasonStreakSummaryBuilder::class);
+    $this->builder = app(SeasonPayloadBuilder::class);
 });
 afterEach(fn () => Carbon::setTestNow());
 

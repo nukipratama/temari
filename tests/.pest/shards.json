@@ -368,7 +368,7 @@
         "Tests\\Unit\\Services\\Gamification\\SeasonGamificationContextTest": 1.1618,
         "Tests\\Unit\\Services\\Gamification\\SeasonGoalResolverTest": 0.1236,
         "Tests\\Unit\\Services\\Gamification\\SeasonRecordBuilderTest": 0.5286,
-        "Tests\\Unit\\Services\\Gamification\\SeasonStreakSummaryBuilderTest": 0.4326,
+        "Tests\\Unit\\Services\\Gamification\\SeasonPayloadBuilderTest": 0.4326,
         "Tests\\Unit\\Services\\Gamification\\StreakSettlementServiceTest": 1.0201,
         "Tests\\Unit\\Services\\Geo\\PolylineProjectorTest": 0.1724,
         "Tests\\Unit\\Services\\Notifications\\ChannelRouterTest": 0.7414,
