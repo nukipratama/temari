@@ -209,11 +209,11 @@ describe('WeekPlanWidget', () => {
 
         expect(
             container.querySelector(
-                '[title^="Overreached"] [data-icon="ArrowUp"]',
+                '[title^="overreached"] [data-icon="ArrowUp"]',
             ),
         ).toBeInTheDocument();
         expect(
-            container.querySelector('[title^="Done"] [data-icon="Check"]'),
+            container.querySelector('[title^="done"] [data-icon="Check"]'),
         ).toBeInTheDocument();
     });
 
@@ -237,7 +237,7 @@ describe('WeekPlanWidget', () => {
 
         expect(screen.getByText('4.2')).toBeInTheDocument();
         expect(
-            container.querySelector('[title^="Done"] [data-icon="Check"]'),
+            container.querySelector('[title^="done"] [data-icon="Check"]'),
         ).toBeInTheDocument();
     });
 
@@ -253,7 +253,7 @@ describe('WeekPlanWidget', () => {
 
         expect(
             container.querySelector(
-                'li[title="Partial · planned 8.0 km · 62%"]',
+                'li[title="partial · planned 8.0 km · 62%"]',
             ),
         ).toBeInTheDocument();
     });
@@ -275,7 +275,7 @@ describe('WeekPlanWidget', () => {
             screen.getByRole('link', { name: /ran 9\.4 km/ }),
         ).toBeInTheDocument();
         expect(
-            container.querySelector('[title^="Done"] [data-icon="Check"]'),
+            container.querySelector('[title^="done"] [data-icon="Check"]'),
         ).toBeInTheDocument();
     });
 
