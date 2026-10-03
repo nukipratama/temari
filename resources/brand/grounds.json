@@ -191,7 +191,7 @@
         },
         "ember/0.08": {
             "over": {
-                "resources/js/pages/Devtools/Design.tsx": [
+                "resources/js/components/catalogue/TokenSheet.tsx": [
                     "paper"
                 ],
                 "resources/js/components/settings/HrZonesDisclosure.tsx": [

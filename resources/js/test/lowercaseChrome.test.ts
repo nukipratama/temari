@@ -12,7 +12,9 @@ const sources = import.meta.glob(
 
 const EXCLUDED = [
     /\.test\.tsx?$/,
+    /\.examples\.tsx$/,
     /^\.\.\/components\/ui\//,
+    /^\.\.\/components\/catalogue\//,
     /^\.\.\/components\/narration\//,
     /^\.\.\/pages\/Legal\//,
     /^\.\.\/pages\/Narration\//,

@@ -49,8 +49,8 @@ the readable label there (`text-leaf` on a sky panel), so an `onSky` branch keep
 card corner, `shadow-e1`..`e4` is resting → floating → sheet → modal (warm-tinted, never
 Tailwind's neutral defaults), and padding names a role (`.pad-chip` / `.pad-panel` / `.pad-card` /
 `.pad-hero` / `.pad-page`). `npm run check:palette` rejects raw palette shades, default shadows and
-off-scale radii; `/devtools/design` renders the whole set plus a live contrast audit read out of
-the shipped CSS.
+off-scale radii; `/devtools/design` catalogues every reusable component on both grounds, and its
+tokens tab renders the whole set plus a live contrast audit read out of the shipped CSS.
 
 **Screen rules.**
 - Hide (don't disable) a control that can't act in the current state; enforce it at the server,
@@ -79,7 +79,7 @@ accepted knowingly when the buttons moved onto the pill (#1271).
 
 `horizon` (`#ade047`) is a lime tone, so it pairs with **dark** text, never white. Follow the
 [`PillButton`](../../../../resources/js/components/ui/PillButton.tsx) presets:
-There are **six tones**, defined once in [`pillButtonVariants`](../../../../resources/js/lib/variants.ts#L19):
+There are **six tones**, defined once in [`pillButtonVariants`](../../../../resources/js/lib/variants.ts#L41):
 - `horizon` bg → **`text-sky`**, a fixed value rather than the ground-reactive `text-foreground`. This is deliberate and the one place the semantic layer must not be used: `foreground` flips to cream on the dark ground, which is the unreadable pairing on lime. Hover darkens to `horizon-deep`.
 - `sky` (the default) is ground-reactive: `bg-foreground` → `text-background` (16:1 light, 17:1 dark), so it is a near-black pill on light and a cream pill on dark; hover drops the fill to 85%. `onSky` keeps it `bg-cream` → `text-sky` on a fixed-dark sky panel.
 - `ghost` → transparent with an `ink`-tinted hairline; `outline` → `bg-card` with a `border` edge and `text-text-2`.

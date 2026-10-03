@@ -1,7 +1,17 @@
 import { Dialog } from '@base-ui/react/dialog';
-import { type ComponentProps, type ReactNode } from 'react';
+import {
+    type ComponentProps,
+    createContext,
+    type ReactNode,
+    type RefObject,
+    use,
+} from 'react';
 
 import { useOverlayHistory } from '@/hooks/useOverlayHistory';
+
+/** Where overlays portal to; document.body unless a subtree provides an element. */
+export const OverlayContainerContext =
+    createContext<RefObject<HTMLElement | null> | null>(null);
 
 /**
  * Every app overlay rests on this: Base UI's modal Dialog owns the focus trap
@@ -26,10 +36,11 @@ export default function Overlay({
     } & Omit<ComponentProps<typeof Dialog.Popup>, 'children'>
 >) {
     useOverlayHistory(open, () => onOpenChange(false));
+    const container = use(OverlayContainerContext);
 
     return (
         <Dialog.Root open={open} onOpenChange={(next) => onOpenChange(next)}>
-            <Dialog.Portal>
+            <Dialog.Portal container={container ?? undefined}>
                 <Dialog.Backdrop {...backdropProps} />
                 <Dialog.Popup aria-modal {...popupProps}>
                     {children}

@@ -1,11 +1,9 @@
-import { usePage } from '@inertiajs/react';
 import { Clock, HeartPulse, RefreshCw } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
 
 import type {
     AnalysisPayload,
     AnalysisStatus as AnalysisStatusValue,
-    SharedProps,
 } from '@/types/inertia';
 
 import TemariMascot from '@/components/temari/TemariMascot';
@@ -19,6 +17,7 @@ import {
     cooldownAriaLabel,
     useCooldownCountdown,
 } from '@/hooks/useCooldownCountdown';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS, formatRelativeId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
@@ -197,8 +196,7 @@ export default function AnalysisStatus({
     // chain only the head may, so regenerating mid-history can't desync later
     // links. Resume actions on failed/pending links stay regardless.
     const canRegenerate = canTrigger && (!chained || isChainHead);
-    const { hrZonesChangedAt, aiPauseRetriesFailed = false } =
-        usePage<SharedProps>().props;
+    const { hrZonesChangedAt, aiPauseRetriesFailed = false } = useSharedProps();
     const effectiveStatus = pending ? 'queued' : status;
     const content = analysis.content;
     const attempts = analysis.attempts ?? 0;

@@ -112,6 +112,25 @@ describe('groupColorFamilies', () => {
             ['rarity', ['--color-rarity-epic']],
         ]);
     });
+
+    it("leaves out Tailwind's default palette, keeping Pewter's own numbered tokens", () => {
+        expect(
+            groupColorFamilies([
+                '--color-blue-300',
+                '--color-gray-950',
+                '--color-lime-50',
+                '--color-white',
+                '--color-black',
+                '--color-sky-2',
+                '--color-chart-1',
+                '--color-stone',
+            ]),
+        ).toEqual([
+            ['sky', ['--color-sky-2']],
+            ['chart', ['--color-chart-1']],
+            ['stone', ['--color-stone']],
+        ]);
+    });
 });
 
 describe('contrast maths', () => {

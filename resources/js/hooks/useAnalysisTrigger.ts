@@ -1,12 +1,9 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type {
-    AnalysisPayload,
-    AnalysisStatus,
-    SharedProps,
-} from '@/types/inertia';
+import type { AnalysisPayload, AnalysisStatus } from '@/types/inertia';
 
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { postJson } from '@/lib/http';
 import { analysisTriggerUrl } from '@/lib/routes';
 
@@ -201,7 +198,7 @@ export function useAnalysisTrigger(
     options: TriggerOptions = {},
 ): TriggerResult {
     const { onUpdate } = options;
-    const paused = usePage<SharedProps>().props.aiPaused ?? false;
+    const paused = useSharedProps().aiPaused ?? false;
     const [status, setStatus] = useState<AnalysisStatus>(payload.status);
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);

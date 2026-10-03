@@ -1,9 +1,7 @@
-import { usePage } from '@inertiajs/react';
 import { RefreshCwOff } from 'lucide-react';
 
-import type { SharedProps } from '@/types/inertia';
-
 import Banner from '@/components/ui/Banner';
+import { useSharedProps } from '@/hooks/useSharedProps';
 
 /**
  * Calm, app-wide notice shown when the Strava kill-switch is off
@@ -13,7 +11,7 @@ import Banner from '@/components/ui/Banner';
  * placement/shape, mounted once in {@link AppShell}; static and action-less.
  */
 export default function StravaPausedBanner() {
-    const paused = usePage<SharedProps>().props.stravaPaused ?? false;
+    const paused = useSharedProps().stravaPaused ?? false;
 
     if (!paused) {
         return null;

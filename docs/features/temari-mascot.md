@@ -18,9 +18,10 @@ insight. It is drawn as the **living brand mark**: the logo's two nested arcs, p
 with a small face inside. Why this replaced the one-smile `FaceIcon` is recorded in
 [[mascot-is-the-living-brand-mark]]; how it is presented, in [[mascot-watermark-replaces-the-corner-peek]].
 
-**No dedicated route.** Every pose, size, motion and presentation mode is rendered live on
-`/devtools/design` ([Design.tsx](../../resources/js/pages/Devtools/Design.tsx)) on both the page
-ground and sky.
+**No dedicated route.** Every pose, size, motion and presentation mode is rendered live in the
+`/devtools/design` catalogue ([TemariMascot.examples.tsx](../../resources/js/components/temari/TemariMascot.examples.tsx),
+[MascotWatermark.examples.tsx](../../resources/js/components/temari/MascotWatermark.examples.tsx)) on
+both grounds and on sky.
 
 ## System dependencies
 

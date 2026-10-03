@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { usePage } from '@inertiajs/react';
-
-import type { SharedProps } from '@/types/inertia';
+import { useSharedProps } from '@/hooks/useSharedProps';
 
 /**
  * Gate for a manual Strava affordance. While `stravaPaused` the control is
@@ -13,7 +11,7 @@ import type { SharedProps } from '@/types/inertia';
 export default function StravaAction({
     children,
 }: Readonly<{ children: ReactNode }>) {
-    const paused = usePage<SharedProps>().props.stravaPaused ?? false;
+    const paused = useSharedProps().stravaPaused ?? false;
 
     return paused ? null : <>{children}</>;
 }

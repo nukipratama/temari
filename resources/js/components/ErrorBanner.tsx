@@ -1,10 +1,10 @@
-import { usePage } from '@inertiajs/react';
 import { CircleAlert } from 'lucide-react';
 import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
 import Banner from '@/components/ui/Banner';
+import { useSharedProps } from '@/hooks/useSharedProps';
 
 /**
  * Surfaces Inertia's shared error bag (Strava-connect denial, demo misconfig,
@@ -14,7 +14,7 @@ import Banner from '@/components/ui/Banner';
  * standalone screens, which is where the Strava-connect denial lands.
  */
 export default function ErrorBanner() {
-    const errors = usePage<SharedProps>().props.errors;
+    const errors = useSharedProps().errors;
     const message = Object.values(errors ?? {})[0] ?? null;
     const [dismissedErrors, setDismissedErrors] = useState<
         SharedProps['errors'] | null

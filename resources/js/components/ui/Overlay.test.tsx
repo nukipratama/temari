@@ -5,12 +5,16 @@ import {
     screen,
     waitFor,
 } from '@testing-library/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { back, settle } from '@/test/overlayHistory';
 
-import Overlay, { OverlayClose, OverlayTitle } from './Overlay';
+import Overlay, {
+    OverlayClose,
+    OverlayContainerContext,
+    OverlayTitle,
+} from './Overlay';
 
 beforeEach(() => {
     window.history.pushState({ page: 'current' }, '');
@@ -44,6 +48,20 @@ function Stack() {
     );
 }
 
+function Contained() {
+    const hostRef = useRef<HTMLDivElement>(null);
+
+    return (
+        <div data-testid="host" ref={hostRef}>
+            <OverlayContainerContext value={hostRef}>
+                <Overlay open onOpenChange={() => undefined}>
+                    <OverlayTitle>contained</OverlayTitle>
+                </Overlay>
+            </OverlayContainerContext>
+        </div>
+    );
+}
+
 async function openBoth() {
     render(<Stack />);
     fireEvent.click(screen.getByText('open outer'));
@@ -58,6 +76,13 @@ describe('Overlay', () => {
 
         const dialog = await screen.findByRole('dialog', { name: 'outer' });
         expect(dialog).toHaveAttribute('aria-modal', 'true');
+    });
+
+    it('portals into the element a subtree provides', async () => {
+        render(<Contained />);
+
+        const dialog = await screen.findByRole('dialog', { name: 'contained' });
+        expect(screen.getByTestId('host')).toContainElement(dialog);
     });
 
     it('returns focus to the control that opened it', async () => {

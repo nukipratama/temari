@@ -47,8 +47,8 @@ because the dark text on it still clears AA. It flags every element whose own ba
 lighter than the ground beneath it, hovering anything that carries a `hover:bg-` utility on the way.
 Read the head of its output: vivid accent fills (`horizon`, `citrus`, `mood-*` dots) are fixed
 identity by design and legitimately sit near the top, so what you want is anything *near-white*.
-`/devtools/design` dominates the list and should be ignored wholesale — rendering every token as a
-swatch, fixed-light ones included, is that page's entire job.
+`/devtools/design`'s tokens tab would dominate the list, since rendering every token as a swatch,
+fixed-light ones included, is its entire job; a page load opens the component catalogue instead.
 
 **`edges.mjs`** asks `light-islands.mjs`'s question of a *border* rather than a surface, which is the
 other half nothing scores: the token audit scans `bg-<token>` only, so a fixed-light border token on

@@ -86,6 +86,23 @@ sheets and modals.
 
 ---
 
+## Component Catalogue
+
+`/devtools/design` is the living catalogue: every reusable component with its named states, a
+variant matrix read from the cva maps, and a copyable usage snippet, each drawn on the light and the
+dark ground side by side. Check it before building UI, so a screen reaches for the existing
+component instead of hand-rolling a near copy.
+
+- An entry is a co-located `*.examples.tsx` beside the component, discovered by
+  [entries.ts](../../resources/js/components/catalogue/entries.ts); its shape is `CatalogueEntry` in
+  [catalogue.ts](../../resources/js/lib/catalogue.ts).
+- In scope: all of `ui/` and `temari/`, the app-shell banners, and every component used on two or more
+  screens from two or more call sites. [structure.test.ts](../../resources/js/test/structure.test.ts)
+  fails for one without an examples file, or whose examples never use one of its component exports.
+- A state that reads shared props passes them as `sharedProps`; one that opens an overlay sets
+  `overlay`, so the overlay opens inside its own ground frame.
+- Show only what a product screen uses. A variant no caller uses is deleted, not catalogued.
+
 ## Component Specs
 
 ### Sections
@@ -194,6 +211,7 @@ Popovers, sheets and modals keep `surface-elev` + `shadow-e2`…`e4`
 Before delivering any UI code, verify:
 
 - [ ] Checked on light **and** dark
+- [ ] A new or changed reusable component has its `*.examples.tsx` up to date
 - [ ] Sections split by lane dividers; no nested cards
 - [ ] Every number in mono with `tabular-nums`; no number wraps at 375px
 - [ ] Serif only on voice lines and page titles
