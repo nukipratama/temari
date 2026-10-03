@@ -38,20 +38,6 @@ export default {
             ),
         },
         {
-            name: 'on sky',
-            sharedProps: signedIn,
-            render: () => (
-                <div className="rounded-md bg-sky pad-card">
-                    <FlagWrong
-                        subjectType="narration"
-                        subjectId={0}
-                        label="flag this read"
-                        onSky
-                    />
-                </div>
-            ),
-        },
-        {
             name: 'already flagged',
             sharedProps: signedIn,
             render: () => (

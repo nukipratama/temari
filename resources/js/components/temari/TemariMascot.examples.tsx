@@ -74,22 +74,5 @@ export default {
             render: () => <TemariMascot pose="chill" size={40} faceOnly />,
         },
         { name: 'draw-in', render: () => <DrawIn /> },
-        {
-            name: 'on sky',
-            render: () => (
-                <div className="flex flex-wrap gap-2 rounded-md bg-sky pad-card">
-                    {(['blazing', 'gassed', 'thinking'] as const).map(
-                        (pose) => (
-                            <TemariMascot
-                                key={pose}
-                                pose={pose}
-                                size={56}
-                                onSky
-                            />
-                        ),
-                    )}
-                </div>
-            ),
-        },
     ],
 } satisfies CatalogueEntry;

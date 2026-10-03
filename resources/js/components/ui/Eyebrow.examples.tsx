@@ -33,15 +33,9 @@ export default {
         {
             name: 'on sky',
             render: () => (
-                <div className="flex flex-col gap-2 rounded-md bg-sky pad-card">
+                <div className="rounded-md bg-sky pad-hero">
                     <Eyebrow token="hero" tone="horizon">
-                        today
-                    </Eyebrow>
-                    <Eyebrow token="small" tone="ink-on-sky">
-                        last run
-                    </Eyebrow>
-                    <Eyebrow token="micro" tone="cream">
-                        pace
+                        running companion
                     </Eyebrow>
                 </div>
             ),
@@ -50,9 +44,9 @@ export default {
     matrix: {
         axes: axesOf(eyebrowVariantMap, ['tone', 'token']),
         omitted: {
-            horizon: 'the lime fill is for sky panels, see the on sky state',
-            'ink-on-sky': 'for sky panels only, see the on sky state',
-            cream: 'for sky panels only, see the on sky state',
+            horizon: "the Login hero's sky only, see the on sky state",
+            'ink-on-sky': 'no caller',
+            cream: 'no caller',
         },
         render: ({ tone, token }) => (
             <Eyebrow

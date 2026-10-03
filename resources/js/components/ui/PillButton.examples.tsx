@@ -43,17 +43,6 @@ export default {
                 </PillButton>
             ),
         },
-        {
-            name: 'on sky',
-            render: () => (
-                <div className="flex flex-wrap gap-2 rounded-md bg-sky pad-card">
-                    <PillButton onSky>primary</PillButton>
-                    <PillButton tone="ghost" onSky>
-                        ghost
-                    </PillButton>
-                </div>
-            ),
-        },
     ],
     matrix: {
         axes: axesOf(pillButtonVariantMap, ['tone', 'size']),

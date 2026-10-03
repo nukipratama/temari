@@ -79,17 +79,5 @@ export default {
                 />
             ),
         },
-        {
-            name: 'on sky',
-            render: () => (
-                <div className="flex flex-col gap-4 rounded-md bg-sky pad-card text-cream">
-                    <AnalysisStatus
-                        analysis={analysis({ status: 'queued', content: null })}
-                        onSky
-                    />
-                    <AnalysisStatus analysis={analysis()} onSky />
-                </div>
-            ),
-        },
     ],
 } satisfies CatalogueEntry;

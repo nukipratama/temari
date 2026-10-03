@@ -21,20 +21,12 @@ export default {
                 </Chip>
             ),
         },
-        {
-            name: 'on sky',
-            render: () => (
-                <div className="rounded-md bg-sky pad-card">
-                    <Chip tone="onSky">this week</Chip>
-                </div>
-            ),
-        },
     ],
     matrix: {
         axes: axesOf(chipVariantMap, ['tone', 'size']),
         omitted: {
-            sky: 'no call site uses it, and its fixed-dark text disappears on the dark ground',
-            onSky: 'for sky panels only, see the on sky state',
+            sky: 'no caller, and its fixed-dark text disappears on the dark ground',
+            onSky: 'no caller',
         },
         render: ({ tone, size }) => (
             <Chip tone={tone as ChipTone} size={size as 'sm' | 'md'}>

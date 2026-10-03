@@ -32,13 +32,5 @@ export default {
             name: 'md with a custom label',
             render: () => <MoodChip mood="easy" size="md" label="easy day" />,
         },
-        {
-            name: 'on sky',
-            render: () => (
-                <div className="rounded-md bg-sky pad-card">
-                    <MoodChip mood="blazing" onSky />
-                </div>
-            ),
-        },
     ],
 } satisfies CatalogueEntry;

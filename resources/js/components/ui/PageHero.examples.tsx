@@ -1,4 +1,4 @@
-import BackLink from '@/components/ui/BackLink';
+import Eyebrow from '@/components/ui/Eyebrow';
 import PageHero from '@/components/ui/PageHero';
 import { type CatalogueEntry } from '@/lib/catalogue';
 
@@ -29,28 +29,27 @@ export default {
             ),
         },
         {
-            name: 'with a back link',
+            name: 'composed eyebrow',
             render: () => (
                 <PageHero
-                    size="md"
+                    size="quote-lg"
+                    italic
                     eyebrow={
-                        <BackLink href="#" className="mb-3.5">
-                            history · log
-                        </BackLink>
+                        <div className="mb-3.5 flex items-baseline justify-between gap-3">
+                            <Eyebrow token="hero" tone="ink-2">
+                                Inbox · 3 unread
+                            </Eyebrow>
+                            <button
+                                type="button"
+                                className="focus-ring rounded-xs font-mono text-xs font-semibold text-text-3"
+                            >
+                                mark all read
+                            </button>
+                        </div>
                     }
                 >
-                    tuesday easy, 5.2 km
+                    what temari had to say
                 </PageHero>
-            ),
-        },
-        {
-            name: 'on sky',
-            render: () => (
-                <div className="rounded-md bg-sky pad-hero">
-                    <PageHero eyebrow="Today" size="sm" onSky>
-                        an easy one, then rest
-                    </PageHero>
-                </div>
             ),
         },
     ],
