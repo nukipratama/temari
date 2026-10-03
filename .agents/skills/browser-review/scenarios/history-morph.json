@@ -1,0 +1,8 @@
+{
+    "route": "/history",
+    "steps": [
+        ["waitFor", "a[data-run-morph]"],
+        ["click", "a[data-run-morph]"],
+        ["wait", 900]
+    ]
+}

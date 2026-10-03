@@ -1,0 +1,10 @@
+{
+    "route": "/trends",
+    "steps": [
+        ["waitFor", "button[aria-label^='Explain ']"],
+        ["click", "button[aria-label^='Explain ']"],
+        ["wait", 800],
+        ["press", "Escape"],
+        ["wait", 400]
+    ]
+}
