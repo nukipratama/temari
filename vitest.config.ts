@@ -18,6 +18,7 @@ export default defineConfig({
     },
     test: {
         environment: 'jsdom',
+        fsModuleCache: !process.env.CI,
         globals: true,
         setupFiles: ['./resources/js/test/setup.ts'],
         include: ['resources/js/**/*.test.{ts,tsx}'],
