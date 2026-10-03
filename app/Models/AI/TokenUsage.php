@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models\AI;
 
+use Illuminate\Database\Eloquent\Attributes\Connection;
+use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
 use App\Services\AI\AnalysisOrigin;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -32,19 +35,12 @@ use Override;
  * @property Carbon $created_at
  */
 #[Fillable(['user_id', 'analysis_id', 'run_question_id', 'user_name', 'strava_athlete_id', 'kind', 'origin', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'cached_tokens', 'reasoning_tokens', 'steps', 'tool_calls', 'model', 'latency_ms', 'truncated', 'created_at'])]
+// The analytics schema keeps cost history safe from a `migrate:fresh` of the app DB.
+#[Connection('analytics')]
+#[Table(name: 'ai_token_usages')]
+#[WithoutTimestamps]
 class TokenUsage extends Model
 {
-    #[Override]
-    public $timestamps = false;
-
-    // Lives in the dedicated analytics schema so `migrate:fresh` of the app DB
-    // can't wipe cost history. See config/database.php `analytics` connection.
-    #[Override]
-    protected $connection = 'analytics';
-
-    #[Override]
-    protected $table = 'ai_token_usages';
-
     /** @return array<string, string> */
     #[Override]
     protected function casts(): array

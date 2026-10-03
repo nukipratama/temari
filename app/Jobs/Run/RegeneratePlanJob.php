@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs\Run;
 
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Timeout;
+use Illuminate\Queue\Attributes\UniqueFor;
 use DateTimeInterface;
 use App\Enums\PlanRegenerationReason;
 use App\Models\User;
@@ -16,16 +19,12 @@ use Illuminate\Foundation\Queue\Queueable;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 
+#[Backoff([30, 120])]
+#[Timeout(120)]
+#[UniqueFor(3600)]
 final class RegeneratePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;
-
-    /** @var array<int, int> */
-    public array $backoff = [30, 120];
-
-    public int $uniqueFor = 3600;
-
-    public int $timeout = 120;
 
     public function __construct(
         public readonly int $userId,

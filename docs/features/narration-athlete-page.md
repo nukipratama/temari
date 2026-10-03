@@ -81,7 +81,7 @@ across athletes.
 ## Tab: attention, and the four actions
 
 Three buckets — failed but still auto-retrying, dead-lettered, and in-flight rows past
-[`STALE_IN_FLIGHT_HOURS`](app/Models/AI/Analysis.php#L78) — each with the action that
+[`STALE_IN_FLIGHT_HOURS`](app/Models/AI/Analysis.php#L89) — each with the action that
 clears it:
 
 | Action | What it runs |

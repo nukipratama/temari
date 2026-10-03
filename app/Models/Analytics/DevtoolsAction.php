@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models\Analytics;
 
+use Illuminate\Database\Eloquent\Attributes\Connection;
+use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -22,17 +25,11 @@ use Override;
  * @property Carbon $created_at
  */
 #[Fillable(['actor', 'action', 'user_id', 'payload', 'created_at'])]
+#[Connection('analytics')]
+#[Table(name: 'devtools_actions')]
+#[WithoutTimestamps]
 class DevtoolsAction extends Model
 {
-    #[Override]
-    public $timestamps = false;
-
-    #[Override]
-    protected $connection = 'analytics';
-
-    #[Override]
-    protected $table = 'devtools_actions';
-
     /** @return array<string, string> */
     #[Override]
     protected function casts(): array

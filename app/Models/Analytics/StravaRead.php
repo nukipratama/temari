@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models\Analytics;
 
+use Illuminate\Database\Eloquent\Attributes\Connection;
+use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
 use App\Enums\StravaReadPriority;
 use App\Enums\StravaReadSource;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,17 +25,11 @@ use Override;
  * @property int|null $usage_daily
  */
 #[Fillable(['read_at', 'source', 'priority', 'endpoint', 'http_status', 'usage_15m', 'usage_daily'])]
+#[Connection('analytics')]
+#[Table(name: 'strava_reads')]
+#[WithoutTimestamps]
 class StravaRead extends Model
 {
-    #[Override]
-    public $timestamps = false;
-
-    #[Override]
-    protected $connection = 'analytics';
-
-    #[Override]
-    protected $table = 'strava_reads';
-
     /** @return array<string, string> */
     #[Override]
     protected function casts(): array

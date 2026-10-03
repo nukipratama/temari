@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use App\Actions\Run\Story\ResolveLastRunStartAction;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use App\Enums\IngestState;
@@ -54,6 +55,8 @@ use Override;
     'milestone_payload',
     'detail_fail_count',
 ])]
+// Keeps the per-row milestone JSON out of every Inertia payload that serializes activities.
+#[Hidden(['milestone_payload'])]
 class Activity extends Model
 {
     /** @use HasFactory<ActivityFactory> */
@@ -248,15 +251,6 @@ class Activity extends Model
     {
         return $this->hasOne(StoryLine::class)->where('kind', StoryLine::KIND_POST_RUN);
     }
-
-    /**
-     * Server-side only — keeps a per-row JSON blob (sometimes hundreds of bytes)
-     * out of every Inertia payload that serializes an Activity collection.
-     *
-     * @var list<string>
-     */
-    #[Override]
-    protected $hidden = ['milestone_payload'];
 
     /**
      * @return array<string, string>

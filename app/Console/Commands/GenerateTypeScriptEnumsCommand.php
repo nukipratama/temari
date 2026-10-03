@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use Override;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use App\Enums\Effort;
 use App\Enums\ExperienceLevel;
 use App\Enums\FeedbackReason;
@@ -28,14 +29,10 @@ use Illuminate\Console\Command;
  * hand-written in resources/js/types (controllers return inline arrays, not
  * typed DTOs); this covers the enum surface, which is what actually drifts.
  */
+#[Description('Generate TypeScript unions from backed PHP enums into resources/js/types/generated.ts')]
+#[Signature('typescript:enums {--check : Fail if the generated file is stale instead of rewriting it} {--path= : Override the output path (for tests only)}')]
 final class GenerateTypeScriptEnumsCommand extends Command
 {
-    #[Override]
-    protected $signature = 'typescript:enums {--check : Fail if the generated file is stale instead of rewriting it} {--path= : Override the output path (for tests only)}';
-
-    #[Override]
-    protected $description = 'Generate TypeScript unions from backed PHP enums into resources/js/types/generated.ts';
-
     /**
      * @var list<class-string>
      */

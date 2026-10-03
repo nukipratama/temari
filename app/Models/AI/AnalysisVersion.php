@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\AI;
 
+use Illuminate\Database\Eloquent\Attributes\Table;
 use App\Services\AI\ServedBy;
 use Database\Factories\AI\AnalysisVersionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -27,13 +28,11 @@ use Override;
  * @property Carbon $updated_at
  */
 #[Fillable(['analysis_id', 'content', 'fingerprint', 'served_by', 'generated_at'])]
+#[Table(name: 'analysis_versions')]
 class AnalysisVersion extends Model
 {
     /** @use HasFactory<AnalysisVersionFactory> */
     use HasFactory;
-
-    #[Override]
-    protected $table = 'analysis_versions';
 
     /** @return BelongsTo<Analysis, $this> */
     public function analysis(): BelongsTo

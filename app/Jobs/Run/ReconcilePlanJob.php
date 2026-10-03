@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs\Run;
 
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\MaxExceptions;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Attributes\UniqueFor;
 use App\Models\User;
 use App\Services\Run\Plan\PlanReconciliationService;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -14,18 +18,13 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 
+#[Backoff([30, 120])]
+#[MaxExceptions(3)]
+#[Tries(10)]
+#[UniqueFor(3600)]
 final class ReconcilePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;
-
-    public int $tries = 10;
-
-    public int $maxExceptions = 3;
-
-    /** @var array<int, int> */
-    public array $backoff = [30, 120];
-
-    public int $uniqueFor = 3600;
 
     public function __construct(public readonly int $userId)
     {

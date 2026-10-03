@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models\Analytics;
 
+use Illuminate\Database\Eloquent\Attributes\Connection;
+use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
 use Override;
 use App\Enums\StravaSyncSource;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -23,17 +26,11 @@ use Illuminate\Support\Carbon;
  * @property Carbon $synced_at
  */
 #[Fillable(['user_id', 'status', 'source', 'activities_synced', 'api_calls_used', 'rate_limit_15min_remaining', 'rate_limit_daily_remaining', 'error_message', 'synced_at'])]
+#[Connection('analytics')]
+#[Table(name: 'strava_sync_logs')]
+#[WithoutTimestamps]
 class StravaSyncLog extends Model
 {
-    #[Override]
-    public $timestamps = false;
-
-    #[Override]
-    protected $connection = 'analytics';
-
-    #[Override]
-    protected $table = 'strava_sync_logs';
-
     /**
      * Central factory for writing sync-log rows. All call sites should go
      * through here so the column shape stays in one place.

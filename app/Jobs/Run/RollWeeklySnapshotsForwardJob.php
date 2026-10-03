@@ -4,22 +4,21 @@ declare(strict_types=1);
 
 namespace App\Jobs\Run;
 
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Attributes\UniqueFor;
 use App\Models\User;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
+#[Backoff([30, 120])]
+#[Tries(3)]
+#[UniqueFor(900)]
 final class RollWeeklySnapshotsForwardJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
-
-    public int $tries = 3;
-
-    /** @var array<int, int> */
-    public array $backoff = [30, 120];
-
-    public int $uniqueFor = 900;
 
     public function __construct(public readonly int $userId)
     {

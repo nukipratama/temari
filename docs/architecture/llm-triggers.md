@@ -262,7 +262,7 @@ backfill age cutoff, or whose period closed before the athlete connected, is fil
 `requestRuleBased()` instead of being resumed, so recovery never bills the LLM for history Temari
 never watched; a too-old or pre-connect weekly link still waits for its week to finish hydrating
 first, as the kickoffs do. Failed rows are bounded by
-[`MAX_SELF_HEAL_ATTEMPTS`](../../app/Models/AI/Analysis.php#L78) and then dead-letter to
+[`MAX_SELF_HEAL_ATTEMPTS`](../../app/Models/AI/Analysis.php#L80) and then dead-letter to
 `/devtools/narration` for a manual re-arm, which is itself a recovery-origin dispatch. See
 [[bounded-self-heal-and-dead-letter]]. On the sweep that sees a non-ceiling pause lift,
 [`SelfHealer::retryFailedDuringPause()`](../../app/Services/AI/SelfHealer.php#L86) first gives every
@@ -586,7 +586,7 @@ type was *displayed*. The table above now carries a "renders" column for that re
 
 Spend is metered per call into `ai_token_usages` on the separate `analytics` connection, written by
 [`RecordTokenUsageAction`](../../app/Actions/AI/RecordTokenUsageAction.php#L21) into
-[`TokenUsage`](../../app/Models/AI/TokenUsage.php#L32). A write failure is swallowed and logged, so
+[`TokenUsage`](../../app/Models/AI/TokenUsage.php#L41). A write failure is swallowed and logged, so
 metering never fails a call that already succeeded.
 
 **This note deliberately carries no cost table.** `/devtools/narration` renders spend live with kind,

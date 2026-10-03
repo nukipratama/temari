@@ -34,10 +34,10 @@ read/write must name it explicitly.
 
 ## Which models use it
 
-Four Eloquent models pin themselves to it via `protected $connection = 'analytics'`:
+Four Eloquent models pin themselves to it via `#[Connection('analytics')]`:
 
 - [TokenUsage](app/Models/AI/TokenUsage.php) — table `ai_token_usages`, the per-call
-  LLM token/cost ledger (`$timestamps = false`, only `created_at`).
+  LLM token/cost ledger (`#[WithoutTimestamps]`, only `created_at`).
 - [StravaSyncLog](app/Models/Analytics/StravaSyncLog.php) — table `strava_sync_logs`;
   write through its `StravaSyncLog::log()` factory method, not raw `create()` scattered
   about.

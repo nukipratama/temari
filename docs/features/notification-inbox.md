@@ -169,7 +169,7 @@ reloads only `unreadNotifications`, which is what the bell in
 the page header, shown only while something is unread, POSTs to
 [NotificationReadAllController](../../app/Http/Controllers/Api/NotificationReadAllController.php#L18)
 instead, which marks every unread row for that user in one query
-([InboxNotification::markAllReadFor](../../app/Models/InboxNotification.php#L109)) and reloads the
+([InboxNotification::markAllReadFor](../../app/Models/InboxNotification.php#L108)) and reloads the
 same `unreadNotifications` prop.
 
 The same prop puts a dot on the Today tab

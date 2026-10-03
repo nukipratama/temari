@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
 use App\Enums\NotificationDeliveryStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -35,11 +36,9 @@ use Override;
     'error',
     'settled_at',
 ])]
+#[WithoutTimestamps]
 class NotificationDelivery extends Model
 {
-    #[Override]
-    public $timestamps = false;
-
     /** @return array<string, string> */
     #[Override]
     protected function casts(): array

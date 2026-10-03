@@ -24,7 +24,7 @@ code_refs:
 
 ## Consequences
 
-- **Enables:** a credential mistake degrades to retries and a visible `Application client_secret` error in `strava:slots`, and fixing the credential lets the next sync and the next [orphan run](app/Jobs/Strava/RetryOrphanedStravaGrantReleasesJob.php#L21) recover without any lost token.
+- **Enables:** a credential mistake degrades to retries and a visible `Application client_secret` error in `strava:slots`, and fixing the credential lets the next sync and the next [orphan run](app/Jobs/Strava/RetryOrphanedStravaGrantReleasesJob.php#L15) recover without any lost token.
 - **Costs:** a dead grant whose `400` body changes shape is retried as transient instead of closing, until someone notices it in `strava:slots`.
 - The deauthorize request's own `401` / `invalid_grant` handling is unchanged.
 

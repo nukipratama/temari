@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs\Run;
 
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\MaxExceptions;
+use Illuminate\Queue\Attributes\Timeout;
+use Illuminate\Queue\Attributes\UniqueFor;
 use DateTimeInterface;
 use App\Models\User;
 use App\Services\Run\Plan\PlanRecalibrationService;
@@ -15,18 +19,13 @@ use Illuminate\Support\Facades\Cache;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 
+#[Backoff([30, 120])]
+#[MaxExceptions(3)]
+#[Timeout(120)]
+#[UniqueFor(3600)]
 final class RecalibrateTrainingHistoryJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;
-
-    public int $maxExceptions = 3;
-
-    /** @var array<int, int> */
-    public array $backoff = [30, 120];
-
-    public int $uniqueFor = 3600;
-
-    public int $timeout = 120;
 
     private const int LOCK_TTL_SECONDS = 150;
 

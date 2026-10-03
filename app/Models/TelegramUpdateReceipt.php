@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\WithoutIncrementing;
+use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
 use Override;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\MassPrunable;
 
+#[WithoutIncrementing]
+#[WithoutTimestamps]
 class TelegramUpdateReceipt extends Model
 {
     use MassPrunable;
@@ -17,13 +21,7 @@ class TelegramUpdateReceipt extends Model
     protected $primaryKey = 'update_id';
 
     #[Override]
-    public $incrementing = false;
-
-    #[Override]
     protected $keyType = 'int';
-
-    #[Override]
-    public $timestamps = false;
 
     #[Override]
     protected function casts(): array
