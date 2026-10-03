@@ -24,10 +24,7 @@ it('dispatches the update job and acks when the secret token matches', function 
         ->assertOk()
         ->assertJson(['ok' => true]);
 
-    Bus::assertDispatched(
-        HandleTelegramUpdateJob::class,
-        fn (HandleTelegramUpdateJob $job): bool => $job->update === $update,
-    );
+    Bus::assertDispatched(fn (HandleTelegramUpdateJob $job): bool => $job->update === $update);
     $this->assertDatabaseHas('telegram_update_receipts', ['update_id' => $updateId]);
 });
 

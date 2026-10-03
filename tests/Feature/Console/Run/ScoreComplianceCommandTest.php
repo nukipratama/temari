@@ -89,7 +89,7 @@ it('lets the Monday scheduler open the regenerate gate after a partial scoring f
     expect($regenerate)->not->toBeNull()
         ->and($regenerate->filtersPass(app()))->toBeTrue();
     Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
-    Bus::assertDispatched(SendMaintainerAlertJob::class, static fn (SendMaintainerAlertJob $job): bool =>
+    Bus::assertDispatched(static fn (SendMaintainerAlertJob $job): bool =>
         str_contains($job->message, 'plan:score-compliance')
         && str_contains($job->message, '1 athlete')
         && ! str_contains($job->message, 'Private Failed Athlete')
@@ -125,7 +125,7 @@ it('keeps the Monday regenerate gate closed when every athlete fails scoring', f
     $scoreCompliance->finish(app(), 1);
     expect($regenerate->filtersPass(app()))->toBeFalse();
     Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
-    Bus::assertDispatched(SendMaintainerAlertJob::class, static fn (SendMaintainerAlertJob $job): bool =>
+    Bus::assertDispatched(static fn (SendMaintainerAlertJob $job): bool =>
         str_contains($job->message, 'plan:score-compliance')
         && str_contains($job->message, 'Scheduler failed to run'));
 
@@ -210,7 +210,7 @@ it('schedules plan reconciliation after settling past sessions', function (): vo
 
     $this->artisan('plan:score-compliance')->assertSuccessful();
 
-    Bus::assertDispatched(ReconcilePlanJob::class, fn (ReconcilePlanJob $job): bool => $job->userId === $user->id);
+    Bus::assertDispatched(fn (ReconcilePlanJob $job): bool => $job->userId === $user->id);
 
     Carbon::setTestNow();
 });

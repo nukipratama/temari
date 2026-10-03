@@ -103,7 +103,7 @@ it('narrates the runs of the last seven days and fills older ones rule-based', f
 
     narrateOnReturn($this->athlete);
 
-    Bus::assertDispatched(AnalyzeActivityJob::class, fn (AnalyzeActivityJob $job): bool => $job->subjectId === $recent->id
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $recent->id
         && $job->origin === AnalysisOrigin::Return);
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
     Bus::assertDispatched(AnalyzeCardFlavorJob::class, dispatchedOnReturn(AnalyzeCardFlavorJob::class));

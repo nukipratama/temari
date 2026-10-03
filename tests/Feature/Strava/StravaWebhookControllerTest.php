@@ -70,10 +70,7 @@ it('dispatches a scoped SyncActivitiesJob on an activity create event', function
         'event_time' => now()->timestamp,
     ])->assertOk();
 
-    Bus::assertDispatched(
-        SyncActivitiesJob::class,
-        fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === 9_001,
-    );
+    Bus::assertDispatched(fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === 9_001);
 });
 
 it('falls back to a full sync on an update for a run we have no local row for', function (): void {
@@ -105,10 +102,7 @@ it('re-ingests the existing local activity on an update event', function (): voi
         'owner_id' => 42,
     ])->assertOk();
 
-    Bus::assertDispatched(
-        ResyncActivityJob::class,
-        fn (ResyncActivityJob $job): bool => $job->activityId === $activity->id,
-    );
+    Bus::assertDispatched(fn (ResyncActivityJob $job): bool => $job->activityId === $activity->id);
     Bus::assertNotDispatched(SyncActivitiesJob::class);
 });
 
@@ -169,10 +163,7 @@ it('queues a cleanup job on an activity delete event', function (): void {
         'owner_id' => 42,
     ])->assertOk();
 
-    Bus::assertDispatched(
-        CleanupDeletedActivityJob::class,
-        fn (CleanupDeletedActivityJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === 9_005,
-    );
+    Bus::assertDispatched(fn (CleanupDeletedActivityJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === 9_005);
 });
 
 it('removes the local activity on an activity delete event', function (): void {
@@ -227,12 +218,9 @@ it('queues a verification job on athlete deauthorization instead of revoking on 
 
     // The forgeable body must NOT revoke synchronously; a verification job does.
     expect($connection->fresh()->isRevoked())->toBeFalse();
-    Bus::assertDispatched(
-        VerifyStravaRevocationJob::class,
-        fn (VerifyStravaRevocationJob $job): bool => $job->connectionId === $connection->id
-            && $job->source === 'webhook_deauth'
-            && $job->credentialVersion === $connection->credential_version,
-    );
+    Bus::assertDispatched(fn (VerifyStravaRevocationJob $job): bool => $job->connectionId === $connection->id
+        && $job->source === 'webhook_deauth'
+        && $job->credentialVersion === $connection->credential_version);
 });
 
 it('revokes the connection when the verified deauthorization is genuine (Strava returns 401)', function (): void {

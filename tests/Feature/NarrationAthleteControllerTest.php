@@ -173,10 +173,7 @@ describe('actions', function (): void {
 
         $this->post(athletePath($user, '/resync'))->assertRedirect();
 
-        Bus::assertDispatched(
-            SyncActivitiesJob::class,
-            fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === null,
-        );
+        Bus::assertDispatched(fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === null);
         expect(DevtoolsAction::query()->sole()->action)->toBe('narration.resync');
     });
 

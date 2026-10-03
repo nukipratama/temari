@@ -215,7 +215,7 @@ it('coalesces a burst of dead-letters into exactly one delayed flush job', funct
     $alerter->deadLettered();
 
     Bus::assertDispatchedTimes(FlushDeadLetterAlertJob::class, 1);
-    Bus::assertDispatched(FlushDeadLetterAlertJob::class, fn (FlushDeadLetterAlertJob $job): bool => $job->delay === 90);
+    Bus::assertDispatched(fn (FlushDeadLetterAlertJob $job): bool => $job->delay === 90);
 });
 
 it('flushDeadLetterWindow queues one summary message carrying the coalesced count', function (): void {
@@ -228,10 +228,7 @@ it('flushDeadLetterWindow queues one summary message carrying the coalesced coun
 
     $alerter->flushDeadLetterWindow();
 
-    Bus::assertDispatched(
-        SendMaintainerAlertJob::class,
-        fn (SendMaintainerAlertJob $job): bool => str_starts_with($job->message, '3 AI blocks gave up'),
-    );
+    Bus::assertDispatched(fn (SendMaintainerAlertJob $job): bool => str_starts_with($job->message, '3 AI blocks gave up'));
 });
 
 it('flushDeadLetterWindow is a no-op when nothing is pending in the window', function (): void {
@@ -457,10 +454,7 @@ it('queues the Telegram send instead of calling the client inline', function ():
 
     app(MaintainerAlerter::class)->totalCeilingApproaching(4.0, 5.0);
 
-    Bus::assertDispatched(
-        SendMaintainerAlertJob::class,
-        fn (SendMaintainerAlertJob $job): bool => str_contains($job->message, '80%'),
-    );
+    Bus::assertDispatched(fn (SendMaintainerAlertJob $job): bool => str_contains($job->message, '80%'));
 });
 
 it('gates the job dispatch itself on the dedupe window, not just the eventual send', function (): void {

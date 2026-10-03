@@ -85,10 +85,7 @@ it('requests season narration only when a Season exists', function (): void {
     $season = Season::factory()->for($user)->create();
     $this->requester->requestForCurrentWeek($user, Carbon::today());
 
-    Bus::assertDispatched(
-        AnalyzePlanSeasonVoiceJob::class,
-        fn (AnalyzePlanSeasonVoiceJob $job): bool => Analysis::query()->find($job->analysisId)?->subject_id === $season->id,
-    );
+    Bus::assertDispatched(fn (AnalyzePlanSeasonVoiceJob $job): bool => Analysis::query()->find($job->analysisId)?->subject_id === $season->id);
 });
 
 it('leaves an already-Done day row untouched, and leaves an unchanged season row alone', function (): void {

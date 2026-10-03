@@ -137,7 +137,7 @@ it('renders the run-detail page for a summary-only run and queues its hydration'
             ->where('awaitingDetail', true)
             ->where('card', null));
 
-    Bus::assertDispatched(IngestActivityJob::class, fn (IngestActivityJob $job): bool => $job->activityId === $activity->id);
+    Bus::assertDispatched(fn (IngestActivityJob $job): bool => $job->activityId === $activity->id);
 });
 
 it('does not claim a run is still filling in once it is detailed', function (): void {

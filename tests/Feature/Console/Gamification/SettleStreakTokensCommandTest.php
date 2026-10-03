@@ -70,8 +70,8 @@ it('queues real athletes but excludes the demo history', function (): void {
     $this->artisan('streak:settle')->assertSuccessful();
 
     Bus::assertDispatchedTimes(SettleStreakWeeksJob::class, 2);
-    Bus::assertDispatched(SettleStreakWeeksJob::class, fn (SettleStreakWeeksJob $job): bool => $job->userId === $real->id);
-    Bus::assertDispatched(SettleStreakWeeksJob::class, fn (SettleStreakWeeksJob $job): bool => $job->userId === $secondReal->id);
+    Bus::assertDispatched(fn (SettleStreakWeeksJob $job): bool => $job->userId === $real->id);
+    Bus::assertDispatched(fn (SettleStreakWeeksJob $job): bool => $job->userId === $secondReal->id);
 });
 
 it('is scheduled ahead of the weekly recap, which reads the streak it settles', function (): void {

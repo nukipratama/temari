@@ -60,7 +60,7 @@ it('requests changed season narration only for recently active athletes', functi
     $service->drain($inactive->id);
 
     Bus::assertDispatchedTimes(AnalyzePlanSeasonVoiceJob::class, 1);
-    Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class, fn (AnalyzePlanSeasonVoiceJob $job): bool => Analysis::query()->find($job->analysisId)?->subject_id === Season::query()->where('user_id', $active->id)->value('id'));
+    Bus::assertDispatched(fn (AnalyzePlanSeasonVoiceJob $job): bool => Analysis::query()->find($job->analysisId)?->subject_id === Season::query()->where('user_id', $active->id)->value('id'));
 });
 
 it('does not schedule reconciliation for the demo account', function (): void {

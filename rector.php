@@ -7,6 +7,7 @@ use Rector\Config\RectorConfig;
 use Rector\Renaming\Rector\PropertyFetch\RenamePropertyRector;
 use Rector\Set\ValueObject\LevelSetList;
 use RectorLaravel\Rector\MethodCall\ContainerBindConcreteWithClosureOnlyRector;
+use RectorLaravel\Set\LaravelSetList;
 
 return RectorConfig::configure()
     ->withPaths([
@@ -15,6 +16,7 @@ return RectorConfig::configure()
     ])
     ->withSets([
         LevelSetList::UP_TO_PHP_85,
+        LaravelSetList::LARAVEL_TESTING,
     ])
     ->withComposerBased(laravel: true)
     ->withSkip([

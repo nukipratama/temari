@@ -85,7 +85,7 @@ it('lets an athlete nobody has ever seen sign up, and never marks them demo', fu
     // schedulers' scope precisely where the demo account is outside it.
     expect(User::query()->notDemo()->pluck('id')->all())->toBe([$user->id]);
 
-    Bus::assertDispatched(SyncActivitiesJob::class, fn (SyncActivitiesJob $job): bool => $job->userId === $user->id);
+    Bus::assertDispatched(fn (SyncActivitiesJob $job): bool => $job->userId === $user->id);
 });
 
 it('carries a stranger from OAuth to a working dashboard on summary data alone', function (): void {
@@ -148,7 +148,7 @@ it('tells a stranger their first opened run is still filling in', function (): v
             ->where('awaitingDetail', true)
             ->where('card', null));
 
-    Bus::assertDispatched(IngestActivityJob::class, fn (IngestActivityJob $job): bool => $job->activityId === $activity->id);
+    Bus::assertDispatched(fn (IngestActivityJob $job): bool => $job->activityId === $activity->id);
 
     // Once the detail lands, the notice's own flag goes away.
     $activity->update(['ingest_state' => IngestState::Detailed]);

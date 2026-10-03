@@ -53,10 +53,7 @@ it('fresh activities (started within threshold) dispatch with zero delay', funct
 
     fireDispatch($activity);
 
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->delay === null || (int) $job->delay === 0,
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->delay === null || (int) $job->delay === 0);
     expect(Cache::has("ai.backfill.next-slot:{$activity->user_id}"))->toBeFalse();
 });
 
@@ -65,10 +62,7 @@ it('backfilled activities dispatch with staggered delay per user', function (): 
 
     fireDispatch($userActivity1);
 
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $userActivity1->id && ($job->delay === null || (int) $job->delay === 0),
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $userActivity1->id && ($job->delay === null || (int) $job->delay === 0));
 
     expect(Cache::has("ai.backfill.next-slot:{$userActivity1->user_id}"))->toBeTrue();
 
@@ -77,10 +71,7 @@ it('backfilled activities dispatch with staggered delay per user', function (): 
     $userActivity2 = backfillSeed('2026-04-02 06:00:00', $userActivity1->user_id);
     fireDispatch($userActivity2);
 
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $userActivity2->id && $job->delay !== null && (int) $job->delay >= 350,
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $userActivity2->id && $job->delay !== null && (int) $job->delay >= 350);
 });
 
 it('backfill stagger is isolated per user', function (): void {
@@ -92,10 +83,7 @@ it('backfill stagger is isolated per user', function (): void {
     fireDispatch($userB);
 
     // User B's first backfill should NOT inherit user A's slot
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $userB->id && ($job->delay === null || (int) $job->delay === 0),
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $userB->id && ($job->delay === null || (int) $job->delay === 0));
 });
 
 it('logs ai.backfill.queued when a non-zero delay is applied', function (): void {

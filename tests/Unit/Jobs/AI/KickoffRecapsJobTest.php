@@ -84,7 +84,7 @@ it('dispatches an immediate hydration batch for the backfilled user', function (
 
     new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HistoryNarrationGate::class));
 
-    Bus::assertDispatched(HydrateBacklogForUserJob::class, fn (HydrateBacklogForUserJob $job): bool => $job->userId === $user->id);
+    Bus::assertDispatched(fn (HydrateBacklogForUserJob $job): bool => $job->userId === $user->id);
 });
 
 it('does not dispatch a hydration batch when the user is gone', function (): void {
@@ -153,7 +153,7 @@ it('queues onboarding regeneration when the plan lock is busy', function (): voi
 
     new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HistoryNarrationGate::class));
 
-    Bus::assertDispatched(RegeneratePlanJob::class, fn (RegeneratePlanJob $job): bool => $job->userId === $user->id && $job->reason === PlanRegenerationReason::Onboarding);
+    Bus::assertDispatched(fn (RegeneratePlanJob $job): bool => $job->userId === $user->id && $job->reason === PlanRegenerationReason::Onboarding);
     Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
 });
 

@@ -172,10 +172,7 @@ it('attributes an edit\'s re-narration to the athlete, so it re-arms the row\'s 
 
     $this->actingAs($user)->patch("/plan/sessions/{$session->id}", ['skipped' => true]);
 
-    Bus::assertDispatched(
-        AnalyzePlanDayVoiceJob::class,
-        fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
-    );
+    Bus::assertDispatched(fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User);
 });
 
 it('does not re-narrate a credited day whose read already matches the edited material', function (): void {
@@ -320,10 +317,7 @@ it('re-requests the day read when restoring a credited current-week session', fu
         ->assertRedirect();
 
     expect($session->fresh()->skipped)->toBeFalse();
-    Bus::assertDispatched(
-        AnalyzePlanDayVoiceJob::class,
-        fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
-    );
+    Bus::assertDispatched(fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User);
 });
 
 it('cuts block and delete, per decision P23', function (): void {
@@ -572,11 +566,8 @@ it('queues a manual regeneration when the per-user lock stays busy', function ()
         ->assertSessionHas('info');
 
     $lock->release();
-    Bus::assertDispatched(
-        RegeneratePlanJob::class,
-        fn (RegeneratePlanJob $job): bool =>
-        $job->userId === $user->id && $job->reason === PlanRegenerationReason::Manual,
-    );
+    Bus::assertDispatched(fn (RegeneratePlanJob $job): bool =>
+    $job->userId === $user->id && $job->reason === PlanRegenerationReason::Manual);
     expect(app(PlanNarrationRequester::class)->regenerateCooldownRemaining($user))->not->toBeNull();
 });
 

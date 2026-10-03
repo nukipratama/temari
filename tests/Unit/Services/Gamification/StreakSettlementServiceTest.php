@@ -153,7 +153,7 @@ it('queues a continuation and does not mark the chain until the user catches up'
 
     new SettleStreakWeeksJob($user->id)->handle(app(StreakSettlementService::class));
 
-    Bus::assertDispatched(SettleStreakWeeksJob::class, fn (SettleStreakWeeksJob $job): bool => $job->userId === $user->id);
+    Bus::assertDispatched(fn (SettleStreakWeeksJob $job): bool => $job->userId === $user->id);
 });
 
 it('ignores demo history when deciding whether recaps may proceed', function (): void {

@@ -316,10 +316,7 @@ it('attributes a race save\'s re-narration to the athlete, so it re-arms the row
 
     $this->actingAs($user)->post('/race', racePayload())->assertSessionHasNoErrors();
 
-    Bus::assertDispatched(
-        AnalyzePlanSeasonVoiceJob::class,
-        fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
-    );
+    Bus::assertDispatched(fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User);
     Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 
     Carbon::setTestNow();
@@ -339,10 +336,7 @@ it('attributes a cleared race\'s re-narration to the athlete', function (): void
 
     $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
 
-    Bus::assertDispatched(
-        AnalyzePlanSeasonVoiceJob::class,
-        fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
-    );
+    Bus::assertDispatched(fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User);
 
     Carbon::setTestNow();
 });

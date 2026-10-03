@@ -21,10 +21,7 @@ it('dispatches one recalibration for a real user and excludes demo users', funct
     PlanRecalibrationDispatch::forUserId($demo->id);
 
     Bus::assertDispatchedTimes(RecalibrateTrainingHistoryJob::class, 1);
-    Bus::assertDispatched(
-        RecalibrateTrainingHistoryJob::class,
-        fn (RecalibrateTrainingHistoryJob $job): bool => $job->userId === $user->id && $job->delay === 5,
-    );
+    Bus::assertDispatched(fn (RecalibrateTrainingHistoryJob $job): bool => $job->userId === $user->id && $job->delay === 5);
     expect($user->fresh()->plan_recalibration_started_at)->not->toBeNull()
         ->and($user->fresh()->plan_recalibration_completed_at)->toBeNull();
 });
@@ -109,10 +106,7 @@ it('lets another user dispatch while one users recalibration lock is held', func
     PlanRecalibrationDispatch::forUserId($otherUser->id);
 
     Bus::assertDispatchedTimes(RecalibrateTrainingHistoryJob::class, 1);
-    Bus::assertDispatched(
-        RecalibrateTrainingHistoryJob::class,
-        fn (RecalibrateTrainingHistoryJob $job): bool => $job->userId === $otherUser->id,
-    );
+    Bus::assertDispatched(fn (RecalibrateTrainingHistoryJob $job): bool => $job->userId === $otherUser->id);
     expect($otherUser->fresh()->plan_recalibration_started_at)->not->toBeNull();
 
     $lock->release();

@@ -29,9 +29,6 @@ it('queues a manual regeneration after lock contention and starts its cooldown',
     expect($regenerated)->toBeFalse()
         ->and(app(PlanNarrationRequester::class)->regenerateCooldownRemaining($user))->not->toBeNull();
 
-    Bus::assertDispatched(
-        RegeneratePlanJob::class,
-        fn (RegeneratePlanJob $job): bool =>
-            $job->userId === $user->id && $job->reason === PlanRegenerationReason::Manual,
-    );
+    Bus::assertDispatched(fn (RegeneratePlanJob $job): bool =>
+        $job->userId === $user->id && $job->reason === PlanRegenerationReason::Manual);
 });

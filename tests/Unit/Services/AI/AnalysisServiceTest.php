@@ -60,10 +60,7 @@ it('creates a pending row and queues a row job on first request', function (): v
     expect($row->status)->toBe(AnalysisStatus::Queued)
         ->and($row->queued_at)->not->toBeNull();
 
-    Bus::assertDispatched(
-        AnalyzeWeeklyRecapJob::class,
-        fn (AnalyzeWeeklyRecapJob $job): bool => $job->analysisId === $row->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeWeeklyRecapJob $job): bool => $job->analysisId === $row->id);
 });
 
 it('stamps the dispatching entry point origin onto the job, so spend attributes to its trigger', function (): void {
@@ -76,10 +73,7 @@ it('stamps the dispatching entry point origin onto the job, so spend attributes 
         type: AnalysisType::WeeklyRecap,
     );
 
-    Bus::assertDispatched(
-        AnalyzeWeeklyRecapJob::class,
-        fn (AnalyzeWeeklyRecapJob $job): bool => $job->origin === AnalysisOrigin::Scheduled,
-    );
+    Bus::assertDispatched(fn (AnalyzeWeeklyRecapJob $job): bool => $job->origin === AnalysisOrigin::Scheduled);
 });
 
 it('stamps an undeclared dispatch as unattributed rather than defaulting to a real origin', function (): void {
@@ -91,10 +85,7 @@ it('stamps an undeclared dispatch as unattributed rather than defaulting to a re
         type: AnalysisType::WeeklyRecap,
     );
 
-    Bus::assertDispatched(
-        AnalyzeWeeklyRecapJob::class,
-        fn (AnalyzeWeeklyRecapJob $job): bool => $job->origin === AnalysisOrigin::Unknown,
-    );
+    Bus::assertDispatched(fn (AnalyzeWeeklyRecapJob $job): bool => $job->origin === AnalysisOrigin::Unknown);
 });
 
 it('skips dispatch when status is already done (idempotent)', function (): void {
@@ -385,10 +376,7 @@ it('requestActivityGroup creates its rows and dispatches one AnalyzeActivityJob'
             AnalysisType::PostRunSpeech,
             AnalysisType::RunInsight,
         ]);
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
 });
 
@@ -488,10 +476,7 @@ it('requestBriefing creates the suggestion row and dispatches one AnalyzeBriefin
         ->where('discriminator', '2026-05-18')
         ->firstOrFail();
 
-    Bus::assertDispatched(
-        AnalyzeBriefingMascotVoiceJob::class,
-        fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $row->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $row->id);
 });
 
 it('requestProfileVoice creates the profile-voice row and dispatches one AnalyzeProfileVoiceJob', function (): void {
@@ -504,10 +489,7 @@ it('requestProfileVoice creates the profile-voice row and dispatches one Analyze
         ->and($row->analysis_type)->toBe(AnalysisType::ProfileVoice)
         ->and($row->discriminator)->toBe('2026-W20');
 
-    Bus::assertDispatched(
-        AnalyzeProfileVoiceJob::class,
-        fn (AnalyzeProfileVoiceJob $job): bool => $job->analysisId === $row->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeProfileVoiceJob $job): bool => $job->analysisId === $row->id);
 });
 
 it('withoutDispatching suppresses dispatch but still creates Pending rows', function (): void {
@@ -946,10 +928,7 @@ it('applies delaySeconds when dispatching (row)', function (): void {
         delaySeconds: 90,
     );
 
-    Bus::assertDispatched(
-        AnalyzeWeeklyRecapJob::class,
-        fn (AnalyzeWeeklyRecapJob $job): bool => $job->delay === 90,
-    );
+    Bus::assertDispatched(fn (AnalyzeWeeklyRecapJob $job): bool => $job->delay === 90);
     Carbon::setTestNow();
 });
 
@@ -1500,10 +1479,7 @@ it('re-requests a straddling row once instead of marking it early', function ():
     // No notification on this pass either — it fires once, on the
     // re-requested pass that finally reads the complete history.
     Notification::assertNothingSent();
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
 });
 
 it('never marks a rule-based fill early from $startedEarly either', function (): void {
