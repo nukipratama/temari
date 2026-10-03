@@ -37,12 +37,8 @@ const ShareCardModal = lazyIsland(
     () => import('@/components/card/ShareCardModal'),
 );
 
-type DetailedActivity = Activity & {
-    detail: ActivityDetail;
-};
-
 interface ShowProps {
-    activity: DetailedActivity;
+    activity: Activity;
     detail: ActivityDetail;
     /** This view queued the run's detail + streams fetch; the page is still thin. */
     awaitingDetail?: boolean;
