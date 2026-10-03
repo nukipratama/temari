@@ -85,7 +85,7 @@ export default function Trends({
                         data={['weekComparison', 'load']}
                         fallback={
                             <div>
-                                <div className="h-4 w-32 rounded bg-muted" />
+                                <div className="h-4 w-32 rounded-xs bg-muted" />
                                 <SkeletonStats className="mt-2.5" />
                             </div>
                         }
@@ -102,7 +102,7 @@ export default function Trends({
                         data={['ctlTrend', 'chartAnnotations']}
                         fallback={
                             <div>
-                                <div className="h-4 w-32 rounded bg-muted" />
+                                <div className="h-4 w-32 rounded-xs bg-muted" />
                                 <SkeletonChart className="mt-2.5 h-[10.5rem]" />
                             </div>
                         }
@@ -119,7 +119,7 @@ export default function Trends({
                         data={['load', 'raceOutlook']}
                         fallback={
                             <div>
-                                <div className="h-4 w-32 rounded bg-muted" />
+                                <div className="h-4 w-32 rounded-xs bg-muted" />
                                 <SkeletonStats className="mt-2.5" />
                             </div>
                         }

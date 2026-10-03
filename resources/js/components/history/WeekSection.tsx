@@ -56,7 +56,7 @@ const WeekSection = memo(function WeekSection({
                 >
                     {bucket.label}
                 </Eyebrow>
-                <div className="ml-auto font-mono text-[0.75rem] leading-[1.2] whitespace-nowrap tabular-nums text-text-3">
+                <div className="ml-auto font-mono text-xs leading-[1.2] whitespace-nowrap tabular-nums text-text-3">
                     {Math.round(countedRunCount)} run
                     {Math.round(countedRunCount) === 1 ? '' : 's'} ·{' '}
                     {countedTotalKm.toFixed(1)} km ·{' '}

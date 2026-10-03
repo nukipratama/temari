@@ -72,11 +72,11 @@ function RunListRow({
                 )}
                 <span
                     title={name}
-                    className="truncate text-[0.8125rem] leading-[1.2] font-bold text-foreground"
+                    className="truncate text-xs leading-[1.2] font-bold text-foreground"
                 >
                     {name}
                 </span>
-                <span className="flex-none font-mono text-[0.8125rem] leading-[1.2] font-bold text-foreground tabular-nums">
+                <span className="flex-none font-mono text-xs leading-[1.2] font-bold text-foreground tabular-nums">
                     · {km} km
                 </span>
                 {runCard && (
@@ -90,15 +90,15 @@ function RunListRow({
                 )}
             </div>
             <div className="mt-1.25 flex flex-wrap items-baseline gap-x-1.75 gap-y-0.5 font-mono tabular-nums">
-                <b className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
+                <b className="text-xs leading-[1.2] font-extrabold text-foreground">
                     {formatDurationHMS(detail.elapsed_time)}
                 </b>
                 <span className="text-[0.6875rem] text-border-strong">·</span>
-                <b className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
+                <b className="text-xs leading-[1.2] font-extrabold text-foreground">
                     {paceLabel}
                 </b>
                 <span className="text-[0.6875rem] text-border-strong">·</span>
-                <span className="text-[0.8125rem] leading-[1.2] font-extrabold text-foreground">
+                <span className="text-xs leading-[1.2] font-extrabold text-foreground">
                     {hr ?? '—'} bpm
                 </span>
                 <span className="ml-auto text-[0.6875rem] leading-[1.2] whitespace-nowrap text-text-3">

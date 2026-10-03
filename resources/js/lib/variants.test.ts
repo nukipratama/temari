@@ -70,9 +70,7 @@ describe('pillButtonVariants', () => {
     });
 
     it('uses sm sizing when size="sm"', () => {
-        expect(tokens(pillButtonVariants({ size: 'sm' }))).toContain(
-            'text-[0.8125rem]',
-        );
+        expect(tokens(pillButtonVariants({ size: 'sm' }))).toContain('text-xs');
     });
 
     it('carries the shared focus-ring in its base', () => {
@@ -113,9 +111,7 @@ describe('chipVariants', () => {
     });
 
     it('uses md sizing when size="md"', () => {
-        expect(tokens(chipVariants({ size: 'md' }))).toContain(
-            'text-[0.75rem]',
-        );
+        expect(tokens(chipVariants({ size: 'md' }))).toContain('text-xs');
     });
 });
 

@@ -289,8 +289,9 @@
     --pad-page: 3rem 2.5rem 5rem;
 
     /* ─── Radius ───────────────────────────────────────────────────────
-       md is the card/panel corner. Overrides Tailwind's defaults for the
-       whole namespace so no call site can land between two steps. */
+       md is the card/panel corner. These replace Tailwind's values for the
+       named steps only: bare `rounded` still compiles to 0.25rem, which
+       check:palette rejects, and arbitrary `rounded-[Npx]` is unguarded. */
     --radius-xs: 6px;
     --radius-sm: 10px;
     --radius-md: 14px;

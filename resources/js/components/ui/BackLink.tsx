@@ -38,7 +38,7 @@ export default function BackLink({
         <Link
             href={href}
             className={cn(
-                'focus-ring inline-flex items-center gap-1 rounded text-label-small transition',
+                'focus-ring inline-flex items-center gap-1 rounded-xs text-label-small transition',
                 TONE_CLASS[tone],
                 className,
             )}

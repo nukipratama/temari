@@ -44,7 +44,7 @@ export default function ErrorBanner() {
                     type="button"
                     onClick={() => setDismissedErrors(errors)}
                     aria-label="Close"
-                    className="focus-ring -m-1 rounded p-1 text-text-3 transition hover:text-foreground"
+                    className="focus-ring -m-1 rounded-xs p-1 text-text-3 transition hover:text-foreground"
                 >
                     <Icon icon={X} width={16} height={16} />
                 </button>

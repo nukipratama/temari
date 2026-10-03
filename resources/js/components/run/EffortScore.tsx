@@ -44,7 +44,7 @@ const SCORES = Array.from(
 );
 
 const quietButton =
-    'pressable focus-ring rounded text-[0.71875rem] font-bold text-text-2 hover:text-foreground disabled:opacity-60';
+    'pressable focus-ring rounded-xs text-[0.71875rem] font-bold text-text-2 hover:text-foreground disabled:opacity-60';
 
 function effortUrl(activityId: number): string {
     return `/activities/${activityId}/effort`;

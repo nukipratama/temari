@@ -41,7 +41,7 @@ export default function VerdictHero({
                 {verdictHeadline(trend)}
             </h2>
 
-            <p className="mt-2 font-sans text-[0.8125rem] leading-relaxed text-foreground">
+            <p className="mt-2 font-sans text-xs leading-relaxed text-foreground">
                 {verdictSupport(trend)}
             </p>
         </section>

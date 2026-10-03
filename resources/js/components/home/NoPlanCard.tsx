@@ -31,7 +31,7 @@ export default function NoPlanCard({
                     </p>
                     <Link
                         href="/plan"
-                        className="focus-ring inline-flex items-center gap-1 rounded text-[0.71875rem] font-bold text-icon-accent"
+                        className="focus-ring inline-flex items-center gap-1 rounded-xs text-[0.71875rem] font-bold text-icon-accent"
                     >
                         set up a plan
                         <Icon

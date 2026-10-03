@@ -29,7 +29,7 @@ export default function RaceOutcomePrompt({
             </p>
             <Link
                 href="/race"
-                className="focus-ring inline-flex items-center gap-1 rounded text-[0.71875rem] font-bold text-icon-accent"
+                className="focus-ring inline-flex items-center gap-1 rounded-xs text-[0.71875rem] font-bold text-icon-accent"
             >
                 tell temari
                 <Icon icon={ArrowRight} width={12} height={12} aria-hidden />

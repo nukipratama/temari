@@ -189,7 +189,7 @@ export default function Settings({
                                     key={row.href}
                                     href={row.href}
                                     className={cn(
-                                        'focus-ring flex items-center justify-between gap-2 py-3.5 font-sans text-[0.8125rem] font-semibold text-foreground transition hover:text-horizon-ink',
+                                        'focus-ring flex items-center justify-between gap-2 py-3.5 font-sans text-xs font-semibold text-foreground transition hover:text-horizon-ink',
                                         index !== LEGAL_ROWS.length - 1 &&
                                             'border-b border-dashed border-border',
                                     )}
@@ -231,7 +231,7 @@ function AccountActions() {
             <button
                 type="button"
                 onClick={() => router.post('/logout')}
-                className="pressable focus-ring flex w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-card py-3 font-sans text-[0.8125rem] font-bold text-foreground transition hover:bg-cream-deep/30 min-[900px]:w-auto min-[900px]:px-6"
+                className="pressable focus-ring flex w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-card py-3 font-sans text-xs font-bold text-foreground transition hover:bg-cream-deep/30 min-[900px]:w-auto min-[900px]:px-6"
             >
                 <Icon icon={LogOut} width={16} height={16} aria-hidden />
                 log out
@@ -241,7 +241,7 @@ function AccountActions() {
                     <button
                         type="button"
                         onClick={() => setConfirmOpen(true)}
-                        className="focus-ring rounded p-1 font-sans text-xs font-bold text-ember-ink transition hover:opacity-80"
+                        className="focus-ring rounded-xs p-1 font-sans text-xs font-bold text-ember-ink transition hover:opacity-80"
                     >
                         delete account
                     </button>
@@ -328,7 +328,7 @@ function NotificationPrefsPanel({
                     (dead-lettered AI blocks, generation pauses) go straight to
                     admin Telegram chats without touching preferences, and the bot
                     still replies to /start and /stop. See MaintainerAlerter. */}
-                <p className="mb-2 px-2 font-sans text-[0.75rem] text-text-3">
+                <p className="mb-2 px-2 font-sans text-xs text-text-3">
                     controls your run notifications. bot replies and system
                     alerts still come through.
                 </p>

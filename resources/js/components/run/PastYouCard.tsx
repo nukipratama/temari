@@ -118,7 +118,7 @@ export default function PastYouCard({
 
             <Link
                 href={activityUrl({ activity_id: match.past_activity_id })}
-                className="focus-ring hit-area mt-2 inline-flex items-center gap-1 rounded font-sans text-xs font-bold text-icon-accent"
+                className="focus-ring hit-area mt-2 inline-flex items-center gap-1 rounded-xs font-sans text-xs font-bold text-icon-accent"
             >
                 view that run
                 <Icon icon={ArrowRight} width={12} height={12} aria-hidden />
