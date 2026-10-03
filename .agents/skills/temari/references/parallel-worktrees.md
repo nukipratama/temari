@@ -23,7 +23,10 @@ ceiling is the shared Redis `--databases 256`: dev takes indices `slot*3..+2`, s
 one that fits. Setup writes an untracked `compose.override.yaml` mounting the shared git dir so the
 gate's changed-file steps work, and joining the shared-services network, brings the shared stack and this worktree's `app` up,
 then bootstraps the app: `composer install`, `key:generate`, **both** migration sets, `npm ci` and
-`npm run build`. Every step is guarded or idempotent, so re-running `scripts/worktree create
+`npm run build`. The two installs run only when `composer.lock` / `package-lock.json` no longer match
+the sha256 stamp the last successful install left in `vendor/` / `node_modules/`, so `adopt` on a reused
+worktree picks up dependency bumps from `main`; a re-run `npm ci` wipes Playwright, so setup prints a
+reminder to re-run browser-review's `setup.sh`. Every step is guarded or idempotent, so re-running `scripts/worktree create
 <name>` after a failure reuses the existing worktree and resumes setup. `vendor/` is empty when it
 starts, so setup uses plain `docker compose exec` for all of it; `./vendor/bin/sail` works for
 everything afterwards.
