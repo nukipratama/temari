@@ -73,9 +73,10 @@ shared image has no ground to follow. Only the popup's own chrome is ground-reac
 [ShareCardModal](../../resources/js/components/card/ShareCardModal.tsx) is a bottom sheet at phone
 width and a centred 480px dialog from 900px up, on the shared
 [Overlay](../../resources/js/components/ui/Overlay.tsx), so Back closes it. It draws no grip, since
-only a real drag-to-dismiss sheet may. The story/feed toggle sits above the print; the
+only a real drag-to-dismiss sheet may. The story/feed choice sits above the print; the
 three prints sit side by side in a clipped carousel with their neighbours peeking, swipeable and
-walkable with the arrow keys; a segmented strip under them names the styles; icon chips toggle the
+walkable with the arrow keys; a strip under them names the styles. Both choices are the shared
+[ToggleGroup](../../resources/js/components/ui/toggle-group.tsx). Icon chips toggle the
 optional facts, and a chip for a fact the run lacks is hidden rather than disabled. Three equal
 actions follow: share (the PNG as a file, falling back to the run's URL), copy image, download.
 

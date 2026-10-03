@@ -17,8 +17,7 @@ import TodayPanel from '@/components/narration/TodayPanel';
 import UsageFilters from '@/components/narration/UsageFilters';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
-import { cn } from '@/lib/cn';
-import { toggleButtonVariants } from '@/lib/variants';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { navigate } from '@/pages/Narration/helpers';
 
 import type { NarrationOverviewProps } from './types';
@@ -91,18 +90,17 @@ export default function Overview({
                     availableOrigins={availableOrigins}
                 />
 
-                <div className="mt-6 flex gap-2" role="tablist">
-                    <TabButton
-                        label="overview"
-                        active={tab === 'overview'}
-                        onSelect={() => setTab('overview')}
-                    />
-                    <TabButton
-                        label="breakdown"
-                        active={tab === 'breakdown'}
-                        onSelect={() => setTab('breakdown')}
-                    />
-                </div>
+                <ToggleGroup
+                    value={tab}
+                    onValueChange={setTab}
+                    aria-label="view"
+                    className="mt-6"
+                >
+                    <ToggleGroupItem value="overview">overview</ToggleGroupItem>
+                    <ToggleGroupItem value="breakdown">
+                        breakdown
+                    </ToggleGroupItem>
+                </ToggleGroup>
 
                 {tab === 'overview' ? (
                     <>
@@ -169,25 +167,5 @@ export default function Overview({
                 )}
             </PageContainer>
         </div>
-    );
-}
-
-function TabButton({
-    label,
-    active,
-    onSelect,
-}: Readonly<{ label: string; active: boolean; onSelect: () => void }>) {
-    return (
-        <button
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={onSelect}
-            className={cn(
-                toggleButtonVariants({ size: 'sm', selected: active }),
-            )}
-        >
-            {label}
-        </button>
     );
 }

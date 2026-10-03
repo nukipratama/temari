@@ -148,7 +148,7 @@ describe('UsageFilters', () => {
 
             expect(
                 screen
-                    .getByRole('link', { name: pattern })
+                    .getByRole('button', { name: pattern })
                     .getAttribute('href'),
             ).toBe(`/devtools/narration?range=${token}`);
         },
@@ -158,19 +158,22 @@ describe('UsageFilters', () => {
         renderFilters({ kind: 'briefing' });
 
         expect(
-            screen.getByRole('link', { name: /7 days/i }).getAttribute('href'),
+            screen
+                .getByRole('button', { name: /7 days/i })
+                .getAttribute('href'),
         ).toBe('/devtools/narration?range=7d&kind=briefing');
     });
 
     it('highlights the active preset', () => {
         renderFilters({ range: '7d' as RangeToken });
 
-        expect(screen.getByRole('link', { name: /7 days/i })).toHaveClass(
-            'bg-foreground',
+        expect(screen.getByRole('button', { name: /7 days/i })).toHaveAttribute(
+            'aria-pressed',
+            'true',
         );
-        expect(screen.getByRole('link', { name: /30 days/i })).toHaveClass(
-            'bg-muted',
-        );
+        expect(
+            screen.getByRole('button', { name: /30 days/i }),
+        ).toHaveAttribute('aria-pressed', 'false');
     });
 });
 

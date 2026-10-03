@@ -15,13 +15,6 @@ const OPTIONS: ReadonlyArray<{
     { value: 'system', label: 'system', icon: Monitor },
 ];
 
-// The local ToggleGroup wrapper doesn't propagate base-ui's generic, so
-// onValueChange reports plain strings; narrow back to ThemePreference here
-// rather than widening the shared primitive's type for one call site.
-function isThemePreference(value: string): value is ThemePreference {
-    return value === 'light' || value === 'dark' || value === 'system';
-}
-
 /**
  * The Light / Dark / System control, ported from the prototype's own
  * AppearanceCard shape (a 3-way ToggleGroup) but wired for real: useTheme
@@ -36,26 +29,17 @@ export default function AppearanceCard() {
         <div>
             <SectionLabel size="micro">Theme</SectionLabel>
             <ToggleGroup
-                value={[preference]}
-                onValueChange={(value) => {
-                    // Single-select: base-ui's toggle group can report an
-                    // empty array when the pressed item is clicked again.
-                    // Ignore that so exactly one option always stays chosen.
-                    const [next] = value;
-                    if (next !== undefined && isThemePreference(next)) {
-                        setTheme(next);
-                    }
-                }}
-                variant="outline"
-                spacing={0}
-                className="w-full [&>*]:flex-1"
+                value={preference}
+                onValueChange={setTheme}
+                size="md"
+                aria-label="theme"
+                className="flex-nowrap *:flex-1"
             >
                 {OPTIONS.map((option) => (
                     <ToggleGroupItem
                         key={option.value}
                         value={option.value}
                         aria-label={option.label}
-                        className="gap-1.5 text-xs font-semibold"
                     >
                         <Icon
                             icon={option.icon}

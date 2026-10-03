@@ -8,7 +8,6 @@ import {
     outlineChipVariants,
     pillButtonVariants,
     rarityVariants,
-    toggleButtonVariants,
 } from './variants';
 
 /** Split into class tokens, so `toContain` matches a whole class, not a prefix of one. */
@@ -77,32 +76,6 @@ describe('chipVariants', () => {
 
     it('uses md sizing when size="md"', () => {
         expect(tokens(chipVariants({ size: 'md' }))).toContain('text-xs');
-    });
-});
-
-describe('toggleButtonVariants', () => {
-    // Both states are ground-reactive on purpose: a fixed cream-deep fill under
-    // reactive text rendered near-white on near-white on the dark ground.
-    it('renders the selected state as an inverted pill', () => {
-        const cls = tokens(toggleButtonVariants({ selected: true }));
-        expect(cls).toContain('bg-foreground');
-        expect(cls).toContain('text-background');
-    });
-
-    it('renders the unselected state on muted', () => {
-        const cls = tokens(toggleButtonVariants({ selected: false }));
-        expect(cls).toContain('bg-muted');
-        expect(cls).toContain('text-text-2');
-    });
-
-    it('carries the shared focus-ring in its base', () => {
-        expect(tokens(toggleButtonVariants())).toContain('focus-ring');
-    });
-
-    it('uses md sizing when size="md"', () => {
-        expect(tokens(toggleButtonVariants({ size: 'md' }))).toContain(
-            'text-sm',
-        );
     });
 });
 
@@ -191,18 +164,8 @@ describe('outlineChipVariants', () => {
         expect(cls).toContain('focus-ring');
     });
 
-    it('carries gold as text on the -ink member, never the CTA fill', () => {
-        const cls = tokens(outlineChipVariants({ selected: true }));
-        expect(cls).toContain('border-horizon');
-        expect(cls).toContain('text-horizon-ink');
-    });
-
-    it('keeps both states on the same geometry', () => {
-        for (const selected of [true, false]) {
-            const cls = tokens(outlineChipVariants({ selected }));
-            expect(cls).toContain('px-3');
-            expect(cls).toContain('py-1.5');
-        }
+    it('sits on the same 32px floor as the small input beside it', () => {
+        expect(tokens(outlineChipVariants())).toContain('min-h-8');
     });
 });
 

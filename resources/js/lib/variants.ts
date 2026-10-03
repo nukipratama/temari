@@ -85,32 +85,6 @@ export const chipVariants = cva(
 );
 
 /**
- * Segmented / toggle control — the solid-fill selected-vs-unselected pill used
- * by the PRs progression tabs and the ShareCardModal theme picker. One source
- * of truth for radius/size/state. Filter rows that need a bordered or tinted
- * treatment (history range + mood, AiUsage presets) stay hand-rolled.
- */
-export const toggleButtonVariants = cva(
-    'inline-flex items-center justify-center rounded-full font-sans font-medium transition focus-ring',
-    {
-        variants: {
-            size: {
-                sm: 'px-3 py-1.5 text-xs',
-                md: 'px-4 py-2 text-sm',
-            },
-            selected: {
-                true: 'bg-foreground text-background',
-                false: 'bg-muted text-text-2 hover:bg-muted/70',
-            },
-        },
-        defaultVariants: {
-            size: 'sm',
-            selected: false,
-        },
-    },
-);
-
-/**
  * Icon button — square/round hit target for a bare icon (close ×, nav
  * arrows, modal dismiss). `onSky` flips it to the cream-on-dark treatment.
  */
@@ -135,30 +109,19 @@ export const iconButtonVariants = cva(
 );
 
 /**
- * Bordered pill — the hairline-outlined counterpart to
- * {@link toggleButtonVariants}'s solid fill, for a selectable filter (race
- * distance presets, the PRs progression tabs) or an inline row action (the
- * Plan tab's per-day controls). Gold-on-paper is `horizon-ink`, never the
- * `horizon-deep` CTA fill.
+ * Bordered action pill — the hairline outline for an inline action that is
+ * not a choice (AskAboutRun's suggested questions). A "pick one" control is
+ * the {@link ../components/ui/toggle-group} ToggleGroup instead.
  */
 export const outlineChipVariants = cva(
-    'focus-ring inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 py-1.5 text-label-micro transition',
-    {
-        variants: {
-            selected: {
-                true: 'border-horizon bg-horizon/[0.18] text-horizon-ink',
-                false: 'border-border text-text-3 hover:border-horizon/60 hover:text-foreground',
-            },
-        },
-        defaultVariants: { selected: false },
-    },
+    'focus-ring inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-label-micro text-text-3 transition hover:border-horizon/60 hover:text-foreground',
 );
 
 /**
  * Text/number/date field. `rounded-sm` is the radius scale's input corner, so
  * a field never picks up a card's `md` or a pill's `full`. `sm` is the inline
  * field that sits in a row of controls, and shares `min-h-8` with
- * {@link outlineChipVariants} so the two line up: a coarse pointer forces
+ * {@link outlineChipVariants} and the ToggleGroup's `sm` item so they line up: a coarse pointer forces
  * every field to 16px (see the iOS zoom note in app.css), which would
  * otherwise leave a field taller than the pills beside it.
  */

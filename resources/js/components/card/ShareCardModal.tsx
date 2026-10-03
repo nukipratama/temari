@@ -18,6 +18,7 @@ import {
 } from '@/components/card/useCardPrints';
 import { Icon, type IconComponent } from '@/components/ui/Icon';
 import Overlay from '@/components/ui/Overlay';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { hasFact } from '@/lib/card/facts';
 import {
@@ -260,24 +261,15 @@ export default function ShareCardModal({
             </div>
 
             {/* Shape — above the print, so the toggle never moves under a thumb. */}
-            <div
-                role="group"
+            <ToggleGroup
+                value={aspect}
+                onValueChange={setAspect}
+                size="md"
                 aria-label="shape"
-                className="mx-[18px] mb-3.5 mt-1 flex gap-0.5 rounded-full bg-muted p-0.5 min-[900px]:mx-[22px]"
+                className="mx-[18px] mb-3.5 mt-1 flex-nowrap *:flex-1 min-[900px]:mx-[22px]"
             >
                 {CARD_ASPECTS.map((option) => (
-                    <button
-                        key={option}
-                        type="button"
-                        onClick={() => setAspect(option)}
-                        aria-pressed={aspect === option}
-                        className={cn(
-                            'pressable focus-ring flex flex-1 items-center justify-center gap-[7px] rounded-full py-2 text-[0.8125rem] font-semibold transition',
-                            aspect === option
-                                ? 'bg-card text-foreground shadow-e1'
-                                : 'text-text-3',
-                        )}
-                    >
+                    <ToggleGroupItem key={option} value={option}>
                         <span
                             aria-hidden
                             className={cn(
@@ -288,9 +280,9 @@ export default function ShareCardModal({
                             )}
                         />
                         {option}
-                    </button>
+                    </ToggleGroupItem>
                 ))}
-            </div>
+            </ToggleGroup>
 
             {/* The prints, racked side by side and clipped by the stage, so
                     the neighbours bleed off the sheet instead of widening it. */}
@@ -331,24 +323,19 @@ export default function ShareCardModal({
             )}
 
             {/* Style switcher — all three named, no suggested default. */}
-            <div className="mx-[18px] mt-3.5 flex gap-1.5 rounded-full bg-muted p-[3px] min-[900px]:mx-[22px]">
+            <ToggleGroup
+                value={style}
+                onValueChange={setStyle}
+                size="md"
+                aria-label="style"
+                className="mx-[18px] mt-3.5 flex-nowrap *:flex-1 min-[900px]:mx-[22px]"
+            >
                 {CARD_STYLES.map((each) => (
-                    <button
-                        key={each}
-                        type="button"
-                        onClick={() => setStyle(each)}
-                        aria-pressed={style === each}
-                        className={cn(
-                            'focus-ring flex-1 rounded-full px-1 py-2 text-[0.78125rem] font-semibold transition',
-                            style === each
-                                ? 'bg-card text-foreground shadow-e1'
-                                : 'text-text-3',
-                        )}
-                    >
+                    <ToggleGroupItem key={each} value={each} className="px-1">
                         {STYLE_LABELS[each]}
-                    </button>
+                    </ToggleGroupItem>
                 ))}
-            </div>
+            </ToggleGroup>
 
             {chips.length > 0 && (
                 <div className="mx-[18px] mt-3.5 flex flex-wrap justify-center gap-[7px] min-[900px]:mx-[22px]">

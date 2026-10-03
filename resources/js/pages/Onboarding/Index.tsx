@@ -35,13 +35,14 @@ import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
 import SettingsRow from '@/components/ui/SettingsRow';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useCountUp } from '@/hooks/useCountUp';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
 import { formatPace, useTodayIso } from '@/lib/pace';
 import { earliestRaceDate, goalTimeError } from '@/lib/raceGoal';
 import { revealDelay } from '@/lib/styles';
-import { inputVariants, outlineChipVariants } from '@/lib/variants';
+import { inputVariants } from '@/lib/variants';
 
 const DISTANCE_PRESETS = [
     { label: '5K', km: 5 },
@@ -665,27 +666,29 @@ export default function OnboardingIndex({
                                 </div>
 
                                 <div>
-                                    <span className={FIELD_LABEL}>
+                                    <span
+                                        id="onboarding_distance_label"
+                                        className={FIELD_LABEL}
+                                    >
                                         distance
                                     </span>
-                                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                    <ToggleGroup
+                                        value={String(distanceKm)}
+                                        onValueChange={(km) =>
+                                            setDistanceKm(Number(km))
+                                        }
+                                        aria-labelledby="onboarding_distance_label"
+                                        className="mt-1.5"
+                                    >
                                         {DISTANCE_PRESETS.map((preset) => (
-                                            <button
+                                            <ToggleGroupItem
                                                 key={preset.label}
-                                                type="button"
-                                                onClick={() =>
-                                                    setDistanceKm(preset.km)
-                                                }
-                                                className={outlineChipVariants({
-                                                    selected:
-                                                        distanceKm ===
-                                                        preset.km,
-                                                })}
+                                                value={String(preset.km)}
                                             >
                                                 {preset.label}
-                                            </button>
+                                            </ToggleGroupItem>
                                         ))}
-                                    </div>
+                                    </ToggleGroup>
                                     <FieldError message={errors.distance_m} />
                                 </div>
 

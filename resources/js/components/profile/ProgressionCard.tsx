@@ -3,10 +3,10 @@ import { useState } from 'react';
 import JourneyChart from '@/components/profile/JourneyChart';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useCountUp } from '@/hooks/useCountUp';
 import { formatDurationHMS } from '@/lib/pace';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
-import { outlineChipVariants } from '@/lib/variants';
 
 export interface ProgressionProgress {
     relation: 'faster' | 'slower' | 'flat';
@@ -76,26 +76,18 @@ export default function ProgressionCard({
     return (
         <section>
             {tabs.length > 1 && (
-                <div
-                    className="mb-3.5 flex flex-wrap gap-1.5"
-                    role="tablist"
+                <ToggleGroup
+                    value={selected}
+                    onValueChange={setSelected}
                     aria-label="Choose distance"
+                    className="mb-3.5"
                 >
                     {tabs.map((c) => (
-                        <button
-                            key={c}
-                            type="button"
-                            role="tab"
-                            aria-selected={c === selected}
-                            onClick={() => setSelected(c)}
-                            className={outlineChipVariants({
-                                selected: c === selected,
-                            })}
-                        >
+                        <ToggleGroupItem key={c} value={c}>
                             {TAB_LABEL[c]}
-                        </button>
+                        </ToggleGroupItem>
                     ))}
-                </div>
+                </ToggleGroup>
             )}
 
             <Eyebrow token="micro" tone="ink-3">

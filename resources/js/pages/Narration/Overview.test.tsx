@@ -172,7 +172,7 @@ describe('Narration overview page', () => {
     it('swaps to the breakdown tables on the breakdown tab', () => {
         render(<Overview {...baseProps} />);
 
-        fireEvent.click(screen.getByRole('tab', { name: 'breakdown' }));
+        fireEvent.click(screen.getByRole('button', { name: 'breakdown' }));
 
         expect(screen.getByText('by kind')).toBeInTheDocument();
         expect(screen.getByText('by deployment')).toBeInTheDocument();
@@ -183,7 +183,7 @@ describe('Narration overview page', () => {
     it('keeps the range filters visible on both tabs', () => {
         render(<Overview {...baseProps} />);
 
-        fireEvent.click(screen.getByRole('tab', { name: 'breakdown' }));
+        fireEvent.click(screen.getByRole('button', { name: 'breakdown' }));
 
         expect(screen.getByText('2026-05-01')).toBeInTheDocument();
     });
