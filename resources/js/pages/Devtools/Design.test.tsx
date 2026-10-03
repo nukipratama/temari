@@ -1,189 +1,55 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import Design from './Design';
 
-const TOKENS: Record<string, string> = {
-    '--color-ink': '#1a1812',
-    '--color-foreground': '#1b1917',
-    '--color-surface': '#f5f0e4',
-    // Every ground grounds.json calls paper, because the audit scores each one.
-    '--color-cream': '#f5f0e4',
-    '--color-cream-deep': '#ece2ce',
-    '--color-surface-card': '#f5f0e4',
-    '--color-surface-elev': '#faf6ec',
-    '--color-surface-sunken': '#ece2ce',
-    '--color-surface-warm': '#f8f0dd',
-    '--color-background': '#f5f0e4',
-    '--color-card': '#f5f0e4',
-    '--color-popover': '#faf6ec',
-    '--color-muted': '#ece2ce',
-    '--color-accent': '#f8f0dd',
-    '--color-secondary': '#ece2ce',
-    '--color-rarity-legendary': '#f5a623',
-    '--color-rarity-legendary-ink': '#865b13',
-    '--radius-md': '14px',
-    '--shadow-e1': '0 1px 2px rgba(58, 45, 20, 0.06)',
-    '--spacing-4': '16px',
-    '--pad-card': '16px',
-};
+vi.mock('@/components/catalogue/Catalogue', () => ({
+    default: () => <p>catalogue</p>,
+}));
 
-/**
- * The page discovers token *names* by walking the parsed stylesheets and reads
- * their *values* off `:root`, so a fixture has to provide both halves.
- */
-function declareTokens(): () => void {
-    const style = document.createElement('style');
-    style.textContent = `:root{${Object.keys(TOKENS)
-        .map((name) => `${name}:${TOKENS[name]}`)
-        .join(';')}}`;
-    document.head.append(style);
-    for (const [name, value] of Object.entries(TOKENS)) {
-        document.documentElement.style.setProperty(name, value);
-    }
-
-    return () => {
-        style.remove();
-        for (const name of Object.keys(TOKENS)) {
-            document.documentElement.style.removeProperty(name);
-        }
-    };
-}
-
-let cleanup: (() => void) | null = null;
+vi.mock('@/components/catalogue/TokenSheet', () => ({
+    default: () => {
+        const ground = document.documentElement.dataset.theme ?? 'unset';
+        return <p>{`tokens on ${ground}`}</p>;
+    },
+}));
 
 afterEach(() => {
-    cleanup?.();
-    cleanup = null;
+    delete document.documentElement.dataset.theme;
 });
 
 describe('Devtools/Design', () => {
-    it('renders every scale section', { timeout: 15_000 }, () => {
-        cleanup = declareTokens();
-        render(<Design />);
-
-        for (const heading of [
-            'Radius',
-            'Elevation',
-            'Spacing',
-            'Type',
-            'Contrast audit',
-            'Surface audit',
-        ]) {
-            expect(
-                screen.getByRole('heading', { name: heading }),
-            ).toBeInTheDocument();
-        }
-    });
-
-    it('renders swatches from the live stylesheet rather than a copied list', () => {
-        cleanup = declareTokens();
+    it('opens on the component catalogue', () => {
         render(<Design />);
 
         expect(
-            screen.getByText(`${Object.keys(TOKENS).length} tokens live`),
+            screen.getByRole('heading', { name: 'Design' }),
         ).toBeInTheDocument();
-        expect(
-            screen.getByRole('heading', { name: 'rarity' }),
-        ).toBeInTheDocument();
-        expect(screen.getByText('#1a1812')).toBeInTheDocument();
-        expect(screen.getByText('--pad-card · 16px')).toBeInTheDocument();
+        expect(screen.getByText('catalogue')).toBeInTheDocument();
+        expect(screen.queryByText(/^tokens on/)).not.toBeInTheDocument();
     });
 
-    it('audits the live values, outline rule and translucent panels included', () => {
-        cleanup = declareTokens();
+    it('switches to the token sheet and back', () => {
         render(<Design />);
 
-        // The table shows failures only by default, and these tokens all pass.
-        expect(
-            screen.getByText(/every pair passes on this ground/),
-        ).toBeInTheDocument();
-        fireEvent.click(
-            screen.getByRole('button', { name: /Show all \d+ pairs/ }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'tokens' }));
+        expect(screen.getByText('tokens on unset')).toBeInTheDocument();
+        expect(screen.queryByText('catalogue')).not.toBeInTheDocument();
 
-        expect(screen.getByText('Body text')).toBeInTheDocument();
-        expect(
-            screen.getByText('rarity-legendary fill outline'),
-        ).toBeInTheDocument();
-        expect(screen.getByText('bg-ink/0.7 panel')).toBeInTheDocument();
-        // Passed/total rather than a literal count: grounds.json gains rows as
-        // screens land, and what this asserts is that none of them fail.
-        expect(screen.getByText(/^contrast (\d+)\/\1$/)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'components' }));
+        expect(screen.getByText('catalogue')).toBeInTheDocument();
     });
 
-    it('says so when no custom properties are readable', () => {
+    it("re-reads the token sheet when the document's ground changes", async () => {
+        document.documentElement.dataset.theme = 'light';
         render(<Design />);
+        fireEvent.click(screen.getByRole('button', { name: 'tokens' }));
+        expect(screen.getByText('tokens on light')).toBeInTheDocument();
 
-        expect(
-            screen.getByText(/No custom properties readable/),
-        ).toBeInTheDocument();
-    });
+        act(() => {
+            document.documentElement.dataset.theme = 'dark';
+        });
 
-    it('renders every mascot pose, on both the page ground and sky', () => {
-        cleanup = declareTokens();
-        const { container } = render(<Design />);
-
-        for (const heading of [
-            'Temari mascot · poses',
-            'Temari mascot · on sky',
-        ]) {
-            expect(
-                screen.getByRole('heading', { name: heading }),
-            ).toBeInTheDocument();
-        }
-
-        const poses = new Set(
-            Array.from(container.querySelectorAll('svg[data-mascot]')).map(
-                (el) => el.getAttribute('data-mascot'),
-            ),
-        );
-        for (const pose of [
-            'neutral',
-            'concerned',
-            'blazing',
-            'easy',
-            'chill',
-            'wobbly',
-            'gassed',
-            'overloaded',
-            'sleepy',
-            'thinking',
-        ]) {
-            expect(poses).toContain(pose);
-        }
-        expect(
-            container.querySelector('svg[data-mascot][data-theme="dark"]'),
-        ).not.toBeNull();
-    });
-
-    it('renders the citation treatment, drawn and undrawn, on real narration', () => {
-        cleanup = declareTokens();
-        const { container } = render(<Design />);
-
-        expect(
-            screen.getByRole('heading', { name: 'Citation affordance' }),
-        ).toBeInTheDocument();
-
-        // One specimen draws the anchor, one does not, one cites nothing.
-        expect(
-            screen.getAllByRole('button', {
-                name: "Show today's session on this page",
-            }),
-        ).toHaveLength(1);
-        // The undrawn specimen still says the words, just not as a control.
-        const said = (container.textContent ?? '').split(
-            'an easy run, 30-40 minutes',
-        ).length;
-        expect(said - 1).toBe(2);
-    });
-
-    it('leaves a hook for the card art sections', () => {
-        cleanup = declareTokens();
-        render(<Design />);
-
-        expect(
-            screen.getByText('Reserved for the card art slice'),
-        ).toBeInTheDocument();
+        expect(await screen.findByText('tokens on dark')).toBeInTheDocument();
     });
 });

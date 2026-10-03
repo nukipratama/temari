@@ -167,9 +167,14 @@ export function tokensWithPrefix(
     return names.filter((name) => name.startsWith(prefix));
 }
 
+/** Tailwind's default palette (`blue-300`, `white`), which vendored views pull into the build. */
+const TAILWIND_DEFAULT_COLOR =
+    /^--color-(?:[a-z]+-(?:50|[1-9]00|950)|white|black)$/;
+
 /**
- * Colour tokens bucketed by family — the segment after `--color-`, minus the
- * `-ink` / `-bg` / `-deep` suffixes that are members of a family, not families.
+ * Pewter's colour tokens bucketed by family — the segment after `--color-`,
+ * minus the `-ink` / `-bg` / `-deep` suffixes that are members of a family,
+ * not families.
  */
 export function groupColorFamilies(
     names: ReadonlyArray<string>,
@@ -177,6 +182,9 @@ export function groupColorFamilies(
     const families = new Map<string, string[]>();
 
     for (const name of tokensWithPrefix(names, '--color-')) {
+        if (TAILWIND_DEFAULT_COLOR.test(name)) {
+            continue;
+        }
         const rest = name.slice('--color-'.length);
         const family = rest.split('-')[0];
         families.set(family, [...(families.get(family) ?? []), name]);

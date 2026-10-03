@@ -28,6 +28,7 @@ export default defineConfig({
             include: ['resources/js/**/*.{ts,tsx}'],
             exclude: [
                 'resources/js/**/*.test.{ts,tsx}',
+                'resources/js/**/*.examples.tsx',
                 'resources/js/test/**',
                 'resources/js/types/**',
                 'resources/js/app.tsx',
