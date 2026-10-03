@@ -1,6 +1,6 @@
 #!/bin/sh
 # Encodes record.mjs recordings into mp4/gif clips for `gh pr edit --attach`. Needs ffmpeg with
-# libx264; run it on the host or in the Sail container, from anywhere in the repo.
+# libx264; run it in the Sail container (./vendor/bin/sail exec app sh <this script> ...).
 #
 #   clips.sh render <recording> [slow-factor]   frames -> storage/app/clips/<recording>.mp4
 #                                               (+ <recording>-slow.mp4 slowed by the factor); deletes the frames

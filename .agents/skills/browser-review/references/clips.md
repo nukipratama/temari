@@ -14,22 +14,23 @@ Two scripts, split by where they run:
 ```bash
 S=.agents/skills/browser-review
 rec() { ./vendor/bin/sail exec app node $S/scripts/record.mjs "$@"; }
+clip() { ./vendor/bin/sail exec app sh $S/scripts/clips.sh "$@"; }
 
 # 1. before: main's stack (BASE=http://host.docker.internal:<main port>), or --no-view-transitions
 #    when the change adds a view transition. after: this branch's stack.
 rec morph $S/scenarios/history-morph.json --side=before --no-view-transitions
 rec morph $S/scenarios/history-morph.json --side=after
 
-# 2. encode on the host: real speed, plus a 4x slowed copy
-sh $S/scripts/clips.sh render morph-dark-mobile-before 4
-sh $S/scripts/clips.sh render morph-dark-mobile-after 4
+# 2. encode: real speed, plus a 4x slowed copy
+clip render morph-dark-mobile-before 4
+clip render morph-dark-mobile-after 4
 
 # 3. before left, after right
-sh $S/scripts/clips.sh sbs morph-dark-mobile          # and `sbs morph-dark-mobile slow`
+clip sbs morph-dark-mobile          # and `sbs morph-dark-mobile slow`
 
 # 4. the reduced-motion run, then the other ground (--ground=light) and a desktop viewport
 rec morph $S/scenarios/history-morph.json --side=after --reduced-motion
-sh $S/scripts/clips.sh render morph-dark-mobile-reduced-after
+clip render morph-dark-mobile-reduced-after
 
 # 5. attach
 gh pr edit <n> --attach storage/app/clips/morph-dark-mobile-sbs.mp4
