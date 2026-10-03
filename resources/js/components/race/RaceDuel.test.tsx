@@ -94,7 +94,7 @@ describe('RaceDuel', () => {
 
         expect(screen.queryByText('on track for')).not.toBeInTheDocument();
         expect(screen.getByText('supported')).toBeInTheDocument();
-        expect(screen.getByText('1:00 behind')).toHaveClass('text-foreground');
+        expect(screen.getByText('1:00 behind')).toHaveClass('text-text-2');
         expect(screen.getByText(/^on track:/)).toBeInTheDocument();
     });
 

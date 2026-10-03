@@ -10,6 +10,7 @@ describe('PillButton', () => {
         ['sky', 'bg-sky'],
         ['ghost', 'border-foreground/20'],
         ['outline', 'border-border'],
+        ['danger', 'bg-ember-deep'],
     ] satisfies [PillTone, string][])(
         'renders tone %s with its class',
         (tone, expected) => {

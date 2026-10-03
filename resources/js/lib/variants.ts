@@ -26,6 +26,7 @@ export const pillButtonVariants = cva(
                 ghost: 'bg-transparent text-foreground border-[1.5px] border-foreground/20 hover:border-foreground/40',
                 outline:
                     'bg-card border-[1.5px] border-border text-text-2 hover:border-foreground/40 hover:text-foreground',
+                danger: 'bg-ember-deep text-cream hover:opacity-90',
             },
             size: {
                 sm: 'px-3.5 py-2 text-xs',
@@ -68,6 +69,8 @@ export const chipVariants = cva(
                 horizon: 'bg-horizon/[0.18] text-horizon-ink',
                 sky: 'bg-sky/[0.08] text-sky',
                 onSky: 'bg-cream/10 text-cream/80',
+                positive: 'bg-leaf/[0.18] text-leaf-ink',
+                warning: 'bg-ember/[0.18] text-ember-ink',
             },
             size: {
                 sm: 'text-[0.6875rem]',

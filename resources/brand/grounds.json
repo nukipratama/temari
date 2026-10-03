@@ -221,18 +221,6 @@
                 ],
                 "resources/js/components/run/EffortScore.test.tsx": [
                     "paper"
-                ],
-                "resources/js/components/narration/AthletesPanel.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/home/EvidenceList.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/trends/WeekComparison.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/race/RaceDuel.tsx": [
-                    "paper"
                 ]
             },
             "text": [
@@ -241,7 +229,10 @@
         },
         "ember/0.18": {
             "over": {
-                "resources/js/pages/Devtools/Design.tsx": [
+                "resources/js/components/ui/Chip.test.tsx": [
+                    "paper"
+                ],
+                "resources/js/lib/variants.ts": [
                     "paper"
                 ],
                 "resources/js/components/narration/athlete/VersionDiff.tsx": [
@@ -281,12 +272,6 @@
         },
         "horizon/0.15": {
             "over": {
-                "resources/js/components/temari/AnalysisStatus.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/narration/LastOpen.tsx": [
-                    "paper"
-                ],
                 "resources/js/lib/tones.ts": [
                     "paper"
                 ]
@@ -302,9 +287,6 @@
                     "paper"
                 ],
                 "resources/js/components/onboarding/IconChoiceCard.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/home/EvidenceList.tsx": [
                     "paper"
                 ],
                 "resources/js/components/ui/Chip.test.tsx": [
@@ -338,14 +320,6 @@
                 "cream"
             ]
         },
-        "input/0.3": {
-            "over": {
-                "resources/js/components/ui/button.tsx": [
-                    "paper"
-                ]
-            },
-            "text": []
-        },
         "leaf/0.08": {
             "text": []
         },
@@ -359,9 +333,6 @@
                 ],
                 "resources/js/lib/tones.ts": [
                     "paper"
-                ],
-                "resources/js/components/race/RaceDuel.tsx": [
-                    "paper"
                 ]
             },
             "text": [
@@ -371,27 +342,19 @@
         },
         "leaf/0.18": {
             "over": {
-                "resources/js/pages/Devtools/Design.tsx": [
+                "resources/js/components/ui/Chip.test.tsx": [
+                    "background"
+                ],
+                "resources/js/lib/variants.ts": [
                     "background"
                 ],
                 "resources/js/components/narration/athlete/VersionDiff.tsx": [
-                    "background"
-                ],
-                "resources/js/components/trends/WeekComparison.tsx": [
                     "background"
                 ]
             },
             "text": [
                 "leaf-ink"
             ]
-        },
-        "muted/0.5": {
-            "over": {
-                "resources/js/components/ui/button.tsx": [
-                    "paper"
-                ]
-            },
-            "text": []
         },
         "muted/0.6": {
             "over": {
@@ -424,16 +387,6 @@
             },
             "text": [
                 "text-2"
-            ]
-        },
-        "primary/0.8": {
-            "over": {
-                "resources/js/components/ui/button.tsx": [
-                    "paper"
-                ]
-            },
-            "text": [
-                "primary-foreground"
             ]
         },
         "sky/0.06": {

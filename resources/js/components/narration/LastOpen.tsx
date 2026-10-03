@@ -1,3 +1,4 @@
+import Chip from '@/components/ui/Chip';
 import { formatRelativeId } from '@/lib/pace';
 
 interface LastOpenProps {
@@ -29,9 +30,9 @@ export default function LastOpen({
             </p>
             {away && (
                 <>
-                    <span className="mt-1 inline-block rounded-full bg-horizon/15 px-1.5 py-0.5 text-xs font-normal text-horizon-ink">
+                    <Chip tone="horizon" size="md" className="mt-1">
                         away: scheduled narration paused
-                    </span>
+                    </Chip>
                     <p className="mt-1">
                         Their next open re-includes them and triggers the
                         catch-up narration.

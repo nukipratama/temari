@@ -344,9 +344,9 @@ end state.
 
 1. **Global / subtle** — press feedback and route transitions; present everywhere, never opt-in.
    `.pressable` (scale 0.97 + 70% opacity dip, 150ms) is the one convention every tappable and
-   [button](../resources/js/components/ui/button.tsx) implement, so a link, a nav item and a plain
-   button feel identical under the thumb. Button used to press with a 1px translate instead, which
-   is why it did not. The one exception is a control with `aria-haspopup`: it keeps
+   [PillButton](../resources/js/components/ui/PillButton.tsx) implement, so a link, a nav item and a
+   plain button feel identical under the thumb. The retired shadcn button pressed with a 1px
+   translate instead, which is why it did not. The one exception is a control with `aria-haspopup`: it keeps
    `touch-manipulation` and gives up the movement, since the popup it opens is anchored to it.
    Route transitions carry no tokens at all any more: the swap cross-fades through the
    **View Transitions API** (the browser's own animation, tuned only by a 180ms duration in
@@ -444,6 +444,12 @@ passes the element as `render` (`<Card render={<Link href="/race" />}>`), the Ba
 Padding names its role (`panel` / `card` / `hero` / `none`, default `card`), never a number. A tone or padding
 that "just needs to be a bit different" at one call site is the drift this collapse removed —
 override with `className` if a one-off is genuinely required, so it stays visible in review.
+
+**Every chip is `Chip` or `MoodChip`.** `chipVariants` carries six tones: `neutral`, `horizon`,
+`sky`, `onSky`, and the two status tones `positive` (leaf at 18%) and `warning` (ember at 18%),
+matching `horizon`'s 18% tint. A chip whose colour *is* its meaning (an effort band, a card
+rarity) keeps that colour through `className` on top of the `Chip` shape. Buttons are `PillButton`
+in one of five tones; `danger` (`ember-deep` under cream) is the destructive confirmation.
 
 Data maps that are *not* style-variant matrices — [lib/mood.ts](../resources/js/lib/mood.ts) (mood →
 face / label / fill) and [lib/tones.ts](../resources/js/lib/tones.ts) (icon-tile tones) — stay as

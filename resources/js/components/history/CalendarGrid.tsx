@@ -5,6 +5,7 @@ import { type ReactNode, useState } from 'react';
 import type { WeeklySnapshotWithRecap } from '@/types/inertia';
 
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
+import Chip from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
@@ -264,12 +265,7 @@ function WeekRecapPanel({
             <div className="mt-1.75 flex flex-wrap items-start gap-1.5">
                 <WeeklyStatLine snapshot={snapshot} />
                 {week.rarity && (
-                    <span
-                        className={cn(
-                            'inline-flex items-center gap-0.5 rounded-full bg-card px-1.75 py-0.5 text-label-micro leading-[1.2] font-extrabold tracking-[.03em]',
-                            RARITY_INK[week.rarity],
-                        )}
-                    >
+                    <Chip className={RARITY_INK[week.rarity]}>
                         <Icon
                             icon={Sparkle}
                             width={10}
@@ -277,7 +273,7 @@ function WeekRecapPanel({
                             aria-hidden
                         />
                         {RARITY_LABELS[week.rarity]} card
-                    </span>
+                    </Chip>
                 )}
             </div>
         </div>

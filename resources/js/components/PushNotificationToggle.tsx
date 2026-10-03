@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 import type { SharedProps } from '@/types/inertia';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
-import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
+import PillButton from '@/components/ui/PillButton';
 import SettingsDisconnectLink from '@/components/ui/SettingsDisconnectLink';
 import SettingsRow from '@/components/ui/SettingsRow';
 import Toggle from '@/components/ui/Switch';
@@ -214,10 +214,15 @@ function PushAction({
     switch (state) {
         case 'stale':
             return (
-                <Button disabled={busy} onClick={onSubscribe}>
+                <PillButton
+                    tone="horizon"
+                    size="sm"
+                    disabled={busy}
+                    onClick={onSubscribe}
+                >
                     <Icon icon={Bell} width={14} height={14} aria-hidden />
                     fix
-                </Button>
+                </PillButton>
             );
         case 'subscribed':
             return (
@@ -228,10 +233,15 @@ function PushAction({
             );
         case 'ready':
             return (
-                <Button disabled={busy} onClick={onSubscribe}>
+                <PillButton
+                    tone="horizon"
+                    size="sm"
+                    disabled={busy}
+                    onClick={onSubscribe}
+                >
                     <Icon icon={BellRing} width={14} height={14} aria-hidden />
                     turn on
-                </Button>
+                </PillButton>
             );
         default:
             return null;

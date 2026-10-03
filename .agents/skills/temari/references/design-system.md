@@ -79,10 +79,11 @@ accepted knowingly when the buttons moved onto the pill (#1271).
 
 `horizon` (`#ade047`) is a lime tone, so it pairs with **dark** text, never white. Follow the
 [`PillButton`](../../../../resources/js/components/ui/PillButton.tsx) presets:
-There are **four tones**, defined once in [`pillButtonVariants`](../../../../resources/js/lib/variants.ts#L52):
+There are **five tones**, defined once in [`pillButtonVariants`](../../../../resources/js/lib/variants.ts#L19):
 - `horizon` bg → **`text-sky`**, a fixed value rather than the ground-reactive `text-foreground`. This is deliberate and the one place the semantic layer must not be used: `foreground` flips to cream on the dark ground, which is the unreadable pairing on lime. Hover darkens to `horizon-deep`.
 - `sky` bg (near-black) → `text-cream` (passes ~15:1+); hover darkens to `sky-deep`.
 - `ghost` → transparent with an `ink`-tinted hairline; `outline` → `bg-card` with a `border` edge and `text-text-2`.
+- `danger` → `bg-ember-deep` under `text-cream`, for a destructive confirmation (a `-deep` fill carries cream, never a label).
 - Never put white text on `horizon`/`citrus`/`cream` (all too light).
 
 ### Gradient primitives

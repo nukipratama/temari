@@ -9,6 +9,7 @@ import type {
 } from '@/types/inertia';
 
 import TemariMascot from '@/components/temari/TemariMascot';
+import Chip from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
 import {
     RATE_LIMITED_ERROR,
@@ -49,19 +50,19 @@ function hasStaleZones(
 
 function StaleZonesBadge() {
     return (
-        <span className="inline-flex items-center self-start gap-1 rounded-full bg-horizon/15 px-2 py-0.5 text-xs text-horizon-ink">
+        <Chip tone="horizon" size="md" className="self-start">
             <Icon icon={HeartPulse} aria-hidden />
             <span>calculated with old zones</span>
-        </span>
+        </Chip>
     );
 }
 
 function StalePlanBadge() {
     return (
-        <span className="inline-flex items-center self-start gap-1 rounded-full bg-horizon/15 px-2 py-0.5 text-xs text-horizon-ink">
+        <Chip tone="horizon" size="md" className="self-start">
             <Icon icon={Clock} aria-hidden />
             <span>based on an earlier plan</span>
-        </span>
+        </Chip>
     );
 }
 
