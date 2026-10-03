@@ -19,32 +19,32 @@ afterEach(() => {
 });
 
 describe('Devtools/Design', () => {
-    it('opens on the component catalogue', () => {
+    it('opens on the component catalogue', async () => {
         render(<Design />);
 
         expect(
             screen.getByRole('heading', { name: 'Design' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('catalogue')).toBeInTheDocument();
+        expect(await screen.findByText('catalogue')).toBeInTheDocument();
         expect(screen.queryByText(/^tokens on/)).not.toBeInTheDocument();
     });
 
-    it('switches to the token sheet and back', () => {
+    it('switches to the token sheet and back', async () => {
         render(<Design />);
 
         fireEvent.click(screen.getByRole('button', { name: 'tokens' }));
-        expect(screen.getByText('tokens on unset')).toBeInTheDocument();
+        expect(await screen.findByText('tokens on unset')).toBeInTheDocument();
         expect(screen.queryByText('catalogue')).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'components' }));
-        expect(screen.getByText('catalogue')).toBeInTheDocument();
+        expect(await screen.findByText('catalogue')).toBeInTheDocument();
     });
 
     it("re-reads the token sheet when the document's ground changes", async () => {
         document.documentElement.dataset.theme = 'light';
         render(<Design />);
         fireEvent.click(screen.getByRole('button', { name: 'tokens' }));
-        expect(screen.getByText('tokens on light')).toBeInTheDocument();
+        expect(await screen.findByText('tokens on light')).toBeInTheDocument();
 
         act(() => {
             document.documentElement.dataset.theme = 'dark';
