@@ -53,7 +53,7 @@ export function RangeWidenedNote({
     const message =
         rangeFilter === 'all'
             ? 'showing all your runs, so your most recent one stays visible.'
-            : `Range automatically widened to ${label} so your latest run stays visible.`;
+            : `range automatically widened to ${label} so your latest run stays visible.`;
     return <InlineNote icon={UnfoldHorizontal}>{message}</InlineNote>;
 }
 
@@ -80,7 +80,7 @@ export function WeekFocusNote({
                 </BackLink>
             }
         >
-            Viewing the week of {formatIdDate(monday.toISOString())} -{' '}
+            viewing the week of {formatIdDate(monday.toISOString())} -{' '}
             {formatIdDate(sunday.toISOString())}.
         </InlineNote>
     );

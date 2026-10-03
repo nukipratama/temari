@@ -228,12 +228,12 @@ function improvingHeadline(trend: PastYouTrend, since: MatchedSince): string {
 export function verdictSupport(trend: PastYouTrend): string {
     if (trend.verdict === 'not_enough_history') {
         if (trend.comparison_count === 0) {
-            return "run something twice and I'll tell you exactly what changed.";
+            return "run something twice and i'll tell you exactly what changed.";
         }
         if (trend.comparison_count === 1) {
-            return "one more comparable run and I'll call it.";
+            return "one more comparable run and i'll call it.";
         }
-        return "one more comparable run and I'll call the trend.";
+        return "one more comparable run and i'll call the trend.";
     }
 
     const split = comparisonSplit(trend);

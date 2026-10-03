@@ -37,10 +37,10 @@ export function earliestRaceDate(today: string): string {
 /** Null when the goal time is submittable, otherwise the reason it is not. */
 export function goalTimeError(goalTimeSec: number): string | null {
     if (goalTimeSec < MIN_GOAL_TIME_SEC) {
-        return 'Goal time has to be at least 5 minutes.';
+        return 'goal time has to be at least 5 minutes.';
     }
     if (goalTimeSec > MAX_GOAL_TIME_SEC) {
-        return 'Goal time has to be under 72 hours.';
+        return 'goal time has to be under 72 hours.';
     }
 
     return null;
@@ -63,7 +63,7 @@ export function impossiblePaceWarning(
         return null;
     }
 
-    return `That's ${formatPace(paceSecPerKm)}/km, quicker than world-record pace for most distances. Worth double-checking, but you can still save it.`;
+    return `that's ${formatPace(paceSecPerKm)}/km, quicker than world-record pace for most distances. worth double-checking, but you can still save it.`;
 }
 
 /**
@@ -91,7 +91,7 @@ export function ambitiousGoalWarning(
         return null;
     }
 
-    return `That's well ahead of your own projected range (${formatDurationHMS(projection.lowSec)}–${formatDurationHMS(projection.highSec)}). Ambitious, but you can still save it.`;
+    return `that's well ahead of your own projected range (${formatDurationHMS(projection.lowSec)}–${formatDurationHMS(projection.highSec)}). ambitious, but you can still save it.`;
 }
 
 export const ON_GOAL_TOLERANCE_SEC = 5;

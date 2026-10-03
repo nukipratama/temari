@@ -604,7 +604,7 @@ describe('DayHeadline and DayDetail', () => {
         });
 
         expect(
-            screen.getByText('Ran anyway · 12 km · 1:18:00'),
+            screen.getByText('ran anyway · 12 km · 1:18:00'),
         ).toBeInTheDocument();
     });
 
@@ -626,7 +626,7 @@ describe('DayHeadline and DayDetail', () => {
         });
 
         expect(
-            screen.getByText('Ran anyway · 5 km · 30:00'),
+            screen.getByText('ran anyway · 5 km · 30:00'),
         ).toBeInTheDocument();
     });
 

@@ -323,7 +323,7 @@ export default function TrainingPreferencesCard({
                             height={16}
                             aria-hidden
                         />
-                        Saved
+                        saved
                     </span>
                 )}
             </div>

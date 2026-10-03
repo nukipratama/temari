@@ -206,7 +206,7 @@ function MonthNav({
             <NavButton
                 month={prevMonth}
                 icon={ChevronLeft}
-                label="Previous month"
+                label="previous month"
             />
             <h2 className="font-serif text-[0.9375rem] leading-[1.2] font-semibold text-foreground">
                 {label}
@@ -214,7 +214,7 @@ function MonthNav({
             <NavButton
                 month={nextMonth}
                 icon={ChevronRight}
-                label="Next month"
+                label="next month"
             />
         </div>
     );

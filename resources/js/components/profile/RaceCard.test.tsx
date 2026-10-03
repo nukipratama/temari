@@ -17,7 +17,7 @@ describe('RaceCard', () => {
     it('prompts for a race when none is set', () => {
         render(<RaceCard race={null} />);
 
-        expect(screen.getByText('Got a race coming up?')).toBeInTheDocument();
+        expect(screen.getByText('got a race coming up?')).toBeInTheDocument();
         expect(screen.getByRole('link')).toHaveAttribute('href', '/race');
     });
 
@@ -35,7 +35,7 @@ describe('RaceCard', () => {
     it('falls back to a generic title when the race is unnamed', () => {
         render(<RaceCard race={{ ...race, name: null }} />);
 
-        expect(screen.getByText('Your race')).toBeInTheDocument();
+        expect(screen.getByText('your race')).toBeInTheDocument();
     });
 
     it('says "day" on the eve of the race', () => {

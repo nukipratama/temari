@@ -41,7 +41,7 @@ describe('RangeWidenedNote', () => {
         render(<RangeWidenedNote rangeFilter="1y" />);
 
         expect(
-            screen.getByText(/Range automatically widened to full year/),
+            screen.getByText(/range automatically widened to full year/),
         ).toBeInTheDocument();
     });
 
@@ -60,7 +60,7 @@ describe('WeekFocusNote', () => {
 
         expect(
             screen.getByText(
-                /Viewing the week of monday, may 11 - sunday, may 17/,
+                /viewing the week of monday, may 11 - sunday, may 17/,
             ),
         ).toBeInTheDocument();
         expect(

@@ -419,7 +419,7 @@ describe('Runs/Show', () => {
             detail: bare,
         });
         expect(
-            screen.getByText(/Technical detail hasn't been read yet/),
+            screen.getByText(/technical detail hasn't been read yet/),
         ).toBeInTheDocument();
     });
 

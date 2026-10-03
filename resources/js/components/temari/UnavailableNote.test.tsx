@@ -7,7 +7,7 @@ describe('UnavailableNote', () => {
     it('shows the default message with a status role', () => {
         render(<UnavailableNote />);
         expect(screen.getByRole('status')).toHaveTextContent(
-            'Temari is taking a moment. Try again shortly.',
+            'temari is taking a moment. try again shortly.',
         );
     });
 

@@ -18,6 +18,7 @@ use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
+use App\Services\Telegram\AnalysisMessagePresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Notifications\SendQueuedNotifications;
@@ -402,4 +403,15 @@ it('carries the inbox unread count for the app-icon badge', function (): void {
     $notification = new AnalysisReadyNotification(postRunAnalysis($user));
 
     expect($notification->toWebPush($user, $notification)->toArray()['data']['unread'])->toBe(3);
+});
+
+it('keeps the Telegram text and the web push title in sentence case, whatever the inbox shows', function (): void {
+    $user = User::factory()->create();
+    $analysis = postRunAnalysis($user, 'Pace konsisten.');
+    $title = new AnalysisMessagePresenter()->title($analysis);
+    $notification = new AnalysisReadyNotification($analysis, force: true);
+
+    expect($title)->toStartWith('Your ')
+        ->and($notification->toTelegram($user)->text)->toStartWith($title . "\n\n")
+        ->and($notification->toWebPush($user, $notification)->toArray()['title'])->toBe($title);
 });
