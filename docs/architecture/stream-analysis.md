@@ -57,7 +57,7 @@ Strava omits cadence from `splits_metric`, so per-km cadence is back-filled by b
 
 ## Output shape (the contract)
 
-Downstream consumers key into specific fields, so the shape is a contract. The producer ([compute](app/Services/Run/Ingest/StreamAnalysis.php#L32)) is the source of truth; the TypeScript mirror lives in [inertia.ts](resources/js/types/inertia.ts#L175) and declares the fields consumed by the current UI. It carries no index signature, so a page reading an undeclared key is a type error rather than an `unknown`. The notable producer keys:
+Downstream consumers key into specific fields, so the shape is a contract. The producer ([compute](app/Services/Run/Ingest/StreamAnalysis.php#L32)) is the source of truth; the TypeScript mirror lives in [inertia.ts](resources/js/types/inertia.ts#L303) and declares the fields consumed by the current UI. It carries no index signature, so a page reading an undeclared key is a type error rather than an `unknown`. The notable producer keys:
 
 - `time_in_zone_min` / `time_in_zone_pct` — minutes and percent per zone (keyed `Z1..Z5`).
 - `per_km[]` — rows of `{ km, pace, elapsed_sec, distance_m, avg_hr?, avg_cadence_spm? }` ([type](resources/js/types/inertia.ts#L144)).

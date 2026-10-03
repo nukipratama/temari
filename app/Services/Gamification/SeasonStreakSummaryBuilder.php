@@ -4,16 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
-use App\Enums\RaceSupport;
 use App\Models\Season;
-use App\Models\StreakRestToken;
 use App\Models\User;
-use App\Models\WeeklySnapshot;
-use App\Services\Run\Plan\PhaseSchedule;
 use Illuminate\Support\Carbon;
 
 /**
- * Builds the season and streak read models shared by the Plan tab and the
+ * Builds the season read models shared by the Plan tab and the
  * Profile page. Purely a read: {@see \App\Services\Run\Plan\PlanPageAssembler}
  * passes it the {@see Season} its own {@see
  * \App\Services\Run\Plan\SeasonService::ensureCurrent()} call already
@@ -30,44 +26,14 @@ final readonly class SeasonStreakSummaryBuilder
     }
 
     /**
-     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, is_race_oriented: bool, block_opens_on: string|null}|null
+     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int}|null
      */
     public function seasonPayload(?Season $season, Carbon $today): ?array
     {
         if ($season === null) {
             return null;
         }
-        $race = $season->raceGoal;
 
-        return [
-            ...$this->frame($season, $today),
-            'is_race_oriented' => $season->race_goal_id !== null,
-            'block_opens_on' => $race === null || ! RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()
-                ? null
-                : PhaseSchedule::blockOpensOn($race->race_date, (float) $race->distance_m)->toDateString(),
-        ];
-    }
-
-    /**
-     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>}|null
-     */
-    public function profileSeasonPayload(User $user, ?Season $season, Carbon $today): ?array
-    {
-        if ($season === null) {
-            return null;
-        }
-
-        return [
-            ...$this->frame($season, $today),
-            'goals' => $this->seasonGoalResolver->forSeason($user, $season, today: $today),
-        ];
-    }
-
-    /**
-     * @return array{starts_at: string, ends_at: string, week_index: int, total_weeks: int}
-     */
-    private function frame(Season $season, Carbon $today): array
-    {
         $firstMonday = $season->starts_at->copy()->startOfWeek(Carbon::MONDAY);
         $totalWeeks = max(1, (int) $firstMonday->diffInWeeks($season->ends_at->copy()->startOfWeek(Carbon::MONDAY)) + 1);
         $weekIndex = max(1, min($totalWeeks, (int) $firstMonday->diffInWeeks($today->copy()->startOfWeek(Carbon::MONDAY)) + 1));
@@ -81,40 +47,18 @@ final readonly class SeasonStreakSummaryBuilder
     }
 
     /**
-     * The weekly streak, its stakes for the open week, and the rest weeks that
-     * stand between a runless week and a reset. Spending is automatic at week
-     * close ({@see StreakSettlementService}), so nothing here is an
-     * affordance the user could act on.
-     *
-     * @return array{weeks: int, rest_weeks_held: int, rest_weeks_cap: int, weeks_to_next_rest_week: int|null, ran_this_week: bool, week_ends_on: string, last_forgiven_week: string|null}
+     * @return array{starts_at: string, ends_at: string, goals: list<array{id: int, title: string, current: int|float, target: int|float, unit: string, is_completed: bool}>}|null
      */
-    public function streakPayload(User $user, Carbon $today): array
+    public function profileSeasonPayload(User $user, ?Season $season, Carbon $today): ?array
     {
-        $weeks = WeeklySnapshot::consecutiveWeekStreak($user->id);
-        $held = StreakRestToken::unspentCountForUser($user->id);
-        $weekEndsOn = $today->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
-
-        $accrual = StreakSettlementService::ACCRUAL_EVERY_WEEKS;
-        $atCap = $held >= StreakSettlementService::MAX_HELD;
-
-        $lastForgiven = StreakRestToken::query()
-            ->where('user_id', $user->id)
-            ->whereNotNull('spent_for_week_ending')
-            ->orderByDesc('spent_for_week_ending')
-            ->first();
+        if ($season === null) {
+            return null;
+        }
 
         return [
-            'weeks' => $weeks,
-            'rest_weeks_held' => $held,
-            'rest_weeks_cap' => StreakSettlementService::MAX_HELD,
-            'weeks_to_next_rest_week' => $atCap ? null : $accrual - ($weeks % $accrual),
-            'ran_this_week' => WeeklySnapshot::query()
-                ->where('user_id', $user->id)
-                ->where('week_ending', $weekEndsOn->toDateString())
-                ->where('runs', '>', 0)
-                ->exists(),
-            'week_ends_on' => $weekEndsOn->toDateString(),
-            'last_forgiven_week' => $lastForgiven?->spent_for_week_ending?->toDateString(),
+            'starts_at' => $season->starts_at->toDateString(),
+            'ends_at' => $season->ends_at->toDateString(),
+            'goals' => $this->seasonGoalResolver->forSeason($user, $season, today: $today),
         ];
     }
 }
