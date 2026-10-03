@@ -16,7 +16,7 @@ const tokens = (cls: string) => cls.split(' ');
 describe('pillButtonVariants', () => {
     it.each([
         ['horizon', 'bg-horizon'],
-        ['sky', 'bg-sky'],
+        ['sky', 'bg-foreground'],
         ['ghost', 'border-foreground/20'],
         ['outline', 'border-border'],
         ['danger', 'bg-ember-deep'],

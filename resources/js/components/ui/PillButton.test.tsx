@@ -7,7 +7,7 @@ import PillButton, { type PillTone } from './PillButton';
 describe('PillButton', () => {
     it.each([
         ['horizon', 'bg-horizon'],
-        ['sky', 'bg-sky'],
+        ['sky', 'bg-foreground'],
         ['ghost', 'border-foreground/20'],
         ['outline', 'border-border'],
         ['danger', 'bg-ember-deep'],
@@ -28,6 +28,26 @@ describe('PillButton', () => {
         expect(button.className).toMatch(/bg-card/);
         expect(button.className).toMatch(/border-border/);
         expect(button.className).toMatch(/text-text-2/);
+    });
+
+    it('draws the default tone from ground-reactive tokens, not the fixed sky fill', () => {
+        render(<PillButton>send</PillButton>);
+        const button = screen.getByRole('button', { name: 'send' });
+        expect(button).toHaveClass('bg-foreground', 'text-background');
+        expect(button).not.toHaveClass('bg-sky');
+        expect(button).not.toHaveClass('text-cream');
+    });
+
+    it('keeps the cream fill for the default tone on a sky panel', () => {
+        render(<PillButton onSky>send</PillButton>);
+        const button = screen.getByRole('button', { name: 'send' });
+        expect(button).toHaveClass(
+            'bg-cream',
+            'text-sky',
+            'hover:bg-cream-deep',
+        );
+        expect(button).not.toHaveClass('bg-foreground');
+        expect(button).not.toHaveClass('text-background');
     });
 
     it('switches ghost to onSky variant when onSky=true', () => {

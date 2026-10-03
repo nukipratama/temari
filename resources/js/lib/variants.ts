@@ -22,7 +22,7 @@ export const pillButtonVariants = cva(
         variants: {
             tone: {
                 horizon: 'bg-horizon text-sky hover:bg-horizon-deep',
-                sky: 'bg-sky text-cream hover:bg-sky-deep',
+                sky: 'bg-foreground text-background hover:bg-foreground/85',
                 ghost: 'bg-transparent text-foreground border-[1.5px] border-foreground/20 hover:border-foreground/40',
                 outline:
                     'bg-card border-[1.5px] border-border text-text-2 hover:border-foreground/40 hover:text-foreground',

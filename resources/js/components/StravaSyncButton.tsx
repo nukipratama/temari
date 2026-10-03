@@ -64,7 +64,7 @@ export default function StravaSyncButton({
                     }
                     disabled={pending}
                     className={cn(
-                        'focus-ring inline-flex items-center gap-2 rounded-full border border-cream-deep bg-cream px-5 py-2.5 text-sm font-semibold text-ink-2 transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-60',
+                        pillButtonVariants({ tone: 'outline', size: 'md' }),
                         className,
                     )}
                 >

@@ -257,6 +257,16 @@
                 "foreground"
             ]
         },
+        "foreground/0.85": {
+            "over": {
+                "resources/js/lib/variants.ts": [
+                    "paper"
+                ]
+            },
+            "text": [
+                "background"
+            ]
+        },
         "horizon/0.08": {
             "text": []
         },
