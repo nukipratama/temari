@@ -24,6 +24,45 @@ export default defineConfig(
                     order: 'asc',
                 },
             ],
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: '@/lib/variants',
+                            importNames: ['cardVariants'],
+                            message: 'cardVariants is retired. Use Card from @/components/ui/card.',
+                        },
+                        {
+                            name: '@/lib/variants',
+                            importNames: ['toggleButtonVariants'],
+                            message: 'toggleButtonVariants is retired. Use ToggleGroup from @/components/ui/toggle-group.',
+                        },
+                    ],
+                    patterns: [
+                        {
+                            group: ['**/ui/LegacyCard', './LegacyCard'],
+                            message: 'LegacyCard is retired. Use Card from @/components/ui/card.',
+                        },
+                        {
+                            group: ['**/ui/LinkCard', './LinkCard'],
+                            message: 'LinkCard is retired. Use Card from @/components/ui/card with render={<Link />}.',
+                        },
+                        {
+                            group: ['**/ui/button', './button'],
+                            message: 'The shadcn Button is retired. Use PillButton from @/components/ui/PillButton.',
+                        },
+                        {
+                            group: ['**/ui/toggle', './toggle'],
+                            message: 'The shadcn Toggle is retired. Use ToggleGroup from @/components/ui/toggle-group.',
+                        },
+                        {
+                            group: ['**/ui/SectionLabel', './SectionLabel'],
+                            message: 'SectionLabel is retired. Use Eyebrow from @/components/ui/Eyebrow with dot or rule.',
+                        },
+                    ],
+                },
+            ],
             // Block stair-stepped px chains; prefer text-display-* / text-headline-* tokens.
             'no-restricted-syntax': [
                 'error',
