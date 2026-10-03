@@ -219,6 +219,10 @@ opposite holds, so the dark value is the vivid fill itself where that already cl
 (`citrus-ink`, `rarity-uncommon-ink`, `rarity-legendary-ink`), or lightened toward white where it
 does not (`leaf-ink`, `ember-ink`, `rarity-common/rare/epic-ink`) — derived via `inkOnDark()` in
 [build-tokens.mjs](../resources/brand/build-tokens.mjs), worst-cased across sky-deep/sky/sky-2.
+`ember-ink` and `leaf-ink` are also worst-cased against their own `bg-<family>/<alpha>` tint over each
+of those surfaces, because a status chip and a diff highlight print them on it; `leaf-ink` targets
+4.6:1 there for a rendered margin, which moved its dark value from `#57a581` to `#77b699` (owner
+decision on #1673, 2026-10-03).
 `horizon-ink` was originally left out, on the reasoning that the app reaches for `icon-accent` on
 dark instead; 33 `text-horizon-ink` call sites rendering `#546d23` on `#0b1017` at 2.9:1 disproved
 that, and its dark value is now the vivid `#ade047`.
@@ -456,11 +460,9 @@ override with `className` if a one-off is genuinely required, so it stays visibl
 `sky`, `onSky`, and the two status tones `positive` (leaf at 18%) and `warning` (ember at 18%),
 matching `horizon`'s 18% tint. Every tinted tone is registered in
 [grounds.json](../resources/brand/grounds.json) over `paper`, because a chip can land on any surface,
-and `DesignTokenContrastTest` fails if one is narrowed to a single mount. `positive` clears AA on
-`background` and `card` on both grounds but measures 3.68:1 on the dark ground's sky-2 surfaces
-(`muted`, `secondary`, `popover`, `accent`). That pair is pinned in the `belowAa` ledger until its
-colour is settled (#1673). A chip whose colour *is* its meaning (an effort band, a card
-rarity) keeps that colour through `className` on top of the `Chip` shape. Buttons are `PillButton`
+and `DesignTokenContrastTest` fails if one is narrowed to a single mount. `positive` and `warning`
+clear AA on every surface on both grounds; `positive` is lowest on the dark sky-2 surfaces (4.63:1).
+A chip whose colour *is* its meaning (an effort band, a card rarity) keeps that colour through `className` on top of the `Chip` shape. Buttons are `PillButton`
 in one of six tones; `danger` (`ember-deep` under cream) is the destructive confirmation, and
 `muted` at size `xs` is the one compact action pill (edit race, regenerate, reread all, load older).
 A row of two or more secondary numbers is [StatTile](../resources/js/components/ui/StatTile.tsx):

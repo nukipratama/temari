@@ -154,10 +154,15 @@ function darkTintGrounds(family) {
   return grounds;
 }
 
+/* leaf-ink prints on bg-leaf/0.18 the same way; its 4.6 target leaves the rendered ratio a margin. */
+const TINTED_DARK_INK_TARGET = { ember: 4.5, leaf: 4.6 };
+
 export const DARK_INK = Object.fromEntries(
   DARK_INK_FAMILIES.map((family) => [
     family,
-    inkOnDark(COLOR[family], family === 'ember' ? darkTintGrounds(family) : GROUNDS_DARK),
+    family in TINTED_DARK_INK_TARGET
+      ? inkOnDark(COLOR[family], darkTintGrounds(family), TINTED_DARK_INK_TARGET[family])
+      : inkOnDark(COLOR[family], GROUNDS_DARK),
   ]),
 );
 export const RARITY_INK_DARK = Object.fromEntries(
