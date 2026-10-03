@@ -9,8 +9,7 @@ import NarrationsTab from '@/components/narration/athlete/NarrationsTab';
 import FlashBanner from '@/components/narration/FlashBanner';
 import LastOpen from '@/components/narration/LastOpen';
 import PageContainer from '@/components/ui/PageContainer';
-import { cn } from '@/lib/cn';
-import { toggleButtonVariants } from '@/lib/variants';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 import type { AthletePageProps, AthleteTab } from './types';
 
@@ -77,23 +76,27 @@ export default function Athlete({
 
                 <AthleteHeader header={header} />
 
-                <nav className="mt-8 flex flex-wrap gap-2">
+                <ToggleGroup
+                    value={tab}
+                    aria-label="athlete view"
+                    className="mt-8"
+                >
                     {TABS.map((entry) => (
-                        <Link
+                        <ToggleGroupItem
                             key={entry.token}
-                            href={`/devtools/narration/athletes/${athleteId}?tab=${entry.token}`}
-                            preserveScroll
-                            className={cn(
-                                toggleButtonVariants({
-                                    size: 'sm',
-                                    selected: tab === entry.token,
-                                }),
-                            )}
+                            value={entry.token}
+                            nativeButton={false}
+                            render={
+                                <Link
+                                    href={`/devtools/narration/athletes/${athleteId}?tab=${entry.token}`}
+                                    preserveScroll
+                                />
+                            }
                         >
                             {entry.label}
-                        </Link>
+                        </ToggleGroupItem>
                     ))}
-                </nav>
+                </ToggleGroup>
 
                 {tab === 'narrations' && (
                     <NarrationsTab

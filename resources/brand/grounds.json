@@ -300,6 +300,12 @@
                 ],
                 "resources/js/pages/Devtools.tsx": [
                     "paper"
+                ],
+                "resources/js/components/ui/toggle-group.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/toggle-group.test.tsx": [
+                    "paper"
                 ]
             },
             "text": [
@@ -379,9 +385,6 @@
                     "paper"
                 ],
                 "resources/js/components/MobileTopBar.tsx": [
-                    "paper"
-                ],
-                "resources/js/lib/variants.ts": [
                     "paper"
                 ]
             },

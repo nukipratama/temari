@@ -9,6 +9,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import FieldError from '@/components/ui/FieldError';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/cn';
 import { useTodayIso } from '@/lib/pace';
 import {
@@ -17,7 +18,7 @@ import {
     goalTimeError,
     impossiblePaceWarning,
 } from '@/lib/raceGoal';
-import { inputVariants, outlineChipVariants } from '@/lib/variants';
+import { inputVariants } from '@/lib/variants';
 
 type RaceIntent = 'update' | 'new';
 
@@ -143,25 +144,21 @@ export default function RaceGoalForm({
                         <span id="race_intent_label" className={FIELD_LABEL}>
                             what are you changing?
                         </span>
-                        <div
-                            role="group"
+                        <ToggleGroup
+                            value={intent}
+                            onValueChange={chooseIntent}
                             aria-labelledby="race_intent_label"
-                            className="mt-1.5 flex flex-wrap gap-1.5"
+                            className="mt-1.5"
                         >
                             {RACE_INTENTS.map((option) => (
-                                <button
+                                <ToggleGroupItem
                                     key={option.value}
-                                    type="button"
-                                    aria-pressed={intent === option.value}
-                                    onClick={() => chooseIntent(option.value)}
-                                    className={outlineChipVariants({
-                                        selected: intent === option.value,
-                                    })}
+                                    value={option.value}
                                 >
                                     {option.label}
-                                </button>
+                                </ToggleGroupItem>
                             ))}
-                        </div>
+                        </ToggleGroup>
                         <FieldError message={errors.intent} />
                     </div>
                 )}
@@ -196,22 +193,25 @@ export default function RaceGoalForm({
                 </div>
 
                 <div>
-                    <span className={FIELD_LABEL}>Distance</span>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <span id="race_distance_label" className={FIELD_LABEL}>
+                        Distance
+                    </span>
+                    <ToggleGroup
+                        value={String(distanceKm)}
+                        onValueChange={(km) => setDistanceKm(Number(km))}
+                        disabled={updating}
+                        aria-labelledby="race_distance_label"
+                        className="mt-1.5"
+                    >
                         {DISTANCE_PRESETS.map((preset) => (
-                            <button
+                            <ToggleGroupItem
                                 key={preset.label}
-                                type="button"
-                                disabled={updating}
-                                onClick={() => setDistanceKm(preset.km)}
-                                className={outlineChipVariants({
-                                    selected: distanceKm === preset.km,
-                                })}
+                                value={String(preset.km)}
                             >
                                 {preset.label}
-                            </button>
+                            </ToggleGroupItem>
                         ))}
-                    </div>
+                    </ToggleGroup>
                     <div className="mt-1.5 flex items-center gap-1.5">
                         <span className={FIELD_LABEL}>Custom</span>
                         <input

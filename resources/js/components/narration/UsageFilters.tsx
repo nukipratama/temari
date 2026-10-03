@@ -7,8 +7,7 @@ import type { KindOption, RangeToken } from '@/pages/Narration/types';
 import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
-import { cn } from '@/lib/cn';
-import { toggleButtonVariants } from '@/lib/variants';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { navigate, presetHref, PRESETS } from '@/pages/Narration/helpers';
 
 interface UsageFiltersProps {
@@ -120,21 +119,32 @@ export default function UsageFilters({
                         <span>apply</span>
                     </PillButton>
 
-                    <div className="ml-auto flex flex-wrap gap-2">
+                    <ToggleGroup
+                        value={range}
+                        aria-label="range preset"
+                        className="ml-auto"
+                    >
                         {PRESETS.map((preset) => (
-                            <PresetButton
+                            <ToggleGroupItem
                                 key={preset.token}
-                                label={preset.label}
-                                href={presetHref(
-                                    preset.token,
-                                    kind,
-                                    origin,
-                                    athlete,
-                                )}
-                                active={range === preset.token}
-                            />
+                                value={preset.token}
+                                nativeButton={false}
+                                render={
+                                    <Link
+                                        href={presetHref(
+                                            preset.token,
+                                            kind,
+                                            origin,
+                                            athlete,
+                                        )}
+                                        preserveScroll
+                                    />
+                                }
+                            >
+                                {preset.label}
+                            </ToggleGroupItem>
                         ))}
-                    </div>
+                    </ToggleGroup>
                 </form>
             </Card>
 
@@ -226,23 +236,5 @@ function DateField({
                 className="focus-ring rounded-xl border border-border bg-muted px-3 py-2 text-sm font-medium text-foreground focus:border-leaf"
             />
         </label>
-    );
-}
-
-function PresetButton({
-    label,
-    href,
-    active,
-}: Readonly<{ label: string; href: string; active: boolean }>) {
-    return (
-        <Link
-            href={href}
-            preserveScroll
-            className={cn(
-                toggleButtonVariants({ size: 'sm', selected: active }),
-            )}
-        >
-            {label}
-        </Link>
     );
 }

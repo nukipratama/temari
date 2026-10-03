@@ -53,22 +53,24 @@ describe('ProgressionCard', () => {
 
     it('switches distance when another pill is chosen', () => {
         render(<ProgressionCard byCategory={BY_CATEGORY} />);
-        const tablist = screen.getByRole('tablist', {
+        const group = screen.getByRole('group', {
             name: 'Choose distance',
         });
 
-        fireEvent.click(within(tablist).getByRole('tab', { name: '5K' }));
+        fireEvent.click(within(group).getByRole('button', { name: '5K' }));
 
         expect(
-            within(tablist).getByRole('tab', { name: '5K' }),
-        ).toHaveAttribute('aria-selected', 'true');
+            within(group).getByRole('button', { name: '5K' }),
+        ).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByText(/Journey · 5 km/)).toBeInTheDocument();
     });
 
     it('offers no pills when only one distance has times', () => {
         render(<ProgressionCard byCategory={{ '5km': BY_CATEGORY['5km'] }} />);
 
-        expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('group', { name: 'Choose distance' }),
+        ).not.toBeInTheDocument();
     });
 
     it('reads a regressing series as slower and never as faster', () => {
@@ -149,7 +151,7 @@ describe('ProgressionCard', () => {
         render(<ProgressionCard byCategory={BY_CATEGORY} />);
         expect(screen.getByText(/goal: sub-29:00/)).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('tab', { name: '10K' }));
+        fireEvent.click(screen.getByRole('button', { name: '10K' }));
         expect(screen.queryByText(/goal: sub-/)).not.toBeInTheDocument();
     });
 
@@ -169,7 +171,7 @@ describe('ProgressionCard', () => {
         const progress = BY_CATEGORY['10km'].progress;
 
         const selectedTab = () =>
-            screen.getByRole('tab', { selected: true }).textContent;
+            screen.getByRole('button', { pressed: true }).textContent;
 
         it('opens on the active race distance over a longer one', () => {
             render(
@@ -234,7 +236,7 @@ describe('ProgressionCard', () => {
                 />,
             );
 
-            fireEvent.click(screen.getByRole('tab', { name: 'FM' }));
+            fireEvent.click(screen.getByRole('button', { name: 'FM' }));
 
             expect(selectedTab()).toBe('FM');
         });

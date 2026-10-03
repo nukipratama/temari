@@ -416,8 +416,9 @@ art**; everywhere else the 11px floor holds.
 
 Component style variants live in [resources/js/lib/variants.ts](../resources/js/lib/variants.ts)
 as [class-variance-authority](https://cva.style) definitions: `pillButtonVariants`,
-`chipVariants`, `toggleButtonVariants` (segmented / filter controls), `iconButtonVariants`
-(bare-icon buttons), `rarityVariants`. Consume them with the `cn()` merge helper:
+`chipVariants`, `outlineChipVariants` (an inline action pill that is not a choice),
+`iconButtonVariants` (bare-icon buttons), `rarityVariants`. Consume them with the `cn()` merge
+helper:
 
 ```tsx
 import { pillButtonVariants } from '@/lib/variants';
@@ -450,6 +451,13 @@ override with `className` if a one-off is genuinely required, so it stays visibl
 matching `horizon`'s 18% tint. A chip whose colour *is* its meaning (an effort band, a card
 rarity) keeps that colour through `className` on top of the `Chip` shape. Buttons are `PillButton`
 in one of five tones; `danger` (`ember-deep` under cream) is the destructive confirmation.
+
+**Every "pick one" control is `ToggleGroup`** ([toggle-group.tsx](../resources/js/components/ui/toggle-group.tsx)),
+the Base UI group restyled to Pewter: rounded hairline pills on the mono label tier, the chosen
+one on the `horizon` 18% tint with a `horizon-ink` label, in `sm` (inline filters, 32px) or `md`
+(sheets and settings, 44px). Base UI owns the arrow-key roving focus and `aria-pressed`. An item
+that navigates passes its link as `render` with `nativeButton={false}`, and the group then takes
+no `onValueChange`.
 
 Data maps that are *not* style-variant matrices — [lib/mood.ts](../resources/js/lib/mood.ts) (mood →
 face / label / fill) and [lib/tones.ts](../resources/js/lib/tones.ts) (icon-tile tones) — stay as

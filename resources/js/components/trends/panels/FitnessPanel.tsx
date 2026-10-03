@@ -5,13 +5,12 @@ import { Suspense, useMemo, useState } from 'react';
 import type { FormStatus } from '@/types/inertia';
 
 import Skeleton from '@/components/ui/Skeleton';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
-import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
 import { ID_MONTH_SHORT, formatNaiveMonthDayId } from '@/lib/pace';
-import { outlineChipVariants } from '@/lib/variants';
 
 import { StatDelta } from '../Stat';
 
@@ -354,29 +353,20 @@ export default function FitnessPanel({
                         )}
                     </p>
                 )}
-                <div
-                    className="flex gap-1.5"
-                    role="group"
+                <ToggleGroup
+                    value={range}
+                    onValueChange={(key) => {
+                        setRange(key);
+                        setCursorIndex(null);
+                    }}
                     aria-label="chart range"
                 >
                     {RANGE_KEYS.map((key) => (
-                        <button
-                            key={key}
-                            type="button"
-                            onClick={() => {
-                                setRange(key);
-                                setCursorIndex(null);
-                            }}
-                            className={cn(
-                                outlineChipVariants({
-                                    selected: range === key,
-                                }),
-                            )}
-                        >
+                        <ToggleGroupItem key={key} value={key}>
                             {key}
-                        </button>
+                        </ToggleGroupItem>
                     ))}
-                </div>
+                </ToggleGroup>
             </div>
             <div
                 role="img"

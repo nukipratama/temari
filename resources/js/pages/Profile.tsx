@@ -1,5 +1,6 @@
 import { Deferred, Head, usePage } from '@inertiajs/react';
 import { Footprints, Gauge, Route, Timer, Trophy } from 'lucide-react';
+import { Suspense } from 'react';
 
 import type { HeroStat } from '@/components/profile/ProfileHero';
 import type { ProgressionSeries } from '@/components/profile/ProgressionCard';
@@ -15,7 +16,6 @@ import PaceTargetsCard, {
     type WeekSession,
 } from '@/components/profile/PaceTargetsCard';
 import ProfileHero from '@/components/profile/ProfileHero';
-import ProgressionCard from '@/components/profile/ProgressionCard';
 import RaceCard from '@/components/profile/RaceCard';
 import SeasonCard from '@/components/profile/SeasonCard';
 import Eyebrow from '@/components/ui/Eyebrow';
@@ -26,8 +26,13 @@ import { SkeletonChart, SkeletonRows } from '@/components/ui/Skeleton';
 import UserAvatar from '@/components/UserAvatar';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
+import { lazyIsland } from '@/lib/lazyIsland';
 import { formatPace } from '@/lib/pace';
 import { laneStack, pillButtonVariants } from '@/lib/variants';
+
+const ProgressionCard = lazyIsland(
+    () => import('@/components/profile/ProgressionCard'),
+);
 
 interface IdentityPayload {
     name: string;
@@ -202,9 +207,11 @@ export default function Profile({
                         {() =>
                             progressionByCategory &&
                             Object.keys(progressionByCategory).length > 0 ? (
-                                <ProgressionCard
-                                    byCategory={progressionByCategory}
-                                />
+                                <Suspense fallback={<SkeletonChart />}>
+                                    <ProgressionCard
+                                        byCategory={progressionByCategory}
+                                    />
+                                </Suspense>
                             ) : null
                         }
                     </Deferred>

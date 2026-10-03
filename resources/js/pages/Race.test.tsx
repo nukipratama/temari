@@ -106,7 +106,7 @@ describe('Race', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('expands the goal form from "set a race"', () => {
+    it('expands the goal form from "set a race"', async () => {
         render(<Race race={null} projection={null} />);
 
         const toggle = screen.getByRole('button', { name: 'set a race' });
@@ -115,10 +115,10 @@ describe('Race', () => {
 
         expect(toggle).toHaveAttribute('aria-expanded', 'true');
         expect(toggle).toHaveAttribute('aria-controls', 'race-goal-form');
-        expect(screen.getByText('set your race')).toBeInTheDocument();
+        expect(await screen.findByText('set your race')).toBeInTheDocument();
     });
 
-    it('keeps the goal form collapsed until "edit race" opens it', () => {
+    it('keeps the goal form collapsed until "edit race" opens it', async () => {
         render(<Race race={RACE} projection={PROJECTION} />);
 
         expect(screen.queryByText('edit your race')).not.toBeInTheDocument();
@@ -128,14 +128,16 @@ describe('Race', () => {
         fireEvent.click(toggle);
 
         expect(toggle).toHaveAttribute('aria-expanded', 'true');
-        expect(screen.getByText('edit your race')).toBeInTheDocument();
+        expect(await screen.findByText('edit your race')).toBeInTheDocument();
     });
 
-    it('collapses the form again after a successful save', () => {
+    it('collapses the form again after a successful save', async () => {
         render(<Race race={RACE} projection={PROJECTION} />);
         fireEvent.click(screen.getByRole('button', { name: 'edit race' }));
 
-        fireEvent.click(screen.getByRole('button', { name: 'update race' }));
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'update race' }),
+        );
         act(() => {
             vi.mocked(router.post)
                 .mock.calls.at(-1)?.[2]

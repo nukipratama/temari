@@ -5,7 +5,7 @@ import type { FeedbackReason, FeedbackSubject } from '@/types/generated';
 
 import PillButton from '@/components/ui/PillButton';
 import Sheet, { SheetClose } from '@/components/ui/Sheet';
-import { cn } from '@/lib/cn';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 /** Mirrors the `note` column and the max on StoreFeedbackRequest. */
 const MAX_NOTE_LENGTH = 280;
@@ -101,24 +101,21 @@ export default function FlagSheet({
     return (
         <Sheet open={open} onOpenChange={onOpenChange} title="something off?">
             <form onSubmit={submit} className="flex flex-col gap-4 pt-4">
-                <div className="flex flex-wrap gap-2">
+                <ToggleGroup
+                    value={choice}
+                    onValueChange={setChoice}
+                    size="md"
+                    aria-label="what's off"
+                >
                     {choices.map((option) => (
-                        <button
+                        <ToggleGroupItem
                             key={option.value}
-                            type="button"
-                            aria-pressed={choice === option.value}
-                            onClick={() => setChoice(option.value)}
-                            className={cn(
-                                'focus-ring pad-chip min-h-11 rounded-full border text-sm transition-colors',
-                                choice === option.value
-                                    ? 'border-transparent bg-horizon text-sky'
-                                    : 'border-border-strong text-foreground',
-                            )}
+                            value={option.value}
                         >
                             {option.label}
-                        </button>
+                        </ToggleGroupItem>
                     ))}
-                </div>
+                </ToggleGroup>
                 <div className="flex flex-col gap-2">
                     <label htmlFor={noteId} className="text-xs text-text-2">
                         {freeText ? 'what happened?' : 'anything to add?'}

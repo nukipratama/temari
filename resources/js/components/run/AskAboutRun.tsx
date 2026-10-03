@@ -221,7 +221,7 @@ function SuggestionChips({
                     disabled={disabled}
                     onClick={() => onPick(question)}
                     className={cn(
-                        outlineChipVariants({ selected: false }),
+                        outlineChipVariants(),
                         'text-left disabled:opacity-50',
                     )}
                 >
