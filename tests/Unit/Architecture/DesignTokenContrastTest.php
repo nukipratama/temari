@@ -437,14 +437,16 @@ function paintedPanelText(array $tokens): array
 
 /**
  * Every registered panel/text pair, at the mount that scores worst. `paper`
- * stands for the whole paper set; any other mount names the solid token the
- * panel sits on.
+ * stands for the papers that flip the way the text does, as auditPanels() in
+ * designTokens.ts routes them; any other mount names the solid token the panel
+ * sits on.
  *
+ * @param  array<string, string>  $tokens
  * @return array<string, float>
  */
-function panelPairRatios(): array
+function panelPairRatios(array $tokens): array
 {
-    ['tokens' => $tokens] = designTokens();
+    $reactive = groundKinds()['reactiveTokens'];
     $papers = paperGrounds($tokens);
 
     $ratios = [];
@@ -453,19 +455,26 @@ function panelPairRatios(): array
             continue;
         }
         [$panel, $panelAlpha] = splitAlpha($spec);
-
-        $mounts = [];
-        foreach (array_unique(array_merge(...array_values($entry['over']))) as $mount) {
-            if ($mount === 'paper') {
-                $mounts = [...$mounts, ...array_values($papers)];
-
-                continue;
-            }
-            $mounts[] = $tokens[$mount];
-        }
+        $overs = array_unique(array_merge(...array_values($entry['over'])));
 
         foreach ($entry['text'] as $text) {
             [$ink, $inkAlpha] = splitAlpha($text);
+            $textFlips = in_array($ink, $reactive, true);
+
+            $mounts = [];
+            foreach ($overs as $mount) {
+                if ($mount !== 'paper') {
+                    $mounts[] = $tokens[$mount];
+
+                    continue;
+                }
+                foreach ($papers as $name => $paper) {
+                    if (in_array($name, $reactive, true) === $textFlips) {
+                        $mounts[] = $paper;
+                    }
+                }
+            }
+
             $worst = null;
             foreach ($mounts as $mount) {
                 $ground = compositeOver($tokens[$panel], $panelAlpha, $mount);
@@ -630,27 +639,53 @@ it('keeps every label on an opaque fill above AA', function (): void {
     ));
 })->group('structure');
 
-it('keeps every panel/text pair above AA, or pinned in the ledger', function (): void {
-    $ratios = panelPairRatios();
-    $ledger = groundKinds()['belowAa'];
+/**
+ * The token values each ground renders: the light `@theme static` set, and
+ * that set with the dark block's overrides on top.
+ *
+ * @return array<string, array<string, string>>
+ */
+function groundTokenSets(): array
+{
+    ['tokens' => $light] = designTokens();
 
-    $under = array_filter($ratios, fn (float $ratio): bool => $ratio < 4.5);
+    return ['light' => $light, 'dark' => array_merge($light, darkThemeTokens())];
+}
+
+it('scores the panels against both grounds', function (): void {
+    $sets = groundTokenSets();
+
+    expect(array_keys($sets))->toBe(array_keys(groundKinds()['belowAa']))
+        ->and($sets['dark'])->not->toBe($sets['light']);
+})->group('structure');
+
+it('keeps every panel/text pair above AA on each ground, or pinned in that ground\'s ledger', function (string $ground): void {
+    $ratios = panelPairRatios(groundTokenSets()[$ground]);
+    $ledger = groundKinds()['belowAa'][$ground];
+    $panels = groundKinds()['panel'];
+
+    $under = array_filter(
+        $ratios,
+        fn (float $ratio, string $pair): bool => $ratio < (($panels[explode(' + ', $pair)[0]]['graphic'] ?? false) ? 3.0 : 4.5),
+        ARRAY_FILTER_USE_BOTH,
+    );
 
     expect(array_keys($under))->toEqualCanonicalizing(array_keys($ledger), sprintf(
-        "The set of panel/text pairs under 4.5:1 has moved.\n  under now: %s\n  ledger:    %s\n".
+        "The set of panel/text pairs under AA (4.5:1, or 3:1 for a graphic panel) on the %s ground has moved.\n  under now: %s\n  ledger:    %s\n".
         'A new pair means a real contrast failure; a ledger entry that no longer fails means the fix landed '.
         'and the entry should go.',
-        implode(', ', array_keys($under)),
+        $ground,
+        implode(', ', array_map(fn (string $pair): string => "{$pair} ({$under[$pair]})", array_keys($under))),
         implode(', ', array_keys($ledger)),
     ));
 
     foreach ($ledger as $pair => $pinned) {
         expect($ratios[$pair])->toBe(
             (float) $pinned,
-            "{$pair} measures {$ratios[$pair]}:1, pinned at {$pinned}:1 in grounds.json's belowAa ledger.",
+            "{$pair} measures {$ratios[$pair]}:1 on the {$ground} ground, pinned at {$pinned}:1 in grounds.json's belowAa ledger.",
         );
     }
-})->group('structure');
+})->with(['light', 'dark'])->group('structure');
 
 it('declares every @theme static colour as literal hex, never var() or color-mix()', function (): void {
     // designTokens()'s own regex only ever captures already-literal-hex

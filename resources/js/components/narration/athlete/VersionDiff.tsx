@@ -16,7 +16,7 @@ export default function VersionDiff({
     const tokens = wordDiff(before, after);
 
     return (
-        <div className="mt-2 rounded-xl border border-border bg-muted p-3">
+        <div className="mt-2 rounded-xl border border-border bg-background p-3">
             <p className="text-label-micro font-semibold uppercase text-text-3">
                 previous vs current
             </p>
