@@ -10,7 +10,7 @@ use App\Models\AI\Analysis;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationGate;
 use App\Services\AI\AnalysisType;
 use App\Services\Inertia\AiProps;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -43,17 +43,17 @@ it('keeps the pause signal a closure so a partial reload can skip it', function 
 });
 
 it('never asks the pipeline about a guest', function (): void {
-    $analyses = Mockery::mock(AnalysisService::class);
+    $analyses = Mockery::mock(NarrationGate::class);
     $analyses->shouldNotReceive('generationPaused');
-    app()->instance(AnalysisService::class, $analyses);
+    app()->instance(NarrationGate::class, $analyses);
 
     expect((aiPropsFor(null)['aiPaused'])())->toBeFalse();
 });
 
 it('shares the pause fact for a signed-in user', function (bool $paused): void {
-    $analyses = Mockery::mock(AnalysisService::class);
+    $analyses = Mockery::mock(NarrationGate::class);
     $analyses->shouldReceive('generationPaused')->andReturn($paused);
-    app()->instance(AnalysisService::class, $analyses);
+    app()->instance(NarrationGate::class, $analyses);
 
     expect((aiPropsFor(User::factory()->create())['aiPaused'])())->toBe($paused);
 })->with([
@@ -63,9 +63,9 @@ it('shares the pause fact for a signed-in user', function (bool $paused): void {
 
 function fakeGenerationPaused(bool $paused): void
 {
-    $analyses = Mockery::mock(AnalysisService::class);
+    $analyses = Mockery::mock(NarrationGate::class);
     $analyses->shouldReceive('generationPaused')->andReturn($paused);
-    app()->instance(AnalysisService::class, $analyses);
+    app()->instance(NarrationGate::class, $analyses);
 }
 
 it('keeps the catching-up signal a closure so a partial reload can skip it', function (): void {
@@ -73,9 +73,9 @@ it('keeps the catching-up signal a closure so a partial reload can skip it', fun
 });
 
 it('never asks the pipeline about a guest for the catching-up signal', function (): void {
-    $analyses = Mockery::mock(AnalysisService::class);
+    $analyses = Mockery::mock(NarrationGate::class);
     $analyses->shouldNotReceive('generationPaused');
-    app()->instance(AnalysisService::class, $analyses);
+    app()->instance(NarrationGate::class, $analyses);
 
     expect((aiPropsFor(null)['aiCatchingUp'])())->toBeFalse();
 });
@@ -254,10 +254,10 @@ it('still catches a plain queued row for a long-connected athlete outside the gr
 });
 
 it('promises a retry on resume only for a pause that retries failed blocks when it lifts', function (bool $paused, ?string $reason, bool $retries): void {
-    $analyses = Mockery::mock(AnalysisService::class);
+    $analyses = Mockery::mock(NarrationGate::class);
     $analyses->shouldReceive('generationPaused')->andReturn($paused);
     $analyses->shouldReceive('pauseReason')->andReturn($reason);
-    app()->instance(AnalysisService::class, $analyses);
+    app()->instance(NarrationGate::class, $analyses);
 
     expect((aiPropsFor(User::factory()->create())['aiPauseRetriesFailed'])())->toBe($retries);
 })->with([

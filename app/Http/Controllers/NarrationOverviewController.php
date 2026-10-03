@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ShowNarrationOverviewRequest;
-use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationGate;
 use App\Services\AI\TokenUsageReport;
 use App\Services\Devtools\DevtoolsActionRecorder;
 use Illuminate\Http\RedirectResponse;
@@ -18,7 +18,7 @@ class NarrationOverviewController extends Controller
 {
     public function __construct(
         private readonly TokenUsageReport $report,
-        private readonly AnalysisService $analysisService,
+        private readonly NarrationGate $gate,
         private readonly DevtoolsActionRecorder $recorder,
     ) {
     }
@@ -54,7 +54,7 @@ class NarrationOverviewController extends Controller
             'chart' => $this->report->dailyCostByKind($from, $to, $athlete),
             'athletes' => $athletes,
             'cappedToday' => count(array_filter($athletes, fn (array $row): bool => $row['capped'])),
-            'pauseReason' => $this->analysisService->pauseReason(),
+            'pauseReason' => $this->gate->pauseReason(),
         ]);
     }
 

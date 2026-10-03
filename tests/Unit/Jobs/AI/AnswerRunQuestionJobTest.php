@@ -10,7 +10,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\RunQuestion;
 use App\Models\AI\TokenUsage;
 use App\Models\User;
-use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationGate;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\NarratedAnalysis;
@@ -106,7 +106,7 @@ it('answers the question and marks it done', function (): void {
     $row = questionRow();
 
     new AnswerRunQuestionJob($row->id)->handle(
-        app(AnalysisService::class),
+        app(NarrationGate::class),
         fakeQuestionNarrator('your heart rate climbed 6 bpm while the pace held.'),
     );
 
@@ -124,7 +124,7 @@ it('holds the question id for the length of the narrator call so its usage row c
         return ['answer' => 'answer', 'follow_ups' => []];
     });
 
-    new AnswerRunQuestionJob($row->id)->handle(app(AnalysisService::class), $narrator);
+    new AnswerRunQuestionJob($row->id)->handle(app(NarrationGate::class), $narrator);
 
     expect($seen)->toBe($row->id)
         ->and(app(NarratedAnalysis::class)->currentRunQuestion())->toBeNull();
@@ -134,7 +134,7 @@ it('keeps the follow-ups the answer offered on the row', function (): void {
     $row = questionRow();
 
     new AnswerRunQuestionJob($row->id)->handle(
-        app(AnalysisService::class),
+        app(NarrationGate::class),
         fakeQuestionNarrator(['answer' => 'held steady.', 'follow_ups' => ['what about km 5?', 'was the heat a factor?']]),
     );
 
@@ -150,7 +150,7 @@ it('passes athlete-supplied context to the narrator unchanged', function (): voi
         ->withArgs(fn (mixed $activity, mixed $detail, RunQuestion $received): bool => $received->question === $question)
         ->andReturn(['answer' => 'read from the supplied context', 'follow_ups' => []]);
 
-    new AnswerRunQuestionJob($row->id)->handle(app(AnalysisService::class), $narrator);
+    new AnswerRunQuestionJob($row->id)->handle(app(NarrationGate::class), $narrator);
 
     expect($row->refresh()->answer)->toBe('read from the supplied context');
 });
@@ -165,7 +165,7 @@ it('leaves an already-answered question alone rather than re-billing it', functi
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldNotReceive('generate');
 
-    new AnswerRunQuestionJob($row->id)->handle(app(AnalysisService::class), $narrator);
+    new AnswerRunQuestionJob($row->id)->handle(app(NarrationGate::class), $narrator);
 
     expect($row->refresh()->answer)->toBe('already said');
 });
@@ -177,7 +177,7 @@ it('refuses to bill while generation is paused, and says so on the row', functio
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldNotReceive('generate');
 
-    new AnswerRunQuestionJob($row->id)->handle(app(AnalysisService::class), $narrator);
+    new AnswerRunQuestionJob($row->id)->handle(app(NarrationGate::class), $narrator);
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Failed)
         ->and($row->error)->toBe('AI generation is paused.');
@@ -198,7 +198,7 @@ it('serves the deterministic answer when the daily cost ceiling is the only stop
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldNotReceive('generate');
 
-    new AnswerRunQuestionJob($row->id)->handle(app(AnalysisService::class), $narrator);
+    new AnswerRunQuestionJob($row->id)->handle(app(NarrationGate::class), $narrator);
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Done)
         ->and($row->error)->toBeNull()
@@ -217,7 +217,7 @@ it('fails the question when the run has no detail to read', function (): void {
     $activity = Activity::factory()->for($user)->create();
     $row = RunQuestion::factory()->create(['user_id' => $user->id, 'activity_id' => $activity->id]);
 
-    new AnswerRunQuestionJob($row->id)->handle(app(AnalysisService::class), fakeQuestionNarrator('unused'));
+    new AnswerRunQuestionJob($row->id)->handle(app(NarrationGate::class), fakeQuestionNarrator('unused'));
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Failed)
         ->and($row->error)->toContain('not analyzed yet');
@@ -227,7 +227,7 @@ it('fails the question on a terminal upstream error without rethrowing', functio
     $row = questionRow();
 
     new AnswerRunQuestionJob($row->id)->handle(
-        app(AnalysisService::class),
+        app(NarrationGate::class),
         fakeQuestionNarrator(new UnavailableException('Azure OpenAI returned non-JSON')),
     );
 
@@ -239,7 +239,7 @@ it('rethrows an unexpected failure after settling the row, so the queue records 
     $row = questionRow();
 
     expect(fn () => new AnswerRunQuestionJob($row->id)->handle(
-        app(AnalysisService::class),
+        app(NarrationGate::class),
         fakeQuestionNarrator(new RuntimeException('kaboom')),
     ))->toThrow(RuntimeException::class, 'kaboom');
 
@@ -255,7 +255,7 @@ it('re-queues and releases a transient upstream failure while a try remains', fu
     $job->shouldReceive('release')->once()->with(45);
 
     $job->handle(
-        app(AnalysisService::class),
+        app(NarrationGate::class),
         fakeQuestionNarrator(new TransientUpstreamException('429', retryAfterSeconds: 45)),
     );
 
@@ -270,7 +270,7 @@ it('fails a transient upstream failure once the tries are spent', function (): v
     $job->shouldReceive('attempts')->andReturn(3);
     $job->shouldNotReceive('release');
 
-    $job->handle(app(AnalysisService::class), fakeQuestionNarrator(new TransientUpstreamException('429')));
+    $job->handle(app(NarrationGate::class), fakeQuestionNarrator(new TransientUpstreamException('429')));
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Failed);
 });
@@ -296,7 +296,7 @@ it('does nothing when the question row is gone', function (): void {
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldNotReceive('generate');
 
-    new AnswerRunQuestionJob(9999)->handle(app(AnalysisService::class), $narrator);
+    new AnswerRunQuestionJob(9999)->handle(app(NarrationGate::class), $narrator);
     new AnswerRunQuestionJob(9999)->failed(new RuntimeException('gone'));
 
     expect(RunQuestion::query()->count())->toBe(0);
@@ -308,12 +308,12 @@ it('lets only one of two competing deliveries reach the narrator', function (): 
     $released = new ArrayObject();
     $narrator = countingQuestionNarrator($calls, 'first', function () use ($row, $calls, $released): void {
         questionDelivery($row->id, 1, $released)->handle(
-            app(AnalysisService::class),
+            app(NarrationGate::class),
             countingQuestionNarrator($calls, 'second'),
         );
     });
 
-    questionDelivery($row->id, 1, $released)->handle(app(AnalysisService::class), $narrator);
+    questionDelivery($row->id, 1, $released)->handle(app(NarrationGate::class), $narrator);
 
     expect($calls->getArrayCopy())->toBe(['first'])
         ->and($released)->toHaveCount(0)
@@ -351,8 +351,8 @@ it('answers a duplicated delivery of the same job once', function (): void {
     $job = new AnswerRunQuestionJob($row->id);
     $duplicate = unserialize(serialize($job));
 
-    $job->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'answered'));
-    $duplicate->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'again'));
+    $job->handle(app(NarrationGate::class), countingQuestionNarrator($calls, 'answered'));
+    $duplicate->handle(app(NarrationGate::class), countingQuestionNarrator($calls, 'again'));
 
     expect($calls->getArrayCopy())->toBe(['answered'])
         ->and($row->refresh()->answer)->toBe('answered');
@@ -364,12 +364,12 @@ it('turns a stale finisher into a no-op once a retry has taken the claim over', 
     $released = new ArrayObject();
     $stale = countingQuestionNarrator($calls, 'stale', function () use ($row, $calls, $released): void {
         questionDelivery($row->id, 2, $released)->handle(
-            app(AnalysisService::class),
+            app(NarrationGate::class),
             countingQuestionNarrator($calls, 'retry'),
         );
     });
 
-    questionDelivery($row->id, 1, $released)->handle(app(AnalysisService::class), $stale);
+    questionDelivery($row->id, 1, $released)->handle(app(NarrationGate::class), $stale);
 
     expect($calls->getArrayCopy())->toBe(['stale', 'retry'])
         ->and($released)->toHaveCount(0)
@@ -383,13 +383,13 @@ it('keeps a stale failure or requeue from touching a row a retry now owns', func
     $released = new ArrayObject();
     $stale = countingQuestionNarrator($calls, 'stale', function () use ($row, $calls, $released): void {
         questionDelivery($row->id, 2, $released)->handle(
-            app(AnalysisService::class),
+            app(NarrationGate::class),
             countingQuestionNarrator($calls, 'retry'),
         );
     }, $failure);
 
     try {
-        questionDelivery($row->id, 1, $released)->handle(app(AnalysisService::class), $stale);
+        questionDelivery($row->id, 1, $released)->handle(app(NarrationGate::class), $stale);
     } catch (RuntimeException) {
     }
 
@@ -414,7 +414,7 @@ it('recovers a processing row whose lease has run out', function (): void {
     ]]);
     $calls = new ArrayObject();
 
-    questionDelivery($row->id, 1)->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'recovered'));
+    questionDelivery($row->id, 1)->handle(app(NarrationGate::class), countingQuestionNarrator($calls, 'recovered'));
 
     expect($calls->getArrayCopy())->toBe(['recovered'])
         ->and($row->refresh()->status)->toBe(AnalysisStatus::Done)
@@ -431,7 +431,7 @@ it('leaves a live claim to its holder on a first delivery', function (): void {
     ]]);
     $calls = new ArrayObject();
 
-    questionDelivery($row->id, 1)->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'stolen'));
+    questionDelivery($row->id, 1)->handle(app(NarrationGate::class), countingQuestionNarrator($calls, 'stolen'));
 
     expect($calls)->toHaveCount(0)
         ->and($row->refresh()->status)->toBe(AnalysisStatus::Processing)
@@ -448,7 +448,7 @@ it('lets a retry take over its predecessor before the lease runs out', function 
     ]]);
     $calls = new ArrayObject();
 
-    questionDelivery($row->id, 2)->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'retried'));
+    questionDelivery($row->id, 2)->handle(app(NarrationGate::class), countingQuestionNarrator($calls, 'retried'));
 
     expect($calls->getArrayCopy())->toBe(['retried'])
         ->and($row->refresh()->status)->toBe(AnalysisStatus::Done);
@@ -458,7 +458,7 @@ it('reclaims a processing row left without a lease by an earlier deploy', functi
     $row = questionRow(['question' => ['status' => AnalysisStatus::Processing]]);
     $calls = new ArrayObject();
 
-    questionDelivery($row->id, 1)->handle(app(AnalysisService::class), countingQuestionNarrator($calls, 'answered'));
+    questionDelivery($row->id, 1)->handle(app(NarrationGate::class), countingQuestionNarrator($calls, 'answered'));
 
     expect($calls->getArrayCopy())->toBe(['answered'])
         ->and($row->refresh()->status)->toBe(AnalysisStatus::Done);

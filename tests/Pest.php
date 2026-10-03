@@ -7,11 +7,13 @@ use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Responses\Meta\MetaInformation;
 use App\Enums\SessionType;
 use App\Models\AI\Analysis;
+use App\Models\AI\TokenUsage;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisOrigin;
 use Illuminate\Support\Carbon;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\AgentLoop;
@@ -63,7 +65,7 @@ pest()->beforeEach(function (): void {
     // stale count behind for the next test's dead-letter assertions.
     Cache::forget('ai.dead_letter.window_count');
     // Same for the global aiPaused shared-prop cache — a test that mocks
-    // AnalysisService::generationPaused() must not read a stale answer cached
+    // NarrationGate::generationPaused() must not read a stale answer cached
     // by a previous test's mock.
     Cache::forget('ai-paused');
     // Pest CI skips `npm run build`; neutralize @vite() so Inertia roots render.
@@ -468,4 +470,34 @@ function cardFacts(
         splits: $splits,
         paceProfile: $paceProfile,
     );
+}
+
+/** Push ONE athlete's estimated spend to $2.50, over a $1.00 per-athlete ceiling, with app-wide headroom. */
+function breachTheCeilingFor(int $userId): void
+{
+    config(['azure_openai.daily_cost_ceiling_per_user' => 1.0]);
+    config(['azure_openai.daily_cost_ceiling_total' => 100.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
+
+    spend($userId, 1_000_000);
+}
+
+/** Push the app-wide spend to $6.00, over a $5.00 total ceiling, leaving the per-athlete slice untouched. */
+function breachTheTotalCeilingWith(int $userId): void
+{
+    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
+    config(['azure_openai.daily_cost_ceiling_total' => 5.0]);
+    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 6.00, 'output_per_1m' => 10.00]]]);
+
+    spend($userId, 1_000_000);
+}
+
+function spend(int $userId, int $promptTokens, ?AnalysisOrigin $origin = null): void
+{
+    TokenUsage::query()->create([
+        'user_id' => $userId,
+        ...($origin !== null ? ['origin' => $origin] : []),
+        'kind' => 'briefing', 'prompt_tokens' => $promptTokens, 'completion_tokens' => 0,
+        'total_tokens' => $promptTokens, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
 }

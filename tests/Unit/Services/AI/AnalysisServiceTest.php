@@ -28,6 +28,7 @@ use App\Services\AI\CeilingOverride;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\LlmCostCalculator;
 use App\Services\AI\MaintainerAlerter;
+use App\Services\AI\NarrationGate;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\AI\ServedBy;
@@ -46,36 +47,6 @@ beforeEach(function (): void {
     Bus::fake();
     $this->service = app(AnalysisService::class);
 });
-
-/** Push ONE athlete's estimated spend to $2.50, over a $1.00 per-athlete ceiling, with app-wide headroom. */
-function breachTheCeilingFor(int $userId): void
-{
-    config(['azure_openai.daily_cost_ceiling_per_user' => 1.0]);
-    config(['azure_openai.daily_cost_ceiling_total' => 100.0]);
-    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]]]);
-
-    spend($userId, 1_000_000);
-}
-
-/** Push the app-wide spend to $6.00, over a $5.00 total ceiling, leaving the per-athlete slice untouched. */
-function breachTheTotalCeilingWith(int $userId): void
-{
-    config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
-    config(['azure_openai.daily_cost_ceiling_total' => 5.0]);
-    config(['azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 6.00, 'output_per_1m' => 10.00]]]);
-
-    spend($userId, 1_000_000);
-}
-
-function spend(int $userId, int $promptTokens, ?AnalysisOrigin $origin = null): void
-{
-    TokenUsage::query()->create([
-        'user_id' => $userId,
-        ...($origin !== null ? ['origin' => $origin] : []),
-        'kind' => 'briefing', 'prompt_tokens' => $promptTokens, 'completion_tokens' => 0,
-        'total_tokens' => $promptTokens, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
-    ]);
-}
 
 it('creates a pending row and queues a row job on first request', function (): void {
     $snap = WeeklySnapshot::factory()->create();
@@ -690,15 +661,6 @@ it('degrades only the athlete who spent, and leaves everyone else billing normal
     Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
 });
 
-it('never reports a spent athlete as a global pause, since nothing shared has stopped', function (): void {
-    $snap = WeeklySnapshot::factory()->create();
-    breachTheCeilingFor($snap->user_id);
-
-    expect($this->service->generationPaused($snap->user_id))->toBeTrue()
-        ->and($this->service->generationPaused())->toBeFalse()
-        ->and($this->service->pauseReason())->toBeNull();
-});
-
 it('leaves the row Pending when a breached budget sits behind a tripped config breaker', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     breachTheCeilingFor($snap->user_id);
@@ -852,6 +814,7 @@ it('pushes one maintainer alert naming the spend, the ceiling and the athletes d
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $this->app->instance(MaintainerAlerter::class, $alerter);
     $this->app->forgetInstance(AnalysisService::class);
+    $this->app->forgetInstance(NarrationGate::class);
     $service = app(AnalysisService::class);
 
     $snap = WeeklySnapshot::factory()->create();
@@ -874,6 +837,7 @@ it('pushes a maintainer alert when an athlete passes their own slice', function 
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $this->app->instance(MaintainerAlerter::class, $alerter);
     $this->app->forgetInstance(AnalysisService::class);
+    $this->app->forgetInstance(NarrationGate::class);
     $service = app(AnalysisService::class);
 
     $snap = WeeklySnapshot::factory()->create();
@@ -895,6 +859,7 @@ it('offers today\'s spend to the early-warning alert while under the app-wide ce
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $this->app->instance(MaintainerAlerter::class, $alerter);
     $this->app->forgetInstance(AnalysisService::class);
+    $this->app->forgetInstance(NarrationGate::class);
     $service = app(AnalysisService::class);
 
     $snap = WeeklySnapshot::factory()->create();
@@ -910,14 +875,6 @@ it('offers today\'s spend to the early-warning alert while under the app-wide ce
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
     );
-});
-
-it('reports the app-wide ceiling as a genuine global pause', function (): void {
-    $snap = WeeklySnapshot::factory()->create();
-    breachTheTotalCeilingWith($snap->user_id);
-
-    expect($this->service->generationPaused())->toBeTrue()
-        ->and($this->service->pauseReason())->toBe('cost_ceiling');
 });
 
 it('does not degrade a staged row under withoutDispatching', function (): void {
@@ -1680,77 +1637,6 @@ it('markDone does not start the re-trigger cooldown under withoutDispatching (de
     expect($fresh->cooldownRemaining())->toBeNull()
         ->and($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('Seed content.');
-});
-
-it('pauses generation and reports the config reason when the config breaker is tripped', function (): void {
-    // Configured (not blank) so the reason is "config", not "unconfigured".
-    config(['azure_openai.uri' => 'https://x.openai.azure.com/x', 'azure_openai.api_key' => 'wrong-key']);
-
-    $breaker = app(AzureConfigCircuitBreaker::class);
-    for ($i = 0; $i < 3; $i++) {
-        $breaker->recordFailure();
-    }
-
-    expect($this->service->generationPaused())->toBeTrue()
-        ->and($this->service->pauseReason())->toBe('config');
-});
-
-it('resumes generation for free once the config breaker resets (env fixed)', function (): void {
-    config(['azure_openai.uri' => 'https://x.openai.azure.com/x', 'azure_openai.api_key' => 'fixed-key']);
-
-    $breaker = app(AzureConfigCircuitBreaker::class);
-    for ($i = 0; $i < 3; $i++) {
-        $breaker->recordFailure();
-    }
-    expect($this->service->generationPaused())->toBeTrue();
-
-    // A successful probe (or an operator reset) closes the breaker; self-heal's
-    // generationPaused() gate then clears and dispatch resumes.
-    $breaker->reset();
-
-    expect($this->service->generationPaused())->toBeFalse()
-        ->and($this->service->pauseReason())->toBeNull();
-});
-
-it('names a reason for every stop that pauses generation', function (Closure $stop, string $reason): void {
-    $stop();
-
-    expect($this->service->generationPaused())->toBeTrue()
-        ->and($this->service->pauseReason())->toBe($reason);
-})->with([
-    'kill switch off' => [
-        fn () => app(AppConfig::class)->set(AppConfigKey::AiEnabled, false),
-        'kill_switch',
-    ],
-    'auto-dispatch env switch off' => [
-        fn () => config(['ai.auto_dispatch' => false]),
-        'auto_dispatch',
-    ],
-    'azure unconfigured' => [
-        fn () => config(['azure_openai.uri' => '', 'azure_openai.api_key' => '']),
-        'unconfigured',
-    ],
-]);
-
-it('reports no reason while generation is running', function (): void {
-    expect($this->service->generationPaused())->toBeFalse()
-        ->and($this->service->pauseReason())->toBeNull();
-});
-
-it('reads the breaker without consuming its half-open probe when only reporting', function (): void {
-    $breaker = app(AzureConfigCircuitBreaker::class);
-    for ($i = 0; $i < 3; $i++) {
-        $breaker->recordFailure();
-    }
-    Carbon::setTestNow(Carbon::now()->addHour());
-
-    expect($this->service->pauseReason())->toBeNull()
-        ->and($breaker->state())->toBe(AzureConfigCircuitBreaker::STATE_OPEN);
-
-    expect($this->service->generationPaused())->toBeFalse()
-        ->and($breaker->state())->toBe(AzureConfigCircuitBreaker::STATE_HALF_OPEN);
-
-    Carbon::setTestNow();
 });
 
 it('markDone reaches the inbox alone when Telegram is unconfigured', function (): void {

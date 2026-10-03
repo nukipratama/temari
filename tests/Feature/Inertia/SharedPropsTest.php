@@ -144,7 +144,7 @@ it('runs no queries at all for a guest request', function (): void {
 });
 
 // #986: HandleInertiaRequests resolves every shared prop on a full page load,
-// which reaches AnalysisService::ceilingExceeded() and, past the app-wide
+// which reaches NarrationGate::ceilingExceeded() and, past the app-wide
 // ceiling, a maintainer alert. That alert must never make an outbound call
 // itself — it only queues one (see MaintainerAlerter::broadcast()).
 it('makes no outbound call while resolving props, even when it trips a maintainer alert', function (): void {

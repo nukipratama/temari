@@ -17,6 +17,7 @@ use App\Listeners\VerifyDependencies;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\NarratedAnalysis;
+use App\Services\AI\NarrationGate;
 use App\Services\AI\NarrationOrigin;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\Vibe;
@@ -63,6 +64,7 @@ class AppServiceProvider extends ServiceProvider
         // Scoped: one shared instance per request/command (so `withoutDispatching()`
         // reaches collaborators), flushed by Octane between requests.
         $this->app->scoped(AnalysisService::class);
+        $this->app->scoped(NarrationGate::class);
         $this->app->scoped(NarrationOrigin::class);
         $this->app->scoped(NarratedAnalysis::class);
 

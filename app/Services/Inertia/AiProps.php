@@ -8,7 +8,7 @@ use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
-use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationGate;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\HistoryNarrationGate;
 use App\Support\SharedPropCacheKey;
@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Builder;
 final readonly class AiProps
 {
     public function __construct(
-        private AnalysisService $analyses,
+        private NarrationGate $gate,
         private HistoryNarrationGate $history,
     ) {
     }
@@ -36,7 +36,7 @@ final readonly class AiProps
     {
         return [
             'aiPaused' => fn (): bool => $this->aiPausedFor($user),
-            'aiPauseRetriesFailed' => fn (): bool => $this->aiPausedFor($user) && $this->analyses->pauseReason() !== 'cost_ceiling',
+            'aiPauseRetriesFailed' => fn (): bool => $this->aiPausedFor($user) && $this->gate->pauseReason() !== 'cost_ceiling',
             'aiCatchingUp' => fn (): bool => $this->aiCatchingUpFor($user),
         ];
     }
@@ -63,7 +63,7 @@ final readonly class AiProps
 
         return SharedPropCacheKey::AiPaused->remember(
             null,
-            fn (): bool => $this->analyses->generationPaused(),
+            fn (): bool => $this->gate->generationPaused(),
         );
     }
 
