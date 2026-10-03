@@ -54,7 +54,7 @@ describe('StravaZoneReconnectBanner', () => {
         setMockPage({ ...base, stravaZoneScopeMissing: true });
         const first = render(<StravaZoneReconnectBanner />);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }));
         expect(first.container.firstChild).toBeNull();
         expect(
             window.sessionStorage.getItem('strava-zone-reconnect-dismissed:42'),
@@ -84,7 +84,7 @@ describe('StravaZoneReconnectBanner', () => {
     it('comes back on the next visit', () => {
         setMockPage({ ...base, stravaZoneScopeMissing: true });
         const first = render(<StravaZoneReconnectBanner />);
-        fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }));
         first.unmount();
 
         window.sessionStorage.clear();

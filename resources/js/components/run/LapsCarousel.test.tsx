@@ -73,7 +73,7 @@ describe('LapsCarousel', () => {
     it('draws one card per lap with its distance and elapsed time', () => {
         render(<LapsCarousel laps={laps} />);
         expect(screen.getByText('Laps')).toBeInTheDocument();
-        expect(screen.getByText('Lap 1')).toBeInTheDocument();
+        expect(screen.getByText('lap 1')).toBeInTheDocument();
         expect(screen.getByText('4:39')).toBeInTheDocument();
         expect(screen.getByText('3.20 km · 14:52')).toBeInTheDocument();
         expect(screen.getByText('1.02 km · 4:21')).toBeInTheDocument();

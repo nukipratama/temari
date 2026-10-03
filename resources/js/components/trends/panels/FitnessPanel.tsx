@@ -5,14 +5,13 @@ import { Suspense, useMemo, useState } from 'react';
 import type { FormStatus } from '@/types/inertia';
 
 import Skeleton from '@/components/ui/Skeleton';
+import { StatDelta } from '@/components/ui/StatTile';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
 import { lazyIsland } from '@/lib/lazyIsland';
 import { ID_MONTH_SHORT, formatNaiveMonthDayId } from '@/lib/pace';
-
-import { StatDelta } from '../Stat';
 
 // Chart.js core + its scale/element registration live inside this lazy
 // module, mirroring CtlTrendChart/ProgressionChart so nothing chart-related

@@ -17,7 +17,7 @@ import { cva } from 'class-variance-authority';
  * GHOST_ON_SKY in components/ui/PillButton.tsx.
  */
 export const pillButtonVariants = cva(
-    'pressable inline-flex items-center gap-2 rounded-full font-sans font-medium transition focus-ring disabled:pointer-events-none disabled:opacity-60',
+    'pressable inline-flex items-center gap-2 rounded-full transition focus-ring disabled:pointer-events-none disabled:opacity-60',
     {
         variants: {
             tone: {
@@ -27,10 +27,12 @@ export const pillButtonVariants = cva(
                 outline:
                     'bg-card border-[1.5px] border-border text-text-2 hover:border-foreground/40 hover:text-foreground',
                 danger: 'bg-ember-deep text-cream hover:opacity-90',
+                muted: 'bg-muted text-foreground hover:bg-accent',
             },
             size: {
-                sm: 'px-3.5 py-2 text-xs',
-                md: 'px-[22px] py-3 text-sm',
+                xs: 'h-8 gap-1.5 px-3 text-label-micro',
+                sm: 'px-3.5 py-2 font-sans font-medium text-xs',
+                md: 'px-[22px] py-3 font-sans font-medium text-sm',
             },
             onSky: {
                 true: '',

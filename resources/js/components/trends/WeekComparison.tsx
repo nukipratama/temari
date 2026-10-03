@@ -7,6 +7,7 @@ import type {
 import MetricExplainer from '@/components/MetricExplainer';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
+import StatTile, { Stat, StatDelta } from '@/components/ui/StatTile';
 import {
     formatSignedForm,
     formStatusMeaning,
@@ -14,10 +15,6 @@ import {
     formStatusWord,
 } from '@/lib/formStatus';
 import { ID_MONTH_SHORT, formatShortDateId } from '@/lib/pace';
-
-import { Stat, StatDelta } from './Stat';
-
-const TILE = 'rounded-sm bg-secondary px-3 py-2.5';
 
 const DAY_MS = 86_400_000;
 
@@ -227,9 +224,7 @@ export default function WeekComparison({
                         last 7 days · {dateRangeLabel(date_ranges.load)}
                     </p>
                     <div className="grid grid-cols-3 gap-2">
-                        <Stat
-                            className={TILE}
-                            size="sm"
+                        <StatTile
                             label={<TileLabel plain="load" metricKey="trimp" />}
                             value={
                                 load.weekly_trimp !== null
@@ -241,9 +236,7 @@ export default function WeekComparison({
                                 load.weekly_trimp_range,
                             )}
                         />
-                        <Stat
-                            className={TILE}
-                            size="sm"
+                        <StatTile
                             label={
                                 <TileLabel
                                     plain="sameness"
@@ -260,9 +253,7 @@ export default function WeekComparison({
                                 load.monotony_range,
                             )}
                         />
-                        <Stat
-                            className={TILE}
-                            size="sm"
+                        <StatTile
                             label={
                                 <TileLabel
                                     plain="total cost"

@@ -3,7 +3,7 @@ import { RefreshCwOff } from 'lucide-react';
 
 import type { SharedProps } from '@/types/inertia';
 
-import { Icon } from '@/components/ui/Icon';
+import Banner from '@/components/ui/Banner';
 
 /**
  * Calm, app-wide notice shown when the Strava kill-switch is off
@@ -20,20 +20,9 @@ export default function StravaPausedBanner() {
     }
 
     return (
-        <div className="px-4 pt-4 min-[900px]:px-6">
-            <div className="mx-auto flex min-[900px]:max-w-column min-[1280px]:max-w-column-wide items-start gap-3 rounded-lg border border-border bg-muted px-4 py-3">
-                <Icon
-                    icon={RefreshCwOff}
-                    width={20}
-                    height={20}
-                    className="mt-0.5 shrink-0 text-text-3"
-                    aria-hidden
-                />
-                <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
-                    the pull from Strava is paused for a bit. your runs are safe
-                    on Strava, they&apos;ll pull back in automatically.
-                </p>
-            </div>
-        </div>
+        <Banner icon={RefreshCwOff}>
+            the pull from Strava is paused for a bit. your runs are safe on
+            Strava, they&apos;ll pull back in automatically.
+        </Banner>
     );
 }

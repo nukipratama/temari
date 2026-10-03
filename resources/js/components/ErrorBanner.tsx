@@ -1,10 +1,10 @@
 import { usePage } from '@inertiajs/react';
-import { CircleAlert, X } from 'lucide-react';
+import { CircleAlert } from 'lucide-react';
 import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
-import { Icon } from '@/components/ui/Icon';
+import Banner from '@/components/ui/Banner';
 
 /**
  * Surfaces Inertia's shared error bag (Strava-connect denial, demo misconfig,
@@ -25,30 +25,12 @@ export default function ErrorBanner() {
     }
 
     return (
-        <div className="px-4 pt-4 min-[900px]:px-6">
-            <div
-                role="alert"
-                className="mx-auto flex min-[900px]:max-w-column min-[1280px]:max-w-column-wide items-start gap-3 rounded-lg border border-ember/30 bg-ember/[0.08] px-4 py-3"
-            >
-                <Icon
-                    icon={CircleAlert}
-                    width={20}
-                    height={20}
-                    className="mt-0.5 shrink-0 text-ember-ink"
-                    aria-hidden
-                />
-                <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
-                    {message}
-                </p>
-                <button
-                    type="button"
-                    onClick={() => setDismissedErrors(errors)}
-                    aria-label="Close"
-                    className="focus-ring -m-1 rounded-xs p-1 text-text-3 transition hover:text-foreground"
-                >
-                    <Icon icon={X} width={16} height={16} />
-                </button>
-            </div>
-        </div>
+        <Banner
+            tone="error"
+            icon={CircleAlert}
+            onDismiss={() => setDismissedErrors(errors)}
+        >
+            {message}
+        </Banner>
     );
 }

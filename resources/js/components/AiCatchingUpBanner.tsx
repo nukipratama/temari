@@ -3,7 +3,7 @@ import { LoaderCircle } from 'lucide-react';
 
 import type { SharedProps } from '@/types/inertia';
 
-import { Icon } from '@/components/ui/Icon';
+import Banner from '@/components/ui/Banner';
 
 /**
  * Calm, app-wide reassurance shown while the auth user has at least one
@@ -23,20 +23,9 @@ export default function AiCatchingUpBanner() {
     }
 
     return (
-        <div className="px-4 pt-4 min-[900px]:px-6">
-            <div className="mx-auto flex min-[900px]:max-w-column min-[1280px]:max-w-column-wide items-start gap-3 rounded-lg border border-border bg-muted px-4 py-3">
-                <Icon
-                    icon={LoaderCircle}
-                    width={20}
-                    height={20}
-                    className="mt-0.5 shrink-0 text-text-3"
-                    aria-hidden
-                />
-                <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
-                    temari&apos;s still reading through your runs. check back in
-                    a bit, your notes will catch up on their own.
-                </p>
-            </div>
-        </div>
+        <Banner icon={LoaderCircle}>
+            temari&apos;s still reading through your runs. check back in a bit,
+            your notes will catch up on their own.
+        </Banner>
     );
 }

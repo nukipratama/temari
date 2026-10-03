@@ -1,9 +1,10 @@
 import { usePage } from '@inertiajs/react';
-import { HeartPulse, X } from 'lucide-react';
+import { HeartPulse } from 'lucide-react';
 import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
+import Banner from '@/components/ui/Banner';
 import { Icon, StravaIcon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { pillButtonVariants } from '@/lib/variants';
@@ -49,20 +50,9 @@ export default function StravaZoneReconnectBanner() {
     }
 
     return (
-        <div className="px-4 pt-4 min-[900px]:px-6">
-            <div className="mx-auto flex min-[900px]:max-w-column min-[1280px]:max-w-column-wide items-start gap-3 rounded-lg border border-border bg-muted px-4 py-3">
-                <Icon
-                    icon={HeartPulse}
-                    width={20}
-                    height={20}
-                    className="mt-0.5 shrink-0 text-text-3"
-                    aria-hidden
-                />
-                <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
-                    Strava only shares your HR zones with the profile scope,
-                    which this connection is missing, so anything zone-based
-                    falls back to estimates until you reconnect.
-                </p>
+        <Banner
+            icon={HeartPulse}
+            action={
                 <a
                     href="/auth/strava/redirect?from=/profile"
                     className={cn(
@@ -78,18 +68,15 @@ export default function StravaZoneReconnectBanner() {
                     />
                     reconnect
                 </a>
-                <button
-                    type="button"
-                    onClick={() => {
-                        rememberDismissed(key);
-                        setDismissed(true);
-                    }}
-                    aria-label="Dismiss"
-                    className="focus-ring -m-1 shrink-0 rounded-xs p-1 text-text-3 transition hover:text-foreground"
-                >
-                    <Icon icon={X} width={16} height={16} />
-                </button>
-            </div>
-        </div>
+            }
+            onDismiss={() => {
+                rememberDismissed(key);
+                setDismissed(true);
+            }}
+        >
+            Strava only shares your HR zones with the profile scope, which this
+            connection is missing, so anything zone-based falls back to
+            estimates until you reconnect.
+        </Banner>
     );
 }

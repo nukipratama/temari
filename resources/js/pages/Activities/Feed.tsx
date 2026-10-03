@@ -28,7 +28,7 @@ import { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { revealDelay } from '@/lib/styles';
-import { laneStack } from '@/lib/variants';
+import { laneStack, pillButtonVariants } from '@/lib/variants';
 
 import {
     groupByWeek,
@@ -170,9 +170,9 @@ function LoadOlderWeeks({ weeksShown }: Readonly<{ weeksShown: number }>) {
                     'weeksShown',
                     'hasOlderWeeks',
                 ]}
-                className="pressable focus-ring inline-flex items-center gap-1.25 rounded-full border border-border-strong bg-card px-4.5 py-2.25 text-label-micro leading-[1.2] font-extrabold tracking-[.05em] text-foreground shadow-e1"
+                className={pillButtonVariants({ tone: 'muted', size: 'xs' })}
             >
-                Load older weeks
+                load older weeks
                 <Icon icon={ChevronDown} width={12} height={12} aria-hidden />
             </Link>
         </div>

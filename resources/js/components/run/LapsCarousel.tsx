@@ -4,6 +4,7 @@ import type { StreamSummaryLap } from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import StatTile from '@/components/ui/StatTile';
 import { SCROLL_FADE_MASK, useScrollFade } from '@/hooks/useScrollFade';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS, formatKm } from '@/lib/pace';
@@ -37,36 +38,20 @@ export default function LapsCarousel({
                     const isFastest =
                         fastest != null && paceSecOf(lap) === fastest;
                     return (
-                        <li
+                        <StatTile
                             key={`lap-${lap.lap}`}
+                            as="li"
+                            icon={isFastest ? Zap : undefined}
+                            label={`lap ${lap.lap}`}
+                            value={lap.pace}
+                            sub={`${formatKm(lap.distance_m, 2)} km · ${formatDurationHMS(lap.elapsed_sec)}`}
                             className={cn(
-                                'flex w-32 flex-none flex-col gap-2 rounded-sm bg-secondary p-3.5',
+                                'w-32 flex-none',
                                 isFastest &&
                                     'ring-[1.5px] ring-inset ring-icon-accent',
                             )}
                         >
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-label-micro text-text-2">
-                                    Lap {lap.lap}
-                                </span>
-                                {isFastest && (
-                                    <Icon
-                                        icon={Zap}
-                                        width={12}
-                                        height={12}
-                                        aria-hidden
-                                        className="flex-none fill-current text-icon-accent"
-                                    />
-                                )}
-                            </div>
-                            <b className="font-mono text-xl font-bold tabular-nums leading-tight text-foreground">
-                                {lap.pace}
-                            </b>
-                            <span className="font-sans text-xs text-text-2">
-                                {formatKm(lap.distance_m, 2)} km ·{' '}
-                                {formatDurationHMS(lap.elapsed_sec)}
-                            </span>
-                            <div className="mt-1 flex items-center gap-2.5 font-mono text-xs tabular-nums text-text-2">
+                            <div className="mt-2 flex items-center gap-2.5 font-mono text-xs tabular-nums text-text-2">
                                 <span>♡ {lap.avg_hr ?? '—'}</span>
                                 <span className="flex items-center gap-1">
                                     <Icon
@@ -78,7 +63,7 @@ export default function LapsCarousel({
                                     {lap.avg_cadence_spm ?? '—'}
                                 </span>
                             </div>
-                        </li>
+                        </StatTile>
                     );
                 })}
             </ul>

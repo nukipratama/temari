@@ -3,7 +3,8 @@ import { type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { pillButtonVariants } from '@/lib/variants';
 
-export type PillTone = 'horizon' | 'sky' | 'ghost' | 'outline' | 'danger';
+export type PillTone =
+    'horizon' | 'sky' | 'ghost' | 'outline' | 'danger' | 'muted';
 
 interface PillButtonProps extends Omit<
     ButtonHTMLAttributes<HTMLButtonElement>,
@@ -11,7 +12,7 @@ interface PillButtonProps extends Omit<
 > {
     children: ReactNode;
     tone?: PillTone;
-    size?: 'sm' | 'md';
+    size?: 'xs' | 'sm' | 'md';
     /** Switch ghost to a cream-on-sky variant. */
     onSky?: boolean;
 }

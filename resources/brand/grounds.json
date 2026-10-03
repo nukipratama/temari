@@ -191,12 +191,6 @@
         },
         "ember/0.08": {
             "over": {
-                "resources/js/components/ErrorBanner.tsx": [
-                    "paper"
-                ],
-                "resources/js/components/FlashNotice.tsx": [
-                    "paper"
-                ],
                 "resources/js/pages/Devtools/Design.tsx": [
                     "paper"
                 ],
@@ -207,6 +201,12 @@
                     "paper"
                 ],
                 "resources/js/components/narration/FaultStrip.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/Banner.tsx": [
+                    "paper"
+                ],
+                "resources/js/components/ui/Banner.test.tsx": [
                     "paper"
                 ]
             },

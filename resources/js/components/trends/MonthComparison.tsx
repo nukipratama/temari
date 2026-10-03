@@ -2,13 +2,13 @@ import { useMemo } from 'react';
 
 import MetricExplainer from '@/components/MetricExplainer';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Stat, StatDelta } from '@/components/ui/StatTile';
 import { ctlDaysAgo, ctlNow, ctlPeak } from '@/lib/trends';
 
 import FitnessPanel, {
     type FitnessChartAnnotations,
     type FitnessTrendPoint,
 } from './panels/FitnessPanel';
-import { Stat, StatDelta } from './Stat';
 
 const CTL_MEANING =
     "long-term load builds slowly from six weeks of running. it counts running only, so it tracks how much you've run, not fitness.";

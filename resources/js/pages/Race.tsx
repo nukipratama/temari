@@ -10,6 +10,7 @@ import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
+import PillButton from '@/components/ui/PillButton';
 import { appLayout } from '@/layouts/appLayout';
 import { lazyIsland } from '@/lib/lazyIsland';
 
@@ -27,9 +28,6 @@ interface RaceProps {
 const RaceGoalForm = lazyIsland(() => import('@/components/race/RaceGoalForm'));
 
 const FORM_ID = 'race-goal-form';
-
-const MUTED_PILL =
-    'focus-ring pressable inline-flex h-8 items-center gap-1.5 rounded-full bg-muted px-3 text-label-micro text-foreground transition-colors hover:bg-accent';
 
 /**
  * Race leads with the target against the time recent runs support: one duel
@@ -77,12 +75,12 @@ export default function Race({
                             className="mt-4"
                         />
                         <div className="mt-3 flex items-center justify-between gap-3 border-t border-dashed border-border pt-3">
-                            <button
-                                type="button"
+                            <PillButton
                                 aria-expanded={editing}
                                 aria-controls={FORM_ID}
                                 onClick={() => setEditing((open) => !open)}
-                                className={MUTED_PILL}
+                                tone="muted"
+                                size="xs"
                             >
                                 <Icon
                                     icon={Pencil}
@@ -90,7 +88,7 @@ export default function Race({
                                     aria-hidden
                                 />
                                 edit race
-                            </button>
+                            </PillButton>
                             <button
                                 type="button"
                                 onClick={() => setConfirmingClear(true)}
@@ -121,15 +119,15 @@ export default function Race({
                             set a race and temari compares your target with what
                             your recent runs support.
                         </p>
-                        <button
-                            type="button"
+                        <PillButton
                             aria-expanded={editing}
                             aria-controls={FORM_ID}
                             onClick={() => setEditing((open) => !open)}
-                            className={MUTED_PILL}
+                            tone="muted"
+                            size="xs"
                         >
                             set a race
-                        </button>
+                        </PillButton>
                     </div>
                 )}
 

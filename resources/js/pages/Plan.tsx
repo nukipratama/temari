@@ -17,6 +17,7 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
+import PillButton from '@/components/ui/PillButton';
 import { SkeletonRows, SkeletonStats } from '@/components/ui/Skeleton';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { appLayout } from '@/layouts/appLayout';
@@ -145,9 +146,10 @@ export default function Plan({
                     <h1 className="font-serif text-quote-lg text-foreground italic">
                         the weeks <em className="text-horizon-ink">ahead.</em>
                     </h1>
-                    <button
-                        type="button"
-                        className="focus-ring pressable inline-flex h-8 min-w-8 flex-none items-center justify-center gap-1 rounded-full bg-muted px-2 text-label-micro text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-60"
+                    <PillButton
+                        tone="muted"
+                        size="xs"
+                        className="flex-none"
                         onClick={regenerate}
                         disabled={regenerating || regenerateCooling}
                         aria-label={
@@ -171,7 +173,7 @@ export default function Plan({
                                 {formatDurationHMS(regenerateCooldown)}
                             </span>
                         )}
-                    </button>
+                    </PillButton>
                 </div>
                 <p className="mt-1 mb-4 text-xs text-text-2">
                     {race

@@ -2,8 +2,8 @@ import { Head } from '@inertiajs/react';
 import { Flag } from 'lucide-react';
 
 import DataTable, { Td } from '@/components/narration/DataTable';
+import DevtoolsHeader from '@/components/narration/DevtoolsHeader';
 import EmptyPanel from '@/components/ui/EmptyPanel';
-import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 
 export interface FeedbackFlagRow {
@@ -27,29 +27,11 @@ export default function DevtoolsFeedback({
         <div className="min-h-screen bg-background text-foreground">
             <Head title="Feedback · Devtools" />
 
-            <header className="border-b border-border bg-popover">
-                <div className="mx-auto flex max-w-page items-center justify-between px-6 py-4 2xl:max-w-page-2xl">
-                    <div className="flex items-center gap-3">
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-leaf-deep text-cream">
-                            <Icon icon={Flag} width={20} aria-hidden />
-                        </span>
-                        <div>
-                            <h1 className="font-serif italic text-headline-xs text-foreground">
-                                feedback
-                            </h1>
-                            <p className="text-xs text-text-3">
-                                flags runners have filed, newest first.
-                            </p>
-                        </div>
-                    </div>
-                    <a
-                        href="/devtools"
-                        className="focus-ring hidden rounded-full px-2 py-1 text-label-micro font-semibold text-text-3 transition hover:text-foreground sm:inline"
-                    >
-                        Temari · Devtools
-                    </a>
-                </div>
-            </header>
+            <DevtoolsHeader icon={Flag} title="feedback">
+                <p className="text-xs text-text-3">
+                    flags runners have filed, newest first.
+                </p>
+            </DevtoolsHeader>
 
             <PageContainer className="min-[900px]:max-w-page min-[1280px]:max-w-page 2xl:max-w-page-2xl">
                 <DataTable

@@ -13,6 +13,7 @@ import WeekStrip from '@/components/plan/WeekStrip';
 import FlagWrong from '@/components/temari/FlagWrong';
 import Chip from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
+import PillButton from '@/components/ui/PillButton';
 import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { useRecommendationView } from '@/hooks/useRecommendationView';
 import { rememberPlanSelectedDay } from '@/lib/navigationMemory';
@@ -143,14 +144,10 @@ export default function WeekView({
         <section aria-label={`week ${weekNumber}`}>
             {onBack && (
                 <div className="pb-3">
-                    <button
-                        type="button"
-                        onClick={onBack}
-                        className="focus-ring pressable inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-label-micro text-foreground transition-colors hover:bg-accent"
-                    >
+                    <PillButton onClick={onBack} tone="muted" size="xs">
                         <Icon icon={ArrowLeft} className="size-3" aria-hidden />
                         back to this week
-                    </button>
+                    </PillButton>
                 </div>
             )}
             <div className="flex items-center gap-3">
