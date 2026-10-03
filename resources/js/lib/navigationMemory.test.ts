@@ -7,11 +7,15 @@ import type { NavigationPage } from './navigationMemory';
 
 import {
     clearNavigationMemory,
+    clearTabMemory,
+    parseTabMemory,
     readContextualOrigin,
     readPlanSelectedDay,
     readTabMemory,
     rememberPlanSelectedDay,
     startContextualBackSession,
+    subscribeToTabMemory,
+    tabMemorySnapshot,
     writeContextualOrigin,
     writeTabMemory,
 } from './navigationMemory';
@@ -304,5 +308,40 @@ describe('navigationMemory', () => {
             top: 560,
             behavior: 'auto',
         });
+    });
+
+    it('notifies tab-memory subscribers on every writer and keeps the snapshot a stable string', () => {
+        const listener = vi.fn();
+        const unsubscribe = subscribeToTabMemory(listener);
+
+        writeTabMemory('history', { href: '/history', scrollY: 10 });
+        rememberPlanSelectedDay('2026-06-16');
+        clearTabMemory('history');
+        clearNavigationMemory();
+
+        expect(listener).toHaveBeenCalledTimes(4);
+        expect(tabMemorySnapshot()).toBeNull();
+
+        unsubscribe();
+        writeTabMemory('history', { href: '/history', scrollY: 10 });
+
+        expect(listener).toHaveBeenCalledTimes(4);
+        expect(tabMemorySnapshot()).toBe(tabMemorySnapshot());
+    });
+
+    it('parses a stored tab-memory snapshot and ignores malformed ones', () => {
+        writeTabMemory('plan', {
+            href: '/plan',
+            scrollY: 0,
+            selectedDay: '2026-06-16',
+        });
+
+        expect(parseTabMemory(tabMemorySnapshot()).plan).toEqual({
+            href: '/plan',
+            scrollY: 0,
+            selectedDay: '2026-06-16',
+        });
+        expect(parseTabMemory(null)).toEqual({});
+        expect(parseTabMemory('not json')).toEqual({});
     });
 });

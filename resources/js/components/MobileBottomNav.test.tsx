@@ -5,13 +5,25 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-    readPlanSelectedDay,
-    readTabMemory,
+    clearTabMemory,
+    parseTabMemory,
+    rememberPlanSelectedDay,
+    tabMemorySnapshot,
     writeTabMemory,
 } from '@/lib/navigationMemory';
 import { setMockPage } from '@/test/setup';
 
 import MobileBottomNav from './MobileBottomNav';
+
+vi.mock('@/lib/navigationMemory', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/lib/navigationMemory')>()),
+    readTabMemory: () => null,
+    readPlanSelectedDay: () => null,
+}));
+
+function storedTab(tab: 'history' | 'plan') {
+    return parseTabMemory(tabMemorySnapshot())[tab] ?? null;
+}
 
 function finishHandler() {
     const call = vi
@@ -94,6 +106,65 @@ describe('MobileBottomNav', () => {
         );
     });
 
+    it('derives tab links from the subscribed snapshot, not a storage read in render', () => {
+        writeTabMemory('history', {
+            href: '/history?view=calendar&month=2026-06',
+            scrollY: 440,
+        });
+        setMockPage({}, '/', 'Home');
+        render(<MobileBottomNav />);
+
+        expect(screen.getByText('History').closest('a')).toHaveAttribute(
+            'href',
+            '/history?view=calendar&month=2026-06',
+        );
+    });
+
+    it('updates a tab link when its memory changes after mount', () => {
+        setMockPage({}, '/', 'Home');
+        render(<MobileBottomNav />);
+        expect(screen.getByText('History').closest('a')).toHaveAttribute(
+            'href',
+            '/history',
+        );
+
+        act(() => {
+            writeTabMemory('history', {
+                href: '/history?view=calendar&month=2026-06',
+                scrollY: 0,
+            });
+        });
+
+        expect(screen.getByText('History').closest('a')).toHaveAttribute(
+            'href',
+            '/history?view=calendar&month=2026-06',
+        );
+
+        act(() => {
+            clearTabMemory('history');
+        });
+
+        expect(screen.getByText('History').closest('a')).toHaveAttribute(
+            'href',
+            '/history',
+        );
+    });
+
+    it('resets a Plan day selected after mount when its tab is tapped at top', () => {
+        setMockPage({}, '/plan', 'Plan');
+        render(<MobileBottomNav />);
+
+        act(() => {
+            rememberPlanSelectedDay('2026-06-16');
+        });
+        fireEvent.click(screen.getByText('Plan').closest('a')!);
+
+        expect(router.visit).toHaveBeenCalledWith('/plan', {
+            replace: true,
+            preserveState: false,
+        });
+    });
+
     // The floating pill grows and gets a lime gradient fill for the active
     // tab (per the prototype's AppBottomNav); inactive tabs stay a plain
     // muted tone rather than the old bar's on-sky treatment.
@@ -144,7 +215,7 @@ describe('MobileBottomNav', () => {
         expect(event.defaultPrevented).toBe(true);
         expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
         expect(router.visit).not.toHaveBeenCalled();
-        expect(readTabMemory('history')?.scrollY).toBe(0);
+        expect(storedTab('history')?.scrollY).toBe(0);
     });
 
     it('leaves an inactive tab to navigate normally', () => {
@@ -208,7 +279,7 @@ describe('MobileBottomNav', () => {
             '/history?view=calendar&month=2026-09',
             { replace: true, preserveState: false },
         );
-        expect(readTabMemory('history')).toBeNull();
+        expect(storedTab('history')).toBeNull();
     });
 
     it('resets a selected Plan day when its active tab is tapped at top', () => {
@@ -226,7 +297,7 @@ describe('MobileBottomNav', () => {
             replace: true,
             preserveState: false,
         });
-        expect(readPlanSelectedDay()).toBeNull();
+        expect(storedTab('plan')?.selectedDay).toBeUndefined();
     });
 
     it('lights the plan tab on Race, a sub-page of Plan', () => {
