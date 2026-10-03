@@ -10,9 +10,16 @@
 #
 # Env: CRF (28), CLIP_W/CLIP_H (1280x900 bound per clip), SBS_W/SBS_H (960x900 bound per side).
 set -eu
-cd "$(dirname "$0")/../../../.."
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+cd "$(dirname "$SELF")/../../../.."
 OUT=storage/app/clips
 LIMIT=10485760
+
+if ! command -v ffmpeg >/dev/null 2>&1; then
+    echo "clips.sh needs ffmpeg with libx264 and found none. Install it on the host (macOS: brew install ffmpeg)" >&2
+    echo "or in the Sail container (docker compose exec -u root app apk add ffmpeg). Recorded frames are kept." >&2
+    exit 3
+fi
 
 report() {
     size=$(wc -c <"$1")
@@ -54,7 +61,7 @@ gif)
     report "${2%.mp4}.gif"
     ;;
 *)
-    sed -n '2,12p' "$0"
+    sed -n '2,12p' "$SELF"
     exit 2
     ;;
 esac
