@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react';
 
 import { Link, router, usePage } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import type { TabId } from '@/lib/nav';
 import type { SharedProps } from '@/types/inertia';
@@ -10,9 +10,10 @@ import { cn } from '@/lib/cn';
 import { defaultTabHrefFor, ITEMS, navTabFor } from '@/lib/nav';
 import {
     clearTabMemory,
-    readPlanSelectedDay,
-    readTabMemory,
+    parseTabMemory,
     rememberTabLocation,
+    subscribeToTabMemory,
+    tabMemorySnapshot,
 } from '@/lib/navigationMemory';
 import { useTodayIso } from '@/lib/pace';
 
@@ -30,6 +31,7 @@ function handleActiveTabClick(
     tab: TabId,
     currentUrl: string,
     today: string,
+    planSelectedDay: string | null,
 ) {
     if (window.scrollY > 0) {
         rememberTabLocation(tab, currentUrl, 0);
@@ -40,8 +42,7 @@ function handleActiveTabClick(
     event.preventDefault();
     const href = defaultTabHrefFor(tab, currentUrl, today);
     const needsReset =
-        currentUrl !== href ||
-        (tab === 'plan' && readPlanSelectedDay() !== null);
+        currentUrl !== href || (tab === 'plan' && planSelectedDay !== null);
 
     if (needsReset) {
         router.visit(href, { replace: true, preserveState: false });
@@ -80,6 +81,14 @@ export default function MobileBottomNav() {
     const current = navTabFor(component);
     const hasUnread = (props.unreadNotifications ?? 0) > 0;
     const today = useTodayIso();
+    const tabs = parseTabMemory(
+        useSyncExternalStore(
+            subscribeToTabMemory,
+            tabMemorySnapshot,
+            () => null,
+        ),
+    );
+    const planSelectedDay = tabs.plan?.selectedDay ?? null;
     const [pending, setPending] = useState<TabId | null>(null);
     // Counts visits still in flight rather than trusting any single `finish`:
     // a second tap before the first answers interrupts that first visit, which
@@ -117,7 +126,7 @@ export default function MobileBottomNav() {
                     return (
                         <Link
                             key={item.id}
-                            href={readTabMemory(item.id)?.href ?? item.href}
+                            href={tabs[item.id]?.href ?? item.href}
                             aria-current={isCurrent ? 'page' : undefined}
                             onClick={
                                 isCurrent
@@ -127,6 +136,7 @@ export default function MobileBottomNav() {
                                               item.id,
                                               url,
                                               today,
+                                              planSelectedDay,
                                           )
                                     : () => {
                                           inFlightRef.current += 1;

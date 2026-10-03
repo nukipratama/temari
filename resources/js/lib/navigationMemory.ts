@@ -7,6 +7,7 @@ import { isTabId, navTabFor, TAB_IDS } from '@/lib/navRoutes';
 const ORIGIN_KEY = 'temari:navigation:origin';
 const ORIGIN_CHANGE_EVENT = 'temari:navigation:origin-change';
 const TAB_STATE_KEY = 'temari:navigation:tabs';
+const TAB_CHANGE_EVENT = 'temari:navigation:tabs-change';
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export interface TabMemory {
@@ -56,8 +57,9 @@ function tabId(value: unknown): TabId | null {
     return isTabId(value) ? value : null;
 }
 
-function readTabStates(): Partial<Record<TabId, TabMemory>> {
-    const stored = window.sessionStorage.getItem(TAB_STATE_KEY);
+export type TabStates = Partial<Record<TabId, TabMemory>>;
+
+export function parseTabMemory(stored: string | null): TabStates {
     if (stored === null) return {};
 
     try {
@@ -104,13 +106,29 @@ function readTabStates(): Partial<Record<TabId, TabMemory>> {
     }
 }
 
-function writeTabStates(states: Partial<Record<TabId, TabMemory>>): void {
+function readTabStates(): TabStates {
+    return parseTabMemory(window.sessionStorage.getItem(TAB_STATE_KEY));
+}
+
+function writeTabStates(states: TabStates): void {
     if (Object.keys(states).length === 0) {
         window.sessionStorage.removeItem(TAB_STATE_KEY);
-        return;
+    } else {
+        window.sessionStorage.setItem(TAB_STATE_KEY, JSON.stringify(states));
     }
 
-    window.sessionStorage.setItem(TAB_STATE_KEY, JSON.stringify(states));
+    window.dispatchEvent(new Event(TAB_CHANGE_EVENT));
+}
+
+export function subscribeToTabMemory(listener: () => void): () => void {
+    window.addEventListener(TAB_CHANGE_EVENT, listener);
+    return () => window.removeEventListener(TAB_CHANGE_EVENT, listener);
+}
+
+export function tabMemorySnapshot(): string | null {
+    return typeof window === 'undefined'
+        ? null
+        : window.sessionStorage.getItem(TAB_STATE_KEY);
 }
 
 export function subscribeToContextualOrigin(listener: () => void): () => void {
@@ -196,6 +214,7 @@ export function clearNavigationMemory(): void {
     window.sessionStorage.removeItem(ORIGIN_KEY);
     window.sessionStorage.removeItem(TAB_STATE_KEY);
     notifyContextualOriginChange();
+    window.dispatchEvent(new Event(TAB_CHANGE_EVENT));
 }
 
 export function parseContextualOrigin(
