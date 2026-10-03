@@ -19,6 +19,8 @@ code_refs:
 
 **Status:** Accepted (documented 2026-08-14, ratifying the shape shipped earlier)
 
+> **2026-10-03** — `upsertWeek()`, named below, no longer exists: the null-not-zero load columns are now built by [weekRow()](app/Services/Run/Metrics/WeeklyAggregator.php#L353).
+
 > **2026-09-06** — the decision below is unchanged, but one *consequence* no longer holds.
 > "A run nobody opens never gets its splits, zones, TRIMP, card, PRs or narration" was true
 > until [[background-hydration-drain]] added an hourly drain over the summary-only backlog.
