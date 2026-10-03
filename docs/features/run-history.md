@@ -77,7 +77,7 @@ popover and was cut for the same reason (`useCalendar.ts` no longer exposes
 from the weekly-recap Telegram notification (`AnalysisMessagePresenter`) still
 pins the Feed to one week — that's server-driven windowing triggered by an
 external link, not a user-facing filter control. `FeedFilters`/`FeedQuery` keep
-`range`/`rangeAutoWidened`/`rangeStart`/`week`; the auto-widen-to-reach-the-
+`range`/`rangeAutoWidened`/`rangeStart`/`week` (`rangeStart` only bounds the query and is not sent to the page); the auto-widen-to-reach-the-
 newest-run behaviour is unchanged, it's just no longer user-selectable (no
 range chip UI).
 
@@ -123,7 +123,9 @@ and builds the `Activity` query (always newest-first), and the controller hands
 `Inertia::defer()` closures over it — `runs`, `notes`, `moods` and
 `weeklySnapshots` all arrive after the shell paints, in one follow-up request.
 The calendar branch defers `cells`, `weeklySnapshots` and `monthlyRecap` the
-same way. Two behaviours worth knowing:
+same way. Both branches send only what the page reads: each run is limited to
+`RUN_FIELDS` plus its `detail` and `run_card`, `lifetime` to `LIFETIME_FIELDS`,
+and the weekly snapshots drop their timestamps. Two behaviours worth knowing:
 
 - **Auto-widen range** (`FeedQuery::widenRangeToReach`): the window defaults to
   `8w` but the server silently widens it to the smallest preset that reaches the

@@ -1,26 +1,4 @@
 {
-    "inertia-props/History": [
-        "lifetime.has_activity",
-        "lifetime.longest_km",
-        "rangeStart",
-        "runs[].created_at",
-        "runs[].detail_fail_count",
-        "runs[].fetched_at",
-        "runs[].milestones_detected_at",
-        "runs[].updated_at",
-        "weeklySnapshots[].created_at",
-        "weeklySnapshots[].updated_at"
-    ],
-    "inertia-props/History.calendar": [
-        "lifetime.has_activity",
-        "lifetime.longest_km",
-        "weeklySnapshots[].created_at",
-        "weeklySnapshots[].updated_at"
-    ],
-    "inertia-props/Home": [
-        "snapshot.created_at",
-        "snapshot.updated_at"
-    ],
     "inertia-props/Trends": [
         "load.weekly_trimp_reference",
         "load.weekly_trimp_reference.high",
