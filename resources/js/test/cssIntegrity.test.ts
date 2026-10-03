@@ -109,6 +109,22 @@ describe('app.css integrity', () => {
         expect(block).toContain('active:scale-100');
     });
 
+    it('keeps the popover keyframes off the x axis so they cannot double the centring offset', () => {
+        const keyframes = [
+            ...css.matchAll(
+                /@keyframes (popover-reveal(?:-out)?)\s*\{([\s\S]*?)\n\}/g,
+            ),
+        ];
+
+        expect(keyframes.map((m) => m[1]).sort()).toEqual([
+            'popover-reveal',
+            'popover-reveal-out',
+        ]);
+        keyframes.forEach(([, , body]) => {
+            expect(body).not.toMatch(/translate(?:X|3d)?\(|translate:/);
+        });
+    });
+
     it('defines the wide page column in rem so it scales with the type step', () => {
         expect(css).toMatch(/--container-column-wide:\s*54rem;/);
     });
