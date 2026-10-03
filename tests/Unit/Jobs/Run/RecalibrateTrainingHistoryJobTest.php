@@ -6,6 +6,7 @@ use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Models\User;
 use App\Services\Run\Plan\PlanRecalibrationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 
@@ -16,10 +17,10 @@ it('uses the user id as its unique queue key', function (): void {
 });
 
 it('shares a per-user service lock that outlives its queue timeout', function (): void {
-    $job = new RecalibrateTrainingHistoryJob(42);
+    $timeout = new ReflectionClass(RecalibrateTrainingHistoryJob::class)->getAttributes(Timeout::class)[0]->newInstance()->timeout;
 
     expect(RecalibrateTrainingHistoryJob::overlapLockKey(42))->toBe('training-recalibration:42')
-        ->and(RecalibrateTrainingHistoryJob::overlapLockTtlSeconds())->toBeGreaterThanOrEqual($job->timeout);
+        ->and(RecalibrateTrainingHistoryJob::overlapLockTtlSeconds())->toBeGreaterThanOrEqual($timeout);
 });
 
 it('ignores a demo user', function (): void {

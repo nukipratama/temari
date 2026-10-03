@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\AI;
 
+use Illuminate\Database\Eloquent\Attributes\Table;
 use App\Actions\Feedback\ResolveFlaggedSubjectsAction;
 use App\Enums\FeedbackSubject;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -62,6 +63,7 @@ use Override;
     'queued_at',
     'attempts',
 ])]
+#[Table(name: 'ai_analyses')]
 class Analysis extends Model
 {
     /** @use HasFactory<AnalysisFactory> */
@@ -85,9 +87,6 @@ class Analysis extends Model
      * never yanked mid-attempt.
      */
     public const int STALE_IN_FLIGHT_HOURS = 2;
-
-    #[Override]
-    protected $table = 'ai_analyses';
 
     /** @return array<string, string> */
     #[Override]

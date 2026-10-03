@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs\Run;
 
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Attributes\UniqueFor;
 use App\Models\User;
 use App\Services\Run\Trend\TrendSnapshotRepairService;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
@@ -11,16 +14,12 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 
+#[Backoff([30, 120])]
+#[Tries(3)]
+#[UniqueFor(3600)]
 final class RebuildTrendSnapshotsJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;
-
-    public int $tries = 3;
-
-    /** @var array<int, int> */
-    public array $backoff = [30, 120];
-
-    public int $uniqueFor = 3600;
 
     public function __construct(public readonly int $userId)
     {

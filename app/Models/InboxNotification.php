@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Table;
 use App\Enums\NotificationKind;
 use App\Notifications\Messages\InboxMessage;
 use App\Support\SharedPropCacheKey;
@@ -48,13 +49,11 @@ use Override;
     'dedupe_key',
     'read_at',
 ])]
+#[Table(name: 'notifications')]
 class InboxNotification extends Model
 {
     /** @use HasFactory<InboxNotificationFactory> */
     use HasFactory;
-
-    #[Override]
-    protected $table = 'notifications';
 
     /**
      * Writes the row for a delivered {@see InboxMessage}, returning false when

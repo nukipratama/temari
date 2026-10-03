@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -20,8 +21,8 @@ it('is unique per athlete and rolls their dirty weeks forward', function (): voi
 
     expect($job)->toBeInstanceOf(ShouldBeUnique::class)
         ->and($job->uniqueId())->toBe((string) $user->id)
-        ->and($job->tries)->toBe(3)
-        ->and($job->backoff)->toBe([30, 120]);
+        ->and(Queue::connection('sync')->getJobTries($job))->toBe(3)
+        ->and(Queue::connection('sync')->getJobBackoff($job))->toBe('30,120');
 });
 
 it('never rolls the demo forward', function (): void {

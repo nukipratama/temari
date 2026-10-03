@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
 use App\Enums\StravaGrantEventType;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -20,14 +22,10 @@ use Override;
  * @property Carbon $created_at
  */
 #[Fillable(['strava_athlete_id', 'user_id', 'credential_version', 'event', 'error', 'created_at'])]
+#[Table(name: 'strava_grant_events')]
+#[WithoutTimestamps]
 class StravaGrantEvent extends Model
 {
-    #[Override]
-    public $timestamps = false;
-
-    #[Override]
-    protected $table = 'strava_grant_events';
-
     /** @return array<string, string> */
     #[Override]
     protected function casts(): array

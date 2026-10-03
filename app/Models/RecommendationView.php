@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -17,11 +18,9 @@ use Override;
  * @property Carbon $shown_at
  */
 #[Fillable(['recommendation_revision_id', 'observation_id', 'shown_at'])]
+#[WithoutTimestamps]
 class RecommendationView extends Model
 {
-    #[Override]
-    public $timestamps = false;
-
     #[Override]
     protected static function booted(): void
     {

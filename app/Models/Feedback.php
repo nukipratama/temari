@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Table;
 use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
 use Database\Factories\FeedbackFactory;
@@ -40,6 +41,7 @@ use Override;
     'note',
     'superseded_at',
 ])]
+#[Table(name: 'feedback')]
 class Feedback extends Model
 {
     /** @use HasFactory<FeedbackFactory> */
@@ -49,9 +51,6 @@ class Feedback extends Model
     public const int MAX_NOTE_LENGTH = 280;
 
     public const UPDATED_AT = null;
-
-    #[Override]
-    protected $table = 'feedback';
 
     /**
      * @return BelongsTo<User, $this>

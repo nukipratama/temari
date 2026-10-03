@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\WithoutIncrementing;
+use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
 use Override;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 
+#[WithoutIncrementing]
+#[WithoutTimestamps]
 class TelegramLinkTokenUse extends Model
 {
     use MassPrunable;
@@ -17,13 +21,7 @@ class TelegramLinkTokenUse extends Model
     protected $primaryKey = 'token_hash';
 
     #[Override]
-    public $incrementing = false;
-
-    #[Override]
     protected $keyType = 'string';
-
-    #[Override]
-    public $timestamps = false;
 
     #[Override]
     protected function casts(): array

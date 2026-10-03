@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Notifications;
 
+use Illuminate\Foundation\Queue\Queueable;
 use App\Models\AI\Analysis;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\Channels\IdempotentWebPushChannel;
@@ -11,19 +12,12 @@ use App\Notifications\MorningBriefingNotification;
 use App\Services\AI\AnalysisType;
 use App\Services\Notifications\NotificationDeliveryClaim;
 use App\Services\Telegram\NotificationEligibility;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Notification;
 
 class RetryStaleWebPushNotificationJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
     use Queueable;
-    use SerializesModels;
 
     public int $tries = 3;
 
