@@ -34,7 +34,7 @@ updates:
         update-types: [minor, patch]
     ignore:
       - dependency-name: mysql
-        versions: [">= 9"]
+        versions: [">= 10"]
       - dependency-name: node
         update-types: ["version-update:semver-major"]
   - package-ecosystem: docker-compose
@@ -46,4 +46,4 @@ updates:
         update-types: [minor, patch]
     ignore:
       - dependency-name: mysql
-        versions: [">= 9"]
+        versions: [">= 10"]
