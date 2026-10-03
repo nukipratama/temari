@@ -107,7 +107,7 @@ class ProfileController extends Controller
             'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user), $activeRace($user->id))),
             'fitness' => Inertia::defer(fn (): ?array => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $weekSessionTypes, $user, $today, $activeRace)),
             'timeInZone' => Inertia::defer(fn (): ?array => $timeInZoneSummary->forUser($user, $today) ?: null),
-            'season' => Inertia::defer(fn (): ?array => $seasonStreakBuilder->seasonPayload($user, $loadSeason(), $today)),
+            'season' => Inertia::defer(fn (): ?array => $seasonStreakBuilder->profileSeasonPayload($user, $loadSeason(), $today)),
             'seasonWeeks' => Inertia::defer(function () use ($loadSeason, $seasonSummaryBuilder, $user, $today): ?array {
                 $season = $loadSeason();
 

@@ -308,14 +308,15 @@ page fills a credited day's read the same rule-based way, through
 behind it — `GrantSeasonUnlocksAction`, the `season.{id}.track_{N}` grants and the
 `season.tiers_kept_from_past_seasons` count — went with the rest of the unlock system, since
 nothing had rendered any of it since P24. What remains is the `SeasonGoal` set itself, resolved
-live by [SeasonGoalResolver](../../app/Services/Gamification/SeasonGoalResolver.php) and drawn as
-that single progress line.
+live by [SeasonGoalResolver](../../app/Services/Gamification/SeasonGoalResolver.php) for
+[[profile]]'s season card, the only screen that draws a goal. Plan's `season` prop is the season
+frame alone, with no goals and no season record.
 
 The per-goal `GoalCard` grid under the season summary is gone: P24 replaced the tier module with
 the prototype's single progress line, and `W2` swept the orphaned component. The week-grained
 lifetime streak
 (`WeeklySnapshot::consecutiveWeekStreak()`, wrapped by `SeasonStreakSummaryBuilder::streakPayload()`)
-does not render here either — it lives on Trends as a badge chip. `PlanController` still calls
+does not render here either — it lives on Trends as a badge chip. `PlanPageAssembler` still calls
 `seasonPayload()`, never `streakPayload()`.
 
 ## Extracted: interval detection

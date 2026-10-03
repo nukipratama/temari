@@ -129,7 +129,7 @@ a segmented phase bar, and **one** goal progress line — the first goal still o
 tracks what is actually being worked toward. Phases are derived by `phasesOf` in
 [lib/plan](resources/js/lib/plan.ts), shared with Plan's own season header, over the week list
 [SeasonSummaryBuilder](app/Services/Run/Plan/SeasonSummaryBuilder.php) builds; the goals come from
-[SeasonStreakSummaryBuilder](app/Services/Gamification/SeasonStreakSummaryBuilder.php)`::seasonPayload`.
+[SeasonStreakSummaryBuilder](app/Services/Gamification/SeasonStreakSummaryBuilder.php)`::profileSeasonPayload`, which sends the season dates and goals but not the Plan-only fields or the season record.
 
 The controller resolves the season with `SeasonService::peekCurrent()` — a read-only counterpart to
 `ensureCurrent()` that returns the current season **if one already exists**, never creating one,

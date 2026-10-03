@@ -78,7 +78,7 @@ final class PlanPageAssembler
     public function season(User $user, Carbon $today): ?array
     {
         $season = $this->currentSeason($user, $today);
-        $payload = $this->seasonStreakBuilder->seasonPayload($user, $season, $today);
+        $payload = $this->seasonStreakBuilder->seasonPayload($season, $today);
 
         return $payload === null ? null : [...$payload, 'under_ready_line' => $this->seasonService->takeUnderReadyLine($season)];
     }
