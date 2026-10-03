@@ -73,4 +73,40 @@ describe('Eyebrow', () => {
         expect(el.className).toContain('text-[0.7rem]');
         expect(el.className).not.toContain('text-label-micro');
     });
+
+    it('draws a trailing rule after the label when rule is set', () => {
+        const { container } = render(
+            <Eyebrow token="small" tone="ink-2" rule>
+                Appearance
+            </Eyebrow>,
+        );
+        const root = container.firstElementChild as HTMLElement;
+
+        expect(root).toHaveClass('flex', 'items-center', 'text-label-small');
+        expect(root.lastElementChild).toHaveAttribute('aria-hidden');
+        expect(root.lastElementChild).toHaveClass(
+            'h-px',
+            'flex-1',
+            'bg-current',
+        );
+        expect(screen.getByText('Appearance').tagName).toBe('SPAN');
+    });
+
+    it('keeps the rule on the sky tone for a label on a dark panel', () => {
+        const { container } = render(
+            <Eyebrow token="small" tone="ink-on-sky" rule>
+                While you wait
+            </Eyebrow>,
+        );
+        const root = container.firstElementChild as HTMLElement;
+
+        expect(root).toHaveClass('text-ink-on-sky');
+        expect(root.lastElementChild).toHaveClass('bg-current');
+    });
+
+    it('renders no rule by default', () => {
+        const { container } = render(<Eyebrow token="small">Plain</Eyebrow>);
+
+        expect(container.querySelector('[aria-hidden]')).toBeNull();
+    });
 });

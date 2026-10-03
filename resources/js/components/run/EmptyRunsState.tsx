@@ -9,7 +9,6 @@ import TemariMascot from '@/components/temari/TemariMascot';
 import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import SectionLabel from '@/components/ui/SectionLabel';
 
 const HERO: Record<
     StravaSyncState,
@@ -101,7 +100,9 @@ export default function EmptyRunsState() {
 
             {/* While you wait */}
             <Card className="w-full max-w-md">
-                <SectionLabel>While you wait</SectionLabel>
+                <Eyebrow token="small" tone="ink-2" rule>
+                    While you wait
+                </Eyebrow>
                 <div className="mt-3 flex flex-col gap-2">
                     {ACTIONS.map(({ icon, title, desc, href }) => (
                         <Link

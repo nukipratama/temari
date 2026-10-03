@@ -17,9 +17,7 @@ export default function VersionDiff({
 
     return (
         <div className="mt-2 rounded-xl border border-border bg-background p-3">
-            <p className="text-label-micro font-semibold uppercase text-text-3">
-                previous vs current
-            </p>
+            <p className="text-label-micro text-text-3">previous vs current</p>
             <p className="mt-2 text-sm leading-relaxed">
                 {tokens.map((token) => (
                     <span

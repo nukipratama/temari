@@ -4,8 +4,8 @@ import type { AthleteRow } from '@/pages/Narration/types';
 
 import EmptyState from '@/components/narration/EmptyState';
 import LastOpen from '@/components/narration/LastOpen';
+import SectionHeading from '@/components/narration/SectionHeading';
 import Sparkline from '@/components/narration/Sparkline';
-import SectionHeading from '@/components/SectionHeading';
 import { Card } from '@/components/ui/card';
 import Chip from '@/components/ui/Chip';
 import ProgressBar from '@/components/ui/ProgressBar';

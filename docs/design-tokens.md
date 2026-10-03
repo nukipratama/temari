@@ -396,6 +396,12 @@ built with `@apply` so they compose with token utilities. Prefer these over re-t
 | `.narration` | `font-sans text-quote-sm leading-relaxed text-foreground` | Narrator prose — the reading register for LLM and rule-based output |
 | `.narration-dense` | `font-sans text-[12px] leading-[1.45] text-foreground` | Narrator prose, compact tier (list rows, calendar cells, recap cards) |
 
+A section label is [Eyebrow](../resources/js/components/ui/Eyebrow.tsx) over the three
+`.text-label-*` tiers, with an optional trailing hairline `rule`; a label inside a
+form or table takes the utility directly. The operator screens keep their own sans
+[SectionHeading](../resources/js/components/narration/SectionHeading.tsx), which nothing outside
+`components/narration/` imports.
+
 **The narration measure cap was tried and withdrawn (2026-09-10).** `.narration` and
 `.narration-dense` briefly carried `max-w-[65ch]` so laptop and desktop lines fell inside the 45-75
 readable range, with one `max-w-none` opt-out on the truncated run note in

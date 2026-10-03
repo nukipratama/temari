@@ -4,7 +4,7 @@ import type { AthleteRow, CostChart } from '@/pages/Narration/types';
 
 import { band } from '@/components/narration/chartBands';
 import EmptyState from '@/components/narration/EmptyState';
-import SectionHeading from '@/components/SectionHeading';
+import SectionHeading from '@/components/narration/SectionHeading';
 import { Card } from '@/components/ui/card';
 import {
     athleteLabel,
@@ -49,7 +49,7 @@ export default function CostChart({
                 <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                     <label
                         htmlFor="athlete-filter"
-                        className="flex max-w-full flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-text-2"
+                        className="flex max-w-full flex-col gap-1 text-label-small text-text-2"
                     >
                         athlete
                         <select

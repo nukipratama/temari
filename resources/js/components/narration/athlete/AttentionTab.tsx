@@ -181,7 +181,7 @@ function CeilingOverrideCard({
             >
                 <label
                     htmlFor="ceiling-override"
-                    className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-text-2"
+                    className="flex flex-col gap-1 text-label-small text-text-2"
                 >
                     dollars for today
                     <input

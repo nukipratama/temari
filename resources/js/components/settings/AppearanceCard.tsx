@@ -1,7 +1,7 @@
 import { Monitor, Moon, Sun } from 'lucide-react';
 
+import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
-import SectionLabel from '@/components/ui/SectionLabel';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
 
@@ -27,13 +27,15 @@ export default function AppearanceCard() {
 
     return (
         <div>
-            <SectionLabel size="micro">Theme</SectionLabel>
+            <Eyebrow token="micro" tone="ink-2" rule>
+                Theme
+            </Eyebrow>
             <ToggleGroup
                 value={preference}
                 onValueChange={setTheme}
                 size="md"
                 aria-label="theme"
-                className="flex-nowrap *:flex-1"
+                className="mt-3 flex-nowrap *:flex-1"
             >
                 {OPTIONS.map((option) => (
                     <ToggleGroupItem

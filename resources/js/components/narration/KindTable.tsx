@@ -2,8 +2,8 @@ import { Shapes } from 'lucide-react';
 
 import type { UsageRow } from '@/pages/Narration/types';
 
+import DataTable, { Td } from '@/components/narration/DataTable';
 import EmptyState from '@/components/narration/EmptyState';
-import DataTable, { Td } from '@/components/ui/DataTable';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { cn } from '@/lib/cn';
 import { fmt, formatCost } from '@/pages/Narration/helpers';

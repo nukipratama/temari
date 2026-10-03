@@ -46,7 +46,7 @@ export default function NarrationRow({
     return (
         <Card render={<li />} className="bg-popover">
             <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
+                <span className="text-label-small text-foreground">
                     {row.kind}
                 </span>
                 {row.discriminator !== null && (

@@ -3,7 +3,7 @@ import { ListOrdered } from 'lucide-react';
 import type { CostChart, UsageRow } from '@/pages/Narration/types';
 
 import { band } from '@/components/narration/chartBands';
-import SectionHeading from '@/components/SectionHeading';
+import SectionHeading from '@/components/narration/SectionHeading';
 import { Card } from '@/components/ui/card';
 import { fmt, formatCost } from '@/pages/Narration/helpers';
 
