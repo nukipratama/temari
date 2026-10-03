@@ -94,6 +94,15 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Athletes sign in through Strava and have no password, but the session guard
+     * only honours a remember cookie when this is a string.
+     */
+    public function getAuthPassword(): string
+    {
+        return '';
+    }
+
     public function markOnboarded(): void
     {
         $this->onboarded_at = now();
