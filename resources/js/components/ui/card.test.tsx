@@ -1,16 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-    type CardPadding,
-    type CardTone,
-} from './card';
+import { Card, type CardPadding, type CardTone } from './card';
 
 describe('Card', () => {
     it('renders the default tone on the panel corner with a hairline edge and resting elevation', () => {
@@ -77,29 +68,5 @@ describe('Card', () => {
         const card = screen.getByText('x');
         expect(card).toHaveClass('bg-popover', 'custom-extra');
         expect(card).not.toHaveClass('bg-card');
-    });
-
-    it('renders every subcomponent in a header/content/footer layout', () => {
-        render(
-            <Card>
-                <CardHeader>
-                    <CardTitle>Title</CardTitle>
-                    <CardDescription>Subtitle</CardDescription>
-                </CardHeader>
-                <CardContent>Content</CardContent>
-                <CardFooter>Footer</CardFooter>
-            </Card>,
-        );
-
-        expect(screen.getByText('Title')).toBeInTheDocument();
-        expect(screen.getByText('Subtitle')).toBeInTheDocument();
-        expect(screen.getByText('Content')).toHaveAttribute(
-            'data-slot',
-            'card-content',
-        );
-        expect(screen.getByText('Footer')).toHaveAttribute(
-            'data-slot',
-            'card-footer',
-        );
     });
 });

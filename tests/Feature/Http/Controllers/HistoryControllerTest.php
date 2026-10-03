@@ -554,8 +554,8 @@ it('exposes a lifetime stats payload', function (): void {
             ->component('History')
             ->where('activeView', 'calendar')
             ->has('lifetime.total_runs')
-            ->has('lifetime.total_km')
-            ->has('lifetime.first_run_at')
+            ->missing('lifetime.total_km')
+            ->missing('lifetime.first_run_at')
             ->missing('lifetime.longest_km')
             ->missing('lifetime.has_activity'));
 });

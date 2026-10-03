@@ -21,8 +21,6 @@ export interface SeasonGoal {
 export interface ProfileSeason {
     starts_at: string;
     ends_at: string;
-    week_index: number;
-    total_weeks: number;
     goals: SeasonGoal[];
 }
 

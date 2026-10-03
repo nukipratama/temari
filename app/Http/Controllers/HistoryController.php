@@ -40,7 +40,7 @@ class HistoryController extends Controller
 
     private const array RUN_FIELDS = ['id', 'user_id', 'strava_external_id', 'analyzed_at', 'ingest_state', 'detail', 'runCard'];
 
-    private const array LIFETIME_FIELDS = ['total_runs', 'total_km', 'first_run_at'];
+    private const array LIFETIME_FIELDS = ['total_runs'];
 
     public function __construct(
         private readonly BuildCalendarCellsAction $calendarBuilder,

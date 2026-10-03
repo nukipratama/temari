@@ -182,8 +182,6 @@ describe('Profile', () => {
                 season={{
                     starts_at: '2026-06-12',
                     ends_at: '2026-09-04',
-                    week_index: 2,
-                    total_weeks: 12,
                     goals: [
                         {
                             id: 1,

@@ -105,7 +105,8 @@ it('creates a season and its 5 goals on a fresh user\'s first Plan view, before 
         ->assertInertia(fn (Assert $page) => $page
             ->has('season')
             ->where('season.week_index', 1)
-            ->where('season.is_race_oriented', false)
+            ->missing('season.is_race_oriented')
+            ->missing('season.block_opens_on')
             ->missing('season.goals')
             ->missing('season.record'));
 

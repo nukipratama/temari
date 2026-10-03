@@ -440,7 +440,7 @@ className={cn(pillButtonVariants({ tone, size }), className)}
 **There is one card**, `Card` in [card.tsx](../resources/js/components/ui/card.tsx), and MASTER.md
 limits where it goes: page sections are split by lane dividers, not wrapped in cards, and nothing
 nests inside one. It is a single surface — `bg-card` on a `border` edge at `rounded-panel` with
-`shadow-e1` — with optional `CardHeader` / `CardContent` / `CardFooter` slots, in two tones:
+`shadow-e1` — in two tones:
 
 | Tone | What it is |
 |---|---|
