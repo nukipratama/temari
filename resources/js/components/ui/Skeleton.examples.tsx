@@ -17,7 +17,14 @@ export default {
             render: () => <Skeleton className="h-4 w-40" />,
         },
         { name: 'prose', render: () => <SkeletonProse /> },
-        { name: 'stats', render: () => <SkeletonStats count={3} /> },
+        {
+            name: 'stats',
+            render: () => (
+                <div className="overflow-x-auto">
+                    <SkeletonStats count={3} />
+                </div>
+            ),
+        },
         {
             name: 'chart',
             render: () => <SkeletonChart className="h-[120px]" />,

@@ -48,7 +48,7 @@ export default {
         axes: axesOf(pillButtonVariantMap, ['tone', 'size']),
         render: ({ tone, size }) => (
             <PillButton tone={tone as PillTone} size={size as PillSize}>
-                {tone}
+                save
             </PillButton>
         ),
     },

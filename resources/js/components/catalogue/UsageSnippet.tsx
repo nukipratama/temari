@@ -6,14 +6,14 @@ export default function UsageSnippet({ code }: Readonly<{ code: string }>) {
     const [copied, setCopied] = useState(false);
 
     return (
-        <div className="relative">
-            <pre className="overflow-x-auto rounded-sm bg-secondary p-3 pr-20 font-mono text-xs leading-relaxed text-foreground">
+        <div className="flex items-start gap-2">
+            <pre className="min-w-0 flex-1 overflow-x-auto rounded-sm bg-secondary p-3 font-mono text-xs leading-relaxed text-foreground">
                 <code>{code}</code>
             </pre>
             <PillButton
                 tone="outline"
                 size="xs"
-                className="absolute top-2 right-2"
+                className="shrink-0"
                 onClick={() => {
                     void navigator.clipboard
                         .writeText(code)
