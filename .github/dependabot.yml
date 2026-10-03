@@ -32,6 +32,11 @@ updates:
     groups:
       docker-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: mysql
+        versions: [">= 9"]
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker-compose
     directory: /
     schedule:
@@ -39,3 +44,6 @@ updates:
     groups:
       docker-compose-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: mysql
+        versions: [">= 9"]
