@@ -359,10 +359,10 @@
         "leaf/0.18": {
             "over": {
                 "resources/js/components/ui/Chip.test.tsx": [
-                    "background"
+                    "paper"
                 ],
                 "resources/js/lib/variants.ts": [
-                    "background"
+                    "paper"
                 ],
                 "resources/js/components/narration/athlete/VersionDiff.tsx": [
                     "background"

@@ -1,4 +1,5 @@
 import {
+    COLOR,
     DARK_INK,
     GROUNDS_DARK,
     inkOnDark,
@@ -9,7 +10,7 @@ import {
     RARITY_INK_DARK,
     tintOnDark,
 } from '@brand/build-tokens.mjs';
-import { contrast, darkGrounds, luminance } from '@brand/grounds.mjs';
+import { contrast, darkGrounds, KINDS, luminance } from '@brand/grounds.mjs';
 
 /**
  * Proof for R1's mitigation (plan/README.md): before any of these values are
@@ -67,6 +68,22 @@ describe('dark-ground token derivation (build-tokens.mjs)', () => {
             }
         }
     });
+
+    it.each([
+        ['ember', 4.5],
+        ['leaf', 4.6],
+    ])(
+        'keeps %s-ink (dark) at %s:1 on its own tint over every dark ground',
+        (family, target) => {
+            for (const bg of grounds) {
+                const tint = tintOnDark(COLOR[family], bg, KINDS.tint[family]);
+                expect(
+                    contrast(DARK_INK[family], tint),
+                    `${family}-ink (dark) ${DARK_INK[family]} on ${family}/${KINDS.tint[family]} over ${bg}`,
+                ).toBeGreaterThanOrEqual(target);
+            }
+        },
+    );
 
     it('clears 4.5:1 on every dark ground for all five rarity tiers', () => {
         for (const [tier, hex] of Object.entries(RARITY_INK_DARK)) {

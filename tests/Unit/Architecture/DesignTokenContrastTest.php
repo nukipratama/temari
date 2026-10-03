@@ -553,6 +553,34 @@ it('records every panel/text pair painted in one class string', function (): voi
     ));
 })->group('structure');
 
+it('scores every chip tone tint on every surface a chip can land on', function (): void {
+    $variants = File::get(resource_path('js/lib/variants.ts'));
+    preg_match('/export const chipVariants = cva\((.*?)\n\);/s', $variants, $chip);
+    preg_match('/tone:\s*\{(.*?)\n\s*\},/s', $chip[1] ?? '', $tones);
+    preg_match_all("/^\s*(\w+):\s*'([^']*)'/m", $tones[1] ?? '', $entries, PREG_SET_ORDER);
+
+    expect($entries)->not->toBeEmpty();
+
+    $registry = groundKinds()['panel'];
+    $narrowed = [];
+    foreach ($entries as [, $tone, $classes]) {
+        if (preg_match('/\bbg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))/', $classes, $tint) !== 1) {
+            continue;
+        }
+        $spec = alphaSpec($tint[1], ($tint[2] ?? '') !== '' ? (float) $tint[2] : (float) $tint[3] / 100);
+        $expected = $tone === 'onSky' ? ['sky'] : ['paper'];
+        $mounts = $registry[$spec]['over']['resources/js/lib/variants.ts'] ?? [];
+        if ($mounts !== $expected) {
+            $narrowed[] = sprintf('%s (%s): registered over [%s], expected [%s]', $tone, $spec, implode(', ', $mounts), implode(', ', $expected));
+        }
+    }
+
+    expect($narrowed)->toBe([], sprintf(
+        "A chip can land on any paper surface, so grounds.json must record each chip tone's tint over paper:\n  %s",
+        implode("\n  ", $narrowed),
+    ));
+})->group('structure');
+
 /**
  * Every opaque `bg-<token>` painted in the same class string as a `text-<token>`,
  * scored straight: with no alpha the fill *is* the ground, so there is nothing
