@@ -4,6 +4,7 @@ import { useId, useState } from 'react';
 import type { SharedProps } from '@/types/inertia';
 
 import TemariMascot from '@/components/temari/TemariMascot';
+import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
@@ -67,17 +68,12 @@ export function EffortChip({
     const band = effortBand(score);
 
     return (
-        <span
-            className={cn(
-                'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-label-micro',
-                CHIP_TINT[band],
-                EFFORT_ICON_CLASS[band],
-                className,
-            )}
+        <Chip
+            className={cn(CHIP_TINT[band], EFFORT_ICON_CLASS[band], className)}
         >
             <span className="font-mono font-bold tabular-nums">{score}/10</span>
             {` · ${effortWord(score)}`}
-        </span>
+        </Chip>
     );
 }
 

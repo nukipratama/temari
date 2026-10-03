@@ -91,12 +91,11 @@ export default function NarrationRow({
             {toolCalls.length > 0 && (
                 <ul className="mt-2 flex flex-wrap gap-1">
                     {toolCalls.map((call) => (
-                        <li
-                            key={call.id}
-                            className="rounded-full bg-muted px-2 py-0.5 text-label-micro text-text-2"
-                        >
-                            {call.tool} · {call.arguments_summary} ·{' '}
-                            {fmt(call.duration_ms)}ms
+                        <li key={call.id}>
+                            <Chip className="whitespace-normal">
+                                {call.tool} · {call.arguments_summary} ·{' '}
+                                {fmt(call.duration_ms)}ms
+                            </Chip>
                         </li>
                     ))}
                 </ul>

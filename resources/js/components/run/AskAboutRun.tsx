@@ -1,7 +1,6 @@
 import { LoaderCircle, MessageCircle, Send } from 'lucide-react';
 import { useRef, useState, type FormEvent } from 'react';
 
-import { Button } from '@/components/ui/button';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
@@ -164,10 +163,11 @@ export default function AskAboutRun({
                     placeholder="ask about this run"
                     className={cn(inputVariants(), 'min-w-0 flex-1')}
                 />
-                <Button
+                <PillButton
                     type="submit"
+                    tone="horizon"
+                    size="sm"
                     disabled={!canSend}
-                    className="disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <Icon
                         icon={asking ? LoaderCircle : Send}
@@ -177,7 +177,7 @@ export default function AskAboutRun({
                         aria-hidden
                     />
                     {asking ? 'sending…' : 'ask'}
-                </Button>
+                </PillButton>
             </form>
 
             {atRunCap && (

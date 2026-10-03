@@ -27,7 +27,7 @@ import UserAvatar from '@/components/UserAvatar';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { formatPace } from '@/lib/pace';
-import { laneStack } from '@/lib/variants';
+import { laneStack, pillButtonVariants } from '@/lib/variants';
 
 interface IdentityPayload {
     name: string;
@@ -149,7 +149,10 @@ export default function Profile({
                             stravaSync?.state === 'revoked' ? (
                                 <a
                                     href="/auth/strava/redirect?from=/profile"
-                                    className="focus-ring inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-label-micro text-text-2 transition hover:border-foreground/40 hover:text-foreground"
+                                    className={pillButtonVariants({
+                                        tone: 'outline',
+                                        size: 'sm',
+                                    })}
                                 >
                                     <Icon
                                         icon={StravaIcon}
@@ -157,7 +160,7 @@ export default function Profile({
                                         height={12}
                                         aria-hidden
                                     />
-                                    Reconnect
+                                    reconnect
                                 </a>
                             ) : undefined
                         }

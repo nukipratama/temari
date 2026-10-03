@@ -5,8 +5,8 @@ import type {
 } from '@/types/inertia';
 
 import MetricExplainer from '@/components/MetricExplainer';
+import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { cn } from '@/lib/cn';
 import {
     formatSignedForm,
     formStatusMeaning,
@@ -16,12 +16,6 @@ import {
 import { ID_MONTH_SHORT, formatShortDateId } from '@/lib/pace';
 
 import { Stat, StatDelta } from './Stat';
-
-const CHIP_TONE: Record<string, string> = {
-    positive: 'border-leaf/35 bg-leaf/18 text-leaf-ink',
-    neutral: 'border-border bg-muted text-text-2',
-    warning: 'border-ember/35 bg-ember/15 text-ember-ink',
-};
 
 const TILE = 'rounded-sm bg-secondary px-3 py-2.5';
 
@@ -37,16 +31,7 @@ function warmUpLine(knownFrom: string, asOf: string): string {
 }
 
 function FormChip({ status }: Readonly<{ status: FormStatus }>) {
-    return (
-        <span
-            className={cn(
-                'inline-flex items-center rounded-full border px-3 py-1 text-label-micro',
-                CHIP_TONE[formStatusTone(status)],
-            )}
-        >
-            {formStatusWord(status)}
-        </span>
-    );
+    return <Chip tone={formStatusTone(status)}>{formStatusWord(status)}</Chip>;
 }
 
 /** Plain-primary-label + jargon-behind-a-ⓘ for the three side-by-side cost
@@ -219,14 +204,7 @@ export default function WeekComparison({
                             {formatShortDateId(date_ranges.load.end)}
                         </span>
                         {load.form_status === null ? (
-                            <span
-                                className={cn(
-                                    'inline-flex items-center rounded-full border px-3 py-1 text-label-micro',
-                                    CHIP_TONE.neutral,
-                                )}
-                            >
-                                learning
-                            </span>
+                            <Chip>learning</Chip>
                         ) : (
                             <>
                                 <FormChip status={load.form_status} />

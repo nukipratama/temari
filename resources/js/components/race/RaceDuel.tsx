@@ -1,6 +1,7 @@
 import type { RaceAmbition, RaceSupport } from '@/types/inertia';
 
 import MascotWatermark from '@/components/temari/MascotWatermark';
+import Chip, { type ChipTone } from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import {
@@ -28,10 +29,10 @@ interface RaceDuelProps {
     className?: string;
 }
 
-const GAP_PILL: Record<GoalGapVerdict, string> = {
-    behind: 'bg-ember/15 text-ember-ink',
-    ahead: 'bg-leaf/15 text-leaf-ink',
-    on: 'bg-muted text-foreground',
+const GAP_PILL: Record<GoalGapVerdict, ChipTone> = {
+    behind: 'warning',
+    ahead: 'positive',
+    on: 'neutral',
 };
 
 const SUPPORTED_TONE: Record<GoalGapVerdict, string> = {
@@ -80,14 +81,13 @@ export default function RaceDuel({
                     </p>
                 </div>
                 {gap ? (
-                    <span
-                        className={cn(
-                            'mb-0.5 rounded-full pad-chip font-mono text-xs font-bold whitespace-nowrap tabular-nums',
-                            GAP_PILL[tone],
-                        )}
+                    <Chip
+                        tone={GAP_PILL[tone]}
+                        size="md"
+                        className="mb-0.5 font-mono tabular-nums"
                     >
                         {gap.label}
-                    </span>
+                    </Chip>
                 ) : (
                     <span aria-hidden />
                 )}

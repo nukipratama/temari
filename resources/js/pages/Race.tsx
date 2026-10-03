@@ -105,7 +105,7 @@ export default function Race({
                             body="your plan goes back to a steady rhythm with regular deloads."
                             primaryLabel="clear race"
                             primaryIcon={CalendarX}
-                            primaryClassName="bg-ember-deep text-cream hover:bg-ember-deep hover:opacity-90"
+                            primaryTone="danger"
                             secondaryLabel="keep it"
                             onPrimary={() => {
                                 setConfirmingClear(false);

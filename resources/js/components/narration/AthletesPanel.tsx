@@ -7,6 +7,7 @@ import LastOpen from '@/components/narration/LastOpen';
 import Sparkline from '@/components/narration/Sparkline';
 import SectionHeading from '@/components/SectionHeading';
 import { Card } from '@/components/ui/card';
+import Chip from '@/components/ui/Chip';
 import ProgressBar from '@/components/ui/ProgressBar';
 import {
     athleteLabel,
@@ -194,14 +195,8 @@ function Tag({
     alert = false,
 }: Readonly<{ label: string; alert?: boolean }>) {
     return (
-        <span
-            className={
-                alert
-                    ? 'rounded-full bg-ember/[0.15] px-1.5 py-0.5 text-xs font-normal text-ember-ink'
-                    : 'rounded-full bg-muted px-1.5 py-0.5 text-xs font-normal text-text-2'
-            }
-        >
+        <Chip tone={alert ? 'warning' : 'neutral'} size="md">
             {label}
-        </span>
+        </Chip>
     );
 }

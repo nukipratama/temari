@@ -6,8 +6,7 @@ import TemariMascot, {
 } from '@/components/temari/TemariMascot';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import Overlay, { OverlayTitle } from '@/components/ui/Overlay';
-import PillButton from '@/components/ui/PillButton';
-import { cn } from '@/lib/cn';
+import PillButton, { type PillTone } from '@/components/ui/PillButton';
 import { iconButtonVariants } from '@/lib/variants';
 
 export interface TemariNudgeModalProps {
@@ -19,8 +18,8 @@ export interface TemariNudgeModalProps {
     primaryLabel: string;
     /** Iconify icon name shown before the primary label. */
     primaryIcon: IconComponent;
-    /** Extra classes merged onto the primary CTA (e.g. a brand color override). */
-    primaryClassName?: string;
+    /** Default `sky`; `danger` for a destructive confirmation. */
+    primaryTone?: PillTone;
     onPrimary: () => void;
     /** Secondary dismiss label; defaults to a soft "Not now". */
     secondaryLabel?: string;
@@ -36,7 +35,7 @@ export default function TemariNudgeDialog({
     body,
     primaryLabel,
     primaryIcon,
-    primaryClassName,
+    primaryTone = 'sky',
     onPrimary,
     secondaryLabel = 'not now',
     pose = 'neutral',
@@ -79,12 +78,9 @@ export default function TemariNudgeDialog({
 
             <div className="flex flex-col gap-2 border-t border-border bg-card px-5 py-4">
                 <PillButton
-                    tone="sky"
+                    tone={primaryTone}
                     onClick={onPrimary}
-                    className={cn(
-                        'w-full justify-center py-3.5 font-semibold',
-                        primaryClassName,
-                    )}
+                    className="w-full justify-center py-3.5 font-semibold"
                 >
                     <Icon
                         icon={primaryIcon}

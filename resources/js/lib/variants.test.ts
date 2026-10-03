@@ -20,6 +20,7 @@ describe('pillButtonVariants', () => {
         ['sky', 'bg-sky'],
         ['ghost', 'border-foreground/20'],
         ['outline', 'border-border'],
+        ['danger', 'bg-ember-deep'],
     ] as const)('renders tone %s', (tone, expected) => {
         expect(tokens(pillButtonVariants({ tone }))).toContain(expected);
     });
@@ -59,6 +60,8 @@ describe('chipVariants', () => {
         ['horizon', 'text-horizon-ink'],
         ['sky', 'text-sky'],
         ['onSky', 'text-cream/80'],
+        ['positive', 'text-leaf-ink'],
+        ['warning', 'text-ember-ink'],
     ] as const)('renders tone %s', (tone, expected) => {
         expect(tokens(chipVariants({ tone }))).toContain(expected);
     });

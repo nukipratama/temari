@@ -9,6 +9,8 @@ describe('Chip', () => {
         ['horizon', 'bg-horizon/[0.18]'],
         ['sky', 'bg-sky/[0.08]'],
         ['onSky', 'bg-cream/10'],
+        ['positive', 'bg-leaf/[0.18]'],
+        ['warning', 'bg-ember/[0.18]'],
     ] satisfies [ChipTone, string][])(
         'renders tone %s with its background class',
         (tone, expected) => {

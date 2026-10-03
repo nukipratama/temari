@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 
 import type { PastYouTrend, TrendDirection } from '@/types/inertia';
 
+import Chip, { type ChipTone } from '@/components/ui/Chip';
 import { cn } from '@/lib/cn';
 import { EFFORT_STRIPE_CLASS } from '@/lib/effort';
 import { activityUrl } from '@/lib/routes';
@@ -11,10 +12,10 @@ import {
     evidenceRows,
 } from '@/lib/verdict';
 
-const DELTA_TONE: Record<TrendDirection, string> = {
-    better: 'bg-horizon/[0.18] text-icon-accent',
-    flat: 'bg-muted text-text-3',
-    worse: 'bg-ember/[0.15] text-ember-ink',
+const DELTA_TONE: Record<TrendDirection, ChipTone> = {
+    better: 'horizon',
+    flat: 'neutral',
+    worse: 'warning',
 };
 
 /**
@@ -51,14 +52,12 @@ export default function EvidenceList({
                             {row.hr !== null && (
                                 <Reading reading={row.hr} unit="bpm" />
                             )}
-                            <span
-                                className={cn(
-                                    'ml-auto rounded-full px-2 py-0.5 text-meta font-extrabold',
-                                    DELTA_TONE[row.direction],
-                                )}
+                            <Chip
+                                tone={DELTA_TONE[row.direction]}
+                                className="ml-auto font-mono tabular-nums"
                             >
                                 {row.delta}
-                            </span>
+                            </Chip>
                         </div>
                     </Link>
                 </li>

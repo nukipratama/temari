@@ -300,7 +300,7 @@ describe('Profile', () => {
 
         render(<Profile mood="easy" identity={identity} stats={stats} />);
 
-        expect(screen.queryByText(/Reconnect/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/reconnect/i)).not.toBeInTheDocument();
     });
 
     it('shows a persistent reconnect CTA when the Strava connection is revoked', () => {
@@ -313,7 +313,7 @@ describe('Profile', () => {
 
         render(<Profile mood="easy" identity={identity} stats={stats} />);
 
-        expect(screen.getByText('Reconnect').closest('a')).toHaveAttribute(
+        expect(screen.getByText('reconnect').closest('a')).toHaveAttribute(
             'href',
             '/auth/strava/redirect?from=/profile',
         );

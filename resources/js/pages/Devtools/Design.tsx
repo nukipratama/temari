@@ -8,6 +8,7 @@ import TemariMascot, {
     POSES,
 } from '@/components/temari/TemariMascot';
 import { Card } from '@/components/ui/card';
+import Chip from '@/components/ui/Chip';
 import { cn } from '@/lib/cn';
 import {
     type ContrastRow,
@@ -337,31 +338,27 @@ export default function Design() {
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                        <span className="text-label-micro rounded-full bg-muted pad-chip text-text-2">
-                            {names.length} tokens live
-                        </span>
-                        <span
-                            className={cn(
-                                'text-label-micro rounded-full pad-chip',
+                        <Chip>{names.length} tokens live</Chip>
+                        <Chip
+                            tone={
                                 contrastFails.length === 0
-                                    ? 'bg-leaf/[0.18] text-leaf-ink'
-                                    : 'bg-ember/[0.18] text-ember-ink',
-                            )}
+                                    ? 'positive'
+                                    : 'warning'
+                            }
                         >
                             contrast {contrast.length - contrastFails.length}/
                             {contrast.length}
-                        </span>
-                        <span
-                            className={cn(
-                                'text-label-micro rounded-full pad-chip',
+                        </Chip>
+                        <Chip
+                            tone={
                                 surfaceFails.length === 0
-                                    ? 'bg-leaf/[0.18] text-leaf-ink'
-                                    : 'bg-ember/[0.18] text-ember-ink',
-                            )}
+                                    ? 'positive'
+                                    : 'warning'
+                            }
                         >
                             surfaces {surfaces.length - surfaceFails.length}/
                             {surfaces.length}
-                        </span>
+                        </Chip>
                     </div>
 
                     {names.length === 0 && (
