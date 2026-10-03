@@ -9,7 +9,7 @@ name: temari-shared-services
 
 services:
     mysql:
-        image: 'mysql:8.4@sha256:c592c15aaf4a1961e15d82eb31ea5987dda862d1c4b1e93424438c0e91dc1f8d'
+        image: 'mysql:26.7@sha256:9d48c42f8341068f199116dfccb919b607c99765b5c61e549a548a43033471a4'
         container_name: temari-shared-mysql
         restart: unless-stopped
         command:
@@ -45,7 +45,7 @@ services:
         networks: [shared-services]
 
     mysql-test:
-        image: 'mysql:8.4@sha256:c592c15aaf4a1961e15d82eb31ea5987dda862d1c4b1e93424438c0e91dc1f8d'
+        image: 'mysql:26.7@sha256:9d48c42f8341068f199116dfccb919b607c99765b5c61e549a548a43033471a4'
         container_name: temari-shared-mysql-test
         restart: unless-stopped
         # Test workload: tmpfs storage, no durability — same tuning as
