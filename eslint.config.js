@@ -1,9 +1,10 @@
+import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import eslintReact from '@eslint-react/eslint-plugin';
 import reactHooks from 'eslint-plugin-react-hooks';
 import perfectionist from 'eslint-plugin-perfectionist';
 
-export default tseslint.config(
+export default defineConfig(
     { ignores: ['public/**', 'vendor/**', 'node_modules/**', 'bootstrap/**'] },
     ...tseslint.configs.recommended,
     {
