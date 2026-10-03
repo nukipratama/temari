@@ -96,7 +96,7 @@ describe('Onboarding/Index', () => {
         ).not.toBeDisabled();
     });
 
-    it('submits the goal with distance in meters and goal time in seconds', () => {
+    it('submits the goal with distance in meters and goal time in seconds', async () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
         advanceToGoal();
@@ -104,7 +104,7 @@ describe('Onboarding/Index', () => {
         fireEvent.change(screen.getByLabelText('race day'), {
             target: { value: '2026-12-25' },
         });
-        fireEvent.click(screen.getByRole('button', { name: '5K' }));
+        fireEvent.click(await screen.findByRole('button', { name: '5K' }));
         fireEvent.change(screen.getByLabelText('Hours'), {
             target: { value: '2' },
         });
