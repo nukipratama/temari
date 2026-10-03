@@ -326,7 +326,7 @@ jobs:
           fi
           # shellcheck disable=SC2016 # Database variables must expand inside the container shell.
           $COMPOSE exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" "$DB_DATABASE"' \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" "$DB_DATABASE"' \
             | gzip > "$out"
           # shellcheck disable=SC2016 # Database variables must expand inside the container shell.
           tables=$($COMPOSE exec -T mysql sh -c \
@@ -347,7 +347,7 @@ jobs:
           if $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "USE $adb"' 2>/dev/null; then
             set -o pipefail
             # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
-            $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" --databases "$adb"' \
+            $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" --databases "$adb"' \
               | gzip > "$out"
             # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
             tables=$($COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$adb\""' \
