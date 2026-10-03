@@ -152,13 +152,13 @@ jobs:
           echo "ANALYTICS_TABLE_COUNT_BEFORE=$(echo "$before_analytics" | tr -d '[:space:]')" >> "$GITHUB_ENV"
 
           docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" "$DB_DATABASE"' \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" "$DB_DATABASE"' \
             | gzip > /tmp/restore-ci/fixture.sql.gz
 
           # --databases carries its own CREATE DATABASE/USE, matching the analytics
           # backup step in ci.yml and restore-db.sh's `analytics-*` filename branch.
           docker compose -f "$FIXTURE_COMPOSE" exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces -u"$DB_USERNAME" --databases "$DB_ANALYTICS_DATABASE"' \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" --databases "$DB_ANALYTICS_DATABASE"' \
             | gzip > /tmp/restore-ci/analytics-fixture.sql.gz
 
       - name: Simulate a failed migration (leftover tables, lost rows)
