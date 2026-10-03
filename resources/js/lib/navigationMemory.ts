@@ -198,8 +198,9 @@ export function clearNavigationMemory(): void {
     notifyContextualOriginChange();
 }
 
-export function readContextualOrigin(): ContextualOrigin | null {
-    const stored = window.sessionStorage.getItem(ORIGIN_KEY);
+export function parseContextualOrigin(
+    stored: string | null,
+): ContextualOrigin | null {
     if (stored === null) return null;
 
     try {
@@ -225,6 +226,10 @@ export function readContextualOrigin(): ContextualOrigin | null {
     } catch {
         return null;
     }
+}
+
+export function readContextualOrigin(): ContextualOrigin | null {
+    return parseContextualOrigin(window.sessionStorage.getItem(ORIGIN_KEY));
 }
 
 export function writeContextualOrigin(origin: ContextualOrigin | null): void {
