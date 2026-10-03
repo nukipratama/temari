@@ -31,6 +31,10 @@ code_refs:
 `RunController::show` in [RunController.php](../../app/Http/Controllers/RunController.php),
 which 404s on a foreign or not-yet-analyzed activity and lazily kicks a
 location-resolve job when the run has GPS but no resolved place name.
+`activity` and `detail` are allowlists of the fields the page reads
+(`ACTIVITY_FIELDS`, `DETAIL_FIELDS`), not serialized models, so start
+coordinates, Strava's raw laps and splits arrays and the other unread columns
+never reach the browser; the laps and splits views render from `stream_summary`.
 
 **Navigation:** `route('activities.show', activity)` → `/activities/{activity}`.
 Named route: `activities.show`. It is a **pushed** screen (P6): back chevron,

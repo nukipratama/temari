@@ -23,6 +23,7 @@ use App\Services\Run\Story\PastYouMatcher;
 use App\Services\Run\Story\Temari;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -42,6 +43,39 @@ class RunController extends Controller
      * `uniqueFor`.
      */
     private const int LOCATION_DISPATCH_GUARD_SECONDS = 600;
+
+    private const array ACTIVITY_FIELDS = ['id', 'user_id', 'strava_external_id', 'analyzed_at', 'ingest_state'];
+
+    private const array DETAIL_FIELDS = [
+        'id',
+        'activity_id',
+        'name',
+        'start_date_local',
+        'distance',
+        'elapsed_time',
+        'total_elevation_gain',
+        'average_heartrate',
+        'max_heartrate',
+        'average_cadence',
+        'trimp_edwards',
+        'perceived_effort',
+        'workout_type',
+        'location_name',
+        'location_country',
+        'weather_temp_c',
+        'weather_humidity_pct',
+        'weather_rain_detected',
+        'weather_wind_speed_kmh',
+        'weather_wind_gust_kmh',
+        'weather_wind_direction_deg',
+        'weather_rain_is_forecast',
+        'summary_polyline',
+        'stream_summary',
+    ];
+
+    private const array UNREAD_STREAM_SUMMARY_KEYS = ['steady_effort_hr_drift_bpm', 'drift_metric_version'];
+
+    private const array UNREAD_PER_KM_KEYS = ['distance_m', 'elapsed_sec'];
 
     public function show(Request $request, Activity $activity, PastYouMatcher $matcher, CardPresenter $cards, DetailHydrator $hydrator, PastYouDuelBuilder $duelBuilder, PrBibResolver $prBib): Response
     {
@@ -91,13 +125,12 @@ class RunController extends Controller
         return Inertia::render('Runs/Show', [
             // `activity` is already hydrated for the 404 guards above, so a
             // closure would defer nothing.
-            'activity' => $activity,
+            'activity' => Arr::only($activity->withoutRelations()->toArray(), self::ACTIVITY_FIELDS),
             // Closured so a poll reloading only the insight props skips the effort lookup.
-            'detail' => function () use ($detail, $effortFor): ActivityDetail {
-                $detail->setAttribute('effort', $effortFor()->value);
-
-                return $detail;
-            },
+            'detail' => fn (): array => [
+                ...$this->detailPayload($detail),
+                'effort' => $effortFor()->value,
+            ],
             // True only when this view queued the deeper fetch, so the notice
             // promising "it fills itself in" is never shown to a run nothing is
             // coming for (demo data, a revoked connection, an already-detailed row).
@@ -106,7 +139,8 @@ class RunController extends Controller
             'storyLine' => fn (): ?StoryLine => StoryLine::query()
                 ->where('activity_id', $activity->id)
                 ->where('kind', StoryLine::KIND_POST_RUN)
-                ->first(),
+                ->first()
+                ?->makeHidden(['created_at', 'updated_at']),
             // Backend-computed mood for the (rare) window before the post-run
             // StoryLine lands, so the detail mascot matches the share card
             // instead of diverging into a frontend heuristic.
@@ -133,6 +167,28 @@ class RunController extends Controller
             },
             'prBib' => fn (): ?array => $prBib->resolve($activity, $detail),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function detailPayload(ActivityDetail $detail): array
+    {
+        $payload = Arr::only($detail->toArray(), self::DETAIL_FIELDS);
+        $summary = $payload['stream_summary'] ?? null;
+
+        if (is_array($summary)) {
+            $summary = Arr::except($summary, self::UNREAD_STREAM_SUMMARY_KEYS);
+            if (is_array($summary['per_km'] ?? null)) {
+                $summary['per_km'] = array_map(
+                    fn (array $km): array => Arr::except($km, self::UNREAD_PER_KM_KEYS),
+                    $summary['per_km'],
+                );
+            }
+            $payload['stream_summary'] = $summary;
+        }
+
+        return $payload;
     }
 
     /**

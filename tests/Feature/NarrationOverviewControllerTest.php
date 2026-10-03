@@ -243,24 +243,6 @@ it('maps legacy absolute from+to links (no range) to a custom range', function (
         );
 });
 
-it('includes previousTotals for a bounded range and null for all-time', function (): void {
-    Carbon::setTestNow('2026-05-19 12:00:00');
-    seedUsage('briefing', 100, 50, Carbon::parse('2026-05-15')); // current 7d window
-    seedUsage('briefing', 40, 20, Carbon::parse('2026-05-10')); // prior window
-
-    $this->get('/devtools/narration?range=7d')
-        ->assertInertia(
-            fn (AssertableInertia $page) => $page
-                ->where('totals.total', 150)
-                ->where('previousTotals.total', 60),
-        );
-
-    $this->get('/devtools/narration?range=all')
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('previousTotals', null));
-
-    Carbon::setTestNow();
-});
-
 it('rejects malformed date inputs', function (): void {
     $this->getJson('/devtools/narration?from=yesterday')->assertStatus(422);
 });

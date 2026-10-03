@@ -146,7 +146,6 @@ function renderShow(
                 user_id: 1,
                 strava_external_id: 4821,
                 analyzed_at: '2026-05-10',
-                detail,
             }}
             detail={detail}
             card={runCard}
@@ -336,7 +335,6 @@ describe('Runs/Show', () => {
                 user_id: 1,
                 analyzed_at: '2026-05-10',
                 ingest_state: 'summary',
-                detail,
             },
         });
         expect(
@@ -380,7 +378,6 @@ describe('Runs/Show', () => {
                 id: 99,
                 user_id: 1,
                 analyzed_at: '2026-05-10',
-                detail: noSplits,
             },
             detail: noSplits,
         });
@@ -414,7 +411,6 @@ describe('Runs/Show', () => {
                 id: 99,
                 user_id: 1,
                 analyzed_at: '2026-05-10',
-                detail: bare,
             },
             detail: bare,
         });
@@ -478,7 +474,6 @@ describe('Runs/Show', () => {
                 id: 99,
                 user_id: 1,
                 analyzed_at: '2026-05-10',
-                detail,
             },
         });
         const footer = container.querySelector('footer');
@@ -493,7 +488,6 @@ describe('Runs/Show', () => {
                 id: 99,
                 user_id: 1,
                 analyzed_at: '2026-05-10',
-                detail: noName,
             },
             detail: noName,
         });

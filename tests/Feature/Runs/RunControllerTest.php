@@ -61,6 +61,51 @@ it('shows a single run detail with Temari speech + run card', function (): void 
             ->where('card.public_share_url', route('activities.show', ['activity' => $card->activity_id])));
 });
 
+it('sends the run page only the activity and detail fields it renders', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => '2026-03-01 06:30:00',
+        'start_lat' => -6.2,
+        'start_lng' => 106.8,
+        'calories' => 640,
+        'laps' => [['lap_index' => 1, 'distance' => 1000, 'elapsed_time' => 360]],
+        'splits_metric' => [['split' => 1, 'distance' => 1000, 'elapsed_time' => 360]],
+        'stream_summary' => [
+            'per_km' => [['km' => 1, 'pace' => '6:00', 'avg_hr' => 150, 'distance_m' => 1000, 'elapsed_sec' => 360]],
+            'steady_effort_hr_drift_bpm' => 3.1,
+            'drift_metric_version' => 2,
+        ],
+    ]);
+    RunCard::factory()->for($activity)->create();
+    StoryLine::factory()->for($activity)->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('activity.id', $activity->id)
+            ->has('activity.analyzed_at')
+            ->missing('activity.detail')
+            ->missing('activity.run_card')
+            ->missing('activity.fetched_at')
+            ->missing('activity.created_at')
+            ->where('detail.start_date_local', '2026-03-01T06:30:00')
+            ->where('detail.stream_summary.per_km.0.pace', '6:00')
+            ->missing('detail.start_lat')
+            ->missing('detail.start_lng')
+            ->missing('detail.calories')
+            ->missing('detail.laps')
+            ->missing('detail.splits_metric')
+            ->missing('detail.created_at')
+            ->missing('detail.stream_summary.per_km.0.distance_m')
+            ->missing('detail.stream_summary.per_km.0.elapsed_sec')
+            ->missing('detail.stream_summary.steady_effort_hr_drift_bpm')
+            ->missing('detail.stream_summary.drift_metric_version')
+            ->has('storyLine.speech')
+            ->missing('storyLine.created_at')
+            ->missing('storyLine.updated_at'));
+});
+
 it('numbers the run card\'s edition within its rarity across the user\'s collection', function (): void {
     $user = User::factory()->create();
     foreach (['First', 'Second', 'Third'] as $move) {
