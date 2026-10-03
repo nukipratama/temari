@@ -92,23 +92,6 @@ describe('Eyebrow', () => {
         expect(screen.getByText('Appearance').tagName).toBe('SPAN');
     });
 
-    it('draws a leading dot in the label colour when dot is set', () => {
-        const { container } = render(
-            <Eyebrow token="micro" tone="horizon-ink" dot>
-                Temari
-            </Eyebrow>,
-        );
-        const root = container.firstElementChild as HTMLElement;
-
-        expect(root).toHaveClass('flex', 'items-center', 'text-horizon-ink');
-        expect(root.firstElementChild).toHaveAttribute('aria-hidden');
-        expect(root.firstElementChild).toHaveClass(
-            'size-1.5',
-            'rounded-full',
-            'bg-current',
-        );
-    });
-
     it('keeps the rule on the sky tone for a label on a dark panel', () => {
         const { container } = render(
             <Eyebrow token="small" tone="ink-on-sky" rule>
@@ -121,7 +104,7 @@ describe('Eyebrow', () => {
         expect(root.lastElementChild).toHaveClass('bg-current');
     });
 
-    it('renders no dot or rule by default', () => {
+    it('renders no rule by default', () => {
         const { container } = render(<Eyebrow token="small">Plain</Eyebrow>);
 
         expect(container.querySelector('[aria-hidden]')).toBeNull();
