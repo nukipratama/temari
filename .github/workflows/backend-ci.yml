@@ -27,7 +27,7 @@ jobs:
           docker run -d --name mysql --tmpfs /var/lib/mysql:rw -p 127.0.0.1::3306 \
             -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=temari_testing \
             -e MYSQL_USER=sail -e MYSQL_PASSWORD=password \
-            mysql:8.4@sha256:c592c15aaf4a1961e15d82eb31ea5987dda862d1c4b1e93424438c0e91dc1f8d \
+            mysql:9.7@sha256:e2bde46db6563855d7177adb5f0b57b9dc663f5a20927a90f4259d3312068497 \
             --innodb-flush-log-at-trx-commit=0 --innodb-doublewrite=0 --skip-log-bin --performance-schema=OFF \
             > "$RUNNER_TEMP/mysql-start.log" 2>&1 &
 
