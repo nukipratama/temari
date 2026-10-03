@@ -9,7 +9,7 @@ x-mysql-base: &mysql-base
         timeout: 5s
 
 x-redis-base: &redis-base
-    image: 'redis:8.8-alpine@sha256:0b2b77d3ea5078274795e3177cdbdada8b96316684a38911d528534ed679b5ec'
+    image: 'redis:8.10-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0'
     networks:
         - sail
     healthcheck:
