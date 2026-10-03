@@ -58,7 +58,8 @@ jargon-accessibility rule in [[voice-and-tone]].
 `weekComparison` (km/runs) comes from `BriefingContext::forUser()` — the same context builder
 `WeekStateTool` feeds the briefing narrator, reused here rather than a new query.
 `load` is one [TrainingLoad::summary()](app/Services/Run/Metrics/TrainingLoad.php) call at the
-7-day window, not one entry per range. The comparison labels carry the current Monday-to-today
+7-day window, not one entry per range, minus `weekly_trimp_reference`, which only the briefing's
+`BriefingContext` reads. The comparison labels carry the current Monday-to-today
 slice and the prior week's matching weekdays; the load tiles carry their trailing seven calendar
 dates. The load balance value is labelled with its as-of date. All three windows share the controller's
 app-local `today`, and the calendar slice uses the same Sunday-ending week boundaries as
@@ -90,7 +91,7 @@ no new backend query, so the card and the line can never disagree.
 [RaceComparison](resources/js/components/trends/RaceComparison.tsx#L40) closes the page: days out, then
 "your target" with its time and pace beside "supported by your recent runs", the VDOT race equivalent,
 and the one sentence that states the band, all from the same `RacePresenter` as `/race`
-([TrendsController::raceOutlook()](app/Http/Controllers/TrendsController.php#L55), [[race-projection]],
+([TrendsController::raceOutlook()](app/Http/Controllers/TrendsController.php#L68), [[race-projection]],
 [[the-race-page-sets-the-target-beside-supported-time]]). It repeats no long-term load hero: a single
 "load balance today" line closes the section. With no race set it is one line and a "set a race" link
 to `/race`, with no repeated long-term load.
