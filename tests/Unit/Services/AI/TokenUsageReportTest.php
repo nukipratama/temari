@@ -304,37 +304,6 @@ it('labels available kinds via AnalysisType, falling back to the raw value', fun
         ->and($kinds->get('totally-unknown-kind')['label'])->toBe('totally-unknown-kind');
 });
 
-it('sums previousTotals over the equal-length window immediately before the range', function (): void {
-    seedReportUsage('briefing', 100, 50, Carbon::parse('2026-05-12'), model: 'gpt-4o');      // inside range
-    seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-05'), model: 'gpt-4o'); // prior window
-    seedReportUsage('briefing', 999, 999, Carbon::parse('2026-04-01'));                        // older than prior window
-
-    $from = Carbon::parse('2026-05-10')->startOfDay();
-    $to = Carbon::parse('2026-05-19')->endOfDay();
-    $result = $this->report->build($from, $to, null);
-
-    expect($result['previousTotals'])->toMatchArray(['prompt' => 1_000_000, 'total' => 1_000_000, 'calls' => 1])
-        // 1M in @ 2.50/1M = 2.50
-        ->and($result['previousTotals']['cost'])->toBe(2.50);
-});
-
-it('scopes previousTotals to the kind filter', function (): void {
-    seedReportUsage('briefing', 100, 0, Carbon::parse('2026-05-05'));
-    seedReportUsage('run-insight', 200, 0, Carbon::parse('2026-05-05'));
-
-    $from = Carbon::parse('2026-05-10')->startOfDay();
-    $to = Carbon::parse('2026-05-19')->endOfDay();
-
-    expect($this->report->build($from, $to, 'briefing')['previousTotals']['prompt'])->toBe(100);
-});
-
-it('omits previousTotals when includePrevious is false', function (): void {
-    $from = Carbon::parse('2026-05-10')->startOfDay();
-    $to = Carbon::parse('2026-05-19')->endOfDay();
-
-    expect($this->report->build($from, $to, null, includePrevious: false)['previousTotals'])->toBeNull();
-});
-
 it('returns zeroed totals and empty breakdowns when no rows fall in range', function () use ($range): void {
     [$from, $to] = $range();
     $result = $this->report->build($from, $to, null);

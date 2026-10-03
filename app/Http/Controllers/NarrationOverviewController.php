@@ -32,7 +32,7 @@ class NarrationOverviewController extends Controller
         $origin = $validated['origin'] ?? null;
         $athlete = isset($validated['athlete']) ? (int) $validated['athlete'] : null;
 
-        $report = $this->report->build($from, $to, $kind, includePrevious: $range !== 'all', origin: $origin);
+        $report = $this->report->build($from, $to, $kind, origin: $origin);
         $athletes = $this->report->athletes($from, $to);
 
         return Inertia::render('Narration/Overview', [
@@ -43,7 +43,6 @@ class NarrationOverviewController extends Controller
             'origin' => $origin,
             'athlete' => $athlete,
             'totals' => $report['totals'],
-            'previousTotals' => $report['previousTotals'],
             'byKind' => $report['byKind'],
             'byDeployment' => $report['byDeployment'],
             'byOrigin' => $report['byOrigin'],

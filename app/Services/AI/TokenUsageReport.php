@@ -52,7 +52,6 @@ class TokenUsageReport
     /**
      * @return array{
      *     totals: array{prompt:int, completion:int, total:int, cached:int, calls:int, truncated_calls:int, cost:float},
-     *     previousTotals: array{prompt:int, completion:int, total:int, calls:int, cost:float}|null,
      *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, cached:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float, avg_steps:float|null, cached_pct:float|null, reasoning_pct:float|null}>,
      *     byDeployment: list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>,
      *     byOrigin: list<array{origin:string, label:string, prompt:int, completion:int, total:int, calls:int, cost:float}>,
@@ -62,7 +61,7 @@ class TokenUsageReport
      *     contentFilter: array{trips:int, pct:float|null},
      * }
      */
-    public function build(Carbon $from, Carbon $to, ?string $kind, bool $includePrevious = true, ?string $origin = null): array
+    public function build(Carbon $from, Carbon $to, ?string $kind, ?string $origin = null): array
     {
         $baseQuery = TokenUsage::query()->toBase()
             ->whereBetween('created_at', [$from, $to]);
@@ -85,7 +84,6 @@ class TokenUsageReport
 
         return [
             'totals' => $aggregate['totals'],
-            'previousTotals' => $includePrevious ? $this->previousTotals($from, $to, $kind) : null,
             'byKind' => $aggregate['byKind'],
             'byDeployment' => $aggregate['byDeployment'],
             'byOrigin' => $this->byOrigin($baseQuery),
@@ -311,44 +309,6 @@ class TokenUsageReport
         usort($byDeployment, fn (array $a, array $b): int => $b['total'] <=> $a['total']);
 
         return $byDeployment;
-    }
-
-    /**
-     * Token/cost totals for the equal-length window immediately before $from,
-     * for the "vs periode sebelumnya" deltas. Grouped by model so each row is
-     * costed against its own deployment rate before summing.
-     *
-     * @return array{prompt:int, completion:int, total:int, calls:int, cost:float}
-     */
-    private function previousTotals(Carbon $from, Carbon $to, ?string $kind): array
-    {
-        $prevTo = $from->copy()->subSecond();
-        $prevFrom = $prevTo->copy()->subSeconds($to->getTimestamp() - $from->getTimestamp());
-
-        $query = TokenUsage::query()->toBase()
-            ->whereBetween('created_at', [$prevFrom, $prevTo]);
-
-        if ($kind !== null) {
-            $query->where('kind', $kind);
-        }
-
-        $rows = $query->selectRaw(
-            'model, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
-            'SUM(total_tokens) as total, COUNT(*) as calls, SUM(cached_tokens) as cached'
-        )->groupBy('model')->get();
-
-        $totals = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'calls' => 0, 'cost' => 0.0];
-        foreach ($rows as $row) {
-            $prompt = (int) $row->prompt;
-            $completion = (int) $row->completion;
-            $totals['prompt'] += $prompt;
-            $totals['completion'] += $completion;
-            $totals['total'] += (int) $row->total;
-            $totals['calls'] += (int) $row->calls;
-            $totals['cost'] += $this->costCalculator->costFor((string) $row->model, $prompt, $completion, (int) $row->cached);
-        }
-
-        return $totals;
     }
 
     private static function stringOrNull(mixed $value): ?string

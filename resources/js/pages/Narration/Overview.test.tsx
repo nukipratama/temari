@@ -23,7 +23,6 @@ const baseProps: NarrationOverviewProps = {
         cost: 0.42,
         truncated_calls: 0,
     },
-    previousTotals: null,
     byKind: [
         {
             kind: 'run-insight',

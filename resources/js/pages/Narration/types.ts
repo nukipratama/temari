@@ -164,8 +164,6 @@ export interface AthleteRow {
     dead_lettered: number;
 }
 
-export type PreviousTotals = Omit<UsageTotals, 'truncated_calls' | 'cached'>;
-
 /** Relative range token resolved server-side; drives preset highlighting. */
 export type RangeToken = 'today' | '7d' | '30d' | 'month' | 'all' | 'custom';
 
@@ -178,7 +176,6 @@ export interface NarrationOverviewProps {
     /** The athlete the cost chart is narrowed to, or null for all of them. */
     athlete: number | null;
     totals: UsageTotals;
-    previousTotals: PreviousTotals | null;
     byKind: UsageRow[];
     byDeployment: DeploymentRow[];
     byOrigin: OriginRow[];
