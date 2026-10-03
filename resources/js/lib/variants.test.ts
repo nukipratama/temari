@@ -4,7 +4,6 @@ import {
     chipVariants,
     iconButtonVariants,
     inputVariants,
-    laneStack,
     outlineChipVariants,
     pillButtonVariants,
     rarityVariants,
@@ -112,14 +111,6 @@ describe('iconButtonVariants', () => {
         const cls = tokens(iconButtonVariants({ onSky: true }));
         expect(cls).toContain('text-cream/80');
         expect(cls).toContain('hover:text-cream');
-    });
-});
-
-describe('laneStack', () => {
-    it('divides lanes with dashed hairlines and trims the outer padding', () => {
-        expect(laneStack).toContain('divide-dashed');
-        expect(laneStack).toContain('[&>*:first-child]:pt-0');
-        expect(laneStack).toContain('[&>*:last-child]:pb-0');
     });
 });
 

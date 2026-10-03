@@ -23,12 +23,12 @@ import StravaSyncButton from '@/components/StravaSyncButton';
 import BackLink from '@/components/ui/BackLink';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import { Icon } from '@/components/ui/Icon';
+import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
 import { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
-import { cn } from '@/lib/cn';
 import { revealDelay } from '@/lib/styles';
-import { laneStack, pillButtonVariants } from '@/lib/variants';
+import { pillButtonVariants } from '@/lib/variants';
 
 import {
     groupByWeek,
@@ -108,7 +108,7 @@ export default function RunsIndex({
                                     />
                                 )}
                                 <EffortLegend withMood className="mt-8" />
-                                <div className={cn('mt-6', laneStack)}>
+                                <LaneStack className="mt-6">
                                     {buckets.map((bucket, index) => (
                                         <div
                                             key={bucket.weekStart}
@@ -132,7 +132,7 @@ export default function RunsIndex({
                                             weeksShown={weeksShown}
                                         />
                                     )}
-                                </div>
+                                </LaneStack>
                             </div>
                         ) : (
                             <EmptyState />

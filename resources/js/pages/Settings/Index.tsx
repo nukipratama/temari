@@ -21,6 +21,7 @@ import TrainingPreferencesCard, {
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, TelegramIcon } from '@/components/ui/Icon';
+import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
@@ -36,7 +37,6 @@ import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
-import { laneStack } from '@/lib/variants';
 
 import {
     useNotificationPrefs,
@@ -129,7 +129,7 @@ export default function Settings({
                     </PageHero>
                 </header>
 
-                <div className={laneStack}>
+                <LaneStack>
                     <section>
                         <Eyebrow token="small" tone="ink-2" rule>
                             Appearance
@@ -223,7 +223,7 @@ export default function Settings({
                         </Eyebrow>
                         <AccountActions />
                     </section>
-                </div>
+                </LaneStack>
             </PageContainer>
         </>
     );

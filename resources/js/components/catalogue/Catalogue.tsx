@@ -4,9 +4,10 @@ import { CATALOGUE } from '@/components/catalogue/entries';
 import EntrySection from '@/components/catalogue/EntrySection';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
+import LaneStack from '@/components/ui/LaneStack';
 import { type CatalogueItem, groupItems, matchesQuery } from '@/lib/catalogue';
 import { cn } from '@/lib/cn';
-import { inputVariants, laneStack } from '@/lib/variants';
+import { inputVariants } from '@/lib/variants';
 
 /** Holds the document on the light ground so each example's light frame is truly light. */
 function usePinnedLightGround(): void {
@@ -83,11 +84,11 @@ export default function Catalogue({
                         body={`no component name, folder or description contains "${query.trim()}".`}
                     />
                 ) : (
-                    <div className={laneStack}>
+                    <LaneStack>
                         {shown.map((item) => (
                             <EntrySection key={item.id} item={item} />
                         ))}
-                    </div>
+                    </LaneStack>
                 )}
             </div>
         </div>
