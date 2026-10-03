@@ -454,7 +454,12 @@ override with `className` if a one-off is genuinely required, so it stays visibl
 
 **Every chip is `Chip` or `MoodChip`.** `chipVariants` carries six tones: `neutral`, `horizon`,
 `sky`, `onSky`, and the two status tones `positive` (leaf at 18%) and `warning` (ember at 18%),
-matching `horizon`'s 18% tint. A chip whose colour *is* its meaning (an effort band, a card
+matching `horizon`'s 18% tint. Every tinted tone is registered in
+[grounds.json](../resources/brand/grounds.json) over `paper`, because a chip can land on any surface,
+and `DesignTokenContrastTest` fails if one is narrowed to a single mount. `positive` clears AA on
+`background` and `card` on both grounds but measures 3.68:1 on the dark ground's sky-2 surfaces
+(`muted`, `secondary`, `popover`, `accent`). That pair is pinned in the `belowAa` ledger until its
+colour is settled (#1673). A chip whose colour *is* its meaning (an effort band, a card
 rarity) keeps that colour through `className` on top of the `Chip` shape. Buttons are `PillButton`
 in one of six tones; `danger` (`ember-deep` under cream) is the destructive confirmation, and
 `muted` at size `xs` is the one compact action pill (edit race, regenerate, reread all, load older).

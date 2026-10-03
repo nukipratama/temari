@@ -349,10 +349,10 @@
         "leaf/0.18": {
             "over": {
                 "resources/js/components/ui/Chip.test.tsx": [
-                    "background"
+                    "paper"
                 ],
                 "resources/js/lib/variants.ts": [
-                    "background"
+                    "paper"
                 ],
                 "resources/js/components/narration/athlete/VersionDiff.tsx": [
                     "background"
@@ -436,6 +436,8 @@
     "__belowAa": "Panel/text pairs that are under 4.5:1 today, per ground, pinned at the ratio they measure. Most are text-ink-3 — the meta tier is derived to land exactly on 4.5:1 on paper, so any tint over that paper puts it under. Recorded rather than waived: the set has to match what the audit finds on that ground and each ratio has to match to 2dp, so a new failure, a worse one, or a fixed one still listed all go red. Empty is the healthy state.",
     "belowAa": {
         "light": {},
-        "dark": {}
+        "dark": {
+            "leaf/0.18 + leaf-ink": 3.68
+        }
     }
 }
