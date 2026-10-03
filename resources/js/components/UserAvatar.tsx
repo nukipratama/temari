@@ -1,3 +1,5 @@
+import { Avatar } from '@base-ui/react/avatar';
+
 import { cn } from '@/lib/cn';
 
 const SIZE_CLASS = {
@@ -11,6 +13,8 @@ const FONT_CLASS = {
     md: 'text-[1.0625rem]',
     lg: 'text-xl',
 } as const;
+
+const FALLBACK_DELAY_MS = 600;
 
 interface UserAvatarProps {
     name: string;
@@ -26,34 +30,28 @@ export default function UserAvatar({
     size = 'md',
     className,
 }: Readonly<UserAvatarProps>) {
-    const sizeClass = SIZE_CLASS[size];
-    const fontClass = FONT_CLASS[size];
-
-    if (avatarUrl) {
-        return (
-            <img
-                src={avatarUrl}
-                alt=""
-                className={cn(
-                    sizeClass,
-                    'rounded-full object-cover',
-                    className,
-                )}
-            />
-        );
-    }
-
     return (
-        <span
-            aria-hidden
+        <Avatar.Root
             className={cn(
-                sizeClass,
-                fontClass,
-                'flex items-center justify-center rounded-full bg-horizon font-serif font-semibold italic text-sky',
+                SIZE_CLASS[size],
+                FONT_CLASS[size],
+                'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-horizon font-serif font-semibold italic text-sky',
                 className,
             )}
         >
-            {name.charAt(0).toUpperCase()}
-        </span>
+            {avatarUrl && (
+                <Avatar.Image
+                    src={avatarUrl}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                />
+            )}
+            <Avatar.Fallback
+                aria-hidden
+                delay={avatarUrl ? FALLBACK_DELAY_MS : undefined}
+            >
+                {name.charAt(0).toUpperCase()}
+            </Avatar.Fallback>
+        </Avatar.Root>
     );
 }
